@@ -30,6 +30,10 @@ if "DJANGO_DEBUG_FALSE" in os.environ:
     SECRET_KEY = os.environ["DJANGO_SECRET_KEY"]
     ALLOWED_HOSTS = [os.environ["DJANGO_ALLOWED_HOST"]]
     db_path = os.environ["DJANGO_DB_PATH"]
+    # Only takes effect over real HTTPS; browsers ignore this header over
+    # plain HTTP. Start small and only raise it once HTTPS is confirmed
+    # working end-to-end, per Django's own warning on this setting.
+    SECURE_HSTS_SECONDS = 3600
 else:
     DEBUG = True
     SECRET_KEY = "insecure-key-for-dev"

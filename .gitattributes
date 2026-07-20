@@ -1,0 +1,11 @@
+# Force LF line endings for text files, regardless of platform or local
+# git/editor settings. This matters most for files that get executed
+# directly (relying on a shebang line) inside Linux containers, like
+# manage.py -- a CRLF line ending there breaks the shebang entirely.
+* text=auto eol=lf
+
+*.py text eol=lf
+*.sh text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+Dockerfile text eol=lf

@@ -1,3 +1,4 @@
+from accounts.models import User
 from django.test import TestCase
 from lists.models import Item, List
 from django.db import IntegrityError
@@ -61,3 +62,11 @@ class ListModelTest(TestCase):
             list(list1.item_set.all()),
             [item1, item2, item3],
         )
+
+    def test_lists_can_have_owners(self):
+        user = User.objects.create(email="a@b.com")
+        mylist = List.objects.create(owner=user)
+        self.assertIn(mylist, user.lists.all())
+
+    def test_list_owner_is_optional(self):
+        List.objects.create()  # should not raise

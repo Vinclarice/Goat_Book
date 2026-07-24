@@ -46,6 +46,13 @@ describe("Superlists JavaScript", () => {
     expect(errorMsg.checkVisibility()).toBe(false);
   });
 
+  it("should hide error message on click", () => {
+    initialize(inputSelector);
+    textInput.dispatchEvent(new MouseEvent("click"));
+
+    expect(errorMsg.checkVisibility()).toBe(false);
+  });
+
   it("should not hide error message before event is fired", () => {
     initialize(inputSelector);
     expect(errorMsg.checkVisibility()).toBe(true);

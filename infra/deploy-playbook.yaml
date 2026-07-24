@@ -1,6 +1,12 @@
 ---
 - hosts: all
 
+  vars:
+    # Override on the command line if needed, e.g.:
+    #   --extra-vars "site_domain=staging.vinclarice.com letsencrypt_email=you@example.com"
+    site_domain: vinclarice.com
+    letsencrypt_email: vincentjg01@gmail.com
+
   tasks:
 
     - name: Install docker
@@ -75,15 +81,74 @@
         env:
           DJANGO_DEBUG_FALSE: "1"
           DJANGO_SECRET_KEY: "{{ secret_key.content | b64decode }}"
-          DJANGO_ALLOWED_HOST: "{{ inventory_hostname }}"
+          DJANGO_ALLOWED_HOST: "{{ site_domain }}"
           DJANGO_DB_PATH: "/home/nonroot/db.sqlite3"
         mounts:
           - type: bind
             source: "{{ ansible_env.HOME }}/db.sqlite3"
             target: /home/nonroot/db.sqlite3
-        ports: 80:8888
+        ports:
+          - "127.0.0.1:8000:8888"
+      # Recreating here, before nginx is installed/reloaded, matters: on a
+      # server that was previously deployed with the old 80:8888 port
+      # mapping, the old container is still squatting on host port 80 until
+      # this task replaces it. If nginx tries to bind :80 first, it fails
+      # with "control process exited with error code" because the port's
+      # still taken.
 
     - name: Run migration inside container
       community.docker.docker_container_exec:
         container: superlists
         command: ./manage.py migrate
+
+    - name: Install nginx and certbot
+      ansible.builtin.apt:
+        name:
+          - nginx
+          - python3-certbot-nginx
+        state: present
+        update_cache: true
+      become: true
+
+    - name: Remove default nginx site
+      ansible.builtin.file:
+        path: /etc/nginx/sites-enabled/default
+        state: absent
+      become: true
+      notify: reload nginx
+
+    - name: Template nginx reverse-proxy config for the site
+      ansible.builtin.template:
+        src: templates/nginx-superlists.conf.j2
+        dest: /etc/nginx/sites-available/superlists
+        mode: 0644
+      become: true
+      notify: reload nginx
+
+    - name: Enable the site
+      ansible.builtin.file:
+        src: /etc/nginx/sites-available/superlists
+        dest: /etc/nginx/sites-enabled/superlists
+        state: link
+      become: true
+      notify: reload nginx
+
+    - name: Flush handlers so nginx is serving the plain-HTTP vhost before certbot runs
+      ansible.builtin.meta: flush_handlers
+
+    - name: Obtain/renew Let's Encrypt certificate and configure nginx for HTTPS
+      ansible.builtin.command:
+        cmd: >
+          certbot --nginx
+          -d {{ site_domain }} -d www.{{ site_domain }}
+          --non-interactive --agree-tos -m {{ letsencrypt_email }}
+          --redirect
+        creates: "/etc/letsencrypt/live/{{ site_domain }}/fullchain.pem"
+      become: true
+
+  handlers:
+    - name: reload nginx
+      ansible.builtin.service:
+        name: nginx
+        state: reloaded
+      become: true

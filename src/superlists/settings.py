@@ -37,6 +37,14 @@ if "DJANGO_DEBUG_FALSE" in os.environ:
     # plain HTTP. Start small and only raise it once HTTPS is confirmed
     # working end-to-end, per Django's own warning on this setting.
     SECURE_HSTS_SECONDS = 3600
+
+    # We sit behind an nginx reverse proxy that terminates TLS and talks
+    # to us over plain HTTP, so Django needs to trust this header to know
+    # a request was actually secure (for CSRF, secure cookies, etc).
+    # nginx must set this header itself (see infra/templates/nginx-superlists.conf.j2)
+    # or it can be spoofed by any client.
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SECURE_SSL_REDIRECT = True
 else:
     DEBUG = True
     SECRET_KEY = "insecure-key-for-dev"

@@ -10,6 +10,50 @@
     <body>
         <div class="container">
 
+            <nav class="navbar">
+                <div class="container-fluid">
+                    <a class="navbar-brand" href="/">Superlists</a>
+                    {% if user.email %}
+                        <span class="navbar-text">Logged in as {{ user.email }}</span>
+                        <form method="POST" action="{% url 'logout' %}">
+                            {% csrf_token %}
+                            <button id="id_logout" class="btn btn-outline-secondary" type="submit">
+                                Log out
+                            </button>
+                        </form>
+                    {% else %}
+                        <form method="POST" action="{% url 'send_login_email' %}">
+                            <div class="input-group">
+                                <label class="navbar-text me-2" for="id_email_input">
+                                    Enter your email to log in
+                                </label>
+                                <input
+                                    id="id_email_input"
+                                    name="email"
+                                    class="form-control"
+                                    placeholder="your@email.com"
+                                />
+                                {% csrf_token %}
+                            </div>
+                        </form>
+                    {% endif %}
+                </div>
+            </nav>
+
+            {% if messages %}
+                <div class="row">
+                    <div class="col-md-12">
+                        {% for message in messages %}
+                            {% if message.level_tag == 'success' %}
+                                <div class="alert alert-success">{{ message }}</div>
+                            {% else %}
+                                <div class="alert alert-warning">{{ message }}</div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+
             <div class="row justify-content-center p-5 bg-body-tertiary rounded-3">
                 <div class="col-lg-6 text-center">
                     <h1 class "display-1 mb-4"> {% block header_text %}{% endblock %} </h1>

@@ -38,31 +38,48 @@ class FunctionalTest(StaticLiveServerTestCase):
 
     @wait
     def wait_for_row_in_list_table(self, row_text):
-        rows = self.browser.find_elements(By.CSS_SELECTOR, "#id_list_table tr")
-        self.assertIn(row_text, [row.text for row in rows])
+        expected_text = row_text.split(": ", 1)[-1]
+        rows = self.browser.find_elements(By.CSS_SELECTOR, "#id_list_table .list-item")
+        self.assertTrue(any(expected_text in row.text for row in rows))
 
     @wait
     def wait_for(self, fn):
         return fn()
 
     def get_item_input_box(self):
-        return self.browser.find_element(By.ID, "id_text")
+        inputs = self.browser.find_elements(
+            By.CSS_SELECTOR,
+            "#react-new-task, #id_text",
+        )
+        return next(input_ for input_ in inputs if input_.is_displayed())
 
     def add_list_item(self, item_text):
-        num_rows = len(self.browser.find_elements(By.CSS_SELECTOR, "#id_list_table tr"))
         self.get_item_input_box().send_keys(item_text)
         self.get_item_input_box().send_keys(Keys.ENTER)
-        item_number = num_rows + 1
-        self.wait_for_row_in_list_table(f"{item_number}: {item_text}")
+        self.wait_for_row_in_list_table(item_text)
+
+    def sign_up(
+        self,
+        username="edith",
+        email="edith@example.com",
+        password="correct horse battery staple 47!",
+    ):
+        self.browser.get(self.live_server_url + "/accounts/signup/")
+        self.browser.find_element(By.NAME, "username").send_keys(username)
+        self.browser.find_element(By.NAME, "email").send_keys(email)
+        self.browser.find_element(By.NAME, "password1").send_keys(password)
+        self.browser.find_element(By.NAME, "password2").send_keys(password)
+        self.browser.find_element(By.CSS_SELECTOR, "button[type=submit]").click()
+        self.wait_to_be_logged_in(username)
 
     @wait
-    def wait_to_be_logged_in(self, email):
+    def wait_to_be_logged_in(self, username):
         self.browser.find_element(By.CSS_SELECTOR, "#id_logout")
         navbar = self.browser.find_element(By.CSS_SELECTOR, ".navbar")
-        self.assertIn(email, navbar.text)
+        self.assertIn(username, navbar.text)
 
     @wait
-    def wait_to_be_logged_out(self, email):
-        self.browser.find_element(By.CSS_SELECTOR, "input[name=email]")
+    def wait_to_be_logged_out(self, username):
+        self.browser.find_element(By.LINK_TEXT, "Log in")
         navbar = self.browser.find_element(By.CSS_SELECTOR, ".navbar")
-        self.assertNotIn(email, navbar.text)
+        self.assertNotIn(username, navbar.text)

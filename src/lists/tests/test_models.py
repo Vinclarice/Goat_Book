@@ -47,6 +47,28 @@ class ItemModelTest(TestCase):
         item = Item(text="some text")
         self.assertEqual(str(item), "some text")
 
+    def test_new_items_record_creation_time_and_start_incomplete(self):
+        item = Item.objects.create(list=List.objects.create(), text="New task")
+
+        self.assertIsNotNone(item.created_at)
+        self.assertIsNotNone(item.updated_at)
+        self.assertEqual(item.status, Item.Status.ACTIVE)
+        self.assertIsNone(item.completed_at)
+        self.assertIsNone(item.archived_at)
+
+    def test_archived_item_does_not_block_reusing_its_text(self):
+        mylist = List.objects.create()
+        Item.objects.create(
+            list=mylist,
+            text="Repeatable task",
+            status=Item.Status.ARCHIVED,
+            completed_at="2026-07-24T12:00:00Z",
+            archived_at="2026-07-24T12:01:00Z",
+        )
+
+        new_item = Item(list=mylist, text="Repeatable task")
+        new_item.full_clean()
+
 
 class ListModelTest(TestCase):
     def test_get_absolute_url(self):
@@ -64,9 +86,16 @@ class ListModelTest(TestCase):
         )
 
     def test_lists_can_have_owners(self):
-        user = User.objects.create(email="a@b.com")
+        user = User.objects.create(username="alice", email="a@b.com")
         mylist = List.objects.create(owner=user)
         self.assertIn(mylist, user.lists.all())
 
     def test_list_owner_is_optional(self):
         List.objects.create()  # should not raise
+
+    def test_list_name_is_its_title(self):
+        list_ = List.objects.create(title="Programming")
+        self.assertEqual(list_.title, "Programming")
+
+    def test_empty_list_has_fallback_name(self):
+        self.assertEqual(List.objects.create().title, "Untitled list")

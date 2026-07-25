@@ -1,77 +1,66 @@
+{% load static frontend_tags %}
 <!DOCTYPE html>
-<html lang="en", data-bs-theme="dark">
-    <head>
-        <title>To-Do lists</title>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <link href="/static/bootstrap/css/bootstrap.min.css" rel="stylesheet">
-    </head>
+<html lang="en" data-bs-theme="dark">
+  <head>
+    <title>{% block title %}Superlists{% endblock %}</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta
+      name="description"
+      content="A simple, private home for the lists that keep life moving."
+    >
+    <link href="{% static 'bootstrap/css/bootstrap.min.css' %}" rel="stylesheet">
+    <link href="{% static 'site.css' %}" rel="stylesheet">
+    {% frontend_assets %}
+  </head>
 
-    <body>
-        <div class="container">
+  <body>
+    <div class="site-backdrop">
+      <nav class="navbar navbar-expand">
+        <div class="container py-3">
+          <a class="navbar-brand brand-lockup" href="{% url 'home' %}">
+            <span class="brand-mark" aria-hidden="true">✓</span>
+            <span>Superlists</span>
+          </a>
 
-            <nav class="navbar">
-                <div class="container-fluid">
-                    <a class="navbar-brand" href="/">Superlists</a>
-                    {% if user.email %}
-                        <a class="navbar-link" href="{% url 'my_lists' user.email %}">My lists</a>
-                        <span class="navbar-text">Logged in as {{ user.email }}</span>
-                        <form method="POST" action="{% url 'logout' %}">
-                            {% csrf_token %}
-                            <button id="id_logout" class="btn btn-outline-secondary" type="submit">
-                                Log out
-                            </button>
-                        </form>
-                    {% else %}
-                        <form method="POST" action="{% url 'send_login_email' %}">
-                            <div class="input-group">
-                                <label class="navbar-text me-2" for="id_email_input">
-                                    Enter your email to log in
-                                </label>
-                                <input
-                                    id="id_email_input"
-                                    name="email"
-                                    class="form-control"
-                                    placeholder="your@email.com"
-                                />
-                                {% csrf_token %}
-                            </div>
-                        </form>
-                    {% endif %}
-                </div>
-            </nav>
-
-            {% if messages %}
-                <div class="row">
-                    <div class="col-md-12">
-                        {% for message in messages %}
-                            {% if message.level_tag == 'success' %}
-                                <div class="alert alert-success">{{ message }}</div>
-                            {% else %}
-                                <div class="alert alert-warning">{{ message }}</div>
-                            {% endif %}
-                        {% endfor %}
-                    </div>
-                </div>
+          <div class="ms-auto d-flex align-items-center gap-2 gap-md-3">
+            {% if user.is_authenticated %}
+              <a class="nav-link" href="{% url 'dashboard' %}">My lists</a>
+              <a class="nav-link d-none d-md-inline" href="{% url 'account_settings' %}">
+                {{ user.username }}
+              </a>
+              <form method="post" action="{% url 'logout' %}">
+                {% csrf_token %}
+                <button id="id_logout" class="btn btn-outline-light btn-sm" type="submit">
+                  Log out
+                </button>
+              </form>
+            {% else %}
+              <a class="nav-link" href="{% url 'login' %}">Log in</a>
+              <a class="btn btn-primary btn-sm" href="{% url 'signup' %}">Create account</a>
             {% endif %}
-
-            <div class="row justify-content-center p-5 bg-body-tertiary rounded-3">
-                <div class="col-lg-6 text-center">
-                    <h1 class "display-1 mb-4"> {% block header_text %}{% endblock %} </h1>
-
-                    {% block extra_header %}
-                    {% endblock %}
-
-                </div>
-            </div>
-
-            {% block content %}
-            {% endblock %}
-
+          </div>
         </div>
+      </nav>
 
-        {% block scripts %}
-        {% endblock %}
+      <main class="container page-shell">
+        {% if messages %}
+          <div class="message-stack" aria-live="polite">
+            {% for message in messages %}
+              <div class="alert {% if message.level_tag == 'success' %}alert-success{% else %}alert-warning{% endif %}">
+                {{ message }}
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
 
-    </body>
+        {% block content %}{% endblock %}
+      </main>
+
+      <footer class="container site-footer">
+        <span>Made for the things worth remembering.</span>
+      </footer>
+    </div>
+
+  </body>
 </html>

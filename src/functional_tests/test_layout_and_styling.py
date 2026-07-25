@@ -1,22 +1,29 @@
-from selenium.webdriver.common.keys import Keys
-
 from .base import FunctionalTest
 
 
 class LayoutAndStylingTest(FunctionalTest):
-    def test_layout_and_styling(self):
-        #Edith goes to the home page,
-        self.browser.get(self.live_server_url)
+    def assert_page_has_no_horizontal_overflow(self):
+        dimensions = self.browser.execute_script(
+            """
+            return {
+              viewport: window.innerWidth,
+              document: document.documentElement.scrollWidth
+            };
+            """
+        )
+        self.assertLessEqual(dimensions["document"], dimensions["viewport"])
 
-        #Her browser window is set to a very specific size
+    def test_dashboard_and_list_are_responsive(self):
+        self.sign_up()
         self.browser.set_window_size(1024, 768)
 
-        #She notices the input box is nicely centered
         inputbox = self.get_item_input_box()
-        self.assertAlmostEqual(inputbox.location['x'] + inputbox.size['width'] / 2, 512, delta=10)
+        self.assertGreater(inputbox.size["width"], 250)
+        self.assert_page_has_no_horizontal_overflow()
 
-        #She starts a new list and sees the input is nicely centered there too
-        self.add_list_item("testing")
+        self.add_list_item("Testing the responsive list")
+        self.assertGreater(self.get_item_input_box().size["width"], 250)
+        self.assert_page_has_no_horizontal_overflow()
 
-        inputbox = self.get_item_input_box()
-        self.assertAlmostEqual(inputbox.location['x'] + inputbox.size['width'] / 2, 512, delta=10)
+        self.browser.set_window_size(390, 844)
+        self.assert_page_has_no_horizontal_overflow()

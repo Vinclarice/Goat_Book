@@ -1,118 +1,184 @@
-from unittest import mock
-
 from django.contrib import auth
 from django.test import TestCase
 
-from accounts.models import Token
+from accounts.models import User
+from lists.models import List
 
 
-class SendLoginEmailViewTest(TestCase):
-    def test_redirects_to_home_page(self):
+PASSWORD = "correct horse battery staple 47!"
+
+
+class SignUpViewTest(TestCase):
+    def test_renders_signup_form(self):
+        response = self.client.get("/accounts/signup/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "accounts/signup.html")
+        self.assertContains(response, 'name="username"')
+        self.assertContains(response, 'name="email"')
+        self.assertContains(response, 'name="password1"')
+
+    def test_creates_and_logs_in_a_user(self):
         response = self.client.post(
-            "/accounts/send_login_email", data={"email": "edith@example.com"}
+            "/accounts/signup/",
+            data={
+                "username": "edith",
+                "email": "edith@example.com",
+                "password1": PASSWORD,
+                "password2": PASSWORD,
+            },
         )
-        self.assertRedirects(response, "/")
 
-    @mock.patch("accounts.views.send_mail")
-    def test_sends_mail_to_address_from_post(self, mock_send_mail):
+        self.assertRedirects(response, "/dashboard/")
+        user = User.objects.get(username="edith")
+        self.assertEqual(user.email, "edith@example.com")
+        self.assertTrue(user.check_password(PASSWORD))
+        self.assertEqual(auth.get_user(self.client), user)
+
+    def test_rejects_duplicate_username(self):
+        User.objects.create_user("edith", "edith@example.com", PASSWORD)
+
+        response = self.client.post(
+            "/accounts/signup/",
+            data={
+                "username": "edith",
+                "email": "other@example.com",
+                "password1": PASSWORD,
+                "password2": PASSWORD,
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "User with this Username already exists.")
+        self.assertEqual(User.objects.count(), 1)
+
+    def test_normalizes_signup_email(self):
         self.client.post(
-            "/accounts/send_login_email", data={"email": "edith@example.com"}
+            "/accounts/signup/",
+            data={
+                "username": "edith",
+                "email": "Edith@Example.COM",
+                "password1": PASSWORD,
+                "password2": PASSWORD,
+            },
         )
 
-        self.assertEqual(mock_send_mail.called, True)
-        (subject, body, from_email, to_list), kwargs = mock_send_mail.call_args
-        self.assertEqual(subject, "Your login link for Superlists")
-        self.assertEqual(from_email, "noreply@superlists")
-        self.assertEqual(to_list, ["edith@example.com"])
-
-    def test_adds_success_message(self):
-        response = self.client.post(
-            "/accounts/send_login_email",
-            data={"email": "edith@example.com"},
-            follow=True,
-        )
-
-        message = list(response.context["messages"])[0]
         self.assertEqual(
-            message.message,
-            "Check your email, we've sent you a link you can use to log in.",
+            User.objects.get(username="edith").email,
+            "edith@example.com",
         )
-        self.assertEqual(message.tags, "success")
-
-    def test_creates_token_associated_with_email(self):
-        self.client.post(
-            "/accounts/send_login_email", data={"email": "edith@example.com"}
-        )
-        token = Token.objects.get()
-        self.assertEqual(token.email, "edith@example.com")
-
-    @mock.patch("accounts.views.send_mail")
-    def test_sends_link_to_login_using_token_uid(self, mock_send_mail):
-        self.client.post(
-            "/accounts/send_login_email", data={"email": "edith@example.com"}
-        )
-
-        token = Token.objects.get()
-        expected_url = f"http://testserver/accounts/login?token={token.uid}"
-        (subject, body, from_email, to_list), kwargs = mock_send_mail.call_args
-        self.assertIn(expected_url, body)
 
 
 class LoginViewTest(TestCase):
-    def test_redirects_to_home_page(self):
-        response = self.client.get("/accounts/login?token=abcd123")
-        self.assertRedirects(response, "/")
-
-    def test_logs_in_if_given_valid_token(self):
-        anon_user = auth.get_user(self.client)
-        self.assertEqual(anon_user.is_authenticated, False)
-
-        token = Token.objects.create(email="edith@example.com")
-        self.client.get(f"/accounts/login?token={token.uid}")
-
-        user = auth.get_user(self.client)
-        self.assertEqual(user.is_authenticated, True)
-        self.assertEqual(user.email, "edith@example.com")
-
-    def test_shows_login_error_if_token_invalid(self):
-        response = self.client.get("/accounts/login?token=invalid-token", follow=True)
-        user = auth.get_user(self.client)
-        self.assertEqual(user.is_authenticated, False)
-        message = list(response.context["messages"])[0]
-        self.assertEqual(
-            message.message,
-            "Invalid login link, please request a new one",
-        )
-        self.assertEqual(message.tags, "error")
-
-    @mock.patch("accounts.views.auth")
-    def test_calls_django_auth_authenticate(self, mock_auth):
-        self.client.get("/accounts/login?token=abcd123")
-        self.assertEqual(
-            mock_auth.authenticate.call_args,
-            mock.call(uid="abcd123"),
+    def setUp(self):
+        self.user = User.objects.create_user(
+            "edith",
+            "edith@example.com",
+            PASSWORD,
         )
 
-    @mock.patch("accounts.views.auth")
-    def test_calls_auth_login_with_user_if_there_is_one(self, mock_auth):
-        response = self.client.get("/accounts/login?token=abcd123")
-        self.assertEqual(
-            mock_auth.login.call_args,
-            mock.call(
-                response.wsgi_request,
-                mock_auth.authenticate.return_value,
-            ),
+    def test_logs_in_with_valid_credentials(self):
+        response = self.client.post(
+            "/accounts/login/",
+            data={"username": "edith", "password": PASSWORD},
         )
 
-    @mock.patch("accounts.views.auth")
-    def test_adds_error_message_if_auth_user_is_None(self, mock_auth):
-        mock_auth.authenticate.return_value = None
+        self.assertRedirects(response, "/dashboard/")
+        self.assertEqual(auth.get_user(self.client), self.user)
 
-        response = self.client.get("/accounts/login?token=abcd123", follow=True)
-
-        message = list(response.context["messages"])[0]
-        self.assertEqual(
-            message.message,
-            "Invalid login link, please request a new one",
+    def test_welcome_page_form_logs_in_with_valid_credentials(self):
+        response = self.client.post(
+            "/",
+            data={"username": "edith", "password": PASSWORD},
         )
-        self.assertEqual(message.tags, "error")
+
+        self.assertRedirects(response, "/dashboard/")
+        self.assertEqual(auth.get_user(self.client), self.user)
+
+    def test_rejects_invalid_credentials(self):
+        response = self.client.post(
+            "/accounts/login/",
+            data={"username": "edith", "password": "wrong password"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(
+            response,
+            "Please enter a correct username and password.",
+        )
+        self.assertFalse(auth.get_user(self.client).is_authenticated)
+
+    def test_logout_requires_post_and_ends_the_session(self):
+        self.client.force_login(self.user)
+
+        get_response = self.client.get("/accounts/logout/")
+        self.assertEqual(get_response.status_code, 405)
+
+        post_response = self.client.post("/accounts/logout/")
+        self.assertRedirects(post_response, "/")
+        self.assertFalse(auth.get_user(self.client).is_authenticated)
+
+
+class AccountSettingsViewTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            "edith",
+            "edith@example.com",
+            PASSWORD,
+        )
+        self.list_ = List.objects.create(owner=self.user, title="Programming")
+        self.client.force_login(self.user)
+
+    def test_requires_login(self):
+        self.client.logout()
+
+        response = self.client.get("/accounts/settings/")
+
+        self.assertRedirects(
+            response,
+            "/accounts/login/?next=/accounts/settings/",
+        )
+
+    def test_updates_username_and_email_without_changing_ownership(self):
+        original_pk = self.user.pk
+
+        response = self.client.post(
+            "/accounts/settings/",
+            data={"username": "edith-new", "email": "new@example.com"},
+        )
+
+        self.user.refresh_from_db()
+        self.list_.refresh_from_db()
+        self.assertRedirects(response, "/accounts/settings/")
+        self.assertEqual(self.user.pk, original_pk)
+        self.assertEqual(self.user.username, "edith-new")
+        self.assertEqual(self.user.email, "new@example.com")
+        self.assertEqual(self.list_.owner, self.user)
+
+    def test_rejects_duplicate_email(self):
+        User.objects.create_user("other", "other@example.com", PASSWORD)
+
+        response = self.client.post(
+            "/accounts/settings/",
+            data={"username": "edith", "email": "other@example.com"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "User with this Email already exists.")
+
+    def test_changes_password_and_preserves_session(self):
+        new_password = "a different secure password 92!"
+
+        response = self.client.post(
+            "/accounts/password/change/",
+            data={
+                "old_password": PASSWORD,
+                "new_password1": new_password,
+                "new_password2": new_password,
+            },
+        )
+
+        self.user.refresh_from_db()
+        self.assertRedirects(response, "/accounts/settings/")
+        self.assertTrue(self.user.check_password(new_password))
+        self.assertEqual(auth.get_user(self.client), self.user)

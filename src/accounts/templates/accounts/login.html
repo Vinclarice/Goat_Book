@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}Welcome · Superlists{% endblock %}
+
+{% block content %}
+  <section class="landing-grid">
+    <div class="landing-copy">
+      <p class="eyebrow">A quieter way to stay on track</p>
+      <h1>Welcome back to what matters.</h1>
+      <p class="landing-lead">
+        Capture what is on your mind, return to active lists, and make room for
+        everything else.
+      </p>
+      <div class="trust-row" aria-label="Product qualities">
+        <span>Private by default</span>
+        <span>Simple on purpose</span>
+        <span>Ready anywhere</span>
+      </div>
+    </div>
+
+    <div class="auth-card">
+      <div class="auth-heading">
+        <p class="eyebrow">Your space</p>
+        <h2>Log in</h2>
+        <p>Continue to your personal lists.</p>
+      </div>
+
+      {% if form.non_field_errors %}
+        <div class="alert alert-danger" role="alert">
+          {{ form.non_field_errors.0 }}
+        </div>
+      {% endif %}
+
+      <form method="post" action="{{ request.path }}" class="auth-form">
+        {% csrf_token %}
+
+        <div>
+          <label for="{{ form.username.id_for_label }}">Username</label>
+          {{ form.username }}
+          {% if form.username.errors %}
+            <div class="field-error">{{ form.username.errors.0 }}</div>
+          {% endif %}
+        </div>
+
+        <div>
+          <label for="{{ form.password.id_for_label }}">Password</label>
+          {{ form.password }}
+          {% if form.password.errors %}
+            <div class="field-error">{{ form.password.errors.0 }}</div>
+          {% endif %}
+        </div>
+
+        {% if next %}
+          <input type="hidden" name="next" value="{{ next }}">
+        {% endif %}
+
+        <button class="btn btn-primary btn-lg w-100" type="submit">
+          Continue to my lists
+        </button>
+      </form>
+
+      <p class="auth-switch">
+        New here? <a href="{% url 'signup' %}">Create your account</a>
+      </p>
+    </div>
+  </section>
+{% endblock %}

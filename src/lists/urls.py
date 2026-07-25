@@ -20,6 +20,37 @@ from lists import views
 
 urlpatterns = [
     path("new", views.new_list, name="new_list"),
+    path(
+        "items/<int:item_id>/complete",
+        views.complete_item,
+        name="complete_item",
+    ),
+    path(
+        "items/<int:item_id>/reopen",
+        views.reopen_item,
+        name="reopen_item",
+    ),
+    path(
+        "items/<int:item_id>/archive",
+        views.archive_item,
+        name="archive_item",
+    ),
+    path(
+        "items/<int:item_id>/restore",
+        views.restore_item,
+        name="restore_item",
+    ),
+    path(
+        "items/<int:item_id>/delete",
+        views.delete_archived_item,
+        name="delete_archived_item",
+    ),
+    path(
+        "items/<int:item_id>/edit",
+        views.edit_item,
+        name="edit_item",
+    ),
     path("<int:list_id>/", views.view_list, name="view_list"),
-    path("users/<str:email>/", views.my_lists, name="my_lists"),
+    path("<int:list_id>/rename", views.rename_list, name="rename_list"),
+    path("<int:list_id>/delete", views.delete_list, name="delete_list"),
 ]

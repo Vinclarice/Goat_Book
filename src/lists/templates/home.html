@@ -1,8 +1,0 @@
-{% extends 'base.html' %}
-
-{% block header_text %}Start a new To-Do list{% endblock %}
-
-{% block extra_header %}
-  {% url 'new_list' as form_action %}
-  {% include "includes/form.html" with form=form form_action=form_action %}
-{% endblock %}

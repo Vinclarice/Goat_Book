@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block title %}Account settings · Superlists{% endblock %}
+
+{% block content %}
+  <section class="auth-page">
+    <div class="auth-card auth-card-wide">
+      <div class="auth-heading">
+        <p class="eyebrow">Your account</p>
+        <h1>Account settings</h1>
+        <p>Your lists stay connected to your account when these details change.</p>
+      </div>
+
+      <form method="post" action="{% url 'account_settings' %}" class="auth-form">
+        {% csrf_token %}
+        {% for field in form %}
+          <div>
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% for error in field.errors %}
+              <div class="field-error">{{ error }}</div>
+            {% endfor %}
+          </div>
+        {% endfor %}
+        <button class="btn btn-primary" type="submit">Save settings</button>
+      </form>
+
+      <p class="auth-switch">
+        <a href="{% url 'change_password' %}">Change password</a>
+      </p>
+    </div>
+  </section>
+{% endblock %}

@@ -1,0 +1,134 @@
+import json
+
+from django.test import Client, TestCase
+from django.utils import timezone
+
+from accounts.models import User
+from lists.models import Item, List
+
+
+class TaskApiTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            "alice",
+            "alice@example.com",
+            "a secure password",
+        )
+        self.other_user = User.objects.create_user(
+            "bob",
+            "bob@example.com",
+            "another secure password",
+        )
+        self.list_ = List.objects.create(owner=self.user, title="Programming")
+        self.item = Item.objects.create(list=self.list_, text="Write tests")
+        self.client = Client(enforce_csrf_checks=True)
+        self.client.force_login(self.user)
+        response = self.client.get(self.list_.get_absolute_url())
+        self.csrf_token = response.cookies["csrftoken"].value
+
+    def request(self, method, url, payload=None, include_csrf=True):
+        kwargs = {
+            "data": json.dumps(payload or {}),
+            "content_type": "application/json",
+        }
+        if include_csrf:
+            kwargs["HTTP_X_CSRFTOKEN"] = self.csrf_token
+        return getattr(self.client, method)(url, **kwargs)
+
+    def test_create_edit_and_complete_task(self):
+        create_response = self.request(
+            "post",
+            f"/api/lists/{self.list_.id}/items/",
+            {"text": "Build interface"},
+        )
+        created = create_response.json()["data"]
+
+        self.assertEqual(create_response.status_code, 201)
+        self.assertEqual(created["status"], Item.Status.ACTIVE)
+
+        edit_response = self.request(
+            "patch",
+            created["update_url"],
+            {"text": "Build React interface"},
+        )
+        complete_response = self.request(
+            "patch",
+            created["update_url"],
+            {"status": Item.Status.COMPLETED},
+        )
+
+        self.assertEqual(edit_response.status_code, 200)
+        self.assertEqual(edit_response.json()["data"]["text"], "Build React interface")
+        self.assertEqual(
+            complete_response.json()["data"]["status"],
+            Item.Status.COMPLETED,
+        )
+
+    def test_restore_conflict_returns_409(self):
+        self.item.status = Item.Status.ARCHIVED
+        self.item.completed_at = timezone.now()
+        self.item.archived_at = timezone.now()
+        self.item.save()
+        Item.objects.create(list=self.list_, text=self.item.text)
+
+        response = self.request(
+            "patch",
+            f"/api/items/{self.item.id}/",
+            {"status": Item.Status.COMPLETED},
+        )
+
+        self.assertEqual(response.status_code, 409)
+        self.assertIn("conflict", response.json()["errors"])
+
+    def test_delete_requires_archived_status(self):
+        active_response = self.request(
+            "delete",
+            f"/api/items/{self.item.id}/",
+        )
+        self.assertEqual(active_response.status_code, 400)
+
+        self.item.status = Item.Status.ARCHIVED
+        self.item.completed_at = timezone.now()
+        self.item.archived_at = timezone.now()
+        self.item.save()
+        archived_response = self.request(
+            "delete",
+            f"/api/items/{self.item.id}/",
+        )
+
+        self.assertEqual(archived_response.status_code, 200)
+        self.assertFalse(Item.objects.filter(pk=self.item.pk).exists())
+
+    def test_rejects_missing_csrf_token(self):
+        response = self.request(
+            "patch",
+            f"/api/items/{self.item.id}/",
+            {"status": Item.Status.COMPLETED},
+            include_csrf=False,
+        )
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_other_users_task_is_hidden(self):
+        other_list = List.objects.create(owner=self.other_user, title="Private")
+        other_item = Item.objects.create(list=other_list, text="Private task")
+
+        response = self.request(
+            "patch",
+            f"/api/items/{other_item.id}/",
+            {"status": Item.Status.COMPLETED},
+        )
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_unauthenticated_request_returns_json_401(self):
+        anonymous_client = Client()
+
+        response = anonymous_client.patch(
+            f"/api/items/{self.item.id}/",
+            data=json.dumps({"status": Item.Status.COMPLETED}),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 401)
+        self.assertIn("authentication", response.json()["errors"])

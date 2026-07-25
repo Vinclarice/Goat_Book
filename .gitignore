@@ -5,5 +5,8 @@ __pycache__
 /static
 src/db.sqlite3
 src/static
+frontend/node_modules
+.pnpm-store
+src/lists/static/frontend
 container.db.sqlite3
 .vscode

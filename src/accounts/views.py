@@ -1,34 +1,55 @@
-from django.contrib import auth, messages
-from django.core.mail import send_mail
-from django.shortcuts import redirect
-from django.urls import reverse
+from django.contrib import messages
+from django.contrib.auth import login, update_session_auth_hash
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.forms import PasswordChangeForm
+from django.contrib.auth.views import LoginView
+from django.shortcuts import redirect, render
 
-from accounts.models import Token
+from accounts.forms import AccountSettingsForm, SignUpForm
 
 
-def send_login_email(request):
-    email = request.POST["email"]
-    token = Token.objects.create(email=email)
-    url = request.build_absolute_uri(
-        reverse("login") + "?token=" + str(token.uid),
+class LandingLoginView(LoginView):
+    template_name = "accounts/login.html"
+    redirect_authenticated_user = True
+
+
+def signup(request):
+    if request.user.is_authenticated:
+        return redirect("dashboard")
+
+    form = SignUpForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        user = form.save()
+        login(request, user)
+        return redirect("dashboard")
+
+    return render(request, "accounts/signup.html", {"form": form})
+
+
+@login_required
+def account_settings(request):
+    form = AccountSettingsForm(
+        request.POST or None,
+        instance=request.user,
     )
-    message_body = f"Use this link to log in:\n\n{url}"
-    send_mail(
-        "Your login link for Superlists",
-        message_body,
-        "noreply@superlists",
-        [email],
-    )
-    messages.success(
-        request,
-        "Check your email, we've sent you a link you can use to log in.",
-    )
-    return redirect("/")
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        messages.success(request, "Account settings updated.")
+        return redirect("account_settings")
+
+    return render(request, "accounts/settings.html", {"form": form})
 
 
-def login(request):
-    if user := auth.authenticate(uid=request.GET["token"]):
-        auth.login(request, user)
-    else:
-        messages.error(request, "Invalid login link, please request a new one")
-    return redirect("/")
+@login_required
+def change_password(request):
+    form = PasswordChangeForm(
+        user=request.user,
+        data=request.POST or None,
+    )
+    if request.method == "POST" and form.is_valid():
+        user = form.save()
+        update_session_auth_hash(request, user)
+        messages.success(request, "Password updated.")
+        return redirect("account_settings")
+
+    return render(request, "accounts/change_password.html", {"form": form})

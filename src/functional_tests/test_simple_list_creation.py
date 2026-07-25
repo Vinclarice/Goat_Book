@@ -6,18 +6,22 @@ from .base import FunctionalTest
 
 class NewVisitorTest(FunctionalTest):
     def test_can_start_a_todo_list(self):
-        #Edith has heard about a cool new online to-do app.
-        # She goes to check out its homepage
+        # Edith creates her private account and reaches her dashboard.
         self.browser.get(self.live_server_url)
+        self.assertIn("Welcome", self.browser.title)
+        self.sign_up()
 
-        #She notices the page title and header mention to-do lists
-        self.assertIn("To-Do", self.browser.title)
+        # She sees her personal space and a place to start a list.
+        self.assertIn("My lists", self.browser.title)
         header_text = self.browser.find_element(By.TAG_NAME, 'h1').text
-        self.assertIn('To-Do', header_text)
+        self.assertIn('Welcome, edith', header_text)
 
-        #She is invited to enter a to-do item straight away
+        # She is invited to create a list from its first item.
         inputbox = self.get_item_input_box()
-        self.assertEqual(inputbox.get_attribute('placeholder'),'Enter a to-do item')
+        self.assertEqual(
+            inputbox.get_attribute('placeholder'),
+            'For example: Plan the weekend',
+        )
 
 
         #She types "Buy peacock feathers" into a text box (Edith's hobby is tying fly-fishing lures)
@@ -46,8 +50,8 @@ class NewVisitorTest(FunctionalTest):
 #Satisfied, she goes back to sleep
 
     def test_multiple_users_can_start_lists_at_different_urls(self):
-        #Edith starts a new to-do list
-        self.browser.get(self.live_server_url)
+        # Edith signs up and starts a new to-do list.
+        self.sign_up()
         inputbox = self.get_item_input_box()
         inputbox.send_keys('Buy peacock feathers')
         inputbox.send_keys(Keys.ENTER)
@@ -63,12 +67,13 @@ class NewVisitorTest(FunctionalTest):
         ##as a way of simulating a brand new user session
         self.browser.delete_all_cookies()
 
-        #Francis visits the home page. There is no sign of Edith's list
+        # Francis visits the welcome page. There is no sign of Edith's list.
         self.browser.get(self.live_server_url)
         page_text = self.browser.find_element(By.TAG_NAME, 'body').text
         self.assertNotIn('Buy peacock feathers', page_text)
 
-        #Francis starts a new list by entering a new item. He is less interesting than Edith...
+        # Francis creates his own account and list.
+        self.sign_up("francis", "francis@example.com")
         inputbox = self.get_item_input_box()
         inputbox.send_keys('Buy milk')
         inputbox.send_keys(Keys.ENTER)

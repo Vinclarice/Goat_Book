@@ -1,17 +1,24 @@
-import uuid
-
+from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, UserManager
+from django.contrib.auth.validators import UnicodeUsernameValidator
 from django.db import models
 
 
-class User(models.Model):
-    email = models.EmailField(primary_key=True)
+class User(AbstractBaseUser, PermissionsMixin):
+    username_validator = UnicodeUsernameValidator()
 
-    REQUIRED_FIELDS = []
-    USERNAME_FIELD = "email"
-    is_anonymous = False
-    is_authenticated = True
+    email = models.EmailField(unique=True)
+    username = models.CharField(
+        max_length=150,
+        unique=True,
+        validators=[username_validator],
+    )
+    is_active = models.BooleanField(default=True)
+    is_staff = models.BooleanField(default=False)
 
+    objects = UserManager()
 
-class Token(models.Model):
-    email = models.EmailField()
-    uid = models.CharField(default=uuid.uuid4, max_length=40)
+    REQUIRED_FIELDS = ["email"]
+    USERNAME_FIELD = "username"
+
+    def __str__(self):
+        return self.username

@@ -6,6 +6,10 @@
     #   --extra-vars "site_domain=staging.vinclarice.com letsencrypt_email=you@example.com"
     site_domain: vinclarice.com
     letsencrypt_email: vincentjg01@gmail.com
+    # Remote database resets require both of these test-only overrides plus
+    # ALLOW_REMOTE_DB_RESET=<exact-host> in the client running the tests.
+    deployment_environment: production
+    allow_database_flush: "0"
 
   tasks:
 
@@ -79,11 +83,11 @@
         state: started
         recreate: true
         env:
-          DJANGO_DEBUG_FALSE: "1"
           DJANGO_SECRET_KEY: "{{ secret_key.content | b64decode }}"
           DJANGO_ALLOWED_HOST: "{{ site_domain }}"
           DJANGO_DB_PATH: "/home/nonroot/db.sqlite3"
-          EMAIL_PASSWORD: "{{ lookup('env', 'EMAIL_PASSWORD') }}"
+          DJANGO_ENVIRONMENT: "{{ deployment_environment }}"
+          ALLOW_DATABASE_FLUSH: "{{ allow_database_flush }}"
         mounts:
           - type: bind
             source: "{{ ansible_env.HOME }}/db.sqlite3"
@@ -111,6 +115,22 @@
         update_cache: true
       become: true
 
+    - name: Ensure nginx is running
+      ansible.builtin.service:
+        name: nginx
+        state: started
+        enabled: true
+      become: true
+
+    - name: Ensure ACME challenge directory exists
+      ansible.builtin.file:
+        path: /var/www/certbot
+        state: directory
+        owner: root
+        group: www-data
+        mode: 0755
+      become: true
+
     - name: Remove default nginx site
       ansible.builtin.file:
         path: /etc/nginx/sites-enabled/default
@@ -118,11 +138,18 @@
       become: true
       notify: reload nginx
 
-    - name: Template nginx reverse-proxy config for the site
+    - name: Check whether the TLS certificate already exists
+      ansible.builtin.stat:
+        path: "/etc/letsencrypt/live/{{ site_domain }}/fullchain.pem"
+      register: tls_certificate
+      become: true
+
+    - name: Install temporary HTTP config for initial certificate issuance
       ansible.builtin.template:
-        src: templates/nginx-superlists.conf.j2
+        src: templates/nginx-superlists-bootstrap.conf.j2
         dest: /etc/nginx/sites-available/superlists
         mode: 0644
+      when: not tls_certificate.stat.exists
       become: true
       notify: reload nginx
 
@@ -134,17 +161,62 @@
       become: true
       notify: reload nginx
 
-    - name: Flush handlers so nginx is serving the plain-HTTP vhost before certbot runs
+    - name: Flush handlers so nginx can serve the ACME challenge
       ansible.builtin.meta: flush_handlers
 
-    - name: Obtain/renew Let's Encrypt certificate and configure nginx for HTTPS
+    - name: Obtain or renew the Let's Encrypt certificate
       ansible.builtin.command:
         cmd: >
-          certbot --nginx
+          certbot certonly --webroot
+          --webroot-path /var/www/certbot
+          --cert-name {{ site_domain }}
           -d {{ site_domain }} -d www.{{ site_domain }}
           --non-interactive --agree-tos -m {{ letsencrypt_email }}
-          --redirect
-        creates: "/etc/letsencrypt/live/{{ site_domain }}/fullchain.pem"
+          --keep-until-expiring
+      register: certbot_result
+      changed_when: "'not yet due for renewal' not in certbot_result.stdout"
+      become: true
+      notify: reload nginx
+
+    - name: Ensure certificate renewal hook directory exists
+      ansible.builtin.file:
+        path: /etc/letsencrypt/renewal-hooks/deploy
+        state: directory
+        mode: 0755
+      become: true
+
+    - name: Reload nginx after certificate renewal
+      ansible.builtin.copy:
+        dest: /etc/letsencrypt/renewal-hooks/deploy/reload-nginx
+        content: |
+          #!/bin/sh
+          systemctl reload nginx
+        owner: root
+        group: root
+        mode: 0755
+      become: true
+
+    - name: Install the complete HTTPS reverse-proxy config
+      ansible.builtin.template:
+        src: templates/nginx-superlists.conf.j2
+        dest: /etc/nginx/sites-available/superlists
+        mode: 0644
+      become: true
+      notify: reload nginx
+
+    - name: Validate nginx configuration
+      ansible.builtin.command: nginx -t
+      changed_when: false
+      become: true
+
+    - name: Apply the validated HTTPS configuration
+      ansible.builtin.meta: flush_handlers
+
+    - name: Ensure automatic certificate renewal is enabled
+      ansible.builtin.service:
+        name: certbot.timer
+        state: started
+        enabled: true
       become: true
 
   handlers:

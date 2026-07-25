@@ -1,0 +1,146 @@
+.addForm {
+  margin-bottom: 2rem;
+}
+
+.addForm label {
+  display: block;
+  margin-bottom: 0.45rem;
+  font-weight: 700;
+}
+
+.inputRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.inputRow input {
+  border-radius: 0.5rem 0 0 0.5rem;
+}
+
+.inputRow button {
+  border-radius: 0 0.5rem 0.5rem 0;
+}
+
+.toolbar {
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.filters {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.filter,
+.filterActive {
+  display: inline-flex;
+  gap: 0.45rem;
+  align-items: center;
+  padding: 0.45rem 0.7rem;
+  color: var(--sl-muted);
+  border: 1px solid var(--sl-border);
+  border-radius: 999px;
+  background: transparent;
+}
+
+.filterActive {
+  color: var(--sl-bg);
+  border-color: var(--sl-accent);
+  background: var(--sl-accent);
+}
+
+.filter span,
+.filterActive span {
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.search,
+.archiveSearch {
+  width: min(100%, 18rem);
+}
+
+.archiveSearch {
+  display: block;
+  margin: 0 0 1rem auto;
+}
+
+.feedback {
+  min-height: 1.5rem;
+  color: var(--sl-accent);
+  font-size: 0.9rem;
+}
+
+.feedback p {
+  margin: 0 0 0.5rem;
+}
+
+.error {
+  color: #ffb8b8;
+}
+
+.editForm {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.inlineActions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.empty {
+  padding: 2rem 1.25rem;
+  color: var(--sl-muted);
+  text-align: center;
+}
+
+.dialogBackdrop {
+  position: fixed;
+  z-index: 1050;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(2, 7, 14, 0.78);
+  backdrop-filter: blur(0.4rem);
+}
+
+.dialog {
+  width: min(100%, 32rem);
+  padding: 2rem;
+  border: 1px solid var(--sl-border);
+  border-radius: 1.25rem;
+  background: var(--sl-surface-strong);
+  box-shadow: 0 2rem 6rem rgba(0, 0, 0, 0.45);
+}
+
+.dialog h3 {
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 768px) {
+  .inputRow {
+    grid-template-columns: 1fr;
+    gap: 0.65rem;
+  }
+
+  .inputRow input,
+  .inputRow button {
+    width: 100%;
+    border-radius: 0.75rem;
+  }
+
+  .toolbar {
+    display: grid;
+  }
+
+  .search,
+  .archiveSearch {
+    width: 100%;
+  }
+}

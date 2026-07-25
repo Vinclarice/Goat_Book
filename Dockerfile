@@ -1,18 +1,37 @@
+FROM node:24-slim AS frontend
+
+WORKDIR /frontend
+
+RUN corepack enable
+
+COPY frontend/package.json frontend/pnpm-lock.yaml frontend/pnpm-workspace.yaml ./
+RUN pnpm install --frozen-lockfile
+
+COPY frontend/ ./
+RUN pnpm build
+
 FROM python:3.14-slim
 
-RUN python -m venv /venv
-ENV PATH="/venv/bin:$PATH"
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV PIP_NO_CACHE_DIR=1
 
 COPY requirements.txt /tmp/requirements.txt
-RUN pip install -r /tmp/requirements.txt
+RUN pip install --disable-pip-version-check -r /tmp/requirements.txt
 
 COPY src /src
+COPY --from=frontend /src/lists/static/frontend /src/lists/static/frontend
 
 WORKDIR /src
 
-RUN python manage.py collectstatic 
+RUN DJANGO_ENVIRONMENT=production \
+    DJANGO_SECRET_KEY=build-only-secret \
+    DJANGO_ALLOWED_HOST=localhost \
+    DJANGO_DB_PATH=/tmp/build.sqlite3 \
+    python manage.py collectstatic --noinput
 
-ENV DJANGO_DEBUG_FALSE=1
+ENV DJANGO_ENVIRONMENT=production
+ENV ALLOW_DATABASE_FLUSH=0
 
 RUN adduser --uid 1234 nonroot
 USER nonroot

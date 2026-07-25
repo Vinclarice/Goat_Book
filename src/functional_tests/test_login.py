@@ -1,58 +1,32 @@
-import re
-
-from django.core import mail
 from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
 
 from .base import FunctionalTest
 
+
+TEST_USERNAME = "edith"
 TEST_EMAIL = "edith@example.com"
-SUBJECT = "Your login link for Superlists"
+TEST_PASSWORD = "correct horse battery staple 47!"
 
 
 class LoginTest(FunctionalTest):
-    def test_login_using_magic_link(self):
-        # Edith goes to the awesome superlists site
-        # and notices a "Log in" section in the navbar for the first time
-        # It's telling her to enter her email address, so she does
+    def test_signup_login_and_logout_with_a_password(self):
         self.browser.get(self.live_server_url)
-        self.browser.find_element(By.CSS_SELECTOR, "input[name=email]").send_keys(
-            TEST_EMAIL, Keys.ENTER
-        )
+        self.browser.find_element(By.LINK_TEXT, "Create account").click()
 
-        # A message appears telling her an email has been sent
-        self.wait_for(
-            lambda: self.assertIn(
-                "Check your email",
-                self.browser.find_element(By.CSS_SELECTOR, "body").text,
-            )
-        )
+        self.browser.find_element(By.NAME, "username").send_keys(TEST_USERNAME)
+        self.browser.find_element(By.NAME, "email").send_keys(TEST_EMAIL)
+        self.browser.find_element(By.NAME, "password1").send_keys(TEST_PASSWORD)
+        self.browser.find_element(By.NAME, "password2").send_keys(TEST_PASSWORD)
+        self.browser.find_element(By.CSS_SELECTOR, "button[type=submit]").click()
 
-        if self.test_server:
-            # Testing real email sending from the server is not worth it.
-            return
+        self.wait_to_be_logged_in(TEST_USERNAME)
 
-        # She checks her email and finds a message
-        email = mail.outbox.pop()
-        self.assertIn(TEST_EMAIL, email.to)
-        self.assertEqual(email.subject, SUBJECT)
+        self.browser.find_element(By.ID, "id_logout").click()
+        self.wait_to_be_logged_out(TEST_USERNAME)
 
-        # It has a URL link in it
-        self.assertIn("Use this link to log in", email.body)
-        url_search = re.search(r"http://.+/.+$", email.body)
-        if not url_search:
-            self.fail(f"Could not find url in email body:\n{email.body}")
-        url = url_search.group(0)
-        self.assertIn(self.live_server_url, url)
+        self.browser.find_element(By.LINK_TEXT, "Log in").click()
+        self.browser.find_element(By.NAME, "username").send_keys(TEST_USERNAME)
+        self.browser.find_element(By.NAME, "password").send_keys(TEST_PASSWORD)
+        self.browser.find_element(By.CSS_SELECTOR, "button[type=submit]").click()
 
-        # she clicks it
-        self.browser.get(url)
-
-        # she is logged in!
-        self.wait_to_be_logged_in(email=TEST_EMAIL)
-
-        # Now she logs out
-        self.browser.find_element(By.CSS_SELECTOR, "#id_logout").click()
-
-        # She is logged out
-        self.wait_to_be_logged_out(email=TEST_EMAIL)
+        self.wait_to_be_logged_in(TEST_USERNAME)

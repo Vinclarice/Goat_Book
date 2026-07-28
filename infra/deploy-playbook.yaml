@@ -38,26 +38,26 @@
 
     - name: Build container image locally
       ansible.builtin.command:
-        cmd: docker build --platform linux/amd64 -t superlists .
+        cmd: docker build --platform linux/amd64 -t clarice .
         chdir: "{{ playbook_dir }}/.."
       delegate_to: 127.0.0.1
 
     - name: Export container image locally
       community.docker.docker_image:
-        name: superlists
-        archive_path: /tmp/superlists-img.tar
+        name: clarice
+        archive_path: /tmp/clarice-img.tar
         source: local
       delegate_to: 127.0.0.1
 
     - name: Upload image to server
       ansible.builtin.copy:
-        src: /tmp/superlists-img.tar
-        dest: /tmp/superlists-img.tar
+        src: /tmp/clarice-img.tar
+        dest: /tmp/clarice-img.tar
 
     - name: Import container image on server
       community.docker.docker_image:
-        name: superlists
-        load_path: /tmp/superlists-img.tar
+        name: clarice
+        load_path: /tmp/clarice-img.tar
         source: load
         force_source: true
         state: present
@@ -103,8 +103,8 @@
 
     - name: Run container
       community.docker.docker_container:
-        name: superlists
-        image: superlists
+        name: clarice
+        image: clarice
         state: started
         recreate: true
         env:
@@ -131,7 +131,7 @@
 
     - name: Run migration inside container
       community.docker.docker_container_exec:
-        container: superlists
+        container: clarice
         command: ./manage.py migrate
 
     - name: Install nginx and certbot
@@ -174,8 +174,8 @@
 
     - name: Install temporary HTTP config for initial certificate issuance
       ansible.builtin.template:
-        src: templates/nginx-superlists-bootstrap.conf.j2
-        dest: /etc/nginx/sites-available/superlists
+        src: templates/nginx-clarice-bootstrap.conf.j2
+        dest: /etc/nginx/sites-available/clarice
         mode: 0644
       when: not tls_certificate.stat.exists
       become: true
@@ -183,8 +183,8 @@
 
     - name: Enable the site
       ansible.builtin.file:
-        src: /etc/nginx/sites-available/superlists
-        dest: /etc/nginx/sites-enabled/superlists
+        src: /etc/nginx/sites-available/clarice
+        dest: /etc/nginx/sites-enabled/clarice
         state: link
       become: true
       notify: reload nginx
@@ -226,8 +226,8 @@
 
     - name: Install the complete HTTPS reverse-proxy config
       ansible.builtin.template:
-        src: templates/nginx-superlists.conf.j2
-        dest: /etc/nginx/sites-available/superlists
+        src: templates/nginx-clarice.conf.j2
+        dest: /etc/nginx/sites-available/clarice
         mode: 0644
       become: true
       notify: reload nginx

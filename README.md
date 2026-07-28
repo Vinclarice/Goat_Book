@@ -1,4 +1,4 @@
-# Superlists
+# Clarice
 
 A private Django to-do application with focused React enhancements for task and
 archive management. Django forms remain usable if JavaScript is unavailable.
@@ -67,7 +67,7 @@ Making yourself a superuser so you can reach `/admin/` in the first place:
 ## Brute-force protection
 
 Login attempts are rate-limited by client IP in nginx
-(`infra/templates/nginx-superlists.conf.j2`) and by account via
+(`infra/templates/nginx-clarice.conf.j2`) and by account via
 [django-axes](https://github.com/jazzband/django-axes), which locks an
 account out for an hour after 5 failed attempts, independent of which IP
 they come from. Both layers email `ADMINS` when they're triggered.

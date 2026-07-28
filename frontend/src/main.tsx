@@ -19,7 +19,7 @@ interface BoundaryProps {
 
 class MountBoundary extends Component<BoundaryProps> {
   componentDidCatch(error: Error) {
-    console.error("A Superlists enhancement stopped unexpectedly.", error);
+    console.error("A Clarice enhancement stopped unexpectedly.", error);
     const root = document.getElementById(this.props.rootId);
     const fallback = document.getElementById(this.props.fallbackId);
     if (root) root.hidden = true;
@@ -71,5 +71,5 @@ try {
   mountTaskWorkspace();
   mountArchiveManager();
 } catch (error) {
-  console.error("Superlists enhancements could not start.", error);
+  console.error("Clarice enhancements could not start.", error);
 }

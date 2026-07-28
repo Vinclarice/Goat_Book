@@ -38,5 +38,5 @@ ENV ALLOW_DATABASE_FLUSH=0
 RUN adduser --uid 1234 nonroot
 USER nonroot
 
-CMD ["gunicorn", "--bind", "0.0.0.0:8888", "superlists.wsgi:application"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8888", "clarice.wsgi:application"]
 

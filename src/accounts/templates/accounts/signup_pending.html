@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}Account pending approval · Superlists{% endblock %}
+
+{% block content %}
+  <section class="auth-page">
+    <div class="auth-card">
+      <div class="auth-heading">
+        <p class="eyebrow">Almost there</p>
+        <h1>Your account is pending approval</h1>
+        <p>
+          Thanks for signing up, {{ user.username }}. An admin needs to
+          approve your account before you can log in. You'll be able to
+          sign in as soon as that happens.
+        </p>
+      </div>
+
+      <p class="auth-switch">
+        Already approved? <a href="{% url 'login' %}">Log in</a>
+      </p>
+    </div>
+  </section>
+{% endblock %}

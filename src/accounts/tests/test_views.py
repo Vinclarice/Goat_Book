@@ -1,4 +1,5 @@
 from django.contrib import auth
+from django.core import mail
 from django.test import TestCase
 
 from accounts.models import User
@@ -18,7 +19,7 @@ class SignUpViewTest(TestCase):
         self.assertContains(response, 'name="email"')
         self.assertContains(response, 'name="password1"')
 
-    def test_creates_and_logs_in_a_user(self):
+    def test_creates_an_inactive_account_pending_approval(self):
         response = self.client.post(
             "/accounts/signup/",
             data={
@@ -29,11 +30,30 @@ class SignUpViewTest(TestCase):
             },
         )
 
-        self.assertRedirects(response, "/dashboard/")
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "accounts/signup_pending.html")
+        self.assertContains(response, "pending approval")
+
         user = User.objects.get(username="edith")
         self.assertEqual(user.email, "edith@example.com")
         self.assertTrue(user.check_password(PASSWORD))
-        self.assertEqual(auth.get_user(self.client), user)
+        self.assertFalse(user.is_active)
+        self.assertFalse(auth.get_user(self.client).is_authenticated)
+
+    def test_emails_admins_about_the_pending_signup(self):
+        self.client.post(
+            "/accounts/signup/",
+            data={
+                "username": "edith",
+                "email": "edith@example.com",
+                "password1": PASSWORD,
+                "password2": PASSWORD,
+            },
+        )
+
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("edith", mail.outbox[0].subject)
+        self.assertIn("edith@example.com", mail.outbox[0].body)
 
     def test_rejects_duplicate_username(self):
         User.objects.create_user("edith", "edith@example.com", PASSWORD)
@@ -107,6 +127,37 @@ class LoginViewTest(TestCase):
             "Please enter a correct username and password.",
         )
         self.assertFalse(auth.get_user(self.client).is_authenticated)
+
+    def test_rejects_login_for_a_pending_inactive_account(self):
+        self.user.is_active = False
+        self.user.save()
+
+        response = self.client.post(
+            "/accounts/login/",
+            data={"username": "edith", "password": PASSWORD},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "hasn&#x27;t been approved yet")
+        self.assertFalse(auth.get_user(self.client).is_authenticated)
+
+    def test_wrong_password_for_a_pending_account_gives_the_generic_error(self):
+        # Doesn't confirm a pending account exists to someone who hasn't
+        # proven they know its password.
+        self.user.is_active = False
+        self.user.save()
+
+        response = self.client.post(
+            "/accounts/login/",
+            data={"username": "edith", "password": "wrong password"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(
+            response,
+            "Please enter a correct username and password.",
+        )
+        self.assertNotContains(response, "hasn&#x27;t been approved yet")
 
     def test_logout_requires_post_and_ends_the_session(self):
         self.client.force_login(self.user)

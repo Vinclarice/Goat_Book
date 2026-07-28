@@ -6,7 +6,7 @@ from selenium.webdriver.common.keys import Keys
 import time
 import os
 
-from .container_commands import reset_database
+from .container_commands import approve_user, reset_database
 
 MAX_WAIT = 5
 
@@ -64,13 +64,33 @@ class FunctionalTest(StaticLiveServerTestCase):
         email="edith@example.com",
         password="correct horse battery staple 47!",
     ):
+        # Signups are pending approval until an admin activates them (see
+        # accounts.forms.SignUpForm.save), so this fixture approves and
+        # logs in on the caller's behalf -- see test_login.py for a test
+        # that exercises the pending/approval UI itself.
         self.browser.get(self.live_server_url + "/accounts/signup/")
         self.browser.find_element(By.NAME, "username").send_keys(username)
         self.browser.find_element(By.NAME, "email").send_keys(email)
         self.browser.find_element(By.NAME, "password1").send_keys(password)
         self.browser.find_element(By.NAME, "password2").send_keys(password)
         self.browser.find_element(By.CSS_SELECTOR, "button[type=submit]").click()
+
+        self._approve_pending_account(username)
+
+        self.browser.get(self.live_server_url + "/accounts/login/")
+        self.browser.find_element(By.NAME, "username").send_keys(username)
+        self.browser.find_element(By.NAME, "password").send_keys(password)
+        self.browser.find_element(By.CSS_SELECTOR, "button[type=submit]").click()
         self.wait_to_be_logged_in(username)
+
+    def _approve_pending_account(self, username):
+        if self.test_server:
+            approve_user(self.test_server, username)
+        else:
+            # Running in-process against the test DB: no need to shell out.
+            from accounts.models import User
+
+            User.objects.filter(username=username).update(is_active=True)
 
     @wait
     def wait_to_be_logged_in(self, username):

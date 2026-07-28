@@ -20,6 +20,21 @@ def reset_database(host):
     )
 
 
+def approve_user(host, username):
+    if host not in LOCAL_HOSTS:
+        allowed_host = os.environ.get("ALLOW_REMOTE_DB_RESET")
+        if allowed_host != host:
+            raise RuntimeError(
+                "Remote user approval refused. Set ALLOW_REMOTE_DB_RESET "
+                f"to the exact test host ({host!r}) to confirm."
+            )
+
+    return _exec_in_container(
+        host,
+        ["/usr/local/bin/python", "/src/manage.py", "approve_test_user", username],
+    )
+
+
 def _exec_in_container(host, commands):
     if host in LOCAL_HOSTS:
         return _exec_in_container_locally(commands)

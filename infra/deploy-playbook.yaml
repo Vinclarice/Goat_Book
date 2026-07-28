@@ -10,6 +10,12 @@
     # ALLOW_REMOTE_DB_RESET=<exact-host> in the client running the tests.
     deployment_environment: production
     allow_database_flush: "0"
+    # Sends signup/lockout notification emails via Gmail SMTP. The app
+    # password itself lives in ~/.email-app-password on the server (see
+    # the "Ensure Gmail app password file exists" task below) rather than
+    # here, since it shouldn't be committed or passed on the CLI.
+    email_host_user: vincentjg01@gmail.com
+    admin_email: vincentjg01@gmail.com
 
   tasks:
 
@@ -69,6 +75,25 @@
         src: ~/.secret-key
       register: secret_key
 
+    - name: Check whether the Gmail app password file exists
+      ansible.builtin.stat:
+        path: ~/.email-app-password
+      register: email_password_file
+
+    - name: Fail with instructions if the Gmail app password file is missing
+      ansible.builtin.fail:
+        msg: >
+          ~/.email-app-password is missing on the server. Generate a Gmail
+          app password for {{ email_host_user }} (myaccount.google.com ->
+          Security -> App passwords), then on the server run:
+          umask 077 && echo -n 'your-app-password' > ~/.email-app-password
+      when: not email_password_file.stat.exists
+
+    - name: Read Gmail app password back from file
+      ansible.builtin.slurp:
+        src: ~/.email-app-password
+      register: email_password
+
     - name: Ensure db.sqlite3 file exists outside container
       ansible.builtin.file:
         path: "{{ ansible_env.HOME }}/db.sqlite3"
@@ -88,6 +113,9 @@
           DJANGO_DB_PATH: "/home/nonroot/db.sqlite3"
           DJANGO_ENVIRONMENT: "{{ deployment_environment }}"
           ALLOW_DATABASE_FLUSH: "{{ allow_database_flush }}"
+          DJANGO_EMAIL_HOST_USER: "{{ email_host_user }}"
+          DJANGO_EMAIL_HOST_PASSWORD: "{{ email_password.content | b64decode }}"
+          DJANGO_ADMIN_EMAIL: "{{ admin_email }}"
         mounts:
           - type: bind
             source: "{{ ansible_env.HOME }}/db.sqlite3"

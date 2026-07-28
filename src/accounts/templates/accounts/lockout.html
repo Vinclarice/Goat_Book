@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block title %}Too many attempts · Superlists{% endblock %}
+
+{% block content %}
+  <section class="auth-page">
+    <div class="auth-card">
+      <div class="auth-heading">
+        <p class="eyebrow">Slow down</p>
+        <h1>Temporarily locked out</h1>
+        <p>
+          There have been too many failed sign-in attempts for this
+          account. Try again in about an hour.
+        </p>
+      </div>
+
+      <p class="auth-switch">
+        <a href="{% url 'home' %}">Back to the homepage</a>
+      </p>
+    </div>
+  </section>
+{% endblock %}

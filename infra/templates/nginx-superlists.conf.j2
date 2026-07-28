@@ -1,6 +1,12 @@
 # Managed by Ansible (infra/deploy-playbook.yaml).
 # Certbot obtains certificates but never edits this file.
 
+# First line of defense against brute-forcing login/signup: throttle by
+# client IP before the request even reaches Django. django-axes (see
+# superlists/settings.py) is the second line, locking out an *account*
+# after repeated failures regardless of which IP they come from.
+limit_req_zone $binary_remote_addr zone=superlists_auth:10m rate=5r/m;
+
 server {
     listen 80;
     server_name {{ site_domain }} www.{{ site_domain }};
@@ -23,6 +29,17 @@ server {
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_session_cache shared:SSL:10m;
     ssl_session_timeout 1d;
+
+    location ~ ^/(accounts/login|accounts/signup)/ {
+        limit_req zone=superlists_auth burst=3 nodelay;
+        limit_req_status 429;
+
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
 
     location / {
         proxy_pass http://127.0.0.1:8000;

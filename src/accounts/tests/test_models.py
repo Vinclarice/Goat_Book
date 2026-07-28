@@ -1,6 +1,6 @@
 from django.contrib import auth
 from django.core.exceptions import ValidationError
-from django.test import TestCase
+from django.test import RequestFactory, TestCase
 
 from accounts.models import User
 
@@ -17,8 +17,12 @@ class UserModelTest(TestCase):
         )
 
         self.assertTrue(user.check_password("correct horse battery staple"))
+        # AxesBackend (see AUTHENTICATION_BACKENDS) needs a request to track
+        # attempts by IP, so authenticate() needs one too, unlike before.
+        request = RequestFactory().post("/accounts/login/")
         self.assertEqual(
             auth.authenticate(
+                request,
                 username="edith",
                 password="correct horse battery staple",
             ),

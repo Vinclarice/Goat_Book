@@ -47,21 +47,38 @@ if not DEBUG:
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
+
+    # Sends account-signup and lockout notifications to ADMINS (see below).
+    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+    EMAIL_HOST = "smtp.gmail.com"
+    EMAIL_PORT = 587
+    EMAIL_USE_TLS = True
+    EMAIL_HOST_USER = os.environ["DJANGO_EMAIL_HOST_USER"]
+    EMAIL_HOST_PASSWORD = os.environ["DJANGO_EMAIL_HOST_PASSWORD"]
+    DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 else:
     SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "insecure-key-for-dev")
     ALLOWED_HOSTS = []
     db_path = os.environ.get("DJANGO_DB_PATH", BASE_DIR / "db.sqlite3")
 
+    # Print notification emails to the console instead of sending them.
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+
+# Who gets emailed about pending signups and account lockouts
+# (see accounts.emails and accounts.apps.AccountsConfig.ready).
+ADMINS = [("Vince", os.environ.get("DJANGO_ADMIN_EMAIL", "vincentjg01@gmail.com"))]
+
 
 # Application definition
 
 INSTALLED_APPS = [
-    # "django.contrib.admin",
+    "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "axes",
     "accounts",
     "lists",
 ]
@@ -71,6 +88,9 @@ if DEPLOYMENT_ENVIRONMENT != "production":
 
 AUTH_USER_MODEL = "accounts.User"
 AUTHENTICATION_BACKENDS = [
+    # Must come first: checks/records lockouts before delegating to
+    # ModelBackend for the actual credential check.
+    "axes.backends.AxesBackend",
     "django.contrib.auth.backends.ModelBackend",
 ]
 LOGIN_REDIRECT_URL = "/dashboard/"
@@ -85,7 +105,28 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # Must be last: axes needs to see the response/exception from
+    # everything above it to track failed logins.
+    'axes.middleware.AxesMiddleware',
 ]
+
+# Lock out an account after 5 failed attempts for an hour, tracked by
+# username alone (not paired with IP) so a distributed/rotating-IP attempt
+# against one account still gets caught -- nginx's rate limiting (see
+# infra/templates/nginx-superlists.conf.j2) is what handles the by-IP case.
+# See accounts.apps.AccountsConfig.ready for the lockout notification email.
+AXES_FAILURE_LIMIT = 5
+AXES_COOLOFF_TIME = 1  # hour
+AXES_LOCKOUT_PARAMETERS = ["username"]
+AXES_RESET_ON_SUCCESS = True
+AXES_LOCKOUT_TEMPLATE = "accounts/lockout.html"
+
+# axes.W006 warns that username-only lockout can be bypassed by rotating
+# IP/cookies -- true, but nginx's by-IP rate limiting already covers that
+# case (see infra/templates/nginx-superlists.conf.j2), and username-only
+# is a deliberate choice here so a single attacker can't dodge lockout by
+# rotating IPs either.
+SILENCED_SYSTEM_CHECKS = ["axes.W006"]
 
 ROOT_URLCONF = 'superlists.urls'
 

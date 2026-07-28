@@ -1,15 +1,17 @@
 from django.contrib import messages
-from django.contrib.auth import login, update_session_auth_hash
+from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth.views import LoginView
 from django.shortcuts import redirect, render
 
-from accounts.forms import AccountSettingsForm, SignUpForm
+from accounts.emails import notify_admins_of_pending_signup
+from accounts.forms import AccountSettingsForm, LoginForm, SignUpForm
 
 
 class LandingLoginView(LoginView):
     template_name = "accounts/login.html"
+    authentication_form = LoginForm
     redirect_authenticated_user = True
 
 
@@ -20,8 +22,8 @@ def signup(request):
     form = SignUpForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
         user = form.save()
-        login(request, user)
-        return redirect("dashboard")
+        notify_admins_of_pending_signup(user)
+        return render(request, "accounts/signup_pending.html", {"user": user})
 
     return render(request, "accounts/signup.html", {"form": form})
 

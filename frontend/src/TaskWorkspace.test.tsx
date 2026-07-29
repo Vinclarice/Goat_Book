@@ -349,6 +349,7 @@ describe("TaskWorkspace", () => {
             text: "Buy milk",
             due_date: null,
             tags: ["groceries", "home"],
+            recurrence: "none",
           }),
         }),
       ),

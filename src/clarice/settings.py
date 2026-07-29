@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 import os
+import sys
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -176,6 +177,14 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
 ]
+
+# `manage.py test` runs hundreds of logins against real accounts, and the
+# production hasher (PBKDF2, deliberately slow) turns that into multiple
+# seconds per login-based test for no real coverage benefit -- nothing
+# about hasher performance is under test. MD5 here only ever touches the
+# throwaway per-run test database, never production data.
+if "test" in sys.argv:
+    PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
 
 
 # Internationalization

@@ -9,10 +9,13 @@ Install the Python requirements in the project virtual environment, then install
 the frontend packages:
 
 ```powershell
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
 cd frontend
 pnpm install
 ```
+
+`requirements-dev.txt` pulls in `requirements.txt` plus packages only
+needed to run the test suite (not part of the production image).
 
 For normal Django development using the last compiled frontend bundle:
 

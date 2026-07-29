@@ -1,4 +1,4 @@
-import type { Task } from "../types";
+import type { AgendaWorkspaceData, Task } from "../types";
 
 export function task(overrides: Partial<Task> = {}): Task {
   return {
@@ -20,6 +20,49 @@ export function task(overrides: Partial<Task> = {}): Task {
     },
     update_url: "/api/items/1/",
     delete_url: "/api/items/1/",
+    edit_url: "/lists/items/1/edit",
+    ...overrides,
+  };
+}
+
+/** Fixed so bucket boundaries in tests don't move with the wall clock. */
+export const TODAY = "2026-07-28";
+
+export function agendaList(
+  overrides: Partial<AgendaWorkspaceData["lists"][number]> = {},
+) {
+  return {
+    id: 1,
+    title: "Programming",
+    url: "/lists/1/",
+    create_item_url: "/api/lists/1/items/",
+    open_count: 0,
+    overdue_count: 0,
+    ...overrides,
+  };
+}
+
+export function agendaData(
+  overrides: Partial<AgendaWorkspaceData> = {},
+): AgendaWorkspaceData {
+  return {
+    today: TODAY,
+    username: "vince",
+    archive_url: "/archive/",
+    archived_count: 0,
+    new_list_url: "/lists/new",
+    settings_url: "/accounts/settings/",
+    daily_digest: true,
+    buckets: [
+      { key: "overdue", label: "Overdue", collapsed: false },
+      { key: "today", label: "Today", collapsed: false },
+      { key: "week", label: "This week", collapsed: false },
+      { key: "later", label: "Later", collapsed: true },
+      { key: "someday", label: "No due date", collapsed: true },
+    ],
+    items: [],
+    completed_today: [],
+    lists: [agendaList()],
     ...overrides,
   };
 }

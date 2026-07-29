@@ -1,9 +1,14 @@
 import { Component, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 
+import { AgendaWorkspace } from "./AgendaWorkspace";
 import { ArchiveManager } from "./ArchiveManager";
 import { TaskWorkspace } from "./TaskWorkspace";
-import type { ArchiveWorkspaceData, TaskWorkspaceData } from "./types";
+import type {
+  AgendaWorkspaceData,
+  ArchiveWorkspaceData,
+  TaskWorkspaceData,
+} from "./types";
 
 function readData<T>(id: string): T {
   const element = document.getElementById(id);
@@ -67,7 +72,26 @@ function mountArchiveManager() {
   fallback.hidden = true;
 }
 
+function mountAgendaWorkspace() {
+  const rootElement = document.getElementById("agenda-workspace-root");
+  const fallback = document.getElementById("agenda-workspace-fallback");
+  if (!rootElement || !fallback) return;
+
+  const data = readData<AgendaWorkspaceData>("agenda-workspace-data");
+  createRoot(rootElement).render(
+    <MountBoundary
+      rootId="agenda-workspace-root"
+      fallbackId="agenda-workspace-fallback"
+    >
+      <AgendaWorkspace initialData={data} />
+    </MountBoundary>,
+  );
+  rootElement.hidden = false;
+  fallback.hidden = true;
+}
+
 try {
+  mountAgendaWorkspace();
   mountTaskWorkspace();
   mountArchiveManager();
 } catch (error) {

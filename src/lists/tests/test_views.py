@@ -47,7 +47,7 @@ class DashboardTest(TestCase):
 
         self.assertRedirects(response, "/accounts/login/?next=/dashboard/")
 
-    def test_renders_active_lists_and_new_list_form(self):
+    def test_lists_the_users_own_lists_and_nobody_elses(self):
         first_list = List.objects.create(owner=self.user, title="Weekend")
         Item.objects.create(list=first_list, text="Plan the weekend")
         other_user = User.objects.create_user(
@@ -60,61 +60,37 @@ class DashboardTest(TestCase):
 
         response = self.client.get("/dashboard/")
 
-        self.assertTemplateUsed(response, "dashboard.html")
-        self.assertContains(response, "Welcome, alice.")
+        self.assertTemplateUsed(response, "agenda.html")
+        self.assertContains(response, "Hello, alice.")
         self.assertContains(response, "Weekend")
         self.assertNotContains(response, "Bob&#x27;s private list")
+
+    def test_offers_a_new_list_form(self):
+        response = self.client.get("/dashboard/")
+
         self.assertContains(response, '<form method="post" action="/lists/new"')
         self.assertContains(response, 'name="title"')
 
     def test_renders_empty_state(self):
         response = self.client.get("/dashboard/")
 
-        self.assertContains(response, "Your first list starts here.")
-        self.assertContains(response, "Done &amp; archived tasks")
-        self.assertContains(
-            response,
-            "Tasks moved to the archive will stay here until you restore or delete them.",
-        )
+        self.assertContains(response, "Start your first list.")
 
-    def test_shows_archived_tasks_below_active_lists(self):
-        active_list = List.objects.create(owner=self.user, title="Programming")
-        archived_task = Item.objects.create(
-            list=active_list,
-            text="Finished project",
-            status=Item.Status.ARCHIVED,
-            completed_at=timezone.now(),
-            archived_at=timezone.now(),
-        )
-
-        response = self.client.get("/dashboard/")
-        content = response.content.decode()
-
-        self.assertIn(active_list, response.context["active_lists"])
-        self.assertIn(archived_task, response.context["archived_tasks"])
-        self.assertLess(
-            content.index("Programming"),
-            content.index("Finished project"),
-        )
-
-    def test_renders_safe_archive_data_and_working_html_fallback(self):
+    def test_renders_safe_agenda_data_and_a_working_html_fallback(self):
         list_ = List.objects.create(owner=self.user, title="Programming")
         Item.objects.create(
             list=list_,
             text="</script><script>alert('no')</script>",
-            status=Item.Status.ARCHIVED,
-            completed_at=timezone.now(),
-            archived_at=timezone.now(),
         )
 
         response = self.client.get("/dashboard/")
 
-        self.assertContains(response, 'id="archive-manager-data"')
-        self.assertContains(response, 'id="archive-manager-root"')
-        self.assertContains(response, 'id="archive-manager-fallback"')
+        self.assertContains(response, 'id="agenda-workspace-data"')
+        self.assertContains(response, 'id="agenda-workspace-root"')
+        self.assertContains(response, 'id="agenda-workspace-fallback"')
         self.assertContains(response, "\\u003C/script\\u003E", count=2)
         self.assertNotContains(response, "</script><script>")
-        self.assertContains(response, 'action="/lists/items/1/restore"')
+        self.assertContains(response, 'action="/lists/items/1/complete"')
 
 
 class NewListTest(TestCase):
@@ -156,11 +132,11 @@ class NewListTest(TestCase):
 
         self.assertEqual(List.objects.get().title, "Plan the weekend")
 
-    def test_invalid_input_renders_dashboard_without_saving(self):
+    def test_invalid_input_renders_the_agenda_without_saving(self):
         response = self.client.post("/lists/new", data={"text": ""})
 
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, "dashboard.html")
+        self.assertTemplateUsed(response, "agenda.html")
         self.assertContains(response, html.escape(EMPTY_ITEM_ERROR))
         self.assertEqual(Item.objects.count(), 0)
         self.assertEqual(List.objects.count(), 0)
@@ -445,9 +421,9 @@ class TaskManagementTest(TestCase):
         self.assertRedirects(response, self.list_.get_absolute_url())
 
         list_response = self.client.get(self.list_.get_absolute_url())
-        dashboard_response = self.client.get("/dashboard/")
+        archive_response = self.client.get("/archive/")
         self.assertNotContains(list_response, "Write tests")
-        self.assertContains(dashboard_response, "Write tests")
+        self.assertContains(archive_response, "Write tests")
 
     def test_restores_archived_task_as_completed(self):
         self.item.status = Item.Status.ARCHIVED
@@ -462,7 +438,7 @@ class TaskManagementTest(TestCase):
         self.item.refresh_from_db()
         self.assertEqual(self.item.status, Item.Status.COMPLETED)
         self.assertIsNone(self.item.archived_at)
-        self.assertRedirects(response, "/dashboard/")
+        self.assertRedirects(response, "/archive/")
 
     def test_does_not_restore_when_same_active_task_exists(self):
         self.item.status = Item.Status.ARCHIVED
@@ -498,7 +474,7 @@ class TaskManagementTest(TestCase):
 
         response = self.client.post(url)
 
-        self.assertRedirects(response, "/dashboard/")
+        self.assertRedirects(response, "/archive/")
         self.assertFalse(Item.objects.filter(id=self.item.id).exists())
 
     def test_unarchived_task_cannot_be_permanently_deleted(self):

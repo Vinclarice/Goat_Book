@@ -14,6 +14,14 @@ class User(AbstractBaseUser, PermissionsMixin):
     )
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
+    daily_digest = models.BooleanField(
+        default=True,
+        verbose_name="Email me a daily summary",
+        help_text=(
+            "A morning email listing anything overdue or due today. "
+            "Nothing is sent on days when there's nothing to report."
+        ),
+    )
 
     objects = UserManager()
 

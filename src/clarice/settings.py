@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 from pathlib import Path
 import os
 
+import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
 import sys
 
@@ -35,7 +36,10 @@ if not DEBUG:
         os.environ["DJANGO_ALLOWED_HOST"],
         "www." + os.environ["DJANGO_ALLOWED_HOST"],
     ]
-    db_path = os.environ["DJANGO_DB_PATH"]
+    # Managed Postgres cluster, e.g.
+    # postgresql://user:password@host:25060/clarice?sslmode=require
+    # (see infra/provision-postgres.sh and MIGRATION.md).
+    database_url = os.environ["DJANGO_DATABASE_URL"]
     # Only takes effect over real HTTPS; browsers ignore this header over
     # plain HTTP. Start small and only raise it once HTTPS is confirmed
     # working end-to-end, per Django's own warning on this setting.
@@ -192,12 +196,24 @@ WSGI_APPLICATION = 'clarice.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': db_path,
+if DEBUG:
+    # Local dev and the test suite stay on SQLite -- no local Postgres to
+    # install, and nothing about this app's schema depends on Postgres-only
+    # behavior. Production uses a managed Postgres cluster (see below).
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': db_path,
+        }
     }
-}
+else:
+    DATABASES = {
+        'default': dj_database_url.parse(
+            database_url,
+            conn_max_age=600,
+            ssl_require=True,
+        )
+    }
 
 
 # Password validation

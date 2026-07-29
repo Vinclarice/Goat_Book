@@ -23,4 +23,5 @@ def serialize_item(item):
         },
         "update_url": reverse("api_item_detail", args=(item.id,)),
         "delete_url": reverse("api_item_detail", args=(item.id,)),
+        "edit_url": reverse("edit_item", args=(item.id,)),
     }

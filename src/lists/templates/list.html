@@ -4,7 +4,7 @@
 
 {% block content %}
   <section class="list-detail">
-    <a class="back-link" href="{% url 'dashboard' %}">← Back to my lists</a>
+    <a class="back-link" href="{% url 'dashboard' %}">← Back to today</a>
 
     <div class="list-detail-heading">
       <div>
@@ -12,7 +12,7 @@
         <h1>{{ list.title }}</h1>
       </div>
       {% if archived_task_count %}
-        <a class="archive-count-link" href="{% url 'dashboard' %}#task-archive">
+        <a class="archive-count-link" href="{% url 'archive' %}">
           {{ archived_task_count }} archived
         </a>
       {% endif %}

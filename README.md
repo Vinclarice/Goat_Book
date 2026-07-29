@@ -3,6 +3,23 @@
 A private Django to-do application with focused React enhancements for task and
 archive management. Django forms remain usable if JavaScript is unavailable.
 
+## The agenda
+
+`/dashboard/` is an agenda rather than a list of lists: every open task across
+every list, grouped by how soon it's due (overdue, today, this week, later, no
+due date). Lists and tags become filters in the sidebar; the archive has its own
+page at `/archive/`.
+
+The bucketing rules live in one place, `src/lists/agenda.py`, and are mirrored by
+`frontend/src/agenda.ts` so the server-rendered page, the React enhancement and
+the daily digest email all agree on what "overdue" means. If you change the
+window in one, change it in the other -- `WEEK_HORIZON_DAYS` exists in both.
+
+The page is server-rendered in full and works without JavaScript: completing,
+snoozing, quick-add and filtering are all plain form posts and `?scope=`/`?list=`
+/`?tag=` query parameters. `AgendaWorkspace` then replaces the region with the
+same markup plus inline updates and undo.
+
 ## Local Windows development
 
 Install the Python requirements in the project virtual environment, then install
@@ -67,6 +84,25 @@ Making yourself a superuser so you can reach `/admin/` in the first place:
 .\.venv\Scripts\python.exe src\manage.py createsuperuser
 ```
 
+## Daily reminder emails
+
+`send_due_digest` emails each opted-in user a summary of what's overdue or due
+today. Users with nothing due are skipped, so quiet days stay quiet, and the
+preference lives on the account (`User.daily_digest`, toggled at
+`/accounts/settings/`).
+
+Preview it without sending anything:
+
+```powershell
+.\.venv\Scripts\python.exe src\manage.py send_due_digest --dry-run
+```
+
+On the server, run it once each morning from cron:
+
+```
+0 7 * * * docker exec clarice python manage.py send_due_digest
+```
+
 ## Brute-force protection
 
 Login attempts are rate-limited by client IP in nginx
@@ -78,7 +114,10 @@ they come from. Both layers email `ADMINS` when they're triggered.
 ## Production environment variables
 
 In addition to `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOST`, and
-`DJANGO_DB_PATH`, production (`DJANGO_ENVIRONMENT=production`) requires:
+`DJANGO_DATABASE_URL` (a Postgres connection URL, e.g.
+`postgresql://user:password@host:port/clarice?sslmode=require` -- see
+`infra/provision-postgres.sh` and `MIGRATION.md`), production
+(`DJANGO_ENVIRONMENT=production`) requires:
 
 - `DJANGO_EMAIL_HOST_USER` / `DJANGO_EMAIL_HOST_PASSWORD` -- Gmail SMTP
   credentials used to send admin notification emails. Use a

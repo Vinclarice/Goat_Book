@@ -49,9 +49,33 @@ class FunctionalTest(StaticLiveServerTestCase):
     def get_item_input_box(self):
         inputs = self.browser.find_elements(
             By.CSS_SELECTOR,
-            "#react-new-task, #id_text",
+            "#react-new-task, #id_text, #agenda-add-text",
         )
         return next(input_ for input_ in inputs if input_.is_displayed())
+
+    def get_new_list_input_box(self):
+        """The "first task" box of the new-list form on the agenda.
+
+        It lives inside a <details> disclosure, so open that first --
+        Selenium can't type into a collapsed element.
+        """
+        for disclosure in self.browser.find_elements(
+            By.CSS_SELECTOR, "details.new-list-details"
+        ):
+            if disclosure.is_displayed() and not disclosure.get_attribute("open"):
+                disclosure.find_element(By.TAG_NAME, "summary").click()
+
+        inputs = self.browser.find_elements(
+            By.CSS_SELECTOR,
+            "#agenda-new-text, #id_new_text",
+        )
+        return next(input_ for input_ in inputs if input_.is_displayed())
+
+    def start_new_list(self, item_text):
+        """Creates a list from the agenda and lands on the list's page."""
+        self.get_new_list_input_box().send_keys(item_text)
+        self.get_new_list_input_box().send_keys(Keys.ENTER)
+        self.wait_for_row_in_list_table(item_text)
 
     def add_list_item(self, item_text):
         self.get_item_input_box().send_keys(item_text)

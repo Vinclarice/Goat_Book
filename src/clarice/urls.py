@@ -23,6 +23,7 @@ from lists import views as list_views
 urlpatterns = [
     path("", LandingLoginView.as_view(), name="home"),
     path("dashboard/", list_views.dashboard, name="dashboard"),
+    path("archive/", list_views.archive, name="archive"),
     path("api/", include("lists.api_urls")),
     path("lists/", include("lists.urls")),
     path("accounts/", include("accounts.urls")),

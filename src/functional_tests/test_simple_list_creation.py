@@ -11,16 +11,22 @@ class NewVisitorTest(FunctionalTest):
         self.assertIn("Welcome", self.browser.title)
         self.sign_up()
 
-        # She sees her personal space and a place to start a list.
-        self.assertIn("My lists", self.browser.title)
+        # She sees her agenda and a place to start a list.
+        self.assertIn("Today", self.browser.title)
         header_text = self.browser.find_element(By.TAG_NAME, 'h1').text
-        self.assertIn('Welcome, edith', header_text)
+        self.assertIn('Hello, edith', header_text)
+
+        # With nothing on it yet, the agenda invites her to start a list.
+        self.assertIn(
+            'Start your first list',
+            self.browser.find_element(By.TAG_NAME, 'body').text,
+        )
 
         # She is invited to create a list from its first item.
-        inputbox = self.get_item_input_box()
+        inputbox = self.get_new_list_input_box()
         self.assertEqual(
             inputbox.get_attribute('placeholder'),
-            'For example: Plan the weekend',
+            'First task',
         )
 
 
@@ -52,7 +58,7 @@ class NewVisitorTest(FunctionalTest):
     def test_multiple_users_can_start_lists_at_different_urls(self):
         # Edith signs up and starts a new to-do list.
         self.sign_up()
-        inputbox = self.get_item_input_box()
+        inputbox = self.get_new_list_input_box()
         inputbox.send_keys('Buy peacock feathers')
         inputbox.send_keys(Keys.ENTER)
         self.wait_for_row_in_list_table('1: Buy peacock feathers')
@@ -74,7 +80,7 @@ class NewVisitorTest(FunctionalTest):
 
         # Francis creates his own account and list.
         self.sign_up("francis", "francis@example.com")
-        inputbox = self.get_item_input_box()
+        inputbox = self.get_new_list_input_box()
         inputbox.send_keys('Buy milk')
         inputbox.send_keys(Keys.ENTER)
         self.wait_for_row_in_list_table('1: Buy milk')

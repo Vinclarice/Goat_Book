@@ -98,12 +98,25 @@
       register: email_password
       when: email_backend == 'smtp'
 
-    - name: Ensure db.sqlite3 file exists outside container
-      ansible.builtin.file:
-        path: "{{ ansible_env.HOME }}/db.sqlite3"
-        state: touch
-        owner: 1234  # so nonroot user can access it in container
-      become: true  # needed for ownership change
+    - name: Check whether the database connection URL file exists
+      ansible.builtin.stat:
+        path: ~/.db-connection-url
+      register: db_connection_url_file
+
+    - name: Fail with instructions if the database connection URL file is missing
+      ansible.builtin.fail:
+        msg: >
+          ~/.db-connection-url is missing on the server. Provision the
+          managed Postgres cluster with infra/provision-postgres.sh (run
+          locally, not on the server), then on the server run:
+          umask 077 && echo -n 'postgresql://user:password@host:port/clarice?sslmode=require'
+          > ~/.db-connection-url
+      when: not db_connection_url_file.stat.exists
+
+    - name: Read database connection URL back from file
+      ansible.builtin.slurp:
+        src: ~/.db-connection-url
+      register: db_connection_url
 
     - name: Remove legacy superlists container
       community.docker.docker_container:
@@ -119,7 +132,7 @@
         env:
           DJANGO_SECRET_KEY: "{{ secret_key.content | b64decode }}"
           DJANGO_ALLOWED_HOST: "{{ site_domain }}"
-          DJANGO_DB_PATH: "/home/nonroot/db.sqlite3"
+          DJANGO_DATABASE_URL: "{{ db_connection_url.content | b64decode }}"
           DJANGO_ENVIRONMENT: "{{ deployment_environment }}"
           ALLOW_DATABASE_FLUSH: "{{ allow_database_flush }}"
           DJANGO_EMAIL_BACKEND: "{{ email_backend }}"
@@ -129,10 +142,6 @@
                if email_backend == 'smtp'
                else '' }}
           DJANGO_ADMIN_EMAIL: "{{ admin_email }}"
-        mounts:
-          - type: bind
-            source: "{{ ansible_env.HOME }}/db.sqlite3"
-            target: /home/nonroot/db.sqlite3
         ports:
           - "127.0.0.1:8000:8888"
       # Recreating here, before nginx is installed/reloaded, matters: on a

@@ -1,14 +1,21 @@
+from datetime import timedelta
+
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_http_methods, require_POST
 
+from lists import agenda as agenda_reader
 from lists import services
 from lists.forms import (
+    DueDateForm,
     ExistingListItemForm,
     ListTitleForm,
     NewListForm,
+    QuickAddForm,
     TaskTextForm,
 )
 from lists.models import Item, List
@@ -19,7 +26,148 @@ def _lists_for(user):
     return user.lists.order_by("id")
 
 
-def _dashboard_context(request, form=None):
+def _safe_next(request, default):
+    """Where to send the user after a POST.
+
+    Only same-origin paths are honoured, so a crafted ``next`` can't be
+    used to bounce someone off to another site after they click a button
+    on a page we rendered.
+    """
+    candidate = request.POST.get("next") or request.GET.get("next")
+    if candidate and url_has_allowed_host_and_scheme(
+        candidate,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        return candidate
+    return default
+
+
+def _agenda_filters(request, lists):
+    """Read ?scope=/?list=/?tag= so the no-JS page can filter too.
+
+    Unrecognised values are dropped rather than erroring -- a stale
+    bookmark should show the whole agenda, not a 404.
+    """
+    scope = request.GET.get("scope")
+    if scope not in agenda_reader.SCOPES:
+        scope = None
+
+    list_id = None
+    raw_list = request.GET.get("list")
+    if raw_list and raw_list.isdigit():
+        list_id = next(
+            (each.id for each in lists if each.id == int(raw_list)),
+            None,
+        )
+
+    return {"scope": scope, "list": list_id, "tag": request.GET.get("tag")}
+
+
+def _agenda_context(request, quick_add_form=None, new_list_form=None):
+    today = timezone.localdate()
+    all_open = agenda_reader.annotate_for_display(
+        list(agenda_reader.open_items_for(request.user)), today
+    )
+    completed_today = agenda_reader.annotate_for_display(
+        list(agenda_reader.completed_today_for(request.user, today)), today
+    )
+    lists = agenda_reader.list_summaries(request.user)
+    filters = _agenda_filters(request, lists)
+
+    # Headline counts describe the whole agenda; only the task rows below
+    # them narrow, so the numbers stay a stable "how am I doing" signal.
+    counts = agenda_reader.summary_counts(
+        agenda_reader.bucketed(all_open, today)
+    )
+    groups = agenda_reader.bucketed(
+        agenda_reader.apply_filters(all_open, today, **filters),
+        today,
+    )
+
+    buckets = [
+        {
+            "key": key,
+            "label": agenda_reader.BUCKET_LABELS[key],
+            "items": groups[key],
+            "collapsed": (
+                key in agenda_reader.COLLAPSED_BY_DEFAULT
+                and not any(filters.values())
+            ),
+        }
+        for key in agenda_reader.BUCKET_ORDER
+        if groups[key]
+    ]
+
+    return {
+        "today": today,
+        "tomorrow": today + timedelta(days=1),
+        "buckets": buckets,
+        "counts": counts,
+        "filters": filters,
+        "has_filters": any(value for value in filters.values()),
+        "visible_count": sum(len(each["items"]) for each in buckets),
+        "completed_today": completed_today,
+        "agenda_lists": lists,
+        "agenda_tags": agenda_reader.tag_summaries(all_open),
+        "archived_count": Item.objects.filter(
+            list__owner=request.user,
+            status=Item.Status.ARCHIVED,
+        ).count(),
+        "quick_add_form": (
+            quick_add_form
+            if quick_add_form is not None
+            else QuickAddForm(owner=request.user)
+        ),
+        "form": new_list_form if new_list_form is not None else NewListForm(),
+        "agenda_workspace_data": {
+            "today": today.isoformat(),
+            "username": request.user.username,
+            "archive_url": reverse("archive"),
+            "archived_count": Item.objects.filter(
+                list__owner=request.user,
+                status=Item.Status.ARCHIVED,
+            ).count(),
+            "new_list_url": reverse("new_list"),
+            "settings_url": reverse("account_settings"),
+            "daily_digest": request.user.daily_digest,
+            "buckets": [
+                {
+                    "key": key,
+                    "label": agenda_reader.BUCKET_LABELS[key],
+                    "collapsed": key in agenda_reader.COLLAPSED_BY_DEFAULT,
+                }
+                for key in agenda_reader.BUCKET_ORDER
+            ],
+            "items": [serialize_item(item) for item in all_open],
+            "completed_today": [
+                serialize_item(item) for item in completed_today
+            ],
+            "lists": [
+                {
+                    "id": each.id,
+                    "title": each.title,
+                    "url": each.get_absolute_url(),
+                    "create_item_url": reverse(
+                        "api_create_item",
+                        args=(each.id,),
+                    ),
+                    "open_count": each.open_count,
+                    "overdue_count": each.overdue_count,
+                }
+                for each in lists
+            ],
+        },
+    }
+
+
+@login_required
+def dashboard(request):
+    return render(request, "agenda.html", _agenda_context(request))
+
+
+@login_required
+def archive(request):
     archived_tasks = list(
         Item.objects.filter(
             list__owner=request.user,
@@ -29,19 +177,51 @@ def _dashboard_context(request, form=None):
             "-id",
         )
     )
-    return {
-        "form": form if form is not None else NewListForm(),
-        "active_lists": _lists_for(request.user),
-        "archived_tasks": archived_tasks,
-        "archive_workspace_data": {
-            "items": [serialize_item(item) for item in archived_tasks],
+    return render(
+        request,
+        "archive.html",
+        {
+            "archived_tasks": archived_tasks,
+            "archive_workspace_data": {
+                "items": [serialize_item(item) for item in archived_tasks],
+            },
         },
-    }
+    )
 
 
 @login_required
-def dashboard(request):
-    return render(request, "dashboard.html", _dashboard_context(request))
+@require_POST
+def quick_add(request):
+    form = QuickAddForm(owner=request.user, data=request.POST)
+    if form.is_valid():
+        item = form.save()
+        messages.success(request, f'Added "{item.text}" to {item.list.title}.')
+        return redirect(_safe_next(request, reverse("dashboard")))
+
+    return render(
+        request,
+        "agenda.html",
+        _agenda_context(request, quick_add_form=form),
+    )
+
+
+@login_required
+@require_POST
+def set_item_due_date(request, item_id):
+    item = get_object_or_404(
+        Item.objects.select_related("list"),
+        id=item_id,
+        list__owner=request.user,
+        status__in=(Item.Status.ACTIVE, Item.Status.COMPLETED),
+    )
+    form = DueDateForm(data=request.POST)
+    if form.is_valid():
+        services.set_due_date(item, form.cleaned_data["due_date"])
+        messages.success(request, form.confirmation_for(item))
+    else:
+        messages.error(request, "Use a valid date (YYYY-MM-DD).")
+
+    return redirect(_safe_next(request, reverse("dashboard")))
 
 
 def _list_context(our_list, form=None, title_form=None):
@@ -106,7 +286,11 @@ def new_list(request):
         new_list = form.save(owner=request.user)
         return redirect(new_list)
 
-    return render(request, "dashboard.html", _dashboard_context(request, form))
+    return render(
+        request,
+        "agenda.html",
+        _agenda_context(request, new_list_form=form),
+    )
 
 
 @login_required
@@ -136,7 +320,7 @@ def complete_item(request, item_id):
         status__in=(Item.Status.ACTIVE, Item.Status.COMPLETED),
     )
     services.complete_item(item)
-    return redirect(item.list)
+    return redirect(_safe_next(request, item.list.get_absolute_url()))
 
 
 @login_required
@@ -149,7 +333,7 @@ def reopen_item(request, item_id):
         status__in=(Item.Status.ACTIVE, Item.Status.COMPLETED),
     )
     services.reopen_item(item)
-    return redirect(item.list)
+    return redirect(_safe_next(request, item.list.get_absolute_url()))
 
 
 @login_required
@@ -162,8 +346,8 @@ def archive_item(request, item_id):
         status__in=(Item.Status.ACTIVE, Item.Status.COMPLETED),
     )
     services.archive_item(item)
-    messages.success(request, f'"{item.text}" moved to Done & archived.')
-    return redirect(item.list)
+    messages.success(request, f'"{item.text}" moved to the archive.')
+    return redirect(_safe_next(request, item.list.get_absolute_url()))
 
 
 @login_required
@@ -179,10 +363,10 @@ def restore_item(request, item_id):
         services.restore_item(item)
     except services.TaskConflict as error:
         messages.error(request, str(error))
-        return redirect("dashboard")
+        return redirect("archive")
 
     messages.success(request, f'"{item.text}" restored to {item.list.title}.')
-    return redirect("dashboard")
+    return redirect("archive")
 
 
 @login_required
@@ -198,7 +382,7 @@ def delete_archived_item(request, item_id):
         task_text = item.text
         services.delete_archived_item(item)
         messages.success(request, f'"{task_text}" was permanently deleted.')
-        return redirect("dashboard")
+        return redirect("archive")
 
     return render(request, "confirm_delete_item.html", {"item": item})
 

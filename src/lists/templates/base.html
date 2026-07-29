@@ -25,7 +25,8 @@
 
           <div class="ms-auto d-flex align-items-center gap-2 gap-md-3">
             {% if user.is_authenticated %}
-              <a class="nav-link" href="{% url 'dashboard' %}">My lists</a>
+              <a class="nav-link" href="{% url 'dashboard' %}">Today</a>
+              <a class="nav-link d-none d-sm-inline" href="{% url 'archive' %}">Archive</a>
               <a class="nav-link d-none d-md-inline" href="{% url 'account_settings' %}">
                 {{ user.username }}
               </a>

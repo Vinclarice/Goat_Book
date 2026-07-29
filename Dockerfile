@@ -27,7 +27,7 @@ WORKDIR /src
 RUN DJANGO_ENVIRONMENT=production \
     DJANGO_SECRET_KEY=build-only-secret \
     DJANGO_ALLOWED_HOST=localhost \
-    DJANGO_DB_PATH=/tmp/build.sqlite3 \
+    DJANGO_DATABASE_URL=sqlite:////tmp/build.sqlite3 \
     DJANGO_EMAIL_HOST_USER=build-only@example.com \
     DJANGO_EMAIL_HOST_PASSWORD=build-only-secret \
     python manage.py collectstatic --noinput

@@ -90,7 +90,7 @@ class AdminUserChangeForm(UserChangeForm):
 class AccountSettingsForm(forms.ModelForm):
     class Meta:
         model = User
-        fields = ("username", "email")
+        fields = ("username", "email", "daily_digest")
 
     def clean_email(self):
         return self.cleaned_data["email"].strip().lower()

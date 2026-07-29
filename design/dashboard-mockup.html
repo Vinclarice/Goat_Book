@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clarice · Dashboard redesign mockup</title>
+<style>
+:root {
+  --sl-bg: #08111f;
+  --sl-surface: rgba(18, 31, 49, 0.82);
+  --sl-surface-strong: #132237;
+  --sl-border: rgba(255, 255, 255, 0.1);
+  --sl-text: #f5f7fb;
+  --sl-muted: #a6b2c3;
+  --sl-accent: #7be0b8;
+  --sl-accent-dark: #153f34;
+  --sl-danger: #f08a8a;
+  --sl-warn: #f4c98a;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  color: var(--sl-text);
+  background: var(--sl-bg);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.site-backdrop {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 15% 5%, rgba(67, 116, 155, 0.24), transparent 32rem),
+    radial-gradient(circle at 85% 30%, rgba(39, 132, 102, 0.18), transparent 28rem);
+}
+
+.container {
+  width: 100%;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 1.25rem;
+}
+
+/* ---------- nav ---------- */
+.navbar {
+  border-bottom: 1px solid var(--sl-border);
+  background: rgba(8, 17, 31, 0.72);
+  backdrop-filter: blur(18px);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+.navbar .container {
+  display: flex;
+  align-items: center;
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+}
+.brand-lockup {
+  display: inline-flex;
+  gap: 0.7rem;
+  align-items: center;
+  color: var(--sl-text);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-decoration: none;
+  font-size: 1.05rem;
+}
+.brand-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  color: var(--sl-bg);
+  background: var(--sl-accent);
+  border-radius: 0.75rem;
+  font-weight: 800;
+}
+.nav-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 1.1rem;
+}
+.nav-link {
+  color: var(--sl-muted);
+  text-decoration: none;
+  font-size: 0.92rem;
+}
+.nav-link:hover { color: var(--sl-text); }
+.nav-link.active { color: var(--sl-text); font-weight: 600; }
+
+/* ---------- buttons ---------- */
+.btn {
+  font: inherit;
+  border-radius: 0.6rem;
+  border: 1px solid transparent;
+  padding: 0.45rem 0.9rem;
+  cursor: pointer;
+  transition: background .15s, border-color .15s, color .15s, transform .1s;
+  white-space: nowrap;
+}
+.btn:active { transform: translateY(1px); }
+.btn-primary {
+  color: var(--sl-bg);
+  background: var(--sl-accent);
+  border-color: var(--sl-accent);
+  font-weight: 700;
+}
+.btn-primary:hover { background: #98e9c9; border-color: #98e9c9; }
+.btn-ghost {
+  color: var(--sl-muted);
+  background: transparent;
+  border-color: var(--sl-border);
+}
+.btn-ghost:hover { color: var(--sl-text); border-color: rgba(255,255,255,0.28); }
+.btn-sm { padding: 0.25rem 0.6rem; font-size: 0.8rem; }
+
+/* ---------- page shell ---------- */
+.page-shell {
+  padding-top: clamp(1.75rem, 4vw, 3rem);
+  padding-bottom: 5rem;
+}
+
+/* ---------- header ---------- */
+.agenda-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 1.5rem 2rem;
+  margin-bottom: 2rem;
+}
+.eyebrow {
+  margin: 0 0 0.6rem;
+  color: var(--sl-accent);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.agenda-header h1 {
+  margin: 0;
+  font-size: clamp(2rem, 4.5vw, 3.1rem);
+  line-height: 1.02;
+  letter-spacing: -0.045em;
+}
+.header-stats {
+  display: flex;
+  gap: 0.6rem;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+.stat {
+  border: 1px solid var(--sl-border);
+  background: var(--sl-surface);
+  border-radius: 0.9rem;
+  padding: 0.7rem 1rem;
+  min-width: 6.4rem;
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+  transition: border-color .15s, background .15s;
+}
+.stat:hover { border-color: rgba(255,255,255,0.26); }
+.stat[aria-pressed="true"] {
+  border-color: var(--sl-accent);
+  background: rgba(123, 224, 184, 0.08);
+}
+.stat .stat-num {
+  display: block;
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+.stat .stat-label {
+  display: block;
+  color: var(--sl-muted);
+  font-size: 0.74rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-top: 0.15rem;
+}
+.stat.is-danger .stat-num { color: var(--sl-danger); }
+.stat.is-accent .stat-num { color: var(--sl-accent); }
+
+/* ---------- quick add ---------- */
+.quick-add {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  background: var(--sl-surface);
+  border: 1px solid var(--sl-border);
+  border-radius: 1rem;
+  padding: 0.55rem 0.6rem 0.55rem 1rem;
+  margin-bottom: 1.75rem;
+  flex-wrap: wrap;
+}
+.quick-add input[type="text"] {
+  flex: 1 1 16rem;
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  color: var(--sl-text);
+  font: inherit;
+  padding: 0.45rem 0;
+  outline: none;
+}
+.quick-add input::placeholder { color: var(--sl-muted); }
+.quick-add select,
+.quick-add input[type="date"] {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--sl-border);
+  color: var(--sl-muted);
+  border-radius: 0.55rem;
+  padding: 0.35rem 0.5rem;
+  font: inherit;
+  font-size: 0.85rem;
+  outline: none;
+}
+.quick-add select:focus,
+.quick-add input[type="date"]:focus { border-color: var(--sl-accent); color: var(--sl-text); }
+
+/* ---------- layout ---------- */
+.agenda-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 19rem;
+  gap: 2rem;
+  align-items: start;
+}
+
+/* ---------- agenda sections ---------- */
+.agenda-section { margin-bottom: 1.75rem; }
+.section-head {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  width: 100%;
+  background: none;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  padding: 0 0 0.7rem;
+  cursor: pointer;
+  border-bottom: 1px solid var(--sl-border);
+  margin-bottom: 0.85rem;
+  text-align: left;
+}
+.section-head h2 {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--sl-muted);
+}
+.section-head .count {
+  color: var(--sl-muted);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+.section-head .chev {
+  margin-left: auto;
+  color: var(--sl-muted);
+  font-size: 0.7rem;
+  transition: transform .2s;
+}
+.agenda-section.collapsed .chev { transform: rotate(-90deg); }
+.agenda-section.collapsed .section-body { display: none; }
+.agenda-section.overdue .section-head h2 { color: var(--sl-danger); }
+.agenda-section.today .section-head h2 { color: var(--sl-accent); }
+
+/* ---------- task rows ---------- */
+.task-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--sl-border);
+  border-radius: 0.85rem;
+  background: var(--sl-surface);
+  margin-bottom: 0.5rem;
+  transition: border-color .15s, background .15s, opacity .25s, transform .25s;
+}
+.task-row:hover { border-color: rgba(255,255,255,0.24); }
+.task-row.is-overdue { border-left: 3px solid var(--sl-danger); }
+.task-row.is-today { border-left: 3px solid var(--sl-accent); }
+.task-row.leaving { opacity: 0; transform: translateX(1.2rem); }
+
+.checkbox {
+  appearance: none;
+  flex: none;
+  width: 1.2rem;
+  height: 1.2rem;
+  margin-top: 0.15rem;
+  border: 1.5px solid rgba(255,255,255,0.32);
+  border-radius: 0.4rem;
+  cursor: pointer;
+  position: relative;
+  transition: background .15s, border-color .15s;
+}
+.checkbox:hover { border-color: var(--sl-accent); }
+.checkbox:checked { background: var(--sl-accent); border-color: var(--sl-accent); }
+.checkbox:checked::after {
+  content: "✓";
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--sl-bg);
+  font-size: 0.8rem;
+  font-weight: 900;
+}
+
+.task-body { flex: 1; min-width: 0; }
+.task-text {
+  display: block;
+  font-size: 0.98rem;
+  line-height: 1.35;
+  word-break: break-word;
+}
+.task-row.done .task-text { text-decoration: line-through; color: var(--sl-muted); }
+.task-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.4rem;
+  font-size: 0.78rem;
+  color: var(--sl-muted);
+}
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border: 1px solid var(--sl-border);
+  border-radius: 999px;
+  padding: 0.1rem 0.55rem;
+  background: rgba(255,255,255,0.03);
+  text-decoration: none;
+  color: var(--sl-muted);
+}
+.pill-list { color: var(--sl-text); }
+.pill-list .dot {
+  width: 0.45rem; height: 0.45rem; border-radius: 50%;
+}
+.pill-tag { border-style: dashed; }
+.pill-due.overdue { color: var(--sl-danger); border-color: rgba(240,138,138,0.4); background: rgba(240,138,138,0.08); }
+.pill-due.today { color: var(--sl-accent); border-color: rgba(123,224,184,0.4); background: rgba(123,224,184,0.08); }
+.pill-recur { color: var(--sl-warn); border-color: rgba(244,201,138,0.35); }
+
+.task-actions {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+  opacity: 0;
+  transition: opacity .15s;
+  flex: none;
+}
+.task-row:hover .task-actions,
+.task-row:focus-within .task-actions { opacity: 1; }
+@media (hover: none) { .task-actions { opacity: 1; } }
+
+.empty-note {
+  color: var(--sl-muted);
+  font-size: 0.88rem;
+  padding: 0.9rem 1rem;
+  border: 1px dashed var(--sl-border);
+  border-radius: 0.85rem;
+  margin-bottom: 0.5rem;
+}
+
+.all-clear {
+  border: 1px solid var(--sl-border);
+  background: var(--sl-surface);
+  border-radius: 1rem;
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+}
+.all-clear .big { font-size: 2rem; }
+.all-clear h3 { margin: 0.6rem 0 0.35rem; font-size: 1.15rem; }
+.all-clear p { margin: 0; color: var(--sl-muted); font-size: 0.9rem; }
+
+/* ---------- sidebar ---------- */
+.sidebar { display: flex; flex-direction: column; gap: 1.25rem; position: sticky; top: 5.5rem; }
+.card {
+  border: 1px solid var(--sl-border);
+  background: var(--sl-surface);
+  border-radius: 1rem;
+  padding: 1.1rem;
+}
+.card h3 {
+  margin: 0 0 0.9rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--sl-muted);
+}
+.list-link {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.45rem 0.5rem;
+  border-radius: 0.6rem;
+  text-decoration: none;
+  color: var(--sl-text);
+  font-size: 0.92rem;
+  border: 1px solid transparent;
+  cursor: pointer;
+  width: 100%;
+  background: none;
+  font-family: inherit;
+  text-align: left;
+}
+.list-link:hover { background: rgba(255,255,255,0.04); }
+.list-link[aria-pressed="true"] { border-color: var(--sl-accent); background: rgba(123,224,184,0.08); }
+.list-link .dot { width: 0.55rem; height: 0.55rem; border-radius: 50%; flex: none; }
+.list-link .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.list-link .n { color: var(--sl-muted); font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+.list-link .n.warn { color: var(--sl-danger); }
+
+.tag-cloud { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.tag-chip {
+  font: inherit;
+  font-size: 0.8rem;
+  border-radius: 999px;
+  border: 1px dashed var(--sl-border);
+  background: rgba(255,255,255,0.03);
+  color: var(--sl-muted);
+  padding: 0.2rem 0.65rem;
+  cursor: pointer;
+}
+.tag-chip:hover { color: var(--sl-text); border-color: rgba(255,255,255,0.3); }
+.tag-chip[aria-pressed="true"] {
+  border-style: solid;
+  border-color: var(--sl-accent);
+  color: var(--sl-accent);
+  background: rgba(123,224,184,0.08);
+}
+
+.archive-link {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  text-decoration: none;
+  color: var(--sl-text);
+  font-size: 0.92rem;
+}
+.archive-link .n { margin-left: auto; color: var(--sl-muted); font-size: 0.8rem; }
+
+.reminder-note {
+  font-size: 0.82rem;
+  color: var(--sl-muted);
+  line-height: 1.5;
+}
+.reminder-note strong { color: var(--sl-text); font-weight: 600; }
+.switch-row { display: flex; align-items: center; gap: 0.6rem; margin-top: 0.8rem; }
+.switch {
+  appearance: none;
+  width: 2.3rem; height: 1.3rem;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.12);
+  border: 1px solid var(--sl-border);
+  position: relative;
+  cursor: pointer;
+  flex: none;
+  transition: background .18s;
+}
+.switch::after {
+  content: "";
+  position: absolute;
+  top: 50%; left: 0.18rem;
+  transform: translateY(-50%);
+  width: 0.9rem; height: 0.9rem;
+  border-radius: 50%;
+  background: var(--sl-muted);
+  transition: left .18s, background .18s;
+}
+.switch:checked { background: rgba(123,224,184,0.28); border-color: var(--sl-accent); }
+.switch:checked::after { left: 1.15rem; background: var(--sl-accent); }
+.switch-row label { font-size: 0.85rem; }
+
+/* ---------- toast ---------- */
+.toast-stack {
+  position: fixed;
+  left: 50%;
+  bottom: 1.5rem;
+  transform: translateX(-50%);
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: center;
+  pointer-events: none;
+}
+.toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  background: var(--sl-surface-strong);
+  border: 1px solid var(--sl-border);
+  border-radius: 0.8rem;
+  padding: 0.6rem 0.7rem 0.6rem 1rem;
+  font-size: 0.88rem;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.45);
+  animation: rise .18s ease-out;
+}
+@keyframes rise { from { opacity: 0; transform: translateY(0.6rem); } }
+
+/* ---------- filter banner ---------- */
+.filter-banner {
+  display: none;
+  align-items: center;
+  gap: 0.7rem;
+  font-size: 0.85rem;
+  color: var(--sl-muted);
+  border: 1px solid var(--sl-border);
+  background: rgba(123,224,184,0.06);
+  border-radius: 0.7rem;
+  padding: 0.5rem 0.8rem;
+  margin-bottom: 1rem;
+}
+.filter-banner.show { display: flex; }
+
+/* ---------- mockup note ---------- */
+.mock-banner {
+  background: rgba(244, 201, 138, 0.1);
+  border-bottom: 1px solid rgba(244, 201, 138, 0.28);
+  color: var(--sl-warn);
+  font-size: 0.8rem;
+  text-align: center;
+  padding: 0.45rem 1rem;
+  letter-spacing: 0.02em;
+}
+
+@media (max-width: 900px) {
+  .agenda-grid { grid-template-columns: minmax(0, 1fr); }
+  .sidebar { position: static; }
+  .header-stats { margin-left: 0; width: 100%; }
+  .stat { flex: 1; min-width: 5rem; }
+}
+</style>
+</head>
+<body>
+<div class="mock-banner">Mockup — fake data, nothing is saved. Everything here is clickable.</div>
+
+<div class="site-backdrop">
+  <nav class="navbar">
+    <div class="container">
+      <a class="brand-lockup" href="#"><span class="brand-mark" aria-hidden="true">✓</span><span>Clarice</span></a>
+      <div class="nav-right">
+        <a class="nav-link active" href="#">Today</a>
+        <a class="nav-link" href="#">Lists</a>
+        <a class="nav-link" href="#">Archive</a>
+        <a class="nav-link" href="#">vince</a>
+        <button class="btn btn-ghost btn-sm">Log out</button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container page-shell">
+
+    <header class="agenda-header">
+      <div>
+        <p class="eyebrow" id="date-line">Tuesday, 28 July</p>
+        <h1 id="greeting">Good evening, Vince.</h1>
+      </div>
+      <div class="header-stats">
+        <button class="stat is-danger" data-scope="overdue" aria-pressed="false">
+          <span class="stat-num" id="n-overdue">0</span>
+          <span class="stat-label">Overdue</span>
+        </button>
+        <button class="stat is-accent" data-scope="today" aria-pressed="false">
+          <span class="stat-num" id="n-today">0</span>
+          <span class="stat-label">Today</span>
+        </button>
+        <button class="stat" data-scope="week" aria-pressed="false">
+          <span class="stat-num" id="n-week">0</span>
+          <span class="stat-label">This week</span>
+        </button>
+        <button class="stat" data-scope="all" aria-pressed="false">
+          <span class="stat-num" id="n-open">0</span>
+          <span class="stat-label">Open</span>
+        </button>
+      </div>
+    </header>
+
+    <form class="quick-add" id="quick-add">
+      <input type="text" id="qa-text" placeholder="Add a task…  (try “pay water bill tomorrow #home”)" autocomplete="off">
+      <select id="qa-list" aria-label="List"></select>
+      <input type="date" id="qa-due" aria-label="Due date">
+      <button class="btn btn-primary" type="submit">Add</button>
+    </form>
+
+    <div class="filter-banner" id="filter-banner">
+      <span id="filter-text"></span>
+      <button class="btn btn-ghost btn-sm" id="clear-filter" type="button">Clear</button>
+    </div>
+
+    <div class="agenda-grid">
+      <div>
+        <div id="agenda"></div>
+      </div>
+
+      <aside class="sidebar">
+        <div class="card">
+          <h3>Lists</h3>
+          <div id="list-nav"></div>
+          <button class="btn btn-ghost btn-sm" style="margin-top:.7rem;width:100%">+ New list</button>
+        </div>
+
+        <div class="card">
+          <h3>Tags</h3>
+          <div class="tag-cloud" id="tag-cloud"></div>
+        </div>
+
+        <div class="card">
+          <h3>Daily reminder</h3>
+          <p class="reminder-note">
+            A summary of what's <strong>overdue</strong> and <strong>due today</strong>,
+            emailed each morning at 7:00.
+          </p>
+          <div class="switch-row">
+            <input class="switch" type="checkbox" id="reminder-toggle" checked>
+            <label for="reminder-toggle">Send me the daily digest</label>
+          </div>
+        </div>
+
+        <div class="card">
+          <a class="archive-link" href="#">
+            <span class="brand-mark" aria-hidden="true" style="width:1.7rem;height:1.7rem;border-radius:.55rem;font-size:.85rem">✓</span>
+            <span>Archive</span>
+            <span class="n" id="n-archive">23 tasks</span>
+          </a>
+        </div>
+      </aside>
+    </div>
+  </main>
+</div>
+
+<div class="toast-stack" id="toasts"></div>
+
+<script>
+// ---------------------------------------------------------------- fake data
+const LISTS = [
+  { id: 1, title: "Programming", color: "#8fc7d6" },
+  { id: 2, title: "Home",        color: "#a8dba8" },
+  { id: 3, title: "Admin",       color: "#f4c98a" },
+  { id: 4, title: "Reading",     color: "#c9a8dc" },
+];
+
+const today = new Date();
+today.setHours(0, 0, 0, 0);
+
+function iso(offsetDays) {
+  const d = new Date(today);
+  d.setDate(d.getDate() + offsetDays);
+  return d.toISOString().slice(0, 10);
+}
+
+let nextId = 100;
+let TASKS = [
+  { id: 1,  text: "Renew home insurance before it lapses", list: 3, due: iso(-6), tags: ["urgent"], recur: "none" },
+  { id: 2,  text: "Call the plumber back about the leak",  list: 2, due: iso(-2), tags: ["home"],   recur: "none" },
+  { id: 3,  text: "Reply to Dan about the invoice",        list: 3, due: iso(-1), tags: [],         recur: "none" },
+
+  { id: 4,  text: "Ship the deploy rollback fix",          list: 1, due: iso(0),  tags: ["deploy"], recur: "none" },
+  { id: 5,  text: "Groceries — milk, oats, coffee",        list: 2, due: iso(0),  tags: ["errand"], recur: "none" },
+  { id: 6,  text: "Water the plants",                      list: 2, due: iso(0),  tags: ["home"],   recur: "weekly" },
+  { id: 7,  text: "Review the backup cron script",         list: 1, due: iso(0),  tags: [],         recur: "none" },
+
+  { id: 8,  text: "Write tests for the agenda view",       list: 1, due: iso(2),  tags: [],         recur: "none" },
+  { id: 9,  text: "Book flights for the September trip",   list: 3, due: iso(3),  tags: ["urgent"], recur: "none" },
+  { id: 10, text: "Take the bins out",                     list: 2, due: iso(4),  tags: ["home"],   recur: "weekly" },
+  { id: 11, text: "Finish chapter 8 of the TDD book",      list: 4, due: iso(5),  tags: [],         recur: "none" },
+
+  { id: 12, text: "Set up GitHub Actions for CI",          list: 1, due: iso(11), tags: ["deploy"], recur: "none" },
+  { id: 13, text: "Dentist appointment",                   list: 3, due: iso(19), tags: [],         recur: "none" },
+  { id: 14, text: "Renew the domain registration",         list: 3, due: iso(40), tags: [],         recur: "none" },
+
+  { id: 15, text: "Refactor the services module",          list: 1, due: null,    tags: [],         recur: "none" },
+  { id: 16, text: "Look into SQLite FTS5 for search",      list: 1, due: null,    tags: [],         recur: "none" },
+  { id: 17, text: "Reorganise the bookshelf",              list: 2, due: null,    tags: ["home"],   recur: "none" },
+  { id: 18, text: "Start 'The Pragmatic Programmer'",      list: 4, due: null,    tags: [],         recur: "none" },
+];
+
+let filter = { scope: null, list: null, tag: null };
+const collapsed = new Set(["later", "someday"]);
+
+// ---------------------------------------------------------------- helpers
+const listById = id => LISTS.find(l => l.id === id);
+const todayIso = iso(0);
+
+function bucketOf(task) {
+  if (!task.due) return "someday";
+  if (task.due < todayIso) return "overdue";
+  if (task.due === todayIso) return "today";
+  if (task.due <= iso(7)) return "week";
+  return "later";
+}
+
+function dueLabel(task) {
+  if (!task.due) return null;
+  const b = bucketOf(task);
+  const d = new Date(task.due + "T00:00:00");
+  const days = Math.round((d - today) / 86400000);
+  if (b === "overdue") {
+    const n = Math.abs(days);
+    return n === 1 ? "Yesterday" : n + " days overdue";
+  }
+  if (b === "today") return "Today";
+  if (days === 1) return "Tomorrow";
+  if (days <= 7) return d.toLocaleDateString(undefined, { weekday: "long" });
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+const BUCKETS = [
+  { key: "overdue", label: "Overdue",      cls: "overdue" },
+  { key: "today",   label: "Today",        cls: "today" },
+  { key: "week",    label: "This week",    cls: "" },
+  { key: "later",   label: "Later",        cls: "" },
+  { key: "someday", label: "No due date",  cls: "" },
+];
+
+function visible(task) {
+  if (filter.list && task.list !== filter.list) return false;
+  if (filter.tag && !task.tags.includes(filter.tag)) return false;
+  if (filter.scope === "overdue" && bucketOf(task) !== "overdue") return false;
+  if (filter.scope === "today" && bucketOf(task) !== "today") return false;
+  if (filter.scope === "week" && !["overdue", "today", "week"].includes(bucketOf(task))) return false;
+  return true;
+}
+
+// ---------------------------------------------------------------- rendering
+function render() {
+  renderHeader();
+  renderAgenda();
+  renderSidebar();
+  renderFilterBanner();
+}
+
+function renderHeader() {
+  const count = k => TASKS.filter(t => bucketOf(t) === k).length;
+  document.getElementById("n-overdue").textContent = count("overdue");
+  document.getElementById("n-today").textContent = count("today");
+  document.getElementById("n-week").textContent = count("week") + count("today") + count("overdue");
+  document.getElementById("n-open").textContent = TASKS.length;
+
+  const h = new Date().getHours();
+  const part = h < 12 ? "morning" : h < 18 ? "afternoon" : "evening";
+  document.getElementById("greeting").textContent = `Good ${part}, Vince.`;
+  document.getElementById("date-line").textContent =
+    new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
+
+  document.querySelectorAll(".stat").forEach(el => {
+    el.setAttribute("aria-pressed", String(filter.scope === el.dataset.scope));
+  });
+}
+
+function taskRow(task) {
+  const b = bucketOf(task);
+  const l = listById(task.list);
+  const row = document.createElement("div");
+  row.className = "task-row" + (b === "overdue" ? " is-overdue" : b === "today" ? " is-today" : "");
+  row.dataset.id = task.id;
+
+  const meta = [];
+  meta.push(`<span class="pill pill-list"><span class="dot" style="background:${l.color}"></span>${l.title}</span>`);
+  if (task.due) {
+    const cls = b === "overdue" ? " overdue" : b === "today" ? " today" : "";
+    meta.push(`<span class="pill pill-due${cls}">${dueLabel(task)}</span>`);
+  }
+  if (task.recur !== "none") meta.push(`<span class="pill pill-recur">⟳ ${task.recur}</span>`);
+  task.tags.forEach(t => meta.push(`<button class="pill pill-tag" data-tag="${t}">#${t}</button>`));
+
+  row.innerHTML = `
+    <input class="checkbox" type="checkbox" aria-label="Complete ${task.text.replace(/"/g, "&quot;")}">
+    <span class="task-body">
+      <span class="task-text">${task.text}</span>
+      <span class="task-meta">${meta.join("")}</span>
+    </span>
+    <span class="task-actions">
+      ${task.due && (b === "overdue" || b === "today")
+        ? '<button class="btn btn-ghost btn-sm" data-act="snooze">Tomorrow</button>' : ""}
+      ${!task.due ? '<button class="btn btn-ghost btn-sm" data-act="schedule">Schedule</button>' : ""}
+      <button class="btn btn-ghost btn-sm" data-act="open">Open</button>
+    </span>`;
+
+  row.querySelector(".checkbox").addEventListener("change", () => completeTask(task.id, row));
+  row.querySelectorAll("[data-tag]").forEach(el =>
+    el.addEventListener("click", () => { filter.tag = filter.tag === el.dataset.tag ? null : el.dataset.tag; render(); }));
+  const snooze = row.querySelector('[data-act="snooze"]');
+  if (snooze) snooze.addEventListener("click", () => snoozeTask(task.id));
+  const sched = row.querySelector('[data-act="schedule"]');
+  if (sched) sched.addEventListener("click", () => { scheduleToday(task.id); });
+  row.querySelector('[data-act="open"]').addEventListener("click", () =>
+    toast(`Would open “${task.text}” in ${l.title}`));
+
+  return row;
+}
+
+function renderAgenda() {
+  const root = document.getElementById("agenda");
+  root.innerHTML = "";
+  const shown = TASKS.filter(visible);
+
+  if (!shown.length) {
+    root.innerHTML = `
+      <div class="all-clear">
+        <div class="big">🌱</div>
+        <h3>Nothing here.</h3>
+        <p>${filter.scope || filter.list || filter.tag
+          ? "No tasks match this filter." : "You're all caught up. Add something above when it comes up."}</p>
+      </div>`;
+    return;
+  }
+
+  BUCKETS.forEach(bucket => {
+    const items = shown.filter(t => bucketOf(t) === bucket.key);
+    if (!items.length) return;
+
+    const section = document.createElement("section");
+    section.className = "agenda-section " + bucket.cls + (collapsed.has(bucket.key) ? " collapsed" : "");
+
+    const head = document.createElement("button");
+    head.className = "section-head";
+    head.type = "button";
+    head.innerHTML = `<h2>${bucket.label}</h2><span class="count">${items.length}</span><span class="chev">▼</span>`;
+    head.addEventListener("click", () => {
+      collapsed.has(bucket.key) ? collapsed.delete(bucket.key) : collapsed.add(bucket.key);
+      render();
+    });
+
+    const body = document.createElement("div");
+    body.className = "section-body";
+    items.forEach(t => body.appendChild(taskRow(t)));
+
+    section.append(head, body);
+    root.appendChild(section);
+  });
+}
+
+function renderSidebar() {
+  const nav = document.getElementById("list-nav");
+  nav.innerHTML = "";
+  LISTS.forEach(l => {
+    const open = TASKS.filter(t => t.list === l.id).length;
+    const late = TASKS.filter(t => t.list === l.id && bucketOf(t) === "overdue").length;
+    const b = document.createElement("button");
+    b.className = "list-link";
+    b.setAttribute("aria-pressed", String(filter.list === l.id));
+    b.innerHTML = `<span class="dot" style="background:${l.color}"></span>
+      <span class="name">${l.title}</span>
+      <span class="n${late ? " warn" : ""}">${late ? "⚠ " + late + " · " : ""}${open}</span>`;
+    b.addEventListener("click", () => { filter.list = filter.list === l.id ? null : l.id; render(); });
+    nav.appendChild(b);
+  });
+
+  const cloud = document.getElementById("tag-cloud");
+  cloud.innerHTML = "";
+  const tags = [...new Set(TASKS.flatMap(t => t.tags))].sort();
+  if (!tags.length) cloud.innerHTML = '<span class="reminder-note">No tags yet.</span>';
+  tags.forEach(tag => {
+    const b = document.createElement("button");
+    b.className = "tag-chip";
+    b.textContent = "#" + tag;
+    b.setAttribute("aria-pressed", String(filter.tag === tag));
+    b.addEventListener("click", () => { filter.tag = filter.tag === tag ? null : tag; render(); });
+    cloud.appendChild(b);
+  });
+}
+
+function renderFilterBanner() {
+  const banner = document.getElementById("filter-banner");
+  const parts = [];
+  if (filter.scope) parts.push(BUCKETS.find(b => b.key === filter.scope)?.label || "This week");
+  if (filter.list) parts.push(listById(filter.list).title);
+  if (filter.tag) parts.push("#" + filter.tag);
+  if (!parts.length) { banner.classList.remove("show"); return; }
+  banner.classList.add("show");
+  document.getElementById("filter-text").textContent = "Filtered to " + parts.join(" · ");
+}
+
+// ---------------------------------------------------------------- actions
+function completeTask(id, row) {
+  const task = TASKS.find(t => t.id === id);
+  if (!task) return;
+  row.classList.add("done");
+  setTimeout(() => {
+    row.classList.add("leaving");
+    setTimeout(() => {
+      const snapshot = { ...task };
+      TASKS = TASKS.filter(t => t.id !== id);
+      if (task.recur !== "none") {
+        const next = { ...task, id: nextId++, due: advance(task.due, task.recur) };
+        TASKS.push(next);
+        toast(`Completed. Next “${task.text}” scheduled for ${dueLabel(next)}.`);
+      } else {
+        toast(`Completed “${task.text}”`, () => { TASKS.push(snapshot); render(); });
+      }
+      render();
+    }, 220);
+  }, 320);
+}
+
+function advance(due, recur) {
+  const base = new Date((due || todayIso) + "T00:00:00");
+  if (recur === "daily") base.setDate(base.getDate() + 1);
+  if (recur === "weekly") base.setDate(base.getDate() + 7);
+  if (recur === "monthly") base.setMonth(base.getMonth() + 1);
+  return base.toISOString().slice(0, 10);
+}
+
+function snoozeTask(id) {
+  const task = TASKS.find(t => t.id === id);
+  const was = task.due;
+  task.due = iso(1);
+  render();
+  toast(`Moved “${task.text}” to tomorrow`, () => { task.due = was; render(); });
+}
+
+function scheduleToday(id) {
+  const task = TASKS.find(t => t.id === id);
+  task.due = todayIso;
+  render();
+  toast(`Scheduled “${task.text}” for today`, () => { task.due = null; render(); });
+}
+
+function toast(message, undo) {
+  const el = document.createElement("div");
+  el.className = "toast";
+  el.innerHTML = `<span>${message}</span>`;
+  if (undo) {
+    const b = document.createElement("button");
+    b.className = "btn btn-ghost btn-sm";
+    b.textContent = "Undo";
+    b.addEventListener("click", () => { undo(); el.remove(); });
+    el.appendChild(b);
+  }
+  document.getElementById("toasts").appendChild(el);
+  setTimeout(() => el.remove(), undo ? 6000 : 3500);
+}
+
+// ---------------------------------------------------------------- quick add
+const qaList = document.getElementById("qa-list");
+LISTS.forEach(l => {
+  const o = document.createElement("option");
+  o.value = l.id;
+  o.textContent = l.title;
+  qaList.appendChild(o);
+});
+
+document.getElementById("quick-add").addEventListener("submit", e => {
+  e.preventDefault();
+  const input = document.getElementById("qa-text");
+  let text = input.value.trim();
+  if (!text) return;
+
+  // toy natural-language parsing, to show the idea
+  const tags = [];
+  text = text.replace(/#(\w+)/g, (_, t) => { tags.push(t); return ""; }).trim();
+
+  let due = document.getElementById("qa-due").value || null;
+  if (/\btomorrow\b/i.test(text)) { due = iso(1); text = text.replace(/\btomorrow\b/i, "").trim(); }
+  else if (/\btoday\b/i.test(text)) { due = todayIso; text = text.replace(/\btoday\b/i, "").trim(); }
+
+  TASKS.push({ id: nextId++, text, list: Number(qaList.value), due, tags, recur: "none" });
+  input.value = "";
+  document.getElementById("qa-due").value = "";
+  render();
+  toast(`Added “${text}”`);
+});
+
+document.querySelectorAll(".stat").forEach(el =>
+  el.addEventListener("click", () => {
+    filter.scope = filter.scope === el.dataset.scope ? null : el.dataset.scope;
+    if (filter.scope === "all") filter.scope = null;
+    render();
+  }));
+
+document.getElementById("clear-filter").addEventListener("click", () => {
+  filter = { scope: null, list: null, tag: null };
+  render();
+});
+
+document.getElementById("reminder-toggle").addEventListener("change", e =>
+  toast(e.target.checked ? "Daily digest on — 7:00 each morning" : "Daily digest off"));
+
+render();
+</script>
+</body>
+</html>

@@ -20,7 +20,7 @@ export class ApiError extends Error {
   }
 }
 
-function getCookie(name: string): string {
+export function getCookie(name: string): string {
   const cookie = document.cookie
     .split(";")
     .map((part) => part.trim())

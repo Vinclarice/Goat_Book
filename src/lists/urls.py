@@ -20,6 +20,12 @@ from lists import views
 
 urlpatterns = [
     path("new", views.new_list, name="new_list"),
+    path("add", views.quick_add, name="quick_add"),
+    path(
+        "items/<int:item_id>/due",
+        views.set_item_due_date,
+        name="set_item_due_date",
+    ),
     path(
         "items/<int:item_id>/complete",
         views.complete_item,

@@ -84,6 +84,9 @@ ADMINS = [("Vince", os.environ.get("DJANGO_ADMIN_EMAIL", "vincentjg01@gmail.com"
 # Application definition
 
 INSTALLED_APPS = [
+    # Must come before django.contrib.admin: it overrides the built-in
+    # admin's templates to render the themed UI (see UNFOLD below).
+    "unfold",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -97,6 +100,32 @@ INSTALLED_APPS = [
 
 if DEPLOYMENT_ENVIRONMENT != "production":
     INSTALLED_APPS.append("functional_tests")
+
+
+def environment_callback(request):
+    """Small colored label shown in the admin header (see UNFOLD["ENVIRONMENT"]
+    below) so it's obvious at a glance which server you're looking at.
+
+    Staging and production both deploy with DJANGO_ENVIRONMENT=production
+    (see infra/deploy-playbook.yaml), so DEBUG alone can't tell them apart --
+    the domain each was deployed with (DJANGO_ALLOWED_HOST) is the only
+    reliable signal.
+    """
+    if DEBUG:
+        return ["Development", "info"]
+    if os.environ.get("DJANGO_ALLOWED_HOST", "").startswith("staging."):
+        return ["Staging", "warning"]
+    return ["Production", "danger"]
+
+
+UNFOLD = {
+    "SITE_TITLE": "Clarice admin",
+    "SITE_HEADER": "Clarice",
+    "SITE_SYMBOL": "checklist",
+    "SHOW_HISTORY": True,
+    "SHOW_VIEW_ON_SITE": True,
+    "ENVIRONMENT": "clarice.settings.environment_callback",
+}
 
 AUTH_USER_MODEL = "accounts.User"
 AUTHENTICATION_BACKENDS = [

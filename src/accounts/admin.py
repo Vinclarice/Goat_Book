@@ -1,12 +1,14 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 
+from unfold.admin import ModelAdmin
+
 from accounts.forms import AdminUserChangeForm, AdminUserCreationForm
 from accounts.models import User
 
 
 @admin.register(User)
-class UserAdmin(DjangoUserAdmin):
+class UserAdmin(ModelAdmin, DjangoUserAdmin):
     """Admin for our slimmed-down custom User (no first/last name).
 
     The main job here is approving pending signups: they land with

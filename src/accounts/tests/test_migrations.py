@@ -99,6 +99,15 @@ class NumericUserMigrationTest(TransactionTestCase):
         executor.migrate(self.migrate_to)
         self.migrated_apps = executor.loader.project_state(self.migrate_to).apps
 
+        # test_user_ownership_and_task_state_are_preserved queries through
+        # the live (current) User/List/Item models rather than this
+        # snapshot, so bring 'lists' the rest of the way to its real head
+        # -- otherwise the live Item model's newer fields (due_date,
+        # position, tags, recurrence, ...) won't exist in a database only
+        # migrated up to this test's fixed migrate_to point.
+        executor = MigrationExecutor(connection)
+        executor.migrate(executor.loader.graph.leaf_nodes(app="lists"))
+
     def tearDown(self):
         executor = MigrationExecutor(connection)
         executor.migrate(executor.loader.graph.leaf_nodes())

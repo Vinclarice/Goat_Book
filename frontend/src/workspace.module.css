@@ -21,6 +21,34 @@
   border-radius: 0 0.5rem 0.5rem 0;
 }
 
+.dueDateField {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.65rem;
+  font-size: 0.85rem;
+  color: var(--sl-muted);
+}
+
+.dueDateField input {
+  width: auto;
+}
+
+.dueDateInline {
+  display: inline-block;
+  margin-top: 0.35rem;
+}
+
+.dueDateInline input {
+  width: auto;
+  font-size: 0.8rem;
+  padding: 0.15rem 0.4rem;
+}
+
+.overdue {
+  border-color: #ffb8b8;
+}
+
 .toolbar {
   display: flex;
   gap: 1rem;

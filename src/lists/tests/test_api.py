@@ -64,6 +64,38 @@ class TaskApiTest(TestCase):
             Item.Status.COMPLETED,
         )
 
+    def test_create_with_due_date_and_update_it(self):
+        create_response = self.request(
+            "post",
+            f"/api/lists/{self.list_.id}/items/",
+            {"text": "Renew passport", "due_date": "2026-09-01"},
+        )
+        created = create_response.json()["data"]
+        self.assertEqual(created["due_date"], "2026-09-01")
+
+        update_response = self.request(
+            "patch",
+            created["update_url"],
+            {"due_date": "2026-09-15"},
+        )
+        self.assertEqual(update_response.json()["data"]["due_date"], "2026-09-15")
+
+        clear_response = self.request(
+            "patch",
+            created["update_url"],
+            {"due_date": None},
+        )
+        self.assertIsNone(clear_response.json()["data"]["due_date"])
+
+    def test_rejects_invalid_due_date(self):
+        response = self.request(
+            "patch",
+            f"/api/items/{self.item.id}/",
+            {"due_date": "not-a-date"},
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("due_date", response.json()["errors"])
+
     def test_restore_conflict_returns_409(self):
         self.item.status = Item.Status.ARCHIVED
         self.item.completed_at = timezone.now()

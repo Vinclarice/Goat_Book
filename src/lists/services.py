@@ -47,12 +47,16 @@ def create_list_with_item(owner, title, text):
 
 
 @transaction.atomic
-def create_item(for_list, text):
+def create_item(for_list, text, due_date=None):
     normalized = normalize_task_text(text)
     if _duplicate_exists(for_list, normalized):
         raise TaskConflict(DUPLICATE_ITEM_ERROR)
     try:
-        return Item.objects.create(list=for_list, text=normalized)
+        return Item.objects.create(
+            list=for_list,
+            text=normalized,
+            due_date=due_date,
+        )
     except IntegrityError as error:
         raise TaskConflict(DUPLICATE_ITEM_ERROR) from error
 
@@ -72,6 +76,16 @@ def edit_item(item, text):
         item.save()
     except IntegrityError as error:
         raise TaskConflict(DUPLICATE_ITEM_ERROR) from error
+    return item
+
+
+@transaction.atomic
+def set_due_date(item, due_date):
+    item = Item.objects.select_for_update().get(pk=item.pk)
+    if item.status == Item.Status.ARCHIVED:
+        raise InvalidTaskTransition("Restore this task before editing it")
+    item.due_date = due_date or None
+    item.save()
     return item
 
 

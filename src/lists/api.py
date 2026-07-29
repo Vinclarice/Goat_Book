@@ -1,4 +1,5 @@
 import json
+from datetime import date
 from functools import wraps
 
 from django.http import JsonResponse
@@ -7,6 +8,19 @@ from django.views.decorators.http import require_http_methods
 from lists import services
 from lists.models import Item, List
 from lists.serializers import serialize_item
+
+
+class _InvalidDueDate(Exception):
+    pass
+
+
+def _parse_due_date(value):
+    if value in (None, ""):
+        return None
+    try:
+        return date.fromisoformat(value)
+    except (TypeError, ValueError):
+        raise _InvalidDueDate from None
 
 
 def api_login_required(view):
@@ -59,7 +73,14 @@ def create_item(request, list_id):
     if error_response:
         return error_response
     try:
-        item = services.create_item(our_list, payload.get("text"))
+        due_date = _parse_due_date(payload.get("due_date"))
+    except _InvalidDueDate:
+        return JsonResponse(
+            {"errors": {"due_date": ["Use a valid date (YYYY-MM-DD)."]}},
+            status=400,
+        )
+    try:
+        item = services.create_item(our_list, payload.get("text"), due_date=due_date)
     except services.TaskConflict as error:
         return JsonResponse(
             {"errors": {"text": [str(error)]}},
@@ -92,12 +113,12 @@ def item_detail(request, item_id):
     payload, error_response = _read_json(request)
     if error_response:
         return error_response
-    changed_fields = {"text", "status"}.intersection(payload)
+    changed_fields = {"text", "status", "due_date"}.intersection(payload)
     if len(changed_fields) != 1:
         return JsonResponse(
             {
                 "errors": {
-                    "body": ["Change exactly one of text or status per request."]
+                    "body": ["Change exactly one of text, status, or due_date per request."]
                 }
             },
             status=400,
@@ -106,6 +127,15 @@ def item_detail(request, item_id):
     try:
         if "text" in changed_fields:
             item = services.edit_item(item, payload["text"])
+        elif "due_date" in changed_fields:
+            try:
+                due_date = _parse_due_date(payload["due_date"])
+            except _InvalidDueDate:
+                return JsonResponse(
+                    {"errors": {"due_date": ["Use a valid date (YYYY-MM-DD)."]}},
+                    status=400,
+                )
+            item = services.set_due_date(item, due_date)
         else:
             requested_status = payload["status"]
             if requested_status == Item.Status.ACTIVE:

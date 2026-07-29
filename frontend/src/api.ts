@@ -62,12 +62,23 @@ async function request<T>(
   return payload.data;
 }
 
-export function createTask(url: string, text: string): Promise<Task> {
-  return request<Task>(url, "POST", { text });
+export function createTask(
+  url: string,
+  text: string,
+  dueDate?: string | null,
+): Promise<Task> {
+  return request<Task>(url, "POST", { text, due_date: dueDate ?? null });
 }
 
 export function updateTaskText(task: Task, text: string): Promise<Task> {
   return request<Task>(task.update_url, "PATCH", { text });
+}
+
+export function updateTaskDueDate(
+  task: Task,
+  dueDate: string | null,
+): Promise<Task> {
+  return request<Task>(task.update_url, "PATCH", { due_date: dueDate });
 }
 
 export function updateTaskStatus(

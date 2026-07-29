@@ -143,4 +143,45 @@ describe("TaskWorkspace", () => {
     expect(await screen.findByText("Duplicate task.")).toBeInTheDocument();
     expect(screen.getByDisplayValue("Duplicate")).toBeInTheDocument();
   });
+
+  it("flags an active task with a past due date as overdue", () => {
+    render(
+      <TaskWorkspace
+        initialData={{
+          list: { id: 1, title: "Programming", create_item_url: "/api/lists/1/items/" },
+          items: [task({ due_date: "2000-01-01" })],
+        }}
+      />,
+    );
+
+    expect(screen.getByText(/Overdue:/)).toBeInTheDocument();
+  });
+
+  it("sends a due date update when the due date field changes", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(globalThis, "fetch").mockReturnValue(
+      jsonResponse({ data: task({ due_date: "2026-08-01" }) }),
+    );
+    render(
+      <TaskWorkspace
+        initialData={{
+          list: { id: 1, title: "Programming", create_item_url: "/api/lists/1/items/" },
+          items: [task()],
+        }}
+      />,
+    );
+
+    const dueDateInput = screen.getByLabelText("Change due date for Write tests");
+    await user.type(dueDateInput, "2026-08-01");
+
+    await waitFor(() =>
+      expect(fetch).toHaveBeenCalledWith(
+        "/api/items/1/",
+        expect.objectContaining({
+          method: "PATCH",
+          body: JSON.stringify({ due_date: "2026-08-01" }),
+        }),
+      ),
+    );
+  });
 });

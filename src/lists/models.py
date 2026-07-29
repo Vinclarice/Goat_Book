@@ -20,6 +20,7 @@ class Item(models.Model):
     )
     completed_at = models.DateTimeField(blank=True, null=True)
     archived_at = models.DateTimeField(blank=True, null=True)
+    due_date = models.DateField(blank=True, null=True)
 
     class Meta:
         ordering = ("id",)

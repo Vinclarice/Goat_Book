@@ -14,6 +14,7 @@ export interface Task {
   updated_at: string;
   completed_at: string | null;
   archived_at: string | null;
+  due_date: string | null;
   list: TaskListSummary;
   update_url: string;
   delete_url: string;

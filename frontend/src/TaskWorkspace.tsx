@@ -1,9 +1,34 @@
 import { FormEvent, useMemo, useState } from "react";
 
-import { createTask, updateTaskStatus, updateTaskText } from "./api";
+import {
+  createTask,
+  updateTaskDueDate,
+  updateTaskStatus,
+  updateTaskText,
+} from "./api";
 import { formatDate } from "./format";
 import styles from "./workspace.module.css";
 import type { Task, TaskStatus, TaskWorkspaceData } from "./types";
+
+function todayIsoDate(): string {
+  const now = new Date();
+  const offset = now.getTimezoneOffset();
+  return new Date(now.getTime() - offset * 60000).toISOString().slice(0, 10);
+}
+
+function isOverdue(task: Task): boolean {
+  return (
+    task.status === "active" &&
+    task.due_date !== null &&
+    task.due_date < todayIsoDate()
+  );
+}
+
+function formatDueDate(value: string): string {
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+  }).format(new Date(`${value}T00:00:00`));
+}
 
 type Filter = "all" | "active" | "completed";
 
@@ -16,6 +41,7 @@ export function TaskWorkspace({ initialData }: Props) {
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
   const [newText, setNewText] = useState("");
+  const [newDueDate, setNewDueDate] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingText, setEditingText] = useState("");
   const [busyId, setBusyId] = useState<number | "new" | null>(null);
@@ -53,9 +79,14 @@ export function TaskWorkspace({ initialData }: Props) {
     setNotice("");
     setBusyId("new");
     try {
-      const created = await createTask(initialData.list.create_item_url, newText);
+      const created = await createTask(
+        initialData.list.create_item_url,
+        newText,
+        newDueDate || null,
+      );
       setItems((current) => [...current, created]);
       setNewText("");
+      setNewDueDate("");
       setNotice("Task added.");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to add task.");
@@ -79,6 +110,21 @@ export function TaskWorkspace({ initialData }: Props) {
       }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to update task.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function changeDueDate(task: Task, dueDate: string | null) {
+    setError("");
+    setNotice("");
+    setBusyId(task.id);
+    try {
+      const updated = await updateTaskDueDate(task, dueDate);
+      replaceItem(updated);
+      setNotice(dueDate ? "Due date updated." : "Due date cleared.");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to update due date.");
     } finally {
       setBusyId(null);
     }
@@ -133,6 +179,17 @@ export function TaskWorkspace({ initialData }: Props) {
             {busyId === "new" ? "Adding…" : "Add item"}
           </button>
         </div>
+        <label className={styles.dueDateField} htmlFor="react-new-task-due">
+          Due date <span className="visually-hidden">(optional)</span>
+          <input
+            id="react-new-task-due"
+            type="date"
+            className="form-control"
+            value={newDueDate}
+            onChange={(event) => setNewDueDate(event.target.value)}
+            disabled={busyId === "new"}
+          />
+        </label>
       </form>
 
       <div className={styles.toolbar}>
@@ -177,7 +234,7 @@ export function TaskWorkspace({ initialData }: Props) {
             key={item.id}
             className={`list-item ${
               item.status === "completed" ? "is-completed" : ""
-            }`}
+            } ${isOverdue(item) ? styles.overdue : ""}`}
           >
             <span className="item-number">
               {String(index + 1).padStart(2, "0")}
@@ -222,7 +279,26 @@ export function TaskWorkspace({ initialData }: Props) {
                   <small>
                     Created <time dateTime={item.created_at}>{formatDate(item.created_at)}</time>
                     {item.status === "completed" && " · Completed"}
+                    {item.due_date && (
+                      <>
+                        {" · "}
+                        {isOverdue(item) ? "Overdue: " : "Due "}
+                        <time dateTime={item.due_date}>{formatDueDate(item.due_date)}</time>
+                      </>
+                    )}
                   </small>
+                  <label className={styles.dueDateInline}>
+                    <span className="visually-hidden">Change due date for {item.text}</span>
+                    <input
+                      type="date"
+                      className="form-control form-control-sm"
+                      value={item.due_date ?? ""}
+                      onChange={(event) =>
+                        changeDueDate(item, event.target.value || null)
+                      }
+                      disabled={busyId === item.id}
+                    />
+                  </label>
                 </>
               )}
             </div>

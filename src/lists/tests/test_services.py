@@ -1,3 +1,5 @@
+import datetime
+
 from django.test import TestCase
 from django.utils import timezone
 
@@ -70,3 +72,16 @@ class TaskServiceTest(TestCase):
         archived = services.archive_item(self.item)
         services.delete_archived_item(archived)
         self.assertFalse(Item.objects.filter(pk=self.item.pk).exists())
+
+    def test_set_due_date(self):
+        due = datetime.date(2026, 8, 1)
+        updated = services.set_due_date(self.item, due)
+        self.assertEqual(updated.due_date, due)
+
+        cleared = services.set_due_date(self.item, None)
+        self.assertIsNone(cleared.due_date)
+
+    def test_set_due_date_rejects_archived_tasks(self):
+        archived = services.archive_item(self.item)
+        with self.assertRaises(services.InvalidTaskTransition):
+            services.set_due_date(archived, datetime.date(2026, 8, 1))

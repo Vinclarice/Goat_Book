@@ -3,8 +3,9 @@
 
   vars:
     # Override on the command line if needed, e.g.:
-    #   --extra-vars "site_domain=staging.vinclarice.com letsencrypt_email=you@example.com"
+    #   --extra-vars '{"site_domain":"staging.vinclarice.com","include_www_alias":false}'
     site_domain: vinclarice.com
+    include_www_alias: true
     letsencrypt_email: vincentjg01@gmail.com
     # Remote database resets require both of these test-only overrides plus
     # ALLOW_REMOTE_DB_RESET=<exact-host> in the client running the tests.
@@ -14,6 +15,7 @@
     # password itself lives in ~/.email-app-password on the server (see
     # the "Ensure Gmail app password file exists" task below) rather than
     # here, since it shouldn't be committed or passed on the CLI.
+    email_backend: smtp
     email_host_user: vincentjg01@gmail.com
     admin_email: vincentjg01@gmail.com
 
@@ -79,6 +81,7 @@
       ansible.builtin.stat:
         path: ~/.email-app-password
       register: email_password_file
+      when: email_backend == 'smtp'
 
     - name: Fail with instructions if the Gmail app password file is missing
       ansible.builtin.fail:
@@ -87,12 +90,13 @@
           app password for {{ email_host_user }} (myaccount.google.com ->
           Security -> App passwords), then on the server run:
           umask 077 && echo -n 'your-app-password' > ~/.email-app-password
-      when: not email_password_file.stat.exists
+      when: email_backend == 'smtp' and not email_password_file.stat.exists
 
     - name: Read Gmail app password back from file
       ansible.builtin.slurp:
         src: ~/.email-app-password
       register: email_password
+      when: email_backend == 'smtp'
 
     - name: Ensure db.sqlite3 file exists outside container
       ansible.builtin.file:
@@ -100,6 +104,11 @@
         state: touch
         owner: 1234  # so nonroot user can access it in container
       become: true  # needed for ownership change
+
+    - name: Remove legacy superlists container
+      community.docker.docker_container:
+        name: superlists
+        state: absent
 
     - name: Run container
       community.docker.docker_container:
@@ -113,8 +122,12 @@
           DJANGO_DB_PATH: "/home/nonroot/db.sqlite3"
           DJANGO_ENVIRONMENT: "{{ deployment_environment }}"
           ALLOW_DATABASE_FLUSH: "{{ allow_database_flush }}"
+          DJANGO_EMAIL_BACKEND: "{{ email_backend }}"
           DJANGO_EMAIL_HOST_USER: "{{ email_host_user }}"
-          DJANGO_EMAIL_HOST_PASSWORD: "{{ email_password.content | b64decode }}"
+          DJANGO_EMAIL_HOST_PASSWORD: >-
+            {{ (email_password.content | b64decode)
+               if email_backend == 'smtp'
+               else '' }}
           DJANGO_ADMIN_EMAIL: "{{ admin_email }}"
         mounts:
           - type: bind
@@ -143,13 +156,6 @@
         update_cache: true
       become: true
 
-    - name: Ensure nginx is running
-      ansible.builtin.service:
-        name: nginx
-        state: started
-        enabled: true
-      become: true
-
     - name: Ensure ACME challenge directory exists
       ansible.builtin.file:
         path: /var/www/certbot
@@ -166,18 +172,27 @@
       become: true
       notify: reload nginx
 
+    - name: Remove legacy superlists nginx site
+      ansible.builtin.file:
+        path: /etc/nginx/sites-enabled/superlists
+        state: absent
+      become: true
+      notify: reload nginx
+
     - name: Check whether the TLS certificate already exists
       ansible.builtin.stat:
         path: "/etc/letsencrypt/live/{{ site_domain }}/fullchain.pem"
       register: tls_certificate
       become: true
 
-    - name: Install temporary HTTP config for initial certificate issuance
+    - name: Install initial nginx config
       ansible.builtin.template:
-        src: templates/nginx-clarice-bootstrap.conf.j2
+        src: >-
+          {{ 'templates/nginx-clarice.conf.j2'
+             if tls_certificate.stat.exists
+             else 'templates/nginx-clarice-bootstrap.conf.j2' }}
         dest: /etc/nginx/sites-available/clarice
         mode: 0644
-      when: not tls_certificate.stat.exists
       become: true
       notify: reload nginx
 
@@ -189,6 +204,46 @@
       become: true
       notify: reload nginx
 
+    - name: Check whether nginx is managed by systemd
+      ansible.builtin.command:
+        cmd: systemctl is-active nginx
+      register: nginx_service_state
+      changed_when: false
+      failed_when: false
+      become: true
+
+    - name: Gracefully stop an orphaned nginx master process
+      ansible.builtin.command:
+        argv:
+          - /usr/bin/pkill
+          - --signal
+          - QUIT
+          - --full
+          - "^nginx: master process"
+      register: orphaned_nginx_stop
+      changed_when: orphaned_nginx_stop.rc == 0
+      failed_when: orphaned_nginx_stop.rc not in [0, 1]
+      when: nginx_service_state.stdout != 'active'
+      become: true
+
+    - name: Wait for orphaned nginx listeners to close
+      ansible.builtin.wait_for:
+        host: 127.0.0.1
+        port: "{{ item }}"
+        state: stopped
+        timeout: 15
+      loop:
+        - 80
+        - 443
+      when: orphaned_nginx_stop is changed
+
+    - name: Ensure nginx is running
+      ansible.builtin.service:
+        name: nginx
+        state: started
+        enabled: true
+      become: true
+
     - name: Flush handlers so nginx can serve the ACME challenge
       ansible.builtin.meta: flush_handlers
 
@@ -198,7 +253,7 @@
           certbot certonly --webroot
           --webroot-path /var/www/certbot
           --cert-name {{ site_domain }}
-          -d {{ site_domain }} -d www.{{ site_domain }}
+          -d {{ site_domain }}{% if include_www_alias | bool %} -d www.{{ site_domain }}{% endif %}
           --non-interactive --agree-tos -m {{ letsencrypt_email }}
           --keep-until-expiring
       register: certbot_result

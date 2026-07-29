@@ -12,6 +12,8 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 import os
+
+from django.core.exceptions import ImproperlyConfigured
 import sys
 
 
@@ -49,7 +51,17 @@ if not DEBUG:
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
 
-    # Sends account-signup and lockout notifications to ADMINS (see below).
+else:
+    SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "insecure-key-for-dev")
+    ALLOWED_HOSTS = []
+    db_path = os.environ.get("DJANGO_DB_PATH", BASE_DIR / "db.sqlite3")
+
+
+email_delivery = os.environ.get(
+    "DJANGO_EMAIL_BACKEND",
+    "smtp" if not DEBUG else "console",
+)
+if email_delivery == "smtp":
     EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
     EMAIL_HOST = "smtp.gmail.com"
     EMAIL_PORT = 587
@@ -57,13 +69,12 @@ if not DEBUG:
     EMAIL_HOST_USER = os.environ["DJANGO_EMAIL_HOST_USER"]
     EMAIL_HOST_PASSWORD = os.environ["DJANGO_EMAIL_HOST_PASSWORD"]
     DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
-else:
-    SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "insecure-key-for-dev")
-    ALLOWED_HOSTS = []
-    db_path = os.environ.get("DJANGO_DB_PATH", BASE_DIR / "db.sqlite3")
-
-    # Print notification emails to the console instead of sending them.
+elif email_delivery == "console":
     EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+else:
+    raise ImproperlyConfigured(
+        "DJANGO_EMAIL_BACKEND must be either 'smtp' or 'console'."
+    )
 
 # Who gets emailed about pending signups and account lockouts
 # (see accounts.emails and accounts.apps.AccountsConfig.ready).

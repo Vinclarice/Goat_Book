@@ -7,9 +7,23 @@
 # after repeated failures regardless of which IP they come from.
 limit_req_zone $binary_remote_addr zone=clarice_auth:10m rate=5r/m;
 
+# Reject unknown hostnames before they reach Django. The TLS catch-all rejects
+# the handshake without needing to present a certificate for an unknown name.
+server {
+    listen 80 default_server;
+    server_name _;
+    return 444;
+}
+
+server {
+    listen 443 ssl default_server;
+    server_name _;
+    ssl_reject_handshake on;
+}
+
 server {
     listen 80;
-    server_name {{ site_domain }} www.{{ site_domain }};
+    server_name {{ site_domain }}{% if include_www_alias | bool %} www.{{ site_domain }}{% endif %};
 
     location ^~ /.well-known/acme-challenge/ {
         root /var/www/certbot;
@@ -22,7 +36,7 @@ server {
 
 server {
     listen 443 ssl;
-    server_name {{ site_domain }} www.{{ site_domain }};
+    server_name {{ site_domain }}{% if include_www_alias | bool %} www.{{ site_domain }}{% endif %};
 
     ssl_certificate /etc/letsencrypt/live/{{ site_domain }}/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/{{ site_domain }}/privkey.pem;

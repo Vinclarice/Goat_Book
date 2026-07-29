@@ -1,8 +1,17 @@
 # Temporary first-deployment config used only until Certbot issues a certificate.
 
+# Do not forward unknown hostnames or direct-IP scans to Django. Apart from
+# reducing noise, this prevents DisallowedHost requests from triggering
+# administrator error emails.
+server {
+    listen 80 default_server;
+    server_name _;
+    return 444;
+}
+
 server {
     listen 80;
-    server_name {{ site_domain }} www.{{ site_domain }};
+    server_name {{ site_domain }}{% if include_www_alias | bool %} www.{{ site_domain }}{% endif %};
 
     location ^~ /.well-known/acme-challenge/ {
         root /var/www/certbot;

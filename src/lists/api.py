@@ -87,9 +87,19 @@ def create_item(request, list_id):
             {"errors": {"tags": ["Send a list of tag names."]}},
             status=400,
         )
+    recurrence = payload.get("recurrence")
+    if recurrence is not None and recurrence not in Item.Recurrence.values:
+        return JsonResponse(
+            {"errors": {"recurrence": ["Choose a valid recurrence."]}},
+            status=400,
+        )
     try:
         item = services.create_item(
-            our_list, payload.get("text"), due_date=due_date, tags=tags,
+            our_list,
+            payload.get("text"),
+            due_date=due_date,
+            tags=tags,
+            recurrence=recurrence,
         )
     except services.TaskConflict as error:
         return JsonResponse(
@@ -160,20 +170,23 @@ def item_detail(request, item_id):
     payload, error_response = _read_json(request)
     if error_response:
         return error_response
-    changed_fields = {"text", "status", "due_date", "tags"}.intersection(payload)
+    changed_fields = {
+        "text", "status", "due_date", "tags", "recurrence",
+    }.intersection(payload)
     if len(changed_fields) != 1:
         return JsonResponse(
             {
                 "errors": {
                     "body": [
-                        "Change exactly one of text, status, due_date, or tags "
-                        "per request."
+                        "Change exactly one of text, status, due_date, tags, "
+                        "or recurrence per request."
                     ]
                 }
             },
             status=400,
         )
 
+    spawned = None
     try:
         if "text" in changed_fields:
             item = services.edit_item(item, payload["text"])
@@ -196,6 +209,8 @@ def item_detail(request, item_id):
                     status=400,
                 )
             item = services.set_item_tags(item, tags)
+        elif "recurrence" in changed_fields:
+            item = services.set_recurrence(item, payload["recurrence"])
         else:
             requested_status = payload["status"]
             if requested_status == Item.Status.ACTIVE:
@@ -205,6 +220,7 @@ def item_detail(request, item_id):
                     item = services.restore_item(item)
                 else:
                     item = services.complete_item(item)
+                    spawned = getattr(item, "_spawned", None)
             elif requested_status == Item.Status.ARCHIVED:
                 item = services.archive_item(item)
             else:
@@ -224,4 +240,8 @@ def item_detail(request, item_id):
         )
 
     item = Item.objects.select_related("list").get(pk=item.pk)
-    return JsonResponse({"data": serialize_item(item)})
+    response = {"data": serialize_item(item)}
+    if spawned is not None:
+        spawned = Item.objects.select_related("list").get(pk=spawned.pk)
+        response["spawned"] = serialize_item(spawned)
+    return JsonResponse(response)

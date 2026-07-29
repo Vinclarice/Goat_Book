@@ -12,6 +12,7 @@ export function task(overrides: Partial<Task> = {}): Task {
     due_date: null,
     position: 0,
     tags: [],
+    recurrence: "none",
     list: {
       id: 1,
       title: "Programming",

@@ -1,4 +1,4 @@
-import type { Task, TaskStatus } from "./types";
+import type { Task, TaskRecurrence, TaskStatus } from "./types";
 
 interface ApiErrors {
   [field: string]: string[];
@@ -6,6 +6,7 @@ interface ApiErrors {
 
 interface ApiResponse<T> {
   data?: T;
+  spawned?: Task;
   errors?: ApiErrors;
 }
 
@@ -32,11 +33,11 @@ function firstError(errors: ApiErrors | undefined): string {
   return Object.values(errors).flat()[0] ?? "Something went wrong. Please try again.";
 }
 
-async function request<T>(
+async function requestPayload<T>(
   url: string,
   method: "POST" | "PATCH" | "DELETE",
   body?: object,
-): Promise<T> {
+): Promise<ApiResponse<T>> {
   const response = await fetch(url, {
     method,
     credentials: "same-origin",
@@ -59,7 +60,16 @@ async function request<T>(
   if (!response.ok || payload.data === undefined) {
     throw new ApiError(firstError(payload.errors), response.status, payload.errors);
   }
-  return payload.data;
+  return payload;
+}
+
+async function request<T>(
+  url: string,
+  method: "POST" | "PATCH" | "DELETE",
+  body?: object,
+): Promise<T> {
+  const payload = await requestPayload<T>(url, method, body);
+  return payload.data as T;
 }
 
 export function createTask(
@@ -67,11 +77,13 @@ export function createTask(
   text: string,
   dueDate?: string | null,
   tags?: string[],
+  recurrence?: TaskRecurrence,
 ): Promise<Task> {
   return request<Task>(url, "POST", {
     text,
     due_date: dueDate ?? null,
     tags: tags ?? [],
+    recurrence: recurrence ?? "none",
   });
 }
 
@@ -90,11 +102,26 @@ export function updateTaskTags(task: Task, tags: string[]): Promise<Task> {
   return request<Task>(task.update_url, "PATCH", { tags });
 }
 
-export function updateTaskStatus(
+export function updateTaskRecurrence(
+  task: Task,
+  recurrence: TaskRecurrence,
+): Promise<Task> {
+  return request<Task>(task.update_url, "PATCH", { recurrence });
+}
+
+export interface StatusUpdateResult {
+  task: Task;
+  /** Set when completing a recurring task auto-archives it and creates
+   * the next occurrence in the same request. */
+  spawned?: Task;
+}
+
+export async function updateTaskStatus(
   task: Task,
   status: TaskStatus,
-): Promise<Task> {
-  return request<Task>(task.update_url, "PATCH", { status });
+): Promise<StatusUpdateResult> {
+  const payload = await requestPayload<Task>(task.update_url, "PATCH", { status });
+  return { task: payload.data as Task, spawned: payload.spawned };
 }
 
 export async function deleteTask(task: Task): Promise<number> {

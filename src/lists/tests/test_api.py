@@ -121,6 +121,49 @@ class TaskApiTest(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("tags", response.json()["errors"])
 
+    def test_create_with_recurrence_and_update_it(self):
+        create_response = self.request(
+            "post",
+            f"/api/lists/{self.list_.id}/items/",
+            {"text": "Take out trash", "recurrence": "weekly"},
+        )
+        created = create_response.json()["data"]
+        self.assertEqual(created["recurrence"], "weekly")
+
+        update_response = self.request(
+            "patch",
+            created["update_url"],
+            {"recurrence": "daily"},
+        )
+        self.assertEqual(update_response.json()["data"]["recurrence"], "daily")
+
+    def test_rejects_invalid_recurrence(self):
+        response = self.request(
+            "post",
+            f"/api/lists/{self.list_.id}/items/",
+            {"text": "Bad recurrence", "recurrence": "yearly"},
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("recurrence", response.json()["errors"])
+
+    def test_completing_a_recurring_task_returns_spawned_item(self):
+        self.request(
+            "patch",
+            f"/api/items/{self.item.id}/",
+            {"recurrence": "daily"},
+        )
+
+        response = self.request(
+            "patch",
+            f"/api/items/{self.item.id}/",
+            {"status": Item.Status.COMPLETED},
+        )
+        body = response.json()
+        self.assertEqual(body["data"]["status"], Item.Status.ARCHIVED)
+        self.assertIn("spawned", body)
+        self.assertEqual(body["spawned"]["text"], self.item.text)
+        self.assertEqual(body["spawned"]["status"], Item.Status.ACTIVE)
+
     def test_reorder_items(self):
         second = Item.objects.create(list=self.list_, text="Second", position=1)
 

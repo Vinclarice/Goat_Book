@@ -144,3 +144,39 @@ class TaskServiceTest(TestCase):
         archived = services.archive_item(self.item)
         with self.assertRaises(services.InvalidTaskTransition):
             services.set_item_tags(archived, ["chores"])
+
+    def test_completing_a_non_recurring_task_stays_completed(self):
+        completed = services.complete_item(self.item)
+        self.assertEqual(completed.status, Item.Status.COMPLETED)
+        self.assertIsNone(getattr(completed, "_spawned", None))
+
+    def test_completing_a_recurring_task_archives_it_and_spawns_next(self):
+        services.set_due_date(self.item, datetime.date(2026, 8, 1))
+        services.set_recurrence(self.item, Item.Recurrence.WEEKLY)
+
+        completed = services.complete_item(self.item)
+
+        self.assertEqual(completed.status, Item.Status.ARCHIVED)
+        self.assertIsNotNone(completed.archived_at)
+
+        spawned = completed._spawned
+        self.assertEqual(spawned.text, self.item.text)
+        self.assertEqual(spawned.status, Item.Status.ACTIVE)
+        self.assertEqual(spawned.recurrence, Item.Recurrence.WEEKLY)
+        self.assertEqual(spawned.due_date, datetime.date(2026, 8, 8))
+
+    def test_recurring_task_without_due_date_advances_from_today(self):
+        services.set_recurrence(self.item, Item.Recurrence.DAILY)
+        completed = services.complete_item(self.item)
+        expected = timezone.localdate() + datetime.timedelta(days=1)
+        self.assertEqual(completed._spawned.due_date, expected)
+
+    def test_monthly_recurrence_clamps_to_end_of_shorter_month(self):
+        services.set_due_date(self.item, datetime.date(2026, 1, 31))
+        services.set_recurrence(self.item, Item.Recurrence.MONTHLY)
+        completed = services.complete_item(self.item)
+        self.assertEqual(completed._spawned.due_date, datetime.date(2026, 2, 28))
+
+    def test_set_recurrence_rejects_invalid_value(self):
+        with self.assertRaises(services.TaskConflict):
+            services.set_recurrence(self.item, "yearly")

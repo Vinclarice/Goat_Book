@@ -279,6 +279,44 @@ describe("TaskWorkspace", () => {
     expect(screen.queryByText("Write tests")).not.toBeInTheDocument();
   });
 
+  it("adds the spawned next occurrence when a recurring task is completed", async () => {
+    const user = userEvent.setup();
+    const original = task({ id: 1, text: "Take out trash", recurrence: "weekly" });
+    const archived = task({
+      id: 1,
+      text: "Take out trash",
+      recurrence: "weekly",
+      status: "archived",
+    });
+    const spawned = task({
+      id: 2,
+      text: "Take out trash",
+      recurrence: "weekly",
+      status: "active",
+    });
+    vi.spyOn(globalThis, "fetch").mockReturnValue(
+      jsonResponse({ data: archived, spawned }),
+    );
+    render(
+      <TaskWorkspace
+        initialData={{
+          list: {
+            id: 1,
+            title: "Programming",
+            create_item_url: "/api/lists/1/items/",
+            reorder_url: "/api/lists/1/items/reorder/",
+          },
+          items: [original],
+        }}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Mark complete" }));
+
+    expect(await screen.findByText(/next occurrence added/)).toBeInTheDocument();
+    expect(screen.getByText("Take out trash")).toBeInTheDocument();
+  });
+
   it("sends tags on task creation", async () => {
     const user = userEvent.setup();
     vi.spyOn(globalThis, "fetch").mockReturnValue(

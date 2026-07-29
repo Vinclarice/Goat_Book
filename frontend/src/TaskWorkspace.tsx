@@ -4,13 +4,21 @@ import {
   createTask,
   reorderTasks,
   updateTaskDueDate,
+  updateTaskRecurrence,
   updateTaskStatus,
   updateTaskTags,
   updateTaskText,
 } from "./api";
 import { formatDate } from "./format";
 import styles from "./workspace.module.css";
-import type { Task, TaskStatus, TaskWorkspaceData } from "./types";
+import type { Task, TaskRecurrence, TaskStatus, TaskWorkspaceData } from "./types";
+
+const RECURRENCE_LABELS: Record<TaskRecurrence, string> = {
+  none: "Doesn't repeat",
+  daily: "Daily",
+  weekly: "Weekly",
+  monthly: "Monthly",
+};
 
 function todayIsoDate(): string {
   const now = new Date();
@@ -69,6 +77,7 @@ export function TaskWorkspace({ initialData }: Props) {
   const [newText, setNewText] = useState("");
   const [newDueDate, setNewDueDate] = useState("");
   const [newTags, setNewTags] = useState("");
+  const [newRecurrence, setNewRecurrence] = useState<TaskRecurrence>("none");
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [tagDrafts, setTagDrafts] = useState<Record<number, string>>({});
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -123,11 +132,13 @@ export function TaskWorkspace({ initialData }: Props) {
         newText,
         newDueDate || null,
         parseTagInput(newTags),
+        newRecurrence,
       );
       setItems((current) => [...current, created]);
       setNewText("");
       setNewDueDate("");
       setNewTags("");
+      setNewRecurrence("none");
       setNotice("Task added.");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to add task.");
@@ -141,16 +152,38 @@ export function TaskWorkspace({ initialData }: Props) {
     setNotice("");
     setBusyId(task.id);
     try {
-      const updated = await updateTaskStatus(task, status);
+      const { task: updated, spawned } = await updateTaskStatus(task, status);
       if (updated.status === "archived") {
-        setItems((current) => current.filter((item) => item.id !== updated.id));
-        setNotice("Task moved to Done & archived.");
+        setItems((current) => {
+          const withoutArchived = current.filter((item) => item.id !== updated.id);
+          return spawned ? [...withoutArchived, spawned] : withoutArchived;
+        });
+        setNotice(
+          spawned
+            ? "Task completed — next occurrence added."
+            : "Task moved to Done & archived.",
+        );
       } else {
         replaceItem(updated);
         setNotice(status === "active" ? "Task reopened." : "Task completed.");
       }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to update task.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function changeRecurrence(task: Task, recurrence: TaskRecurrence) {
+    setError("");
+    setNotice("");
+    setBusyId(task.id);
+    try {
+      const updated = await updateTaskRecurrence(task, recurrence);
+      replaceItem(updated);
+      setNotice("Recurrence updated.");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to update recurrence.");
     } finally {
       setBusyId(null);
     }
@@ -308,6 +341,24 @@ export function TaskWorkspace({ initialData }: Props) {
               placeholder="groceries, chores"
               disabled={busyId === "new"}
             />
+          </label>
+          <label className={styles.dueDateField} htmlFor="react-new-task-recurrence">
+            Repeats
+            <select
+              id="react-new-task-recurrence"
+              className="form-control"
+              value={newRecurrence}
+              onChange={(event) =>
+                setNewRecurrence(event.target.value as TaskRecurrence)
+              }
+              disabled={busyId === "new"}
+            >
+              {(Object.keys(RECURRENCE_LABELS) as TaskRecurrence[]).map((value) => (
+                <option key={value} value={value}>
+                  {RECURRENCE_LABELS[value]}
+                </option>
+              ))}
+            </select>
           </label>
         </div>
       </form>
@@ -487,6 +538,30 @@ export function TaskWorkspace({ initialData }: Props) {
                         disabled={busyId === item.id}
                       />
                     </label>
+                    <label className={styles.recurrenceInline}>
+                      <span className="visually-hidden">Repeat {item.text}</span>
+                      <select
+                        className="form-control form-control-sm"
+                        value={item.recurrence}
+                        onChange={(event) =>
+                          changeRecurrence(item, event.target.value as TaskRecurrence)
+                        }
+                        disabled={busyId === item.id}
+                      >
+                        {(Object.keys(RECURRENCE_LABELS) as TaskRecurrence[]).map(
+                          (value) => (
+                            <option key={value} value={value}>
+                              {RECURRENCE_LABELS[value]}
+                            </option>
+                          ),
+                        )}
+                      </select>
+                    </label>
+                    {item.recurrence !== "none" && (
+                      <span className={styles.recurrenceBadge}>
+                        ↻ {RECURRENCE_LABELS[item.recurrence]}
+                      </span>
+                    )}
                   </div>
                 </>
               )}

@@ -1,4 +1,5 @@
 export type TaskStatus = "active" | "completed" | "archived";
+export type TaskRecurrence = "none" | "daily" | "weekly" | "monthly";
 
 export interface TaskListSummary {
   id: number;
@@ -17,6 +18,7 @@ export interface Task {
   due_date: string | null;
   position: number;
   tags: string[];
+  recurrence: TaskRecurrence;
   list: TaskListSummary;
   update_url: string;
   delete_url: string;

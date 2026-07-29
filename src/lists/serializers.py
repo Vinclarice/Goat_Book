@@ -15,6 +15,7 @@ def serialize_item(item):
         "due_date": item.due_date.isoformat() if item.due_date else None,
         "position": item.position,
         "tags": [tag.name for tag in item.tags.all()],
+        "recurrence": item.recurrence,
         "list": {
             "id": item.list_id,
             "title": item.list.title,

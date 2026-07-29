@@ -1,3 +1,6 @@
+from calendar import monthrange
+from datetime import timedelta
+
 from django.db import IntegrityError, transaction
 from django.db.models import Max
 from django.utils import timezone
@@ -74,16 +77,19 @@ def _resolve_tags(owner, tag_names):
 
 
 @transaction.atomic
-def create_item(for_list, text, due_date=None, tags=None):
+def create_item(for_list, text, due_date=None, tags=None, recurrence=None):
     normalized = normalize_task_text(text)
     if _duplicate_exists(for_list, normalized):
         raise TaskConflict(DUPLICATE_ITEM_ERROR)
+    if recurrence and recurrence not in Item.Recurrence.values:
+        raise TaskConflict("Choose a valid recurrence.")
     try:
         item = Item.objects.create(
             list=for_list,
             text=normalized,
             due_date=due_date,
             position=_next_position(for_list),
+            recurrence=recurrence or Item.Recurrence.NONE,
         )
     except IntegrityError as error:
         raise TaskConflict(DUPLICATE_ITEM_ERROR) from error
@@ -150,15 +156,64 @@ def set_due_date(item, due_date):
 
 
 @transaction.atomic
-def complete_item(item):
+def set_recurrence(item, recurrence):
     item = Item.objects.select_for_update().get(pk=item.pk)
+    if item.status == Item.Status.ARCHIVED:
+        raise InvalidTaskTransition("Restore this task before editing it")
+    if recurrence not in Item.Recurrence.values:
+        raise TaskConflict("Choose a valid recurrence.")
+    item.recurrence = recurrence
+    item.save()
+    return item
+
+
+def _advance_due_date(due_date, recurrence):
+    base = due_date or timezone.localdate()
+    if recurrence == Item.Recurrence.DAILY:
+        return base + timedelta(days=1)
+    if recurrence == Item.Recurrence.WEEKLY:
+        return base + timedelta(days=7)
+    if recurrence == Item.Recurrence.MONTHLY:
+        month = base.month % 12 + 1
+        year = base.year + (base.month // 12)
+        day = min(base.day, monthrange(year, month)[1])
+        return base.replace(year=year, month=month, day=day)
+    return None
+
+
+def _spawn_next_occurrence(completed_item):
+    next_item = Item.objects.create(
+        list=completed_item.list,
+        text=completed_item.text,
+        due_date=_advance_due_date(completed_item.due_date, completed_item.recurrence),
+        recurrence=completed_item.recurrence,
+        position=_next_position(completed_item.list),
+    )
+    next_item.tags.set(completed_item.tags.all())
+    return next_item
+
+
+@transaction.atomic
+def complete_item(item):
+    item = Item.objects.select_for_update().select_related("list").get(pk=item.pk)
     if item.status == Item.Status.ARCHIVED:
         raise InvalidTaskTransition("Archived tasks must be restored first")
     if item.status != Item.Status.COMPLETED:
+        now = timezone.now()
         item.status = Item.Status.COMPLETED
-        item.completed_at = timezone.now()
+        item.completed_at = now
         item.archived_at = None
+        is_recurring = item.recurrence != Item.Recurrence.NONE
+        if is_recurring:
+            # Recurring tasks skip the "completed" resting state: archive
+            # immediately (freeing up its text for the next occurrence,
+            # which would otherwise collide with the unique-active-text
+            # constraint) and spawn the next one right away.
+            item.status = Item.Status.ARCHIVED
+            item.archived_at = now
         item.save()
+        if is_recurring:
+            item._spawned = _spawn_next_occurrence(item)
     return item
 
 

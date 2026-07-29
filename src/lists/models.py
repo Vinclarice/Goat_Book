@@ -9,6 +9,12 @@ class Item(models.Model):
         COMPLETED = "completed", "Completed"
         ARCHIVED = "archived", "Archived"
 
+    class Recurrence(models.TextChoices):
+        NONE = "none", "Doesn't repeat"
+        DAILY = "daily", "Daily"
+        WEEKLY = "weekly", "Weekly"
+        MONTHLY = "monthly", "Monthly"
+
     text = models.TextField(default="")
     list = models.ForeignKey('List', default=None, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -23,6 +29,11 @@ class Item(models.Model):
     due_date = models.DateField(blank=True, null=True)
     position = models.PositiveIntegerField(default=0)
     tags = models.ManyToManyField('Tag', blank=True, related_name='items')
+    recurrence = models.CharField(
+        max_length=10,
+        choices=Recurrence.choices,
+        default=Recurrence.NONE,
+    )
 
     class Meta:
         ordering = ("position", "id")

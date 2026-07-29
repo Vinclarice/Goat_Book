@@ -92,6 +92,21 @@
   padding: 0.15rem 0.4rem;
 }
 
+.recurrenceInline {
+  display: inline-block;
+}
+
+.recurrenceInline select {
+  width: auto;
+  font-size: 0.8rem;
+  padding: 0.15rem 0.4rem;
+}
+
+.recurrenceBadge {
+  font-size: 0.72rem;
+  color: var(--sl-accent);
+}
+
 .overdue {
   border-color: #ffb8b8;
 }

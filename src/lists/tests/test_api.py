@@ -96,6 +96,31 @@ class TaskApiTest(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("due_date", response.json()["errors"])
 
+    def test_create_and_update_tags(self):
+        create_response = self.request(
+            "post",
+            f"/api/lists/{self.list_.id}/items/",
+            {"text": "Buy milk", "tags": ["groceries", "groceries", " home "]},
+        )
+        created = create_response.json()["data"]
+        self.assertEqual(sorted(created["tags"]), ["groceries", "home"])
+
+        update_response = self.request(
+            "patch",
+            created["update_url"],
+            {"tags": ["errands"]},
+        )
+        self.assertEqual(update_response.json()["data"]["tags"], ["errands"])
+
+    def test_rejects_non_string_tags(self):
+        response = self.request(
+            "patch",
+            f"/api/items/{self.item.id}/",
+            {"tags": [1, 2]},
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("tags", response.json()["errors"])
+
     def test_reorder_items(self):
         second = Item.objects.create(list=self.list_, text="Second", position=1)
 

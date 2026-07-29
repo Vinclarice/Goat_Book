@@ -5,6 +5,7 @@ import {
   reorderTasks,
   updateTaskDueDate,
   updateTaskStatus,
+  updateTaskTags,
   updateTaskText,
 } from "./api";
 import { formatDate } from "./format";
@@ -31,6 +32,30 @@ function formatDueDate(value: string): string {
   }).format(new Date(`${value}T00:00:00`));
 }
 
+const TAG_COLORS = [
+  "#f4a3a3", "#f4c98a", "#f1e394", "#a8dba8",
+  "#8fc7d6", "#9ab6e0", "#c9a8dc", "#e5a8c4",
+];
+
+function tagColor(name: string): string {
+  let hash = 0;
+  for (let index = 0; index < name.length; index += 1) {
+    hash = (hash * 31 + name.charCodeAt(index)) >>> 0;
+  }
+  return TAG_COLORS[hash % TAG_COLORS.length];
+}
+
+function parseTagInput(value: string): string[] {
+  return Array.from(
+    new Set(
+      value
+        .split(",")
+        .map((tag) => tag.trim())
+        .filter((tag) => tag.length > 0),
+    ),
+  );
+}
+
 type Filter = "all" | "active" | "completed";
 
 interface Props {
@@ -43,6 +68,9 @@ export function TaskWorkspace({ initialData }: Props) {
   const [query, setQuery] = useState("");
   const [newText, setNewText] = useState("");
   const [newDueDate, setNewDueDate] = useState("");
+  const [newTags, setNewTags] = useState("");
+  const [tagFilter, setTagFilter] = useState<string | null>(null);
+  const [tagDrafts, setTagDrafts] = useState<Record<number, string>>({});
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingText, setEditingText] = useState("");
   const [busyId, setBusyId] = useState<number | "new" | null>(null);
@@ -50,7 +78,7 @@ export function TaskWorkspace({ initialData }: Props) {
   const [error, setError] = useState("");
   const [draggedId, setDraggedId] = useState<number | null>(null);
 
-  const canReorder = filter === "all" && query.trim() === "";
+  const canReorder = filter === "all" && query.trim() === "" && tagFilter === null;
 
   const counts = useMemo(
     () => ({
@@ -67,9 +95,16 @@ export function TaskWorkspace({ initialData }: Props) {
       const matchesFilter = filter === "all" || item.status === filter;
       const matchesQuery =
         !normalizedQuery || item.text.toLocaleLowerCase().includes(normalizedQuery);
-      return matchesFilter && matchesQuery;
+      const matchesTag = !tagFilter || item.tags.includes(tagFilter);
+      return matchesFilter && matchesQuery && matchesTag;
     });
-  }, [filter, items, query]);
+  }, [filter, items, query, tagFilter]);
+
+  const allTags = useMemo(() => {
+    const names = new Set<string>();
+    items.forEach((item) => item.tags.forEach((tag) => names.add(tag)));
+    return Array.from(names).sort();
+  }, [items]);
 
   function replaceItem(updated: Task) {
     setItems((current) =>
@@ -87,10 +122,12 @@ export function TaskWorkspace({ initialData }: Props) {
         initialData.list.create_item_url,
         newText,
         newDueDate || null,
+        parseTagInput(newTags),
       );
       setItems((current) => [...current, created]);
       setNewText("");
       setNewDueDate("");
+      setNewTags("");
       setNotice("Task added.");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to add task.");
@@ -129,6 +166,41 @@ export function TaskWorkspace({ initialData }: Props) {
       setNotice(dueDate ? "Due date updated." : "Due date cleared.");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to update due date.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function commitTags(task: Task, rawValue: string) {
+    const tags = parseTagInput(rawValue);
+    const unchanged =
+      tags.length === task.tags.length &&
+      tags.every((tag, index) => tag === task.tags[index]);
+    if (unchanged) {
+      setTagDrafts((current) => {
+        const next = { ...current };
+        delete next[task.id];
+        return next;
+      });
+      return;
+    }
+    setError("");
+    setNotice("");
+    setBusyId(task.id);
+    try {
+      const updated = await updateTaskTags(task, tags);
+      replaceItem(updated);
+      setTagDrafts((current) => {
+        const next = { ...current };
+        delete next[task.id];
+        return next;
+      });
+      setNotice("Tags updated.");
+      if (tagFilter && !updated.tags.includes(tagFilter)) {
+        setTagFilter(null);
+      }
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to update tags.");
     } finally {
       setBusyId(null);
     }
@@ -213,17 +285,31 @@ export function TaskWorkspace({ initialData }: Props) {
             {busyId === "new" ? "Adding…" : "Add item"}
           </button>
         </div>
-        <label className={styles.dueDateField} htmlFor="react-new-task-due">
-          Due date <span className="visually-hidden">(optional)</span>
-          <input
-            id="react-new-task-due"
-            type="date"
-            className="form-control"
-            value={newDueDate}
-            onChange={(event) => setNewDueDate(event.target.value)}
-            disabled={busyId === "new"}
-          />
-        </label>
+        <div className={styles.addExtras}>
+          <label className={styles.dueDateField} htmlFor="react-new-task-due">
+            Due date <span className="visually-hidden">(optional)</span>
+            <input
+              id="react-new-task-due"
+              type="date"
+              className="form-control"
+              value={newDueDate}
+              onChange={(event) => setNewDueDate(event.target.value)}
+              disabled={busyId === "new"}
+            />
+          </label>
+          <label className={styles.dueDateField} htmlFor="react-new-task-tags">
+            Tags <span className="visually-hidden">(optional, comma separated)</span>
+            <input
+              id="react-new-task-tags"
+              type="text"
+              className="form-control"
+              value={newTags}
+              onChange={(event) => setNewTags(event.target.value)}
+              placeholder="groceries, chores"
+              disabled={busyId === "new"}
+            />
+          </label>
+        </div>
       </form>
 
       <div className={styles.toolbar}>
@@ -252,6 +338,26 @@ export function TaskWorkspace({ initialData }: Props) {
           />
         </label>
       </div>
+
+      {allTags.length > 0 && (
+        <div className={styles.tagFilters} aria-label="Filter by tag">
+          {allTags.map((tag) => (
+            <button
+              key={tag}
+              type="button"
+              className={styles.tagChip}
+              style={{
+                backgroundColor: tagFilter === tag ? tagColor(tag) : "transparent",
+                borderColor: tagColor(tag),
+              }}
+              aria-pressed={tagFilter === tag}
+              onClick={() => setTagFilter((current) => (current === tag ? null : tag))}
+            >
+              {tag}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className={styles.feedback} aria-live="polite">
         {error && (
@@ -354,6 +460,34 @@ export function TaskWorkspace({ initialData }: Props) {
                       disabled={busyId === item.id}
                     />
                   </label>
+                  <div className={styles.tagRow}>
+                    {item.tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className={styles.tagPill}
+                        style={{ backgroundColor: tagColor(tag) }}
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                    <label className={styles.tagEdit}>
+                      <span className="visually-hidden">Edit tags for {item.text}</span>
+                      <input
+                        type="text"
+                        className="form-control form-control-sm"
+                        placeholder="Add tags…"
+                        value={tagDrafts[item.id] ?? item.tags.join(", ")}
+                        onChange={(event) =>
+                          setTagDrafts((current) => ({
+                            ...current,
+                            [item.id]: event.target.value,
+                          }))
+                        }
+                        onBlur={(event) => commitTags(item, event.target.value)}
+                        disabled={busyId === item.id}
+                      />
+                    </label>
+                  </div>
                 </>
               )}
             </div>

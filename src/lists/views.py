@@ -24,7 +24,7 @@ def _dashboard_context(request, form=None):
         Item.objects.filter(
             list__owner=request.user,
             status=Item.Status.ARCHIVED,
-        ).select_related("list").order_by(
+        ).select_related("list").prefetch_related("tags").order_by(
             "-archived_at",
             "-id",
         )
@@ -48,7 +48,7 @@ def _list_context(our_list, form=None, title_form=None):
     items = list(
         our_list.item_set.exclude(
             status=Item.Status.ARCHIVED,
-        ).select_related("list")
+        ).select_related("list").prefetch_related("tags")
     )
     return {
         "list": our_list,

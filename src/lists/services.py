@@ -2,7 +2,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import Max
 from django.utils import timezone
 
-from lists.models import Item, List
+from lists.models import Item, List, Tag
 
 
 EMPTY_ITEM_ERROR = "You can't have an empty list item"
@@ -54,13 +54,32 @@ def _next_position(for_list):
     return 0 if highest is None else highest + 1
 
 
+def _clean_tag_names(tag_names):
+    cleaned = []
+    seen = set()
+    for raw in tag_names or []:
+        name = (raw or "").strip()
+        if not name or name in seen:
+            continue
+        seen.add(name)
+        cleaned.append(name)
+    return cleaned
+
+
+def _resolve_tags(owner, tag_names):
+    return [
+        Tag.objects.get_or_create(owner=owner, name=name)[0]
+        for name in _clean_tag_names(tag_names)
+    ]
+
+
 @transaction.atomic
-def create_item(for_list, text, due_date=None):
+def create_item(for_list, text, due_date=None, tags=None):
     normalized = normalize_task_text(text)
     if _duplicate_exists(for_list, normalized):
         raise TaskConflict(DUPLICATE_ITEM_ERROR)
     try:
-        return Item.objects.create(
+        item = Item.objects.create(
             list=for_list,
             text=normalized,
             due_date=due_date,
@@ -68,6 +87,9 @@ def create_item(for_list, text, due_date=None):
         )
     except IntegrityError as error:
         raise TaskConflict(DUPLICATE_ITEM_ERROR) from error
+    if tags:
+        item.tags.set(_resolve_tags(for_list.owner, tags))
+    return item
 
 
 @transaction.atomic
@@ -106,6 +128,15 @@ def reorder_items(for_list, ordered_ids):
             item.position = position
             item.save(update_fields=["position"])
     return [by_id[item_id] for item_id in ordered_ids]
+
+
+@transaction.atomic
+def set_item_tags(item, tag_names):
+    item = Item.objects.select_for_update().select_related("list").get(pk=item.pk)
+    if item.status == Item.Status.ARCHIVED:
+        raise InvalidTaskTransition("Restore this task before editing it")
+    item.tags.set(_resolve_tags(item.list.owner, tag_names))
+    return item
 
 
 @transaction.atomic

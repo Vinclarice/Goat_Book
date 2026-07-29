@@ -22,6 +22,7 @@ class Item(models.Model):
     archived_at = models.DateTimeField(blank=True, null=True)
     due_date = models.DateField(blank=True, null=True)
     position = models.PositiveIntegerField(default=0)
+    tags = models.ManyToManyField('Tag', blank=True, related_name='items')
 
     class Meta:
         ordering = ("position", "id")
@@ -75,3 +76,24 @@ class List(models.Model):
 
     def get_absolute_url(self):
         return reverse("view_list", args=[self.id])
+
+
+class Tag(models.Model):
+    owner = models.ForeignKey(
+        "accounts.User",
+        related_name="tags",
+        on_delete=models.CASCADE,
+    )
+    name = models.CharField(max_length=40)
+
+    class Meta:
+        ordering = ("name",)
+        constraints = [
+            models.UniqueConstraint(
+                fields=("owner", "name"),
+                name="unique_owner_tag_name",
+            ),
+        ]
+
+    def __str__(self):
+        return self.name

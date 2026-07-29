@@ -66,8 +66,13 @@ export function createTask(
   url: string,
   text: string,
   dueDate?: string | null,
+  tags?: string[],
 ): Promise<Task> {
-  return request<Task>(url, "POST", { text, due_date: dueDate ?? null });
+  return request<Task>(url, "POST", {
+    text,
+    due_date: dueDate ?? null,
+    tags: tags ?? [],
+  });
 }
 
 export function updateTaskText(task: Task, text: string): Promise<Task> {
@@ -79,6 +84,10 @@ export function updateTaskDueDate(
   dueDate: string | null,
 ): Promise<Task> {
   return request<Task>(task.update_url, "PATCH", { due_date: dueDate });
+}
+
+export function updateTaskTags(task: Task, tags: string[]): Promise<Task> {
+  return request<Task>(task.update_url, "PATCH", { tags });
 }
 
 export function updateTaskStatus(

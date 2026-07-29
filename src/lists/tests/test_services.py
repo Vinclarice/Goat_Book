@@ -5,7 +5,7 @@ from django.utils import timezone
 
 from accounts.models import User
 from lists import services
-from lists.models import Item, List
+from lists.models import Item, List, Tag
 
 
 class TaskServiceTest(TestCase):
@@ -115,3 +115,32 @@ class TaskServiceTest(TestCase):
         # reachable through reorder either.
         services.reorder_items(self.list_, [second.id])
         archived.refresh_from_db()
+
+    def test_create_item_with_tags_reuses_owner_tags(self):
+        first = services.create_item(self.list_, "First", tags=["chores", "home"])
+        second = services.create_item(self.list_, "Second", tags=["chores"])
+
+        self.assertEqual(
+            {tag.name for tag in first.tags.all()}, {"chores", "home"},
+        )
+        chores_tag_id = Tag.objects.get(name="chores", owner=self.user).id
+        self.assertEqual(
+            {tag.id for tag in second.tags.all()}, {chores_tag_id},
+        )
+        self.assertEqual(Tag.objects.filter(owner=self.user, name="chores").count(), 1)
+
+    def test_set_item_tags_dedupes_and_strips(self):
+        updated = services.set_item_tags(
+            self.item, [" chores ", "chores", "", "home"],
+        )
+        self.assertEqual(
+            sorted(tag.name for tag in updated.tags.all()), ["chores", "home"],
+        )
+
+        cleared = services.set_item_tags(self.item, [])
+        self.assertEqual(list(cleared.tags.all()), [])
+
+    def test_set_item_tags_rejects_archived_tasks(self):
+        archived = services.archive_item(self.item)
+        with self.assertRaises(services.InvalidTaskTransition):
+            services.set_item_tags(archived, ["chores"])

@@ -79,8 +79,18 @@ def create_item(request, list_id):
             {"errors": {"due_date": ["Use a valid date (YYYY-MM-DD)."]}},
             status=400,
         )
+    tags = payload.get("tags")
+    if tags is not None and (
+        not isinstance(tags, list) or not all(isinstance(t, str) for t in tags)
+    ):
+        return JsonResponse(
+            {"errors": {"tags": ["Send a list of tag names."]}},
+            status=400,
+        )
     try:
-        item = services.create_item(our_list, payload.get("text"), due_date=due_date)
+        item = services.create_item(
+            our_list, payload.get("text"), due_date=due_date, tags=tags,
+        )
     except services.TaskConflict as error:
         return JsonResponse(
             {"errors": {"text": [str(error)]}},
@@ -150,12 +160,15 @@ def item_detail(request, item_id):
     payload, error_response = _read_json(request)
     if error_response:
         return error_response
-    changed_fields = {"text", "status", "due_date"}.intersection(payload)
+    changed_fields = {"text", "status", "due_date", "tags"}.intersection(payload)
     if len(changed_fields) != 1:
         return JsonResponse(
             {
                 "errors": {
-                    "body": ["Change exactly one of text, status, or due_date per request."]
+                    "body": [
+                        "Change exactly one of text, status, due_date, or tags "
+                        "per request."
+                    ]
                 }
             },
             status=400,
@@ -173,6 +186,16 @@ def item_detail(request, item_id):
                     status=400,
                 )
             item = services.set_due_date(item, due_date)
+        elif "tags" in changed_fields:
+            tags = payload["tags"]
+            if not isinstance(tags, list) or not all(
+                isinstance(t, str) for t in tags
+            ):
+                return JsonResponse(
+                    {"errors": {"tags": ["Send a list of tag names."]}},
+                    status=400,
+                )
+            item = services.set_item_tags(item, tags)
         else:
             requested_status = payload["status"]
             if requested_status == Item.Status.ACTIVE:

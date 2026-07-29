@@ -253,4 +253,67 @@ describe("TaskWorkspace", () => {
       ),
     );
   });
+
+  it("filters tasks by tag", async () => {
+    const user = userEvent.setup();
+    render(
+      <TaskWorkspace
+        initialData={{
+          list: {
+            id: 1,
+            title: "Programming",
+            create_item_url: "/api/lists/1/items/",
+            reorder_url: "/api/lists/1/items/reorder/",
+          },
+          items: [
+            task({ id: 1, text: "Buy milk", tags: ["groceries"] }),
+            task({ id: 2, text: "Write tests", tags: ["work"] }),
+          ],
+        }}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "groceries" }));
+
+    expect(screen.getByText("Buy milk")).toBeInTheDocument();
+    expect(screen.queryByText("Write tests")).not.toBeInTheDocument();
+  });
+
+  it("sends tags on task creation", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(globalThis, "fetch").mockReturnValue(
+      jsonResponse({ data: task({ tags: ["groceries", "home"] }) }),
+    );
+    render(
+      <TaskWorkspace
+        initialData={{
+          list: {
+            id: 1,
+            title: "Programming",
+            create_item_url: "/api/lists/1/items/",
+            reorder_url: "/api/lists/1/items/reorder/",
+          },
+          items: [],
+        }}
+      />,
+    );
+
+    await user.type(screen.getByLabelText(/Add another item/), "Buy milk");
+    await user.type(screen.getByLabelText(/Tags/), "groceries, home");
+    await user.click(screen.getByRole("button", { name: "Add item" }));
+
+    await waitFor(() =>
+      expect(fetch).toHaveBeenCalledWith(
+        "/api/lists/1/items/",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({
+            text: "Buy milk",
+            due_date: null,
+            tags: ["groceries", "home"],
+          }),
+        }),
+      ),
+    );
+  });
 });

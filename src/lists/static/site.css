@@ -443,7 +443,7 @@ body {
 
 .list-item {
   display: grid;
-  grid-template-columns: 2.5rem minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 1rem;
   align-items: center;
   padding: 1.15rem 0;

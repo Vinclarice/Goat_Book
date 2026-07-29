@@ -111,10 +111,15 @@
   border-color: #ffb8b8;
 }
 
+.itemLead {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .dragHandle {
   cursor: grab;
   color: var(--sl-muted);
-  padding-right: 0.5rem;
   user-select: none;
 }
 

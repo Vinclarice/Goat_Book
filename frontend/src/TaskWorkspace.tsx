@@ -439,17 +439,19 @@ export function TaskWorkspace({ initialData }: Props) {
             }}
             onDragEnd={() => setDraggedId(null)}
           >
-            {canReorder && (
-              <span
-                className={styles.dragHandle}
-                aria-hidden="true"
-                title="Drag to reorder"
-              >
-                ⠿
+            <span className={styles.itemLead}>
+              {canReorder && (
+                <span
+                  className={styles.dragHandle}
+                  aria-hidden="true"
+                  title="Drag to reorder"
+                >
+                  ⠿
+                </span>
+              )}
+              <span className="item-number">
+                {String(index + 1).padStart(2, "0")}
               </span>
-            )}
-            <span className="item-number">
-              {String(index + 1).padStart(2, "0")}
             </span>
             <div className="task-copy">
               {editingId === item.id ? (

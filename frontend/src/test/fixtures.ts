@@ -10,6 +10,7 @@ export function task(overrides: Partial<Task> = {}): Task {
     completed_at: null,
     archived_at: null,
     due_date: null,
+    position: 0,
     list: {
       id: 1,
       title: "Programming",

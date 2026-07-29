@@ -15,6 +15,7 @@ export interface Task {
   completed_at: string | null;
   archived_at: string | null;
   due_date: string | null;
+  position: number;
   list: TaskListSummary;
   update_url: string;
   delete_url: string;
@@ -25,6 +26,7 @@ export interface TaskWorkspaceData {
     id: number;
     title: string;
     create_item_url: string;
+    reorder_url: string;
   };
   items: Task[];
 }

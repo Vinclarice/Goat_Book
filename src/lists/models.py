@@ -21,9 +21,10 @@ class Item(models.Model):
     completed_at = models.DateTimeField(blank=True, null=True)
     archived_at = models.DateTimeField(blank=True, null=True)
     due_date = models.DateField(blank=True, null=True)
+    position = models.PositiveIntegerField(default=0)
 
     class Meta:
-        ordering = ("id",)
+        ordering = ("position", "id")
         constraints = [
             models.UniqueConstraint(
                 fields=("list", "text"),

@@ -91,6 +91,43 @@ def create_item(request, list_id):
 
 
 @api_login_required
+@require_http_methods(["POST"])
+def reorder_items(request, list_id):
+    our_list = List.objects.filter(id=list_id, owner=request.user).first()
+    if our_list is None:
+        return JsonResponse(
+            {"errors": {"list": ["List not found."]}},
+            status=404,
+        )
+
+    payload, error_response = _read_json(request)
+    if error_response:
+        return error_response
+    ordered_ids = payload.get("ordered_ids")
+    if not isinstance(ordered_ids, list) or not all(
+        isinstance(value, int) for value in ordered_ids
+    ):
+        return JsonResponse(
+            {"errors": {"ordered_ids": ["Send a list of item ids."]}},
+            status=400,
+        )
+
+    try:
+        services.reorder_items(our_list, ordered_ids)
+    except services.TaskConflict as error:
+        return JsonResponse(
+            {"errors": {"ordered_ids": [str(error)]}},
+            status=409,
+        )
+
+    items = Item.objects.filter(id__in=ordered_ids).select_related("list")
+    by_id = {item.id: item for item in items}
+    return JsonResponse(
+        {"data": [serialize_item(by_id[item_id]) for item_id in ordered_ids]},
+    )
+
+
+@api_login_required
 @require_http_methods(["PATCH", "DELETE"])
 def item_detail(request, item_id):
     item = _owned_item(request, item_id)

@@ -1,4 +1,5 @@
 from django.db import IntegrityError, transaction
+from django.db.models import Max
 from django.utils import timezone
 
 from lists.models import Item, List
@@ -46,6 +47,13 @@ def create_list_with_item(owner, title, text):
     return new_list
 
 
+def _next_position(for_list):
+    highest = for_list.item_set.exclude(
+        status=Item.Status.ARCHIVED,
+    ).aggregate(Max("position"))["position__max"]
+    return 0 if highest is None else highest + 1
+
+
 @transaction.atomic
 def create_item(for_list, text, due_date=None):
     normalized = normalize_task_text(text)
@@ -56,6 +64,7 @@ def create_item(for_list, text, due_date=None):
             list=for_list,
             text=normalized,
             due_date=due_date,
+            position=_next_position(for_list),
         )
     except IntegrityError as error:
         raise TaskConflict(DUPLICATE_ITEM_ERROR) from error
@@ -77,6 +86,26 @@ def edit_item(item, text):
     except IntegrityError as error:
         raise TaskConflict(DUPLICATE_ITEM_ERROR) from error
     return item
+
+
+@transaction.atomic
+def reorder_items(for_list, ordered_ids):
+    items = list(
+        Item.objects.select_for_update()
+        .filter(list=for_list)
+        .exclude(status=Item.Status.ARCHIVED)
+    )
+    by_id = {item.id: item for item in items}
+    if set(ordered_ids) != set(by_id):
+        raise TaskConflict(
+            "This list changed since you last loaded it. Refresh and try again."
+        )
+    for position, item_id in enumerate(ordered_ids):
+        item = by_id[item_id]
+        if item.position != position:
+            item.position = position
+            item.save(update_fields=["position"])
+    return [by_id[item_id] for item_id in ordered_ids]
 
 
 @transaction.atomic

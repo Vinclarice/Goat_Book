@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { TaskWorkspace } from "./TaskWorkspace";
@@ -23,7 +23,12 @@ describe("TaskWorkspace", () => {
     render(
       <TaskWorkspace
         initialData={{
-          list: { id: 1, title: "Programming", create_item_url: "/api/lists/1/items/" },
+          list: {
+            id: 1,
+            title: "Programming",
+            create_item_url: "/api/lists/1/items/",
+            reorder_url: "/api/lists/1/items/reorder/",
+          },
           items: [
             task(),
             task({ id: 2, text: "Finished", status: "completed" }),
@@ -44,7 +49,12 @@ describe("TaskWorkspace", () => {
     render(
       <TaskWorkspace
         initialData={{
-          list: { id: 1, title: "Programming", create_item_url: "/api/lists/1/items/" },
+          list: {
+            id: 1,
+            title: "Programming",
+            create_item_url: "/api/lists/1/items/",
+            reorder_url: "/api/lists/1/items/reorder/",
+          },
           items: [task(), task({ id: 2, text: "Review migrations" })],
         }}
       />,
@@ -69,7 +79,12 @@ describe("TaskWorkspace", () => {
     render(
       <TaskWorkspace
         initialData={{
-          list: { id: 1, title: "Programming", create_item_url: "/api/lists/1/items/" },
+          list: {
+            id: 1,
+            title: "Programming",
+            create_item_url: "/api/lists/1/items/",
+            reorder_url: "/api/lists/1/items/reorder/",
+          },
           items: [task()],
         }}
       />,
@@ -97,7 +112,12 @@ describe("TaskWorkspace", () => {
     render(
       <TaskWorkspace
         initialData={{
-          list: { id: 1, title: "Programming", create_item_url: "/api/lists/1/items/" },
+          list: {
+            id: 1,
+            title: "Programming",
+            create_item_url: "/api/lists/1/items/",
+            reorder_url: "/api/lists/1/items/reorder/",
+          },
           items: [task()],
         }}
       />,
@@ -128,7 +148,12 @@ describe("TaskWorkspace", () => {
     render(
       <TaskWorkspace
         initialData={{
-          list: { id: 1, title: "Programming", create_item_url: "/api/lists/1/items/" },
+          list: {
+            id: 1,
+            title: "Programming",
+            create_item_url: "/api/lists/1/items/",
+            reorder_url: "/api/lists/1/items/reorder/",
+          },
           items: [task()],
         }}
       />,
@@ -148,7 +173,12 @@ describe("TaskWorkspace", () => {
     render(
       <TaskWorkspace
         initialData={{
-          list: { id: 1, title: "Programming", create_item_url: "/api/lists/1/items/" },
+          list: {
+            id: 1,
+            title: "Programming",
+            create_item_url: "/api/lists/1/items/",
+            reorder_url: "/api/lists/1/items/reorder/",
+          },
           items: [task({ due_date: "2000-01-01" })],
         }}
       />,
@@ -165,7 +195,12 @@ describe("TaskWorkspace", () => {
     render(
       <TaskWorkspace
         initialData={{
-          list: { id: 1, title: "Programming", create_item_url: "/api/lists/1/items/" },
+          list: {
+            id: 1,
+            title: "Programming",
+            create_item_url: "/api/lists/1/items/",
+            reorder_url: "/api/lists/1/items/reorder/",
+          },
           items: [task()],
         }}
       />,
@@ -180,6 +215,40 @@ describe("TaskWorkspace", () => {
         expect.objectContaining({
           method: "PATCH",
           body: JSON.stringify({ due_date: "2026-08-01" }),
+        }),
+      ),
+    );
+  });
+
+  it("reorders tasks on drag and drop and posts the new order", async () => {
+    const first = task({ id: 1, text: "First" });
+    const second = task({ id: 2, text: "Second" });
+    vi.spyOn(globalThis, "fetch").mockReturnValue(
+      jsonResponse({ data: [second, first] }),
+    );
+    render(
+      <TaskWorkspace
+        initialData={{
+          list: {
+            id: 1,
+            title: "Programming",
+            create_item_url: "/api/lists/1/items/",
+            reorder_url: "/api/lists/1/items/reorder/",
+          },
+          items: [first, second],
+        }}
+      />,
+    );
+
+    fireEvent.dragStart(screen.getByText("First").closest("article")!);
+    fireEvent.drop(screen.getByText("Second").closest("article")!);
+
+    await waitFor(() =>
+      expect(fetch).toHaveBeenCalledWith(
+        "/api/lists/1/items/reorder/",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({ ordered_ids: [2, 1] }),
         }),
       ),
     );

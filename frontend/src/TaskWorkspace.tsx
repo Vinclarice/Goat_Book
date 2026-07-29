@@ -2,6 +2,7 @@ import { FormEvent, useMemo, useState } from "react";
 
 import {
   createTask,
+  reorderTasks,
   updateTaskDueDate,
   updateTaskStatus,
   updateTaskText,
@@ -47,6 +48,9 @@ export function TaskWorkspace({ initialData }: Props) {
   const [busyId, setBusyId] = useState<number | "new" | null>(null);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  const [draggedId, setDraggedId] = useState<number | null>(null);
+
+  const canReorder = filter === "all" && query.trim() === "";
 
   const counts = useMemo(
     () => ({
@@ -128,6 +132,36 @@ export function TaskWorkspace({ initialData }: Props) {
     } finally {
       setBusyId(null);
     }
+  }
+
+  async function handleReorder(nextItems: Task[]) {
+    const previous = items;
+    setItems(nextItems);
+    setError("");
+    try {
+      await reorderTasks(
+        initialData.list.reorder_url,
+        nextItems.map((item) => item.id),
+      );
+    } catch (caught) {
+      setItems(previous);
+      setError(caught instanceof Error ? caught.message : "Unable to reorder tasks.");
+    }
+  }
+
+  function handleDrop(targetId: number) {
+    if (draggedId === null || draggedId === targetId) {
+      setDraggedId(null);
+      return;
+    }
+    const currentIndex = items.findIndex((item) => item.id === draggedId);
+    const targetIndex = items.findIndex((item) => item.id === targetId);
+    setDraggedId(null);
+    if (currentIndex === -1 || targetIndex === -1) return;
+    const next = [...items];
+    const [moved] = next.splice(currentIndex, 1);
+    next.splice(targetIndex, 0, moved);
+    handleReorder(next);
   }
 
   function startEditing(task: Task) {
@@ -234,8 +268,29 @@ export function TaskWorkspace({ initialData }: Props) {
             key={item.id}
             className={`list-item ${
               item.status === "completed" ? "is-completed" : ""
-            } ${isOverdue(item) ? styles.overdue : ""}`}
+            } ${isOverdue(item) ? styles.overdue : ""} ${
+              draggedId === item.id ? styles.dragging : ""
+            }`}
+            draggable={canReorder}
+            onDragStart={() => setDraggedId(item.id)}
+            onDragOver={(event) => {
+              if (canReorder) event.preventDefault();
+            }}
+            onDrop={(event) => {
+              event.preventDefault();
+              handleDrop(item.id);
+            }}
+            onDragEnd={() => setDraggedId(null)}
           >
+            {canReorder && (
+              <span
+                className={styles.dragHandle}
+                aria-hidden="true"
+                title="Drag to reorder"
+              >
+                ⠿
+              </span>
+            )}
             <span className="item-number">
               {String(index + 1).padStart(2, "0")}
             </span>

@@ -92,3 +92,10 @@ export async function deleteTask(task: Task): Promise<number> {
   const result = await request<{ deleted: number }>(task.delete_url, "DELETE");
   return result.deleted;
 }
+
+export function reorderTasks(
+  url: string,
+  orderedIds: number[],
+): Promise<Task[]> {
+  return request<Task[]>(url, "POST", { ordered_ids: orderedIds });
+}

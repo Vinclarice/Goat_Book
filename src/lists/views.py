@@ -74,6 +74,10 @@ def _list_context(our_list, form=None, title_form=None):
                     "api_create_item",
                     args=(our_list.id,),
                 ),
+                "reorder_url": reverse(
+                    "api_reorder_items",
+                    args=(our_list.id,),
+                ),
             },
             "items": [serialize_item(item) for item in items],
         },

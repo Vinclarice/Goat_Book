@@ -96,6 +96,36 @@ class TaskApiTest(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("due_date", response.json()["errors"])
 
+    def test_reorder_items(self):
+        second = Item.objects.create(list=self.list_, text="Second", position=1)
+
+        response = self.request(
+            "post",
+            f"/api/lists/{self.list_.id}/items/reorder/",
+            {"ordered_ids": [second.id, self.item.id]},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        ordered_ids = [row["id"] for row in response.json()["data"]]
+        self.assertEqual(ordered_ids, [second.id, self.item.id])
+        self.assertEqual(list(self.list_.item_set.all()), [second, self.item])
+
+    def test_reorder_rejects_mismatched_ids(self):
+        response = self.request(
+            "post",
+            f"/api/lists/{self.list_.id}/items/reorder/",
+            {"ordered_ids": [self.item.id, 999999]},
+        )
+        self.assertEqual(response.status_code, 409)
+
+    def test_reorder_requires_list_of_ints(self):
+        response = self.request(
+            "post",
+            f"/api/lists/{self.list_.id}/items/reorder/",
+            {"ordered_ids": "not-a-list"},
+        )
+        self.assertEqual(response.status_code, 400)
+
     def test_restore_conflict_returns_409(self):
         self.item.status = Item.Status.ARCHIVED
         self.item.completed_at = timezone.now()

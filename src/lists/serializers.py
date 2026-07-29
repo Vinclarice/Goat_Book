@@ -13,6 +13,7 @@ def serialize_item(item):
         ),
         "archived_at": item.archived_at.isoformat() if item.archived_at else None,
         "due_date": item.due_date.isoformat() if item.due_date else None,
+        "position": item.position,
         "list": {
             "id": item.list_id,
             "title": item.list.title,

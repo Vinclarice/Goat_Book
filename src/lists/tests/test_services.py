@@ -85,3 +85,33 @@ class TaskServiceTest(TestCase):
         archived = services.archive_item(self.item)
         with self.assertRaises(services.InvalidTaskTransition):
             services.set_due_date(archived, datetime.date(2026, 8, 1))
+
+    def test_new_items_are_positioned_after_existing_ones(self):
+        second = services.create_item(self.list_, "Second task")
+        third = services.create_item(self.list_, "Third task")
+        self.assertLess(self.item.position, second.position)
+        self.assertLess(second.position, third.position)
+
+    def test_reorder_items(self):
+        second = services.create_item(self.list_, "Second task")
+        third = services.create_item(self.list_, "Third task")
+
+        services.reorder_items(
+            self.list_, [third.id, self.item.id, second.id],
+        )
+
+        reordered = list(self.list_.item_set.all())
+        self.assertEqual([item.id for item in reordered], [third.id, self.item.id, second.id])
+
+    def test_reorder_rejects_mismatched_id_set(self):
+        services.create_item(self.list_, "Second task")
+        with self.assertRaises(services.TaskConflict):
+            services.reorder_items(self.list_, [self.item.id])
+
+    def test_reorder_excludes_archived_items(self):
+        archived = services.archive_item(self.item)
+        second = services.create_item(self.list_, "Second task")
+        # Archived items shouldn't need to be included, and shouldn't be
+        # reachable through reorder either.
+        services.reorder_items(self.list_, [second.id])
+        archived.refresh_from_db()

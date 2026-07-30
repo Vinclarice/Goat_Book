@@ -155,6 +155,40 @@
         ]
       }
     },
+    "/api/v1/tasks/{item_id}": {
+      "get": {
+        "operationId": "lists_api_v1_task_detail",
+        "summary": "Task Detail",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "schema": {
+              "title": "Item Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskDetailOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/archive": {
       "get": {
         "operationId": "lists_api_v1_archive",
@@ -598,28 +632,20 @@
         "title": "ListRenameIn",
         "type": "object"
       },
-      "ArchiveOut": {
+      "TaskDetailOut": {
         "properties": {
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/TaskOut"
-            },
-            "title": "Items",
-            "type": "array"
+          "task": {
+            "$ref": "#/components/schemas/TaskOut"
           },
-          "lists": {
-            "items": {
-              "$ref": "#/components/schemas/TaskListSummaryOut"
-            },
-            "title": "Lists",
-            "type": "array"
+          "list": {
+            "$ref": "#/components/schemas/TaskListSummaryOut"
           }
         },
         "required": [
-          "items",
-          "lists"
+          "task",
+          "list"
         ],
-        "title": "ArchiveOut",
+        "title": "TaskDetailOut",
         "type": "object"
       },
       "TaskListSummaryOut": {
@@ -643,6 +669,30 @@
           "url"
         ],
         "title": "TaskListSummaryOut",
+        "type": "object"
+      },
+      "ArchiveOut": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TaskOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "lists": {
+            "items": {
+              "$ref": "#/components/schemas/TaskListSummaryOut"
+            },
+            "title": "Lists",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items",
+          "lists"
+        ],
+        "title": "ArchiveOut",
         "type": "object"
       },
       "PreferencesOut": {

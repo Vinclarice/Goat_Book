@@ -236,3 +236,60 @@ class ArchiveEndpointTest(TestCase):
         page_payload = self.client.get("/archive/").context["archive_workspace_data"]
 
         self.assertEqual(set(api_payload.keys()), set(page_payload.keys()))
+
+
+class TaskDetailEndpointTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            "alice",
+            "alice@example.com",
+            "a secure password",
+        )
+        self.other_user = User.objects.create_user(
+            "bob",
+            "bob@example.com",
+            "another secure password",
+        )
+        self.list_ = List.objects.create(owner=self.user, title="Programming")
+        self.item = Item.objects.create(list=self.list_, text="Write tests")
+        self.other_item = Item.objects.create(
+            list=self.other_user.lists.create(title="Bob's list"),
+            text="Not mine",
+        )
+        self.archived_item = Item.objects.create(
+            list=self.list_,
+            text="Old task",
+            status=Item.Status.ARCHIVED,
+            completed_at=timezone.now(),
+            archived_at=timezone.now(),
+        )
+
+    def test_rejects_anonymous_requests(self):
+        response = self.client.get(f"/api/v1/tasks/{self.item.id}")
+
+        self.assertEqual(response.status_code, 401)
+
+    def test_returns_the_task_and_its_list(self):
+        self.client.force_login(self.user)
+
+        response = self.client.get(f"/api/v1/tasks/{self.item.id}")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["task"]["text"], "Write tests")
+        self.assertEqual(payload["list"]["title"], "Programming")
+
+    def test_404s_a_task_owned_by_someone_else(self):
+        self.client.force_login(self.user)
+
+        response = self.client.get(f"/api/v1/tasks/{self.other_item.id}")
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_404s_an_archived_task(self):
+        """Archived tasks are managed from the Archive route instead."""
+        self.client.force_login(self.user)
+
+        response = self.client.get(f"/api/v1/tasks/{self.archived_item.id}")
+
+        self.assertEqual(response.status_code, 404)

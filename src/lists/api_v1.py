@@ -23,6 +23,7 @@ from lists.serializers import (
     archive_workspace_data_for,
     list_ref_for,
     list_workspace_data_for,
+    task_detail_data_for,
 )
 
 router = Router()
@@ -111,6 +112,11 @@ class ArchiveOut(Schema):
     lists: list[TaskListSummaryOut]
 
 
+class TaskDetailOut(Schema):
+    task: TaskOut
+    list: TaskListSummaryOut
+
+
 @router.get("/agenda", response=AgendaOut)
 def agenda(request):
     user = request.user
@@ -176,6 +182,19 @@ def delete_list(request, list_id: int):
     our_list = _owned_list(request, list_id)
     services.delete_list(our_list)
     return {"deleted": list_id}
+
+
+@router.get("/tasks/{item_id}", response=TaskDetailOut)
+def task_detail(request, item_id: int):
+    # Matches edit_item's queryset exactly: archived tasks are managed
+    # from the Archive route (restore/delete), not edited here.
+    item = get_object_or_404(
+        Item.objects.select_related("list").prefetch_related("tags"),
+        id=item_id,
+        list__owner=request.user,
+        status__in=(Item.Status.ACTIVE, Item.Status.COMPLETED),
+    )
+    return task_detail_data_for(item)
 
 
 @router.get("/archive", response=ArchiveOut)

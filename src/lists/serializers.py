@@ -49,6 +49,22 @@ def list_workspace_data_for(our_list, items):
     }
 
 
+def task_detail_data_for(item):
+    """Shapes the single-task JSON for /api/v1/tasks/{id} -- there's no
+    Django-rendered equivalent to share a contract with (edit_item.html
+    is HTML-only), so this is genuinely new rather than extracted from
+    an existing view.
+    """
+    return {
+        "task": serialize_item(item),
+        "list": {
+            "id": item.list.id,
+            "title": item.list.title,
+            "url": item.list.get_absolute_url(),
+        },
+    }
+
+
 def archive_workspace_data_for(user, archived_items):
     """Shapes the archive JSON shared by the Django-rendered archive page's
     React bootstrap data and the /api/v1/archive endpoint.

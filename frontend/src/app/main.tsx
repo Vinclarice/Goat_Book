@@ -10,7 +10,15 @@ import { ListRoute } from "./routes/ListRoute";
 import { PreferencesRoute } from "./routes/PreferencesRoute";
 import { TaskDetailRoute } from "./routes/TaskDetailRoute";
 
-const queryClient = new QueryClient();
+// openapi-fetch never throws on a non-2xx response (it returns
+// {data, error}), so TanStack Query can't tell a permanent 404/401 apart
+// from a transient network failure -- without this, every route's own
+// Vitest suite sets retry: false locally, but the real app would retry
+// (and hang on "Loading...") for ordinary cases like a deleted list or
+// an archived task.
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: false } },
+});
 
 const rootElement = document.getElementById("app-root");
 

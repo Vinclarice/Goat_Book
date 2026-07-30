@@ -75,6 +75,11 @@ export interface components {
             open_count: number;
             /** Overdue Count */
             overdue_count: number;
+            /**
+             * Color Key
+             * @enum {string}
+             */
+            color_key: "sky" | "sage" | "amber" | "lilac" | "coral" | "azure" | "blush" | "straw";
         };
         /** AgendaOut */
         AgendaOut: {

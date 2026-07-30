@@ -1,5 +1,14 @@
 export type TaskStatus = "active" | "completed" | "archived";
 export type TaskRecurrence = "none" | "daily" | "weekly" | "monthly";
+export type ListColorKey =
+  | "sky"
+  | "sage"
+  | "amber"
+  | "lilac"
+  | "coral"
+  | "azure"
+  | "blush"
+  | "straw";
 
 export interface TaskListSummary {
   id: number;
@@ -64,6 +73,7 @@ export interface AgendaListSummary {
   create_item_url: string;
   open_count: number;
   overdue_count: number;
+  color_key: ListColorKey;
 }
 
 export interface AgendaWorkspaceData {

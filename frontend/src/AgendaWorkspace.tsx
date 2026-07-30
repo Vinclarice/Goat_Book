@@ -4,7 +4,7 @@ import {
   addDays,
   applyFilters,
   bucketFor,
-  colorForList,
+  colorForKey,
   dueLabel,
   hasFilters,
   NO_FILTERS,
@@ -284,7 +284,7 @@ export function AgendaWorkspace({ initialData }: Props) {
                 <span
                   className="dot"
                   aria-hidden="true"
-                  style={{ background: colorForList(taskList.id) }}
+                  style={{ background: colorForKey(taskList.color_key) }}
                 />
                 {taskList.title}
               </a>
@@ -609,7 +609,7 @@ export function AgendaWorkspace({ initialData }: Props) {
                     <span
                       className="dot"
                       aria-hidden="true"
-                      style={{ background: colorForList(each.id) }}
+                      style={{ background: colorForKey(each.color_key) }}
                     />
                     <span className="name">{each.title}</span>
                     <span className={`n${overdue ? " warn" : ""}`}>

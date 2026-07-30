@@ -1,16 +1,16 @@
-import type { AgendaBucketKey, Task } from "./types";
+import type { AgendaBucketKey, ListColorKey, Task } from "./types";
 
 /** Mirrors lists.agenda.WEEK_HORIZON_DAYS. */
 export const WEEK_HORIZON_DAYS = 7;
 
-/** Mirrors lists.agenda.LIST_COLORS, indexed the same way. */
-export const LIST_COLORS = [
-  "#8fc7d6", "#a8dba8", "#f4c98a", "#c9a8dc",
-  "#f4a3a3", "#9ab6e0", "#e5a8c4", "#f1e394",
-];
-
-export function colorForList(listId: number): string {
-  return LIST_COLORS[listId % LIST_COLORS.length];
+/**
+ * The server assigns each list a semantic color_key (see the List-Color
+ * Contract) -- this just maps that key to the CSS token holding its
+ * actual value, so light/dark theming and future color changes are
+ * handled entirely by tailwind.css, not here.
+ */
+export function colorForKey(key: ListColorKey): string {
+  return `var(--list-color-${key})`;
 }
 
 /**

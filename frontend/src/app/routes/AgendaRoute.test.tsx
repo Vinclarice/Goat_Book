@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import { AgendaRoute } from "./AgendaRoute";
+import { agendaData, agendaList, task } from "../../test/fixtures";
 
 function jsonResponse(data: object, ok = true) {
   const body = JSON.stringify(data);
@@ -35,16 +36,22 @@ function renderWithClient(ui: ReactElement) {
 describe("AgendaRoute", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    document.cookie = "csrftoken=test-token";
   });
 
-  it("renders the agenda payload once it loads", async () => {
+  it("renders the real agenda workspace once the query resolves", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(() =>
-      jsonResponse({ username: "vince", items: [] }),
+      jsonResponse(
+        agendaData({
+          items: [task({ text: "Ship the migration" })],
+          lists: [agendaList()],
+        }),
+      ),
     );
 
     renderWithClient(<AgendaRoute />);
 
-    expect(await screen.findByText(/"username": "vince"/)).toBeInTheDocument();
+    expect(await screen.findByText("Ship the migration")).toBeInTheDocument();
   });
 
   it("shows an error state when the request fails", async () => {

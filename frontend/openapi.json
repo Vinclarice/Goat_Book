@@ -130,6 +130,20 @@
           "overdue_count": {
             "title": "Overdue Count",
             "type": "integer"
+          },
+          "color_key": {
+            "enum": [
+              "sky",
+              "sage",
+              "amber",
+              "lilac",
+              "coral",
+              "azure",
+              "blush",
+              "straw"
+            ],
+            "title": "Color Key",
+            "type": "string"
           }
         },
         "required": [
@@ -138,7 +152,8 @@
           "url",
           "create_item_url",
           "open_count",
-          "overdue_count"
+          "overdue_count",
+          "color_key"
         ],
         "title": "AgendaListSummaryOut",
         "type": "object"

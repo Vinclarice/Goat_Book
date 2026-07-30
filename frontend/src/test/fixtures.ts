@@ -25,7 +25,7 @@ export const TODAY = "2026-07-28";
 
 export function agendaList(
   overrides: Partial<AgendaWorkspaceData["lists"][number]> = {},
-) {
+): AgendaWorkspaceData["lists"][number] {
   return {
     id: 1,
     title: "Programming",
@@ -33,6 +33,7 @@ export function agendaList(
     create_item_url: "/api/lists/1/items/",
     open_count: 0,
     overdue_count: 0,
+    color_key: "sky",
     ...overrides,
   };
 }

@@ -2,6 +2,7 @@ from django.test import TestCase
 from django.utils import timezone
 
 from accounts.models import User
+from lists import agenda as agenda_reader
 from lists.models import Item, List
 
 
@@ -50,3 +51,13 @@ class AgendaEndpointTest(TestCase):
         page_payload = self.client.get("/dashboard/").context["agenda_workspace_data"]
 
         self.assertEqual(set(api_payload.keys()), set(page_payload.keys()))
+
+    def test_assigns_a_deterministic_semantic_color_key(self):
+        self.client.force_login(self.user)
+
+        payload = self.client.get("/api/v1/agenda").json()
+
+        self.assertEqual(
+            payload["lists"][0]["color_key"],
+            agenda_reader.color_key_for_list(self.list_.id),
+        )

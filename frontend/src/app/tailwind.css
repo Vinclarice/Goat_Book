@@ -157,4 +157,20 @@
 
 :root {
   --radius: 0.625rem;
+
+  /* List-Color Contract: the server assigns each list one of these
+     semantic keys (lists.agenda.LIST_COLOR_KEYS); this is the only place
+     that says what each one actually looks like. Same values in both
+     themes for now -- these were designed as small identifying dots
+     ("read as labels rather than status"), not large fills, so the
+     existing dark-only palette's contrast on light backgrounds hasn't
+     needed revisiting. Revisit if that changes. */
+  --list-color-sky: #8fc7d6;
+  --list-color-sage: #a8dba8;
+  --list-color-amber: #f4c98a;
+  --list-color-lilac: #c9a8dc;
+  --list-color-coral: #f4a3a3;
+  --list-color-azure: #9ab6e0;
+  --list-color-blush: #e5a8c4;
+  --list-color-straw: #f1e394;
 }

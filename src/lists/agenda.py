@@ -45,14 +45,28 @@ DIGEST_BUCKETS = (OVERDUE, TODAY)
 
 # Muted hues that read as labels rather than status against the dark
 # surface. Assigned deterministically so a list keeps its colour.
+# Still used by the Django-rendered agenda.html and the daily digest
+# email -- neither has migrated to the API yet. LIST_COLOR_KEYS is the
+# semantic equivalent served over /api/v1/ (see the List-Color Contract
+# in the UI overhaul plan); the two are indexed identically so a list
+# reads as the same hue on both the legacy page and the SPA.
 LIST_COLORS = (
     "#8fc7d6", "#a8dba8", "#f4c98a", "#c9a8dc",
     "#f4a3a3", "#9ab6e0", "#e5a8c4", "#f1e394",
 )
 
+LIST_COLOR_KEYS = (
+    "sky", "sage", "amber", "lilac",
+    "coral", "azure", "blush", "straw",
+)
+
 
 def color_for_list(list_id):
     return LIST_COLORS[list_id % len(LIST_COLORS)]
+
+
+def color_key_for_list(list_id):
+    return LIST_COLOR_KEYS[list_id % len(LIST_COLOR_KEYS)]
 
 
 def annotate_for_display(items, today):
@@ -175,6 +189,7 @@ def list_summaries(user):
     )
     for each in summaries:
         each.color = color_for_list(each.id)
+        each.color_key = color_key_for_list(each.id)
     return summaries
 
 
@@ -240,6 +255,7 @@ def workspace_data_for(user, *, today, all_open, completed_today, lists, archive
                 "create_item_url": reverse("api_create_item", args=(each.id,)),
                 "open_count": each.open_count,
                 "overdue_count": each.overdue_count,
+                "color_key": each.color_key,
             }
             for each in lists
         ],

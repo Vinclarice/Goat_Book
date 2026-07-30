@@ -17,6 +17,9 @@ router = Router()
 TaskStatus = Literal["active", "completed", "archived"]
 TaskRecurrence = Literal["none", "daily", "weekly", "monthly"]
 BucketKey = Literal["overdue", "today", "week", "later", "someday"]
+ListColorKey = Literal[
+    "sky", "sage", "amber", "lilac", "coral", "azure", "blush", "straw"
+]
 
 
 class TaskOut(Schema):
@@ -49,6 +52,7 @@ class AgendaListSummaryOut(Schema):
     create_item_url: str
     open_count: int
     overdue_count: int
+    color_key: ListColorKey
 
 
 class AgendaOut(Schema):

@@ -1,4 +1,11 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/* Tailwind's dark: variant keys off our own theme-resolution script's
+   attribute, not the .dark class shadcn's CLI assumes by default -- see
+   frontend_tags.theme_resolution_script(). */
+@custom-variant dark (&:is([data-theme="dark"] *));
 
 /* Django templates aren't part of Vite's module graph, so Tailwind can't
    auto-detect classes used in them the way it does for .tsx files -- each
@@ -10,13 +17,15 @@
 
 /* Dark values match the shipped --sl-* tokens in src/static/site.css
    exactly -- this is Clarice's existing identity, not a redesign. Light
-   values are the palette approved in the Step 1 visual-foundation review. */
+   values are the palette approved in the Step 1 visual-foundation review.
+   Named --color-muted-foreground (not --color-muted) from the start so it
+   can't collide with shadcn's own --muted, which means a background. */
 @theme {
   --color-bg: #08111f;
   --color-surface: rgba(18, 31, 49, 0.82);
   --color-surface-strong: #132237;
   --color-text: #f5f7fb;
-  --color-muted: #a6b2c3;
+  --color-muted-foreground: #a6b2c3;
   --color-accent: #7be0b8;
   --color-accent-hover: #98e9c9;
   --color-accent-active: #64cba4;
@@ -27,6 +36,7 @@
   --color-status-overdue: #ffb8b8;
   --color-status-today: #ffcf7a;
   --color-status-week: #9ab6e0;
+  --color-destructive-foreground: #08111f;
 }
 
 @layer base {
@@ -40,7 +50,7 @@
       --color-surface: #ffffff;
       --color-surface-strong: #ffffff;
       --color-text: #101c26;
-      --color-muted: #55697a;
+      --color-muted-foreground: #55697a;
       --color-accent: #1c8f66;
       --color-accent-hover: #17754f;
       --color-accent-active: #125f40;
@@ -51,18 +61,19 @@
       --color-status-overdue: #b23434;
       --color-status-today: #9a640a;
       --color-status-week: #35618f;
+      --color-destructive-foreground: #ffffff;
       color-scheme: light;
     }
   }
 
   /* The viewer's explicit choice always wins over the OS preference --
-     see the theme-resolution script (Step 3d) that stamps this attribute. */
+     see the theme-resolution script that stamps this attribute. */
   :root[data-theme="dark"] {
     --color-bg: #08111f;
     --color-surface: rgba(18, 31, 49, 0.82);
     --color-surface-strong: #132237;
     --color-text: #f5f7fb;
-    --color-muted: #a6b2c3;
+    --color-muted-foreground: #a6b2c3;
     --color-accent: #7be0b8;
     --color-accent-hover: #98e9c9;
     --color-accent-active: #64cba4;
@@ -73,6 +84,7 @@
     --color-status-overdue: #ffb8b8;
     --color-status-today: #ffcf7a;
     --color-status-week: #9ab6e0;
+    --color-destructive-foreground: #08111f;
     color-scheme: dark;
   }
 
@@ -81,7 +93,7 @@
     --color-surface: #ffffff;
     --color-surface-strong: #ffffff;
     --color-text: #101c26;
-    --color-muted: #55697a;
+    --color-muted-foreground: #55697a;
     --color-accent: #1c8f66;
     --color-accent-hover: #17754f;
     --color-accent-active: #125f40;
@@ -92,11 +104,57 @@
     --color-status-overdue: #b23434;
     --color-status-today: #9a640a;
     --color-status-week: #35618f;
+    --color-destructive-foreground: #ffffff;
     color-scheme: light;
   }
 
   body {
-    background: var(--color-bg);
-    color: var(--color-text);
+    @apply bg-background text-foreground;
   }
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans;
+  }
+}
+
+/* shadcn's own token names, required by every generated component
+   (Button's bg-primary, Dialog's bg-popover, etc). Only genuine name
+   mismatches need aliasing here -- --color-border, --color-input, and
+   --color-muted-foreground already match shadcn's expectations exactly
+   from the block above, so they need no entry here.
+
+   --color-accent / --color-accent-foreground are deliberately NOT
+   remapped: shadcn uses --accent for a generic hover/highlight
+   background, but reusing the brand accent for that is an acceptable
+   simplification for now. Revisit if a component that leans on it for
+   passive hover states (DropdownMenu, Command) reads as too loud. */
+@theme inline {
+  --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+  --color-background: var(--color-bg);
+  --color-foreground: var(--color-text);
+  --color-card: var(--color-surface);
+  --color-card-foreground: var(--color-text);
+  --color-popover: var(--color-surface-strong);
+  --color-popover-foreground: var(--color-text);
+  --color-primary: var(--color-accent);
+  --color-primary-foreground: var(--color-accent-foreground);
+  --color-secondary: var(--color-surface);
+  --color-secondary-foreground: var(--color-text);
+  --color-muted: var(--color-surface);
+  --color-destructive: var(--color-status-overdue);
+  --color-ring: var(--color-accent);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  --radius: 0.625rem;
 }

@@ -23,9 +23,9 @@
 
         <div class="flex items-center gap-3 text-sm">
           {% if user.is_authenticated %}
-            <a class="text-muted hover:text-text" href="{% url 'dashboard' %}">Today</a>
-            <a class="text-muted hover:text-text" href="{% url 'archive' %}">Archive</a>
-            <a class="text-muted hover:text-text" href="{% url 'account_settings' %}">{{ user.username }}</a>
+            <a class="text-muted-foreground hover:text-text" href="{% url 'dashboard' %}">Today</a>
+            <a class="text-muted-foreground hover:text-text" href="{% url 'archive' %}">Archive</a>
+            <a class="text-muted-foreground hover:text-text" href="{% url 'account_settings' %}">{{ user.username }}</a>
             <form method="post" action="{% url 'logout' %}">
               {% csrf_token %}
               <button id="id_logout" class="rounded-lg border border-border px-3 py-1.5" type="submit">
@@ -33,7 +33,7 @@
               </button>
             </form>
           {% else %}
-            <a class="text-muted hover:text-text" href="{% url 'login' %}">Log in</a>
+            <a class="text-muted-foreground hover:text-text" href="{% url 'login' %}">Log in</a>
             <a class="rounded-lg bg-accent text-accent-foreground px-3 py-1.5 font-bold" href="{% url 'signup' %}">
               Create account
             </a>

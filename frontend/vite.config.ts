@@ -1,3 +1,5 @@
+import path from "node:path";
+
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
@@ -5,6 +7,11 @@ import tailwindcss from "@tailwindcss/vite";
 export default defineConfig({
   base: "/static/frontend/",
   plugins: [react(), tailwindcss()],
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+    },
+  },
   server: {
     host: "127.0.0.1",
     port: 5173,

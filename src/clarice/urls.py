@@ -19,12 +19,15 @@ from django.urls import include, path
 from accounts.views import LandingLoginView
 from lists import views as list_views
 
+from clarice.api import api as api_v1
+
 
 urlpatterns = [
     path("", LandingLoginView.as_view(), name="home"),
     path("dashboard/", list_views.dashboard, name="dashboard"),
     path("archive/", list_views.archive, name="archive"),
     path("api/", include("lists.api_urls")),
+    path("api/v1/", api_v1.urls),
     path("lists/", include("lists.urls")),
     path("accounts/", include("accounts.urls")),
     path("admin/", admin.site.urls),

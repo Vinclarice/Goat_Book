@@ -29,6 +29,19 @@ class SpaShellTest(TestCase):
         self.assertTemplateUsed(response, "app_shell.html")
         self.assertContains(response, '<div id="app-root">')
 
+    def test_loads_site_css_so_reused_components_stay_styled(self):
+        """Regression check: reused components (AgendaWorkspace,
+        TaskWorkspace) still depend on site.css's classes and the
+        CSS-module styles compiled into app.css -- both silently missing
+        from the shell at one point, leaving those pages fully unstyled.
+        """
+        self.client.force_login(self.user)
+
+        response = self.client.get("/app/agenda")
+
+        self.assertContains(response, "site.css")
+        self.assertContains(response, "frontend/app")
+
     def test_serves_the_shell_for_the_bare_app_root(self):
         self.client.force_login(self.user)
 

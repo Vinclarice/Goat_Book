@@ -62,8 +62,14 @@ def frontend_assets():
 @register.simple_tag
 def app_shell_assets():
     """Same dev/build split as frontend_assets(), for the router-based
-    shell entry's JS. Styling is separate -- see token_styles() below,
-    shared with the Django-rendered token pages.
+    shell entry's JS. Token styling is separate -- see token_styles()
+    below, shared with the Django-rendered token pages.
+
+    Also links app.css: reused components (AgendaWorkspace, TaskWorkspace)
+    still use their original CSS-module styles, compiled into that file
+    alongside the legacy per-page bundle's. In dev mode this isn't needed
+    -- Vite's dev server injects CSS-module styles itself as the importing
+    JS module loads.
     """
     dev_server_url = settings.VITE_DEV_SERVER_URL.rstrip("/")
     if settings.DEBUG and dev_server_url:
@@ -75,7 +81,9 @@ def app_shell_assets():
         )
 
     return format_html(
+        '<link rel="stylesheet" href="{}">'
         '<script type="module" src="{}"></script>',
+        static("frontend/app.css"),
         static("frontend/app-shell.js"),
     )
 

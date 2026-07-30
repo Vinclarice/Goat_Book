@@ -1,4 +1,4 @@
-{% load frontend_tags %}<!DOCTYPE html>
+{% load static frontend_tags %}<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -6,8 +6,20 @@
   <title>Clarice</title>
   {% theme_resolution_script %}
   {% token_styles %}
+  <!-- Migrated components (AgendaWorkspace, TaskWorkspace) still use
+       site.css's classes for now, so it has to load here too. Its plain
+       `body { background: var(--sl-bg) }` rule (dark-only, no theme
+       support) would otherwise win over token_styles' theme-driven one --
+       tried scoping it into a lower-priority @layer first, but that
+       didn't hold across the two separate stylesheets in practice, so
+       this pins body's own background/text explicitly instead. Both
+       drop once every component needing site.css has moved to Tailwind. -->
+  <link rel="stylesheet" href="{% static 'site.css' %}">
+  <style>
+    body#app-body { background: var(--color-bg) !important; color: var(--color-text) !important; }
+  </style>
 </head>
-<body class="bg-bg text-text min-h-screen">
+<body id="app-body" class="bg-bg text-text min-h-screen">
   <div id="app-root"></div>
   {% app_shell_assets %}
 </body>

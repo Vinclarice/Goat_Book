@@ -21,7 +21,7 @@ from lists.forms import (
     TaskTextForm,
 )
 from lists.models import Item, List
-from lists.serializers import serialize_item
+from lists.serializers import list_workspace_data_for, serialize_item
 
 
 def _lists_for(user):
@@ -249,21 +249,7 @@ def _list_context(our_list, form=None, title_form=None):
         "archived_task_count": our_list.item_set.filter(
             status=Item.Status.ARCHIVED,
         ).count(),
-        "task_workspace_data": {
-            "list": {
-                "id": our_list.id,
-                "title": our_list.title,
-                "create_item_url": reverse(
-                    "api_create_item",
-                    args=(our_list.id,),
-                ),
-                "reorder_url": reverse(
-                    "api_reorder_items",
-                    args=(our_list.id,),
-                ),
-            },
-            "items": [serialize_item(item) for item in items],
-        },
+        "task_workspace_data": list_workspace_data_for(our_list, items),
     }
 
 

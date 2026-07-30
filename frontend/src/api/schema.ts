@@ -38,6 +38,25 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/lists/{list_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Detail */
+        get: operations["lists_api_v1_list_detail"];
+        put?: never;
+        post?: never;
+        /** Delete List */
+        delete: operations["lists_api_v1_delete_list"];
+        options?: never;
+        head?: never;
+        /** Rename List */
+        patch: operations["lists_api_v1_rename_list"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -143,6 +162,32 @@ export interface components {
             /** Edit Url */
             edit_url: string;
         };
+        /** ListDetailOut */
+        ListDetailOut: {
+            list: components["schemas"]["ListRefOut"];
+            /** Items */
+            items: components["schemas"]["TaskOut"][];
+            /** Archived Count */
+            archived_count: number;
+            /** Archive Url */
+            archive_url: string;
+        };
+        /** ListRefOut */
+        ListRefOut: {
+            /** Id */
+            id: number;
+            /** Title */
+            title: string;
+            /** Create Item Url */
+            create_item_url: string;
+            /** Reorder Url */
+            reorder_url: string;
+        };
+        /** ListRenameIn */
+        ListRenameIn: {
+            /** Title */
+            title: string;
+        };
     };
     responses: never;
     parameters: never;
@@ -188,6 +233,74 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AgendaOut"];
+                };
+            };
+        };
+    };
+    lists_api_v1_list_detail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                list_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListDetailOut"];
+                };
+            };
+        };
+    };
+    lists_api_v1_delete_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                list_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    lists_api_v1_rename_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                list_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ListRenameIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListRefOut"];
                 };
             };
         };

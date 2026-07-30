@@ -5,6 +5,7 @@ import { BrowserRouter, Route, Routes } from "react-router";
 
 import { AgendaRoute } from "./routes/AgendaRoute";
 import { DevUiGallery } from "./routes/DevUiGallery";
+import { ListRoute } from "./routes/ListRoute";
 
 const queryClient = new QueryClient();
 
@@ -17,6 +18,7 @@ if (rootElement) {
         <BrowserRouter basename="/app">
           <Routes>
             <Route path="/agenda" element={<AgendaRoute />} />
+            <Route path="/lists/:listId" element={<ListRoute />} />
             {/* Django 404s this path outside DEBUG -- see lists.views.spa_shell */}
             <Route path="/dev/ui" element={<DevUiGallery />} />
           </Routes>

@@ -45,12 +45,19 @@ export default defineConfig({
           return "app.js";
         },
         chunkFileNames: "chunks/[name]-[hash].js",
-        // CSS assets take their name from the entry ([name] resolves to
-        // the input key above, e.g. "app" -> app.css, "tokens" -> tokens.css)
-        // so Django's {% static %} references stay fixed and predictable.
+        // CSS assets are named by entry, not by chunk -- as components
+        // (TaskWorkspace, AgendaWorkspace) get shared between "app" and
+        // "app-shell", Rollup extracts them into their own chunk and
+        // their CSS would otherwise take THAT chunk's name (e.g.
+        // "TaskWorkspace.css") instead of "app.css", breaking the fixed
+        // filename lists.templatetags.frontend_tags hardcodes. Only
+        // "tokens" (never shared, Django-owned) gets its own name;
+        // everything else collapses into one predictable app.css.
         assetFileNames: (assetInfo) =>
           assetInfo.names?.some((name) => name.endsWith(".css"))
-            ? "[name][extname]"
+            ? assetInfo.names[0]?.startsWith("tokens")
+              ? "tokens.css"
+              : "app.css"
             : "assets/[name]-[hash][extname]",
       },
     },

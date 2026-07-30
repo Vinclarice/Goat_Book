@@ -1,16 +1,25 @@
 """Ninja router registered onto clarice.api's /api/v1/ contract.
 
-Read-only for now -- create/update/delete stay on the hand-rolled
-lists.api endpoints until a route's own migration PR (see the UI
-overhaul plan's Step 4) moves them over.
+Item mutations (create/complete/reorder/tags/due-date) stay on the
+hand-rolled lists.api endpoints -- they already work and are tested, so
+a route's migration PR only moves what doesn't already have a JSON
+path. List rename/delete never had one (the Django views redirect on
+success, which doesn't suit a fetch-based caller), so those are genuinely
+new here rather than moved.
 """
 from typing import Literal
 
+from django.shortcuts import get_object_or_404
+from django.urls import reverse
 from django.utils import timezone
 from ninja import Router, Schema
+from ninja.errors import HttpError
 
 from lists import agenda as agenda_reader
-from lists.models import Item
+from lists import services
+from lists.forms import ListTitleForm
+from lists.models import Item, List
+from lists.serializers import list_ref_for, list_workspace_data_for
 
 router = Router()
 
@@ -69,6 +78,24 @@ class AgendaOut(Schema):
     lists: list[AgendaListSummaryOut]
 
 
+class ListRefOut(Schema):
+    id: int
+    title: str
+    create_item_url: str
+    reorder_url: str
+
+
+class ListDetailOut(Schema):
+    list: ListRefOut
+    items: list[TaskOut]
+    archived_count: int
+    archive_url: str
+
+
+class ListRenameIn(Schema):
+    title: str
+
+
 @router.get("/agenda", response=AgendaOut)
 def agenda(request):
     user = request.user
@@ -93,3 +120,44 @@ def agenda(request):
         lists=lists,
         archived_count=archived_count,
     )
+
+
+def _owned_list(request, list_id):
+    return get_object_or_404(List, id=list_id, owner=request.user)
+
+
+@router.get("/lists/{list_id}", response=ListDetailOut)
+def list_detail(request, list_id: int):
+    our_list = _owned_list(request, list_id)
+    items = list(
+        our_list.item_set.exclude(status=Item.Status.ARCHIVED)
+        .select_related("list")
+        .prefetch_related("tags")
+    )
+    return {
+        **list_workspace_data_for(our_list, items),
+        "archived_count": our_list.item_set.filter(
+            status=Item.Status.ARCHIVED,
+        ).count(),
+        "archive_url": reverse("archive"),
+    }
+
+
+@router.patch("/lists/{list_id}", response=ListRefOut)
+def rename_list(request, list_id: int, payload: ListRenameIn):
+    our_list = _owned_list(request, list_id)
+    # Reuses ListTitleForm's own validation (strip, required, max_length)
+    # rather than re-implementing it, so the two entry points to the same
+    # rule can't quietly drift.
+    form = ListTitleForm(data={"title": payload.title}, instance=our_list)
+    if not form.is_valid():
+        raise HttpError(400, form.errors["title"][0])
+    form.save()
+    return list_ref_for(our_list)
+
+
+@router.delete("/lists/{list_id}")
+def delete_list(request, list_id: int):
+    our_list = _owned_list(request, list_id)
+    services.delete_list(our_list)
+    return {"deleted": list_id}

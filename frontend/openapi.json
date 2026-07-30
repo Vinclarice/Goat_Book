@@ -53,6 +53,107 @@
           }
         ]
       }
+    },
+    "/api/v1/lists/{list_id}": {
+      "get": {
+        "operationId": "lists_api_v1_list_detail",
+        "summary": "List Detail",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "list_id",
+            "schema": {
+              "title": "List Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListDetailOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "lists_api_v1_rename_list",
+        "summary": "Rename List",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "list_id",
+            "schema": {
+              "title": "List Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListRefOut"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ListRenameIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "lists_api_v1_delete_list",
+        "summary": "Delete List",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "list_id",
+            "schema": {
+              "title": "List Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -344,6 +445,77 @@
           "edit_url"
         ],
         "title": "TaskOut",
+        "type": "object"
+      },
+      "ListDetailOut": {
+        "properties": {
+          "list": {
+            "$ref": "#/components/schemas/ListRefOut"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TaskOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "archived_count": {
+            "title": "Archived Count",
+            "type": "integer"
+          },
+          "archive_url": {
+            "title": "Archive Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "list",
+          "items",
+          "archived_count",
+          "archive_url"
+        ],
+        "title": "ListDetailOut",
+        "type": "object"
+      },
+      "ListRefOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "create_item_url": {
+            "title": "Create Item Url",
+            "type": "string"
+          },
+          "reorder_url": {
+            "title": "Reorder Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "create_item_url",
+          "reorder_url"
+        ],
+        "title": "ListRefOut",
+        "type": "object"
+      },
+      "ListRenameIn": {
+        "properties": {
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "title": "ListRenameIn",
         "type": "object"
       }
     },

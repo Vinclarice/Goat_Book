@@ -43,3 +43,17 @@ class NewBaseTemplateTest(TestCase):
         self.assertIn("frontend/tokens", html)
         self.assertIn("clarice-theme", html)
         self.assertNotIn("bootstrap", html.lower())
+
+    def test_anonymous_visitors_resolve_purely_client_side(self):
+        html = render_to_string("base.html", request=self._request(AnonymousUser()))
+
+        self.assertIn("SERVER_THEME = null", html)
+
+    def test_authenticated_visitors_get_their_persisted_theme_inlined(self):
+        user = User.objects.create_user(
+            "alice", "alice@example.com", "a secure password", theme="dark",
+        )
+
+        html = render_to_string("base.html", request=self._request(user))
+
+        self.assertIn('SERVER_THEME = "dark"', html)

@@ -4,35 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 
-import { applyTheme, currentThemeChoice, type ThemeChoice } from "../theme";
+import { ThemeToggle } from "../ThemeToggle";
 
 const BUTTON_VARIANTS = ["default", "outline", "secondary", "ghost", "destructive", "link"] as const;
 const BUTTON_SIZES = ["sm", "default", "lg"] as const;
-
-function ThemeToggle() {
-  const [choice, setChoice] = useState<ThemeChoice>(currentThemeChoice());
-
-  function choose(next: ThemeChoice) {
-    applyTheme(next);
-    setChoice(next);
-  }
-
-  return (
-    <div className="inline-flex gap-1 rounded-lg border border-border bg-input p-1">
-      {(["system", "light", "dark"] as const).map((option) => (
-        <Button
-          key={option}
-          type="button"
-          size="sm"
-          variant={choice === option ? "default" : "ghost"}
-          onClick={() => choose(option)}
-        >
-          {option[0].toUpperCase() + option.slice(1)}
-        </Button>
-      ))}
-    </div>
-  );
-}
 
 export function DevUiGallery() {
   const [digestEnabled, setDigestEnabled] = useState(true);

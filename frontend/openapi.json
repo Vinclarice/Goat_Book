@@ -178,6 +178,62 @@
           }
         ]
       }
+    },
+    "/api/v1/me/preferences": {
+      "get": {
+        "operationId": "accounts_api_v1_get_preferences",
+        "summary": "Get Preferences",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreferencesOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "accounts_api_v1_update_preferences",
+        "summary": "Update Preferences",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreferencesOut"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreferencesIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -587,6 +643,72 @@
           "url"
         ],
         "title": "TaskListSummaryOut",
+        "type": "object"
+      },
+      "PreferencesOut": {
+        "properties": {
+          "username": {
+            "title": "Username",
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "daily_digest": {
+            "title": "Daily Digest",
+            "type": "boolean"
+          },
+          "theme": {
+            "enum": [
+              "system",
+              "light",
+              "dark"
+            ],
+            "title": "Theme",
+            "type": "string"
+          }
+        },
+        "required": [
+          "username",
+          "email",
+          "daily_digest",
+          "theme"
+        ],
+        "title": "PreferencesOut",
+        "type": "object"
+      },
+      "PreferencesIn": {
+        "properties": {
+          "username": {
+            "title": "Username",
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "daily_digest": {
+            "title": "Daily Digest",
+            "type": "boolean"
+          },
+          "theme": {
+            "enum": [
+              "system",
+              "light",
+              "dark"
+            ],
+            "title": "Theme",
+            "type": "string"
+          }
+        },
+        "required": [
+          "username",
+          "email",
+          "daily_digest",
+          "theme"
+        ],
+        "title": "PreferencesIn",
         "type": "object"
       }
     },

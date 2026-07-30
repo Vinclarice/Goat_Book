@@ -7,6 +7,7 @@ import { AgendaRoute } from "./routes/AgendaRoute";
 import { ArchiveRoute } from "./routes/ArchiveRoute";
 import { DevUiGallery } from "./routes/DevUiGallery";
 import { ListRoute } from "./routes/ListRoute";
+import { PreferencesRoute } from "./routes/PreferencesRoute";
 
 const queryClient = new QueryClient();
 
@@ -21,6 +22,7 @@ if (rootElement) {
             <Route path="/agenda" element={<AgendaRoute />} />
             <Route path="/lists/:listId" element={<ListRoute />} />
             <Route path="/archive" element={<ArchiveRoute />} />
+            <Route path="/preferences" element={<PreferencesRoute />} />
             {/* Django 404s this path outside DEBUG -- see lists.views.spa_shell */}
             <Route path="/dev/ui" element={<DevUiGallery />} />
           </Routes>

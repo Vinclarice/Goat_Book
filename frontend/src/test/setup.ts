@@ -14,3 +14,13 @@ if (!window.matchMedia) {
     dispatchEvent: () => false,
   }) as unknown as MediaQueryList;
 }
+
+// jsdom doesn't implement ResizeObserver -- Radix's Switch (and other
+// size-aware primitives) use it internally.
+if (!window.ResizeObserver) {
+  window.ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  } as unknown as typeof ResizeObserver;
+}

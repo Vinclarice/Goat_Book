@@ -1,3 +1,5 @@
+import json
+
 from django import template
 from django.conf import settings
 from django.templatetags.static import static
@@ -8,14 +10,17 @@ from django.utils.safestring import mark_safe
 register = template.Library()
 
 # Blocking, runs before the stylesheet loads so there's no flash of the
-# wrong theme. localStorage is a stand-in for the real per-user preference
-# until Step 4 adds User.theme and /api/v1/me/preferences -- once that
-# lands, a server-rendered value takes priority over this.
-_THEME_RESOLUTION_SCRIPT = """
+# wrong theme. SERVER_THEME is the authenticated user's persisted
+# preference (User.theme, via /api/v1/me/preferences) when the caller has
+# one; localStorage is the fallback for anonymous pages (login, signup)
+# and stays in sync with whatever SERVER_THEME says, so a stale value from
+# a previous account/device doesn't linger across a login/logout.
+_THEME_RESOLUTION_SCRIPT_TEMPLATE = """
 <script>
 (function () {
   var STORAGE_KEY = "clarice-theme";
   var COOKIE_NAME = "clarice_theme";
+  var SERVER_THEME = __SERVER_THEME__;
 
   function resolve(saved) {
     if (saved === "light" || saved === "dark") return saved;
@@ -27,10 +32,18 @@ _THEME_RESOLUTION_SCRIPT = """
     document.cookie = COOKIE_NAME + "=" + theme + "; path=/; max-age=31536000; samesite=lax";
   }
 
-  var saved = localStorage.getItem(STORAGE_KEY);
+  var saved = SERVER_THEME !== null ? SERVER_THEME : localStorage.getItem(STORAGE_KEY);
+  if (SERVER_THEME !== null) {
+    if (SERVER_THEME === "system") {
+      localStorage.removeItem(STORAGE_KEY);
+    } else {
+      localStorage.setItem(STORAGE_KEY, SERVER_THEME);
+    }
+  }
+
   apply(resolve(saved));
 
-  if (!saved) {
+  if (!saved || saved === "system") {
     window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function (event) {
       apply(event.matches ? "dark" : "light");
     });
@@ -108,5 +121,9 @@ def token_styles():
 
 
 @register.simple_tag
-def theme_resolution_script():
-    return mark_safe(_THEME_RESOLUTION_SCRIPT)
+def theme_resolution_script(user_theme=""):
+    server_value = user_theme if user_theme in ("system", "light", "dark") else None
+    script = _THEME_RESOLUTION_SCRIPT_TEMPLATE.replace(
+        "__SERVER_THEME__", json.dumps(server_value),
+    )
+    return mark_safe(script)

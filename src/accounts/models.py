@@ -23,6 +23,17 @@ class User(AbstractBaseUser, PermissionsMixin):
         ),
     )
 
+    class Theme(models.TextChoices):
+        SYSTEM = "system", "Match my device"
+        LIGHT = "light", "Light"
+        DARK = "dark", "Dark"
+
+    theme = models.CharField(
+        max_length=6,
+        choices=Theme.choices,
+        default=Theme.SYSTEM,
+    )
+
     objects = UserManager()
 
     REQUIRED_FIELDS = ["email"]

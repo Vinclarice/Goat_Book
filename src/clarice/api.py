@@ -12,7 +12,10 @@ auth mechanism is introduced here.
 from ninja import NinjaAPI, Schema
 from ninja.security import django_auth
 
+from lists.api_v1 import router as lists_router
+
 api = NinjaAPI(auth=django_auth, urls_namespace="v1")
+api.add_router("", lists_router)
 
 
 class MeOut(Schema):

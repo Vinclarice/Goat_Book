@@ -8,9 +8,11 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "generate:api": "openapi-typescript openapi.json -o src/api/schema.ts"
   },
   "dependencies": {
+    "openapi-fetch": "^0.17.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },
@@ -22,6 +24,7 @@
     "@types/react-dom": "^19.2.2",
     "@vitejs/plugin-react": "^5.0.4",
     "jsdom": "^26.1.0",
+    "openapi-typescript": "^7.13.0",
     "typescript": "^5.9.3",
     "vite": "^7.1.12",
     "vitest": "^3.2.4"

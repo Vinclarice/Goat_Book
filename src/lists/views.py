@@ -124,43 +124,14 @@ def _agenda_context(request, quick_add_form=None, new_list_form=None):
             else QuickAddForm(owner=request.user)
         ),
         "form": new_list_form if new_list_form is not None else NewListForm(),
-        "agenda_workspace_data": {
-            "today": today.isoformat(),
-            "username": request.user.username,
-            "archive_url": reverse("archive"),
-            "archived_count": archived_count,
-            "new_list_url": reverse("new_list"),
-            "settings_url": reverse("account_settings"),
-            "daily_digest": request.user.daily_digest,
-            "buckets": [
-                {
-                    "key": key,
-                    "label": agenda_reader.BUCKET_LABELS[key],
-                    "collapsed": key in agenda_reader.COLLAPSED_BY_DEFAULT,
-                }
-                for key in agenda_reader.BUCKET_ORDER
-            ],
-            "items": [serialize_item(item) for item in all_open],
-            "completed_today": [
-                serialize_item(item) for item in completed_today
-            ],
-            # Each task JSON carries only list_id -- title/url live here
-            # once, and the frontend looks them up by id.
-            "lists": [
-                {
-                    "id": each.id,
-                    "title": each.title,
-                    "url": each.get_absolute_url(),
-                    "create_item_url": reverse(
-                        "api_create_item",
-                        args=(each.id,),
-                    ),
-                    "open_count": each.open_count,
-                    "overdue_count": each.overdue_count,
-                }
-                for each in lists
-            ],
-        },
+        "agenda_workspace_data": agenda_reader.workspace_data_for(
+            request.user,
+            today=today,
+            all_open=all_open,
+            completed_today=completed_today,
+            lists=lists,
+            archived_count=archived_count,
+        ),
     }
 
 

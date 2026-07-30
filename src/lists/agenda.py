@@ -8,9 +8,11 @@ HTML view, the React bootstrap payload, and the daily digest email, so
 from datetime import datetime, timedelta
 
 from django.db.models import Count, F, Q
+from django.urls import reverse
 from django.utils import timezone
 
 from lists.models import Item, List
+from lists.serializers import serialize_item
 
 
 OVERDUE = "overdue"
@@ -202,6 +204,45 @@ def summary_counts(groups):
         # including what's already late -- it's a workload number.
         "week": overdue + today + len(groups[WEEK]),
         "open": sum(len(items) for items in groups.values()),
+    }
+
+
+def workspace_data_for(user, *, today, all_open, completed_today, lists, archived_count):
+    """Shapes the agenda JSON payload shared by the Django-rendered page's
+    React bootstrap data and the /api/v1/agenda endpoint, so the two never
+    drift apart. Callers supply already-queried data rather than this
+    function querying itself, since the HTML view needs the same rows for
+    other purposes (filtering, counts) and shouldn't fetch them twice.
+    """
+    return {
+        "today": today.isoformat(),
+        "username": user.username,
+        "archive_url": reverse("archive"),
+        "archived_count": archived_count,
+        "new_list_url": reverse("new_list"),
+        "settings_url": reverse("account_settings"),
+        "daily_digest": user.daily_digest,
+        "buckets": [
+            {
+                "key": key,
+                "label": BUCKET_LABELS[key],
+                "collapsed": key in COLLAPSED_BY_DEFAULT,
+            }
+            for key in BUCKET_ORDER
+        ],
+        "items": [serialize_item(item) for item in all_open],
+        "completed_today": [serialize_item(item) for item in completed_today],
+        "lists": [
+            {
+                "id": each.id,
+                "title": each.title,
+                "url": each.get_absolute_url(),
+                "create_item_url": reverse("api_create_item", args=(each.id,)),
+                "open_count": each.open_count,
+                "overdue_count": each.overdue_count,
+            }
+            for each in lists
+        ],
     }
 
 

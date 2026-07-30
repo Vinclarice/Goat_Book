@@ -1,0 +1,344 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "NinjaAPI",
+    "version": "1.0.0",
+    "description": ""
+  },
+  "paths": {
+    "/api/v1/me": {
+      "get": {
+        "operationId": "clarice_api_me",
+        "summary": "Me",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/agenda": {
+      "get": {
+        "operationId": "lists_api_v1_agenda",
+        "summary": "Agenda",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgendaOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "MeOut": {
+        "properties": {
+          "username": {
+            "title": "Username",
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          }
+        },
+        "required": [
+          "username",
+          "email"
+        ],
+        "title": "MeOut",
+        "type": "object"
+      },
+      "AgendaBucketOut": {
+        "properties": {
+          "key": {
+            "enum": [
+              "overdue",
+              "today",
+              "week",
+              "later",
+              "someday"
+            ],
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "collapsed": {
+            "title": "Collapsed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "collapsed"
+        ],
+        "title": "AgendaBucketOut",
+        "type": "object"
+      },
+      "AgendaListSummaryOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          },
+          "create_item_url": {
+            "title": "Create Item Url",
+            "type": "string"
+          },
+          "open_count": {
+            "title": "Open Count",
+            "type": "integer"
+          },
+          "overdue_count": {
+            "title": "Overdue Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "url",
+          "create_item_url",
+          "open_count",
+          "overdue_count"
+        ],
+        "title": "AgendaListSummaryOut",
+        "type": "object"
+      },
+      "AgendaOut": {
+        "properties": {
+          "today": {
+            "title": "Today",
+            "type": "string"
+          },
+          "username": {
+            "title": "Username",
+            "type": "string"
+          },
+          "archive_url": {
+            "title": "Archive Url",
+            "type": "string"
+          },
+          "archived_count": {
+            "title": "Archived Count",
+            "type": "integer"
+          },
+          "new_list_url": {
+            "title": "New List Url",
+            "type": "string"
+          },
+          "settings_url": {
+            "title": "Settings Url",
+            "type": "string"
+          },
+          "daily_digest": {
+            "title": "Daily Digest",
+            "type": "boolean"
+          },
+          "buckets": {
+            "items": {
+              "$ref": "#/components/schemas/AgendaBucketOut"
+            },
+            "title": "Buckets",
+            "type": "array"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TaskOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "completed_today": {
+            "items": {
+              "$ref": "#/components/schemas/TaskOut"
+            },
+            "title": "Completed Today",
+            "type": "array"
+          },
+          "lists": {
+            "items": {
+              "$ref": "#/components/schemas/AgendaListSummaryOut"
+            },
+            "title": "Lists",
+            "type": "array"
+          }
+        },
+        "required": [
+          "today",
+          "username",
+          "archive_url",
+          "archived_count",
+          "new_list_url",
+          "settings_url",
+          "daily_digest",
+          "buckets",
+          "items",
+          "completed_today",
+          "lists"
+        ],
+        "title": "AgendaOut",
+        "type": "object"
+      },
+      "TaskOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "active",
+              "completed",
+              "archived"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "archived_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archived At"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          },
+          "recurrence": {
+            "enum": [
+              "none",
+              "daily",
+              "weekly",
+              "monthly"
+            ],
+            "title": "Recurrence",
+            "type": "string"
+          },
+          "list_id": {
+            "title": "List Id",
+            "type": "integer"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          },
+          "edit_url": {
+            "title": "Edit Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "status",
+          "created_at",
+          "updated_at",
+          "completed_at",
+          "archived_at",
+          "due_date",
+          "position",
+          "tags",
+          "recurrence",
+          "list_id",
+          "url",
+          "edit_url"
+        ],
+        "title": "TaskOut",
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "SessionAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "sessionid"
+      }
+    }
+  },
+  "servers": []
+}

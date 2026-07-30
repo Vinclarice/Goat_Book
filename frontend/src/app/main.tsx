@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router";
 
 import { AgendaRoute } from "./routes/AgendaRoute";
+import { DevUiGallery } from "./routes/DevUiGallery";
 
 const queryClient = new QueryClient();
 
@@ -16,6 +17,8 @@ if (rootElement) {
         <BrowserRouter basename="/app">
           <Routes>
             <Route path="/agenda" element={<AgendaRoute />} />
+            {/* Django 404s this path outside DEBUG -- see lists.views.spa_shell */}
+            <Route path="/dev/ui" element={<DevUiGallery />} />
           </Routes>
         </BrowserRouter>
       </QueryClientProvider>

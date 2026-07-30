@@ -1,7 +1,9 @@
 from datetime import timedelta
 
+from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -180,7 +182,13 @@ def spa_shell(request, subpath=""):
     Deliberately not extending base.html: that still carries Bootstrap,
     and this shell has nothing to style yet (see the UI overhaul plan's
     Step 2c/Step 3 split).
+
+    /app/dev/... (the component gallery) 404s outside DEBUG -- it's a
+    development aid, not something to ship. The route still exists in the
+    built JS bundle either way; this only stops the page from loading.
     """
+    if subpath.startswith("dev/") and not settings.DEBUG:
+        raise Http404
     return render(request, "app_shell.html")
 
 

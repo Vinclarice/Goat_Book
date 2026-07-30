@@ -1,4 +1,4 @@
-from django.test import TestCase
+from django.test import TestCase, override_settings
 
 from accounts.models import User
 
@@ -44,3 +44,20 @@ class SpaShellTest(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "app_shell.html")
+
+    @override_settings(DEBUG=True)
+    def test_serves_the_dev_gallery_in_debug(self):
+        self.client.force_login(self.user)
+
+        response = self.client.get("/app/dev/ui")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "app_shell.html")
+
+    @override_settings(DEBUG=False)
+    def test_hides_the_dev_gallery_outside_debug(self):
+        self.client.force_login(self.user)
+
+        response = self.client.get("/app/dev/ui")
+
+        self.assertEqual(response.status_code, 404)

@@ -12,9 +12,11 @@
     "generate:api": "openapi-typescript openapi.json -o src/api/schema.ts"
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.101.4",
     "openapi-fetch": "^0.17.0",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "react-router": "^8.3.0"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "6.9.1",

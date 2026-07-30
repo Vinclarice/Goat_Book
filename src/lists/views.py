@@ -174,6 +174,17 @@ def archive(request):
 
 
 @login_required
+def spa_shell(request, subpath=""):
+    """Serves every /app/... path -- React Router owns routing from here.
+
+    Deliberately not extending base.html: that still carries Bootstrap,
+    and this shell has nothing to style yet (see the UI overhaul plan's
+    Step 2c/Step 3 split).
+    """
+    return render(request, "app_shell.html")
+
+
+@login_required
 @require_POST
 def quick_add(request):
     form = QuickAddForm(owner=request.user, data=request.POST)

@@ -14,9 +14,16 @@ export default defineConfig({
     emptyOutDir: true,
     cssCodeSplit: false,
     rollupOptions: {
-      input: "src/main.tsx",
+      input: {
+        main: "src/main.tsx",
+        "app-shell": "src/app/main.tsx",
+      },
       output: {
-        entryFileNames: "app.js",
+        // Kept as two fully separate bundles (see the UI overhaul plan's
+        // "separate SPA JS baseline" goal) -- the legacy per-page islands
+        // and the new router-based shell have nothing to share yet.
+        entryFileNames: (chunk) =>
+          chunk.name === "app-shell" ? "app-shell.js" : "app.js",
         chunkFileNames: "chunks/[name]-[hash].js",
         assetFileNames: (assetInfo) =>
           assetInfo.names?.some((name) => name.endsWith(".css"))

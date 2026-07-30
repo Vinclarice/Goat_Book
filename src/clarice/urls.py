@@ -26,6 +26,8 @@ urlpatterns = [
     path("", LandingLoginView.as_view(), name="home"),
     path("dashboard/", list_views.dashboard, name="dashboard"),
     path("archive/", list_views.archive, name="archive"),
+    path("app/", list_views.spa_shell, name="app_shell"),
+    path("app/<path:subpath>", list_views.spa_shell, name="app_shell_path"),
     path("api/", include("lists.api_urls")),
     path("api/v1/", api_v1.urls),
     path("lists/", include("lists.urls")),

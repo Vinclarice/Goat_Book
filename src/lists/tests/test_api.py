@@ -48,12 +48,12 @@ class TaskApiTest(TestCase):
 
         edit_response = self.request(
             "patch",
-            created["update_url"],
+            created["url"],
             {"text": "Build React interface"},
         )
         complete_response = self.request(
             "patch",
-            created["update_url"],
+            created["url"],
             {"status": Item.Status.COMPLETED},
         )
 
@@ -75,14 +75,14 @@ class TaskApiTest(TestCase):
 
         update_response = self.request(
             "patch",
-            created["update_url"],
+            created["url"],
             {"due_date": "2026-09-15"},
         )
         self.assertEqual(update_response.json()["data"]["due_date"], "2026-09-15")
 
         clear_response = self.request(
             "patch",
-            created["update_url"],
+            created["url"],
             {"due_date": None},
         )
         self.assertIsNone(clear_response.json()["data"]["due_date"])
@@ -107,7 +107,7 @@ class TaskApiTest(TestCase):
 
         update_response = self.request(
             "patch",
-            created["update_url"],
+            created["url"],
             {"tags": ["errands"]},
         )
         self.assertEqual(update_response.json()["data"]["tags"], ["errands"])
@@ -132,7 +132,7 @@ class TaskApiTest(TestCase):
 
         update_response = self.request(
             "patch",
-            created["update_url"],
+            created["url"],
             {"recurrence": "daily"},
         )
         self.assertEqual(update_response.json()["data"]["recurrence"], "daily")

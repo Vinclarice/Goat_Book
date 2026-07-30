@@ -19,9 +19,13 @@ export interface Task {
   position: number;
   tags: string[];
   recurrence: TaskRecurrence;
-  list: TaskListSummary;
-  update_url: string;
-  delete_url: string;
+  // Just the id -- title/url live once in the page's top-level `lists`
+  // array (see AgendaListSummary / ArchiveWorkspaceData.lists) instead of
+  // being repeated on every task.
+  list_id: number;
+  // Covers both update (PATCH) and delete (DELETE); it's the same
+  // endpoint either way.
+  url: string;
   edit_url: string;
 }
 
@@ -37,6 +41,7 @@ export interface TaskWorkspaceData {
 
 export interface ArchiveWorkspaceData {
   items: Task[];
+  lists: TaskListSummary[];
 }
 
 export type AgendaBucketKey =

@@ -85,6 +85,13 @@ def _agenda_context(request, quick_add_form=None, new_list_form=None):
         today,
     )
 
+    # Computed once and reused below -- the template context and the
+    # workspace payload both need it, and it's the same query either way.
+    archived_count = Item.objects.filter(
+        list__owner=request.user,
+        status=Item.Status.ARCHIVED,
+    ).count()
+
     buckets = [
         {
             "key": key,
@@ -110,10 +117,7 @@ def _agenda_context(request, quick_add_form=None, new_list_form=None):
         "completed_today": completed_today,
         "agenda_lists": lists,
         "agenda_tags": agenda_reader.tag_summaries(all_open),
-        "archived_count": Item.objects.filter(
-            list__owner=request.user,
-            status=Item.Status.ARCHIVED,
-        ).count(),
+        "archived_count": archived_count,
         "quick_add_form": (
             quick_add_form
             if quick_add_form is not None
@@ -124,10 +128,7 @@ def _agenda_context(request, quick_add_form=None, new_list_form=None):
             "today": today.isoformat(),
             "username": request.user.username,
             "archive_url": reverse("archive"),
-            "archived_count": Item.objects.filter(
-                list__owner=request.user,
-                status=Item.Status.ARCHIVED,
-            ).count(),
+            "archived_count": archived_count,
             "new_list_url": reverse("new_list"),
             "settings_url": reverse("account_settings"),
             "daily_digest": request.user.daily_digest,
@@ -143,6 +144,8 @@ def _agenda_context(request, quick_add_form=None, new_list_form=None):
             "completed_today": [
                 serialize_item(item) for item in completed_today
             ],
+            # Each task JSON carries only list_id -- title/url live here
+            # once, and the frontend looks them up by id.
             "lists": [
                 {
                     "id": each.id,
@@ -184,6 +187,16 @@ def archive(request):
             "archived_tasks": archived_tasks,
             "archive_workspace_data": {
                 "items": [serialize_item(item) for item in archived_tasks],
+                # Task JSON only carries list_id; the frontend joins
+                # against this to show a list's title and link.
+                "lists": [
+                    {
+                        "id": each.id,
+                        "title": each.title,
+                        "url": each.get_absolute_url(),
+                    }
+                    for each in List.objects.filter(owner=request.user)
+                ],
             },
         },
     )

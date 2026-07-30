@@ -1,4 +1,4 @@
-import type { AgendaWorkspaceData, Task } from "../types";
+import type { ArchiveWorkspaceData, AgendaWorkspaceData, Task } from "../types";
 
 export function task(overrides: Partial<Task> = {}): Task {
   return {
@@ -13,13 +13,8 @@ export function task(overrides: Partial<Task> = {}): Task {
     position: 0,
     tags: [],
     recurrence: "none",
-    list: {
-      id: 1,
-      title: "Programming",
-      url: "/lists/1/",
-    },
-    update_url: "/api/items/1/",
-    delete_url: "/api/items/1/",
+    list_id: 1,
+    url: "/api/items/1/",
     edit_url: "/lists/items/1/edit",
     ...overrides,
   };
@@ -63,6 +58,27 @@ export function agendaData(
     items: [],
     completed_today: [],
     lists: [agendaList()],
+    ...overrides,
+  };
+}
+
+export function archiveList(
+  overrides: Partial<ArchiveWorkspaceData["lists"][number]> = {},
+) {
+  return {
+    id: 1,
+    title: "Programming",
+    url: "/lists/1/",
+    ...overrides,
+  };
+}
+
+export function archiveData(
+  overrides: Partial<ArchiveWorkspaceData> = {},
+): ArchiveWorkspaceData {
+  return {
+    items: [],
+    lists: [archiveList(), archiveList({ id: 2, title: "Home", url: "/lists/2/" })],
     ...overrides,
   };
 }

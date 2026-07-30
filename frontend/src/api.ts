@@ -88,25 +88,25 @@ export function createTask(
 }
 
 export function updateTaskText(task: Task, text: string): Promise<Task> {
-  return request<Task>(task.update_url, "PATCH", { text });
+  return request<Task>(task.url, "PATCH", { text });
 }
 
 export function updateTaskDueDate(
   task: Task,
   dueDate: string | null,
 ): Promise<Task> {
-  return request<Task>(task.update_url, "PATCH", { due_date: dueDate });
+  return request<Task>(task.url, "PATCH", { due_date: dueDate });
 }
 
 export function updateTaskTags(task: Task, tags: string[]): Promise<Task> {
-  return request<Task>(task.update_url, "PATCH", { tags });
+  return request<Task>(task.url, "PATCH", { tags });
 }
 
 export function updateTaskRecurrence(
   task: Task,
   recurrence: TaskRecurrence,
 ): Promise<Task> {
-  return request<Task>(task.update_url, "PATCH", { recurrence });
+  return request<Task>(task.url, "PATCH", { recurrence });
 }
 
 export interface StatusUpdateResult {
@@ -120,12 +120,12 @@ export async function updateTaskStatus(
   task: Task,
   status: TaskStatus,
 ): Promise<StatusUpdateResult> {
-  const payload = await requestPayload<Task>(task.update_url, "PATCH", { status });
+  const payload = await requestPayload<Task>(task.url, "PATCH", { status });
   return { task: payload.data as Task, spawned: payload.spawned };
 }
 
 export async function deleteTask(task: Task): Promise<number> {
-  const result = await request<{ deleted: number }>(task.delete_url, "DELETE");
+  const result = await request<{ deleted: number }>(task.url, "DELETE");
   return result.deleted;
 }
 

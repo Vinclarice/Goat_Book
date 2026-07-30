@@ -5,7 +5,7 @@ lists.services. The bucketing rules are defined once and shared by the
 HTML view, the React bootstrap payload, and the daily digest email, so
 "overdue" always means the same thing in all three.
 """
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from django.db.models import Count, F, Q
 from django.utils import timezone
@@ -95,11 +95,17 @@ def open_items_for(user):
 def completed_today_for(user, today=None):
     """Ticked-off-but-not-yet-archived tasks, so they can be undone."""
     today = today or timezone.localdate()
+    # A range comparison (rather than the __date transform) lets Postgres
+    # use a plain B-tree index on completed_at instead of requiring a
+    # functional/expression index.
+    start_of_day = timezone.make_aware(datetime.combine(today, datetime.min.time()))
+    end_of_day = start_of_day + timedelta(days=1)
     return (
         Item.objects.filter(
             list__owner=user,
             status=Item.Status.COMPLETED,
-            completed_at__date=today,
+            completed_at__gte=start_of_day,
+            completed_at__lt=end_of_day,
         )
         .select_related("list")
         .prefetch_related("tags")

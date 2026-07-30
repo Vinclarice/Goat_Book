@@ -16,12 +16,12 @@ def serialize_item(item):
         "position": item.position,
         "tags": [tag.name for tag in item.tags.all()],
         "recurrence": item.recurrence,
-        "list": {
-            "id": item.list_id,
-            "title": item.list.title,
-            "url": item.list.get_absolute_url(),
-        },
-        "update_url": reverse("api_item_detail", args=(item.id,)),
-        "delete_url": reverse("api_item_detail", args=(item.id,)),
+        # Just the id -- callers already have (or can fetch) the list's
+        # title/url from the top-level `lists` array in the page payload,
+        # so it doesn't need repeating on every single task.
+        "list_id": item.list_id,
+        # update and delete hit the same endpoint, just with different
+        # HTTP methods, so one url covers both.
+        "url": reverse("api_item_detail", args=(item.id,)),
         "edit_url": reverse("edit_item", args=(item.id,)),
     }

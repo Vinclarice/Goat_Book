@@ -22,7 +22,7 @@ function sampleItems() {
       id: 3,
       text: "Buy milk",
       due_date: "2026-07-30",
-      list: home,
+      list_id: home.id,
       tags: ["errand"],
     }),
     task({ id: 4, text: "Renew domain", due_date: "2026-09-01" }),
@@ -264,7 +264,7 @@ describe("AgendaWorkspace", () => {
     const user = userEvent.setup();
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(() =>
       jsonResponse(
-        { data: task({ id: 6, text: "Water the plants", list: home }) },
+        { data: task({ id: 6, text: "Water the plants", list_id: home.id }) },
         true,
       ),
     );

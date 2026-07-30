@@ -73,7 +73,7 @@ describe("applyFilters", () => {
       id: 3,
       text: "Chores",
       due_date: null,
-      list: { id: 2, title: "Home", url: "/lists/2/" },
+      list_id: 2,
     }),
   ];
 

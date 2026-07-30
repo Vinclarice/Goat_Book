@@ -77,7 +77,7 @@ export function applyFilters(
         return false;
       }
     }
-    if (filters.list !== null && task.list.id !== filters.list) return false;
+    if (filters.list !== null && task.list_id !== filters.list) return false;
     if (filters.tag && !task.tags.includes(filters.tag)) return false;
     return true;
   });

@@ -11,6 +11,11 @@ interface Props {
 
 export function ArchiveManager({ initialData }: Props) {
   const [items, setItems] = useState(initialData.items);
+  // Tasks only carry a list_id -- title/url live once in `lists`.
+  const listById = useMemo(
+    () => new Map(initialData.lists.map((each) => [each.id, each])),
+    [initialData.lists],
+  );
   const [query, setQuery] = useState("");
   const [busyId, setBusyId] = useState<number | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Task | null>(null);
@@ -43,9 +48,11 @@ export function ArchiveManager({ initialData }: Props) {
     return items.filter(
       (item) =>
         item.text.toLocaleLowerCase().includes(normalized) ||
-        item.list.title.toLocaleLowerCase().includes(normalized),
+        (listById.get(item.list_id)?.title ?? "")
+          .toLocaleLowerCase()
+          .includes(normalized),
     );
-  }, [items, query]);
+  }, [items, query, listById]);
 
   async function restore(item: Task) {
     setBusyId(item.id);
@@ -54,7 +61,8 @@ export function ArchiveManager({ initialData }: Props) {
     try {
       await updateTaskStatus(item, "completed");
       setItems((current) => current.filter((candidate) => candidate.id !== item.id));
-      setNotice(`Task restored to ${item.list.title}.`);
+      const listTitle = listById.get(item.list_id)?.title ?? "its list";
+      setNotice(`Task restored to ${listTitle}.`);
       focusWorkspace();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to restore task.");
@@ -122,13 +130,18 @@ export function ArchiveManager({ initialData }: Props) {
         </div>
       ) : (
         <div className="list-panel archived-list-panel">
-          {visibleItems.map((item) => (
+          {visibleItems.map((item) => {
+            const itemList = listById.get(item.list_id);
+            return (
             <article className="archived-task-row" key={item.id}>
               <span className="list-icon archive-icon" aria-hidden="true">✓</span>
               <span className="list-row-copy">
                 <strong>{item.text}</strong>
                 <small>
-                  From <a href={item.list.url}>{item.list.title}</a> · Created{" "}
+                  {itemList && (
+                    <>From <a href={itemList.url}>{itemList.title}</a> · </>
+                  )}
+                  Created{" "}
                   <time dateTime={item.created_at}>{formatDate(item.created_at)}</time>
                 </small>
               </span>
@@ -154,7 +167,8 @@ export function ArchiveManager({ initialData }: Props) {
                 </button>
               </span>
             </article>
-          ))}
+            );
+          })}
           {visibleItems.length === 0 && (
             <div className={styles.empty}>No archived tasks match your search.</div>
           )}

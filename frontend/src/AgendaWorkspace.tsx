@@ -85,13 +85,21 @@ export function AgendaWorkspace({ initialData }: Props) {
     const open = new Map<number, number>();
     const overdue = new Map<number, number>();
     for (const task of tasks) {
-      open.set(task.list.id, (open.get(task.list.id) ?? 0) + 1);
+      open.set(task.list_id, (open.get(task.list_id) ?? 0) + 1);
       if (bucketFor(task.due_date, today) === "overdue") {
-        overdue.set(task.list.id, (overdue.get(task.list.id) ?? 0) + 1);
+        overdue.set(task.list_id, (overdue.get(task.list_id) ?? 0) + 1);
       }
     }
     return { open, overdue };
   }, [tasks, today]);
+
+  // Tasks only carry a list_id -- title/url live once in `lists`, so
+  // rendering a task's list pill looks them up here instead of the
+  // server repeating them on every task.
+  const listById = useMemo(
+    () => new Map(lists.map((each) => [each.id, each])),
+    [lists],
+  );
 
   function notify(message: string, undo?: () => void) {
     const id = Date.now() + Math.random();
@@ -244,6 +252,7 @@ export function AgendaWorkspace({ initialData }: Props) {
 
   function renderRow(task: Task, done = false) {
     const bucket = bucketFor(task.due_date, today);
+    const taskList = listById.get(task.list_id);
     const rowClass = [
       "agenda-row",
       done ? "is-done" : bucket === "overdue" ? "is-overdue" : "",
@@ -270,14 +279,16 @@ export function AgendaWorkspace({ initialData }: Props) {
         <div className="agenda-body">
           <span className="agenda-text">{task.text}</span>
           <div className="agenda-meta">
-            <a className="pill pill-list" href={task.list.url}>
-              <span
-                className="dot"
-                aria-hidden="true"
-                style={{ background: colorForList(task.list.id) }}
-              />
-              {task.list.title}
-            </a>
+            {taskList && (
+              <a className="pill pill-list" href={taskList.url}>
+                <span
+                  className="dot"
+                  aria-hidden="true"
+                  style={{ background: colorForList(taskList.id) }}
+                />
+                {taskList.title}
+              </a>
+            )}
 
             {task.due_date && (
               <span

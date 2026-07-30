@@ -65,9 +65,24 @@ class Item(models.Model):
             ),
         ]
         indexes = [
+            # Covers list_summaries()'s open/overdue counts per list, and
+            # (extended with due_date) open_items_for()'s per-list bucket
+            # ordering without a separate lookup.
             models.Index(
-                fields=("list", "status"),
+                fields=("list", "status", "due_date"),
                 name="item_list_state_idx",
+            ),
+            # Backs open_items_for()'s global "every open task, ordered
+            # by due date" query, which isn't scoped to one list.
+            models.Index(
+                fields=("status", "due_date"),
+                name="item_status_due_idx",
+            ),
+            # Backs completed_today_for()'s per-user range scan over
+            # completed_at now that it isn't hidden behind a __date cast.
+            models.Index(
+                fields=("list", "status", "completed_at"),
+                name="item_list_state_completed_idx",
             ),
         ]
 

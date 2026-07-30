@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router";
 
 import { AgendaRoute } from "./routes/AgendaRoute";
+import { ArchiveRoute } from "./routes/ArchiveRoute";
 import { DevUiGallery } from "./routes/DevUiGallery";
 import { ListRoute } from "./routes/ListRoute";
 
@@ -19,6 +20,7 @@ if (rootElement) {
           <Routes>
             <Route path="/agenda" element={<AgendaRoute />} />
             <Route path="/lists/:listId" element={<ListRoute />} />
+            <Route path="/archive" element={<ArchiveRoute />} />
             {/* Django 404s this path outside DEBUG -- see lists.views.spa_shell */}
             <Route path="/dev/ui" element={<DevUiGallery />} />
           </Routes>

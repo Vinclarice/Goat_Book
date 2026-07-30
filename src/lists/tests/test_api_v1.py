@@ -177,3 +177,62 @@ class ListDetailEndpointTest(TestCase):
 
         self.assertEqual(response.status_code, 404)
         self.assertTrue(List.objects.filter(id=self.other_list.id).exists())
+
+
+class ArchiveEndpointTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            "alice",
+            "alice@example.com",
+            "a secure password",
+        )
+        self.other_user = User.objects.create_user(
+            "bob",
+            "bob@example.com",
+            "another secure password",
+        )
+        self.list_ = List.objects.create(owner=self.user, title="Programming")
+        Item.objects.create(
+            list=self.list_,
+            text="Ship the migration",
+            status=Item.Status.ACTIVE,
+        )
+        Item.objects.create(
+            list=self.list_,
+            text="Old task",
+            status=Item.Status.ARCHIVED,
+            completed_at=timezone.now(),
+            archived_at=timezone.now(),
+        )
+        Item.objects.create(
+            list=self.other_user.lists.create(title="Bob's list"),
+            text="Not mine",
+            status=Item.Status.ARCHIVED,
+            completed_at=timezone.now(),
+            archived_at=timezone.now(),
+        )
+
+    def test_rejects_anonymous_requests(self):
+        response = self.client.get("/api/v1/archive")
+
+        self.assertEqual(response.status_code, 401)
+
+    def test_returns_only_the_caller_s_archived_items(self):
+        self.client.force_login(self.user)
+
+        response = self.client.get("/api/v1/archive")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(len(payload["items"]), 1)
+        self.assertEqual(payload["items"][0]["text"], "Old task")
+        self.assertEqual(len(payload["lists"]), 1)
+        self.assertEqual(payload["lists"][0]["title"], "Programming")
+
+    def test_matches_the_shape_the_archive_page_bootstraps_with(self):
+        self.client.force_login(self.user)
+
+        api_payload = self.client.get("/api/v1/archive").json()
+        page_payload = self.client.get("/archive/").context["archive_workspace_data"]
+
+        self.assertEqual(set(api_payload.keys()), set(page_payload.keys()))

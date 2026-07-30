@@ -154,6 +154,30 @@
           }
         ]
       }
+    },
+    "/api/v1/archive": {
+      "get": {
+        "operationId": "lists_api_v1_archive",
+        "summary": "Archive",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArchiveOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -516,6 +540,53 @@
           "title"
         ],
         "title": "ListRenameIn",
+        "type": "object"
+      },
+      "ArchiveOut": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TaskOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "lists": {
+            "items": {
+              "$ref": "#/components/schemas/TaskListSummaryOut"
+            },
+            "title": "Lists",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items",
+          "lists"
+        ],
+        "title": "ArchiveOut",
+        "type": "object"
+      },
+      "TaskListSummaryOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "url"
+        ],
+        "title": "TaskListSummaryOut",
         "type": "object"
       }
     },

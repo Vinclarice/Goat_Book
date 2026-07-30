@@ -21,7 +21,11 @@ from lists.forms import (
     TaskTextForm,
 )
 from lists.models import Item, List
-from lists.serializers import list_workspace_data_for, serialize_item
+from lists.serializers import (
+    archive_workspace_data_for,
+    list_workspace_data_for,
+    serialize_item,
+)
 
 
 def _lists_for(user):
@@ -158,19 +162,9 @@ def archive(request):
         "archive.html",
         {
             "archived_tasks": archived_tasks,
-            "archive_workspace_data": {
-                "items": [serialize_item(item) for item in archived_tasks],
-                # Task JSON only carries list_id; the frontend joins
-                # against this to show a list's title and link.
-                "lists": [
-                    {
-                        "id": each.id,
-                        "title": each.title,
-                        "url": each.get_absolute_url(),
-                    }
-                    for each in List.objects.filter(owner=request.user)
-                ],
-            },
+            "archive_workspace_data": archive_workspace_data_for(
+                request.user, archived_tasks,
+            ),
         },
     )
 

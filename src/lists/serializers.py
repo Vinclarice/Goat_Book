@@ -1,5 +1,7 @@
 from django.urls import reverse
 
+from lists.models import List
+
 
 def serialize_item(item):
     return {
@@ -44,4 +46,23 @@ def list_workspace_data_for(our_list, items):
     return {
         "list": list_ref_for(our_list),
         "items": [serialize_item(item) for item in items],
+    }
+
+
+def archive_workspace_data_for(user, archived_items):
+    """Shapes the archive JSON shared by the Django-rendered archive page's
+    React bootstrap data and the /api/v1/archive endpoint.
+    """
+    return {
+        "items": [serialize_item(item) for item in archived_items],
+        # Task JSON only carries list_id; the frontend joins against this
+        # to show a list's title and link.
+        "lists": [
+            {
+                "id": each.id,
+                "title": each.title,
+                "url": each.get_absolute_url(),
+            }
+            for each in List.objects.filter(owner=user)
+        ],
     }

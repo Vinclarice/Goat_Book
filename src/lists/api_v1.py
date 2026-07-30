@@ -19,7 +19,11 @@ from lists import agenda as agenda_reader
 from lists import services
 from lists.forms import ListTitleForm
 from lists.models import Item, List
-from lists.serializers import list_ref_for, list_workspace_data_for
+from lists.serializers import (
+    archive_workspace_data_for,
+    list_ref_for,
+    list_workspace_data_for,
+)
 
 router = Router()
 
@@ -96,6 +100,17 @@ class ListRenameIn(Schema):
     title: str
 
 
+class TaskListSummaryOut(Schema):
+    id: int
+    title: str
+    url: str
+
+
+class ArchiveOut(Schema):
+    items: list[TaskOut]
+    lists: list[TaskListSummaryOut]
+
+
 @router.get("/agenda", response=AgendaOut)
 def agenda(request):
     user = request.user
@@ -161,3 +176,15 @@ def delete_list(request, list_id: int):
     our_list = _owned_list(request, list_id)
     services.delete_list(our_list)
     return {"deleted": list_id}
+
+
+@router.get("/archive", response=ArchiveOut)
+def archive(request):
+    user = request.user
+    archived_items = list(
+        Item.objects.filter(list__owner=user, status=Item.Status.ARCHIVED)
+        .select_related("list")
+        .prefetch_related("tags")
+        .order_by("-archived_at", "-id")
+    )
+    return archive_workspace_data_for(user, archived_items)

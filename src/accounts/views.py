@@ -6,7 +6,7 @@ from django.contrib.auth.views import LoginView
 from django.shortcuts import redirect, render
 
 from accounts.emails import notify_admins_of_pending_signup
-from accounts.forms import AccountSettingsForm, LoginForm, SignUpForm
+from accounts.forms import LoginForm, SignUpForm
 
 
 class LandingLoginView(LoginView):
@@ -30,16 +30,7 @@ def signup(request):
 
 @login_required
 def account_settings(request):
-    form = AccountSettingsForm(
-        request.POST or None,
-        instance=request.user,
-    )
-    if request.method == "POST" and form.is_valid():
-        form.save()
-        messages.success(request, "Account settings updated.")
-        return redirect("account_settings")
-
-    return render(request, "accounts/settings.html", {"form": form})
+    return redirect("/app/preferences")
 
 
 @login_required

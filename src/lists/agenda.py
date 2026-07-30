@@ -2,8 +2,8 @@
 
 Everything here is query/derivation only -- mutations live in
 lists.services. The bucketing rules are defined once and shared by the
-HTML view, the React bootstrap payload, and the daily digest email, so
-"overdue" always means the same thing in all three.
+/api/v1/agenda payload and the daily digest email, so "overdue" always
+means the same thing in both.
 """
 from datetime import datetime, timedelta
 
@@ -45,11 +45,10 @@ DIGEST_BUCKETS = (OVERDUE, TODAY)
 
 # Muted hues that read as labels rather than status against the dark
 # surface. Assigned deterministically so a list keeps its colour.
-# Still used by the Django-rendered agenda.html and the daily digest
-# email -- neither has migrated to the API yet. LIST_COLOR_KEYS is the
-# semantic equivalent served over /api/v1/ (see the List-Color Contract
-# in the UI overhaul plan); the two are indexed identically so a list
-# reads as the same hue on both the legacy page and the SPA.
+# Still used by the daily digest email, which hasn't migrated to the API.
+# LIST_COLOR_KEYS is the semantic equivalent served over /api/v1/ (see
+# the List-Color Contract in the UI overhaul plan); the two are indexed
+# identically so a list reads as the same hue in both places.
 LIST_COLORS = (
     "#8fc7d6", "#a8dba8", "#f4c98a", "#c9a8dc",
     "#f4a3a3", "#9ab6e0", "#e5a8c4", "#f1e394",
@@ -129,34 +128,6 @@ def completed_today_for(user, today=None):
     )
 
 
-# Scope filters offered by the header numbers. "week" deliberately
-# includes what's already late, matching summary_counts.
-SCOPES = {
-    OVERDUE: (OVERDUE,),
-    TODAY: (TODAY,),
-    WEEK: (OVERDUE, TODAY, WEEK),
-}
-
-
-def apply_filters(items, today, scope=None, list=None, tag=None):
-    """Narrow an item sequence by scope, list id and tag name."""
-    selected = items
-    if scope in SCOPES:
-        allowed = SCOPES[scope]
-        selected = [
-            item for item in selected
-            if bucket_for(item.due_date, today) in allowed
-        ]
-    if list is not None:
-        selected = [item for item in selected if item.list_id == list]
-    if tag:
-        selected = [
-            item for item in selected
-            if any(each.name == tag for each in item.tags.all())
-        ]
-    return selected
-
-
 def bucketed(items, today):
     """Group an iterable of items into ``{bucket_key: [item, ...]}``."""
     groups = {key: [] for key in BUCKET_ORDER}
@@ -208,26 +179,12 @@ def tag_summaries(items):
     ]
 
 
-def summary_counts(groups):
-    """Headline numbers shown in the agenda header."""
-    overdue = len(groups[OVERDUE])
-    today = len(groups[TODAY])
-    return {
-        "overdue": overdue,
-        "today": today,
-        # "This week" is everything with a deadline inside the horizon,
-        # including what's already late -- it's a workload number.
-        "week": overdue + today + len(groups[WEEK]),
-        "open": sum(len(items) for items in groups.values()),
-    }
-
-
 def workspace_data_for(user, *, today, all_open, completed_today, lists, archived_count):
-    """Shapes the agenda JSON payload shared by the Django-rendered page's
-    React bootstrap data and the /api/v1/agenda endpoint, so the two never
-    drift apart. Callers supply already-queried data rather than this
-    function querying itself, since the HTML view needs the same rows for
-    other purposes (filtering, counts) and shouldn't fetch them twice.
+    """Shapes the agenda JSON payload served by /api/v1/agenda.
+
+    Callers supply already-queried data rather than this function
+    querying itself, since /api/v1/agenda needs the same rows for the
+    archived-count query it runs alongside this one.
     """
     return {
         "today": today.isoformat(),

@@ -46,14 +46,6 @@ class AgendaEndpointTest(TestCase):
         self.assertEqual(len(payload["lists"]), 1)
         self.assertEqual(payload["lists"][0]["title"], "Programming")
 
-    def test_matches_the_shape_the_agenda_page_bootstraps_with(self):
-        self.client.force_login(self.user)
-
-        api_payload = self.client.get("/api/v1/agenda").json()
-        page_payload = self.client.get("/dashboard/").context["agenda_workspace_data"]
-
-        self.assertEqual(set(api_payload.keys()), set(page_payload.keys()))
-
     def test_assigns_a_deterministic_semantic_color_key(self):
         self.client.force_login(self.user)
 
@@ -103,25 +95,6 @@ class ListDetailEndpointTest(TestCase):
         self.assertEqual(payload["list"]["title"], "Programming")
         self.assertEqual(len(payload["items"]), 1)
         self.assertEqual(payload["items"][0]["text"], "Write tests")
-
-    def test_matches_the_shape_the_list_page_bootstraps_with_plus_archive_info(self):
-        """The API response is a superset of task_workspace_data: it also
-        carries archived_count/archive_url, which the legacy page gets
-        from separate sibling context keys instead (archived_task_count,
-        and a hardcoded {% url 'archive' %} in the template)."""
-        self.client.force_login(self.user)
-
-        api_payload = self.client.get(f"/api/v1/lists/{self.list_.id}").json()
-        page_context = self.client.get(f"/lists/{self.list_.id}/").context
-
-        self.assertEqual(
-            set(api_payload.keys()) - {"archived_count", "archive_url"},
-            set(page_context["task_workspace_data"].keys()),
-        )
-        self.assertEqual(
-            api_payload["archived_count"],
-            page_context["archived_task_count"],
-        )
 
     def test_renames_the_list(self):
         self.client.force_login(self.user)
@@ -228,15 +201,6 @@ class ArchiveEndpointTest(TestCase):
         self.assertEqual(payload["items"][0]["text"], "Old task")
         self.assertEqual(len(payload["lists"]), 1)
         self.assertEqual(payload["lists"][0]["title"], "Programming")
-
-    def test_matches_the_shape_the_archive_page_bootstraps_with(self):
-        self.client.force_login(self.user)
-
-        api_payload = self.client.get("/api/v1/archive").json()
-        page_payload = self.client.get("/archive/").context["archive_workspace_data"]
-
-        self.assertEqual(set(api_payload.keys()), set(page_payload.keys()))
-
 
 class TaskDetailEndpointTest(TestCase):
     def setUp(self):

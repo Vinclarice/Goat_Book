@@ -23,7 +23,10 @@ class TaskApiTest(TestCase):
         self.item = Item.objects.create(list=self.list_, text="Write tests")
         self.client = Client(enforce_csrf_checks=True)
         self.client.force_login(self.user)
-        response = self.client.get(self.list_.get_absolute_url())
+        # Any login-required page that still renders a real {% csrf_token %}
+        # form primes the cookie -- list/archive/agenda no longer render
+        # one themselves now that they're pure redirects into the SPA.
+        response = self.client.get("/accounts/password/change/")
         self.csrf_token = response.cookies["csrftoken"].value
 
     def request(self, method, url, payload=None, include_csrf=True):

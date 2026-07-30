@@ -136,6 +136,13 @@ export function PreferencesRoute() {
           onChange={(theme) => themeMutation.mutate(theme)}
         />
       </div>
+
+      <a
+        href="/accounts/password/change/"
+        className="text-sm text-muted-foreground hover:text-foreground"
+      >
+        Change password
+      </a>
     </div>
   );
 }

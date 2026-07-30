@@ -1,0 +1,46 @@
+{% extends "base_legacy.html" %}
+
+{% block title %}New list · Clarice{% endblock %}
+
+{% block content %}
+  <section class="auth-page">
+    <div class="auth-card auth-card-wide">
+      <div class="auth-heading">
+        <p class="eyebrow">Your lists</p>
+        <h1>New list</h1>
+        <p>Give it a name and its first task.</p>
+      </div>
+
+      <form method="post" action="{% url 'new_list' %}" class="auth-form">
+        {% csrf_token %}
+        <div>
+          <label for="id_title">List name</label>
+          <input
+            id="id_title"
+            name="title"
+            value="{{ form.title.value|default:'' }}"
+            maxlength="100"
+          >
+        </div>
+        <div>
+          <label for="id_text">First task</label>
+          <input
+            id="id_text"
+            name="text"
+            value="{{ form.text.value|default:'' }}"
+            required
+            autofocus
+          >
+          {% if form.text.errors %}
+            <div class="field-error">{{ form.text.errors.0 }}</div>
+          {% endif %}
+        </div>
+        <button class="btn btn-primary" type="submit">Create list</button>
+      </form>
+
+      <p class="auth-switch">
+        <a href="{% url 'dashboard' %}">Cancel</a>
+      </p>
+    </div>
+  </section>
+{% endblock %}

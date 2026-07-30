@@ -1,10 +1,8 @@
 from django.test import TestCase
 
 from lists.forms import (
-    DUPLICATE_ITEM_ERROR,
     EMPTY_TITLE_ERROR,
     EMPTY_ITEM_ERROR,
-    ExistingListItemForm,
     ItemForm,
     ListTitleForm,
     NewListForm,
@@ -26,44 +24,6 @@ class ItemFormTest(TestCase):
         self.assertEqual(new_item, Item.objects.get())
         self.assertEqual(new_item.text, "do me")
         self.assertEqual(new_item.list, mylist)
-
-
-class ExistingListItemFormTest(TestCase):
-    def test_form_validation_for_blank_items(self):
-        list_ = List.objects.create()
-        form = ExistingListItemForm(for_list=list_, data={"text": ""})
-        self.assertFalse(form.is_valid())
-        self.assertEqual(form.errors["text"], [EMPTY_ITEM_ERROR])
-
-    def test_form_validation_for_duplicate_items(self):
-        list_ = List.objects.create()
-        Item.objects.create(list=list_, text="no twins!")
-        form = ExistingListItemForm(for_list=list_, data={"text": "no twins!"})
-        self.assertFalse(form.is_valid())
-        self.assertEqual(form.errors["text"], [DUPLICATE_ITEM_ERROR])
-
-    def test_form_save(self):
-        mylist = List.objects.create()
-        form = ExistingListItemForm(for_list=mylist, data={"text": "hi"})
-        self.assertTrue(form.is_valid())
-        new_item = form.save()
-        self.assertEqual(new_item, Item.objects.get())
-
-    def test_archived_item_does_not_count_as_duplicate(self):
-        list_ = List.objects.create()
-        Item.objects.create(
-            list=list_,
-            text="Do this again",
-            status=Item.Status.ARCHIVED,
-            completed_at="2026-07-24T12:00:00Z",
-            archived_at="2026-07-24T12:01:00Z",
-        )
-        form = ExistingListItemForm(
-            for_list=list_,
-            data={"text": "Do this again"},
-        )
-
-        self.assertTrue(form.is_valid())
 
 
 class NewListFormTest(TestCase):

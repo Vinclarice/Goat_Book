@@ -63,6 +63,10 @@ describe("PreferencesRoute", () => {
       "aria-pressed",
       "true",
     );
+    expect(screen.getByRole("link", { name: "Change password" })).toHaveAttribute(
+      "href",
+      "/accounts/password/change/",
+    );
   });
 
   it("shows an error state when the request fails", async () => {

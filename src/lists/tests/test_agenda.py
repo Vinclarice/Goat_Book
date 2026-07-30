@@ -112,23 +112,6 @@ class AgendaQueryTest(TestCase):
         self.assertEqual([i.text for i in groups[agenda.LATER]], ["Distant"])
         self.assertEqual([i.text for i in groups[agenda.SOMEDAY]], ["Whenever"])
 
-    def test_summary_counts_fold_overdue_into_this_week(self):
-        self.make("Late", due_offset=-3)
-        self.make("Also late", due_offset=-1)
-        self.make("Now", due_offset=0)
-        self.make("Soon", due_offset=2)
-        self.make("Whenever")
-
-        counts = agenda.summary_counts(
-            agenda.bucketed(agenda.open_items_for(self.user), self.today)
-        )
-
-        self.assertEqual(counts["overdue"], 2)
-        self.assertEqual(counts["today"], 1)
-        # 2 overdue + 1 today + 1 later this week.
-        self.assertEqual(counts["week"], 4)
-        self.assertEqual(counts["open"], 5)
-
     def test_list_summaries_count_open_and_overdue_separately(self):
         self.make("Late", due_offset=-2)
         self.make("Fine", due_offset=3)
@@ -151,35 +134,6 @@ class AgendaQueryTest(TestCase):
         summaries = agenda.tag_summaries(agenda.open_items_for(self.user))
 
         self.assertEqual(summaries, [{"name": "errand", "count": 2}])
-
-    def test_apply_filters_narrows_by_scope_list_and_tag(self):
-        urgent = Tag.objects.create(owner=self.user, name="urgent")
-        late = self.make("Late", due_offset=-1)
-        late.tags.add(urgent)
-        self.make("Later this week", due_offset=3)
-        self.make("Chores", for_list=self.home)
-
-        items = list(agenda.open_items_for(self.user))
-
-        by_scope = agenda.apply_filters(items, self.today, scope=agenda.OVERDUE)
-        self.assertEqual([i.text for i in by_scope], ["Late"])
-
-        by_list = agenda.apply_filters(items, self.today, list=self.home.id)
-        self.assertEqual([i.text for i in by_list], ["Chores"])
-
-        by_tag = agenda.apply_filters(items, self.today, tag="urgent")
-        self.assertEqual([i.text for i in by_tag], ["Late"])
-
-    def test_week_scope_includes_overdue_tasks(self):
-        self.make("Late", due_offset=-4)
-        self.make("Soon", due_offset=1)
-        self.make("Distant", due_offset=40)
-
-        selected = agenda.apply_filters(
-            list(agenda.open_items_for(self.user)), self.today, scope=agenda.WEEK
-        )
-
-        self.assertEqual([i.text for i in selected], ["Late", "Soon"])
 
     def test_completed_today_ignores_older_completions(self):
         fresh = self.make("Ticked today", status=Item.Status.COMPLETED)

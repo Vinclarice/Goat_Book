@@ -3,7 +3,6 @@ from django.core import mail
 from django.test import TestCase
 
 from accounts.models import User
-from lists.models import List
 
 
 PASSWORD = "correct horse battery staple 47!"
@@ -103,7 +102,7 @@ class LoginViewTest(TestCase):
             data={"username": "edith", "password": PASSWORD},
         )
 
-        self.assertRedirects(response, "/dashboard/")
+        self.assertRedirects(response, "/dashboard/", target_status_code=302)
         self.assertEqual(auth.get_user(self.client), self.user)
 
     def test_welcome_page_form_logs_in_with_valid_credentials(self):
@@ -112,7 +111,7 @@ class LoginViewTest(TestCase):
             data={"username": "edith", "password": PASSWORD},
         )
 
-        self.assertRedirects(response, "/dashboard/")
+        self.assertRedirects(response, "/dashboard/", target_status_code=302)
         self.assertEqual(auth.get_user(self.client), self.user)
 
     def test_rejects_invalid_credentials(self):
@@ -171,13 +170,16 @@ class LoginViewTest(TestCase):
 
 
 class AccountSettingsViewTest(TestCase):
+    """Account settings moved to /app/preferences (its own API, tested in
+    accounts/tests/test_api_v1.py); this URL is now a thin redirect kept
+    alive for old bookmarks and the navbar link in base_legacy.html."""
+
     def setUp(self):
         self.user = User.objects.create_user(
             "edith",
             "edith@example.com",
             PASSWORD,
         )
-        self.list_ = List.objects.create(owner=self.user, title="Programming")
         self.client.force_login(self.user)
 
     def test_requires_login(self):
@@ -190,32 +192,12 @@ class AccountSettingsViewTest(TestCase):
             "/accounts/login/?next=/accounts/settings/",
         )
 
-    def test_updates_username_and_email_without_changing_ownership(self):
-        original_pk = self.user.pk
+    def test_redirects_to_the_spa_preferences_route(self):
+        response = self.client.get("/accounts/settings/")
 
-        response = self.client.post(
-            "/accounts/settings/",
-            data={"username": "edith-new", "email": "new@example.com"},
+        self.assertRedirects(
+            response, "/app/preferences", fetch_redirect_response=False,
         )
-
-        self.user.refresh_from_db()
-        self.list_.refresh_from_db()
-        self.assertRedirects(response, "/accounts/settings/")
-        self.assertEqual(self.user.pk, original_pk)
-        self.assertEqual(self.user.username, "edith-new")
-        self.assertEqual(self.user.email, "new@example.com")
-        self.assertEqual(self.list_.owner, self.user)
-
-    def test_rejects_duplicate_email(self):
-        User.objects.create_user("other", "other@example.com", PASSWORD)
-
-        response = self.client.post(
-            "/accounts/settings/",
-            data={"username": "edith", "email": "other@example.com"},
-        )
-
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "User with this Email already exists.")
 
     def test_changes_password_and_preserves_session(self):
         new_password = "a different secure password 92!"
@@ -230,6 +212,8 @@ class AccountSettingsViewTest(TestCase):
         )
 
         self.user.refresh_from_db()
-        self.assertRedirects(response, "/accounts/settings/")
+        self.assertRedirects(
+            response, "/accounts/settings/", target_status_code=302,
+        )
         self.assertTrue(self.user.check_password(new_password))
         self.assertEqual(auth.get_user(self.client), self.user)

@@ -102,9 +102,6 @@ INSTALLED_APPS = [
     "lists",
 ]
 
-if DEPLOYMENT_ENVIRONMENT != "production":
-    INSTALLED_APPS.append("functional_tests")
-
 
 def environment_callback(request):
     """Small colored label shown in the admin header (see UNFOLD["ENVIRONMENT"]

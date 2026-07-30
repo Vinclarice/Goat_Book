@@ -1,45 +1,52 @@
-{% extends "base_legacy.html" %}
+{% extends "base.html" %}
 
 {% block title %}New list · Clarice{% endblock %}
 
 {% block content %}
-  <section class="auth-page">
-    <div class="auth-card auth-card-wide">
-      <div class="auth-heading">
-        <p class="eyebrow">Your lists</p>
-        <h1>New list</h1>
-        <p>Give it a name and its first task.</p>
+  <section class="mx-auto max-w-md py-8">
+    <div class="rounded-xl border border-border bg-card p-6 sm:p-8 space-y-6">
+      <div class="space-y-1">
+        <p class="text-xs font-bold uppercase tracking-wide text-accent">Your lists</p>
+        <h1 class="text-2xl font-bold">New list</h1>
+        <p class="text-sm text-muted-foreground">Give it a name and its first task.</p>
       </div>
 
-      <form method="post" action="{% url 'new_list' %}" class="auth-form">
+      <form method="post" action="{% url 'new_list' %}" class="space-y-4">
         {% csrf_token %}
-        <div>
-          <label for="id_title">List name</label>
+        <div class="space-y-1">
+          <label for="id_title" class="text-sm font-bold">List name</label>
           <input
             id="id_title"
             name="title"
             value="{{ form.title.value|default:'' }}"
             maxlength="100"
+            class="w-full rounded-lg border border-border bg-input px-3 py-1.5"
           >
         </div>
-        <div>
-          <label for="id_text">First task</label>
+        <div class="space-y-1">
+          <label for="id_text" class="text-sm font-bold">First task</label>
           <input
             id="id_text"
             name="text"
             value="{{ form.text.value|default:'' }}"
             required
             autofocus
+            class="w-full rounded-lg border border-border bg-input px-3 py-1.5"
           >
           {% if form.text.errors %}
-            <div class="field-error">{{ form.text.errors.0 }}</div>
+            <div class="text-sm text-destructive">{{ form.text.errors.0 }}</div>
           {% endif %}
         </div>
-        <button class="btn btn-primary" type="submit">Create list</button>
+        <button
+          class="w-full h-10 rounded-lg bg-primary text-primary-foreground hover:bg-primary/80 font-bold text-sm transition-colors"
+          type="submit"
+        >
+          Create list
+        </button>
       </form>
 
-      <p class="auth-switch">
-        <a href="{% url 'dashboard' %}">Cancel</a>
+      <p class="text-sm text-muted-foreground">
+        <a class="text-accent hover:underline" href="{% url 'dashboard' %}">Cancel</a>
       </p>
     </div>
   </section>

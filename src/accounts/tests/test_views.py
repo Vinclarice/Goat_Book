@@ -14,6 +14,7 @@ class SignUpViewTest(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "accounts/signup.html")
+        self.assertTemplateUsed(response, "base.html")
         self.assertContains(response, 'name="username"')
         self.assertContains(response, 'name="email"')
         self.assertContains(response, 'name="password1"')
@@ -121,11 +122,23 @@ class LoginViewTest(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "base.html")
         self.assertContains(
             response,
             "Please enter a correct username and password.",
         )
         self.assertFalse(auth.get_user(self.client).is_authenticated)
+
+    def test_too_many_failed_attempts_renders_the_lockout_page(self):
+        for _ in range(5):
+            response = self.client.post(
+                "/accounts/login/",
+                data={"username": "edith", "password": "wrong password"},
+            )
+
+        self.assertTemplateUsed(response, "accounts/lockout.html")
+        self.assertTemplateUsed(response, "base.html")
+        self.assertContains(response, "Temporarily locked out", status_code=429)
 
     def test_rejects_login_for_a_pending_inactive_account(self):
         self.user.is_active = False
@@ -172,7 +185,7 @@ class LoginViewTest(TestCase):
 class AccountSettingsViewTest(TestCase):
     """Account settings moved to /app/preferences (its own API, tested in
     accounts/tests/test_api_v1.py); this URL is now a thin redirect kept
-    alive for old bookmarks and the navbar link in base_legacy.html."""
+    alive for old bookmarks and the navbar link in base.html."""
 
     def setUp(self):
         self.user = User.objects.create_user(
@@ -198,6 +211,14 @@ class AccountSettingsViewTest(TestCase):
         self.assertRedirects(
             response, "/app/preferences", fetch_redirect_response=False,
         )
+
+    def test_renders_change_password_form(self):
+        response = self.client.get("/accounts/password/change/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "accounts/change_password.html")
+        self.assertTemplateUsed(response, "base.html")
+        self.assertContains(response, 'name="old_password"')
 
     def test_changes_password_and_preserves_session(self):
         new_password = "a different secure password 92!"

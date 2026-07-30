@@ -1,21 +1,21 @@
-{% extends "base_legacy.html" %}
+{% extends "base.html" %}
 
 {% block title %}Too many attempts · Clarice{% endblock %}
 
 {% block content %}
-  <section class="auth-page">
-    <div class="auth-card">
-      <div class="auth-heading">
-        <p class="eyebrow">Slow down</p>
-        <h1>Temporarily locked out</h1>
-        <p>
+  <section class="mx-auto max-w-md py-8">
+    <div class="rounded-xl border border-border bg-card p-6 sm:p-8 space-y-6">
+      <div class="space-y-1">
+        <p class="text-xs font-bold uppercase tracking-wide text-accent">Slow down</p>
+        <h1 class="text-2xl font-bold">Temporarily locked out</h1>
+        <p class="text-sm text-muted-foreground">
           There have been too many failed sign-in attempts for this
           account. Try again in about an hour.
         </p>
       </div>
 
-      <p class="auth-switch">
-        <a href="{% url 'home' %}">Back to the homepage</a>
+      <p class="text-sm text-muted-foreground">
+        <a class="text-accent hover:underline" href="{% url 'home' %}">Back to the homepage</a>
       </p>
     </div>
   </section>

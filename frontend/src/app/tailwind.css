@@ -10,10 +10,12 @@
 /* Django templates aren't part of Vite's module graph, so Tailwind can't
    auto-detect classes used in them the way it does for .tsx files -- each
    one that will actually use Tailwind utilities needs listing explicitly.
-   base_legacy.html is deliberately absent: it stays Bootstrap-only until
-   its last transitional template is replaced (see the UI overhaul plan). */
+   base_legacy.html and Bootstrap are gone as of Step 5 (final-cutover's
+   redirects left it with nothing to render), so every surviving Django
+   template now needs to be covered here. */
 @source "../../../src/lists/templates/base.html";
 @source "../../../src/lists/templates/app_shell.html";
+@source "../../../src/accounts/templates/**/*.html";
 
 /* Dark values match the shipped --sl-* tokens in src/static/site.css
    exactly -- this is Clarice's existing identity, not a redesign. Light

@@ -53,6 +53,19 @@ _THEME_RESOLUTION_SCRIPT_TEMPLATE = """
 """.strip()
 
 
+@register.filter(name="add_class")
+def add_class(field, css_class):
+    """Adds a class to a bound form field's rendered widget.
+
+    Django's default {{ field }} rendering carries no styling hook, and
+    there's no django-widget-tweaks dependency in this project -- this
+    is the same as_widget(attrs=...) mechanism that package wraps, used
+    directly so auth-page templates can apply Tailwind classes without
+    every form needing its own widget attrs defined in forms.py.
+    """
+    return field.as_widget(attrs={"class": css_class})
+
+
 @register.simple_tag
 def frontend_assets():
     dev_server_url = settings.VITE_DEV_SERVER_URL.rstrip("/")

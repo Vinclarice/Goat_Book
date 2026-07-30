@@ -1,22 +1,22 @@
-{% extends "base_legacy.html" %}
+{% extends "base.html" %}
 
 {% block title %}Account pending approval · Clarice{% endblock %}
 
 {% block content %}
-  <section class="auth-page">
-    <div class="auth-card">
-      <div class="auth-heading">
-        <p class="eyebrow">Almost there</p>
-        <h1>Your account is pending approval</h1>
-        <p>
+  <section class="mx-auto max-w-md py-8">
+    <div class="rounded-xl border border-border bg-card p-6 sm:p-8 space-y-6">
+      <div class="space-y-1">
+        <p class="text-xs font-bold uppercase tracking-wide text-accent">Almost there</p>
+        <h1 class="text-2xl font-bold">Your account is pending approval</h1>
+        <p class="text-sm text-muted-foreground">
           Thanks for signing up, {{ user.username }}. An admin needs to
           approve your account before you can log in. You'll be able to
           sign in as soon as that happens.
         </p>
       </div>
 
-      <p class="auth-switch">
-        Already approved? <a href="{% url 'login' %}">Log in</a>
+      <p class="text-sm text-muted-foreground">
+        Already approved? <a class="text-accent hover:underline" href="{% url 'login' %}">Log in</a>
       </p>
     </div>
   </section>

@@ -1,0 +1,102 @@
+@import "tailwindcss";
+
+/* Django templates aren't part of Vite's module graph, so Tailwind can't
+   auto-detect classes used in them the way it does for .tsx files -- each
+   one that will actually use Tailwind utilities needs listing explicitly.
+   base_legacy.html is deliberately absent: it stays Bootstrap-only until
+   its last transitional template is replaced (see the UI overhaul plan). */
+@source "../../../src/lists/templates/base.html";
+@source "../../../src/lists/templates/app_shell.html";
+
+/* Dark values match the shipped --sl-* tokens in src/static/site.css
+   exactly -- this is Clarice's existing identity, not a redesign. Light
+   values are the palette approved in the Step 1 visual-foundation review. */
+@theme {
+  --color-bg: #08111f;
+  --color-surface: rgba(18, 31, 49, 0.82);
+  --color-surface-strong: #132237;
+  --color-text: #f5f7fb;
+  --color-muted: #a6b2c3;
+  --color-accent: #7be0b8;
+  --color-accent-hover: #98e9c9;
+  --color-accent-active: #64cba4;
+  --color-accent-foreground: #08111f;
+  --color-border: rgba(255, 255, 255, 0.1);
+  --color-input: rgba(4, 10, 19, 0.62);
+  --color-nav: rgba(8, 17, 31, 0.72);
+  --color-status-overdue: #ffb8b8;
+  --color-status-today: #ffcf7a;
+  --color-status-week: #9ab6e0;
+}
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  @media (prefers-color-scheme: light) {
+    :root {
+      --color-bg: #f1f6f4;
+      --color-surface: #ffffff;
+      --color-surface-strong: #ffffff;
+      --color-text: #101c26;
+      --color-muted: #55697a;
+      --color-accent: #1c8f66;
+      --color-accent-hover: #17754f;
+      --color-accent-active: #125f40;
+      --color-accent-foreground: #ffffff;
+      --color-border: rgba(15, 23, 32, 0.1);
+      --color-input: #ffffff;
+      --color-nav: rgba(255, 255, 255, 0.82);
+      --color-status-overdue: #b23434;
+      --color-status-today: #9a640a;
+      --color-status-week: #35618f;
+      color-scheme: light;
+    }
+  }
+
+  /* The viewer's explicit choice always wins over the OS preference --
+     see the theme-resolution script (Step 3d) that stamps this attribute. */
+  :root[data-theme="dark"] {
+    --color-bg: #08111f;
+    --color-surface: rgba(18, 31, 49, 0.82);
+    --color-surface-strong: #132237;
+    --color-text: #f5f7fb;
+    --color-muted: #a6b2c3;
+    --color-accent: #7be0b8;
+    --color-accent-hover: #98e9c9;
+    --color-accent-active: #64cba4;
+    --color-accent-foreground: #08111f;
+    --color-border: rgba(255, 255, 255, 0.1);
+    --color-input: rgba(4, 10, 19, 0.62);
+    --color-nav: rgba(8, 17, 31, 0.72);
+    --color-status-overdue: #ffb8b8;
+    --color-status-today: #ffcf7a;
+    --color-status-week: #9ab6e0;
+    color-scheme: dark;
+  }
+
+  :root[data-theme="light"] {
+    --color-bg: #f1f6f4;
+    --color-surface: #ffffff;
+    --color-surface-strong: #ffffff;
+    --color-text: #101c26;
+    --color-muted: #55697a;
+    --color-accent: #1c8f66;
+    --color-accent-hover: #17754f;
+    --color-accent-active: #125f40;
+    --color-accent-foreground: #ffffff;
+    --color-border: rgba(15, 23, 32, 0.1);
+    --color-input: #ffffff;
+    --color-nav: rgba(255, 255, 255, 0.82);
+    --color-status-overdue: #b23434;
+    --color-status-today: #9a640a;
+    --color-status-week: #35618f;
+    color-scheme: light;
+  }
+
+  body {
+    background: var(--color-bg);
+    color: var(--color-text);
+  }
+}

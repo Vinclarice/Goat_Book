@@ -45,7 +45,20 @@ came; step 2 shipped ahead of all the feature work below, as intended.
 
 ---
 
-## Step 1 — Preserve status across archive/restore
+## Step 1 — Preserve status across archive/restore — done
+
+**Shipped July 31, 2026** as migration `0018_archived_status_timestamps`,
+exactly as specified below. One thing the build surfaced that this plan
+didn't anticipate: the migration is forward-safe but **not reversible** —
+a task archived while active carries `archived_at` with a null
+`completed_at`, which the old constraint rejects, so reversing fails on
+any such row. Recorded in the migration's own comment.
+
+A second consequence, harmless but worth knowing: the HTTP restore path
+now returns a status the caller didn't ask for. The API only accepts
+`"completed"` for un-archiving, so restoring a task that was active comes
+back `active`. The SPA drops the row and refetches rather than reading the
+echoed status, so nothing broke; `test_api.py` now pins it.
 
 **Problem.** `services.archive_item` does:
 
@@ -308,7 +321,17 @@ the still-outstanding backup work.
 
 ---
 
-## Step 3 — Snooze presets
+## Step 3 — Snooze presets — done
+
+**Shipped July 31, 2026.** Both sides pin the same fixed weekdays, Friday
+included: that's the day Tomorrow and This weekend collapse onto the same
+date, and a menu offering one date twice reads as a bug unless it's
+deliberate.
+
+Open question this created: `snooze_presets` has no server-side caller,
+because the Django agenda redirects to the SPA post-cutover. See the note
+in `design/roadmap.md`'s Next queue — either serve the presets from the
+agenda payload or drop the Python copy.
 
 Independent of everything else; small; ships on its own.
 

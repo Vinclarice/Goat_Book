@@ -236,7 +236,6 @@ def archive_item(item):
     if item.status != Item.Status.ARCHIVED:
         now = timezone.now()
         item.status = Item.Status.ARCHIVED
-        item.completed_at = item.completed_at or now
         item.archived_at = now
         item.save()
     return item
@@ -252,8 +251,12 @@ def restore_item(item):
             "That task already exists in its original list, so it was not restored."
         )
 
-    item.status = Item.Status.COMPLETED
-    item.completed_at = item.completed_at or timezone.now()
+    # A null completed_at means the task was active when it was archived, so
+    # that is where it goes back to; anything else was genuinely completed.
+    if item.completed_at is None:
+        item.status = Item.Status.ACTIVE
+    else:
+        item.status = Item.Status.COMPLETED
     item.archived_at = None
     try:
         item.save()

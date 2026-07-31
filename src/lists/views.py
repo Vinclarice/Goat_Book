@@ -26,9 +26,11 @@ def archive(request):
 def spa_shell(request, subpath=""):
     """Serves every /app/... path -- React Router owns routing from here.
 
-    Deliberately not extending base.html: that still carries Bootstrap,
-    and this shell has nothing to style yet (see the UI overhaul plan's
-    Step 2c/Step 3 split).
+    Deliberately not extending base.html. The original reason was that
+    base.html still carried Bootstrap; that stopped being true when
+    Bootstrap was retired (fda6176). It stays standalone now for a simpler
+    reason: base.html renders the Django chrome (nav, messages) and this
+    shell hands the whole page to React, which draws its own.
 
     /app/dev/... (the component gallery) 404s outside DEBUG -- it's a
     development aid, not something to ship. The route still exists in the

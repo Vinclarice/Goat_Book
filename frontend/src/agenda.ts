@@ -43,6 +43,47 @@ export function bucketFor(
   return "later";
 }
 
+// Python's date.weekday() counts from Monday, JS's getUTCDay() from
+// Sunday -- these are the JS numbers for lists.agenda.MONDAY/SATURDAY.
+const MONDAY = 1;
+const SATURDAY = 6;
+
+function weekdayOf(isoDate: string): number {
+  return new Date(`${isoDate}T00:00:00Z`).getUTCDay();
+}
+
+/** Mirrors lists.agenda.next_weekday. */
+function nextWeekday(isoDate: string, weekday: number): string {
+  const ahead = (weekday - weekdayOf(isoDate) + 7) % 7;
+  return addDays(isoDate, ahead || 7);
+}
+
+export type SnoozeKey = "tomorrow" | "weekend" | "next_week" | "clear";
+
+export interface SnoozePreset {
+  key: SnoozeKey;
+  label: string;
+  dueDate: string | null;
+}
+
+/** Mirrors lists.agenda.snooze_presets -- see there for the edge cases. */
+export function snoozePresets(today: string): SnoozePreset[] {
+  const weekend =
+    weekdayOf(today) === SATURDAY
+      ? addDays(today, 1)
+      : nextWeekday(today, SATURDAY);
+  return [
+    { key: "tomorrow", label: "Tomorrow", dueDate: addDays(today, 1) },
+    { key: "weekend", label: "This weekend", dueDate: weekend },
+    {
+      key: "next_week",
+      label: "Next week",
+      dueDate: nextWeekday(today, MONDAY),
+    },
+    { key: "clear", label: "Clear", dueDate: null },
+  ];
+}
+
 /** Mirrors lists.agenda.SCOPES. */
 export const SCOPES: Record<string, AgendaBucketKey[]> = {
   overdue: ["overdue"],

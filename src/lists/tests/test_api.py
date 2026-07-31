@@ -213,6 +213,29 @@ class TaskApiTest(TestCase):
         self.assertEqual(response.status_code, 409)
         self.assertIn("conflict", response.json()["errors"])
 
+    def test_restoring_a_task_archived_while_active_returns_it_to_active(self):
+        # The restore request says "completed" because that is the only status
+        # the API accepts for un-archiving, but since 0018 the response can
+        # legitimately come back active -- the task was active when archived.
+        # The SPA drops the row from the archive and refetches, so it doesn't
+        # depend on the echoed status; this pins the contract anyway.
+        self.item.status = Item.Status.ARCHIVED
+        self.item.completed_at = None
+        self.item.archived_at = timezone.now()
+        self.item.save()
+
+        response = self.request(
+            "patch",
+            f"/api/items/{self.item.id}/",
+            {"status": Item.Status.COMPLETED},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["data"]["status"], Item.Status.ACTIVE)
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.status, Item.Status.ACTIVE)
+        self.assertIsNone(self.item.completed_at)
+
     def test_delete_requires_archived_status(self):
         active_response = self.request(
             "delete",

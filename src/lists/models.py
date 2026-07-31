@@ -57,7 +57,6 @@ class Item(models.Model):
                     )
                     | Q(
                         status="archived",
-                        completed_at__isnull=False,
                         archived_at__isnull=False,
                     )
                 ),

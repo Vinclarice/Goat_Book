@@ -32,5 +32,6 @@ urlpatterns = [
     path("api/v1/", api_v1.urls),
     path("lists/", include("lists.urls")),
     path("accounts/", include("accounts.urls")),
+    path("capture/", include("capture.urls")),
     path("admin/", admin.site.urls),
 ]

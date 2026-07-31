@@ -49,7 +49,18 @@ on July 31, 2026 (`f699b61`).
 A1 is now fully done, script (PR #2) plus the actual production cutover,
 also July 31, 2026 -- see the A1 entry below for what the live run
 actually surfaced (two real bugs, both fixed same-day, and one exposure
-left open that is now item A5). A2–A5 are still ahead.
+left open that is now item A5).
+
+**Then the feature work finally started.** In one pass on July 31, 2026,
+five things landed together on `plan-implementation`: A3 (isolation
+tests), A4 (the digest cron line), Next items 1 and 2 (the archive/restore
+status fix and snooze presets), and the Track B Capture MVP. 211 Django
+tests and 86 frontend tests pass. Details in each item below.
+
+What that leaves in Track A/Now: **A2** (prove the backups work) and
+**A5** (close the cluster firewall) — both needing `doctl` against the
+live account rather than code. A4 is written but only takes effect on the
+next deploy.
 
 ---
 
@@ -170,6 +181,11 @@ the isolation tests both land with automated coverage instead of a manual,
 one-time check. After that the order is preference, not dependency — A2,
 A4, and A5 are independent of each other and of the feature plan.
 
+**Status:** A0, A1 and A3 are done; A4 is written and waiting on a deploy.
+**A2 and A5 are what's left**, and they're the two that need `doctl`
+against the live account rather than code — which is exactly why they
+outlasted everything that could be done from an editor. Neither is hard.
+
 ### A0. Stand up CI with a Postgres service container — done
 
 Shipped July 31, 2026, [PR #1](https://github.com/Vinclarice/Goat_Book/pull/1)
@@ -271,13 +287,28 @@ Done means all five, written down somewhere durable — a restore that
 happened once and wasn't recorded is indistinguishable from one that
 didn't.
 
-### A3. Adversarial per-user data isolation tests
+### A3. Adversarial per-user data isolation tests — done
 
-**New in this pass — not in the original July 31 draft's Now list; pulled
-forward from the public-readiness bar because it's cheap and it's the
-single item on that whole bar most likely to get poked at by a portfolio
-reviewer.** Isolation today rests entirely on ownership filters at the
-query layer (`get_object_or_404(List, id=list_id, owner=request.user)` in
+**Shipped July 31, 2026** — `lists/tests/test_isolation.py`, 15 tests, run
+as their own named CI step. Isolation held: every one of the eight pairs
+already returned 404 to an intruder, so this bought regression protection
+rather than a bug fix, which is what the item predicted. Two things worth
+recording from the build:
+
+- **The named CI step runs *before* the general suite, not after.** Steps
+  are sequential, so the obvious ordering would have meant an isolation
+  regression fails the broad step and the named step never executes — the
+  unmissable signal, never appearing. Position is the whole point.
+- **Positive controls matter more than they look.** Six tests fire the
+  identical request against the intruder's *own* object and assert it
+  succeeds. Without them the module would stay green if a route were
+  deleted, because a missing route 404s exactly like a blocked one.
+
+The original specification follows, kept because the endpoint inventory is
+still the checklist to extend when Step 6c lands.
+
+Isolation rested entirely on ownership filters at the query layer
+(`get_object_or_404(List, id=list_id, owner=request.user)` in
 `lists/api_v1.py:147`, `list__owner=user` filters elsewhere) — never
 adversarially tested end-to-end.
 
@@ -324,15 +355,19 @@ adversarially tested end-to-end.
   from the rest of the quality bar because they're cheap and high-signal on
   their own.
 
-### A4. Wire up the digest email
+### A4. Wire up the digest email — written, not yet live
 
-`send_due_digest` exists, works, and has been verified with `--dry-run` —
-but nothing calls it. It needs one cron line to actually reach anyone.
+**Scheduled July 31, 2026** in `infra/deploy-playbook.yaml`, as an
+`ansible.builtin.cron` task rather than a raw crontab line so the entry is
+named and idempotent — redeploying updates it in place instead of
+appending a duplicate copy every time.
 
-- One line in `infra/deploy-playbook.yaml`:
-  `0 7 * * * docker exec clarice python manage.py send_due_digest`
-  (already documented in the command's own docstring).
-- Verify once against production data before trusting it unattended.
+`send_due_digest` had existed, worked, and been verified with `--dry-run`
+for a while, but nothing invoked it, so the digest reached nobody.
+
+**Still owed:** this takes effect on the next deploy and not before, and
+the first live run wants checking against real data before it's trusted
+unattended. Don't mark this closed until that's happened.
 
 ### A5. Close the database cluster's firewall
 
@@ -362,14 +397,30 @@ here rather than deferred to the public-readiness bar.
 
 ---
 
-## Track B — Capture MVP (parallel, starts now)
+## Track B — Capture MVP — built, clock starts on deploy
 
-Started deliberately small, running alongside Track A rather than pausing
-it — the two tracks don't block each other technically, but Track B gets a
-fixed scope and a fixed checkpoint precisely because attention is the
-shared, scarcer resource.
+**Shipped July 31, 2026** as a Django-only `capture` app: model, entry
+form, Inbox, and one resolve action, with an Inbox link in the nav. No
+API and no SPA route — an explicit scope decision, since the point of
+this pass is to generate usage evidence, not to be architecturally
+consistent with the rest of the app.
 
-**Scope for this pass:**
+Two departures from the sketch below, both deliberate:
+
+- **The model carries an owner and a resolved timestamp**, not just text
+  and a timestamp. Clarice has two users, so an owner is not optional, and
+  "everything not yet resolved" needs something to test against.
+- **There is exactly one triage affordance**, a resolve action that takes
+  a capture out of the Inbox without recording what became of it. Anything
+  richer would be inventing the triage model this checkpoint exists to
+  inform. Promote-to-task, the Idea/Someday domain and agenda integration
+  all stayed out.
+
+Capture is unrated — the quality bar lists rate limiting on signup and
+capture, and that's still deferred. Fine at two users; worth remembering
+before this is ever public.
+
+The original scope sketch, for the record:
 
 - A `Capture` model that's just text and a timestamp.
 - One entry point built for speed rather than completeness — no list, no
@@ -383,9 +434,11 @@ weeks, and let what actually gets typed into it settle whether the
 task/idea/note split holds up, rather than designing that shape from
 speculation.
 
-**Checkpoint, not open-ended:** once the MVP is live, use it for real for
-~2 weeks (target: mid-to-late August 2026) before writing any triage
-design. At that checkpoint, either the task/idea/note split holds up and
+**Checkpoint, not open-ended — and the clock has not started yet.** The
+MVP is built but not deployed; the two weeks of real use begin when it's
+live on the production droplet, not when it merged. Target stays
+mid-to-late August 2026. Use it for real for ~2 weeks before writing any
+triage design. At that checkpoint, either the task/idea/note split holds up and
 gets a real design pass (`subtasks-plan.md`-style), or it doesn't and the
 model changes before more is built on it. This checkpoint is what stops
 Track B from quietly becoming a second, open-ended feature queue running
@@ -408,24 +461,46 @@ Pick `design/subtasks-plan.md` back up in the order it already lays out. It
 re-sequences below only to give each step a one-line "why," not to change
 the order. Step 2 (Postgres) is skipped — it's done.
 
-1. **Fix status handling across archive and restore.** Archiving currently
-   fabricates a completion timestamp on active tasks, so there's no way to
-   tell afterward whether a restored task was active or done. Small,
-   self-contained, and a hard prerequisite for cascade restore once
-   subtasks exist — ship and verify it alone before anything else touches
-   archive/restore.
-2. **Snooze presets.** Independent of everything else. Replaces the single
-   Tomorrow/Schedule button with Tomorrow, This weekend, Next week, and
-   Clear — removes an existing rough edge and ships fast.
-3. **Task detail view.** A full page for the no-JS path and a slide-over
-   panel in the React app, showing text, list, due date, tags, recurrence,
-   notes, and subtasks. Nothing to show in notes or subtasks yet, but
-   nowhere for either to live until this exists.
-4. **Notes.** A plain-text field on the detail view — deliberately not
+**Done and slid out of this queue, July 31, 2026:** the archive/restore
+status fix (migration `0018`; restore now returns a task to whichever
+status it held before archiving, which is what cascade restore needs) and
+snooze presets (Tomorrow / This weekend / Next week / Clear, replacing the
+single Tomorrow-or-Schedule button).
+
+One loose end from the snooze work: `snooze_presets` in `lists/agenda.py`
+has no server-side caller. The Django agenda redirects to the SPA after
+the cutover, so the presets are computed client-side and the Python copy
+is a reference implementation only its own tests exercise. Either serve
+them from the agenda payload so there's one source of truth, or delete the
+Python side — worth deciding when something next touches `agenda.py`,
+not before.
+
+**Also slid out: the task detail view (was item 3).** It already exists —
+`frontend/src/app/routes/TaskDetailRoute.tsx` shows text, list, due date,
+tags and recurrence, everything the step asked for except notes and
+subtasks, which don't exist yet. It arrived during the SPA cutover, before
+this queue was written, and nobody noticed it had pre-empted a planned
+item. Its other half — "a full page for the no-JS path" — is not deferred
+but **impossible**; see the no-JS note below.
+
+**The no-JS path is gone, and three steps below still assume it.** Every
+task-facing Django view is now a redirect into the SPA — `dashboard`,
+`archive`, `view_list` and `edit_item` all bounce to `/app/...`, leaving
+`new_list` (a POST handler) as the only real rendering view in
+`lists/views.py`. That was a deliberate consequence of the cutover, but
+the feature plan predates it and still designs around a fallback surface
+that isn't there. `design/subtasks-plan.md` steps 5, 6d and 7 have been
+corrected. Worth stating plainly here too, since "works without JS" was a
+real principle for this project and is now simply not one — for lists and
+tasks, at least. The Capture MVP is server-rendered, so Django templates
+aren't dead, they just aren't the task UI any more.
+
+3. **Notes.** A plain-text field on the detail view — deliberately not
    Markdown, which would add a renderer and an XSS surface for little gain
-   at two users. Small, and it proves the detail view actually works before
-   subtasks lands on top of it.
-5. **Subtasks.** The large one. A self-referencing FK on `Item`, one level
+   at two users. Now the front of the queue, and smaller than when it was
+   written: with the detail route already built, this is a model field, a
+   migration, an API field, and one textarea.
+4. **Subtasks.** The large one. A self-referencing FK on `Item`, one level
    of nesting only, cascading complete/archive/restore with proper undo,
    sibling-scoped duplicate and position logic, API changes to
    `create_item`, `item_detail`, and `reorder_items`, and UI work across the
@@ -434,11 +509,14 @@ the order. Step 2 (Postgres) is skipped — it's done.
    available since Step 2 is done and A0's CI runs against Postgres. Ships
    with the cross-user `parent` cases added to A3's isolation module — see
    A3 for why that belongs in this PR and not a follow-up.
-6. **Persistent side navigation.** Left nav for lists, archive, and
+5. **Persistent side navigation.** Left nav for lists, archive, and
    settings across all three main pages — today it only exists on the
    agenda, so navigation disappears the moment you drill into a list. Last,
-   because it touches nearly every template and is easier to get right once
-   the detail view's layout is settled. Mock it before building.
+   because it touches nearly every screen and is easier to get right once
+   the detail view's layout is settled. Mock it before building. Note that
+   its "a mobile drawer means JavaScript, which cuts against the no-JS
+   principle" constraint no longer applies — this is React-only now, and a
+   drawer is just a drawer.
 
 ---
 

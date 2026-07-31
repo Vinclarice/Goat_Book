@@ -45,7 +45,20 @@ came; step 2 shipped ahead of all the feature work below, as intended.
 
 ---
 
-## Step 1 — Preserve status across archive/restore
+## Step 1 — Preserve status across archive/restore — done
+
+**Shipped July 31, 2026** as migration `0018_archived_status_timestamps`,
+exactly as specified below. One thing the build surfaced that this plan
+didn't anticipate: the migration is forward-safe but **not reversible** —
+a task archived while active carries `archived_at` with a null
+`completed_at`, which the old constraint rejects, so reversing fails on
+any such row. Recorded in the migration's own comment.
+
+A second consequence, harmless but worth knowing: the HTTP restore path
+now returns a status the caller didn't ask for. The API only accepts
+`"completed"` for un-archiving, so restoring a task that was active comes
+back `active`. The SPA drops the row and refetches rather than reading the
+echoed status, so nothing broke; `test_api.py` now pins it.
 
 **Problem.** `services.archive_item` does:
 
@@ -308,7 +321,17 @@ the still-outstanding backup work.
 
 ---
 
-## Step 3 — Snooze presets
+## Step 3 — Snooze presets — done
+
+**Shipped July 31, 2026.** Both sides pin the same fixed weekdays, Friday
+included: that's the day Tomorrow and This weekend collapse onto the same
+date, and a menu offering one date twice reads as a bug unless it's
+deliberate.
+
+Open question this created: `snooze_presets` has no server-side caller,
+because the Django agenda redirects to the SPA post-cutover. See the note
+in `design/roadmap.md`'s Next queue — either serve the presets from the
+agenda payload or drop the Python copy.
 
 Independent of everything else; small; ships on its own.
 
@@ -323,25 +346,42 @@ Independent of everything else; small; ships on its own.
 
 ---
 
-## Step 4 — Task detail view
+## Step 4 — Task detail view — already done, by accident
 
-Prerequisite for both notes and subtasks: a row cannot hold either, and
-`edit_item.html` is currently a bare text form.
+**Built during the SPA cutover, before this plan was resequenced.**
+`frontend/src/app/routes/TaskDetailRoute.tsx` shows text, list, due date,
+tags and recurrence — everything below except notes and subtasks, which
+don't exist yet. It is a route rather than the slide-over panel sketched
+here; that's a fine outcome and not worth undoing.
 
-- Full page at `/lists/items/<id>/` for the no-JS path, reusing and replacing
-  the existing edit view.
-- Slide-over panel in the React island.
+**The no-JS half cannot be built, because the no-JS path was retired.**
+`edit_item` is no longer a bare text form — it is a redirect to
+`/app/tasks/<id>`, as are `dashboard`, `archive` and `view_list`. The
+original text is kept below for the record.
+
+- ~~Full page at `/lists/items/<id>/` for the no-JS path, reusing and
+  replacing the existing edit view.~~ Not possible; see above.
+- Slide-over panel in the React island. *(Shipped as a route instead.)*
 - Shows text, list, due date, tags, recurrence, notes, subtasks.
+  *(All but the last two, which don't exist yet.)*
 
 ---
 
 ## Step 5 — Notes
 
 Deliberately before subtasks: small, and it proves out the detail view.
+Smaller now than when this was written — step 4's route already exists, so
+this is a model field, a migration, an API field and one textarea.
 
 - `Item.notes = TextField(blank=True)`, migration `0019_item_notes`.
-- Plain text rendered with `linebreaksbr`. Not Markdown — it pulls in a
-  renderer and an XSS surface for little gain at two users.
+- Plain text. **Not** Markdown — it pulls in a renderer and an XSS surface
+  for little gain at two users. That decision stands; the mechanism
+  changed. `linebreaksbr` was the plan when a Django template rendered
+  this, and no Django template renders tasks any more — preserving line
+  breaks is now a CSS concern (`white-space: pre-wrap`) in
+  `TaskDetailRoute.tsx`, with React escaping the text as it always does.
+- `serialize_item` and the `/api/v1/` task schema both need the field, or
+  the SPA can't show what it can't fetch.
 - A quiet marker on the agenda row when non-empty; editing happens in the
   detail view.
 - Not indexed for search yet; that belongs with the FTS5 project.
@@ -457,7 +497,9 @@ Behaviour changes:
 - **Agenda** — flat rows with a `Plan Japan trip ›` breadcrumb beside the list
   pill; parent rows also show `2/5`.
 - **Detail view** — where subtasks are actually managed.
-- **Fallback** — nested `<ul>`, a per-row add form, plain links.
+- ~~**Fallback** — nested `<ul>`, a per-row add form, plain links.~~ There
+  is no no-JS surface left to fall back to: `view_list` and `edit_item` are
+  redirects into the SPA. Nothing to build here.
 
 Two consequences to accept: `summary_counts` and the sidebar list counts will
 count parents and children alike, so a task with 5 subtasks reads as 6 open;
@@ -467,18 +509,23 @@ and a parent and its child can land in different sections of the same page.
 
 ## Step 7 — Side panel
 
-Last, because it touches every template and benefits from knowing what the
-detail view looks like.
+Last, because it touches every screen and benefits from knowing what the
+detail view looks like. ("Every template" was the original wording; the
+screens are React routes now.)
 
 Fixes a real inconsistency: the agenda has a sidebar, the list page and
 archive have none, so list navigation disappears the moment you drill in. A
 persistent left nav (lists, archive, settings) across all three pages.
 
-Two constraints: left nav + agenda + the current right sidebar is three
-columns, too many below ~1400px, so filters move into the agenda header as
-chips. And a mobile drawer normally means JavaScript, which cuts against the
+One constraint survives: left nav + agenda + the current right sidebar is
+three columns, too many below ~1400px, so filters move into the agenda
+header as chips.
+
+~~And a mobile drawer normally means JavaScript, which cuts against the
 no-JS principle — a `<details>` disclosure, or falling back to the existing
-top nav on narrow screens, avoids that.
+top nav on narrow screens, avoids that.~~ Moot. The SPA cutover retired the
+no-JS path for tasks and lists, so a drawer costs nothing that hasn't
+already been spent. Build the obvious one.
 
 Mock it before building.
 
@@ -486,15 +533,15 @@ Mock it before building.
 
 ## Order and rationale
 
-1. **Archive/restore status fix** — small, database-agnostic, blocks cascade
-   restore. Deploy and verify on its own.
-2. **Postgres migration** — done. Pure infrastructure, zero feature work
-   attached. Isolating it is the point: don't couple a database move to a
-   schema change. It landed on its own, which is what made A1's two
+1. ~~**Archive/restore status fix**~~ — done. Small, database-agnostic,
+   blocked cascade restore. Shipped and verified on its own, as intended.
+2. ~~**Postgres migration**~~ — done. Pure infrastructure, zero feature
+   work attached. Isolating it is the point: don't couple a database move
+   to a schema change. It landed on its own, which is what made A1's two
    production bugs cheap to diagnose.
-3. **Snooze presets** — small, independent, immediately useful
-4. **Detail view** — prerequisite for 5 and 6
-5. **Notes** — small, proves out the detail view
+3. ~~**Snooze presets**~~ — done. Small, independent, immediately useful.
+4. ~~**Detail view**~~ — done, by the SPA cutover rather than by this plan.
+5. **Notes** — small, and now the front of the queue
 6. **Subtasks** — the large one
 7. **Side panel** — touches everything, wants the detail view settled first
 

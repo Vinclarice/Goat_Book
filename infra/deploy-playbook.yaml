@@ -156,6 +156,17 @@
         container: clarice
         command: ./manage.py migrate
 
+    # The command has existed and worked for a while but nothing invoked it,
+    # so the digest reached nobody. Users with nothing to report are skipped
+    # by the command itself, so a quiet day stays quiet.
+    - name: Schedule the daily due-task digest
+      ansible.builtin.cron:
+        name: clarice-due-digest
+        minute: "0"
+        hour: "7"
+        job: docker exec clarice ./manage.py send_due_digest
+        user: root
+
     - name: Install nginx and certbot
       ansible.builtin.apt:
         name:

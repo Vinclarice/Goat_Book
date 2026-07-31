@@ -43,6 +43,28 @@ COLLAPSED_BY_DEFAULT = frozenset({LATER, SOMEDAY})
 DIGEST_BUCKETS = (OVERDUE, TODAY)
 
 
+SNOOZE_TOMORROW = "tomorrow"
+SNOOZE_WEEKEND = "weekend"
+SNOOZE_NEXT_WEEK = "next_week"
+SNOOZE_CLEAR = "clear"
+
+# date.weekday() indices for the two days the presets pivot on.
+MONDAY = 0
+SATURDAY = 5
+
+# Kept in one place so frontend/src/agenda.ts can mirror the literal
+# strings a user reads rather than a paraphrase of them.
+SNOOZE_LABELS = {
+    SNOOZE_TOMORROW: "Tomorrow",
+    SNOOZE_WEEKEND: "This weekend",
+    SNOOZE_NEXT_WEEK: "Next week",
+    SNOOZE_CLEAR: "Clear",
+}
+
+# Ordered as they appear down the menu, soonest first.
+SNOOZE_ORDER = (SNOOZE_TOMORROW, SNOOZE_WEEKEND, SNOOZE_NEXT_WEEK, SNOOZE_CLEAR)
+
+
 # Muted hues that read as labels rather than status against the dark
 # surface. Assigned deterministically so a list keeps its colour.
 # Still used by the daily digest email, which hasn't migrated to the API.
@@ -95,6 +117,39 @@ def bucket_for(due_date, today):
     if due_date <= today + timedelta(days=WEEK_HORIZON_DAYS):
         return WEEK
     return LATER
+
+
+def next_weekday(today, weekday):
+    """The first date strictly after ``today`` falling on ``weekday``."""
+    ahead = (weekday - today.weekday()) % 7
+    return today + timedelta(days=ahead or 7)
+
+
+def snooze_presets(today):
+    """The due dates the snooze menu offers, relative to ``today``.
+
+    Every dated option lands strictly in the future, so picking one is
+    never a no-op. That decides the two ambiguous days: on a Saturday
+    "this weekend" is the Sunday still to come, and on a Sunday the
+    weekend is spent so it rolls on to the next Saturday. "Next week" is
+    read the same way -- on a Monday it means the Monday after this one,
+    not today.
+    """
+    weekend = (
+        today + timedelta(days=1)
+        if today.weekday() == SATURDAY
+        else next_weekday(today, SATURDAY)
+    )
+    dates = {
+        SNOOZE_TOMORROW: today + timedelta(days=1),
+        SNOOZE_WEEKEND: weekend,
+        SNOOZE_NEXT_WEEK: next_weekday(today, MONDAY),
+        SNOOZE_CLEAR: None,
+    }
+    return [
+        {"key": key, "label": SNOOZE_LABELS[key], "due_date": dates[key]}
+        for key in SNOOZE_ORDER
+    ]
 
 
 def open_items_for(user):

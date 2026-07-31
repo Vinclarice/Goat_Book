@@ -35,6 +35,12 @@ shipped in this stretch. `design/subtasks-plan.md`'s Step 2 (the Postgres
 move) is the only item from that plan that's actually done; everything else
 in it is still ahead.
 
+**Since this doc was written:** Track A/Now item A0 shipped — CI
+(`.github/workflows/ci.yml`) now runs on every push and pull request,
+with the Django suite running against a real `postgres:17` service
+container instead of SQLite. Merged via [PR #1](https://github.com/Vinclarice/Goat_Book/pull/1)
+on July 31, 2026 (`f699b61`). A1–A4 are still ahead.
+
 ---
 
 ## Vision — capture, agenda, and review
@@ -151,17 +157,24 @@ Order matters: CI goes first, so the DB-user restriction and the isolation
 tests both land with automated coverage instead of a manual, one-time
 check.
 
-### A0. Stand up CI with a Postgres service container
+### A0. Stand up CI with a Postgres service container — done
 
-There's no CI today (confirmed — no `.github/workflows`, no other CI config
-anywhere in the repo) and the local suite still runs on SQLite while
-production runs on Postgres — the exact combination the migration notes
+Shipped July 31, 2026, [PR #1](https://github.com/Vinclarice/Goat_Book/pull/1)
+(`f699b61`). There was no CI (confirmed — no `.github/workflows`, no other
+CI config anywhere in the repo) and the local suite ran on SQLite while
+production ran on Postgres — the exact combination the migration notes
 call out as worse than either choice alone.
 
-- GitHub Actions (or equivalent), one job: Postgres service container,
-  `migrate`, run the full Django suite + `pnpm test`.
-- This becomes the harness that A3 and everything in the Next queue verify
-  against — do this before either.
+- `.github/workflows/ci.yml`, two jobs on every push/PR: `django` runs the
+  suite against a real `postgres:17` service container; `frontend` runs
+  `pnpm test` and `pnpm build`.
+- `clarice/settings.py`'s `DEBUG` branch now honors `DJANGO_DATABASE_URL`
+  when set, falling back to SQLite unchanged when it isn't — local dev is
+  untouched, CI opts into Postgres.
+- Verified both on a live `postgres:17` container locally and on the real
+  first GitHub Actions run (both jobs green) before merging.
+- This is the harness A3 and everything in the Next queue now verify
+  against.
 
 ### A1. Restrict the database user
 

@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clarice · Persistent side navigation mockup</title>
+<style>
+:root {
+  --sl-bg: #08111f;
+  --sl-surface: rgba(18, 31, 49, 0.82);
+  --sl-surface-strong: #132237;
+  --sl-border: rgba(255, 255, 255, 0.1);
+  --sl-text: #f5f7fb;
+  --sl-muted: #a6b2c3;
+  --sl-accent: #7be0b8;
+  --sl-accent-dark: #153f34;
+  --sl-danger: #f08a8a;
+  --sl-warn: #f4c98a;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  color: var(--sl-text);
+  background: var(--sl-bg);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  padding: 2rem 1.5rem 4rem;
+}
+h1 { font-size: 1.35rem; margin: 0 0 .35rem; }
+.lede { color: var(--sl-muted); max-width: 62ch; margin: 0 0 2rem; line-height: 1.55; }
+h2 { font-size: .95rem; margin: 2.5rem 0 .3rem; }
+h2 .w { color: var(--sl-muted); font-weight: 400; }
+.note { color: var(--sl-muted); font-size: .82rem; margin: 0 0 .8rem; max-width: 70ch; line-height: 1.5; }
+
+/* A fake browser frame so each breakpoint reads as a screen, not a div. */
+.frame {
+  border: 1px solid var(--sl-border);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--sl-surface-strong);
+  max-width: 100%;
+}
+.chrome {
+  display: flex; gap: .4rem; align-items: center;
+  padding: .5rem .7rem; border-bottom: 1px solid var(--sl-border);
+  background: rgba(0,0,0,.25);
+}
+.chrome i { width: 9px; height: 9px; border-radius: 50%; background: #33445c; display: block; }
+.chrome span { margin-left: .5rem; font-size: .72rem; color: var(--sl-muted); }
+
+.app { display: grid; min-height: 420px; }
+.app.wide   { grid-template-columns: 210px minmax(0,1fr) 260px; }
+.app.medium { grid-template-columns: 210px minmax(0,1fr); }
+.app.narrow { grid-template-columns: minmax(0,1fr); }
+
+.col { padding: .9rem; }
+.leftnav { border-right: 1px solid var(--sl-border); background: rgba(0,0,0,.18); }
+.rightbar { border-left: 1px solid var(--sl-border); background: rgba(0,0,0,.12); }
+
+.brand { display:flex; align-items:center; gap:.5rem; font-weight:700; margin-bottom:1rem; }
+.brand em { width:22px;height:22px;border-radius:7px;background:var(--sl-accent);color:#062018;
+  display:grid;place-items:center;font-style:normal;font-size:.8rem; }
+
+.navgroup { margin-bottom: 1.1rem; }
+.navgroup h3 {
+  font-size: .68rem; text-transform: uppercase; letter-spacing: .07em;
+  color: var(--sl-muted); margin: 0 0 .45rem;
+}
+.navlink {
+  display:flex; align-items:center; gap:.5rem; width:100%;
+  padding:.32rem .45rem; border-radius:7px; font-size:.82rem;
+  color: var(--sl-text); text-decoration:none;
+}
+.navlink:hover { background: rgba(255,255,255,.05); }
+.navlink.is-active { background: var(--sl-accent-dark); color: var(--sl-accent); }
+.navlink .dot { width:8px;height:8px;border-radius:50%; }
+.navlink .n { margin-left:auto; color: var(--sl-muted); font-size:.75rem; }
+.navlink .n.warn { color: var(--sl-warn); }
+
+.head { display:flex; align-items:baseline; gap:.6rem; margin-bottom:.5rem; }
+.head h4 { margin:0; font-size:1.05rem; }
+.head .sub { color: var(--sl-muted); font-size:.78rem; }
+
+.chips { display:flex; flex-wrap:wrap; gap:.35rem; margin:.55rem 0 .9rem; }
+.chip {
+  font-size:.74rem; padding:.22rem .55rem; border-radius:999px;
+  border:1px solid var(--sl-border); color:var(--sl-muted); background:rgba(255,255,255,.03);
+}
+.chip.is-active { border-color: var(--sl-accent); color: var(--sl-accent); background: var(--sl-accent-dark); }
+.chip.new { border-style: dashed; color: var(--sl-accent); }
+
+.bucket { font-size:.72rem; color:var(--sl-muted); margin:.7rem 0 .3rem; letter-spacing:.05em; }
+.row {
+  display:flex; align-items:center; gap:.5rem;
+  padding:.45rem .55rem; border:1px solid var(--sl-border);
+  border-radius:8px; background: var(--sl-surface); margin-bottom:.35rem; font-size:.82rem;
+}
+.row .box { width:13px;height:13px;border-radius:4px;border:1px solid var(--sl-border); flex:none; }
+.row.sub { margin-left: 1.4rem; }
+.row .pill {
+  font-size:.68rem; padding:.1rem .4rem; border-radius:999px;
+  border:1px solid var(--sl-border); color:var(--sl-muted);
+}
+.card { border:1px solid var(--sl-border); border-radius:9px; padding:.6rem; margin-bottom:.7rem; }
+.card h5 { margin:0 0 .4rem; font-size:.74rem; text-transform:uppercase; letter-spacing:.06em; color:var(--sl-muted); }
+.card p { margin:0; font-size:.78rem; color:var(--sl-muted); line-height:1.45; }
+
+/* Mobile: the nav is a disclosure, not an overlay. */
+.drawer summary {
+  list-style:none; cursor:pointer;
+  display:flex; align-items:center; gap:.5rem;
+  padding:.4rem .55rem; border:1px solid var(--sl-border); border-radius:8px;
+  font-size:.82rem; margin-bottom:.7rem;
+}
+.drawer summary::-webkit-details-marker { display:none; }
+.drawer[open] summary { border-color: var(--sl-accent); color: var(--sl-accent); }
+.drawer .panel { border:1px solid var(--sl-border); border-radius:8px; padding:.6rem; margin-bottom:.9rem; }
+
+.legend { display:flex; gap:1.2rem; flex-wrap:wrap; margin-top:.6rem; }
+.legend div { font-size:.76rem; color:var(--sl-muted); }
+.legend b { color: var(--sl-text); font-weight:600; }
+</style>
+</head>
+<body>
+
+<h1>Persistent side navigation — mockup</h1>
+<p class="lede">
+  Step 7 of <code>design/subtasks-plan.md</code>. Today the agenda has a sidebar and
+  the list page and archive have none, so navigation disappears the moment you drill
+  in. This puts one left nav on all three, and resolves the three-column problem the
+  plan flagged by moving <em>filtering</em> out of the sidebar and into the agenda
+  header as chips — leaving the sidebar to do only what its name says.
+</p>
+
+<h2>1. Wide <span class="w">— ≥1400px, three columns</span></h2>
+<p class="note">
+  Left nav navigates, header chips filter, right rail keeps the things that are
+  neither: new list, tag cloud, daily digest toggle. This is the only width where
+  all three fit.
+</p>
+<div class="frame">
+  <div class="chrome"><i></i><i></i><i></i><span>clarice / agenda</span></div>
+  <div class="app wide">
+    <nav class="col leftnav">
+      <div class="brand"><em>✓</em> Clarice</div>
+      <div class="navgroup">
+        <h3>Views</h3>
+        <a class="navlink is-active" href="#">Agenda <span class="n">7</span></a>
+        <a class="navlink" href="#">Inbox <span class="n">3</span></a>
+        <a class="navlink" href="#">Archive</a>
+      </div>
+      <div class="navgroup">
+        <h3>Lists</h3>
+        <a class="navlink" href="#"><span class="dot" style="background:#7bc6e0"></span> Programming <span class="n warn">⚠ 2 · 5</span></a>
+        <a class="navlink" href="#"><span class="dot" style="background:#7be0b8"></span> Home <span class="n">2</span></a>
+        <a class="navlink" href="#"><span class="dot" style="background:#e0c97b"></span> Travel <span class="n">4</span></a>
+      </div>
+      <div class="navgroup">
+        <h3>Account</h3>
+        <a class="navlink" href="#">Settings</a>
+        <a class="navlink" href="#">Log out</a>
+      </div>
+    </nav>
+
+    <main class="col">
+      <div class="head"><h4>Agenda</h4><span class="sub">Friday, 31 July</span></div>
+      <div class="chips">
+        <span class="chip is-active">Overdue 2</span>
+        <span class="chip">Today 3</span>
+        <span class="chip">This week 7</span>
+        <span class="chip">#errand</span>
+        <span class="chip">#work</span>
+      </div>
+      <div class="bucket">OVERDUE</div>
+      <div class="row"><span class="box"></span> Renew insurance <span class="pill">Programming</span> <span class="pill">6 days overdue</span></div>
+      <div class="bucket">TODAY</div>
+      <div class="row"><span class="box"></span> Plan Japan trip <span class="pill">Travel</span> <span class="pill">1/3</span></div>
+      <div class="row sub"><span class="box"></span> Book flights <span class="pill">Plan Japan trip ›</span></div>
+      <div class="row"><span class="box"></span> Ship the fix <span class="pill">Programming</span></div>
+    </main>
+
+    <aside class="col rightbar">
+      <div class="card"><h5>New list</h5><p>+ Add a list</p></div>
+      <div class="card"><h5>Tags</h5><p>#errand · #work · #home</p></div>
+      <div class="card"><h5>Daily reminder</h5><p>Digest email: on</p></div>
+    </aside>
+  </div>
+</div>
+
+<h2>2. Medium <span class="w">— ~1024–1400px, two columns</span></h2>
+<p class="note">
+  The right rail is what gives way, not the nav: its three cards fold into the
+  header (new list becomes a chip) and the tag cloud is already represented by the
+  tag chips. This is the width the plan was worried about, and it's the one most
+  likely to be in daily use.
+</p>
+<div class="frame" style="max-width:900px">
+  <div class="chrome"><i></i><i></i><i></i><span>clarice / lists / travel</span></div>
+  <div class="app medium">
+    <nav class="col leftnav">
+      <div class="brand"><em>✓</em> Clarice</div>
+      <div class="navgroup">
+        <h3>Views</h3>
+        <a class="navlink" href="#">Agenda <span class="n">7</span></a>
+        <a class="navlink" href="#">Inbox <span class="n">3</span></a>
+        <a class="navlink" href="#">Archive</a>
+      </div>
+      <div class="navgroup">
+        <h3>Lists</h3>
+        <a class="navlink" href="#"><span class="dot" style="background:#7bc6e0"></span> Programming <span class="n warn">⚠ 2 · 5</span></a>
+        <a class="navlink" href="#"><span class="dot" style="background:#7be0b8"></span> Home <span class="n">2</span></a>
+        <a class="navlink is-active" href="#"><span class="dot" style="background:#e0c97b"></span> Travel <span class="n">4</span></a>
+      </div>
+      <div class="navgroup">
+        <h3>Account</h3>
+        <a class="navlink" href="#">Settings</a>
+      </div>
+    </nav>
+
+    <main class="col">
+      <div class="head"><h4>Travel</h4><span class="sub">4 open · 1 done</span></div>
+      <div class="chips">
+        <span class="chip is-active">Open 4</span>
+        <span class="chip">Completed 1</span>
+        <span class="chip">All 5</span>
+        <span class="chip new">+ New list</span>
+      </div>
+      <div class="row"><span class="box"></span> 01 &nbsp; Plan Japan trip <span class="pill">▾ 1/3</span></div>
+      <div class="row sub"><span class="box"></span> ↳ &nbsp; Book flights</div>
+      <div class="row sub"><span class="box"></span> ↳ &nbsp; Book hotel</div>
+      <div class="row"><span class="box"></span> 02 &nbsp; Renew passport</div>
+    </main>
+  </div>
+</div>
+
+<h2>3. Narrow <span class="w">— below ~760px, disclosure</span></h2>
+<p class="note">
+  A <code>&lt;details&gt;</code> disclosure above the content rather than an overlay
+  drawer. The plan originally reached for this to avoid JavaScript; that constraint
+  is gone with the SPA cutover, but the disclosure is still the better answer here —
+  it needs no focus trap, no scroll lock, and no escape-key handling, and it pushes
+  content down instead of covering it.
+</p>
+<div class="frame" style="max-width:380px">
+  <div class="chrome"><i></i><i></i><i></i><span>clarice / agenda</span></div>
+  <div class="app narrow">
+    <main class="col">
+      <details class="drawer" open>
+        <summary>☰ &nbsp; Menu</summary>
+        <div class="panel">
+          <a class="navlink is-active" href="#">Agenda <span class="n">7</span></a>
+          <a class="navlink" href="#">Inbox <span class="n">3</span></a>
+          <a class="navlink" href="#">Archive</a>
+          <a class="navlink" href="#"><span class="dot" style="background:#7bc6e0"></span> Programming <span class="n warn">⚠ 2 · 5</span></a>
+          <a class="navlink" href="#"><span class="dot" style="background:#e0c97b"></span> Travel <span class="n">4</span></a>
+          <a class="navlink" href="#">Settings</a>
+        </div>
+      </details>
+      <div class="head"><h4>Agenda</h4></div>
+      <div class="chips">
+        <span class="chip is-active">Overdue 2</span>
+        <span class="chip">Today 3</span>
+        <span class="chip">Week 7</span>
+      </div>
+      <div class="row"><span class="box"></span> Renew insurance <span class="pill">6d over</span></div>
+      <div class="row"><span class="box"></span> Plan Japan trip <span class="pill">1/3</span></div>
+    </main>
+  </div>
+</div>
+
+<h2>What this decides</h2>
+<div class="legend">
+  <div><b>Sidebar navigates, header filters.</b> Today the agenda's sidebar does both — clicking a list there filters rather than navigates. Splitting them is what makes one nav usable on all three pages.</div>
+  <div><b>The right rail is the thing that yields</b> at medium width, not the left nav, so navigation is the one constant.</div>
+  <div><b>Inbox joins the nav</b>, which is also how Capture stops being reachable only by typing the URL.</div>
+  <div><b>Open counts live in the nav</b>, so they're visible from the list page and archive too, not just the agenda.</div>
+</div>
+
+</body>
+</html>

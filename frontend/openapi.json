@@ -30,6 +30,31 @@
         ]
       }
     },
+    "/api/v1/nav": {
+      "get": {
+        "operationId": "lists_api_v1_navigation",
+        "summary": "Navigation",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NavOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Everything the persistent side nav needs, on every page.\n\nA single endpoint rather than three payloads each growing the same\nfields: the agenda already carried list summaries, but the list page and\narchive didn't, and duplicating them into both schemas would mean three\nplaces to keep in step.",
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/agenda": {
       "get": {
         "operationId": "lists_api_v1_agenda",
@@ -288,6 +313,85 @@
           "email"
         ],
         "title": "MeOut",
+        "type": "object"
+      },
+      "NavListOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "open_count": {
+            "title": "Open Count",
+            "type": "integer"
+          },
+          "overdue_count": {
+            "title": "Overdue Count",
+            "type": "integer"
+          },
+          "color_key": {
+            "enum": [
+              "sky",
+              "sage",
+              "amber",
+              "lilac",
+              "coral",
+              "azure",
+              "blush",
+              "straw"
+            ],
+            "title": "Color Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "open_count",
+          "overdue_count",
+          "color_key"
+        ],
+        "title": "NavListOut",
+        "type": "object"
+      },
+      "NavOut": {
+        "properties": {
+          "lists": {
+            "items": {
+              "$ref": "#/components/schemas/NavListOut"
+            },
+            "title": "Lists",
+            "type": "array"
+          },
+          "archived_count": {
+            "title": "Archived Count",
+            "type": "integer"
+          },
+          "inbox_count": {
+            "title": "Inbox Count",
+            "type": "integer"
+          },
+          "settings_url": {
+            "title": "Settings Url",
+            "type": "string"
+          },
+          "inbox_url": {
+            "title": "Inbox Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "lists",
+          "archived_count",
+          "inbox_count",
+          "settings_url",
+          "inbox_url"
+        ],
+        "title": "NavOut",
         "type": "object"
       },
       "AgendaBucketOut": {

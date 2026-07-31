@@ -15,6 +15,7 @@ from django.utils import timezone
 from ninja import Router, Schema
 from ninja.errors import HttpError
 
+from capture.models import Capture
 from lists import agenda as agenda_reader
 from lists import services
 from lists.forms import ListTitleForm
@@ -130,6 +131,49 @@ class TaskDetailOut(Schema):
     task: TaskOut
     list: TaskListSummaryOut
     subtasks: list[TaskOut]
+
+
+class NavListOut(Schema):
+    id: int
+    title: str
+    open_count: int
+    overdue_count: int
+    color_key: ListColorKey
+
+
+class NavOut(Schema):
+    lists: list[NavListOut]
+    archived_count: int
+    inbox_count: int
+    settings_url: str
+    inbox_url: str
+
+
+@router.get("/nav", response=NavOut)
+def navigation(request):
+    """Everything the persistent side nav needs, on every page.
+
+    A single endpoint rather than three payloads each growing the same
+    fields: the agenda already carried list summaries, but the list page and
+    archive didn't, and duplicating them into both schemas would mean three
+    places to keep in step.
+    """
+    user = request.user
+    return {
+        "lists": agenda_reader.list_summaries(user),
+        "archived_count": Item.objects.filter(
+            list__owner=user, status=Item.Status.ARCHIVED
+        ).count(),
+        # A one-way read into capture. Capture stays isolated in the
+        # direction that matters -- no FK, no import the other way -- but a
+        # nav that can't show what's waiting is a nav nobody clicks.
+        "inbox_count": Capture.objects.filter(
+            owner=user, resolved_at__isnull=True
+        ).count(),
+        "settings_url": reverse("account_settings"),
+        # A Django page, not an SPA route: this link leaves the app shell.
+        "inbox_url": reverse("capture_inbox"),
+    }
 
 
 @router.get("/agenda", response=AgendaOut)

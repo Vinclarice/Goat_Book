@@ -512,6 +512,38 @@ export function AgendaWorkspace({ initialData }: Props) {
         </div>
       </header>
 
+      {/* List filtering used to live in the sidebar, where clicking a list
+          filtered rather than navigated. The side nav now navigates, so the
+          filter has to exist somewhere -- as chips, here, alongside the
+          scope filters it belongs with. */}
+      {lists.length > 1 && (
+        <div className="agenda-list-chips">
+          {lists.map((each) => {
+            const overdue = listCounts.overdue.get(each.id) ?? 0;
+            return (
+              <button
+                key={each.id}
+                type="button"
+                className={`tag-chip${filters.list === each.id ? " is-active" : ""}`}
+                aria-pressed={filters.list === each.id}
+                aria-label={`Show only ${each.title}`}
+                onClick={() => toggleList(each.id)}
+              >
+                <span
+                  className="dot"
+                  aria-hidden="true"
+                  style={{ background: colorForKey(each.color_key) }}
+                />
+                {each.title}
+                <span className={overdue ? "n warn" : "n"}>
+                  {listCounts.open.get(each.id) ?? 0}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       <form className="quick-add" onSubmit={submitQuickAdd}>
         <label className="visually-hidden" htmlFor="agenda-add-text">
           Task
@@ -674,46 +706,12 @@ export function AgendaWorkspace({ initialData }: Props) {
 
         <aside className="agenda-sidebar">
           <div className="side-card">
-            <h3>Lists</h3>
-            {lists.map((each) => {
-              const open = listCounts.open.get(each.id) ?? 0;
-              const overdue = listCounts.overdue.get(each.id) ?? 0;
-              return (
-                <div className="list-row-nav" key={each.id}>
-                  <button
-                    type="button"
-                    className={`list-link${
-                      filters.list === each.id ? " is-active" : ""
-                    }`}
-                    aria-pressed={filters.list === each.id}
-                    onClick={() => toggleList(each.id)}
-                  >
-                    <span
-                      className="dot"
-                      aria-hidden="true"
-                      style={{ background: colorForKey(each.color_key) }}
-                    />
-                    <span className="name">{each.title}</span>
-                    <span className={`n${overdue ? " warn" : ""}`}>
-                      {overdue ? `⚠ ${overdue} · ` : ""}
-                      {open}
-                    </span>
-                  </button>
-                  {/* Filtering and opening the list are different
-                      intentions, so they get separate targets. */}
-                  <a
-                    className="list-open"
-                    href={each.url}
-                    aria-label={`Open ${each.title}`}
-                    title={`Open ${each.title}`}
-                  >
-                    →
-                  </a>
-                </div>
-              );
-            })}
-            {lists.length === 0 && <p className="side-note">No lists yet.</p>}
-
+            {/* Lists moved to the persistent side nav, which navigates
+                rather than filters (see design/side-nav-mockup.html). The
+                "filter the agenda to one list" job it used to do is now a
+                chip in the header, so this card keeps only what is neither
+                navigation nor filtering. */}
+            <h3>New list</h3>
             <details className="new-list-details">
               <summary>+ New list</summary>
               {/* A plain Django POST: creating a list navigates to the new

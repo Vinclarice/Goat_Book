@@ -1,9 +1,11 @@
 import json
+from datetime import timedelta
 
 from django.test import TestCase
 from django.utils import timezone
 
 from accounts.models import User
+from capture.models import Capture
 from lists import agenda as agenda_reader
 from lists.models import Item, List
 
@@ -257,3 +259,66 @@ class TaskDetailEndpointTest(TestCase):
         response = self.client.get(f"/api/v1/tasks/{self.archived_item.id}")
 
         self.assertEqual(response.status_code, 404)
+
+
+class NavEndpointTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            "alice", "alice@example.com", "a secure password"
+        )
+        self.other = User.objects.create_user(
+            "bob", "bob@example.com", "another secure password"
+        )
+        self.list_ = List.objects.create(owner=self.user, title="Programming")
+        Item.objects.create(
+            list=self.list_,
+            text="Overdue thing",
+            due_date=timezone.localdate() - timedelta(days=1),
+        )
+        Item.objects.create(list=self.list_, text="Open thing")
+        Item.objects.create(
+            list=self.list_,
+            text="Archived thing",
+            status=Item.Status.ARCHIVED,
+            archived_at=timezone.now(),
+        )
+        Capture.objects.create(owner=self.user, text="A stray thought")
+        Capture.objects.create(
+            owner=self.user, text="Dealt with", resolved_at=timezone.now()
+        )
+
+        # Another user's everything, none of which may appear below.
+        others = List.objects.create(owner=self.other, title="Bob's list")
+        Item.objects.create(list=others, text="Not mine")
+        Capture.objects.create(owner=self.other, text="Bob's thought")
+
+    def test_rejects_anonymous_requests(self):
+        response = self.client.get("/api/v1/nav")
+
+        self.assertEqual(response.status_code, 401)
+
+    def test_returns_lists_with_counts_for_the_caller_only(self):
+        self.client.force_login(self.user)
+
+        body = self.client.get("/api/v1/nav").json()
+
+        self.assertEqual([each["title"] for each in body["lists"]], ["Programming"])
+        self.assertEqual(body["lists"][0]["open_count"], 2)
+        self.assertEqual(body["lists"][0]["overdue_count"], 1)
+
+    def test_counts_the_archive_and_the_unresolved_inbox(self):
+        self.client.force_login(self.user)
+
+        body = self.client.get("/api/v1/nav").json()
+
+        self.assertEqual(body["archived_count"], 1)
+        # Only the unresolved one, and only this user's.
+        self.assertEqual(body["inbox_count"], 1)
+
+    def test_carries_the_links_that_leave_the_spa(self):
+        self.client.force_login(self.user)
+
+        body = self.client.get("/api/v1/nav").json()
+
+        self.assertEqual(body["inbox_url"], "/capture/")
+        self.assertTrue(body["settings_url"].startswith("/accounts/"))

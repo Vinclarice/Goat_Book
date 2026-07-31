@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router";
 
+import { AppLayout } from "./AppLayout";
 import { AgendaRoute } from "./routes/AgendaRoute";
 import { ArchiveRoute } from "./routes/ArchiveRoute";
 import { DevUiGallery } from "./routes/DevUiGallery";
@@ -28,12 +29,19 @@ if (rootElement) {
       <QueryClientProvider client={queryClient}>
         <BrowserRouter basename="/app">
           <Routes>
-            <Route path="/agenda" element={<AgendaRoute />} />
-            <Route path="/lists/:listId" element={<ListRoute />} />
-            <Route path="/tasks/:taskId" element={<TaskDetailRoute />} />
-            <Route path="/archive" element={<ArchiveRoute />} />
-            <Route path="/preferences" element={<PreferencesRoute />} />
-            {/* Django 404s this path outside DEBUG -- see lists.views.spa_shell */}
+            {/* Everything sits inside AppLayout so the side nav stays
+                mounted across navigations instead of re-rendering (and
+                re-fetching) on every click. */}
+            <Route element={<AppLayout />}>
+              <Route path="/agenda" element={<AgendaRoute />} />
+              <Route path="/lists/:listId" element={<ListRoute />} />
+              <Route path="/tasks/:taskId" element={<TaskDetailRoute />} />
+              <Route path="/archive" element={<ArchiveRoute />} />
+              <Route path="/preferences" element={<PreferencesRoute />} />
+            </Route>
+            {/* Outside the layout: it's a component gallery, not a page of
+                the app, and Django 404s it outside DEBUG anyway --
+                see lists.views.spa_shell */}
             <Route path="/dev/ui" element={<DevUiGallery />} />
           </Routes>
         </BrowserRouter>

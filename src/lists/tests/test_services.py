@@ -29,12 +29,12 @@ class TaskServiceTest(TestCase):
 
         archived = services.archive_item(reopened)
         self.assertEqual(archived.status, Item.Status.ARCHIVED)
-        self.assertIsNotNone(archived.completed_at)
+        self.assertIsNone(archived.completed_at)
         self.assertIsNotNone(archived.archived_at)
 
         restored = services.restore_item(archived)
-        self.assertEqual(restored.status, Item.Status.COMPLETED)
-        self.assertIsNotNone(restored.completed_at)
+        self.assertEqual(restored.status, Item.Status.ACTIVE)
+        self.assertIsNone(restored.completed_at)
         self.assertIsNone(restored.archived_at)
 
     def test_restore_rejects_duplicate_active_text(self):
@@ -180,3 +180,26 @@ class TaskServiceTest(TestCase):
     def test_set_recurrence_rejects_invalid_value(self):
         with self.assertRaises(services.TaskConflict):
             services.set_recurrence(self.item, "yearly")
+
+    def test_restoring_a_task_archived_while_active_returns_it_to_active(self):
+        archived = services.archive_item(self.item)
+        self.assertIsNone(archived.completed_at)
+
+        restored = services.restore_item(archived)
+
+        self.assertEqual(restored.status, Item.Status.ACTIVE)
+        self.assertIsNone(restored.completed_at)
+        self.assertIsNone(restored.archived_at)
+
+    def test_restoring_a_task_archived_while_completed_returns_it_to_completed(self):
+        completed = services.complete_item(self.item)
+        completed_at = completed.completed_at
+
+        archived = services.archive_item(completed)
+        self.assertEqual(archived.completed_at, completed_at)
+
+        restored = services.restore_item(archived)
+
+        self.assertEqual(restored.status, Item.Status.COMPLETED)
+        self.assertEqual(restored.completed_at, completed_at)
+        self.assertIsNone(restored.archived_at)

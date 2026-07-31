@@ -1,9 +1,11 @@
 import { FormEvent, useMemo, useState } from "react";
 
 import {
+  createSubtask,
   createTask,
   reorderTasks,
   updateTaskDueDate,
+  updateTaskParent,
   updateTaskRecurrence,
   updateTaskStatus,
   updateTaskTags,
@@ -86,6 +88,11 @@ export function TaskWorkspace({ initialData }: Props) {
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [draggedId, setDraggedId] = useState<number | null>(null);
+  // Collapsed rather than expanded state, so a newly-loaded list shows
+  // everything and only deliberate collapsing hides anything.
+  const [collapsed, setCollapsed] = useState<Set<number>>(new Set());
+  const [addingSubtaskFor, setAddingSubtaskFor] = useState<number | null>(null);
+  const [subtaskDraft, setSubtaskDraft] = useState("");
 
   const canReorder = filter === "all" && query.trim() === "" && tagFilter === null;
 
@@ -108,6 +115,32 @@ export function TaskWorkspace({ initialData }: Props) {
       return matchesFilter && matchesQuery && matchesTag;
     });
   }, [filter, items, query, tagFilter]);
+
+  /** Flattens the visible tasks into render order, parents followed by their
+   * own children. A child whose parent was filtered out is rendered at the
+   * top level rather than hidden: the filter said to show it, and nesting it
+   * under something that isn't on screen would just lose it. */
+  const rows = useMemo(() => {
+    const visibleIds = new Set(visibleItems.map((item) => item.id));
+    const childrenOf = new Map<number, Task[]>();
+    for (const item of visibleItems) {
+      const parentId = item.parent?.id ?? null;
+      if (parentId !== null && visibleIds.has(parentId)) {
+        childrenOf.set(parentId, [...(childrenOf.get(parentId) ?? []), item]);
+      }
+    }
+    const out: { item: Task; depth: number }[] = [];
+    for (const item of visibleItems) {
+      const parentId = item.parent?.id ?? null;
+      if (parentId !== null && visibleIds.has(parentId)) continue;
+      out.push({ item, depth: 0 });
+      if (collapsed.has(item.id)) continue;
+      for (const child of childrenOf.get(item.id) ?? []) {
+        out.push({ item: child, depth: 1 });
+      }
+    }
+    return out;
+  }, [collapsed, visibleItems]);
 
   const allTags = useMemo(() => {
     const names = new Set<string>();
@@ -239,14 +272,20 @@ export function TaskWorkspace({ initialData }: Props) {
     }
   }
 
-  async function handleReorder(nextItems: Task[]) {
+  async function handleReorder(nextItems: Task[], parentId: number | null) {
     const previous = items;
     setItems(nextItems);
     setError("");
     try {
+      // The server takes one sibling group and requires the complete set, so
+      // this sends every task under `parentId` -- including any the current
+      // filter or search is hiding -- not just what's on screen.
       await reorderTasks(
         initialData.list.reorder_url,
-        nextItems.map((item) => item.id),
+        nextItems
+          .filter((item) => (item.parent?.id ?? null) === parentId)
+          .map((item) => item.id),
+        parentId,
       );
     } catch (caught) {
       setItems(previous);
@@ -259,14 +298,76 @@ export function TaskWorkspace({ initialData }: Props) {
       setDraggedId(null);
       return;
     }
-    const currentIndex = items.findIndex((item) => item.id === draggedId);
-    const targetIndex = items.findIndex((item) => item.id === targetId);
+    const dragged = items.find((item) => item.id === draggedId);
+    const target = items.find((item) => item.id === targetId);
     setDraggedId(null);
+    if (!dragged || !target) return;
+
+    const draggedParent = dragged.parent?.id ?? null;
+    const targetParent = target.parent?.id ?? null;
+    // Dragging across nesting levels is deliberately not a reorder: changing
+    // a task's parent is an explicit promote/demote, so a drag that lands in
+    // another group is refused rather than silently reparenting.
+    if (draggedParent !== targetParent) {
+      setError("Drag reorders within one group. Use promote or demote to move a task.");
+      return;
+    }
+
+    const currentIndex = items.findIndex((item) => item.id === dragged.id);
+    const targetIndex = items.findIndex((item) => item.id === target.id);
     if (currentIndex === -1 || targetIndex === -1) return;
     const next = [...items];
     const [moved] = next.splice(currentIndex, 1);
     next.splice(targetIndex, 0, moved);
-    handleReorder(next);
+    handleReorder(next, draggedParent);
+  }
+
+  function toggleCollapsed(id: number) {
+    setCollapsed((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  async function handleAddSubtask(event: FormEvent, parent: Task) {
+    event.preventDefault();
+    const text = subtaskDraft.trim();
+    if (!text) return;
+    setError("");
+    setNotice("");
+    setBusyId(parent.id);
+    try {
+      const created = await createSubtask(
+        initialData.list.create_item_url,
+        text,
+        parent.id,
+      );
+      setItems((current) => [...current, created]);
+      setSubtaskDraft("");
+      setAddingSubtaskFor(null);
+      setNotice(`Added "${created.text}" under "${parent.text}".`);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to add subtask.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function handlePromote(task: Task) {
+    setError("");
+    setNotice("");
+    setBusyId(task.id);
+    try {
+      const updated = await updateTaskParent(task, null);
+      replaceItem(updated);
+      setNotice(`"${updated.text}" is now a task of its own.`);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to promote task.");
+    } finally {
+      setBusyId(null);
+    }
   }
 
   function startEditing(task: Task) {
@@ -420,9 +521,10 @@ export function TaskWorkspace({ initialData }: Props) {
       </div>
 
       <div className="list-items" id="id_list_table">
-        {visibleItems.map((item, index) => (
+        {rows.map(({ item, depth }, index) => (
           <article
             key={item.id}
+            style={depth > 0 ? { marginInlineStart: "2rem" } : undefined}
             className={`list-item ${
               item.status === "completed" ? "is-completed" : ""
             } ${isOverdue(item) ? styles.overdue : ""} ${
@@ -449,9 +551,29 @@ export function TaskWorkspace({ initialData }: Props) {
                   ⠿
                 </span>
               )}
-              <span className="item-number">
-                {String(index + 1).padStart(2, "0")}
-              </span>
+              {depth > 0 ? (
+                <span className="item-number" aria-hidden="true">
+                  ↳
+                </span>
+              ) : (
+                <span className="item-number">
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+              )}
+              {item.subtask_counts.total > 0 && (
+                <button
+                  type="button"
+                  onClick={() => toggleCollapsed(item.id)}
+                  aria-expanded={!collapsed.has(item.id)}
+                  aria-label={`${
+                    collapsed.has(item.id) ? "Show" : "Hide"
+                  } subtasks of ${item.text}`}
+                  className="text-sm text-muted-foreground"
+                >
+                  {collapsed.has(item.id) ? "▸" : "▾"} {item.subtask_counts.done}/
+                  {item.subtask_counts.total}
+                </button>
+              )}
             </span>
             <div className="task-copy">
               {editingId === item.id ? (
@@ -599,7 +721,67 @@ export function TaskWorkspace({ initialData }: Props) {
                 >
                   Move to archive
                 </button>
+                {/* One level only, so a subtask offers promote instead. */}
+                {item.parent ? (
+                  <button
+                    className="btn btn-outline-light btn-sm"
+                    type="button"
+                    onClick={() => handlePromote(item)}
+                    disabled={busyId === item.id}
+                  >
+                    Promote
+                  </button>
+                ) : (
+                  <button
+                    className="btn btn-outline-light btn-sm"
+                    type="button"
+                    onClick={() => {
+                      setAddingSubtaskFor(item.id);
+                      setSubtaskDraft("");
+                    }}
+                    disabled={busyId === item.id}
+                  >
+                    Add subtask
+                  </button>
+                )}
               </div>
+            )}
+
+            {addingSubtaskFor === item.id && (
+              <form
+                className={styles.editForm}
+                onSubmit={(event) => handleAddSubtask(event, item)}
+              >
+                <label
+                  className="visually-hidden"
+                  htmlFor={`new-subtask-${item.id}`}
+                >
+                  New subtask under {item.text}
+                </label>
+                <input
+                  id={`new-subtask-${item.id}`}
+                  className="form-control"
+                  placeholder="Add a subtask…"
+                  value={subtaskDraft}
+                  onChange={(event) => setSubtaskDraft(event.target.value)}
+                  autoFocus
+                  disabled={busyId === item.id}
+                />
+                <button
+                  className="btn btn-primary btn-sm"
+                  type="submit"
+                  disabled={busyId === item.id}
+                >
+                  Add
+                </button>
+                <button
+                  className="btn btn-outline-light btn-sm"
+                  type="button"
+                  onClick={() => setAddingSubtaskFor(null)}
+                >
+                  Cancel
+                </button>
+              </form>
             )}
           </article>
         ))}

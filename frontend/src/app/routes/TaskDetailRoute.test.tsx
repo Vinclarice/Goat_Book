@@ -27,6 +27,7 @@ function taskDetailData(overrides: Record<string, unknown> = {}) {
   return {
     task: task(),
     list: { id: 1, title: "Programming" },
+    subtasks: [],
     ...overrides,
   };
 }
@@ -155,6 +156,89 @@ describe("TaskDetailRoute", () => {
     await user.tab();
 
     expect(fetchSpy.mock.calls.length).toBe(callsAfterLoad);
+  });
+
+  it("lists subtasks with their done count", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        taskDetailData({
+          subtasks: [
+            task({ id: 2, text: "Book flights", status: "completed" }),
+            task({ id: 3, text: "Book hotel" }),
+          ],
+        }),
+      ),
+    );
+
+    renderAt("1");
+
+    expect(await screen.findByText("Book flights")).toBeInTheDocument();
+    expect(screen.getByText("1/2")).toBeInTheDocument();
+  });
+
+  it("adds a subtask under the current task", async () => {
+    const user = userEvent.setup();
+    let posted: Record<string, unknown> | null = null;
+    vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
+      if (typeof input !== "string") return jsonResponse(taskDetailData());
+      if (init?.method === "POST") {
+        posted = JSON.parse((init?.body as string) ?? "{}");
+        return jsonResponse({ data: task({ id: 5, text: "Book flights" }) });
+      }
+      return jsonResponse({ data: task() });
+    });
+
+    renderAt("1");
+    await screen.findByDisplayValue("Write tests");
+
+    await user.type(screen.getByLabelText("New subtask"), "Book flights");
+    await user.click(screen.getByRole("button", { name: "Add" }));
+
+    expect(await screen.findByText("Subtask added.")).toBeInTheDocument();
+    // The parent id has to travel with it, or it lands as a root task.
+    expect(posted).toEqual({ text: "Book flights", parent: 1 });
+  });
+
+  it("shows a subtask its parent and offers to promote it", async () => {
+    const user = userEvent.setup();
+    let patched: Record<string, unknown> | null = null;
+    vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
+      if (typeof input !== "string") {
+        return jsonResponse(
+          taskDetailData({
+            task: task({ parent: { id: 9, text: "Plan Japan trip" } }),
+          }),
+        );
+      }
+      patched = JSON.parse((init?.body as string) ?? "{}");
+      return jsonResponse({ data: task({ parent: null }) });
+    });
+
+    renderAt("1");
+    await screen.findByText("Plan Japan trip");
+
+    await user.click(screen.getByRole("button", { name: "Promote" }));
+
+    expect(
+      await screen.findByText("Promoted to a task of its own."),
+    ).toBeInTheDocument();
+    expect(patched).toEqual({ parent: null });
+  });
+
+  it("doesn't offer a subtask section on a task that is itself a subtask", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        taskDetailData({
+          task: task({ parent: { id: 9, text: "Plan Japan trip" } }),
+        }),
+      ),
+    );
+
+    renderAt("1");
+    await screen.findByText("Plan Japan trip");
+
+    // One level only -- a subtask has nowhere to put children.
+    expect(screen.queryByLabelText("New subtask")).not.toBeInTheDocument();
   });
 
   it("surfaces a conflict error from a duplicate rename", async () => {

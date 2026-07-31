@@ -262,6 +262,8 @@ export interface components {
         TaskDetailOut: {
             task: components["schemas"]["TaskOut"];
             list: components["schemas"]["TaskListSummaryOut"];
+            /** Subtasks */
+            subtasks: components["schemas"]["TaskOut"][];
         };
         /** TaskListSummaryOut */
         TaskListSummaryOut: {

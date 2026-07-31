@@ -87,6 +87,18 @@ export function createTask(
   });
 }
 
+/** Separate from createTask rather than a sixth positional argument to it:
+ * a subtask takes none of the other options -- recurrence is rejected
+ * outright for children, and due date and tags are set afterwards from the
+ * detail view like any other field. */
+export function createSubtask(
+  url: string,
+  text: string,
+  parent: number,
+): Promise<Task> {
+  return request<Task>(url, "POST", { text, parent });
+}
+
 export function updateTaskText(task: Task, text: string): Promise<Task> {
   return request<Task>(task.url, "PATCH", { text });
 }

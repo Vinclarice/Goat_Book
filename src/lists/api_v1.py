@@ -129,6 +129,7 @@ class ArchiveOut(Schema):
 class TaskDetailOut(Schema):
     task: TaskOut
     list: TaskListSummaryOut
+    subtasks: list[TaskOut]
 
 
 @router.get("/agenda", response=AgendaOut)

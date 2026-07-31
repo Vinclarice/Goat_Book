@@ -114,6 +114,18 @@ def task_detail_data_for(item):
             "title": item.list.title,
             "url": item.list.get_absolute_url(),
         },
+        # The detail view is where subtasks are managed, so it gets the
+        # children themselves rather than just the counts every other
+        # serialised task carries. Archived children stay in the archive.
+        "subtasks": [
+            serialize_item(child)
+            for child in annotate_subtask_counts(
+                item.subtasks.exclude(status=Item.Status.ARCHIVED)
+            )
+            .select_related("list", "parent")
+            .prefetch_related("tags")
+            .order_by("position", "id")
+        ],
     }
 
 

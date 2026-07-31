@@ -367,6 +367,24 @@ export function AgendaWorkspace({ initialData }: Props) {
               </a>
             )}
 
+            {/* Subtasks appear here as their own dated rows -- the agenda is
+                the chronological view, the list page is the nested one -- so
+                the breadcrumb is what says where a row belongs. */}
+            {task.parent && (
+              <span className="pill" title={`Subtask of ${task.parent.text}`}>
+                {task.parent.text} ›
+              </span>
+            )}
+
+            {task.subtask_counts.total > 0 && (
+              <span
+                className="pill"
+                aria-label={`${task.subtask_counts.done} of ${task.subtask_counts.total} subtasks done`}
+              >
+                {task.subtask_counts.done}/{task.subtask_counts.total}
+              </span>
+            )}
+
             {task.due_date && (
               <span
                 className={`pill pill-due${

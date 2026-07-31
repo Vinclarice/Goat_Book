@@ -695,11 +695,19 @@
           },
           "list": {
             "$ref": "#/components/schemas/TaskListSummaryOut"
+          },
+          "subtasks": {
+            "items": {
+              "$ref": "#/components/schemas/TaskOut"
+            },
+            "title": "Subtasks",
+            "type": "array"
           }
         },
         "required": [
           "task",
-          "list"
+          "list",
+          "subtasks"
         ],
         "title": "TaskDetailOut",
         "type": "object"

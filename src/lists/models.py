@@ -38,14 +38,36 @@ class Item(models.Model):
     # is a poor trade at two users. blank=True and no null -- "no notes" is
     # the empty string, so nothing has to handle both.
     notes = models.TextField(blank=True, default="")
+    # One level only: a subtask cannot itself have subtasks, enforced in
+    # services rather than the schema (SQL can't express depth). CASCADE
+    # because a deleted parent's children have nothing left to belong to.
+    parent = models.ForeignKey(
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="subtasks",
+    )
+    # Stamped on every archive, single or cascade, so restore can regroup
+    # exactly what one action archived. An explicit marker rather than
+    # matching on archived_at: same-instant timestamps would be a timestamp
+    # doing a marker's job, and a child archived separately then re-archived
+    # with its parent makes that ambiguous.
+    archive_group = models.UUIDField(null=True, blank=True, editable=False)
 
     class Meta:
         ordering = ("position", "id")
         constraints = [
+            # Postgres 15+ only: nulls_distinct=False is what lets one
+            # constraint cover both root tasks (parent IS NULL) and subtasks.
+            # Without it SQL treats every NULL parent as distinct, so this
+            # would stop preventing duplicate top-level tasks entirely --
+            # see design/subtasks-plan.md 6a.
             models.UniqueConstraint(
-                fields=("list", "text"),
+                fields=("list", "parent", "text"),
                 condition=~Q(status="archived"),
-                name="unique_active_list_item",
+                nulls_distinct=False,
+                name="unique_active_item",
             ),
             models.CheckConstraint(
                 condition=(
@@ -86,6 +108,12 @@ class Item(models.Model):
             models.Index(
                 fields=("list", "status", "completed_at"),
                 name="item_list_state_completed_idx",
+            ),
+            # Backs "the open children of this parent", which every list
+            # render and every cascade walks.
+            models.Index(
+                fields=("parent", "status"),
+                name="item_parent_state_idx",
             ),
         ]
 

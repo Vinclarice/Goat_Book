@@ -136,6 +136,17 @@ export async function deleteTask(task: Task): Promise<number> {
 export function reorderTasks(
   url: string,
   orderedIds: number[],
+  // A reorder names one sibling group. Omitted means the root tasks, which
+  // is what every current caller wants; the nested list UI will pass a
+  // parent id to reorder that task's subtasks.
+  parent?: number | null,
 ): Promise<Task[]> {
-  return request<Task[]>(url, "POST", { ordered_ids: orderedIds });
+  return request<Task[]>(url, "POST", {
+    ordered_ids: orderedIds,
+    ...(parent == null ? {} : { parent }),
+  });
+}
+
+export function updateTaskParent(task: Task, parent: number | null): Promise<Task> {
+  return request<Task>(task.url, "PATCH", { parent });
 }

@@ -1,8 +1,9 @@
 from accounts.models import User
-from django.test import TestCase
+from django.test import TestCase, skipUnlessDBFeature
 from lists.models import Item, List
 from django.db import IntegrityError
 from django.core.exceptions import ValidationError
+from django.utils import timezone
 
 
 class ItemModelTest(TestCase):
@@ -99,3 +100,67 @@ class ListModelTest(TestCase):
 
     def test_empty_list_has_fallback_name(self):
         self.assertEqual(List.objects.create().title, "Untitled list")
+
+
+class SubtaskConstraintTest(TestCase):
+    """Exercises unique_active_item at the database, not through services.
+
+    services._duplicate_exists short-circuits before the database is reached
+    on most paths, so a service-level test would still pass against a broken
+    or missing constraint. These go straight at it.
+
+    Skipped on SQLite, which cannot express nulls_distinct=False: Django omits
+    the constraint entirely there rather than failing, so on SQLite these
+    would assert an error that the database was never going to raise. CI runs
+    Postgres, which is where this actually gets checked.
+    """
+
+    @skipUnlessDBFeature("supports_nulls_distinct_unique_constraints")
+    def test_duplicate_root_tasks_are_still_rejected(self):
+        mylist = List.objects.create()
+        Item.objects.create(list=mylist, text="Book flights")
+
+        with self.assertRaises(IntegrityError):
+            Item.objects.create(list=mylist, text="Book flights")
+
+    @skipUnlessDBFeature("supports_nulls_distinct_unique_constraints")
+    def test_the_same_text_may_appear_under_different_parents(self):
+        mylist = List.objects.create()
+        japan = Item.objects.create(list=mylist, text="Plan Japan trip")
+        peru = Item.objects.create(list=mylist, text="Plan Peru trip")
+
+        Item.objects.create(list=mylist, text="Book flights", parent=japan)
+        Item.objects.create(list=mylist, text="Book flights", parent=peru)
+
+        self.assertEqual(Item.objects.filter(text="Book flights").count(), 2)
+
+    @skipUnlessDBFeature("supports_nulls_distinct_unique_constraints")
+    def test_duplicate_siblings_under_one_parent_are_rejected(self):
+        mylist = List.objects.create()
+        japan = Item.objects.create(list=mylist, text="Plan Japan trip")
+        Item.objects.create(list=mylist, text="Book flights", parent=japan)
+
+        with self.assertRaises(IntegrityError):
+            Item.objects.create(list=mylist, text="Book flights", parent=japan)
+
+    @skipUnlessDBFeature("supports_nulls_distinct_unique_constraints")
+    def test_a_subtask_may_share_its_text_with_a_root_task(self):
+        mylist = List.objects.create()
+        japan = Item.objects.create(list=mylist, text="Plan Japan trip")
+        root = Item.objects.create(list=mylist, text="Book flights")
+
+        child = Item.objects.create(
+            list=mylist, text="Book flights", parent=japan
+        )
+
+        self.assertNotEqual(root.pk, child.pk)
+
+    @skipUnlessDBFeature("supports_nulls_distinct_unique_constraints")
+    def test_archiving_frees_the_text_for_reuse(self):
+        mylist = List.objects.create()
+        first = Item.objects.create(list=mylist, text="Book flights")
+        first.status = Item.Status.ARCHIVED
+        first.archived_at = timezone.now()
+        first.save()
+
+        Item.objects.create(list=mylist, text="Book flights")  # should not raise

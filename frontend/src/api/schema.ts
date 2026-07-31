@@ -177,6 +177,13 @@ export interface components {
             /** Lists */
             lists: components["schemas"]["AgendaListSummaryOut"][];
         };
+        /** SubtaskCountsOut */
+        SubtaskCountsOut: {
+            /** Total */
+            total: number;
+            /** Done */
+            done: number;
+        };
         /** TaskOut */
         TaskOut: {
             /** Id */
@@ -209,12 +216,21 @@ export interface components {
             recurrence: "none" | "daily" | "weekly" | "monthly";
             /** Notes */
             notes: string;
+            parent: components["schemas"]["TaskParentOut"] | null;
+            subtask_counts: components["schemas"]["SubtaskCountsOut"];
             /** List Id */
             list_id: number;
             /** Url */
             url: string;
             /** Edit Url */
             edit_url: string;
+        };
+        /** TaskParentOut */
+        TaskParentOut: {
+            /** Id */
+            id: number;
+            /** Text */
+            text: string;
         };
         /** ListDetailOut */
         ListDetailOut: {

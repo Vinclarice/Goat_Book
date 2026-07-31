@@ -1,5 +1,6 @@
 from calendar import monthrange
 from datetime import timedelta
+from uuid import uuid4
 
 from django.db import IntegrityError, transaction
 from django.db.models import Max
@@ -11,6 +12,9 @@ from lists.models import Item, List, Tag
 EMPTY_ITEM_ERROR = "You can't have an empty list item"
 DUPLICATE_ITEM_ERROR = "You've already got this in your list"
 ARCHIVED_DELETE_ERROR = "Only archived tasks can be permanently deleted"
+SUBTASK_RECURRENCE_ERROR = "Only top-level tasks can repeat"
+NESTED_SUBTASK_ERROR = "Subtasks can't have subtasks of their own"
+FOREIGN_PARENT_ERROR = "That parent task isn't in this list"
 
 
 class TaskServiceError(Exception):
@@ -32,13 +36,33 @@ def normalize_task_text(text):
     return normalized
 
 
-def _duplicate_exists(for_list, text, excluding=None):
+def _duplicate_exists(for_list, text, excluding=None, parent=None):
+    # Sibling-scoped, not list-scoped: "Book flights" may appear once under
+    # each of several parents, but only once within any one sibling group.
+    # Mirrors the unique_active_item constraint exactly.
     duplicates = for_list.item_set.exclude(status=Item.Status.ARCHIVED).filter(
         text=text,
+        parent=parent,
     )
     if excluding is not None:
         duplicates = duplicates.exclude(pk=excluding.pk)
     return duplicates.exists()
+
+
+def _reject_invalid_parent(for_list, parent):
+    """Guards the two ways a parent can be wrong: not in this list, or
+    already a subtask itself.
+
+    The list check is a data-integrity rule, not an authorisation one --
+    callers are responsible for having resolved `parent` through an
+    owner-scoped queryset first (see lists/api.py). It still catches a
+    cross-user parent, because another user's task is necessarily in
+    another user's list.
+    """
+    if parent.list_id != for_list.id:
+        raise TaskConflict(FOREIGN_PARENT_ERROR)
+    if parent.parent_id is not None:
+        raise TaskConflict(NESTED_SUBTASK_ERROR)
 
 
 @transaction.atomic
@@ -50,10 +74,12 @@ def create_list_with_item(owner, title, text):
     return new_list
 
 
-def _next_position(for_list):
+def _next_position(for_list, parent=None):
+    # Positions run within a sibling group, so a subtask's position is
+    # relative to its siblings rather than to everything in the list.
     highest = for_list.item_set.exclude(
         status=Item.Status.ARCHIVED,
-    ).aggregate(Max("position"))["position__max"]
+    ).filter(parent=parent).aggregate(Max("position"))["position__max"]
     return 0 if highest is None else highest + 1
 
 
@@ -77,19 +103,26 @@ def _resolve_tags(owner, tag_names):
 
 
 @transaction.atomic
-def create_item(for_list, text, due_date=None, tags=None, recurrence=None):
+def create_item(
+    for_list, text, due_date=None, tags=None, recurrence=None, parent=None
+):
     normalized = normalize_task_text(text)
-    if _duplicate_exists(for_list, normalized):
+    if parent is not None:
+        _reject_invalid_parent(for_list, parent)
+    if _duplicate_exists(for_list, normalized, parent=parent):
         raise TaskConflict(DUPLICATE_ITEM_ERROR)
     if recurrence and recurrence not in Item.Recurrence.values:
         raise TaskConflict("Choose a valid recurrence.")
+    if parent is not None and recurrence and recurrence != Item.Recurrence.NONE:
+        raise TaskConflict(SUBTASK_RECURRENCE_ERROR)
     try:
         item = Item.objects.create(
             list=for_list,
             text=normalized,
             due_date=due_date,
-            position=_next_position(for_list),
+            position=_next_position(for_list, parent=parent),
             recurrence=recurrence or Item.Recurrence.NONE,
+            parent=parent,
         )
     except IntegrityError as error:
         raise TaskConflict(DUPLICATE_ITEM_ERROR) from error
@@ -105,7 +138,9 @@ def edit_item(item, text):
         raise InvalidTaskTransition("Restore this task before editing it")
 
     normalized = normalize_task_text(text)
-    if _duplicate_exists(item.list, normalized, excluding=item):
+    if _duplicate_exists(
+        item.list, normalized, excluding=item, parent=item.parent
+    ):
         raise TaskConflict(DUPLICATE_ITEM_ERROR)
 
     item.text = normalized
@@ -117,10 +152,14 @@ def edit_item(item, text):
 
 
 @transaction.atomic
-def reorder_items(for_list, ordered_ids):
+def reorder_items(for_list, ordered_ids, parent=None):
+    # Scoped to one sibling group: a reorder names every open task under
+    # `parent` (or every root task when parent is None) and nothing else.
+    # Set equality against that group is what stops ids belonging to another
+    # group -- or another user's list -- from being smuggled in.
     items = list(
         Item.objects.select_for_update()
-        .filter(list=for_list)
+        .filter(list=for_list, parent=parent)
         .exclude(status=Item.Status.ARCHIVED)
     )
     by_id = {item.id: item for item in items}
@@ -162,6 +201,11 @@ def set_recurrence(item, recurrence):
         raise InvalidTaskTransition("Restore this task before editing it")
     if recurrence not in Item.Recurrence.values:
         raise TaskConflict("Choose a valid recurrence.")
+    # Recurrence is a parent-only feature: a repeating subtask would have to
+    # spawn its next occurrence somewhere, and the only sensible parent is one
+    # that may itself have moved on.
+    if item.parent_id is not None and recurrence != Item.Recurrence.NONE:
+        raise TaskConflict(SUBTASK_RECURRENCE_ERROR)
     item.recurrence = recurrence
     item.save()
     return item
@@ -179,6 +223,36 @@ def set_item_notes(item, notes):
     return item
 
 
+@transaction.atomic
+def set_parent(item, parent):
+    """Promote a subtask to a root task (parent=None) or demote a root task
+    under another. Moving between parents is the same operation.
+    """
+    item = Item.objects.select_for_update().select_related("list").get(pk=item.pk)
+    if item.status == Item.Status.ARCHIVED:
+        raise InvalidTaskTransition("Restore this task before editing it")
+    if parent is not None:
+        if parent.pk == item.pk:
+            raise TaskConflict(NESTED_SUBTASK_ERROR)
+        _reject_invalid_parent(item.list, parent)
+        # Demoting a task that has children would create a third level.
+        if item.subtasks.exists():
+            raise TaskConflict(NESTED_SUBTASK_ERROR)
+        if item.recurrence != Item.Recurrence.NONE:
+            raise TaskConflict(SUBTASK_RECURRENCE_ERROR)
+    if _duplicate_exists(item.list, item.text, excluding=item, parent=parent):
+        raise TaskConflict(DUPLICATE_ITEM_ERROR)
+
+    item.parent = parent
+    # Position is sibling-relative, so it means nothing in the new group.
+    item.position = _next_position(item.list, parent=parent)
+    try:
+        item.save()
+    except IntegrityError as error:
+        raise TaskConflict(DUPLICATE_ITEM_ERROR) from error
+    return item
+
+
 def _advance_due_date(due_date, recurrence):
     base = due_date or timezone.localdate()
     if recurrence == Item.Recurrence.DAILY:
@@ -193,7 +267,7 @@ def _advance_due_date(due_date, recurrence):
     return None
 
 
-def _spawn_next_occurrence(completed_item):
+def _spawn_next_occurrence(completed_item, cascaded=()):
     next_item = Item.objects.create(
         list=completed_item.list,
         text=completed_item.text,
@@ -202,7 +276,41 @@ def _spawn_next_occurrence(completed_item):
         position=_next_position(completed_item.list),
     )
     next_item.tags.set(completed_item.tags.all())
+
+    # The next occurrence gets a fresh copy of the children, reset to active.
+    # Their due dates shift by the same delta the parent's did, so a subtask
+    # due two days before its parent stays two days before it; undated
+    # children stay undated. Children archived by the cascade are the ones
+    # being cloned -- they carry the whole subtree forward.
+    delta = None
+    if completed_item.due_date and next_item.due_date:
+        delta = next_item.due_date - completed_item.due_date
+    for child in cascaded:
+        clone = Item.objects.create(
+            list=child.list,
+            text=child.text,
+            due_date=(child.due_date + delta) if (child.due_date and delta) else child.due_date,
+            recurrence=Item.Recurrence.NONE,
+            position=child.position,
+            notes=child.notes,
+            parent=next_item,
+        )
+        clone.tags.set(child.tags.all())
     return next_item
+
+
+def _lock_open_children(item):
+    """Children still open, locked parent-first.
+
+    Lock ordering matters now that select_for_update() is real on Postgres:
+    every cascade takes the parent's lock before its children's, so two
+    cascades can't deadlock by grabbing them in opposite orders.
+    """
+    return list(
+        Item.objects.select_for_update()
+        .filter(parent=item, status=Item.Status.ACTIVE)
+        .order_by("pk")
+    )
 
 
 @transaction.atomic
@@ -210,8 +318,14 @@ def complete_item(item):
     item = Item.objects.select_for_update().select_related("list").get(pk=item.pk)
     if item.status == Item.Status.ARCHIVED:
         raise InvalidTaskTransition("Archived tasks must be restored first")
+    item._cascaded = []
     if item.status != Item.Status.COMPLETED:
         now = timezone.now()
+        # Captured before the parent moves, and returned to the caller: the
+        # server cannot reconstruct this set afterwards, because children
+        # already completed before the parent was ticked are indistinguishable
+        # from ones this action completed. Undo has to reopen exactly these.
+        children = _lock_open_children(item)
         item.status = Item.Status.COMPLETED
         item.completed_at = now
         item.archived_at = None
@@ -223,9 +337,19 @@ def complete_item(item):
             # constraint) and spawn the next one right away.
             item.status = Item.Status.ARCHIVED
             item.archived_at = now
+            item.archive_group = uuid4()
         item.save()
+
+        for child in children:
+            child.status = item.status
+            child.completed_at = now
+            child.archived_at = item.archived_at
+            child.archive_group = item.archive_group
+            child.save()
+        item._cascaded = children
+
         if is_recurring:
-            item._spawned = _spawn_next_occurrence(item)
+            item._spawned = _spawn_next_occurrence(item, cascaded=children)
     return item
 
 
@@ -245,12 +369,39 @@ def reopen_item(item):
 @transaction.atomic
 def archive_item(item):
     item = Item.objects.select_for_update().get(pk=item.pk)
+    item._cascaded = []
     if item.status != Item.Status.ARCHIVED:
         now = timezone.now()
+        group = uuid4()
+        # Everything still live under this parent goes with it: an archived
+        # parent cannot have live children, or the list page would show an
+        # orphan whose parent is nowhere on screen.
+        children = list(
+            Item.objects.select_for_update()
+            .filter(parent=item)
+            .exclude(status=Item.Status.ARCHIVED)
+            .order_by("pk")
+        )
         item.status = Item.Status.ARCHIVED
         item.archived_at = now
+        item.archive_group = group
         item.save()
+
+        for child in children:
+            child.status = Item.Status.ARCHIVED
+            child.archived_at = now
+            child.archive_group = group
+            child.save()
+        item._cascaded = children
     return item
+
+
+def _restore_status_for(item):
+    # A null completed_at means the task was active when it was archived, so
+    # that is where it goes back to; anything else was genuinely completed.
+    if item.completed_at is None:
+        return Item.Status.ACTIVE
+    return Item.Status.COMPLETED
 
 
 @transaction.atomic
@@ -258,24 +409,42 @@ def restore_item(item):
     item = Item.objects.select_for_update().select_related("list").get(pk=item.pk)
     if item.status != Item.Status.ARCHIVED:
         raise InvalidTaskTransition("Only archived tasks can be restored")
-    if _duplicate_exists(item.list, item.text, excluding=item):
+    if _duplicate_exists(item.list, item.text, excluding=item, parent=item.parent):
         raise TaskConflict(
             "That task already exists in its original list, so it was not restored."
         )
 
-    # A null completed_at means the task was active when it was archived, so
-    # that is where it goes back to; anything else was genuinely completed.
-    if item.completed_at is None:
-        item.status = Item.Status.ACTIVE
-    else:
-        item.status = Item.Status.COMPLETED
+    # Children that went down with this parent come back with it, each to
+    # whichever status it held before -- which is only knowable because
+    # archiving stopped fabricating completed_at (migration 0018). Grouped by
+    # archive_group, so a child archived separately beforehand stays archived.
+    children = []
+    if item.archive_group is not None:
+        children = list(
+            Item.objects.select_for_update()
+            .filter(
+                parent=item,
+                status=Item.Status.ARCHIVED,
+                archive_group=item.archive_group,
+            )
+            .order_by("pk")
+        )
+
+    item.status = _restore_status_for(item)
     item.archived_at = None
+    item.archive_group = None
     try:
         item.save()
+        for child in children:
+            child.status = _restore_status_for(child)
+            child.archived_at = None
+            child.archive_group = None
+            child.save()
     except IntegrityError as error:
         raise TaskConflict(
             "That task already exists in its original list, so it was not restored."
         ) from error
+    item._cascaded = children
     return item
 
 

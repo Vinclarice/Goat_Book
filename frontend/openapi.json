@@ -448,6 +448,24 @@
         "title": "AgendaOut",
         "type": "object"
       },
+      "SubtaskCountsOut": {
+        "properties": {
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          },
+          "done": {
+            "title": "Done",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "done"
+        ],
+        "title": "SubtaskCountsOut",
+        "type": "object"
+      },
       "TaskOut": {
         "properties": {
           "id": {
@@ -533,6 +551,19 @@
             "title": "Notes",
             "type": "string"
           },
+          "parent": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TaskParentOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "subtask_counts": {
+            "$ref": "#/components/schemas/SubtaskCountsOut"
+          },
           "list_id": {
             "title": "List Id",
             "type": "integer"
@@ -559,11 +590,31 @@
           "tags",
           "recurrence",
           "notes",
+          "parent",
+          "subtask_counts",
           "list_id",
           "url",
           "edit_url"
         ],
         "title": "TaskOut",
+        "type": "object"
+      },
+      "TaskParentOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "text"
+        ],
+        "title": "TaskParentOut",
         "type": "object"
       },
       "ListDetailOut": {

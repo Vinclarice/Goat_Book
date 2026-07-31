@@ -20,6 +20,7 @@ from lists import services
 from lists.forms import ListTitleForm
 from lists.models import Item, List
 from lists.serializers import (
+    annotate_subtask_counts,
     archive_workspace_data_for,
     list_ref_for,
     list_workspace_data_for,
@@ -36,6 +37,16 @@ ListColorKey = Literal[
 ]
 
 
+class TaskParentOut(Schema):
+    id: int
+    text: str
+
+
+class SubtaskCountsOut(Schema):
+    total: int
+    done: int
+
+
 class TaskOut(Schema):
     id: int
     text: str
@@ -49,6 +60,8 @@ class TaskOut(Schema):
     tags: list[str]
     recurrence: TaskRecurrence
     notes: str
+    parent: TaskParentOut | None
+    subtask_counts: SubtaskCountsOut
     list_id: int
     url: str
     edit_url: str
@@ -152,8 +165,10 @@ def _owned_list(request, list_id):
 def list_detail(request, list_id: int):
     our_list = _owned_list(request, list_id)
     items = list(
-        our_list.item_set.exclude(status=Item.Status.ARCHIVED)
-        .select_related("list")
+        annotate_subtask_counts(
+            our_list.item_set.exclude(status=Item.Status.ARCHIVED)
+        )
+        .select_related("list", "parent")
         .prefetch_related("tags")
     )
     return {

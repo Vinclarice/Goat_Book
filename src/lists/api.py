@@ -59,6 +59,34 @@ def _owned_item(request, item_id):
     ).first()
 
 
+def _resolve_parent(request, raw):
+    """Turns a `parent` id from a request body into an owned Item.
+
+    Returns (parent, error_response); (None, None) means "no parent given",
+    which is a valid request rather than a failure.
+
+    This is the first id this API accepts in a body rather than a path, and
+    it goes through the same owner-scoped queryset the path ids do. Resolving
+    it with a bare Item.objects.get() would let one user graft a subtask onto
+    another user's task. 404 rather than 403, matching the rest of the API:
+    a task you don't own doesn't exist as far as you're concerned.
+    """
+    if raw is None:
+        return None, None
+    if not isinstance(raw, int) or isinstance(raw, bool):
+        return None, JsonResponse(
+            {"errors": {"parent": ["Send a task id."]}},
+            status=400,
+        )
+    parent = _owned_item(request, raw)
+    if parent is None:
+        return None, JsonResponse(
+            {"errors": {"parent": ["Task not found."]}},
+            status=404,
+        )
+    return parent, None
+
+
 @api_login_required
 @require_http_methods(["POST"])
 def create_item(request, list_id):
@@ -93,6 +121,9 @@ def create_item(request, list_id):
             {"errors": {"recurrence": ["Choose a valid recurrence."]}},
             status=400,
         )
+    parent, parent_error = _resolve_parent(request, payload.get("parent"))
+    if parent_error:
+        return parent_error
     try:
         item = services.create_item(
             our_list,
@@ -100,6 +131,7 @@ def create_item(request, list_id):
             due_date=due_date,
             tags=tags,
             recurrence=recurrence,
+            parent=parent,
         )
     except services.TaskConflict as error:
         return JsonResponse(
@@ -131,9 +163,14 @@ def reorder_items(request, list_id):
             {"errors": {"ordered_ids": ["Send a list of item ids."]}},
             status=400,
         )
+    # A reorder now names one sibling group: omit `parent` for the root
+    # tasks, or send a parent id to reorder that task's subtasks.
+    parent, parent_error = _resolve_parent(request, payload.get("parent"))
+    if parent_error:
+        return parent_error
 
     try:
-        services.reorder_items(our_list, ordered_ids)
+        services.reorder_items(our_list, ordered_ids, parent=parent)
     except services.TaskConflict as error:
         return JsonResponse(
             {"errors": {"ordered_ids": [str(error)]}},
@@ -171,7 +208,7 @@ def item_detail(request, item_id):
     if error_response:
         return error_response
     changed_fields = {
-        "text", "status", "due_date", "tags", "recurrence", "notes",
+        "text", "status", "due_date", "tags", "recurrence", "notes", "parent",
     }.intersection(payload)
     if len(changed_fields) != 1:
         return JsonResponse(
@@ -179,7 +216,7 @@ def item_detail(request, item_id):
                 "errors": {
                     "body": [
                         "Change exactly one of text, status, due_date, tags, "
-                        "recurrence, or notes per request."
+                        "recurrence, notes, or parent per request."
                     ]
                 }
             },
@@ -219,6 +256,13 @@ def item_detail(request, item_id):
                     status=400,
                 )
             item = services.set_item_notes(item, notes)
+        elif "parent" in changed_fields:
+            # null promotes a subtask to a root task; an id demotes a root
+            # task under that parent, or moves a subtask to a new one.
+            parent, parent_error = _resolve_parent(request, payload["parent"])
+            if parent_error:
+                return parent_error
+            item = services.set_parent(item, parent)
         else:
             requested_status = payload["status"]
             if requested_status == Item.Status.ACTIVE:
@@ -247,9 +291,20 @@ def item_detail(request, item_id):
             status=400,
         )
 
+    cascaded = getattr(item, "_cascaded", [])
     item = Item.objects.select_related("list").get(pk=item.pk)
     response = {"data": serialize_item(item)}
     if spawned is not None:
         spawned = Item.objects.select_related("list").get(pk=spawned.pk)
         response["spawned"] = serialize_item(spawned)
+    if cascaded:
+        # Which children this one action moved. The client needs the exact
+        # set to undo it: children already completed before the parent was
+        # ticked look identical afterwards, so the server can't recompute it.
+        response["cascaded"] = [
+            serialize_item(child)
+            for child in Item.objects.select_related("list").filter(
+                pk__in=[each.pk for each in cascaded]
+            )
+        ]
     return JsonResponse(response)

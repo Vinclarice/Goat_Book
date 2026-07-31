@@ -194,15 +194,25 @@ WSGI_APPLICATION = 'clarice.wsgi.application'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 if DEBUG:
-    # Local dev and the test suite stay on SQLite -- no local Postgres to
-    # install, and nothing about this app's schema depends on Postgres-only
-    # behavior. Production uses a managed Postgres cluster (see below).
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': db_path,
+    # Local dev stays on SQLite by default -- no local Postgres to install,
+    # and nothing about this app's schema depends on Postgres-only behavior
+    # yet. CI sets DJANGO_DATABASE_URL to run this same suite against
+    # Postgres instead, matching production's engine (see
+    # .github/workflows/ci.yml and design/roadmap.md item A0) -- testing on
+    # a different engine than production is worse than testing on either
+    # one consistently.
+    database_url = os.environ.get("DJANGO_DATABASE_URL")
+    if database_url:
+        DATABASES = {
+            'default': dj_database_url.parse(database_url, conn_max_age=600)
         }
-    }
+    else:
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.sqlite3',
+                'NAME': db_path,
+            }
+        }
 else:
     DATABASES = {
         'default': dj_database_url.parse(

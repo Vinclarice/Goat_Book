@@ -85,6 +85,50 @@ describe("AgendaWorkspace", () => {
     expect(screen.getByText("6 days overdue")).toBeInTheDocument();
   });
 
+  it("marks rows that have notes, and only those", () => {
+    renderAgenda({
+      items: [
+        task({ id: 1, text: "Renew insurance", due_date: TODAY, notes: "Policy 4471" }),
+        task({ id: 2, text: "Ship the fix", due_date: TODAY }),
+      ],
+    });
+
+    expect(screen.getAllByLabelText("Has notes")).toHaveLength(1);
+  });
+
+  it("shows a breadcrumb on subtask rows and a count on parent rows", () => {
+    renderAgenda({
+      items: [
+        task({
+          id: 1,
+          text: "Plan Japan trip",
+          due_date: TODAY,
+          subtask_counts: { total: 5, done: 2 },
+        }),
+        task({
+          id: 2,
+          text: "Book flights",
+          due_date: TODAY,
+          parent: { id: 1, text: "Plan Japan trip" },
+        }),
+      ],
+    });
+
+    expect(screen.getByText("Plan Japan trip ›")).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("2 of 5 subtasks done"),
+    ).toHaveTextContent("2/5");
+  });
+
+  it("leaves rows without subtasks or a parent unadorned", () => {
+    renderAgenda({
+      items: [task({ id: 1, text: "Buy milk", due_date: TODAY })],
+    });
+
+    expect(screen.queryByText(/›$/)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/subtasks done/)).not.toBeInTheDocument();
+  });
+
   it("starts the far-off buckets collapsed", () => {
     renderAgenda();
 

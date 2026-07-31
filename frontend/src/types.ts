@@ -28,6 +28,16 @@ export interface Task {
   position: number;
   tags: string[];
   recurrence: TaskRecurrence;
+  // Plain text, never Markdown. "" means no notes -- the API normalises
+  // blank input to the empty string so this is never null.
+  notes: string;
+  // id + text so a subtask row can render its breadcrumb without a second
+  // lookup. null means this is a root task.
+  parent: { id: number; text: string } | null;
+  // Counts, not nested children: the list page fetches the whole list and
+  // nests client-side, the agenda only needs "2/5". Always present, 0/0 for
+  // a task with no subtasks.
+  subtask_counts: { total: number; done: number };
   // Just the id -- title/url live once in the page's top-level `lists`
   // array (see AgendaListSummary / ArchiveWorkspaceData.lists) instead of
   // being repeated on every task.

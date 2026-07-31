@@ -1,0 +1,119 @@
+/* Layout for the persistent side nav. See design/side-nav-mockup.html. */
+
+.shell {
+  display: grid;
+  grid-template-columns: 210px minmax(0, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.nav {
+  position: sticky;
+  top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  padding-right: 1rem;
+  border-right: 1px solid var(--border);
+}
+
+.group h3 {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--muted-foreground);
+  margin: 0 0 0.4rem;
+}
+
+.link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.32rem 0.45rem;
+  border-radius: 7px;
+  font-size: 0.85rem;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.link:hover {
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+}
+
+.active {
+  background: var(--accent-subtle, color-mix(in srgb, var(--accent) 18%, transparent));
+  color: var(--accent-foreground, var(--text));
+  font-weight: 600;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.count {
+  margin-left: auto;
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+}
+
+.warn {
+  color: var(--warn, #f4c98a);
+}
+
+.empty {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--muted-foreground);
+}
+
+/* The disclosure is only used below the breakpoint; above it the nav is
+   always open and the summary is hidden. */
+.disclosure > summary {
+  display: none;
+}
+
+@media (max-width: 760px) {
+  .shell {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.75rem;
+  }
+
+  .nav {
+    position: static;
+    border-right: none;
+    padding-right: 0;
+  }
+
+  .disclosure > summary {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    list-style: none;
+    cursor: pointer;
+    padding: 0.4rem 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.85rem;
+  }
+
+  .disclosure > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  /* A disclosure rather than an overlay drawer: it needs no focus trap, no
+     scroll lock and no escape handling, and it pushes the page down instead
+     of covering the thing you just navigated to. */
+  .disclosure:not([open]) .nav {
+    display: none;
+  }
+}

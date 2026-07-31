@@ -286,3 +286,59 @@ class LegacyApiIsolationTest(TestCase):
         self.assertFalse(
             Item.objects.filter(id=self.intruder_archived_item.id).exists(),
         )
+
+
+class ParentPayloadIsolationTest(LegacyApiIsolationTest):
+    """`parent` is the first id this API accepts in a request body rather
+    than a path, so it is the first that could bypass the path-id ownership
+    checks the rest of this module covers.
+
+    design/roadmap.md's A3 entry calls for these to land in the same change
+    as subtasks rather than as a follow-up: without them the suite stays
+    green while the newest attack surface goes untested.
+    """
+
+    def test_cannot_create_a_subtask_under_another_users_task(self):
+        response = self.intruder_client.post(
+            f"/api/lists/{self.intruder_list.id}/items/",
+            data=json.dumps({"text": "Book flights", "parent": self.owner_item.id}),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(self.owner_item.subtasks.count(), 0)
+
+    def test_cannot_demote_own_task_under_another_users_task(self):
+        response = self.intruder_client.patch(
+            f"/api/items/{self.intruder_item.id}/",
+            data=json.dumps({"parent": self.owner_item.id}),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 404)
+        self.intruder_item.refresh_from_db()
+        self.assertIsNone(self.intruder_item.parent_id)
+
+    def test_cannot_reorder_another_users_sibling_group(self):
+        response = self.intruder_client.post(
+            f"/api/lists/{self.owner_list.id}/items/reorder/",
+            data=json.dumps(
+                {"ordered_ids": [self.owner_item.id], "parent": self.owner_item.id}
+            ),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_cannot_scope_a_reorder_of_own_list_by_a_foreign_parent(self):
+        # The list id is legitimately the intruder's, so the path-level
+        # ownership check passes -- only _resolve_parent stops this.
+        response = self.intruder_client.post(
+            f"/api/lists/{self.intruder_list.id}/items/reorder/",
+            data=json.dumps(
+                {"ordered_ids": [self.intruder_item.id], "parent": self.owner_item.id}
+            ),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 404)

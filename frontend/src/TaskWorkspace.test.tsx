@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 
 import { TaskWorkspace } from "./TaskWorkspace";
 import { task } from "./test/fixtures";
+import type { Task } from "./types";
 
 function jsonResponse(data: object, ok = true) {
   return Promise.resolve({
@@ -351,6 +352,142 @@ describe("TaskWorkspace", () => {
             tags: ["groceries", "home"],
             recurrence: "none",
           }),
+        }),
+      ),
+    );
+  });
+});
+
+describe("TaskWorkspace subtasks", () => {
+  const LIST = {
+    id: 1,
+    title: "Travel",
+    create_item_url: "/api/lists/1/items/",
+    reorder_url: "/api/lists/1/items/reorder/",
+  };
+
+  function renderNested(extra: Task[] = []) {
+    const parent = task({
+      id: 1,
+      text: "Plan Japan trip",
+      subtask_counts: { total: 2, done: 1 },
+    });
+    const child = task({
+      id: 2,
+      text: "Book flights",
+      parent: { id: 1, text: "Plan Japan trip" },
+    });
+    const done = task({
+      id: 3,
+      text: "Book hotel",
+      status: "completed",
+      parent: { id: 1, text: "Plan Japan trip" },
+    });
+    return render(
+      <TaskWorkspace
+        initialData={{ list: LIST, items: [parent, child, done, ...extra] }}
+      />,
+    );
+  }
+
+  beforeEach(() => {
+    document.cookie = "csrftoken=test-token";
+    vi.restoreAllMocks();
+  });
+
+  it("renders children under their parent with a done count", () => {
+    renderNested();
+
+    expect(
+      screen.getByRole("button", { name: "Hide subtasks of Plan Japan trip" }),
+    ).toHaveTextContent("1/2");
+    expect(screen.getByText("Book flights")).toBeInTheDocument();
+  });
+
+  it("collapses and re-expands a parent's children", async () => {
+    const user = userEvent.setup();
+    renderNested();
+
+    await user.click(
+      screen.getByRole("button", { name: "Hide subtasks of Plan Japan trip" }),
+    );
+
+    expect(screen.queryByText("Book flights")).not.toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", { name: "Show subtasks of Plan Japan trip" }),
+    );
+
+    expect(screen.getByText("Book flights")).toBeInTheDocument();
+  });
+
+  it("sends the parent id when adding a subtask from a row", async () => {
+    const user = userEvent.setup();
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(() =>
+        jsonResponse({
+          data: task({
+            id: 9,
+            text: "Book trains",
+            parent: { id: 1, text: "Plan Japan trip" },
+          }),
+        }),
+      );
+    renderNested();
+
+    await user.click(screen.getAllByRole("button", { name: "Add subtask" })[0]);
+    await user.type(screen.getByLabelText(/New subtask under/), "Book trains");
+    await user.click(screen.getByRole("button", { name: "Add" }));
+
+    await waitFor(() =>
+      expect(fetchSpy).toHaveBeenCalledWith(
+        "/api/lists/1/items/",
+        expect.objectContaining({
+          body: JSON.stringify({ text: "Book trains", parent: 1 }),
+        }),
+      ),
+    );
+  });
+
+  it("offers promote on a subtask instead of add subtask", () => {
+    renderNested();
+
+    // One level only: a child has nowhere to put children of its own.
+    expect(screen.getAllByRole("button", { name: "Add subtask" })).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: "Promote" })).toHaveLength(2);
+  });
+
+  it("refuses a drag that would cross nesting levels", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    renderNested();
+
+    const rows = document.querySelectorAll("article.list-item");
+    fireEvent.dragStart(rows[1]); // the child
+    fireEvent.drop(rows[0]); // onto its parent
+
+    expect(
+      await screen.findByText(/Drag reorders within one group/),
+    ).toBeInTheDocument();
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("scopes a sibling reorder to that group", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(() => jsonResponse({ data: [] }));
+    renderNested();
+
+    const rows = document.querySelectorAll("article.list-item");
+    fireEvent.dragStart(rows[2]); // "Book hotel"
+    fireEvent.drop(rows[1]); // onto its sibling "Book flights"
+
+    await waitFor(() =>
+      expect(fetchSpy).toHaveBeenCalledWith(
+        "/api/lists/1/items/reorder/",
+        expect.objectContaining({
+          // Only the sibling group, and the parent scope travels with it.
+          body: JSON.stringify({ ordered_ids: [3, 2], parent: 1 }),
         }),
       ),
     );

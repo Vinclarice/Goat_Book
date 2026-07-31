@@ -1,6 +1,47 @@
+from django.db.models import Count, Q
 from django.urls import reverse
 
-from lists.models import List
+from lists.models import Item, List
+
+
+def annotate_subtask_counts(queryset):
+    """Adds subtask_total/subtask_done so serialize_item doesn't fall back to
+    a per-row count. Apply it at query sites that serialise many items.
+    """
+    return queryset.annotate(
+        subtask_total=Count(
+            "subtasks",
+            filter=~Q(subtasks__status=Item.Status.ARCHIVED),
+            distinct=True,
+        ),
+        subtask_done=Count(
+            "subtasks",
+            filter=Q(subtasks__status=Item.Status.COMPLETED),
+            distinct=True,
+        ),
+    )
+
+
+def subtask_counts_for(item):
+    """Open-and-completed counts for a task's children.
+
+    Prefers the annotations added by annotate_subtask_counts() and falls back
+    to counting in Python, which uses a prefetch when one is in play. The
+    fallback exists so a caller that forgets to annotate gets a slow answer
+    rather than a silently wrong "0/0" -- a subtask count that reads zero when
+    five subtasks exist is worse than an extra query at this scale.
+    """
+    total = getattr(item, "subtask_total", None)
+    done = getattr(item, "subtask_done", None)
+    if total is None or done is None:
+        children = [
+            child
+            for child in item.subtasks.all()
+            if child.status != "archived"
+        ]
+        total = len(children)
+        done = sum(1 for child in children if child.status == "completed")
+    return {"total": total, "done": done}
 
 
 def serialize_item(item):
@@ -18,6 +59,17 @@ def serialize_item(item):
         "position": item.position,
         "tags": [tag.name for tag in item.tags.all()],
         "recurrence": item.recurrence,
+        "notes": item.notes,
+        # id + text, because the agenda shows a breadcrumb beside subtask rows
+        # and would otherwise need a second lookup per row to render it.
+        "parent": (
+            {"id": item.parent_id, "text": item.parent.text}
+            if item.parent_id
+            else None
+        ),
+        # Counts rather than nested children: the list page fetches the whole
+        # list anyway and nests client-side, while the agenda only needs "2/5".
+        "subtask_counts": subtask_counts_for(item),
         # Just the id -- callers already have (or can fetch) the list's
         # title/url from the top-level `lists` array in the page payload,
         # so it doesn't need repeating on every single task.
@@ -62,6 +114,18 @@ def task_detail_data_for(item):
             "title": item.list.title,
             "url": item.list.get_absolute_url(),
         },
+        # The detail view is where subtasks are managed, so it gets the
+        # children themselves rather than just the counts every other
+        # serialised task carries. Archived children stay in the archive.
+        "subtasks": [
+            serialize_item(child)
+            for child in annotate_subtask_counts(
+                item.subtasks.exclude(status=Item.Status.ARCHIVED)
+            )
+            .select_related("list", "parent")
+            .prefetch_related("tags")
+            .order_by("position", "id")
+        ],
     }
 
 

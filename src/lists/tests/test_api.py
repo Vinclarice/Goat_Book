@@ -149,6 +149,36 @@ class TaskApiTest(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("recurrence", response.json()["errors"])
 
+    def test_patches_notes_and_serialises_them_back(self):
+        response = self.request(
+            "patch",
+            f"/api/items/{self.item.id}/",
+            {"notes": "Bring the receipt"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["data"]["notes"], "Bring the receipt")
+
+    def test_rejects_non_string_notes(self):
+        response = self.request(
+            "patch",
+            f"/api/items/{self.item.id}/",
+            {"notes": ["a", "list"]},
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("notes", response.json()["errors"])
+
+    def test_notes_count_toward_the_one_field_per_request_rule(self):
+        response = self.request(
+            "patch",
+            f"/api/items/{self.item.id}/",
+            {"notes": "Bring the receipt", "text": "Renamed too"},
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("body", response.json()["errors"])
+
     def test_completing_a_recurring_task_returns_spawned_item(self):
         self.request(
             "patch",
@@ -288,3 +318,116 @@ class TaskApiTest(TestCase):
 
         self.assertEqual(response.status_code, 401)
         self.assertIn("authentication", response.json()["errors"])
+
+    # -- subtasks --------------------------------------------------------
+
+    def test_creates_a_subtask_under_a_parent(self):
+        response = self.request(
+            "post",
+            f"/api/lists/{self.list_.id}/items/",
+            {"text": "Book flights", "parent": self.item.id},
+        )
+
+        self.assertEqual(response.status_code, 201)
+        created = response.json()["data"]
+        self.assertEqual(created["parent"], {"id": self.item.id, "text": self.item.text})
+
+    def test_serialises_subtask_counts_on_the_parent(self):
+        self.request(
+            "post",
+            f"/api/lists/{self.list_.id}/items/",
+            {"text": "Book flights", "parent": self.item.id},
+        )
+        child = self.request(
+            "post",
+            f"/api/lists/{self.list_.id}/items/",
+            {"text": "Book hotel", "parent": self.item.id},
+        ).json()["data"]
+        self.request("patch", child["url"], {"status": Item.Status.COMPLETED})
+
+        parent = self.request(
+            "patch", f"/api/items/{self.item.id}/", {"text": self.item.text + "!"}
+        ).json()["data"]
+
+        self.assertEqual(parent["subtask_counts"], {"total": 2, "done": 1})
+
+    def test_rejects_a_parent_id_that_is_not_a_number(self):
+        response = self.request(
+            "post",
+            f"/api/lists/{self.list_.id}/items/",
+            {"text": "Book flights", "parent": "seven"},
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("parent", response.json()["errors"])
+
+    def test_promotes_and_demotes_through_patch(self):
+        child = self.request(
+            "post",
+            f"/api/lists/{self.list_.id}/items/",
+            {"text": "Book flights", "parent": self.item.id},
+        ).json()["data"]
+
+        promoted = self.request("patch", child["url"], {"parent": None}).json()["data"]
+        self.assertIsNone(promoted["parent"])
+
+        demoted = self.request(
+            "patch", child["url"], {"parent": self.item.id}
+        ).json()["data"]
+        self.assertEqual(demoted["parent"]["id"], self.item.id)
+
+    def test_completing_a_parent_returns_the_children_it_cascaded_to(self):
+        child = self.request(
+            "post",
+            f"/api/lists/{self.list_.id}/items/",
+            {"text": "Book flights", "parent": self.item.id},
+        ).json()["data"]
+
+        response = self.request(
+            "patch", f"/api/items/{self.item.id}/", {"status": Item.Status.COMPLETED}
+        )
+
+        body = response.json()
+        self.assertEqual([each["id"] for each in body["cascaded"]], [child["id"]])
+
+    def test_reorder_takes_a_parent_scope(self):
+        first = self.request(
+            "post",
+            f"/api/lists/{self.list_.id}/items/",
+            {"text": "Book flights", "parent": self.item.id},
+        ).json()["data"]
+        second = self.request(
+            "post",
+            f"/api/lists/{self.list_.id}/items/",
+            {"text": "Book hotel", "parent": self.item.id},
+        ).json()["data"]
+
+        response = self.request(
+            "post",
+            f"/api/lists/{self.list_.id}/items/reorder/",
+            {"ordered_ids": [second["id"], first["id"]], "parent": self.item.id},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            [each["id"] for each in response.json()["data"]],
+            [second["id"], first["id"]],
+        )
+
+    def test_reorder_without_a_parent_still_means_the_root_tasks(self):
+        self.request(
+            "post",
+            f"/api/lists/{self.list_.id}/items/",
+            {"text": "Book flights", "parent": self.item.id},
+        )
+        other = self.request(
+            "post", f"/api/lists/{self.list_.id}/items/", {"text": "Plan Peru trip"}
+        ).json()["data"]
+
+        response = self.request(
+            "post",
+            f"/api/lists/{self.list_.id}/items/reorder/",
+            {"ordered_ids": [other["id"], self.item.id]},
+        )
+
+        self.assertEqual(response.status_code, 200)

@@ -87,6 +87,18 @@ export function createTask(
   });
 }
 
+/** Separate from createTask rather than a sixth positional argument to it:
+ * a subtask takes none of the other options -- recurrence is rejected
+ * outright for children, and due date and tags are set afterwards from the
+ * detail view like any other field. */
+export function createSubtask(
+  url: string,
+  text: string,
+  parent: number,
+): Promise<Task> {
+  return request<Task>(url, "POST", { text, parent });
+}
+
 export function updateTaskText(task: Task, text: string): Promise<Task> {
   return request<Task>(task.url, "PATCH", { text });
 }
@@ -107,6 +119,10 @@ export function updateTaskRecurrence(
   recurrence: TaskRecurrence,
 ): Promise<Task> {
   return request<Task>(task.url, "PATCH", { recurrence });
+}
+
+export function updateTaskNotes(task: Task, notes: string): Promise<Task> {
+  return request<Task>(task.url, "PATCH", { notes });
 }
 
 export interface StatusUpdateResult {
@@ -132,6 +148,17 @@ export async function deleteTask(task: Task): Promise<number> {
 export function reorderTasks(
   url: string,
   orderedIds: number[],
+  // A reorder names one sibling group. Omitted means the root tasks, which
+  // is what every current caller wants; the nested list UI will pass a
+  // parent id to reorder that task's subtasks.
+  parent?: number | null,
 ): Promise<Task[]> {
-  return request<Task[]>(url, "POST", { ordered_ids: orderedIds });
+  return request<Task[]>(url, "POST", {
+    ordered_ids: orderedIds,
+    ...(parent == null ? {} : { parent }),
+  });
+}
+
+export function updateTaskParent(task: Task, parent: number | null): Promise<Task> {
+  return request<Task>(task.url, "PATCH", { parent });
 }

@@ -1072,9 +1072,36 @@ button.pill { cursor: pointer; }
   font-size: 0.88rem;
 }
 
-@media (max-width: 900px) {
+/* List filters, moved out of the sidebar when the side nav took over
+   navigation (see design/side-nav-mockup.html). */
+.agenda-list-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0 0 1rem;
+}
+
+.agenda-list-chips .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 0.35rem;
+}
+
+.agenda-list-chips .n { margin-left: 0.4rem; opacity: 0.75; }
+.agenda-list-chips .n.warn { color: var(--sl-warn); opacity: 1; }
+
+/* The right rail gives way before the nav does. It used to stack at 900px,
+   when the agenda had the full width to itself; the persistent nav now
+   takes 210px of it, so three columns stop fitting a good deal earlier --
+   which is the constraint design/subtasks-plan.md step 7 flagged. */
+@media (max-width: 1180px) {
   .agenda-grid { grid-template-columns: minmax(0, 1fr); }
   .agenda-sidebar { position: static; }
+}
+
+@media (max-width: 900px) {
   .header-stats { width: 100%; margin-left: 0; }
   .stat { flex: 1; min-width: 5rem; }
 }

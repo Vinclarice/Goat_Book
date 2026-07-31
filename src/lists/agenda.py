@@ -12,7 +12,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from lists.models import Item, List
-from lists.serializers import serialize_item
+from lists.serializers import annotate_subtask_counts, serialize_item
 
 
 OVERDUE = "overdue"
@@ -153,10 +153,18 @@ def snooze_presets(today):
 
 
 def open_items_for(user):
-    """Every task the user still has to do, across all of their lists."""
+    """Every task the user still has to do, across all of their lists.
+
+    Flat and date-ordered, subtasks included as their own rows -- the list
+    page is the nested view, the agenda is the chronological one. Rows carry
+    a parent breadcrumb and parents carry a subtask count, hence the
+    select_related and the annotation.
+    """
     return (
-        Item.objects.filter(list__owner=user, status=Item.Status.ACTIVE)
-        .select_related("list")
+        annotate_subtask_counts(
+            Item.objects.filter(list__owner=user, status=Item.Status.ACTIVE)
+        )
+        .select_related("list", "parent")
         .prefetch_related("tags")
         .order_by(F("due_date").asc(nulls_last=True), "position", "id")
     )
@@ -171,13 +179,15 @@ def completed_today_for(user, today=None):
     start_of_day = timezone.make_aware(datetime.combine(today, datetime.min.time()))
     end_of_day = start_of_day + timedelta(days=1)
     return (
-        Item.objects.filter(
-            list__owner=user,
-            status=Item.Status.COMPLETED,
-            completed_at__gte=start_of_day,
-            completed_at__lt=end_of_day,
+        annotate_subtask_counts(
+            Item.objects.filter(
+                list__owner=user,
+                status=Item.Status.COMPLETED,
+                completed_at__gte=start_of_day,
+                completed_at__lt=end_of_day,
+            )
         )
-        .select_related("list")
+        .select_related("list", "parent")
         .prefetch_related("tags")
         .order_by("-completed_at", "-id")
     )

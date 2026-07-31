@@ -21,6 +21,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/nav": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Navigation
+         * @description Everything the persistent side nav needs, on every page.
+         *
+         *     A single endpoint rather than three payloads each growing the same
+         *     fields: the agenda already carried list summaries, but the list page and
+         *     archive didn't, and duplicating them into both schemas would mean three
+         *     places to keep in step.
+         */
+        get: operations["lists_api_v1_navigation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/agenda": {
         parameters: {
             query?: never;
@@ -120,6 +145,35 @@ export interface components {
             /** Email */
             email: string;
         };
+        /** NavListOut */
+        NavListOut: {
+            /** Id */
+            id: number;
+            /** Title */
+            title: string;
+            /** Open Count */
+            open_count: number;
+            /** Overdue Count */
+            overdue_count: number;
+            /**
+             * Color Key
+             * @enum {string}
+             */
+            color_key: "sky" | "sage" | "amber" | "lilac" | "coral" | "azure" | "blush" | "straw";
+        };
+        /** NavOut */
+        NavOut: {
+            /** Lists */
+            lists: components["schemas"]["NavListOut"][];
+            /** Archived Count */
+            archived_count: number;
+            /** Inbox Count */
+            inbox_count: number;
+            /** Settings Url */
+            settings_url: string;
+            /** Inbox Url */
+            inbox_url: string;
+        };
         /** AgendaBucketOut */
         AgendaBucketOut: {
             /**
@@ -177,6 +231,13 @@ export interface components {
             /** Lists */
             lists: components["schemas"]["AgendaListSummaryOut"][];
         };
+        /** SubtaskCountsOut */
+        SubtaskCountsOut: {
+            /** Total */
+            total: number;
+            /** Done */
+            done: number;
+        };
         /** TaskOut */
         TaskOut: {
             /** Id */
@@ -207,12 +268,23 @@ export interface components {
              * @enum {string}
              */
             recurrence: "none" | "daily" | "weekly" | "monthly";
+            /** Notes */
+            notes: string;
+            parent: components["schemas"]["TaskParentOut"] | null;
+            subtask_counts: components["schemas"]["SubtaskCountsOut"];
             /** List Id */
             list_id: number;
             /** Url */
             url: string;
             /** Edit Url */
             edit_url: string;
+        };
+        /** TaskParentOut */
+        TaskParentOut: {
+            /** Id */
+            id: number;
+            /** Text */
+            text: string;
         };
         /** ListDetailOut */
         ListDetailOut: {
@@ -244,6 +316,8 @@ export interface components {
         TaskDetailOut: {
             task: components["schemas"]["TaskOut"];
             list: components["schemas"]["TaskListSummaryOut"];
+            /** Subtasks */
+            subtasks: components["schemas"]["TaskOut"][];
         };
         /** TaskListSummaryOut */
         TaskListSummaryOut: {
@@ -314,6 +388,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MeOut"];
+                };
+            };
+        };
+    };
+    lists_api_v1_navigation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NavOut"];
                 };
             };
         };

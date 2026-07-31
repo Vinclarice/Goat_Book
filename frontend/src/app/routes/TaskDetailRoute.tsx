@@ -5,7 +5,10 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 
 import {
+  createSubtask,
   updateTaskDueDate,
+  updateTaskNotes,
+  updateTaskParent,
   updateTaskRecurrence,
   updateTaskStatus,
   updateTaskTags,
@@ -40,6 +43,9 @@ export function TaskDetailRoute() {
   const [listRef, setListRef] = useState<{ id: number; title: string } | null>(null);
   const [text, setText] = useState("");
   const [tagsDraft, setTagsDraft] = useState("");
+  const [notesDraft, setNotesDraft] = useState("");
+  const [subtasks, setSubtasks] = useState<Task[]>([]);
+  const [subtaskDraft, setSubtaskDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -55,6 +61,8 @@ export function TaskDetailRoute() {
       setListRef(data.list);
       setText(data.task.text);
       setTagsDraft(data.task.tags.join(", "));
+      setNotesDraft(data.task.notes);
+      setSubtasks((data.subtasks ?? []) as Task[]);
       return data;
     },
   });
@@ -109,6 +117,100 @@ export function TaskDetailRoute() {
       setNotice("Tags updated.");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to update tags.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleNotes() {
+    if (!task) return;
+    // Compared against the trimmed draft because the server trims too --
+    // otherwise adding and removing a trailing space would fire a save that
+    // changes nothing.
+    if (notesDraft.trim() === task.notes) return;
+    setError(null);
+    setNotice(null);
+    setBusy(true);
+    try {
+      const updated = await updateTaskNotes(task, notesDraft);
+      setTask(updated);
+      setNotesDraft(updated.notes);
+      setNotice(updated.notes ? "Notes saved." : "Notes cleared.");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to save notes.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleAddSubtask(event: FormEvent) {
+    event.preventDefault();
+    if (!task || !listRef) return;
+    const text = subtaskDraft.trim();
+    if (!text) return;
+    setError(null);
+    setNotice(null);
+    setBusy(true);
+    try {
+      const created = await createSubtask(
+        `/api/lists/${listRef.id}/items/`,
+        text,
+        task.id,
+      );
+      setSubtasks((current) => [...current, created]);
+      setSubtaskDraft("");
+      setNotice("Subtask added.");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to add subtask.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleToggleSubtask(subtask: Task) {
+    setError(null);
+    setNotice(null);
+    setBusy(true);
+    try {
+      const next = subtask.status === "completed" ? "active" : "completed";
+      const { task: updated } = await updateTaskStatus(subtask, next);
+      setSubtasks((current) =>
+        current.map((each) => (each.id === updated.id ? updated : each)),
+      );
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to update subtask.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handlePromoteSubtask(subtask: Task) {
+    setError(null);
+    setNotice(null);
+    setBusy(true);
+    try {
+      await updateTaskParent(subtask, null);
+      // It is a task in its own right now, so it leaves this list.
+      setSubtasks((current) => current.filter((each) => each.id !== subtask.id));
+      setNotice(`"${subtask.text}" is now a task of its own.`);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to promote subtask.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handlePromoteSelf() {
+    if (!task) return;
+    setError(null);
+    setNotice(null);
+    setBusy(true);
+    try {
+      const updated = await updateTaskParent(task, null);
+      setTask(updated);
+      setNotice("Promoted to a task of its own.");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to promote task.");
     } finally {
       setBusy(false);
     }
@@ -253,6 +355,110 @@ export function TaskDetailRoute() {
             </option>
           ))}
         </select>
+      </div>
+
+      {task.parent ? (
+        // A subtask can't have subtasks, so instead of the section below it
+        // gets the one action that applies: get out from under its parent.
+        <div className="flex items-center gap-3 text-sm">
+          <span className="text-muted-foreground">
+            Subtask of <strong>{task.parent.text}</strong>
+          </span>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handlePromoteSelf}
+            disabled={busy}
+          >
+            Promote
+          </Button>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <h2 className="text-sm font-bold">
+            Subtasks{" "}
+            {subtasks.length > 0 && (
+              <span className="font-normal text-muted-foreground">
+                {subtasks.filter((each) => each.status === "completed").length}/
+                {subtasks.length}
+              </span>
+            )}
+          </h2>
+
+          {subtasks.length === 0 && (
+            <p className="text-sm text-muted-foreground">No subtasks yet.</p>
+          )}
+
+          <ul className="space-y-1">
+            {subtasks.map((subtask) => (
+              <li key={subtask.id} className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id={`subtask-${subtask.id}`}
+                  checked={subtask.status === "completed"}
+                  onChange={() => handleToggleSubtask(subtask)}
+                  disabled={busy}
+                />
+                <label
+                  htmlFor={`subtask-${subtask.id}`}
+                  className={
+                    subtask.status === "completed"
+                      ? "flex-1 line-through text-muted-foreground"
+                      : "flex-1"
+                  }
+                >
+                  {subtask.text}
+                </label>
+                <Link
+                  to={`/tasks/${subtask.id}`}
+                  className="text-sm text-muted-foreground hover:text-text"
+                >
+                  Open
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => handlePromoteSubtask(subtask)}
+                  disabled={busy}
+                  className="text-sm text-muted-foreground hover:text-text"
+                  aria-label={`Promote ${subtask.text}`}
+                >
+                  Promote
+                </button>
+              </li>
+            ))}
+          </ul>
+
+          <form onSubmit={handleAddSubtask} className="flex items-center gap-2">
+            <input
+              type="text"
+              aria-label="New subtask"
+              placeholder="Add a subtask…"
+              value={subtaskDraft}
+              onChange={(event) => setSubtaskDraft(event.target.value)}
+              disabled={busy}
+              className="flex-1 rounded-lg border border-border bg-input px-3 py-1.5"
+            />
+            <Button type="submit" variant="outline" disabled={busy}>
+              Add
+            </Button>
+          </form>
+        </div>
+      )}
+
+      <div className="space-y-1">
+        <label htmlFor="task-notes" className="text-sm font-bold">
+          Notes
+        </label>
+        <textarea
+          id="task-notes"
+          rows={5}
+          placeholder="Anything worth remembering about this task…"
+          value={notesDraft}
+          onChange={(event) => setNotesDraft(event.target.value)}
+          onBlur={handleNotes}
+          disabled={busy}
+          className="w-full rounded-lg border border-border bg-input px-3 py-1.5"
+        />
       </div>
 
       {error && <p className="text-sm text-destructive">{error}</p>}

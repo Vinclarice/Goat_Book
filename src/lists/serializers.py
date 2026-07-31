@@ -18,6 +18,7 @@ def serialize_item(item):
         "position": item.position,
         "tags": [tag.name for tag in item.tags.all()],
         "recurrence": item.recurrence,
+        "notes": item.notes,
         # Just the id -- callers already have (or can fetch) the list's
         # title/url from the top-level `lists` array in the page payload,
         # so it doesn't need repeating on every single task.

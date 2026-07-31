@@ -13,6 +13,7 @@ export function task(overrides: Partial<Task> = {}): Task {
     position: 0,
     tags: [],
     recurrence: "none",
+    notes: "",
     list_id: 1,
     url: "/api/items/1/",
     edit_url: "/lists/items/1/edit",

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 
 import {
   updateTaskDueDate,
+  updateTaskNotes,
   updateTaskRecurrence,
   updateTaskStatus,
   updateTaskTags,
@@ -40,6 +41,7 @@ export function TaskDetailRoute() {
   const [listRef, setListRef] = useState<{ id: number; title: string } | null>(null);
   const [text, setText] = useState("");
   const [tagsDraft, setTagsDraft] = useState("");
+  const [notesDraft, setNotesDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -55,6 +57,7 @@ export function TaskDetailRoute() {
       setListRef(data.list);
       setText(data.task.text);
       setTagsDraft(data.task.tags.join(", "));
+      setNotesDraft(data.task.notes);
       return data;
     },
   });
@@ -109,6 +112,27 @@ export function TaskDetailRoute() {
       setNotice("Tags updated.");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to update tags.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleNotes() {
+    if (!task) return;
+    // Compared against the trimmed draft because the server trims too --
+    // otherwise adding and removing a trailing space would fire a save that
+    // changes nothing.
+    if (notesDraft.trim() === task.notes) return;
+    setError(null);
+    setNotice(null);
+    setBusy(true);
+    try {
+      const updated = await updateTaskNotes(task, notesDraft);
+      setTask(updated);
+      setNotesDraft(updated.notes);
+      setNotice(updated.notes ? "Notes saved." : "Notes cleared.");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to save notes.");
     } finally {
       setBusy(false);
     }
@@ -253,6 +277,22 @@ export function TaskDetailRoute() {
             </option>
           ))}
         </select>
+      </div>
+
+      <div className="space-y-1">
+        <label htmlFor="task-notes" className="text-sm font-bold">
+          Notes
+        </label>
+        <textarea
+          id="task-notes"
+          rows={5}
+          placeholder="Anything worth remembering about this task…"
+          value={notesDraft}
+          onChange={(event) => setNotesDraft(event.target.value)}
+          onBlur={handleNotes}
+          disabled={busy}
+          className="w-full rounded-lg border border-border bg-input px-3 py-1.5"
+        />
       </div>
 
       {error && <p className="text-sm text-destructive">{error}</p>}

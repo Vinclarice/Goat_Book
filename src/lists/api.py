@@ -171,7 +171,7 @@ def item_detail(request, item_id):
     if error_response:
         return error_response
     changed_fields = {
-        "text", "status", "due_date", "tags", "recurrence",
+        "text", "status", "due_date", "tags", "recurrence", "notes",
     }.intersection(payload)
     if len(changed_fields) != 1:
         return JsonResponse(
@@ -179,7 +179,7 @@ def item_detail(request, item_id):
                 "errors": {
                     "body": [
                         "Change exactly one of text, status, due_date, tags, "
-                        "or recurrence per request."
+                        "recurrence, or notes per request."
                     ]
                 }
             },
@@ -211,6 +211,14 @@ def item_detail(request, item_id):
             item = services.set_item_tags(item, tags)
         elif "recurrence" in changed_fields:
             item = services.set_recurrence(item, payload["recurrence"])
+        elif "notes" in changed_fields:
+            notes = payload["notes"]
+            if not isinstance(notes, str):
+                return JsonResponse(
+                    {"errors": {"notes": ["Send notes as text."]}},
+                    status=400,
+                )
+            item = services.set_item_notes(item, notes)
         else:
             requested_status = payload["status"]
             if requested_status == Item.Status.ACTIVE:

@@ -529,6 +529,10 @@
             "title": "Recurrence",
             "type": "string"
           },
+          "notes": {
+            "title": "Notes",
+            "type": "string"
+          },
           "list_id": {
             "title": "List Id",
             "type": "integer"
@@ -554,6 +558,7 @@
           "position",
           "tags",
           "recurrence",
+          "notes",
           "list_id",
           "url",
           "edit_url"

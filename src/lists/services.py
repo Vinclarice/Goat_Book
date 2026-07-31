@@ -167,6 +167,18 @@ def set_recurrence(item, recurrence):
     return item
 
 
+@transaction.atomic
+def set_item_notes(item, notes):
+    item = Item.objects.select_for_update().get(pk=item.pk)
+    if item.status == Item.Status.ARCHIVED:
+        raise InvalidTaskTransition("Restore this task before editing it")
+    # Normalised to "" rather than None so callers never have to handle both;
+    # clearing notes and never having written any are the same state.
+    item.notes = (notes or "").strip()
+    item.save()
+    return item
+
+
 def _advance_due_date(due_date, recurrence):
     base = due_date or timezone.localdate()
     if recurrence == Item.Recurrence.DAILY:

@@ -28,6 +28,9 @@ export interface Task {
   position: number;
   tags: string[];
   recurrence: TaskRecurrence;
+  // Plain text, never Markdown. "" means no notes -- the API normalises
+  // blank input to the empty string so this is never null.
+  notes: string;
   // Just the id -- title/url live once in the page's top-level `lists`
   // array (see AgendaListSummary / ArchiveWorkspaceData.lists) instead of
   // being repeated on every task.

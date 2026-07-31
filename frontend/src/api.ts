@@ -109,6 +109,10 @@ export function updateTaskRecurrence(
   return request<Task>(task.url, "PATCH", { recurrence });
 }
 
+export function updateTaskNotes(task: Task, notes: string): Promise<Task> {
+  return request<Task>(task.url, "PATCH", { notes });
+}
+
 export interface StatusUpdateResult {
   task: Task;
   /** Set when completing a recurring task auto-archives it and creates

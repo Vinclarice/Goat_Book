@@ -387,6 +387,14 @@ export function AgendaWorkspace({ initialData }: Props) {
               </span>
             )}
 
+            {/* Deliberately a marker, not a preview: the row says notes
+                exist and the detail view says what they are. */}
+            {task.notes !== "" && (
+              <span className="pill" title="Has notes" aria-label="Has notes">
+                ✎
+              </span>
+            )}
+
             {task.tags.map((tag) => (
               <button
                 type="button"

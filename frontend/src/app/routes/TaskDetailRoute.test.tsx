@@ -96,6 +96,67 @@ describe("TaskDetailRoute", () => {
     expect(await screen.findByText("Task updated.")).toBeInTheDocument();
   });
 
+  it("saves notes on blur and reports it", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
+      if (typeof input !== "string") return jsonResponse(taskDetailData());
+      const body = JSON.parse((init?.body as string) ?? "{}");
+      if ("notes" in body) {
+        return jsonResponse({ data: task({ notes: body.notes.trim() }) });
+      }
+      return jsonResponse({ data: task() });
+    });
+
+    renderAt("1");
+    await screen.findByDisplayValue("Write tests");
+
+    await user.type(screen.getByLabelText("Notes"), "Bring the receipt");
+    await user.tab();
+
+    expect(await screen.findByText("Notes saved.")).toBeInTheDocument();
+  });
+
+  it("says notes were cleared when the textarea is emptied", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
+      if (typeof input !== "string") {
+        return jsonResponse(taskDetailData({ task: task({ notes: "Old note" }) }));
+      }
+      const body = JSON.parse((init?.body as string) ?? "{}");
+      if ("notes" in body) {
+        return jsonResponse({ data: task({ notes: body.notes.trim() }) });
+      }
+      return jsonResponse({ data: task() });
+    });
+
+    renderAt("1");
+    await screen.findByDisplayValue("Old note");
+
+    await user.clear(screen.getByLabelText("Notes"));
+    await user.tab();
+
+    expect(await screen.findByText("Notes cleared.")).toBeInTheDocument();
+  });
+
+  it("doesn't send a request when the notes haven't actually changed", async () => {
+    const user = userEvent.setup();
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(() =>
+        jsonResponse(taskDetailData({ task: task({ notes: "Bring the receipt" }) })),
+      );
+
+    renderAt("1");
+    await screen.findByDisplayValue("Bring the receipt");
+    const callsAfterLoad = fetchSpy.mock.calls.length;
+
+    // Trailing whitespace only -- the server trims, so this is a no-op edit.
+    await user.type(screen.getByLabelText("Notes"), "   ");
+    await user.tab();
+
+    expect(fetchSpy.mock.calls.length).toBe(callsAfterLoad);
+  });
+
   it("surfaces a conflict error from a duplicate rename", async () => {
     const user = userEvent.setup();
     vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {

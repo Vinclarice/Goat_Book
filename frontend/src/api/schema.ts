@@ -207,6 +207,8 @@ export interface components {
              * @enum {string}
              */
             recurrence: "none" | "daily" | "weekly" | "monthly";
+            /** Notes */
+            notes: string;
             /** List Id */
             list_id: number;
             /** Url */

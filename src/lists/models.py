@@ -34,6 +34,10 @@ class Item(models.Model):
         choices=Recurrence.choices,
         default=Recurrence.NONE,
     )
+    # Plain text, deliberately not Markdown: a renderer plus an XSS surface
+    # is a poor trade at two users. blank=True and no null -- "no notes" is
+    # the empty string, so nothing has to handle both.
+    notes = models.TextField(blank=True, default="")
 
     class Meta:
         ordering = ("position", "id")

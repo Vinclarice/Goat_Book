@@ -85,6 +85,17 @@ describe("AgendaWorkspace", () => {
     expect(screen.getByText("6 days overdue")).toBeInTheDocument();
   });
 
+  it("marks rows that have notes, and only those", () => {
+    renderAgenda({
+      items: [
+        task({ id: 1, text: "Renew insurance", due_date: TODAY, notes: "Policy 4471" }),
+        task({ id: 2, text: "Ship the fix", due_date: TODAY }),
+      ],
+    });
+
+    expect(screen.getAllByLabelText("Has notes")).toHaveLength(1);
+  });
+
   it("starts the far-off buckets collapsed", () => {
     renderAgenda();
 

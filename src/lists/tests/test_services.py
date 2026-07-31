@@ -181,6 +181,29 @@ class TaskServiceTest(TestCase):
         with self.assertRaises(services.TaskConflict):
             services.set_recurrence(self.item, "yearly")
 
+    def test_notes_default_to_empty_and_round_trip(self):
+        self.assertEqual(self.item.notes, "")
+
+        noted = services.set_item_notes(self.item, "Ask about the warranty")
+
+        self.assertEqual(noted.notes, "Ask about the warranty")
+
+    def test_set_item_notes_strips_and_treats_blank_as_cleared(self):
+        services.set_item_notes(self.item, "  Call first  ")
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.notes, "Call first")
+
+        services.set_item_notes(self.item, "   ")
+
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.notes, "")
+
+    def test_set_item_notes_rejects_an_archived_task(self):
+        archived = services.archive_item(self.item)
+
+        with self.assertRaises(services.InvalidTaskTransition):
+            services.set_item_notes(archived, "Too late")
+
     def test_restoring_a_task_archived_while_active_returns_it_to_active(self):
         archived = services.archive_item(self.item)
         self.assertIsNone(archived.completed_at)

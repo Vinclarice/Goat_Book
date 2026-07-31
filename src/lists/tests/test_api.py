@@ -149,6 +149,36 @@ class TaskApiTest(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("recurrence", response.json()["errors"])
 
+    def test_patches_notes_and_serialises_them_back(self):
+        response = self.request(
+            "patch",
+            f"/api/items/{self.item.id}/",
+            {"notes": "Bring the receipt"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["data"]["notes"], "Bring the receipt")
+
+    def test_rejects_non_string_notes(self):
+        response = self.request(
+            "patch",
+            f"/api/items/{self.item.id}/",
+            {"notes": ["a", "list"]},
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("notes", response.json()["errors"])
+
+    def test_notes_count_toward_the_one_field_per_request_rule(self):
+        response = self.request(
+            "patch",
+            f"/api/items/{self.item.id}/",
+            {"notes": "Bring the receipt", "text": "Renamed too"},
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("body", response.json()["errors"])
+
     def test_completing_a_recurring_task_returns_spawned_item(self):
         self.request(
             "patch",

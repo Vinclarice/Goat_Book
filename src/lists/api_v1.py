@@ -48,6 +48,7 @@ class TaskOut(Schema):
     position: int
     tags: list[str]
     recurrence: TaskRecurrence
+    notes: str
     list_id: int
     url: str
     edit_url: str

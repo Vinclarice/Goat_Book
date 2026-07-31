@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% load frontend_tags %}
+
+{% block title %}Inbox · Clarice{% endblock %}
+
+{% block content %}
+  <section class="space-y-6">
+    <div class="rounded-xl border border-border bg-card p-6 sm:p-8 space-y-6">
+      <div class="space-y-1">
+        <p class="text-xs font-bold uppercase tracking-wide text-accent">Capture</p>
+        <h1 class="text-2xl font-bold">Inbox</h1>
+        <p class="text-sm text-muted-foreground">Get it out of your head now. Decide what it is later.</p>
+      </div>
+
+      <form method="post" action="{% url 'new_capture' %}" class="space-y-4">
+        {% csrf_token %}
+        <div class="space-y-1">
+          <label for="{{ form.text.id_for_label }}" class="text-sm font-bold">{{ form.text.label }}</label>
+          {{ form.text|add_class:"w-full rounded-lg border border-border bg-input px-3 py-1.5" }}
+          {% for error in form.text.errors %}
+            <div class="text-sm text-destructive">{{ error }}</div>
+          {% endfor %}
+        </div>
+        <button
+          class="w-full h-10 rounded-lg bg-primary text-primary-foreground hover:bg-primary/80 font-bold text-sm transition-colors"
+          type="submit"
+        >
+          Capture
+        </button>
+      </form>
+    </div>
+
+    <div class="rounded-xl border border-border bg-card p-6 sm:p-8 space-y-4">
+      <h2 class="text-lg font-bold">Unresolved</h2>
+      {% if captures %}
+        <ul class="grid gap-2">
+          {% for capture in captures %}
+            <li class="flex items-center justify-between gap-4 rounded-lg border border-border px-4 py-2">
+              <div class="space-y-1">
+                <p class="text-sm">{{ capture.text }}</p>
+                <p class="text-xs text-muted-foreground">{{ capture.created_at|date:"j M Y, H:i" }}</p>
+              </div>
+              <form method="post" action="{% url 'resolve_capture' capture.id %}">
+                {% csrf_token %}
+                <button class="rounded-lg border border-border px-3 py-1.5 text-sm" type="submit">
+                  Clear
+                </button>
+              </form>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="text-sm text-muted-foreground">Nothing waiting. Type something above.</p>
+      {% endif %}
+    </div>
+  </section>
+{% endblock %}

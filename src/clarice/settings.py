@@ -100,6 +100,7 @@ INSTALLED_APPS = [
     "axes",
     "accounts",
     "lists",
+    "capture",
 ]
 
 

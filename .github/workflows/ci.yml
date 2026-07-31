@@ -35,7 +35,13 @@ jobs:
           cache: pip
           cache-dependency-path: requirements-dev.txt
       - run: pip install --disable-pip-version-check -r requirements-dev.txt
-      - run: python src/manage.py test accounts lists
+      # Runs BEFORE the general suite on purpose. Steps are sequential, so
+      # if the broad run went first an isolation regression would fail it
+      # and this step would never execute -- the named signal A3 asks for
+      # would never appear. First position is what makes it unmissable.
+      - name: Per-user isolation tests
+        run: python src/manage.py test lists.tests.test_isolation
+      - run: python src/manage.py test accounts lists capture
 
   frontend:
     runs-on: ubuntu-latest

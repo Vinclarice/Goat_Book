@@ -21,7 +21,7 @@ Requires `doctl` installed and authenticated (`doctl auth init`).
 ```
 
 Find the exact droplet name with `doctl compute droplet list` if you don't
-have it memorized. The script creates a `db-s-1vcpu-1gb` Postgres 17
+have it memorized. The script creates a `db-s-1vcpu-1gb` Postgres 18
 cluster in the same region as that droplet, creates a `clarice` database,
 and restricts the cluster's firewall to that droplet only. It prints a
 `DJANGO_DATABASE_URL` value at the end -- copy it.

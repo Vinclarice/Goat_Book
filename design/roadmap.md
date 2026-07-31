@@ -39,7 +39,15 @@ in it is still ahead.
 (`.github/workflows/ci.yml`) now runs on every push and pull request,
 with the Django suite running against a real `postgres:17` service
 container instead of SQLite. Merged via [PR #1](https://github.com/Vinclarice/Goat_Book/pull/1)
-on July 31, 2026 (`f699b61`). A1–A4 are still ahead.
+on July 31, 2026 (`f699b61`).
+
+A1's script also merged — [PR #2](https://github.com/Vinclarice/Goat_Book/pull/2)
+on July 31, 2026 (`c6d1071`) — but that's `infra/restrict-database-user.sh`
+landing in the repo, not the database cutover itself: the cluster still
+runs on the shared `doadmin` credential until the script is actually run
+against it and the server's `~/.db-connection-url` is swapped, neither of
+which could happen from this machine. A1 stays open until that live run
+happens. A2–A4 are still ahead.
 
 ---
 
@@ -183,6 +191,9 @@ and write every database on the cluster, not just Clarice's — confirmed in
 `infra/provision-postgres.sh`. Harmless while Clarice is the only thing on
 it; a five-minute fix now versus a real exposure the day a second project
 shares the cluster.
+
+Script merged [PR #2](https://github.com/Vinclarice/Goat_Book/pull/2)
+(`c6d1071`), July 31, 2026.
 
 - `infra/restrict-database-user.sh` written and syntax-checked, following
   `provision-postgres.sh`'s own conventions: creates a per-database DO user

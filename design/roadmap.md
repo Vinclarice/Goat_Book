@@ -23,6 +23,15 @@ open firewall), which A1's live run surfaced and originally left untracked;
 tightened A2 and A3 against what the code actually looks like; and loosened
 the gate on Track A/Next to A0 alone. Those changes are marked in place.
 
+**A further follow-up session reviewed the shipped subtask and Capture MVP
+code directly** — not waiting for a deploy or a checkpoint — and produced
+three more specs, now sitting in `design/` and queued for whichever session
+builds next: `recurring-subtasks-addendum.md`, `capture-api-and-tokens-plan.md`,
+and `capture-triage-and-polish-plan.md`. Details under Track A/Next and
+Track B below. This document is now the single planning artifact for
+Clarice — the parallel copy that lived in the planning conversation's own
+document viewer has been retired in its favor.
+
 ## Where things stand
 
 The last week closed out two overhauls at once. Clarice went from a single
@@ -64,7 +73,13 @@ through 7, with step 4 (the detail view) turning out to have been built by
 the SPA cutover before this queue was even written. 272 Django tests and
 108 frontend tests pass.
 
-### What is left, and it is not code
+**And then, before any of it deployed:** a direct review of the shipped
+code (not a scheduled checkpoint) found one real behavioral gap in the
+subtask/recurrence interaction, and settled the shape of Capture's triage
+model from existing conviction rather than waiting on real usage. Both are
+now specs in `design/`, unbuilt. See Track A/Next and Track B below.
+
+### What is left, and it is not all code
 
 - **A5 — the database cluster firewall.** Zero rules, reachable from any
   IP, password-only. The only live production exposure recorded anywhere
@@ -73,15 +88,21 @@ the SPA cutover before this queue was even written. 272 Django tests and
   Postgres move happened at all.
 - **A deploy.** None of the work above is running anywhere. Production is
   still serving the code as it stood before any of this.
+- **Three specs to build.** `recurring-subtasks-addendum.md`,
+  `capture-api-and-tokens-plan.md`, `capture-triage-and-polish-plan.md` --
+  see below for what each contains.
 
-All three need `doctl` or an Ansible run against the live account, which
-is why they have outlasted everything that could be done from an editor.
+The first three need `doctl` or an Ansible run against the live account,
+which is why they have outlasted everything that could be done from an
+editor. The fourth is ordinary coding work that simply hadn't been scoped
+yet when the rest of this document was last touched.
 
-**The deploy is the one that unblocks the most.** It activates A4's digest
-cron, puts the archive/restore fix in front of real data, and — the part
-with a date attached — starts Track B's two-week capture clock. That clock
-has not started. The mid-to-late August checkpoint was written assuming it
-had, so it now resolves later than planned, or on thinner usage.
+**The deploy is still the one that unblocks the most.** It activates A4's
+digest cron, puts the archive/restore fix in front of real data, and —
+the part with a date attached — starts Track B's two-week capture clock.
+That clock has not started. The mid-to-late August checkpoint was written
+assuming it had, so it now resolves later than planned, or on thinner
+usage.
 
 ---
 
@@ -107,11 +128,14 @@ requires a decision first.
 What a capture resolves into isn't uniform, either. "Schedule vet
 appointment" wants a due date and a clear done/not-done state;
 "maybe read a book on product design" wants neither — it's closer to a
-GTD-style someday/maybe item than a task. The current thinking is that this
-argues for a genuinely separate Idea/Someday domain alongside Task, with an
-explicit "promote to task" action for when one actually gets acted on,
-rather than stretching Task to cover a shape it wasn't built for.
-Deliberately not designed yet — see Capture MVP below for why.
+GTD-style someday/maybe item than a task. **This is no longer an open
+question** — `design/capture-triage-and-polish-plan.md` specs it: one
+`Idea` domain with an `exploring`/`reference` status, its own notes and
+editing, and an explicit "promote to task" action, decided from direct
+usage conviction rather than the Track B checkpoint below. What that spec
+itself still defers — how an `exploring` idea ever resurfaces, and how
+ideas relate to each other — lives in that document's own **Future**
+section (a mind-map-style view, possibly AI-assisted sorting).
 
 **Daily agenda as centerpiece.** The agenda already solves the other half
 of the old friction — an incomplete task keeps showing up under overdue or
@@ -126,8 +150,9 @@ sessions with their own prompts, is still open — deliberately undecided.
 Worth designing once capture and the daily agenda are further along, not
 before.
 
-Most of this stays a vision for now, not a milestone — except capture,
-which is starting as a small side track (Track B below).
+Most of this stays a vision for now, not a milestone — Capture itself has
+moved further than the rest (see Track B below), but promoting the agenda
+to the home surface and the review cadence remain undesigned.
 
 ---
 
@@ -175,26 +200,36 @@ time, instead of staying a vague aspiration.
 
 ## How the work is sequenced
 
-Two tracks ran at once, and both have now emptied of code:
+Two tracks ran at once, and both had emptied of code — briefly:
 
 - **Track A** — Now (infra hygiene, A0–A5) → Next (the feature plan).
-  Next is closed; Now has A2 and A5 left, both ops rather than code.
-- **Track B** — Capture MVP, built, waiting on a deploy to start its clock.
+  Next is closed, but has one follow-up queued (the recurring-subtasks
+  addendum, below); Now has A2 and A5 left, both ops rather than code.
+- **Track B** — Capture MVP, built, waiting on a deploy to start its
+  clock, with two more specs now queued behind it (the API/token
+  foundation, and the triage model).
 
-**So there is no next coding task in this document.** That is a real state
-to be in, not an oversight: what remains is a deploy, two `doctl` jobs, and
-a checkpoint that needs two weeks of actual use before it can resolve.
-Whatever comes after should be chosen deliberately from **Later** or from
-the **public-readiness bar**, not picked up by momentum — and the honest
-first question is whether Clarice is being used enough, day to day, to
-know which of those matters. Ranked full-text search is the standout
-candidate on paper; the Track B checkpoint may well produce a better one
-from evidence.
+**That "empty queue" state lasted about a day.** A direct review of the
+shipped work found one real bug worth fixing and settled the triage
+question the two-week checkpoint was meant to answer — ahead of schedule
+and on purpose, not by accident. Three specs sit in `design/` now, all
+unbuilt: `recurring-subtasks-addendum.md`, `capture-api-and-tokens-plan.md`,
+and `capture-triage-and-polish-plan.md`. None of them compete for priority
+in an interesting way — the subtask fix is small and self-contained, the
+two Capture specs are already sequenced against each other (tokens/API
+before Android, triage before either), and all three are independent of
+Track A's remaining ops work (A2, A5).
+
+The original caution here — don't fill Next with the largest idea from
+**Later** just because the queue looks empty — still applies in spirit.
+These three didn't come from that impulse; they came from a deliberate
+review of what had just shipped. That distinction is the thing worth
+preserving, not the empty-queue state itself, which no longer holds.
 
 They don't share code — Capture is an isolated model with no FK into
 `List`/`Item` — so they don't block each other technically. They do share
-the same developer, so Track B gets a fixed, small scope and an explicit
-checkpoint below rather than open-ended parallel effort.
+the same developer, so Track B still gets a fixed, small scope rather than
+open-ended parallel effort.
 
 ---
 
@@ -385,6 +420,12 @@ adversarially tested end-to-end.
   from the rest of the quality bar because they're cheap and high-signal on
   their own.
 
+**Note for whoever builds `capture-triage-and-polish-plan.md`:** it comes
+with its own "Tests to add" section extending this same isolation
+discipline to `Idea` and the new Capture triage actions. Same expectation
+as A3 set for subtasks — land the isolation coverage in the same change,
+not a follow-up.
+
 ### A4. Wire up the digest email — written, not yet live
 
 **Scheduled July 31, 2026** in `infra/deploy-playbook.yaml`, as an
@@ -472,16 +513,53 @@ speculation.
 **Checkpoint, not open-ended — and the clock has not started yet.** The
 MVP is built but not deployed; the two weeks of real use begin when it's
 live on the production droplet, not when it merged. Target stays
-mid-to-late August 2026. Use it for real for ~2 weeks before writing any
-triage design. At that checkpoint, either the task/idea/note split holds up and
-gets a real design pass (`subtasks-plan.md`-style), or it doesn't and the
-model changes before more is built on it. This checkpoint is what stops
+mid-to-late August 2026.
+
+**What the checkpoint validates changed.** It was meant to be the source
+of the triage design — use it for real, then design the task/idea/note
+split from what actually got captured. Instead, the triage model got
+decided directly (see below), from existing conviction about real usage
+rather than waiting out the two weeks. That's a legitimate call to make,
+but it means the checkpoint's job now is to confirm the decided model
+holds up against real use, not to originate it. If two weeks of real
+captures disagree with the task/idea/reference/discard split, that's
+still a real signal worth revisiting — the checkpoint just isn't the only
+source of truth for that shape anymore. This checkpoint is what stops
 Track B from quietly becoming a second, open-ended feature queue running
 alongside Track A.
 
+### Two more specs queued behind this, one of them jumping the checkpoint on purpose
+
+**`design/capture-api-and-tokens-plan.md`** lays the two prerequisites for
+a phone-based capture client: a `PersonalAccessToken` model (hashed
+storage, shown once, revoked by deletion) and a create-only
+`POST /api/v1/capture` endpoint, using a Django Ninja `HttpBearer` auth
+class that runs alongside the existing session auth rather than replacing
+it. Explicitly sequenced *before* any Android code, with the zero-code
+home-screen-shortcut experiment recommended first, to find out whether
+that alone solves the actual friction before writing a single line of
+Kotlin.
+
+**`design/capture-triage-and-polish-plan.md`** is the bigger departure
+from plan: it designs the triage model — promote to a task, mark an idea
+`exploring` or `reference`, or discard outright — from direct usage
+conviction rather than waiting out the checkpoint above. The spec adds a
+lightweight `Idea` model (its own `notes`, anytime editing while not yet
+promoted, and a `promoted_task` FK mirroring how `Capture` already tracks
+what it became), makes idea deletion a hard, immediate, non-undoable
+action distinct from Capture's soft discard, and moves basic substring
+search on the Ideas page into this pass rather than deferring it, since a
+`reference` archive nobody can search defeats its own purpose. What it
+still doesn't solve — how an `exploring` idea ever resurfaces without you
+remembering to check, and how ideas relate to each other — is named
+explicitly in the spec's own **Future** section (a mind-map-style view,
+possibly AI-assisted sorting) rather than guessed at now.
+
+Neither spec is built yet.
+
 ---
 
-## Track A — Next: closed
+## Track A — Next: closed, with one follow-up queued
 
 **Everything in this queue has shipped**, all of it on July 31, 2026, and
 the queue is kept here as a record rather than a plan. `main` is at
@@ -508,6 +586,18 @@ Two things this queue taught that were not in the plan:
   previous one rather than from `main`. The result is correct and the
   history is readable, but the individual pieces were never merged
   separately, so none of them was ever `main` on its own.
+
+**One follow-up queued, not yet built.** A direct review of the shipped
+subtask work found a real gap: a subtask completed *before* its recurring
+parent silently never reappeared in the next occurrence, because
+`complete_item` reused the same "still-active children" query both to
+decide what to cascade-complete and what to clone forward into the next
+occurrence — two different questions that had been sharing one answer.
+`design/recurring-subtasks-addendum.md` specs the fix: a per-subtask
+`always_recurs` boolean (default `true`), so a subtask carries forward to
+the next occurrence by explicit choice rather than as a side effect of
+which query happened to run first. Small, self-contained, independent of
+everything else queued. Not yet implemented.
 
 The original queue, for the record:
 
@@ -604,10 +694,15 @@ bar above is genuinely met.
 
 ### Vision layer beyond Capture MVP
 
-Promoting the agenda to the app's home surface, the Idea/Someday domain
-with its "promote to task" action, and the review cadence (weekly/monthly/
-quarterly). Deliberately undesigned until the Track B checkpoint gives real
-usage to design from.
+Promoting the agenda to the app's home surface, and the review cadence
+(weekly/monthly/quarterly) — both still undesigned. The Idea domain itself
+(exploring/reference, with its own promote-to-task action) is no longer on
+this list: it's speced in `design/capture-triage-and-polish-plan.md`,
+decided from direct usage conviction rather than waiting on the Track B
+checkpoint. What that spec itself defers — how an exploring idea ever
+resurfaces, and how ideas relate to each other — is tracked in that
+document's own **Future** section (a mind-map-style view, possibly
+AI-assisted sorting).
 
 ---
 
@@ -625,18 +720,25 @@ Decisions already made, kept here so they don't get re-opened by accident:
 
 ## Keeping this current
 
+This is now the single planning document for Clarice — the parallel copy
+that lived in the planning conversation's own document viewer has been
+retired in its favor, so there's exactly one place this history lives.
+
 Update "Where things stand" after each Now item ships, and slide finished
 Next items out as they land. When the Track B checkpoint resolves
-(mid/late August 2026), replace its entry above with either a real design
-pass or a scope change — don't leave it silently open-ended. When something
-from Later gets a real reason to happen, it graduates into Next with its
-own one-liner — that's the whole maintenance loop.
+(mid/late August 2026, once deployed), replace its entry above with either
+a confirmation that the shipped triage design holds up, or a scope change
+if real usage disagrees with it — don't leave it silently open-ended. When
+something from Later gets a real reason to happen, it graduates into Next
+with its own one-liner — that's the whole maintenance loop.
 
-**With Next empty, the loop needs a deliberate restart rather than a
-default.** The next time this document is picked up, the first three
-questions are: has it been deployed; did A2 and A5 get done; and has
-capture accumulated enough real use to say what the triage model should
-be. Only after those does it make sense to graduate anything from Later.
-Resist filling Next just because it looks empty — an empty queue after a
-plan completes is the correct state, and the wrong thing to do with it is
-start the largest remaining idea by momentum.
+**The three specs queued in `design/` — the subtask addendum, the
+capture/token plan, the triage plan — are the next coding tasks**, not a
+reason to pick something new from Later or the public-readiness bar. Once
+those land, the first three questions are: has it been deployed; did A2
+and A5 get done; and does the shipped triage model actually hold up
+against real use, now that it's been decided ahead of the original
+checkpoint. Only after those does it make sense to graduate anything from
+Later. The caution underneath the old "empty queue" framing still applies
+in spirit — don't reach for the largest remaining idea out of momentum —
+it's just that the queue isn't empty right now.

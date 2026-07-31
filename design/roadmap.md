@@ -475,15 +475,32 @@ them from the agenda payload so there's one source of truth, or delete the
 Python side — worth deciding when something next touches `agenda.py`,
 not before.
 
-3. **Task detail view.** A full page for the no-JS path and a slide-over
-   panel in the React app, showing text, list, due date, tags, recurrence,
-   notes, and subtasks. Nothing to show in notes or subtasks yet, but
-   nowhere for either to live until this exists.
-4. **Notes.** A plain-text field on the detail view — deliberately not
+**Also slid out: the task detail view (was item 3).** It already exists —
+`frontend/src/app/routes/TaskDetailRoute.tsx` shows text, list, due date,
+tags and recurrence, everything the step asked for except notes and
+subtasks, which don't exist yet. It arrived during the SPA cutover, before
+this queue was written, and nobody noticed it had pre-empted a planned
+item. Its other half — "a full page for the no-JS path" — is not deferred
+but **impossible**; see the no-JS note below.
+
+**The no-JS path is gone, and three steps below still assume it.** Every
+task-facing Django view is now a redirect into the SPA — `dashboard`,
+`archive`, `view_list` and `edit_item` all bounce to `/app/...`, leaving
+`new_list` (a POST handler) as the only real rendering view in
+`lists/views.py`. That was a deliberate consequence of the cutover, but
+the feature plan predates it and still designs around a fallback surface
+that isn't there. `design/subtasks-plan.md` steps 5, 6d and 7 have been
+corrected. Worth stating plainly here too, since "works without JS" was a
+real principle for this project and is now simply not one — for lists and
+tasks, at least. The Capture MVP is server-rendered, so Django templates
+aren't dead, they just aren't the task UI any more.
+
+3. **Notes.** A plain-text field on the detail view — deliberately not
    Markdown, which would add a renderer and an XSS surface for little gain
-   at two users. Small, and it proves the detail view actually works before
-   subtasks lands on top of it.
-5. **Subtasks.** The large one. A self-referencing FK on `Item`, one level
+   at two users. Now the front of the queue, and smaller than when it was
+   written: with the detail route already built, this is a model field, a
+   migration, an API field, and one textarea.
+4. **Subtasks.** The large one. A self-referencing FK on `Item`, one level
    of nesting only, cascading complete/archive/restore with proper undo,
    sibling-scoped duplicate and position logic, API changes to
    `create_item`, `item_detail`, and `reorder_items`, and UI work across the
@@ -492,11 +509,14 @@ not before.
    available since Step 2 is done and A0's CI runs against Postgres. Ships
    with the cross-user `parent` cases added to A3's isolation module — see
    A3 for why that belongs in this PR and not a follow-up.
-6. **Persistent side navigation.** Left nav for lists, archive, and
+5. **Persistent side navigation.** Left nav for lists, archive, and
    settings across all three main pages — today it only exists on the
    agenda, so navigation disappears the moment you drill into a list. Last,
-   because it touches nearly every template and is easier to get right once
-   the detail view's layout is settled. Mock it before building.
+   because it touches nearly every screen and is easier to get right once
+   the detail view's layout is settled. Mock it before building. Note that
+   its "a mobile drawer means JavaScript, which cuts against the no-JS
+   principle" constraint no longer applies — this is React-only now, and a
+   drawer is just a drawer.
 
 ---
 

@@ -122,13 +122,20 @@ before this change -- worth reading in full, but the load-bearing points:
   both `DJANGO_ENVIRONMENT=test` and `ALLOW_DATABASE_FLUSH=1` -- production
   always sets `DJANGO_ENVIRONMENT=production`, so this stays refused
   regardless of database engine. Confirmed unchanged by this migration.
-- **This cluster currently uses the default `doadmin` credential**, which
-  can connect to every database on the cluster, not just `clarice`. That's
-  fine as the only project on it, but the app doesn't need admin rights to
-  every database just to run day to day -- `infra/restrict-database-user.sh`
-  creates a restricted per-database credential to replace it with (roadmap
-  item A1 in `design/roadmap.md`); see "One cluster, several projects" in
-  `design/subtasks-plan.md` for the reasoning.
+- **This cluster used the default `doadmin` credential** until July 31,
+  2026, when `infra/restrict-database-user.sh` cut production over to a
+  restricted per-database credential (roadmap item A1 in
+  `design/roadmap.md`); see "One cluster, several projects" in
+  `design/subtasks-plan.md` for the reasoning. **Ground truth, since it
+  drifted from what this file's examples assume**: the actual cluster is
+  named `db-pgsql-nyc1-16061` (not `clarice-db`), the database is
+  `Clarice_todo` (mixed case, not `clarice`), and the engine is Postgres
+  18 (not 17). The cutover also surfaced that `GRANT ALL PRIVILEGES` does
+  not transfer table ownership -- existing tables stayed owned by
+  `doadmin`, which broke the next `ALTER TABLE`-style migration until
+  `REASSIGN OWNED BY doadmin TO clarice_app` ran. That statement is now a
+  permanent step in the script, so a second project sharing this cluster
+  won't hit the same thing.
 - `CONN_MAX_AGE=600` is set in `settings.py` because connection reuse
   matters far more over a network round trip than it did with a local
   SQLite file.

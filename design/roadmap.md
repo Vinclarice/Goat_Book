@@ -41,13 +41,10 @@ with the Django suite running against a real `postgres:17` service
 container instead of SQLite. Merged via [PR #1](https://github.com/Vinclarice/Goat_Book/pull/1)
 on July 31, 2026 (`f699b61`).
 
-A1's script also merged — [PR #2](https://github.com/Vinclarice/Goat_Book/pull/2)
-on July 31, 2026 (`c6d1071`) — but that's `infra/restrict-database-user.sh`
-landing in the repo, not the database cutover itself: the cluster still
-runs on the shared `doadmin` credential until the script is actually run
-against it and the server's `~/.db-connection-url` is swapped, neither of
-which could happen from this machine. A1 stays open until that live run
-happens. A2–A4 are still ahead.
+A1 is now fully done, script (PR #2) plus the actual production cutover,
+also July 31, 2026 -- see the A1 entry below for what the live run
+actually surfaced (two real bugs, both fixed same-day). A2–A4 are still
+ahead.
 
 ---
 
@@ -184,38 +181,50 @@ call out as worse than either choice alone.
 - This is the harness A3 and everything in the Next queue now verify
   against.
 
-### A1. Restrict the database user — script ready, production cutover outstanding
+### A1. Restrict the database user — done
 
-The cluster is still using the default `doadmin` credential, which can read
-and write every database on the cluster, not just Clarice's — confirmed in
-`infra/provision-postgres.sh`. Harmless while Clarice is the only thing on
-it; a five-minute fix now versus a real exposure the day a second project
-shares the cluster.
+The cluster was using the default `doadmin` credential, which can read and
+write every database on the cluster, not just Clarice's — confirmed in
+`infra/provision-postgres.sh`. Script merged
+[PR #2](https://github.com/Vinclarice/Goat_Book/pull/2) (`c6d1071`); the
+live cutover ran the same day, `clarice_app` is now the app's production
+credential.
 
-Script merged [PR #2](https://github.com/Vinclarice/Goat_Book/pull/2)
-(`c6d1071`), July 31, 2026.
-
-- `infra/restrict-database-user.sh` written and syntax-checked, following
-  `provision-postgres.sh`'s own conventions: creates a per-database DO user
-  via `doctl`, revokes its `CONNECT` on every other database on the
-  cluster, grants schema privileges on the target database, and prints a
-  `DJANGO_DATABASE_URL` for it — same shape as `provision-postgres.sh`'s
-  own output.
-- **Could not run this against the live cluster or verify it end to end**:
-  this machine has no `doctl` installed/authenticated and no committed
-  production SSH inventory, so both the DigitalOcean side and the
-  server-side credential swap need to happen from wherever those
-  credentials actually live. Remaining steps, to run by hand:
-  1. `./infra/restrict-database-user.sh clarice_app clarice` (from a
-     machine with `doctl auth init` already done).
-  2. On the droplet: `umask 077 && echo -n '<printed URL>' >
-     ~/.db-connection-url`.
-  3. Redeploy (`ansible-playbook -i <inventory> infra/deploy-playbook.yaml`)
-     so the container picks up the new credential.
-  4. Verify `/admin/` and `docker logs clarice`, same as any deploy.
+- `infra/restrict-database-user.sh` creates a per-database DO user via
+  `doctl`, temporarily whitelists the operator's IP on the cluster
+  firewall to run SQL against it (removed again in a cleanup trap
+  regardless of how the script exits), revokes `CONNECT` on every other
+  database, grants schema privileges, and prints a `DJANGO_DATABASE_URL`.
+- **The real cluster didn't match the docs**: named `db-pgsql-nyc1-16061`,
+  not `clarice-db`; database `Clarice_todo` (mixed case), not `clarice`;
+  running Postgres 18, not 17. Caught by a preflight `doctl` check before
+  running anything mutating, rather than by a failed run.
+- **First real bug found: `GRANT ALL PRIVILEGES` isn't ownership.**
+  Existing tables were still owned by `doadmin` (whoever ran the original
+  migrations), and Django's `ALTER TABLE` migrations require ownership,
+  not just grants. The `accounts.0008_user_theme` migration failed
+  mid-deploy with `InsufficientPrivilege: must be owner of table
+  accounts_user` — caught cleanly (Django wraps each migration in its own
+  transaction, so nothing was left half-applied) but the container was
+  already live on the new credential at that point, so anything touching
+  `User.theme` was briefly degraded. Fixed with `REASSIGN OWNED BY doadmin
+  TO clarice_app`, now a permanent step in the script so a future run
+  (e.g. a second project sharing the cluster) doesn't hit the same bug.
+- **Second, unrelated bug found in the same incident**: after re-deploying,
+  the site itself became unreachable (`connect ... timed out` on 443) —
+  not caused by anything above. A DigitalOcean Cloud Firewall attached to
+  the droplet, created that day from DO's general preset, allowed only
+  port 22. Fixed by adding inbound rules for 80/443
+  (`doctl compute firewall add-rules`); confirmed both from outside
+  (`curl` returning 200 on `/` and `/admin/login/`, a correct 302 on
+  `/dashboard/`) and via clean `docker logs clarice` on the server.
+- **Still open, found but not fixed today**: the *database cluster's own*
+  firewall (a separate DO resource from the droplet's Cloud Firewall
+  above) currently has zero rules — reachable from any IP, password-only.
+  Contradicts what `provision-postgres.sh` assumes. Out of scope for what
+  A1 asked for; worth its own item if this becomes a priority.
 - Cross-referenced from `infra/provision-postgres.sh`, `MIGRATION.md`, and
-  `design/subtasks-plan.md`'s "One cluster, several projects" section, so
-  this isn't an orphaned script.
+  `design/subtasks-plan.md`'s "One cluster, several projects" section.
 
 ### A2. Prove the backups actually work
 

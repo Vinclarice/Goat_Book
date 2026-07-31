@@ -3,10 +3,19 @@
 Working plan for the next round of features. Decisions already settled are
 recorded as such; open questions are flagged inline.
 
-**Status, July 31, 2026.** Step 2 is done — Clarice is on managed
-DigitalOcean Postgres, and CI runs the Django suite against a real Postgres
-service container. Three consequences for reading the rest of this
-document:
+**Status, July 31, 2026 — this plan is fully built.** All seven steps have
+shipped and merged (`9c4a44d`, CI green). Read what follows as a record of
+how each was designed and what the build corrected, not as work to do.
+Step 4 turned out to have been built already by the SPA cutover; step 6's
+open question about archive grouping was settled in favour of an explicit
+`archive_group` UUID rather than matching on `archived_at`.
+
+The original status note, still worth keeping because it explains why
+step 6a takes the shape it does:
+
+Step 2 is done — Clarice is on managed DigitalOcean Postgres, and CI runs
+the Django suite against a real Postgres service container. Three
+consequences for reading the rest of this document:
 
 - **Step 2a is dead.** It was the "if we stay on SQLite" branch. Kept below
   for the record, struck through in effect — do not implement it.
@@ -367,7 +376,7 @@ original text is kept below for the record.
 
 ---
 
-## Step 5 — Notes
+## Step 5 — Notes — done
 
 Deliberately before subtasks: small, and it proves out the detail view.
 Smaller now than when this was written — step 4's route already exists, so
@@ -388,7 +397,7 @@ this is a model field, a migration, an API field and one textarea.
 
 ---
 
-## Step 6 — Subtasks
+## Step 6 — Subtasks — done
 
 ### 6a. Model
 
@@ -507,7 +516,7 @@ and a parent and its child can land in different sections of the same page.
 
 ---
 
-## Step 7 — Side panel
+## Step 7 — Side panel — done
 
 Last, because it touches every screen and benefits from knowing what the
 detail view looks like. ("Every template" was the original wording; the

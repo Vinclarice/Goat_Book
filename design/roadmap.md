@@ -37,8 +37,9 @@ Postgres cluster.
 
 Both were infrastructure and platform work — no user-facing task features
 shipped in this stretch. `design/subtasks-plan.md`'s Step 2 (the Postgres
-move) is the only item from that plan that's actually done; everything else
-in it is still ahead.
+move) was the only item from that plan that was actually done; everything
+else in it was still ahead. **That is no longer true — see below. The whole
+of `subtasks-plan.md` has now shipped.**
 
 **Since this doc was written:** Track A/Now item A0 shipped — CI
 (`.github/workflows/ci.yml`) now runs on every push and pull request,
@@ -54,13 +55,33 @@ left open that is now item A5).
 **Then the feature work finally started.** In one pass on July 31, 2026,
 five things landed together on `plan-implementation`: A3 (isolation
 tests), A4 (the digest cron line), Next items 1 and 2 (the archive/restore
-status fix and snooze presets), and the Track B Capture MVP. 211 Django
-tests and 86 frontend tests pass. Details in each item below.
+status fix and snooze presets), and the Track B Capture MVP.
 
-What that leaves in Track A/Now: **A2** (prove the backups work) and
-**A5** (close the cluster firewall) — both needing `doctl` against the
-live account rather than code. A4 is written but only takes effect on the
-next deploy.
+**And then the rest of it, the same evening.** Notes, subtasks (backend
+and UI), and the persistent side navigation, merged to `main` as `9c4a44d`
+with CI green. **`design/subtasks-plan.md` is now fully built** — steps 1
+through 7, with step 4 (the detail view) turning out to have been built by
+the SPA cutover before this queue was even written. 272 Django tests and
+108 frontend tests pass.
+
+### What is left, and it is not code
+
+- **A5 — the database cluster firewall.** Zero rules, reachable from any
+  IP, password-only. The only live production exposure recorded anywhere
+  in this document.
+- **A2 — the backup restore drill.** Still the unbanked reason the
+  Postgres move happened at all.
+- **A deploy.** None of the work above is running anywhere. Production is
+  still serving the code as it stood before any of this.
+
+All three need `doctl` or an Ansible run against the live account, which
+is why they have outlasted everything that could be done from an editor.
+
+**The deploy is the one that unblocks the most.** It activates A4's digest
+cron, puts the archive/restore fix in front of real data, and — the part
+with a date attached — starts Track B's two-week capture clock. That clock
+has not started. The mid-to-late August checkpoint was written assuming it
+had, so it now resolves later than planned, or on thinner usage.
 
 ---
 
@@ -154,12 +175,21 @@ time, instead of staying a vague aspiration.
 
 ## How the work is sequenced
 
-Two tracks run at once from here:
+Two tracks ran at once, and both have now emptied of code:
 
-- **Track A** — the main sequence: Now (infra hygiene, A0–A5) → Next (the
-  feature plan). Only A0 gates Next; see that section for why the rest
-  don't.
-- **Track B** — Capture MVP, parallel from day one, on its own clock.
+- **Track A** — Now (infra hygiene, A0–A5) → Next (the feature plan).
+  Next is closed; Now has A2 and A5 left, both ops rather than code.
+- **Track B** — Capture MVP, built, waiting on a deploy to start its clock.
+
+**So there is no next coding task in this document.** That is a real state
+to be in, not an oversight: what remains is a deploy, two `doctl` jobs, and
+a checkpoint that needs two weeks of actual use before it can resolve.
+Whatever comes after should be chosen deliberately from **Later** or from
+the **public-readiness bar**, not picked up by momentum — and the honest
+first question is whether Clarice is being used enough, day to day, to
+know which of those matters. Ranked full-text search is the standout
+candidate on paper; the Track B checkpoint may well produce a better one
+from evidence.
 
 They don't share code — Capture is an isolated model with no FK into
 `List`/`Item` — so they don't block each other technically. They do share
@@ -420,6 +450,11 @@ Capture is unrated — the quality bar lists rate limiting on signup and
 capture, and that's still deferred. Fine at two users; worth remembering
 before this is ever public.
 
+**Since then:** the persistent side nav (Next item 5) put Inbox in the
+nav on every SPA page with its unresolved count, which removes the one
+thing most likely to have made this checkpoint fail quietly — an inbox
+reachable only by typing the URL collects no evidence.
+
 The original scope sketch, for the record:
 
 - A `Capture` model that's just text and a timestamp.
@@ -446,20 +481,35 @@ alongside Track A.
 
 ---
 
-## Track A — Next: resume the feature plan
+## Track A — Next: closed
 
-**A0 is the only real gate.** An earlier draft held this queue until all of
-Track A/Now closed, which is stricter than the actual dependencies: CI is a
-genuine prerequisite (steps 1 and 5 below both rewrite existing test
-expectations), but A2 is ops work with a long verify loop that can stall on
-a scratch cluster, A4 is a single cron line, and A5 touches no application
-code at all. None of them block the archive/restore fix. A0 has shipped, so
-this queue is open now; A2, A4, and A5 run alongside it rather than in
-front of it.
+**Everything in this queue has shipped**, all of it on July 31, 2026, and
+the queue is kept here as a record rather than a plan. `main` is at
+`9c4a44d` with CI green. What each item turned into:
 
-Pick `design/subtasks-plan.md` back up in the order it already lays out. It
-re-sequences below only to give each step a one-line "why," not to change
-the order. Step 2 (Postgres) is skipped — it's done.
+| Step | Outcome |
+| --- | --- |
+| 1. Archive/restore status | Migration `0018`. Restore returns a task to whichever status it held before archiving — the prerequisite cascade restore needed. |
+| 2. Postgres | Done earlier, and the reason step 6's constraint is expressible at all. |
+| 3. Snooze presets | Tomorrow / This weekend / Next week / Clear, one menu replacing the Tomorrow-or-Schedule split. |
+| 4. Task detail view | Already built by the SPA cutover; discovered when this queue reached it. |
+| 5. Notes | Migration `0019`. Plain text, no Markdown, saved on blur. |
+| 6. Subtasks | Migration `0020`. Self-FK, one level, `nulls_distinct=False`, three cascades, `archive_group`, and the nested UI. |
+| 7. Side navigation | One nav across every SPA page; mocked first, in `design/side-nav-mockup.html`. |
+
+Two things this queue taught that were not in the plan:
+
+- **Step 4 had already been built**, by the cutover, before the queue was
+  written. Nobody noticed until something went to implement it. Worth
+  remembering that a plan written alongside fast-moving work can describe
+  as pending something that already exists.
+- **A stacked branch merges its base with it.** Notes, subtasks and the
+  side nav ended up in one merge because each branch was cut from the
+  previous one rather than from `main`. The result is correct and the
+  history is readable, but the individual pieces were never merged
+  separately, so none of them was ever `main` on its own.
+
+The original queue, for the record:
 
 **Done and slid out of this queue, July 31, 2026:** the archive/restore
 status fix (migration `0018`; restore now returns a task to whichever
@@ -495,12 +545,13 @@ real principle for this project and is now simply not one — for lists and
 tasks, at least. The Capture MVP is server-rendered, so Django templates
 aren't dead, they just aren't the task UI any more.
 
-3. **Notes.** A plain-text field on the detail view — deliberately not
-   Markdown, which would add a renderer and an XSS surface for little gain
-   at two users. Now the front of the queue, and smaller than when it was
-   written: with the detail route already built, this is a model field, a
-   migration, an API field, and one textarea.
-4. **Subtasks.** The large one. A self-referencing FK on `Item`, one level
+3. ~~**Notes.**~~ Shipped. A plain-text field on the detail view —
+   deliberately not Markdown, which would add a renderer and an XSS surface
+   for little gain at two users. It needed one thing the plan didn't
+   mention: the field had to reach `serialize_item` and the v1 schema,
+   because a Django template would have read the model directly but the SPA
+   can only show what it can fetch.
+4. ~~**Subtasks.**~~ Shipped. The large one. A self-referencing FK on `Item`, one level
    of nesting only, cascading complete/archive/restore with proper undo,
    sibling-scoped duplicate and position logic, API changes to
    `create_item`, `item_detail`, and `reorder_items`, and UI work across the
@@ -509,14 +560,15 @@ aren't dead, they just aren't the task UI any more.
    available since Step 2 is done and A0's CI runs against Postgres. Ships
    with the cross-user `parent` cases added to A3's isolation module — see
    A3 for why that belongs in this PR and not a follow-up.
-5. **Persistent side navigation.** Left nav for lists, archive, and
-   settings across all three main pages — today it only exists on the
-   agenda, so navigation disappears the moment you drill into a list. Last,
-   because it touches nearly every screen and is easier to get right once
-   the detail view's layout is settled. Mock it before building. Note that
-   its "a mobile drawer means JavaScript, which cuts against the no-JS
-   principle" constraint no longer applies — this is React-only now, and a
-   drawer is just a drawer.
+5. ~~**Persistent side navigation.**~~ Shipped, mocked first as the plan
+   asked (`design/side-nav-mockup.html`). The mock forced a decision the
+   plan never addressed: the agenda's sidebar was doing two jobs, since
+   clicking a list there *filtered* rather than navigated, and "filter the
+   agenda" means nothing on the archive page. So the nav navigates only,
+   and list filtering moved to chips in the agenda header. The right rail
+   is what yields at medium width, not the nav — and because the nav takes
+   210px, it now stacks at 1180px rather than 900px, which is exactly the
+   three-column crowding this step predicted.
 
 ---
 
@@ -579,3 +631,12 @@ Next items out as they land. When the Track B checkpoint resolves
 pass or a scope change — don't leave it silently open-ended. When something
 from Later gets a real reason to happen, it graduates into Next with its
 own one-liner — that's the whole maintenance loop.
+
+**With Next empty, the loop needs a deliberate restart rather than a
+default.** The next time this document is picked up, the first three
+questions are: has it been deployed; did A2 and A5 get done; and has
+capture accumulated enough real use to say what the triage model should
+be. Only after those does it make sense to graduate anything from Later.
+Resist filling Next just because it looks empty — an empty queue after a
+plan completes is the correct state, and the wrong thing to do with it is
+start the largest remaining idea by momentum.

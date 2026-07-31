@@ -46,6 +46,14 @@ function section(name: RegExp) {
   return screen.getByRole("heading", { name }).closest<HTMLElement>("section")!;
 }
 
+async function openSnoozeMenu(
+  user: ReturnType<typeof userEvent.setup>,
+  text: string,
+) {
+  const row = screen.getByText(text).closest<HTMLElement>(".agenda-row")!;
+  await user.click(within(row).getByRole("button", { name: `Schedule “${text}”` }));
+}
+
 describe("AgendaWorkspace", () => {
   beforeEach(() => {
     document.cookie = "csrftoken=test-token";
@@ -214,7 +222,7 @@ describe("AgendaWorkspace", () => {
     expect(screen.queryByText("Completed today")).not.toBeInTheDocument();
   });
 
-  it("snoozes a dated task to tomorrow", async () => {
+  it("snoozes a dated task to tomorrow from the menu", async () => {
     const user = userEvent.setup();
     const fetchMock = vi
       .spyOn(globalThis, "fetch")
@@ -225,8 +233,8 @@ describe("AgendaWorkspace", () => {
       );
     renderAgenda();
 
-    const row = screen.getByText("Ship the fix").closest<HTMLElement>(".agenda-row")!;
-    await user.click(within(row).getByRole("button", { name: "Tomorrow" }));
+    await openSnoozeMenu(user, "Ship the fix");
+    await user.click(screen.getByRole("menuitem", { name: "Tomorrow" }));
 
     await waitFor(() =>
       expect(screen.getByText(/Moved “Ship the fix” to tomorrow/)).toBeInTheDocument(),
@@ -237,27 +245,79 @@ describe("AgendaWorkspace", () => {
     });
   });
 
-  it("schedules an undated task for today", async () => {
+  it("offers the same menu to an undated task", async () => {
     const user = userEvent.setup();
     const fetchMock = vi
       .spyOn(globalThis, "fetch")
       .mockImplementation(() =>
         jsonResponse({
-          data: task({ id: 5, text: "Refactor services", due_date: TODAY }),
+          data: task({
+            id: 5,
+            text: "Refactor services",
+            due_date: "2026-08-03",
+          }),
         }),
       );
-    const user2 = user;
     renderAgenda();
 
-    await user2.click(screen.getByRole("button", { name: /No due date/ }));
-    const row = screen.getByText("Refactor services").closest<HTMLElement>(".agenda-row")!;
-    await user2.click(within(row).getByRole("button", { name: "Schedule" }));
+    await user.click(screen.getByRole("button", { name: /No due date/ }));
+    await openSnoozeMenu(user, "Refactor services");
+    await user.click(screen.getByRole("menuitem", { name: "Next week" }));
 
     await waitFor(() =>
-      expect(screen.getByText(/Scheduled “Refactor services” for today/)).toBeInTheDocument(),
+      expect(
+        screen.getByText(/Moved “Refactor services” to next week/),
+      ).toBeInTheDocument(),
     );
     const [, options] = fetchMock.mock.calls[0];
-    expect(JSON.parse(String(options?.body))).toEqual({ due_date: TODAY });
+    expect(JSON.parse(String(options?.body))).toEqual({
+      due_date: "2026-08-03",
+    });
+  });
+
+  it("clears the due date of a dated task", async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(() =>
+        jsonResponse({
+          data: task({ id: 2, text: "Ship the fix", due_date: null }),
+        }),
+      );
+    renderAgenda();
+
+    await openSnoozeMenu(user, "Ship the fix");
+    await user.click(screen.getByRole("menuitem", { name: "Clear" }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(/Cleared the due date on “Ship the fix”/),
+      ).toBeInTheDocument(),
+    );
+    const [, options] = fetchMock.mock.calls[0];
+    expect(JSON.parse(String(options?.body))).toEqual({ due_date: null });
+  });
+
+  it("leaves clear out of the menu when there is no date to clear", async () => {
+    const user = userEvent.setup();
+    renderAgenda();
+
+    await user.click(screen.getByRole("button", { name: /No due date/ }));
+    await openSnoozeMenu(user, "Refactor services");
+
+    expect(
+      screen.getAllByRole("menuitem").map((item) => item.textContent),
+    ).toEqual(["Tomorrow", "This weekend", "Next week"]);
+  });
+
+  it("closes the menu again when escape is pressed", async () => {
+    const user = userEvent.setup();
+    renderAgenda();
+
+    await openSnoozeMenu(user, "Ship the fix");
+    await user.keyboard("{Escape}");
+
+    expect(screen.queryByRole("menuitem")).not.toBeInTheDocument();
   });
 
   it("adds a task to the selected list", async () => {

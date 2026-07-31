@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import date, timedelta
 
 from django.test import TestCase
 from django.utils import timezone
@@ -33,6 +33,107 @@ class BucketForTest(TestCase):
     def test_the_day_after_the_horizon_is_later(self):
         past_edge = self.today + timedelta(days=agenda.WEEK_HORIZON_DAYS + 1)
         self.assertEqual(agenda.bucket_for(past_edge, self.today), agenda.LATER)
+
+
+class SnoozePresetsTest(TestCase):
+    # Fixed weekdays, because presets that pivot on Saturday and Monday
+    # would otherwise only be wrong one day a week.
+    TUESDAY = date(2026, 7, 28)
+    FRIDAY = date(2026, 7, 31)
+    SATURDAY = date(2026, 8, 1)
+    SUNDAY = date(2026, 8, 2)
+    MONDAY = date(2026, 8, 3)
+
+    def due_date(self, today, key):
+        presets = agenda.snooze_presets(today)
+        return next(each["due_date"] for each in presets if each["key"] == key)
+
+    def test_the_menu_offers_four_labelled_options_in_order(self):
+        presets = agenda.snooze_presets(self.TUESDAY)
+
+        self.assertEqual(
+            [(each["key"], each["label"]) for each in presets],
+            [
+                (agenda.SNOOZE_TOMORROW, "Tomorrow"),
+                (agenda.SNOOZE_WEEKEND, "This weekend"),
+                (agenda.SNOOZE_NEXT_WEEK, "Next week"),
+                (agenda.SNOOZE_CLEAR, "Clear"),
+            ],
+        )
+
+    def test_tomorrow_is_the_day_after_today(self):
+        self.assertEqual(
+            self.due_date(self.TUESDAY, agenda.SNOOZE_TOMORROW),
+            date(2026, 7, 29),
+        )
+
+    def test_this_weekend_is_the_coming_saturday(self):
+        self.assertEqual(
+            self.due_date(self.TUESDAY, agenda.SNOOZE_WEEKEND),
+            self.SATURDAY,
+        )
+
+    def test_on_a_saturday_this_weekend_is_the_sunday_still_to_come(self):
+        self.assertEqual(
+            self.due_date(self.SATURDAY, agenda.SNOOZE_WEEKEND),
+            self.SUNDAY,
+        )
+
+    def test_on_a_sunday_this_weekend_rolls_on_to_the_next_saturday(self):
+        self.assertEqual(
+            self.due_date(self.SUNDAY, agenda.SNOOZE_WEEKEND),
+            date(2026, 8, 8),
+        )
+
+    def test_next_week_is_the_coming_monday(self):
+        self.assertEqual(
+            self.due_date(self.TUESDAY, agenda.SNOOZE_NEXT_WEEK),
+            self.MONDAY,
+        )
+
+    def test_on_a_sunday_next_week_starts_tomorrow(self):
+        self.assertEqual(
+            self.due_date(self.SUNDAY, agenda.SNOOZE_NEXT_WEEK),
+            self.MONDAY,
+        )
+
+    def test_on_a_monday_next_week_is_a_full_week_ahead(self):
+        self.assertEqual(
+            self.due_date(self.MONDAY, agenda.SNOOZE_NEXT_WEEK),
+            date(2026, 8, 10),
+        )
+
+    def test_on_a_friday_the_weekend_is_tomorrow_and_next_week_is_the_monday(self):
+        # The day Tomorrow and This weekend collide -- worth pinning, because
+        # a menu offering the same date twice reads as a bug to the user.
+        self.assertEqual(
+            self.due_date(self.FRIDAY, agenda.SNOOZE_TOMORROW),
+            self.SATURDAY,
+        )
+        self.assertEqual(
+            self.due_date(self.FRIDAY, agenda.SNOOZE_WEEKEND),
+            self.SATURDAY,
+        )
+        self.assertEqual(
+            self.due_date(self.FRIDAY, agenda.SNOOZE_NEXT_WEEK),
+            self.MONDAY,
+        )
+
+    def test_clear_offers_no_date_at_all(self):
+        self.assertIsNone(self.due_date(self.TUESDAY, agenda.SNOOZE_CLEAR))
+
+    def test_every_dated_option_lands_in_the_future(self):
+        for today in (
+            self.TUESDAY,
+            self.FRIDAY,
+            self.SATURDAY,
+            self.SUNDAY,
+            self.MONDAY,
+        ):
+            for preset in agenda.snooze_presets(today):
+                if preset["due_date"] is not None:
+                    with self.subTest(today=today, key=preset["key"]):
+                        self.assertGreater(preset["due_date"], today)
 
 
 class AgendaQueryTest(TestCase):

@@ -1,17 +1,18 @@
 import { FormEvent, useMemo, useState } from "react";
 
 import {
-  addDays,
   applyFilters,
   bucketFor,
   colorForKey,
   dueLabel,
   hasFilters,
   NO_FILTERS,
+  snoozePresets,
   sortAgendaTasks,
   summaryCounts,
   tagSummaries,
   type AgendaFilters,
+  type SnoozePreset,
 } from "./agenda";
 import {
   createTask,
@@ -41,6 +42,71 @@ const RECURRENCE_LABELS: Record<string, string> = {
   monthly: "Monthly",
 };
 
+interface SnoozeMenuProps {
+  taskText: string;
+  presets: SnoozePreset[];
+  disabled: boolean;
+  onSelect: (preset: SnoozePreset) => void;
+}
+
+/**
+ * The one control that sets a task's due date, replacing the old split
+ * where a dated row offered "Tomorrow" and an undated one "Schedule".
+ *
+ * Hand-rolled rather than reaching for a portalled dropdown primitive:
+ * site.css only reveals .agenda-actions on .agenda-row:hover or
+ * :focus-within, so a menu portalled to <body> would take focus out of
+ * the row and fade its own trigger out from underneath it.
+ */
+function SnoozeMenu({ taskText, presets, disabled, onSelect }: SnoozeMenuProps) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div
+      className="relative"
+      onKeyDown={(event) => event.key === "Escape" && setOpen(false)}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
+      }}
+    >
+      <button
+        className="btn btn-outline-light btn-sm"
+        type="button"
+        disabled={disabled}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={`Schedule “${taskText}”`}
+        onClick={() => setOpen((current) => !current)}
+      >
+        Schedule
+      </button>
+
+      {open && (
+        <div
+          role="menu"
+          className="absolute top-full right-0 z-10 mt-1 flex min-w-36 flex-col rounded-xl bg-popover p-1 text-popover-foreground ring-1 ring-foreground/10"
+        >
+          {presets.map((preset) => (
+            <button
+              key={preset.key}
+              role="menuitem"
+              type="button"
+              className="rounded-lg px-2.5 py-1.5 text-left text-sm hover:bg-foreground/5"
+              disabled={disabled}
+              onClick={() => {
+                setOpen(false);
+                onSelect(preset);
+              }}
+            >
+              {preset.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function AgendaWorkspace({ initialData }: Props) {
   const { today, lists, buckets } = initialData;
 
@@ -66,6 +132,7 @@ export function AgendaWorkspace({ initialData }: Props) {
   const [adding, setAdding] = useState(false);
 
   const counts = useMemo(() => summaryCounts(tasks, today), [tasks, today]);
+  const presets = useMemo(() => snoozePresets(today), [today]);
   const tags = useMemo(() => tagSummaries(tasks), [tasks]);
   const visible = useMemo(
     () => applyFilters(tasks, today, filters),
@@ -191,6 +258,16 @@ export function AgendaWorkspace({ initialData }: Props) {
         (reverted) => reverted && replaceTask(reverted),
       );
     });
+  }
+
+  function snooze(task: Task, preset: SnoozePreset) {
+    void reschedule(
+      task,
+      preset.dueDate,
+      preset.dueDate === null
+        ? `Cleared the due date on “${task.text}”`
+        : `Moved “${task.text}” to ${preset.label.toLowerCase()}`,
+    );
   }
 
   async function submitQuickAdd(event: FormEvent) {
@@ -328,37 +405,16 @@ export function AgendaWorkspace({ initialData }: Props) {
 
         {!done && (
           <div className="agenda-actions">
-            {task.due_date ? (
-              <button
-                className="btn btn-outline-light btn-sm"
-                type="button"
-                disabled={busyId === task.id}
-                onClick={() =>
-                  reschedule(
-                    task,
-                    addDays(today, 1),
-                    `Moved “${task.text}” to tomorrow`,
-                  )
-                }
-              >
-                Tomorrow
-              </button>
-            ) : (
-              <button
-                className="btn btn-outline-light btn-sm"
-                type="button"
-                disabled={busyId === task.id}
-                onClick={() =>
-                  reschedule(
-                    task,
-                    today,
-                    `Scheduled “${task.text}” for today`,
-                  )
-                }
-              >
-                Schedule
-              </button>
-            )}
+            {/* Clearing a date a task hasn't got would do nothing, so
+                that one option comes and goes with the due date. */}
+            <SnoozeMenu
+              taskText={task.text}
+              presets={presets.filter(
+                (preset) => task.due_date || preset.dueDate !== null,
+              )}
+              disabled={busyId === task.id}
+              onSelect={(preset) => snooze(task, preset)}
+            />
             <a className="btn btn-outline-light btn-sm" href={task.edit_url}>
               Edit
             </a>

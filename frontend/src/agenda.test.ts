@@ -5,10 +5,12 @@ import {
   applyFilters,
   bucketFor,
   dueLabel,
+  snoozePresets,
   sortAgendaTasks,
   summaryCounts,
   tagSummaries,
   WEEK_HORIZON_DAYS,
+  type SnoozeKey,
 } from "./agenda";
 import { task, TODAY } from "./test/fixtures";
 
@@ -43,6 +45,72 @@ describe("addDays", () => {
 
   it("goes backwards", () => {
     expect(addDays("2026-03-01", -1)).toBe("2026-02-28");
+  });
+});
+
+describe("snoozePresets", () => {
+  // Pinned weekdays: presets that pivot on Saturday and Monday would
+  // otherwise only be wrong one day a week. TODAY is a Tuesday.
+  const FRIDAY = "2026-07-31";
+  const SATURDAY = "2026-08-01";
+  const SUNDAY = "2026-08-02";
+  const MONDAY = "2026-08-03";
+
+  function dueDate(today: string, key: SnoozeKey): string | null {
+    return snoozePresets(today).find((preset) => preset.key === key)!.dueDate;
+  }
+
+  it("offers four labelled options in order", () => {
+    expect(snoozePresets(TODAY).map((preset) => [preset.key, preset.label])).toEqual([
+      ["tomorrow", "Tomorrow"],
+      ["weekend", "This weekend"],
+      ["next_week", "Next week"],
+      ["clear", "Clear"],
+    ]);
+  });
+
+  it("puts tomorrow a day out", () => {
+    expect(dueDate(TODAY, "tomorrow")).toBe(addDays(TODAY, 1));
+  });
+
+  it("puts this weekend on the coming saturday", () => {
+    expect(dueDate(TODAY, "weekend")).toBe(SATURDAY);
+  });
+
+  it("means the sunday still to come when today is saturday", () => {
+    expect(dueDate(SATURDAY, "weekend")).toBe(SUNDAY);
+  });
+
+  it("rolls on to the next saturday when today is sunday", () => {
+    expect(dueDate(SUNDAY, "weekend")).toBe("2026-08-08");
+  });
+
+  it("puts next week on the coming monday", () => {
+    expect(dueDate(TODAY, "next_week")).toBe(MONDAY);
+    expect(dueDate(SUNDAY, "next_week")).toBe(MONDAY);
+  });
+
+  it("skips a full week when today is monday", () => {
+    expect(dueDate(MONDAY, "next_week")).toBe("2026-08-10");
+  });
+
+  it("collapses tomorrow and this weekend onto the same saturday on a friday", () => {
+    // Mirrors test_agenda.py: the one day the menu offers a date twice.
+    expect(dueDate(FRIDAY, "tomorrow")).toBe(SATURDAY);
+    expect(dueDate(FRIDAY, "weekend")).toBe(SATURDAY);
+    expect(dueDate(FRIDAY, "next_week")).toBe(MONDAY);
+  });
+
+  it("gives clear no date at all", () => {
+    expect(dueDate(TODAY, "clear")).toBeNull();
+  });
+
+  it("never offers a date that isn't in the future", () => {
+    for (const today of [TODAY, FRIDAY, SATURDAY, SUNDAY, MONDAY]) {
+      for (const preset of snoozePresets(today)) {
+        if (preset.dueDate !== null) expect(preset.dueDate > today).toBe(true);
+      }
+    }
   });
 });
 

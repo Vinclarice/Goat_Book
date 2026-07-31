@@ -124,9 +124,11 @@ before this change -- worth reading in full, but the load-bearing points:
   regardless of database engine. Confirmed unchanged by this migration.
 - **This cluster currently uses the default `doadmin` credential**, which
   can connect to every database on the cluster, not just `clarice`. That's
-  fine as the only project on it. If a second project ever shares this
-  cluster, create a restricted per-database user for each one first --
-  see "One cluster, several projects" in `design/subtasks-plan.md`.
+  fine as the only project on it, but the app doesn't need admin rights to
+  every database just to run day to day -- `infra/restrict-database-user.sh`
+  creates a restricted per-database credential to replace it with (roadmap
+  item A1 in `design/roadmap.md`); see "One cluster, several projects" in
+  `design/subtasks-plan.md` for the reasoning.
 - `CONN_MAX_AGE=600` is set in `settings.py` because connection reuse
   matters far more over a network round trip than it did with a local
   SQLite file.

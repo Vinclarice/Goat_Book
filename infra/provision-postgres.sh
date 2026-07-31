@@ -21,11 +21,10 @@
 #
 # NOTE on multi-project clusters: by default every database user on a DO
 # Postgres cluster can connect to *every* database in that cluster, not
-# just the one it "belongs to". That's fine while Clarice is the only
-# thing on this cluster. The day a second project joins it, come back and
-# create per-database restricted users (see design/subtasks-plan.md, "One
-# cluster, several projects") instead of continuing to share the doadmin
-# credential this script uses today.
+# just the one it "belongs to" -- see design/subtasks-plan.md, "One cluster,
+# several projects". Run ./restrict-database-user.sh once this cluster is
+# up to stop the app connecting with the doadmin credential this script
+# prints below.
 #
 # On success this prints a DJANGO_DATABASE_URL value. Copy it, then on the
 # server run:

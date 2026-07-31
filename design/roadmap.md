@@ -176,7 +176,7 @@ call out as worse than either choice alone.
 - This is the harness A3 and everything in the Next queue now verify
   against.
 
-### A1. Restrict the database user
+### A1. Restrict the database user — script ready, production cutover outstanding
 
 The cluster is still using the default `doadmin` credential, which can read
 and write every database on the cluster, not just Clarice's — confirmed in
@@ -184,9 +184,27 @@ and write every database on the cluster, not just Clarice's — confirmed in
 it; a five-minute fix now versus a real exposure the day a second project
 shares the cluster.
 
-- Create a restricted user per database via SQL (see "One cluster, several
-  projects" in `design/subtasks-plan.md`), not the default admin credential.
-- Update `~/.db-connection-url` on the droplet and re-verify a deploy.
+- `infra/restrict-database-user.sh` written and syntax-checked, following
+  `provision-postgres.sh`'s own conventions: creates a per-database DO user
+  via `doctl`, revokes its `CONNECT` on every other database on the
+  cluster, grants schema privileges on the target database, and prints a
+  `DJANGO_DATABASE_URL` for it — same shape as `provision-postgres.sh`'s
+  own output.
+- **Could not run this against the live cluster or verify it end to end**:
+  this machine has no `doctl` installed/authenticated and no committed
+  production SSH inventory, so both the DigitalOcean side and the
+  server-side credential swap need to happen from wherever those
+  credentials actually live. Remaining steps, to run by hand:
+  1. `./infra/restrict-database-user.sh clarice_app clarice` (from a
+     machine with `doctl auth init` already done).
+  2. On the droplet: `umask 077 && echo -n '<printed URL>' >
+     ~/.db-connection-url`.
+  3. Redeploy (`ansible-playbook -i <inventory> infra/deploy-playbook.yaml`)
+     so the container picks up the new credential.
+  4. Verify `/admin/` and `docker logs clarice`, same as any deploy.
+- Cross-referenced from `infra/provision-postgres.sh`, `MIGRATION.md`, and
+  `design/subtasks-plan.md`'s "One cluster, several projects" section, so
+  this isn't an orphaned script.
 
 ### A2. Prove the backups actually work
 

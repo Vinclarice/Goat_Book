@@ -172,7 +172,8 @@ Two things to get right:
 
 - **Create a restricted user per database.** By default every user has full
   rights to every database in the cluster, so Clarice's credentials could read
-  another project's data. Per-database users via SQL, not the default.
+  another project's data. Per-database users via SQL, not the default --
+  `infra/restrict-database-user.sh` does this.
 - **Connection budget.** Clusters allow 25 connections per GiB of RAM with 3
   reserved, so the $15/mo 1 GiB plan gives 22. Our `Dockerfile` runs gunicorn
   with its default single worker, so Clarice needs 1–2. Ample for several

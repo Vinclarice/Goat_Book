@@ -3,6 +3,23 @@
 Working plan for the next round of features. Decisions already settled are
 recorded as such; open questions are flagged inline.
 
+**Status, July 31, 2026.** Step 2 is done — Clarice is on managed
+DigitalOcean Postgres, and CI runs the Django suite against a real Postgres
+service container. Three consequences for reading the rest of this
+document:
+
+- **Step 2a is dead.** It was the "if we stay on SQLite" branch. Kept below
+  for the record, struck through in effect — do not implement it.
+- **Step 6a has one answer, not two.** The two-partial-constraint SQLite
+  workaround is no longer a live option; the `nulls_distinct=False` form is
+  what gets built.
+- **Migration numbers have shifted by one.** `0017` is now taken by
+  `0017_remove_item_item_list_state_idx_and_more`, so steps 1, 5 and 6a
+  become `0018`, `0019` and `0020`. Corrected in place below.
+
+`design/roadmap.md` owns sequencing and what's next. This document stays
+the source of truth for *how* each step gets built.
+
 ## Settled decisions
 
 | Question | Decision |
@@ -22,8 +39,9 @@ pre-archive status**, so a cascade restore would mark active children as
 completed (step 1). That is not caused by subtasks, but it becomes a
 correctness bug because of them.
 
-The second prerequisite is a decision rather than a fix: **if Postgres is
-coming, it should come before the feature work, not after** (step 2).
+The second prerequisite was a decision rather than a fix: **if Postgres is
+coming, it should come before the feature work, not after** (step 2). It
+came; step 2 shipped ahead of all the feature work below, as intended.
 
 ---
 
@@ -50,7 +68,7 @@ archived", and have `restore_item` read it.
 - `lists/services.py` — `archive_item` no longer sets `completed_at`;
   `restore_item` returns the task to `ACTIVE` when `completed_at` is null and
   `COMPLETED` otherwise.
-- Migration `lists/0017_archived_status_timestamps` — constraint change only.
+- Migration `lists/0018_archived_status_timestamps` — constraint change only.
   Add a comment noting that existing archived rows all carry a
   `completed_at`, real or fabricated, and are indistinguishable; they keep
   restoring as completed. Only new archives get the correct behaviour.
@@ -65,7 +83,19 @@ any subtask work starts.
 
 ---
 
-## Step 2 — Move to managed Postgres (if we're going to)
+## Step 2 — Move to managed Postgres — done
+
+**Shipped July 2026.** Production runs on a managed DigitalOcean Postgres
+cluster; `design/roadmap.md`'s A0 added CI against a Postgres service
+container and A1 replaced the default `doadmin` credential with a
+per-database `clarice_app` user. Two things the live run corrected in what
+follows: the cluster runs **Postgres 18**, not the 17 assumed here (CI was
+pinned to 17 on the same assumption and has since been corrected to match),
+and backups being handled by procurement is a claim that stays unverified
+until roadmap item A2 does a real restore.
+
+The reasoning below is kept as the record of why the move happened before
+the feature work, not as a pending decision.
 
 **Do this before the feature work, not after.** Five reasons, strongest first.
 
@@ -127,7 +157,11 @@ that behaviour cannot be reproduced on SQLite. That means Docker Postgres
 locally and in CI. Testing on SQLite while deploying on Postgres would be
 worse than either option alone.
 
-### Honest counter-argument
+*Settled:* A0 did this — `DJANGO_DATABASE_URL` opts the suite into Postgres
+and CI supplies a service container, with local dev still defaulting to
+SQLite when the variable is unset.
+
+### Honest counter-argument — resolved
 
 At two users, SQLite is genuinely fine. The strongest single reason to move is
 backups, and that is achievable far more cheaply with `VACUUM INTO` on a cron
@@ -135,6 +169,12 @@ and an offsite copy. Against that: a monthly bill, a heavier dev setup, a
 network dependency, and the loss of "the whole database is one file". If
 backups are the actual motivation, solve backups. If the motivation is wanting
 Postgres in the project, that is a fine reason too — but worth naming.
+
+*Outcome:* the move happened anyway, and the counter-argument's sharpest
+point still stands unanswered — "if backups are the actual motivation,
+solve backups" is precisely what roadmap item A2 exists to close, and until
+that restore has actually been performed, this section is still correct
+that the strongest reason for the move has not been banked.
 
 ### Why not MySQL or MongoDB
 
@@ -204,7 +244,16 @@ Explicitly **not** reasons to move: tags (already normalised — `ArrayField`
 would be a downgrade), performance at this scale, subtasks themselves, the
 recurrence logic, or the digest. Those are identical on either database.
 
-## Step 2a — SQLite tuning (only if staying on SQLite)
+## Step 2a — SQLite tuning — dead, do not implement
+
+**Superseded by step 2 shipping.** This was the branch for staying on
+SQLite; production is on Postgres and CI tests against it. None of what
+follows applies any more — `journal_mode`, `synchronous`, `busy_timeout`
+and `transaction_mode` are SQLite-only knobs, and the `select_for_update()`
+note at the end has been overtaken by events: those locks are real now, and
+the deadlock risk it warns about is live, which is why step 6b's cascade
+ordering matters. Kept only so the reasoning isn't rediscovered from
+scratch if SQLite ever comes up again.
 
 `DATABASES` currently has no `OPTIONS` at all (`clarice/settings.py:195`).
 Measured defaults on the current setup:
@@ -290,7 +339,7 @@ Prerequisite for both notes and subtasks: a row cannot hold either, and
 
 Deliberately before subtasks: small, and it proves out the detail view.
 
-- `Item.notes = TextField(blank=True)`, migration `0018_item_notes`.
+- `Item.notes = TextField(blank=True)`, migration `0019_item_notes`.
 - Plain text rendered with `linebreaksbr`. Not Markdown — it pulls in a
   renderer and an XSS surface for little gain at two users.
 - A quiet marker on the agenda row when non-empty; editing happens in the
@@ -310,25 +359,34 @@ parent = models.ForeignKey(
 )
 ```
 
-**The unique constraint is the sharp edge — and which shape it takes depends
-entirely on step 2.**
+**The unique constraint is the sharp edge. Step 2 settled which shape it
+takes:** one constraint with `nulls_distinct=False`, replacing
+`unique_active_list_item`.
 
-*On Postgres 15+:* one constraint with `nulls_distinct=False`, as shown in
-step 2. Skip the rest of this subsection.
+```python
+UniqueConstraint(
+    fields=("list", "parent", "text"),
+    condition=~Q(status="archived"),
+    nulls_distinct=False,
+    name="unique_active_item",
+)
+```
 
-*On SQLite:* extending `unique_active_list_item` to `(list, parent, text)`
-looks right and is wrong. SQL treats NULLs as distinct, so with
-`parent IS NULL` on every existing row it would stop preventing duplicate
-top-level tasks entirely. Two partial constraints instead:
+Available on Postgres 15+; production and CI both run 18, so it is safe on
+both. The reason it's needed at all: SQL normally treats NULLs as
+distinct, so extending the existing constraint to `(list, parent, text)`
+without `nulls_distinct=False` looks right and is wrong — with
+`parent IS NULL` on every existing row, it would stop preventing duplicate
+top-level tasks entirely.
 
-- `unique_active_root_item` on `(list, text)` where
-  `~archived AND parent IS NULL`
-- `unique_active_subtask` on `(parent, text)` where
-  `~archived AND parent IS NOT NULL`
+*Historical, no longer applicable:* on SQLite this needed two partial
+constraints instead — `unique_active_root_item` on `(list, text)` where
+`~archived AND parent IS NULL`, and `unique_active_subtask` on
+`(parent, text)` where `~archived AND parent IS NOT NULL`. Collapsing that
+pair into the single constraint above was reason #2 for moving to Postgres
+in the first place.
 
-This reproduces today's behaviour exactly for existing rows.
-
-Migration `0019_item_parent` adds the FK, swaps the constraint, and adds an
+Migration `0020_item_parent` adds the FK, swaps the constraint, and adds an
 index on `(parent, status)`. No data migration — every existing row gets
 `parent = NULL`.
 
@@ -375,6 +433,15 @@ Behaviour changes:
 - `create_item` accepts `parent`.
 - `item_detail` PATCH accepts `parent` for promote/demote — fits the existing
   "exactly one of these fields per request" rule at `api.py`.
+- **`parent` is the first id this API accepts in a request body rather than
+  a path, and it must be ownership-checked like one.** Every existing
+  ownership check keys off the URL — `_owned_list` filters `owner=`,
+  `_owned_item` filters `list__owner=` — so a `parent` resolved with a bare
+  `Item.objects.get(pk=...)` would let one user graft a subtask onto
+  another user's task. Resolve it through the same owner-scoped helper, and
+  return 404 rather than 403, matching the rest of the API. Roadmap item A3
+  covers the existing surface; the cross-user `parent` cases are added to
+  that module as part of this step, not afterwards.
 - `reorder_items` gains a parent scope. **This breaks the existing signature**
   and with it `lists/tests/test_api.py`, `lists/tests/test_services.py` and
   `frontend/src/TaskWorkspace.test.tsx`. Expected, not incidental.
@@ -421,9 +488,10 @@ Mock it before building.
 
 1. **Archive/restore status fix** — small, database-agnostic, blocks cascade
    restore. Deploy and verify on its own.
-2. **Postgres migration** — pure infrastructure, zero feature work attached.
-   Isolating it is the point: don't couple a database move to a schema change.
-   *Skip if staying on SQLite; do step 2a instead.*
+2. **Postgres migration** — done. Pure infrastructure, zero feature work
+   attached. Isolating it is the point: don't couple a database move to a
+   schema change. It landed on its own, which is what made A1's two
+   production bugs cheap to diagnose.
 3. **Snooze presets** — small, independent, immediately useful
 4. **Detail view** — prerequisite for 5 and 6
 5. **Notes** — small, proves out the detail view
@@ -436,12 +504,18 @@ separately.
 
 ## Still outstanding from earlier
 
-- **Backups.** Resolved by step 2 if we move to managed Postgres. If we stay
-  on SQLite it stays open, and step 2a makes it stricter: WAL rules out
-  file-copy backups, so it must be `VACUUM INTO` or `.backup`.
+- **Backups — still open, and now the last unbanked reason for step 2.**
+  The move to managed Postgres was supposed to resolve this by procurement,
+  but "managed" is not the same as "verified": snapshots and PITR have not
+  been confirmed on and no restore has been tested. Roadmap item A2 owns
+  this. The SQLite caveat (WAL ruling out file-copy backups) is moot.
 - **`send_due_digest` is never run.** The command exists; nothing invokes it.
-  Needs a cron entry in `infra/deploy-playbook.yaml`.
-- **No CI.** Steps 1 and 6 both rewrite existing test expectations, and step 2
-  changes the database the suite runs against. This is precisely the sequence
-  where an automated suite earns its keep — and if we go to Postgres, CI needs
-  a Postgres service container anyway.
+  Needs a cron entry in `infra/deploy-playbook.yaml`. Roadmap item A4.
+- **~~No CI.~~ Done.** `.github/workflows/ci.yml` runs the Django suite
+  against a Postgres service container plus a frontend job, on every push
+  and PR (roadmap A0). This was the right call for exactly the reason
+  stated: steps 1 and 6 both rewrite existing test expectations, and they
+  now do it with a net underneath.
+- **Database cluster firewall is open** — found during A1's production
+  cutover, tracked as roadmap item A5. Not a feature-plan concern, noted
+  here only because `provision-postgres.sh` assumes the opposite.

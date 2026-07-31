@@ -38,7 +38,9 @@ set -euo pipefail
 DROPLET_NAME="${1:?Usage: $0 <production-droplet-name>}"
 CLUSTER_NAME="${CLUSTER_NAME:-clarice-db}"
 DB_NAME="${DB_NAME:-clarice}"
-ENGINE_VERSION="${ENGINE_VERSION:-17}"
+# 18 matches the live production cluster and CI's service container. The
+# original 17 here was an assumption that never matched what got provisioned.
+ENGINE_VERSION="${ENGINE_VERSION:-18}"
 SIZE="${SIZE:-db-s-1vcpu-1gb}"   # cheapest managed Postgres tier; raise if needed
 
 echo "==> Looking up droplet '$DROPLET_NAME'..." >&2

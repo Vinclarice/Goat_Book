@@ -18,6 +18,11 @@ of one linear list, and one new item — adversarial per-user isolation tests
 because it's cheap and it's the thing a portfolio reviewer actually pokes
 at. Everything else below is carried over from the original draft unchanged.
 
+A later review pass added a second new item, A5 (the database cluster's
+open firewall), which A1's live run surfaced and originally left untracked;
+tightened A2 and A3 against what the code actually looks like; and loosened
+the gate on Track A/Next to A0 alone. Those changes are marked in place.
+
 ## Where things stand
 
 The last week closed out two overhauls at once. Clarice went from a single
@@ -37,14 +42,14 @@ in it is still ahead.
 
 **Since this doc was written:** Track A/Now item A0 shipped — CI
 (`.github/workflows/ci.yml`) now runs on every push and pull request,
-with the Django suite running against a real `postgres:17` service
-container instead of SQLite. Merged via [PR #1](https://github.com/Vinclarice/Goat_Book/pull/1)
+with the Django suite running against a real Postgres service container
+instead of SQLite. Merged via [PR #1](https://github.com/Vinclarice/Goat_Book/pull/1)
 on July 31, 2026 (`f699b61`).
 
 A1 is now fully done, script (PR #2) plus the actual production cutover,
 also July 31, 2026 -- see the A1 entry below for what the live run
-actually surfaced (two real bugs, both fixed same-day). A2–A4 are still
-ahead.
+actually surfaced (two real bugs, both fixed same-day, and one exposure
+left open that is now item A5). A2–A5 are still ahead.
 
 ---
 
@@ -140,8 +145,9 @@ time, instead of staying a vague aspiration.
 
 Two tracks run at once from here:
 
-- **Track A** — the main sequence: Now (infra hygiene, incl. A3) → Next
-  (the feature plan).
+- **Track A** — the main sequence: Now (infra hygiene, A0–A5) → Next (the
+  feature plan). Only A0 gates Next; see that section for why the rest
+  don't.
 - **Track B** — Capture MVP, parallel from day one, on its own clock.
 
 They don't share code — Capture is an isolated model with no FK into
@@ -154,13 +160,15 @@ checkpoint below rather than open-ended parallel effort.
 ## Track A — Now: close the infrastructure gaps
 
 The Postgres move solves the easy 80% of a few problems and leaves the rest
-half-finished. Four items from the original plan, plus one pulled forward
-from the public-readiness bar. All five are cheap now and get more annoying
-to retrofit once schema work (Track A/Next) lands on top.
+half-finished. Four items from the original plan, one pulled forward from
+the public-readiness bar (A3), and one surfaced by A1's live run (A5). All
+six are cheap now and get more annoying to retrofit once schema work
+(Track A/Next) lands on top.
 
-Order matters: CI goes first, so the DB-user restriction and the isolation
-tests both land with automated coverage instead of a manual, one-time
-check.
+Order matters at the front: CI goes first, so the DB-user restriction and
+the isolation tests both land with automated coverage instead of a manual,
+one-time check. After that the order is preference, not dependency — A2,
+A4, and A5 are independent of each other and of the feature plan.
 
 ### A0. Stand up CI with a Postgres service container — done
 
@@ -171,15 +179,23 @@ production ran on Postgres — the exact combination the migration notes
 call out as worse than either choice alone.
 
 - `.github/workflows/ci.yml`, two jobs on every push/PR: `django` runs the
-  suite against a real `postgres:17` service container; `frontend` runs
-  `pnpm test` and `pnpm build`.
+  suite against a real Postgres service container (`postgres:18` — see the
+  skew note below); `frontend` runs `pnpm test` and `pnpm build`.
 - `clarice/settings.py`'s `DEBUG` branch now honors `DJANGO_DATABASE_URL`
   when set, falling back to SQLite unchanged when it isn't — local dev is
   untouched, CI opts into Postgres.
-- Verified both on a live `postgres:17` container locally and on the real
-  first GitHub Actions run (both jobs green) before merging.
+- Verified both on a live Postgres container locally and on the real first
+  GitHub Actions run (both jobs green) before merging.
 - This is the harness A3 and everything in the Next queue now verify
   against.
+- **Version skew found and fixed after the fact.** The workflow originally
+  pinned `postgres:17`, carrying the same stale assumption the provisioning
+  docs did until A1 found the real cluster running Postgres 18. Nothing
+  depended on the difference (`nulls_distinct=False`, the one version-gated
+  thing in the plan, needs only 15+), but A0's whole point was to stop
+  testing against a database production doesn't run. `ci.yml` now pins
+  `postgres:18`; the change is verified by the next CI run on push, not
+  before it.
 
 ### A1. Restrict the database user — done
 
@@ -222,7 +238,8 @@ credential.
   firewall (a separate DO resource from the droplet's Cloud Firewall
   above) currently has zero rules — reachable from any IP, password-only.
   Contradicts what `provision-postgres.sh` assumes. Out of scope for what
-  A1 asked for; worth its own item if this becomes a priority.
+  A1 asked for — now tracked as **A5** below, rather than left as a note
+  inside a finished item where it would quietly disappear.
 - Cross-referenced from `infra/provision-postgres.sh`, `MIGRATION.md`, and
   `design/subtasks-plan.md`'s "One cluster, several projects" section.
 
@@ -234,9 +251,25 @@ cron job. That's only true if snapshots/PITR are confirmed on and a restore
 has actually been tested once. Don't let "we moved to managed Postgres"
 quietly stand in for "backups are handled."
 
-- Confirm snapshots/PITR are actually enabled on the cluster.
-- Do one real test restore (to a scratch cluster or database) and verify
-  the data is intact.
+- Confirm snapshots/PITR are actually enabled on the cluster, and record
+  the retention window — "backups are on" without a retention number
+  doesn't answer how far back a bad migration can be undone.
+- **Restore the way you'd actually have to, not the convenient way.**
+  `design/subtasks-plan.md`'s "One cluster, several projects" section notes
+  backups are *cluster-wide*: recovering Clarice means restoring the entire
+  cluster to a new one and extracting `Clarice_todo` from it. Test that
+  path end to end. A single-database restore would pass while proving
+  nothing about the procedure a real incident forces.
+- Verify the restored data is intact — row counts per table against the
+  live cluster, plus `showmigrations` matching, not just "it connects".
+- Add a cheap staleness check: something that surfaces the last successful
+  backup's timestamp, so a silently broken backup is detectable without
+  running the whole drill again.
+- Tear down the scratch cluster afterwards; it bills by the hour.
+
+Done means all five, written down somewhere durable — a restore that
+happened once and wasn't recorded is indistinguishable from one that
+didn't.
 
 ### A3. Adversarial per-user data isolation tests
 
@@ -250,15 +283,41 @@ adversarially tested end-to-end.
 
 - New test module, e.g. `lists/tests/test_isolation.py`. Two authenticated
   users, `owner` (creates data) and `intruder` (tries to reach it).
-- Cover every id-taking endpoint across the three routers
-  (`lists/api_v1.py`, `lists/api.py` legacy, `accounts/api_v1.py` — 18
-  endpoints total as of this writing): GET/PATCH/DELETE a list, item, tag,
-  or preference belonging to `owner`, authenticated as `intruder`. Assert
-  404 (not 403 — matches the codebase's existing pattern of not revealing
+- **The id-taking surface is eight method/path pairs, not eighteen** — an
+  earlier draft of this item overcounted, and this is a checklist someone
+  will tick off, so it's worth being exact. In `lists/api_v1.py`: GET,
+  PATCH, DELETE `/lists/{list_id}` and GET `/tasks/{item_id}`. In
+  `lists/api.py` (legacy): POST `create_item`, POST `reorder_items`, and
+  PATCH and DELETE on `item_detail`. `accounts/api_v1.py` contributes
+  none — preferences are a singleton resolved from `request.user`, with no
+  id in the path. There is likewise no id-addressable tag endpoint; tags
+  are set by name through the item PATCH, so "read another user's tag by
+  id" isn't a reachable request to write a test for.
+- For each: act as `intruder` against `owner`'s object, assert 404 (not
+  403 — matches the codebase's existing pattern of not revealing
   existence), and assert nothing was mutated.
-- Run as its own CI job once A0 lands, not folded into the general suite,
-  so a regression here is unmissable in CI output rather than buried in a
-  broader pass/fail.
+- **Cover id-bearing request bodies, not just path ids — that's where the
+  next bug will be.** The path-id helpers are uniform and, as far as
+  reading them goes, correct today: `_owned_list` filters `owner=`,
+  `_owned_item` filters `list__owner=`, and `services.reorder_items`
+  requires exact set equality between `ordered_ids` and the list's own
+  items before touching anything. So A3's value here is regression
+  protection, not discovery. The genuine hole is an id arriving in a
+  payload rather than a URL, and Step 6c of `subtasks-plan.md` introduces
+  exactly one: `create_item` accepting `parent`, and `item_detail` PATCH
+  accepting `parent` for promote/demote. An `intruder` passing one of
+  `owner`'s item ids as `parent` is the isolation bug this codebase does
+  not have yet.
+- **Therefore A3 expires when subtasks land.** Extending this module with
+  the cross-user `parent` cases is part of Step 6, in the same PR — not a
+  follow-up. Without that, the suite stays green while the newest
+  attack surface goes untested, which is worse than not having it.
+- Run as its own *step* in the existing `django` job — A0 has landed, so
+  the harness is there (`python src/manage.py test
+  lists.tests.test_isolation`) — not as its own job. A separate job means a second Postgres service container and a
+  second full dependency install for ~20 tests, roughly doubling CI
+  wall-clock; a named step that goes red is exactly as unmissable in the
+  GitHub UI for none of that cost.
 - Out of scope for this pass: self-service signup/password recovery, rate
   limiting, transactional email, export/deletion, monitoring. Real work,
   correctly deferred — isolation tests are the one item worth decoupling
@@ -274,6 +333,32 @@ but nothing calls it. It needs one cron line to actually reach anyone.
   `0 7 * * * docker exec clarice python manage.py send_due_digest`
   (already documented in the command's own docstring).
 - Verify once against production data before trusting it unattended.
+
+### A5. Close the database cluster's firewall
+
+**New in the review pass — surfaced by A1's live run and originally left as
+a note inside A1's own entry, which is where items go to be forgotten.**
+The cluster's firewall (a DO resource distinct from the droplet's Cloud
+Firewall that A1 also had to fix) currently has zero rules: the production
+database accepts connections from any IP, defended by a password alone.
+`infra/provision-postgres.sh` assumes otherwise.
+
+This is the only live production exposure recorded anywhere in this
+document, and the fix is roughly one `doctl` invocation, so it's tracked
+here rather than deferred to the public-readiness bar.
+
+- Restrict inbound access to the droplet (by droplet resource, not by IP —
+  the droplet's address shouldn't become a second thing to keep in sync).
+- Keep A1's pattern of temporarily whitelisting the operator's IP for
+  manual SQL and removing it again, rather than leaving a standing rule.
+- Re-check `provision-postgres.sh` so the script and reality agree
+  afterwards — the docs-vs-reality drift A1 ran into is the same failure
+  mode. Partly done already: its `ENGINE_VERSION` default was 17 against a
+  cluster running 18, now corrected (and `MIGRATION.md` with it). What's
+  left is the firewall claim — the script and `MIGRATION.md` both state the
+  cluster is restricted to the droplet, which is exactly what this item
+  exists to make true.
+- Verify from outside: the app still connects, an unlisted host doesn't.
 
 ---
 
@@ -310,10 +395,18 @@ alongside Track A.
 
 ## Track A — Next: resume the feature plan
 
-Once Track A/Now (A0–A4) is closed, pick `design/subtasks-plan.md` back up
-in the order it already lays out. It re-sequences below only to give each
-step a one-line "why," not to change the order. Step 2 (Postgres) is
-skipped — it's done.
+**A0 is the only real gate.** An earlier draft held this queue until all of
+Track A/Now closed, which is stricter than the actual dependencies: CI is a
+genuine prerequisite (steps 1 and 5 below both rewrite existing test
+expectations), but A2 is ops work with a long verify loop that can stall on
+a scratch cluster, A4 is a single cron line, and A5 touches no application
+code at all. None of them block the archive/restore fix. A0 has shipped, so
+this queue is open now; A2, A4, and A5 run alongside it rather than in
+front of it.
+
+Pick `design/subtasks-plan.md` back up in the order it already lays out. It
+re-sequences below only to give each step a one-line "why," not to change
+the order. Step 2 (Postgres) is skipped — it's done.
 
 1. **Fix status handling across archive and restore.** Archiving currently
    fabricates a completion timestamp on active tasks, so there's no way to
@@ -338,7 +431,9 @@ skipped — it's done.
    `create_item`, `item_detail`, and `reorder_items`, and UI work across the
    list page, agenda, and detail view. `design/subtasks-plan.md` §6 has the
    full shape, including the Postgres-specific constraint that's now
-   available since Step 2 is done and A0's CI runs against Postgres.
+   available since Step 2 is done and A0's CI runs against Postgres. Ships
+   with the cross-user `parent` cases added to A3's isolation module — see
+   A3 for why that belongs in this PR and not a follow-up.
 6. **Persistent side navigation.** Left nav for lists, archive, and
    settings across all three main pages — today it only exists on the
    agenda, so navigation disappears the moment you drill into a list. Last,

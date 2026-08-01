@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% load frontend_tags %}
+
+{% block title %}Ideas · Clarice{% endblock %}
+
+{% block content %}
+  <section class="space-y-6">
+    <div class="rounded-xl border border-border bg-card p-6 sm:p-8 space-y-6">
+      <div class="space-y-1">
+        <p class="text-xs font-bold uppercase tracking-wide text-accent">Capture</p>
+        <h1 class="text-2xl font-bold">Ideas</h1>
+        <p class="text-sm text-muted-foreground">
+          Things worth keeping that aren't tasks — ones you're still turning
+          over, and ones you just don't want to lose.
+        </p>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <a
+          class="rounded-lg border border-border px-3 py-1 text-sm {% if not status %}bg-accent/10{% endif %}"
+          href="{% url 'ideas' %}"
+        >
+          Open
+        </a>
+        {% for value, label in statuses %}
+          <a
+            class="rounded-lg border border-border px-3 py-1 text-sm {% if status == value %}bg-accent/10{% endif %}"
+            href="{% url 'ideas' %}?status={{ value }}"
+          >
+            {{ label }}
+          </a>
+        {% endfor %}
+      </div>
+
+      <form method="get" action="{% url 'ideas' %}" class="flex gap-2">
+        {% if status %}<input type="hidden" name="status" value="{{ status }}">{% endif %}
+        <input
+          type="search"
+          name="q"
+          value="{{ query }}"
+          aria-label="Search ideas"
+          placeholder="Search ideas and notes…"
+          class="flex-1 rounded-lg border border-border bg-input px-3 py-1.5"
+        >
+        <button class="rounded-lg border border-border px-3 py-1.5 text-sm" type="submit">Search</button>
+        {% if query %}
+          <a class="rounded-lg border border-border px-3 py-1.5 text-sm" href="{% url 'ideas' %}{% if status %}?status={{ status }}{% endif %}">Clear</a>
+        {% endif %}
+      </form>
+    </div>
+
+    {% for idea, form in ideas %}
+      <div class="rounded-xl border border-border bg-card p-6 space-y-4">
+        <div class="flex flex-wrap items-baseline justify-between gap-2">
+          <p class="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+            {{ idea.get_status_display }}
+          </p>
+          <p class="text-xs text-muted-foreground">{{ idea.created_at|date:"j M Y" }}</p>
+        </div>
+
+        {% if idea.status == "promoted" %}
+          {% comment %}
+            Locked on purpose: the task is the live record now, so further
+            thinking belongs there rather than in two places at once.
+          {% endcomment %}
+          <p class="text-sm">{{ idea.text }}</p>
+          {% if idea.notes %}<p class="text-sm text-muted-foreground whitespace-pre-line">{{ idea.notes }}</p>{% endif %}
+          <p class="text-sm text-muted-foreground">
+            {% if idea.promoted_task %}
+              Now a task in
+              <a class="text-accent hover:underline" href="/app/tasks/{{ idea.promoted_task.id }}">{{ idea.promoted_task.list.title }}</a>.
+            {% else %}
+              Became a task, since deleted.
+            {% endif %}
+          </p>
+        {% else %}
+          <form method="post" action="{% url 'edit_idea' idea.id %}" class="space-y-3">
+            {% csrf_token %}
+            {% for field in form %}
+              <div class="space-y-1">
+                <label for="{{ field.id_for_label }}" class="text-sm font-bold">{{ field.label }}</label>
+                {{ field|add_class:"w-full rounded-lg border border-border bg-input px-3 py-1.5" }}
+              </div>
+            {% endfor %}
+            <button class="rounded-lg border border-border px-3 py-1.5 text-sm" type="submit">Save</button>
+          </form>
+
+          <div class="flex flex-wrap items-center gap-2">
+            {% if lists %}
+              <form method="post" action="{% url 'promote_idea' idea.id %}" class="flex items-center gap-1">
+                {% csrf_token %}
+                <select
+                  name="list"
+                  aria-label="List for {{ idea.text|truncatechars:30 }}"
+                  class="rounded-lg border border-border bg-input px-2 py-1 text-sm"
+                >
+                  {% for each in lists %}
+                    <option value="{{ each.id }}">{{ each.title }}</option>
+                  {% endfor %}
+                </select>
+                <button class="rounded-lg border border-border px-3 py-1 text-sm" type="submit">Make it a task</button>
+              </form>
+            {% endif %}
+
+            <form method="post" action="{% url 'delete_idea' idea.id %}">
+              {% csrf_token %}
+              <button
+                class="rounded-lg border border-border px-3 py-1 text-sm text-destructive"
+                type="submit"
+              >
+                Delete
+              </button>
+            </form>
+          </div>
+        {% endif %}
+      </div>
+    {% empty %}
+      <div class="rounded-xl border border-border bg-card p-6 sm:p-8">
+        {% if query %}
+          <p class="text-sm text-muted-foreground">Nothing matches “{{ query }}”.</p>
+        {% else %}
+          <p class="text-sm text-muted-foreground">
+            No ideas here yet. They arrive from the
+            <a class="text-accent hover:underline" href="{% url 'capture_inbox' %}">inbox</a>,
+            when you decide something is worth keeping but isn't a task.
+          </p>
+        {% endif %}
+      </div>
+    {% endfor %}
+  </section>
+{% endblock %}

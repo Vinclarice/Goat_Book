@@ -1,10 +1,10 @@
 from django import forms
 
-from capture.services import EMPTY_CAPTURE_ERROR, create_capture
+from capture.services import EMPTY_CAPTURE_ERROR, EMPTY_IDEA_ERROR, create_capture
 
 # Re-exported: this was the constant's home before the API needed the same
 # rule, and it reads more naturally next to the form that shows it.
-__all__ = ["EMPTY_CAPTURE_ERROR", "CaptureForm"]
+__all__ = ["EMPTY_CAPTURE_ERROR", "CaptureForm", "IdeaForm"]
 
 
 class CaptureForm(forms.Form):
@@ -31,3 +31,25 @@ class CaptureForm(forms.Form):
 
     def save(self, owner):
         return create_capture(owner, self.cleaned_data["text"])
+
+
+class IdeaForm(forms.Form):
+    """Editing an idea in place on the Ideas page.
+
+    Two fields rather than one because an idea's notes are where it
+    actually develops -- the text stays the one-line thing you captured,
+    and the thinking accumulates underneath it.
+    """
+
+    text = forms.CharField(
+        label="Idea",
+        error_messages={"required": EMPTY_IDEA_ERROR},
+        widget=forms.Textarea(attrs={"rows": 2}),
+    )
+    notes = forms.CharField(
+        label="Notes",
+        required=False,
+        widget=forms.Textarea(
+            attrs={"rows": 3, "placeholder": "Anything worth remembering…"},
+        ),
+    )

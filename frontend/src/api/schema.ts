@@ -190,6 +190,8 @@ export interface components {
             settings_url: string;
             /** Inbox Url */
             inbox_url: string;
+            /** Ideas Url */
+            ideas_url: string;
         };
         /** AgendaBucketOut */
         AgendaBucketOut: {

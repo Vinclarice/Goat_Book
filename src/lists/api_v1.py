@@ -148,6 +148,7 @@ class NavOut(Schema):
     inbox_count: int
     settings_url: str
     inbox_url: str
+    ideas_url: str
 
 
 @router.get("/nav", response=NavOut)
@@ -172,8 +173,9 @@ def navigation(request):
             owner=user, resolved_at__isnull=True
         ).count(),
         "settings_url": reverse("account_settings"),
-        # A Django page, not an SPA route: this link leaves the app shell.
+        # Django pages, not SPA routes: these links leave the app shell.
         "inbox_url": reverse("capture_inbox"),
+        "ideas_url": reverse("ideas"),
     }
 
 

@@ -326,7 +326,7 @@
             "TokenAuth": []
           },
           {
-            "SessionAuth": []
+            "SessionAuthIfLoggedIn": []
           }
         ]
       }
@@ -419,6 +419,10 @@
           "inbox_url": {
             "title": "Inbox Url",
             "type": "string"
+          },
+          "ideas_url": {
+            "title": "Ideas Url",
+            "type": "string"
           }
         },
         "required": [
@@ -426,7 +430,8 @@
           "archived_count",
           "inbox_count",
           "settings_url",
-          "inbox_url"
+          "inbox_url",
+          "ideas_url"
         ],
         "title": "NavOut",
         "type": "object"
@@ -1012,6 +1017,11 @@
       "TokenAuth": {
         "type": "http",
         "scheme": "bearer"
+      },
+      "SessionAuthIfLoggedIn": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "sessionid"
       }
     }
   },

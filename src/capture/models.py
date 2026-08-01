@@ -1,20 +1,70 @@
 from django.db import models
 
 
+class Idea(models.Model):
+    """Something worth keeping that is not a task.
+
+    One model with a status rather than two models, because "an idea I want
+    to explore" and "a concept I want to be able to find again" are the same
+    shape of object -- text, no due date, no done/not-done -- differing only
+    in lifecycle stage. Same reasoning that kept subtasks a self-FK on Item
+    instead of a parallel table.
+
+    An idea never gains a due date or a completion state. If it turns out to
+    be actionable, it gets promoted into a task, and the task is the live
+    record from then on.
+    """
+
+    class Status(models.TextChoices):
+        EXPLORING = "exploring", "Exploring"
+        REFERENCE = "reference", "Reference"
+        PROMOTED = "promoted", "Promoted"
+
+    owner = models.ForeignKey(
+        "accounts.User", related_name="ideas", on_delete=models.CASCADE
+    )
+    text = models.TextField()
+    # Plain text, not Markdown -- same trade as Item.notes: a renderer plus
+    # an XSS surface buys little at this scale.
+    notes = models.TextField(blank=True, default="")
+    status = models.CharField(
+        max_length=20, choices=Status.choices, default=Status.EXPLORING
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    promoted_task = models.ForeignKey(
+        "lists.Item",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+
+    class Meta:
+        ordering = ("-created_at", "-id")
+
+    def __str__(self):
+        return self.text
+
+
 class Capture(models.Model):
     """A thought, typed and forgotten about -- text and a timestamp, nothing else.
 
-    Deliberately isolated from lists.List/lists.Item: no FK either way (see
-    design/roadmap.md, Track B). The whole point of the MVP is that writing
-    something down must never force a categorisation decision at the moment
-    of writing, and a FK to a list would do exactly that.
+    No FK *into* capture from lists, and nothing in lists imports this: the
+    isolation that matters is that writing something down never forces a
+    categorisation decision at the moment of writing. The FKs below point
+    the other way and only ever get set later, during triage, which is
+    precisely when a decision has been made.
 
-    ``resolved_at`` is the one concession to the Inbox being finite: null
-    means "still in the inbox", a timestamp means it's been dealt with
-    somehow. What "dealt with" turns into -- promote to a task, an idea, a
-    someday -- is the triage design the roadmap checkpoint exists to defer,
-    so nothing here records which of those happened.
+    ``resolved_at`` says whether it's still in the Inbox; ``resolution``
+    says what it became. Both, rather than one: a capture can be resolved
+    into nothing at all (discarded), and "gone from the inbox" and "became
+    a task" are different facts.
     """
+
+    class Resolution(models.TextChoices):
+        TASK = "task", "Task"
+        IDEA = "idea", "Idea"
+        DISCARDED = "discarded", "Discarded"
 
     owner = models.ForeignKey(
         "accounts.User",
@@ -24,6 +74,29 @@ class Capture(models.Model):
     text = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     resolved_at = models.DateTimeField(blank=True, null=True)
+    resolution = models.CharField(
+        max_length=20, choices=Resolution.choices, blank=True
+    )
+    # Two FKs answering two different questions. This one: did this raw
+    # thought become a task directly?
+    promoted_task = models.ForeignKey(
+        "lists.Item",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+    # And this one: did it become an idea first? A capture that went
+    # Capture -> Idea -> Task has this set and promoted_task null forever,
+    # with Idea.promoted_task carrying the second hop. Each link only ever
+    # tracks one hop forward, which is what keeps the lineage readable.
+    promoted_idea = models.ForeignKey(
+        "Idea",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
 
     class Meta:
         # Newest first: the Inbox reads as a stack of what you just wrote,

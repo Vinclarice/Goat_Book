@@ -99,6 +99,12 @@ triage model has not. See Track A/Next and Track B below.
   `Idea` domain and the four triage outcomes). None of it is deployed,
   which is now the only thing standing between all of this and being
   usable.
+- **One known gap, small and unspeced.** A spawned recurring occurrence
+  renders childless until the page is reloaded — the server creates the
+  fresh subtask copies in the same transaction but doesn't serialize them.
+  Surfaced by the orphaned-subtask fix and deliberately left there, since
+  it wants a decision about the response shape rather than a patch. See
+  Track A/Next.
 
 A2, A5 and the deploy all need `doctl` or an Ansible run against the live
 account, which is why they have outlasted everything that could be done
@@ -927,6 +933,9 @@ building at all. Only after all that does it make sense to graduate
 anything from Later.
 
 The original caution now applies literally rather than in spirit: the
-queue *is* empty, and the temptation is to reach for the largest remaining
-idea out of momentum. Don't. Four features shipped in a day and none of
-them are running anywhere — the honest next move is a deploy, not a fifth.
+queue *is* empty of specs, and the temptation is to reach for the largest
+remaining idea out of momentum. Don't. Four features shipped in a day and
+none of them are running anywhere — the honest next move is a deploy, not
+a fifth. The one piece of code work still outstanding, the childless
+spawned occurrence above, is small and already scoped; it doesn't need
+this document to grow a new section to hold it.

@@ -601,6 +601,38 @@ does not hold Android or web usability work.
 - Build the image from the intended commit; retain its identity for the B0
   artifact check.
 
+### Outstanding after the August 1, 2026 deploy
+
+Deployed 11:56 EDT. B0 is closed and verified. Tagging is deliberately held
+until B0.1 passes, so the release tags describe a capture service that has
+actually been exercised rather than one that merely deployed.
+
+**1. Set `alethaclara` to `Asia/Makassar`. Time-sensitive — do it before
+00:00 EDT tonight.** Every account is still on the `America/New_York`
+default, so per-user time zones are deployed but have never done anything.
+Their digest window for August 2 is 07:00–12:00 WITA, which is 19:00 EDT
+tonight through midnight. Set the zone inside that and the next hourly run
+delivers, proving the job discriminates between users. Set it after
+midnight and their August 2 is written off unsent, and the first proof slips
+to 19:00 EDT on August 2.
+
+**2. B0.1 — the capture smoke test.** Create a labelled token, send a unique
+capture, confirm `201` with an id and timestamp, confirm it appears exactly
+once in the Inbox, then send the *same* `Idempotency-Key` again and confirm
+`200` with the same id and still one row. Revoke the token and confirm
+rejection. This is M1's only piece never exercised against production, and
+the whole point of B0.1 is that a phone should not be the first thing to
+discover a broken capture endpoint.
+
+**3. Confirm the New York morning, August 2.** The 07:00–12:00 EDT window.
+Both remaining accounts should receive their digest there, hours after the
+Makassar one — the same job, two different mornings, which is the behaviour
+the whole change exists for.
+
+**4. Then tag.** `DEPLOYED-2026-08-01/1156` and move `LIVE`, both at
+`fed210b` — the tip at deploy time; everything since is documentation. No
+`bittern` tag: Stages 1–3 are still ahead.
+
 ### After deploy
 
 - Complete a recurring task with recurring, opted-out, and already-archived

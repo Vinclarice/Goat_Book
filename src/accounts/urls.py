@@ -9,4 +9,35 @@ urlpatterns = [
     path("logout/", auth_views.LogoutView.as_view(), name="logout"),
     path("settings/", views.account_settings, name="account_settings"),
     path("password/change/", views.change_password, name="change_password"),
+    # Django's four-step reset flow, wired to Clarice's own templates. Only
+    # the confirm step needs a subclass (it clears the axes lockout too);
+    # the rest are the built-ins with a template name.
+    path(
+        "password/reset/",
+        auth_views.PasswordResetView.as_view(
+            template_name="accounts/password_reset_form.html",
+            email_template_name="accounts/password_reset_email.txt",
+            subject_template_name="accounts/password_reset_subject.txt",
+        ),
+        name="password_reset",
+    ),
+    path(
+        "password/reset/done/",
+        auth_views.PasswordResetDoneView.as_view(
+            template_name="accounts/password_reset_done.html"
+        ),
+        name="password_reset_done",
+    ),
+    path(
+        "password/reset/confirm/<uidb64>/<token>/",
+        views.ClearLockoutPasswordResetConfirmView.as_view(),
+        name="password_reset_confirm",
+    ),
+    path(
+        "password/reset/complete/",
+        auth_views.PasswordResetCompleteView.as_view(
+            template_name="accounts/password_reset_complete.html"
+        ),
+        name="password_reset_complete",
+    ),
 ]

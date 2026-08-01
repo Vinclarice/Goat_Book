@@ -16,6 +16,7 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import include, path
+from django.views.generic import RedirectView
 from accounts.views import LandingLoginView
 from lists import views as list_views
 
@@ -33,5 +34,18 @@ urlpatterns = [
     path("lists/", include("lists.urls")),
     path("accounts/", include("accounts.urls")),
     path("capture/", include("capture.urls")),
+    # Has to sit BEFORE the admin include, not just for tidiness:
+    # admin.site.urls is itself a resolver mounted at admin/, so a later
+    # entry would never be reached -- Django would look for
+    # admin/password_reset/ inside the admin's own URLconf and 404. The
+    # admin login template renders its "Forgot your password?" link with
+    # {% url 'admin_password_reset' as ... %}, which silently renders
+    # nothing when the name doesn't resolve, so registering the name here
+    # is what makes that link appear at all.
+    path(
+        "admin/password_reset/",
+        RedirectView.as_view(pattern_name="password_reset", permanent=False),
+        name="admin_password_reset",
+    ),
     path("admin/", admin.site.urls),
 ]

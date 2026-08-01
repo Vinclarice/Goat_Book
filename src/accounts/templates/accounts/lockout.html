@@ -14,6 +14,18 @@
         </p>
       </div>
 
+      {% comment %}
+        The page someone in this situation actually lands on: five failed
+        attempts often means a forgotten password, and finishing a reset
+        clears the lockout, so this is the fastest way back in.
+      {% endcomment %}
+      <p class="text-sm text-muted-foreground">
+        Don't remember your password either?
+        <a class="text-accent hover:underline" href="{% url 'password_reset' %}">Reset it</a> —
+        finishing a reset clears the lockout immediately, so you won't need to
+        wait out the hour.
+      </p>
+
       <p class="text-sm text-muted-foreground">
         <a class="text-accent hover:underline" href="{% url 'home' %}">Back to the homepage</a>
       </p>

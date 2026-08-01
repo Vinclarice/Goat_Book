@@ -3,9 +3,11 @@
 **Status: built, not deployed.** Promoted out of Track D and implemented on
 August 1, 2026. The field, middleware, per-user digest, preferences API,
 picker, admin and settings form are all in; 437 backend and 120 frontend
-tests pass locally. It has not run against Postgres or production, and it
-adds migration `accounts/0010` to the deploy that already owes M1's
-`capture/0003`.
+tests pass locally, and CI run `30704717836` passed the same Django suite
+against the Postgres 18 service container, applying migration
+`accounts/0010` on production's database engine. It has not run against
+production itself, and it adds that migration to the deploy that already
+owes M1's `capture/0003`.
 
 Two decisions were taken during implementation that this plan did not
 originally contain:

@@ -825,6 +825,46 @@ system, CRM, or chat feature.
 Clarice without seeing a personal email address; support can reply from a
 product address; and outbound mail passes domain-authentication checks.
 
+### Deferred: support for people who are already signed in
+
+B3 shipped its acceptance criteria and left an inversion behind. The contact
+link lives in the Django shell's nav; users live in the SPA. So a stranger
+has a support path and an actual user largely does not — and the person most
+likely to have something worth reporting is the one hitting a real bug
+mid-task, who has the worst route to reporting it.
+
+The fix is not only a link in `SideNav`. The public form is subtly wrong for
+someone with a session:
+
+- **It asks for what the app already knows.** Name and email are clerical
+  work it can skip, and an open email field invites an address that is not
+  the one on the account — which makes a support thread ambiguous about who
+  is writing.
+- **The rate limit is keyed wrong.** Per-account is both more meaningful and
+  harder to evade than per-IP once there is an identity to key on.
+- **The honeypot is pointless** behind a session.
+
+In the product's own terms this is *one* concept with two entry points, not
+two concepts. So `/contact/` should adapt rather than fork: on an
+authenticated request, drop the name and email fields, take the identity
+from the account, and key the limit on the user. Same URL, same mail path,
+one branch.
+
+**Do not build the richer version first.** The tempting one has a signed-in
+report carry its own context — current route, bundle hash, recent client
+errors. That is genuinely more useful and it is **B4's territory**: a user
+report and a monitoring event are two halves of one incident, and fixing the
+report format before error monitoring exists means guessing at what support
+will need. Design the two together or not at all.
+
+**Caveat worth carrying:** signup still has no email verification, so an
+account's address is admin-approved but unproven. Acceptable for support
+correspondence; check it again before anything more sensitive routes through
+that address.
+
+**Cost:** touches the SPA, so it needs a frontend build to regenerate the
+bundle — the only reason this is not a five-minute change.
+
 ## B4 — add production error monitoring
 
 ### Scope

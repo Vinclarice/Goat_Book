@@ -154,6 +154,23 @@ deliberate product decision.
 
 Password recovery and adversarial per-user isolation tests are already done.
 
+### Support for people who are signed in
+
+B3 gave strangers a contact path and left users without one: the link is in
+the Django shell's nav, and users live in the SPA. The person most likely to
+have something worth reporting has the worst route to reporting it.
+
+Not merely a missing link — asking someone with a session to retype their
+name and email invites an address that isn't the one on their account, and
+per-IP rate limiting is the wrong key once there is an identity to use. The
+reasoning, and the argument for adapting `/contact/` rather than forking it,
+is in [`bittern-plan.md`](bittern-plan.md).
+
+**What would promote it:** B4. A user's report and a monitoring event are two
+halves of one incident, and the version of this worth building — where a
+signed-in report carries its own context — cannot be designed before there is
+error monitoring to design it against.
+
 ### Public updates page
 
 An unauthenticated page announcing what has shipped, written for people rather

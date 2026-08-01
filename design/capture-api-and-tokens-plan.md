@@ -1,5 +1,13 @@
 # Capture API + personal access tokens
 
+**Built July 31, 2026** — migration `accounts.0009`, `POST /api/v1/capture`,
+and the token page at `/accounts/tokens/`. Kept as written; where the build
+departed from it (`TokenAuth` lives in `accounts/`, and session auth needed
+a subclass so a bad token answers 401 instead of a CSRF error), the
+roadmap's Track B entry records why. Step 4 — the zero-code home-screen
+shortcut experiment — has not been tried yet, and is still the next step
+before any Android code.
+
 Foundation work for a phone-based capture client (Android, to start). Scope
 for this pass is exactly two things: a way for a non-browser client to
 authenticate as a specific user, and one endpoint for it to call. Not in

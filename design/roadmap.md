@@ -26,8 +26,8 @@ the gate on Track A/Next to A0 alone. Those changes are marked in place.
 **A further follow-up session reviewed the shipped subtask and Capture MVP
 code directly** — not waiting for a deploy or a checkpoint — and produced
 three more specs, which went into `design/`:
-`recurring-subtasks-addendum.md` (built since — see Track A/Next),
-`capture-api-and-tokens-plan.md`, and
+`recurring-subtasks-addendum.md` and `capture-api-and-tokens-plan.md`
+(both built since), and the still-unbuilt
 `capture-triage-and-polish-plan.md`. Details under Track A/Next and
 Track B below. This document is now the single planning artifact for
 Clarice — the parallel copy that lived in the planning conversation's own
@@ -90,13 +90,13 @@ triage model has not. See Track A/Next and Track B below.
   Postgres move happened at all.
 - **A deploy.** None of the work above is running anywhere. Production is
   still serving the code as it stood before any of this.
-- **Two specs to build.** `capture-api-and-tokens-plan.md` and
-  `capture-triage-and-polish-plan.md`, both under Track B -- see below for
-  what each contains. The other two specs written in this stretch are
-  built: `recurring-subtasks-addendum.md` (migration `0021`) and
+- **One spec to build.** `capture-triage-and-polish-plan.md`, under
+  Track B -- see below. The other three written in this stretch are all
+  built: `recurring-subtasks-addendum.md` (migration `0021`),
   `password-reset-plan.md` (A6, speced and shipped the same day after a
-  real lockout-plus-forgotten-password incident). Like everything else
-  here, neither is deployed.
+  real lockout-plus-forgotten-password incident), and
+  `capture-api-and-tokens-plan.md` (tokens plus `POST /api/v1/capture`).
+  Like everything else here, none of it is deployed.
 
 A2, A5 and the deploy all need `doctl` or an Ansible run against the live
 account, which is why they have outlasted everything that could be done
@@ -218,19 +218,19 @@ Two tracks ran at once, and both had emptied of code — briefly:
   is now built too; A6 (password reset) came in and shipped the same day,
   so Now is back to A2 and A5, both ops rather than code.
 - **Track B** — Capture MVP, built, waiting on a deploy to start its
-  clock, with two more specs now queued behind it (the API/token
-  foundation, and the triage model).
+  clock. Of the two specs queued behind it, the API/token foundation is
+  built; the triage model is what's left.
 
 **That "empty queue" state lasted about a day.** A direct review of the
 shipped work found one real bug worth fixing and settled the triage
 question the two-week checkpoint was meant to answer — ahead of schedule
 and on purpose, not by accident. Three specs went into `design/`:
 `recurring-subtasks-addendum.md`, `capture-api-and-tokens-plan.md`, and
-`capture-triage-and-polish-plan.md`. **The first is now built**; the two
-Capture specs are not. None of them competed for priority in an
-interesting way — the subtask fix was small and self-contained, the two
-Capture specs are already sequenced against each other (tokens/API before
-Android, triage before either), and all three are independent of Track A's
+`capture-triage-and-polish-plan.md`. **The first two are now built**; the
+triage model is not. None of them competed for priority in an interesting
+way — the subtask fix was small and self-contained, the two Capture specs
+were already sequenced against each other (tokens/API before Android,
+triage before either), and all three were independent of Track A's
 remaining ops work (A2, A5).
 
 The original caution here — don't fill Next with the largest idea from
@@ -590,17 +590,38 @@ source of truth for that shape anymore. This checkpoint is what stops
 Track B from quietly becoming a second, open-ended feature queue running
 alongside Track A.
 
-### Two more specs queued behind this, one of them jumping the checkpoint on purpose
+### Two more specs queued behind this — one built, one still to go
 
-**`design/capture-api-and-tokens-plan.md`** lays the two prerequisites for
-a phone-based capture client: a `PersonalAccessToken` model (hashed
-storage, shown once, revoked by deletion) and a create-only
-`POST /api/v1/capture` endpoint, using a Django Ninja `HttpBearer` auth
-class that runs alongside the existing session auth rather than replacing
-it. Explicitly sequenced *before* any Android code, with the zero-code
-home-screen-shortcut experiment recommended first, to find out whether
-that alone solves the actual friction before writing a single line of
-Kotlin.
+**`design/capture-api-and-tokens-plan.md` — built July 31, 2026.** The two
+prerequisites for a phone-based capture client: a `PersonalAccessToken`
+model (migration `accounts.0009` — hashed storage, shown once, revoked by
+deletion), a create-only `POST /api/v1/capture`, and the self-service
+token page at `/accounts/tokens/`, linked from Preferences. Verified end
+to end with curl: a token created in the browser posts a capture with no
+cookie anywhere, and stops working the moment it's revoked.
+
+Two things worth recording:
+
+- **A real bug that only curl could see.** Ninja's `SessionAuth` runs its
+  CSRF check inside `_get_key`, *before* looking for a cookie — so a
+  client whose token was revoked or mistyped fell through to session auth
+  and got `403 CSRF check Failed` instead of `401`. That is exactly the
+  "silent fallback to session auth" the spec said not to have, and the
+  Django test suite could not see it, because the test client disables
+  CSRF enforcement by default. `accounts.auth.SessionAuthIfLoggedIn`
+  declines when there's no authenticated session rather than raising CSRF
+  at someone who never had one; the API tests now run with
+  `enforce_csrf_checks=True` in both directions. Second time in two
+  features that a live run found what a green suite didn't.
+- **`TokenAuth` went in `accounts/`, not `capture/`** as the spec
+  sketched. It resolves a token to its owner and knows nothing about
+  captures; capture is just the first endpoint to want one.
+
+**Still ahead, and the actual next step:** the zero-code home-screen
+shortcut experiment the spec sequences before any Android code. The point
+of it is to find out whether a shortcut alone solves the friction — which
+would make the case for a native app weaker, not stronger. Worth knowing
+before writing any Kotlin.
 
 **`design/capture-triage-and-polish-plan.md`** is the bigger departure
 from plan: it designs the triage model — promote to a task, mark an idea
@@ -617,7 +638,7 @@ remembering to check, and how ideas relate to each other — is named
 explicitly in the spec's own **Future** section (a mind-map-style view,
 possibly AI-assisted sorting) rather than guessed at now.
 
-Neither spec is built yet.
+Of the two, only the triage plan is still unbuilt.
 
 ---
 
@@ -817,11 +838,11 @@ if real usage disagrees with it — don't leave it silently open-ended. When
 something from Later gets a real reason to happen, it graduates into Next
 with its own one-liner — that's the whole maintenance loop.
 
-**The two specs still queued in `design/` — the capture/token plan and the
-triage plan — are the next coding tasks** (the subtask addendum and the
-password-reset plan, the other two of the four, are built), not a reason
-to pick something new from Later or the public-readiness bar. Once
-those land, the first three questions are: has it been deployed; did A2
+**The one spec still queued in `design/` — the triage plan — is the next
+coding task** (the subtask addendum, the password-reset plan and the
+capture API/tokens plan, the other three of the four, are built), not a
+reason to pick something new from Later or the public-readiness bar. Once
+it lands, the first three questions are: has it been deployed; did A2
 and A5 get done; and does the shipped triage model actually hold up
 against real use, now that it's been decided ahead of the original
 checkpoint. Only after those does it make sense to graduate anything from

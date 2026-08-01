@@ -205,7 +205,7 @@ again in CI.
 
 ## B0.1 — verify the production capture service
 
-**Status: three of five steps verified on August 1, 2026 — by the phone
+**Status: four of five steps verified on August 1, 2026 — by the phone
 itself, not by curl.** A capture typed on a Samsung SM-F966U reached
 production and appeared in the web Inbox:
 
@@ -220,20 +220,32 @@ path with a bearer token — the token decrypted out of the Keystore, the
 header sent, `create_capture_idempotent` storing it, the migration holding
 it, and exactly one row at the end.
 
-Two steps remain, neither of which the app can trigger on its own:
+**Revocation is verified, also on the phone, once M2's Settings screen made
+it checkable without curl.** The token was deleted on the web and the
+device was then observed doing three separate things right:
 
-- **The keyed replay.** Sending the *same* key twice should return `200`
-  with the original capture and leave one row. The app generates a fresh
-  key per press, correctly, so forcing a replay needs `curl` with the
-  token.
-- **Revocation.** Delete the token on the web and confirm the next capture
-  is refused. The M2 Settings screen makes this checkable without curl:
-  revoke on the web, open Settings, and it should name no account and say
-  the token was not accepted.
+- Settings named no account and said "Clarice did not accept that token" —
+  a refusal, distinct from an outage.
+- A capture attempt was rejected on the separate `/api/v1/capture` path,
+  `403` reaching `Disposition.NEEDS_RECONNECT`.
+- **The typed text stayed in the field.** This is the one that matters. A
+  revoked token must never cost somebody the thought they were capturing,
+  and until M3 that field is the only queue there is.
 
-Until those pass, M1's duplicate protection is proven by the Django suite
+Reconnecting with a freshly minted token restored capture, which also
+exercised the replace-a-token path.
+
+One step remains, and the app cannot trigger it on its own:
+
+- **The keyed replay.** Sending the *same* `Idempotency-Key` twice should
+  return `200` with the original capture and leave exactly one row. The app
+  correctly generates a fresh key per press, so forcing a replay needs
+  `curl` with a real token.
+
+Until that passes, M1's duplicate protection is proven by the Django suite
 and by CI against Postgres, but has never been exercised against the
-production service it protects.
+production service it protects. Everything around it — auth, the header,
+the storage, the constraint, the refusal path — now has been.
 
 Original steps, for whoever finishes it:
 

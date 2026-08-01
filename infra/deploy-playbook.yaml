@@ -33,11 +33,15 @@
         # effect of shipping a Django change. It was also why this task took
         # minutes on every run while apt resolved candidates.
         state: present
-        # Skip the refresh when the cache is under an hour old. Deploys
-        # often come in bursts, and re-fetching every index each time is
-        # the rest of that wasted wall-clock.
+        # A day, not an hour. The refresh only earns its keep the first
+        # time, when apt needs an index to find docker.io at all; once the
+        # package is installed, state: present never consults the index
+        # again. An hour was still short enough that any deploy on a
+        # different day paid for a full re-fetch of every repository -- two
+        # minutes of a small droplet reading package lists to confirm
+        # something it already had installed.
         update_cache: true
-        cache_valid_time: 3600
+        cache_valid_time: 86400
       become: true
 
     - name: Add our user to the docker group, so we don't need sudo/become

@@ -77,8 +77,9 @@ the SPA cutover before this queue was even written. 272 Django tests and
 **And then, before any of it deployed:** a direct review of the shipped
 code (not a scheduled checkpoint) found one real behavioral gap in the
 subtask/recurrence interaction, and settled the shape of Capture's triage
-model from existing conviction rather than waiting on real usage. Both are
-now specs in `design/`, unbuilt. See Track A/Next and Track B below.
+model from existing conviction rather than waiting on real usage. Both
+became specs in `design/`; the subtask gap has since been built, the
+triage model has not. See Track A/Next and Track B below.
 
 ### What is left, and it is not all code
 
@@ -89,18 +90,17 @@ now specs in `design/`, unbuilt. See Track A/Next and Track B below.
   Postgres move happened at all.
 - **A deploy.** None of the work above is running anywhere. Production is
   still serving the code as it stood before any of this.
-- **Three specs to build.** `capture-api-and-tokens-plan.md` and
-  `capture-triage-and-polish-plan.md` under Track B -- see below for what
-  each contains -- plus `password-reset-plan.md` under Track A/Now (A6),
-  triggered by a real lockout-plus-forgotten-password incident rather than
-  either track's own planning. `recurring-subtasks-addendum.md` is the one
-  of the original three that's now built (migration `0021`, July 31,
-  2026) and, like everything else here, undeployed.
+- **Two specs to build.** `capture-api-and-tokens-plan.md` and
+  `capture-triage-and-polish-plan.md`, both under Track B -- see below for
+  what each contains. The other two specs written in this stretch are
+  built: `recurring-subtasks-addendum.md` (migration `0021`) and
+  `password-reset-plan.md` (A6, speced and shipped the same day after a
+  real lockout-plus-forgotten-password incident). Like everything else
+  here, neither is deployed.
 
-The first three need `doctl` or an Ansible run against the live account,
-which is why they have outlasted everything that could be done from an
-editor. The fourth is ordinary coding work that simply hadn't been scoped
-yet when the rest of this document was last touched.
+A2, A5 and the deploy all need `doctl` or an Ansible run against the live
+account, which is why they have outlasted everything that could be done
+from an editor. The two remaining specs are ordinary coding work.
 
 **The deploy is still the one that unblocks the most.** It activates A4's
 digest cron, puts the archive/restore fix in front of real data, and —
@@ -186,7 +186,8 @@ currently in scope.
 - A privacy policy and terms of service.
 
 Password recovery (A6) and isolation tests (A3) are the two pieces of this
-bar pulled into Track A/Now; everything else above stays deferred.
+bar pulled into Track A/Now, and both are now built; everything else above
+stays deferred.
 
 This is the bar that matters for a portfolio-grade public deployment, and
 it's mostly productization work layered on architecture that's already
@@ -214,8 +215,8 @@ Two tracks ran at once, and both had emptied of code — briefly:
 
 - **Track A** — Now (infra hygiene, A0–A6) → Next (the feature plan).
   Next is closed, and its one follow-up (the recurring-subtasks addendum)
-  is now built too; Now has A2, A5, and the new A6 (password reset) left —
-  A2 and A5 are ops, A6 is code.
+  is now built too; A6 (password reset) came in and shipped the same day,
+  so Now is back to A2 and A5, both ops rather than code.
 - **Track B** — Capture MVP, built, waiting on a deploy to start its
   clock, with two more specs now queued behind it (the API/token
   foundation, and the triage model).
@@ -258,12 +259,12 @@ the isolation tests both land with automated coverage instead of a manual,
 one-time check. After that the order is preference, not dependency — A2,
 A4, A5, and A6 are independent of each other and of the feature plan.
 
-**Status:** A0, A1 and A3 are done; A4 is written and waiting on a deploy.
-**A2, A5, and A6 are what's left.** A2 and A5 need `doctl` against the
-live account rather than code, which is why they've outlasted everything
-that could be done from an editor. A6 is ordinary coding work — it just
-wasn't scoped until a real lockout-plus-forgotten-password incident
-surfaced it.
+**Status:** A0, A1, A3 and A6 are done; A4 is written and waiting on a
+deploy. **A2 and A5 are what's left**, and they're the two that need
+`doctl` against the live account rather than code — which is exactly why
+they've outlasted everything that could be done from an editor. A6, the
+one piece of Now that was ordinary coding work, shipped the day it was
+scoped.
 
 ### A0. Stand up CI with a Postgres service container — done
 
@@ -480,7 +481,22 @@ here rather than deferred to the public-readiness bar.
   exists to make true.
 - Verify from outside: the app still connects, an unlisted host doesn't.
 
-### A6. Self-service password reset
+### A6. Self-service password reset — done
+
+**Shipped July 31, 2026**, the same day it was speced. All four reset
+views, six templates, the `admin_password_reset` redirect, and both entry
+points; 13 new tests. Two things worth recording:
+
+- **A live smoke test found the one bug the tests couldn't.** Three
+  multi-line `{# #}` template comments were rendering as visible page
+  text — Django's `{# #}` is single-line only, and every assertion in the
+  suite was checking for copy that was still there either way. Now guarded
+  by a test asserting no page renders raw template syntax, which is the
+  general form of the mistake rather than the specific one.
+- **axes answers a lockout with 429, not 403** — worth knowing before
+  writing anything that asserts on that response.
+
+The original entry follows.
 
 **New from a real incident, not a review pass** — someone locked out of
 their account by too many failed attempts (see `AXES_FAILURE_LIMIT`
@@ -511,7 +527,6 @@ to configure there.
 - Add a reset link to `accounts/templates/accounts/lockout.html` too —
   that page is exactly where someone in this situation lands, and axes
   doesn't block the reset flow itself, only the login view.
-- Not built yet.
 
 ---
 
@@ -802,10 +817,10 @@ if real usage disagrees with it — don't leave it silently open-ended. When
 something from Later gets a real reason to happen, it graduates into Next
 with its own one-liner — that's the whole maintenance loop.
 
-**The three specs still queued in `design/` — the capture/token plan, the
-triage plan, and the password-reset plan — are the next coding tasks**
-(the subtask addendum, the fourth of the original set, is built), not a
-reason to pick something new from Later or the public-readiness bar. Once
+**The two specs still queued in `design/` — the capture/token plan and the
+triage plan — are the next coding tasks** (the subtask addendum and the
+password-reset plan, the other two of the four, are built), not a reason
+to pick something new from Later or the public-readiness bar. Once
 those land, the first three questions are: has it been deployed; did A2
 and A5 get done; and does the shipped triage model actually hold up
 against real use, now that it's been decided ahead of the original

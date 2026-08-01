@@ -1,0 +1,551 @@
+# Bittern — delivery plan
+
+**Status: ready to start.** Bittern is staged work: first make the deployed
+web application trustworthy enough to be a dependable capture backend, then
+ship the Android capture client, then close the remaining web-session and
+state gaps. It is not a grab bag of every attractive Postgres or
+public-readiness idea.
+
+This document is the implementation plan for the active Bittern entry in
+[`roadmap.md`](roadmap.md). Completed Albatross decisions and deploy history
+are in [`roadmap-history.md`](roadmap-history.md).
+
+## Stage plan
+
+### Stage 0 — establish production truth
+
+| Slice | Why it belongs | Dependency |
+| --- | --- | --- |
+| B0 — production bundle truth | Android needs a known-good, observable production backend; web navigation cannot be planned or verified while production may serve old JavaScript. | None; do first. |
+| B0.1 — capture API smoke check | Confirm token creation, authenticated capture, and Inbox visibility against the actual production deployment. | B0's deployed-artifact identity. |
+
+**Exit condition:** the running image and static bundle are identified, the SPA
+navigation is visible after a hard refresh, and a newly created capture reaches
+the owner's Inbox through the token-authenticated API.
+
+### Stage 1 — Android Capture MVP
+
+| Slice | Why it belongs | Dependency |
+| --- | --- | --- |
+| A1 — idempotent mobile capture contract | A retry must never create a duplicate thought after a lost response. | Stage 0 production API check. |
+| A2 — native capture client | The core requested product: open, type, submit, and return to life. | A1 contract. |
+| A3 — durable offline delivery | Capture must work when the thought arrives before the network does. | A1 and A2. |
+| A4 — device/pilot verification | Confirms the real capture loop, token lifecycle, and background retry work outside an emulator. | A2 and A3. |
+| A5 — share to capture | Lets text and links move from another Android app into an editable Clarice capture draft. | A4's dependable capture flow. |
+
+**Exit condition:** an Android user can authenticate with a personal access
+token, capture online or offline, safely retry without duplicates, and see the
+result in the web Inbox.
+
+### Stage 2 — web usability completion
+
+| Slice | Why it belongs | Dependency |
+| --- | --- | --- |
+| B1 — recurring-subtask response | Fixes the known task UI inconsistency with a bounded API/client contract. | Stage 0's trustworthy deploy path. |
+| B2 — SPA logout | Every authenticated SPA needs an accessible, CSRF-safe logout path. | Stage 0. |
+| B2.1 — safe entry and failure states | `/app/` should not be blank; an expired session or missing task should provide a recovery path, not a generic error. | B2's session behavior. |
+| B2.2 — browser smoke coverage | Critical journeys need testing in a built browser application, not just component tests. | B1 and B2. |
+
+### Stage 3 — production feedback loop
+
+| Slice | Why it belongs | Dependency |
+| --- | --- | --- |
+| B3 — branded email and contact | Password resets and support must represent Clarice, not its developer's personal inbox. | Choice of email provider and verified domain sender. |
+| B4 — error monitoring | Gives the next production issue evidence rather than guesswork. | A production DSN and release/environment configuration. |
+| C2 — information-architecture observation | Decide from actual navigation friction, not a screenshot of a broken nav. | Stage 2 observed in use. |
+
+### Does not ship in Bittern
+
+| Candidate | Decision | Trigger for reconsideration |
+| --- | --- | --- |
+| C2 information architecture redesign | Observe after the navigation is actually visible. | At least three specific, repeatable navigation failures remain after B0/B2. |
+| Ranked full-text search | Existing substring search already serves Inbox and Ideas. | Real reference-library usage makes simple filtering insufficient. |
+| Per-user time zones | Valuable, but changes agenda and digest semantics globally. | A second active user in another time zone or a real scheduling error caused by the global zone. |
+| Audit/general undo and time blocking | Separate product-model work. | A focused product brief, not availability of Postgres alone. |
+| Account export/deletion | Export is ready to scope; irreversible deletion needs an explicit retention decision. | Decide immediate deletion versus a grace period. |
+
+### Non-goals
+
+- No list sharing, real-time sync, or conflict resolution.
+- No broad React rewrite of Capture or Ideas.
+- No new recurring-task rules or task-model migration; A1's small capture
+  idempotency migration is the sole planned schema change.
+- No navigation redesign before the current navigation is proven to render.
+- No Android triage, Idea management, task editing, push notifications, or
+  account/token administration. The Android app captures; the web app reviews.
+
+## Order of work
+
+```text
+B0: establish production artifact and capture-API truth
+        │
+        ├── stale/mispackaged bundle → repair build/deploy → verify
+        └── current bundle           → capture actual runtime failure → fix as B0
+        │
+        └── Stage 1: Android Capture MVP
+                │
+                ├── A1: idempotent writes
+                ├── A2: native capture flow
+                ├── A3: offline queue and retry
+                └── A4: real-device pilot
+                        │
+                        └── Stage 2: web usability completion
+                                ├── B1: spawned subtasks
+                                ├── B2: logout and session recovery
+                                └── B2.2: end-to-end smoke coverage
+                                        │
+                                        └── Stage 3: monitoring and IA decision
+```
+
+Stage 0 is a hard gate because it verifies the service the phone will call.
+Within Stage 1, A2 can begin once A1's contract is settled, while A3 works
+alongside the basic online flow. B4 must not block Android or web usability if
+the monitoring account or DSN is not yet available.
+
+## B0 — establish production bundle truth
+
+### Problem statement
+
+`frontend/src/app/main.tsx` mounts `AppLayout`, which mounts `SideNav`, and
+`app_shell.html` loads `frontend/app-shell.js`. The live Albatross screenshot
+shows no side navigation even after a hard refresh. Source alone therefore is
+not evidence of what production serves.
+
+The two likely classes of cause are:
+
+1. the running image contains an older frontend build or serves an unexpected
+   static bundle; or
+2. the current bundle loads but fails at runtime or is suppressed by layout
+   CSS.
+
+Treat these as different failures. Do not change navigation markup until this
+check says which one occurred.
+
+### Investigation checklist
+
+1. Record the deployed commit/image identity and the response headers for
+   `/app/agenda` and its referenced `app-shell.js` asset.
+2. Inspect the running container's static files and verify that the served
+   `app-shell.js` contains the distinctive Inbox/Ideas navigation strings.
+3. Compare that artifact with a local production build from the deployed
+   commit, including the HTML `<script>` path emitted by `app_shell.html`.
+4. Open `/app/agenda` in an authenticated browser session and record browser
+   console errors, failed network requests, and computed layout for the nav.
+5. If the artifact is stale, rebuild without Docker cache, redeploy, then
+   repeat the browser check. If it is current, fix the identified runtime or
+   CSS defect in a focused B0 patch and repeat the check.
+
+### Acceptance criteria
+
+- The source commit, built image, served shell, and served JavaScript are
+  positively identified in the release notes.
+- An authenticated hard refresh of `/app/agenda` displays Agenda, Inbox,
+  Ideas, Archive, Lists, Preferences, Settings, and their current counts.
+- The same is checked at the mobile disclosure breakpoint; navigating closes
+  the disclosure and leaves the selected destination visible.
+- The root cause and verification evidence are added to
+  `roadmap-history.md` when B0 closes.
+
+### Guardrail for future deploys
+
+Add one release smoke check — manual or automated — that loads `/app/agenda`
+after deploy and asserts the navigation landmark and Inbox link are present.
+The goal is to test the served artifact, not merely run the frontend build
+again in CI.
+
+## B0.1 — verify the production capture service
+
+Before mobile development depends on it, run a production smoke test using a
+new, labelled personal access token:
+
+1. Create the token through the existing account page and save it only in the
+   test client.
+2. Send a short unique capture through `POST /api/v1/capture` with a bearer
+   token.
+3. Confirm `201`, a capture id, and a timestamp.
+4. Confirm the item appears once — and only once — in that user's web Inbox.
+5. Revoke the test token and confirm further requests are rejected.
+
+Record the endpoint host, TLS behavior, request/response shape, and revocation
+result in the release verification. A mobile app should never be the first
+thing to discover that a deployed capture endpoint is unreachable.
+
+## Stage 1 — Android Capture MVP
+
+### Product promise
+
+Capture is the mobile app's whole job: open it, write or paste a thought,
+submit it, and immediately return to what you were doing. The thought may be
+triaged later on the web. The app should feel faster than opening the browser
+and should remain dependable under poor connectivity.
+
+### A1 — idempotent capture writes
+
+The current endpoint creates a capture for every successful POST. If Android
+sends a request, loses the response, and retries, it cannot know whether the
+first request was stored. Retrying risks duplicate ideas — the precise failure
+a capture tool must avoid.
+
+Add an optional `Idempotency-Key` request header to `POST /api/v1/capture`.
+Android generates one UUID per locally created capture and sends the same key
+for every retry. Persist the key with the capture, scoped to its owner, with a
+database uniqueness constraint. A repeated owner/key returns the original
+capture representation rather than creating a second record; requests without
+the header retain their current behavior.
+
+The endpoint must be transaction-safe, so two simultaneous retries cannot
+create two captures. Malformed keys return `400`; the server must not invent a
+key because the client owns retry identity.
+
+**Server tests:** first keyed request creates one row; a repeated key returns
+the original row; concurrent retries result in one row; different owners may
+reuse a key; malformed keys fail; omitted keys still work; revoked or inactive
+tokens cannot access another user's capture.
+
+### A2 — native app and token lifecycle
+
+Create a standalone Kotlin Android project using Jetpack Compose. Its first
+release has three screens only:
+
+1. **Connect:** explain how to create a labelled access token on the web,
+   paste it, validate it with an authenticated request, and save it.
+2. **Capture:** one prominent multiline field and one submit action. Focus the
+   keyboard automatically; success clears the field and confirms briefly.
+3. **Settings:** show connected account identity and pending-queue state, and
+   offer an explicit Disconnect action.
+
+Store tokens in Android Keystore-backed encrypted storage. Never log tokens,
+put them in analytics or crash reports, or display them after saving. Use HTTPS
+and the normal `Authorization: Bearer` header. A `401`/`403` marks the queue
+as needing reconnection; it never discards captured text. Replacing a token
+must retain pending captures.
+
+### A3 — durable offline delivery
+
+An accepted local capture must survive app close, restart, and a network drop.
+Store its text, idempotency UUID, local creation time, and delivery state in
+encrypted app storage. Use WorkManager for persisted network-constrained
+retries.
+
+The foreground submit tries delivery immediately. If it cannot complete, it
+leaves the item in the durable queue and says **Saved — will send when online**
+without preventing another capture.
+
+- Generate the UUID before the first request and preserve it across retries.
+- Remove a queued item only after a successful, parsed server response.
+- Preserve the payload/key after a timeout or offline failure.
+- Keep queued text on an invalid/revoked token and offer reconnect.
+- Retain text on validation `400` and show a fixable error; do not retry it
+  indefinitely.
+
+**Android tests:** online submission sends one authenticated request; a timeout
+retry uses the same key; process restart retains the queue; invalid token keeps
+the text; and offline submission remains responsive and visibly queued.
+
+### A4 — real-device pilot and release criteria
+
+Verify on at least one physical device as well as an emulator: Wi-Fi,
+cellular, airplane-mode transitions, app process death, and a revoked token.
+Make several quick captures, then confirm the web Inbox contains each exactly
+once and in created-at order.
+
+Android is releasable only when fresh-token connection works against
+production, online/offline captures survive those flows, forced retries create
+no duplicates, token revocation is recoverable without data loss, and the app
+stores only the encrypted credential and explicitly visible pending queue.
+
+### A5 — share to capture
+
+After the basic Android capture loop is reliable, register Clarice as an
+Android share target for plain text and URLs. A share opens an editable capture
+draft; it never silently posts another app's content. Submitting the draft uses
+the same idempotent, offline-capable queue as typed capture.
+
+The first version stores shared URLs as capture text rather than inventing a
+source-link model prematurely. Whether a reference needs structured URLs,
+titles, previews, attachments, or provenance belongs to the later second-brain
+domain design. Test text sharing, URL sharing, cancellation, offline sharing,
+and confirmation that the content reaches Inbox exactly once.
+
+## B1 — return and render spawned recurring subtasks
+
+### Behavior to preserve
+
+When a repeating parent is completed, the service creates the next parent and
+clones only non-archived children with `always_recurs=True`. The old parent
+and its current children are archived correctly. That lifecycle is already
+tested and must not change.
+
+The gap is only in the mutation response: it serializes `spawned`, but not
+the spawned task's freshly created children. `TaskWorkspace` and
+`AgendaWorkspace` can therefore insert the parent into local state but cannot
+show its children until their next query.
+
+### Contract decision
+
+Extend only the legacy task-status response used by the workspaces:
+
+```json
+{
+  "data": { "...": "completed-or-archived parent" },
+  "spawned": { "...": "next recurring parent" },
+  "spawned_subtasks": [
+    { "...": "fresh active child" }
+  ],
+  "cascaded": ["...children moved by this action"]
+}
+```
+
+Use a sibling `spawned_subtasks` array instead of adding children to every
+`Task` serialization. The normal list, agenda, and detail read contracts stay
+small and stable; only the one mutation that creates children carries them.
+An empty array is valid when no child recurs.
+
+### Implementation outline
+
+1. In `lists.api.item_detail`, after reloading the spawned task, query its
+   non-archived children with the same relation fields used by task detail
+   and serialize them into `spawned_subtasks`.
+2. Extend the `ApiResponse` and `TaskStatusUpdate` TypeScript shapes in
+   `frontend/src/api.ts` so the field is always exposed as an array.
+3. In `TaskWorkspace.changeStatus`, insert the spawned parent and its
+   children into local list state as one update. The existing row-nesting
+   helper should then attach each child under the new parent.
+4. In `AgendaWorkspace`, insert both the spawned parent and the returned
+   children into the open-task collection before it re-buckets by due date.
+   The agenda is intentionally flat, so children appear as their own rows
+   with their parent breadcrumb.
+5. Keep `cascaded` separate: it describes existing rows moved by the action,
+   not newly created rows.
+
+### Tests
+
+- API: completing a recurring parent with two eligible children returns the
+  spawned task and those two active children in deterministic position order.
+- API: a child marked `always_recurs=False` and an independently archived
+  child are absent from `spawned_subtasks`.
+- API: a recurring parent without children returns `spawned_subtasks: []`.
+- Service regression: completing the parent still archives/carries children
+  exactly as it did before; B1 changes serialization, not recurrence rules.
+- List workspace: complete a recurring parent and assert the new parent and
+  its expected children render without a reload.
+- Agenda workspace: complete a recurring parent and assert both the new
+  parent and each child are placed in their correct due-date bucket without
+  a reload.
+
+### Acceptance criteria
+
+- No manual refresh is needed to see the next occurrence's recurring
+  subtasks in either the list or agenda workspace.
+- Opted-out and archived children never reappear.
+- The response is backward-compatible for callers that ignore the new field.
+
+## B2 — add logout to the SPA
+
+### Problem statement
+
+The Django `base.html` template has a valid POST logout form, but the SPA is
+served by `app_shell.html` and renders neither that form nor a logout control.
+Logged-in users can change their password or manage tokens from the SPA, yet
+cannot end their session there.
+
+### Contract decision
+
+Add an authenticated, CSRF-protected `POST /api/v1/me/logout` endpoint to the
+Ninja API. It should call Django's normal `logout(request)` and return
+`204 No Content`.
+
+This is preferable to copying a template form into React:
+
+- the existing typed API client already sends `X-CSRFToken` on non-GET
+  requests;
+- it retains Django's session invalidation behavior; and
+- the SPA gets a clean success/failure contract before redirecting.
+
+Ensure the app shell sets a CSRF cookie for an authenticated session so this
+endpoint does not depend on a user having visited a separate rendered form.
+
+### UI and behavior
+
+- Place **Log out** in the Account group of `SideNav`; it should be visible
+  on both desktop and mobile navigation.
+- Disable the control while its mutation is pending.
+- On success, clear client query state and perform a full navigation to `/`.
+  Do not try to continue rendering an authenticated SPA after its session has
+  been invalidated.
+- If the request fails, retain the session and show a compact, actionable
+  error rather than silently redirecting.
+
+### Tests
+
+- Endpoint accepts an authenticated POST with a valid CSRF token, logs out,
+  and makes a subsequent authenticated API request fail.
+- Endpoint rejects anonymous or CSRF-invalid mutation attempts according to
+  the existing API security behavior.
+- SideNav renders the control and invokes the endpoint once.
+- Successful logout navigates home; failed logout does not navigate away.
+
+### Acceptance criteria
+
+- A user can end the current session from every SPA route.
+- Logout remains a POST-only, CSRF-protected operation.
+- There is no remaining SPA-only route from which logout is unreachable.
+
+## B2.1 — safe entry and failure states
+
+`/app/` currently has no index route, so a direct visit can render an empty
+shell. Add an index redirect to `/app/agenda` and a deliberate not-found
+screen for unknown SPA paths.
+
+Replace each route's undifferentiated “Something went wrong” state with shared
+recovery behavior:
+
+- `401`: return to login with the intended in-app destination preserved.
+- `403`: explain that access is no longer permitted.
+- `404`: explain that the task or list no longer exists and offer Agenda.
+- network/`5xx`: offer a retry without losing any unsaved local draft.
+
+Test direct `/app/` load, an expired session, deleted-list and archived-task
+links, and an offline/retry state. The acceptance criterion is that every
+route failure gives the person somewhere sensible to go next.
+
+## B2.2 — end-to-end browser smoke coverage
+
+Add a browser-level test runner against a built application. Component and
+Django tests remain valuable, but they cannot prove the routing, static asset,
+session-cookie, and browser-navigation boundaries together.
+
+Cover these critical journeys:
+
+1. Login → Agenda → create and complete a task.
+2. Direct-load a list and task-detail URL.
+3. Capture → triage to task or Idea.
+4. Logout → protected route redirects to login.
+5. Mobile navigation disclosure opens, navigates, and closes.
+
+The production deploy smoke check in B0 remains separate: this suite verifies
+a built app before release; B0 verifies the artifact actually served after it.
+
+## B3 — branded email and contact
+
+### Provider decision required
+
+This work starts once a transactional provider or an IONOS domain mailbox is
+chosen and a product-owned sender is verified. Do not send public mail through
+the developer's personal Gmail account, and do not merely change its display
+name: the visible sender must be a Clarice address on `vinclarice.com`.
+
+Use distinct, real addresses (mailboxes or forwarding aliases are fine):
+
+| Purpose | Visible address | Who receives replies |
+| --- | --- | --- |
+| Password resets and account mail | `Clarice <accounts@vinclarice.com>` | `support@vinclarice.com` via Reply-To, if replies are invited. |
+| User questions | `support@vinclarice.com` | Support inbox/forwarder; never a public personal address. |
+| Internal signup, lockout, and error notices | Private admin recipient | The developer only; never in user-facing headers. |
+
+### Outbound-email implementation
+
+- Decouple SMTP/API credentials from the visible `DEFAULT_FROM_EMAIL` in
+  Django settings and deployment configuration.
+- Use provider/domain authentication records exactly as issued. Merge any SPF
+  include with the existing SPF record rather than creating a second SPF TXT
+  record; verify DKIM and DMARC before public use.
+- Keep secrets in the deployment environment or protected server files, never
+  in the repository or browser bundle.
+- Update password reset, daily digest, admin notices, and future contact mail
+  to use the appropriate sender/reply path.
+- Add tests asserting password-reset mail has the branded From address, while
+  internal notifications still target the private admin address.
+- Send a real test to an external inbox and inspect the displayed sender plus
+  SPF, DKIM, and DMARC results before enabling stranger signups.
+
+### Contact page MVP
+
+Add a public `/contact/` page with name, reply email, and message. It sends a
+single support message to `support@vinclarice.com`; it is not a ticketing
+system, CRM, or chat feature.
+
+- Validate inputs server-side and use the visitor's address only as Reply-To,
+  never as the message's From address.
+- Apply IP-based rate limiting and a low-friction spam control such as a hidden
+  honeypot before making the form public.
+- Return a generic success state that does not reveal internal delivery or
+  inbox details. Do not promise a support response time until one is real.
+- Send an optional acknowledgement only after the support message is accepted
+  by the configured mail provider.
+- Test valid submission, invalid input, rate limit, honeypot rejection, and
+  that a visitor cannot inject email headers through form fields.
+
+**Acceptance criteria:** a stranger can request a password reset or contact
+Clarice without seeing a personal email address; support can reply from a
+product address; and outbound mail passes domain-authentication checks.
+
+## B4 — add production error monitoring
+
+### Scope
+
+Add a Django error-monitoring integration such as `sentry-sdk` with a
+production-only DSN, environment, and release identifier. It must report
+unhandled server errors without altering normal request behavior or exposing
+secrets to the browser.
+
+### External decision needed
+
+Provision the monitoring project and DSN before implementation. The DSN may
+be added to deployment secrets, but never committed to the repository. If it
+is not available during Bittern, B4 simply slides to the next release; it
+does not hold Android or web usability work.
+
+### Acceptance criteria
+
+- Development and tests do not send events.
+- Production initializes the integration only when its DSN is configured.
+- A controlled staging/production exception creates one event with the
+  release/environment metadata needed to trace it back to a deploy.
+- Documentation explains the required secret and how to verify the setup.
+
+## Release gates and verification
+
+### Before merge
+
+- Django tests covering A1/B1/B2, including idempotency and ownership/security
+  regressions.
+- Android unit and instrumentation tests covering token storage, queue
+  persistence, offline retry, and reconnect behavior.
+- Frontend tests covering local-state insertion, logout, routing, and
+  failure-recovery behavior.
+- `pnpm --dir frontend build` to regenerate the production asset bundle.
+- Review the generated API schema/types if a new Ninja endpoint changes the
+  OpenAPI contract.
+
+### Before deploy
+
+- Apply and verify the A1 idempotency migration before releasing a client that
+  depends on it; use the existing Postgres-backed CI path.
+- Confirm the production configuration has the monitoring DSN only if B4 is
+  included.
+- Build the image from the intended commit; retain its identity for the B0
+  artifact check.
+
+### After deploy
+
+- Complete a recurring task with recurring, opted-out, and already-archived
+  children; confirm the agenda and list both update without refresh.
+- Log out from desktop and mobile SPA navigation, then verify protected API
+  calls no longer work.
+- Hard-refresh `/app/agenda` and verify navigation content and counts.
+- On a physical Android device, capture online, queue a capture offline, bring
+  the device online, and confirm every capture appears exactly once in Inbox.
+- If B4 ships, trigger its controlled verification event and confirm it is
+  attributed to Bittern.
+- Only then apply the `bittern` release tag and update `LIVE`.
+
+## What happens after Bittern
+
+Keep C2 as an observation task rather than a promised redesign. Capture
+specific navigation failures after Stage 2, then decide whether there is a
+coherent information-architecture change to make.
+
+The next feature release should choose one substantial product direction —
+likely account export or a time-zone decision — rather than combining search,
+time blocking, audit history, and deletion into one scope.

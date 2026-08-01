@@ -987,17 +987,29 @@ Decisions already made, kept here so they don't get re-opened by accident:
 
 ## Releases
 
-Named after birds, tagged on the commit that actually reached production
-— not on the commit that merged, since those have differed by hours more
-than once in this project's short life.
+**Named after birds, alphabetically** — each release takes the next
+letter, the way storms are named. `albatross`, then something with a B,
+then a C. The scheme carries its own ordering, which is the point: a bare
+`curlew` still tells you it came after `bittern`, so the tags sort
+themselves and no version prefix is needed to make them readable.
+
+Tagged on the commit that actually reached production, not the one that
+merged — in this project those have already differed by hours more than
+once.
 
 | Tag | Commit | Contents |
 | --- | --- | --- |
 | `albatross` | (pending deploy) | The first release to carry the whole feature set: subtasks and `always_recurs`, notes, the side nav, self-service password reset, personal access tokens with `POST /api/v1/capture`, and Capture triage with the `Idea` domain. Also the first deployed against a firewalled database with a proven restore path. |
 
-Tag after the deploy is verified, never before. A tag that points at code
-which turned out not to survive first contact with production is worse
-than no tag, because it looks authoritative.
+Two rules that keep the scheme honest:
+
+- **Tag after the deploy is verified, never before.** A tag pointing at
+  code that didn't survive first contact with production is worse than no
+  tag, because it looks authoritative. Twice in one day here, a bug showed
+  up only on a live server or only under `curl`.
+- **A letter is spent once.** If `bittern` ships broken and `bunting`
+  follows an hour later, that's two releases and two letters, not a
+  retagged one. The sequence is a history of what actually went out.
 
 ## Keeping this current
 

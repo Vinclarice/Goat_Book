@@ -205,9 +205,9 @@ again in CI.
 
 ## B0.1 — verify the production capture service
 
-**Status: four of five steps verified on August 1, 2026 — by the phone
-itself, not by curl.** A capture typed on a Samsung SM-F966U reached
-production and appeared in the web Inbox:
+**Status: closed August 1, 2026. All five steps verified against
+production.** A capture typed on a Samsung SM-F966U reached production and
+appeared in the web Inbox:
 
 ```text
 id 1  2026-08-01T22:01:48Z  145c6689-be80-4f2a-be25-d0892ec42eee  Vrbeall01
@@ -235,17 +235,31 @@ device was then observed doing three separate things right:
 Reconnecting with a freshly minted token restored capture, which also
 exercised the replace-a-token path.
 
-One step remains, and the app cannot trigger it on its own:
+**The keyed replay passed**, by `curl`, since the app correctly refuses to
+reuse a key. One thought sent twice under
+`ee2d9bb3-de1e-443b-8d9d-d072481a512d`:
 
-- **The keyed replay.** Sending the *same* `Idempotency-Key` twice should
-  return `200` with the original capture and leave exactly one row. The app
-  correctly generates a fresh key per press, so forcing a replay needs
-  `curl` with a real token.
+```text
+attempt 1: HTTP 201  {"id": 2, "created_at": "2026-08-01T22:58:01.796437+00:00"}
+attempt 2: HTTP 200  {"id": 2, "created_at": "2026-08-01T22:58:01.796437+00:00"}
+```
 
-Until that passes, M1's duplicate protection is proven by the Django suite
-and by CI against Postgres, but has never been exercised against the
-production service it protects. Everything around it — auth, the header,
-the storage, the constraint, the refusal path — now has been.
+Same id, same timestamp to the microsecond — the second request stored
+nothing and returned the first write. Confirmed at the database rather than
+inferred from the responses: two captures total, exactly one of them the
+probe, holding the key that was sent.
+
+M1's duplicate protection is now exercised against the production service it
+protects, not only by the Django suite and CI's Postgres.
+
+One lesson from the probe itself, which is why it is written down. The
+script that ran it extracted ids with `"id":[0-9]*` while the API renders
+`"id": 2`, so both ids came out empty, compared equal-to-each-other-as-empty
+against the wrong branch, and it announced **FAIL — duplicate protection is
+not working in production** over a completely healthy service. The evidence
+in the same output said otherwise. A verification tool that can cry wolf is
+worse than no tool, because the next person believes it: assert on values
+you have proven you can parse.
 
 Original steps, for whoever finishes it:
 
@@ -802,33 +816,32 @@ does not hold Android or web usability work.
 
 ### Outstanding after the August 1, 2026 deploy
 
-Deployed 11:56 EDT. B0 is closed and verified. Tagging is deliberately held
-until B0.1 passes, so the release tags describe a capture service that has
+Deployed 11:56 EDT. B0 is closed and verified. Tagging was deliberately held
+until B0.1 passed, so the release tags describe a capture service that has
 actually been exercised rather than one that merely deployed.
 
-**1. Set `alethaclara` to `Asia/Makassar`. Time-sensitive — do it before
-00:00 EDT tonight.** Every account is still on the `America/New_York`
-default, so per-user time zones are deployed but have never done anything.
-Their digest window for August 2 is 07:00–12:00 WITA, which is 19:00 EDT
-tonight through midnight. Set the zone inside that and the next hourly run
-delivers, proving the job discriminates between users. Set it after
-midnight and their August 2 is written off unsent, and the first proof slips
-to 19:00 EDT on August 2.
+**1. Set `alethaclara` to `Asia/Makassar`. Done — and it has already fired.**
+At 23:00 UTC on August 1, which is 07:00 WITA on August 2, their
+`last_digest_date` advanced to `2026-08-02` while both `America/New_York`
+accounts stayed on `2026-08-01`. One hourly job, three accounts, and only
+the one whose local morning it was got picked up. That is the entire point
+of the change, observed in production rather than in a test.
 
-**2. B0.1 — the capture smoke test.** Create a labelled token, send a unique
-capture, confirm `201` with an id and timestamp, confirm it appears exactly
-once in the Inbox, then send the *same* `Idempotency-Key` again and confirm
-`200` with the same id and still one row. Revoke the token and confirm
-rejection. This is M1's only piece never exercised against production, and
-the whole point of B0.1 is that a phone should not be the first thing to
-discover a broken capture endpoint.
+What this proves is *selection*, not delivery: the command stamps the date
+whether or not the mail leaves, and cron's output goes to root's mail, which
+read-only diagnosis cannot reach. Asking the recipient is the only remaining
+proof.
+
+**2. B0.1 — the capture smoke test. Closed, all five steps.** See the B0.1
+section above for the evidence.
 
 **3. Confirm the New York morning, August 2.** The 07:00–12:00 EDT window.
 Both remaining accounts should receive their digest there, hours after the
 Makassar one — the same job, two different mornings, which is the behaviour
-the whole change exists for.
+the whole change exists for. This is the last piece of the time-zone work
+still unobserved.
 
-**4. Then tag.** `DEPLOYED-2026-08-01/1156` and move `LIVE`, both at
+**4. Then tag. Done:** `DEPLOYED-2026-08-01/1156` and `LIVE`, both at
 `fed210b` — the tip at deploy time; everything since is documentation. No
 `bittern` tag: Stages 1–3 are still ahead.
 

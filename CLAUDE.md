@@ -35,6 +35,27 @@ README ran every suite except the one covering the capture API.
 
 Never `npx tsc`; the build's `tsc --noEmit` is the type check.
 
+## Android
+
+Neither `JAVA_HOME` nor `ANDROID_HOME` is set globally, and the `java` on
+PATH is an unrelated Java 8 stub — so the build needs both pointed at
+Android Studio's own JDK and SDK:
+
+```powershell
+$env:JAVA_HOME = "$env:ProgramFiles\Android\Android Studio\jbr"
+$env:ANDROID_HOME = "$env:LOCALAPPDATA\Android\Sdk"
+cd android; .\gradlew.bat :app:testDebugUnitTest
+```
+
+`:app:assembleDebug` builds the APK. Results land in
+`app/build/test-results/`; the Gradle summary says BUILD SUCCESSFUL without
+naming the test count, so read the XML rather than trusting the absence of
+red.
+
+**AGP 9 builds Kotlin itself.** Applying `org.jetbrains.kotlin.android`
+alongside it fails the build outright — nearly every guide predates this.
+The Compose compiler plugin is still applied separately.
+
 ## Changing an API schema
 
 A Ninja schema change does not reach the SPA until the contract is

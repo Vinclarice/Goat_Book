@@ -278,6 +278,37 @@ hard-coded into the app. The same table is the future iOS handoff.
 
 ### M2 — native app and token lifecycle
 
+**Status: started August 1, 2026 — buildable skeleton in `android/`.** The
+project assembles a real debug APK and runs unit tests from the command
+line, which is the bar this plan set before any mobile code entered the
+repository. `applicationId` is `com.vinclarice.capture`; versions are pinned
+in `gradle/libs.versions.toml` from live Maven metadata rather than a
+template, and the wrapper distribution is checksum-pinned to the release it
+was generated from.
+
+The first slice is M1's client half: `dispositionFor(status)` encodes the
+handoff table as a pure function, so M3's retry logic branches on it instead
+of re-deciding it. Eight tests. Unknown statuses map to retry rather than
+rejection on purpose — a wasted background attempt costs little, discarding
+a thought the person typed is the one failure this app exists to prevent.
+
+Two things worth knowing before touching the build. **AGP 9 builds Kotlin
+itself**, and applying `org.jetbrains.kotlin.android` alongside it fails
+outright, which nearly every guide still tells you to do. And neither
+`JAVA_HOME` nor `ANDROID_HOME` is set on this machine, so command-line
+builds need both pointed at Android Studio's bundled JDK and SDK — see
+`CLAUDE.md`.
+
+Still to come: the three screens, Keystore-backed token storage, and the
+HTTPS client.
+
+#### Sequencing note
+
+Stage 2's B1 and B2 shipped before M2 began, which reverses the documented
+order. The reason was environment, not preference: Android Studio was not
+installed while that work was done. Recorded here so the order looks
+deliberate rather than forgotten.
+
 Create a standalone Kotlin Android project using Jetpack Compose. Its first
 release has three screens only:
 

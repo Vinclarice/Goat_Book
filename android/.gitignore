@@ -1,0 +1,19 @@
+# Build output and Gradle's own state.
+.gradle/
+build/
+app/build/
+
+# Machine-specific SDK path, written by Android Studio on first open. The
+# build resolves the SDK from ANDROID_HOME instead, so this never needs to
+# be committed -- and committing it breaks every other machine.
+local.properties
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+captures/
+
+# Keystores. Nothing signed for release exists yet, and when it does the
+# key belongs in the deployment environment, not the repository.
+*.jks
+*.keystore

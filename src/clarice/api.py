@@ -13,6 +13,7 @@ from ninja import NinjaAPI, Schema
 from ninja.security import django_auth
 
 from accounts.api_v1 import router as accounts_router
+from accounts.auth import SessionAuthIfLoggedIn, TokenAuth
 from capture.api_v1 import router as capture_router
 from lists.api_v1 import router as lists_router
 
@@ -30,6 +31,16 @@ class MeOut(Schema):
     email: str
 
 
-@api.get("/me", response=MeOut)
+# Token auth as well as session, and in that order for the reason
+# accounts.auth documents: a bearer request must not fall through to the
+# session path and be told its problem is CSRF.
+#
+# This is the only endpoint a freshly pasted personal access token can call
+# safely, which is what M2's Connect screen needs -- without it the sole
+# way to check a token was to POST a capture, putting a junk row in the
+# owner's Inbox every time somebody mistyped one. It also answers Settings'
+# "which account is this phone connected to". No escalation: the token
+# already authorises writing captures to this account.
+@api.get("/me", response=MeOut, auth=[TokenAuth(), SessionAuthIfLoggedIn()])
 def me(request):
     return {"username": request.user.username, "email": request.user.email}

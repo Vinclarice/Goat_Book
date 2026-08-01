@@ -25,7 +25,10 @@
         },
         "security": [
           {
-            "SessionAuth": []
+            "TokenAuth": []
+          },
+          {
+            "SessionAuthIfLoggedIn": []
           }
         ]
       }
@@ -1088,16 +1091,16 @@
       }
     },
     "securitySchemes": {
-      "SessionAuth": {
-        "type": "apiKey",
-        "in": "cookie",
-        "name": "sessionid"
-      },
       "TokenAuth": {
         "type": "http",
         "scheme": "bearer"
       },
       "SessionAuthIfLoggedIn": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "sessionid"
+      },
+      "SessionAuth": {
         "type": "apiKey",
         "in": "cookie",
         "name": "sessionid"

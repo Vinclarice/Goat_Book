@@ -37,10 +37,29 @@ class SettingsViewModelTest {
 
     private val alice = Identity("alice", "alice@example.com")
 
+    private class FakeStorage : QueueStorage {
+        var items: List<PendingCapture> = emptyList()
+        override fun load() = items
+        override fun save(items: List<PendingCapture>) { this.items = items }
+    }
+
+    private class FakeScheduler : DeliveryScheduler {
+        var asked = 0
+        override fun schedule() { asked++ }
+    }
+
+    private fun queueOf(vararg items: PendingCapture): CaptureQueue {
+        val storage = FakeStorage()
+        storage.save(items.toList())
+        return CaptureQueue(storage)
+    }
+
     private fun viewModel(
         result: IdentifyResult,
         store: TokenStore = FakeStore().apply { save("tok_stored") },
-    ) = SettingsViewModel(Connector(FakeApi(result), store))
+        queue: CaptureQueue = queueOf(),
+        scheduler: DeliveryScheduler = FakeScheduler(),
+    ) = SettingsViewModel(Connector(FakeApi(result), store), queue, scheduler)
 
     @Test
     fun `it opens in a loading state rather than claiming to be disconnected`() {
@@ -136,6 +155,133 @@ class SettingsViewModelTest {
         assertEquals(1, store.clearedTimes)
         assertFalse(model.state.value.connected)
         assertNull(model.state.value.identity)
+    }
+
+    @Test
+    fun `it says how many captures are waiting to send`() = runTest {
+        val model = viewModel(
+            Identified(alice),
+            queue = queueOf(
+                PendingCapture("key-1", "one", 100),
+                PendingCapture("key-2", "two", 200),
+            ),
+        )
+
+        model.load()
+
+        assertEquals(2, model.state.value.waiting)
+        assertTrue(model.state.value.needsAttention.isEmpty())
+    }
+
+    @Test
+    fun `a stalled capture is shown as needing attention, not as waiting`() = runTest {
+        // Otherwise it is invisible. A stalled item stops counting as
+        // pending, so without this the screen shows nothing at all and the
+        // capture has, as far as its owner can tell, disappeared.
+        val model = viewModel(
+            Identified(alice),
+            queue = queueOf(
+                PendingCapture("key-1", "stuck", 100, attempts = 5, state = QueueState.STALLED),
+            ),
+        )
+
+        model.load()
+
+        assertEquals(0, model.state.value.waiting)
+        assertEquals(listOf("stuck"), model.state.value.needsAttention.map { it.text })
+    }
+
+    @Test
+    fun `a rejected capture is distinguishable from a stalled one`() = runTest {
+        // They need different things from a person -- one an edit, the other
+        // just another go -- so collapsing them into "problem" would be
+        // telling somebody there is a problem without saying what to do.
+        val model = viewModel(
+            Identified(alice),
+            queue = queueOf(
+                PendingCapture("key-1", "stuck", 100, attempts = 5, state = QueueState.STALLED),
+                PendingCapture("key-2", "refused", 200, state = QueueState.REJECTED),
+            ),
+        )
+
+        model.load()
+
+        assertEquals(
+            listOf(QueueState.STALLED, QueueState.REJECTED),
+            model.state.value.needsAttention.map { it.state },
+        )
+    }
+
+    @Test
+    fun `retrying a stalled capture puts it back among the waiting`() = runTest {
+        val queue = queueOf(
+            PendingCapture("key-1", "stuck", 100, attempts = 5, state = QueueState.STALLED),
+        )
+        val model = viewModel(Identified(alice), queue = queue)
+        model.load()
+
+        model.retry("key-1")
+
+        assertEquals(1, model.state.value.waiting)
+        assertTrue(model.state.value.needsAttention.isEmpty())
+    }
+
+    @Test
+    fun `a retried capture keeps the key it was first queued with`() = runTest {
+        // The whole reason a stalled item is kept rather than dropped. A
+        // fresh key here would turn one thought into a second note the
+        // moment it finally landed.
+        val queue = queueOf(
+            PendingCapture("key-1", "stuck", 100, attempts = 5, state = QueueState.STALLED),
+        )
+        val model = viewModel(Identified(alice), queue = queue)
+
+        model.retry("key-1")
+
+        assertEquals("key-1", queue.waiting().single().key)
+    }
+
+    @Test
+    fun `retrying asks for a delivery rather than waiting for one`() = runTest {
+        val scheduler = FakeScheduler()
+        val queue = queueOf(
+            PendingCapture("key-1", "stuck", 100, attempts = 5, state = QueueState.STALLED),
+        )
+        val model = viewModel(Identified(alice), queue = queue, scheduler = scheduler)
+
+        model.retry("key-1")
+
+        assertEquals(1, scheduler.asked)
+    }
+
+    @Test
+    fun `the queue is shown even when the account cannot be reached`() = runTest {
+        // Being offline is exactly when somebody checks what is still
+        // unsent, so hiding the queue behind a successful identity lookup
+        // would withhold it at the only moment it matters.
+        val model = viewModel(
+            Unreachable("Could not reach Clarice."),
+            queue = queueOf(PendingCapture("key-1", "one", 100)),
+        )
+
+        model.load()
+
+        assertEquals(1, model.state.value.waiting)
+    }
+
+    @Test
+    fun `disconnecting does not empty the queue`() = runTest {
+        // The reason the queue has its own Keystore alias. If it rode on the
+        // token's key, every unsent thought would be destroyed at the exact
+        // moment somebody disconnected -- silently, and unrecoverably.
+        val queue = queueOf(PendingCapture("key-1", "unsent", 100))
+        val model = viewModel(Identified(alice), queue = queue)
+        model.load()
+
+        model.disconnect()
+
+        assertEquals(1, queue.waiting().size)
+        assertEquals(1, model.state.value.waiting)
     }
 
     @Test

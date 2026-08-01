@@ -79,7 +79,7 @@ private fun Root(
         // Not remembered across visits, deliberately: a fresh model per open
         // is what makes it ask the server again instead of showing the
         // account it saw last time.
-        val settingsModel = remember { SettingsViewModel(connector) }
+        val settingsModel = remember { SettingsViewModel(connector, queue, scheduler) }
         BackHandler { showSettings = false }
         SettingsScreen(
             model = settingsModel,

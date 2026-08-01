@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
@@ -21,13 +21,35 @@ export function PreferencesRoute() {
     queryFn: async () => {
       const { data, error } = await apiV1.GET("/api/v1/me/preferences");
       if (error) throw error;
-      setUsername(data.username);
-      setEmail(data.email);
-      setDailyDigest(data.daily_digest);
-      setTimeZone(data.time_zone);
       return data;
     },
   });
+
+  // Seeded once, deliberately, rather than from inside queryFn.
+  //
+  // staleTime defaults to 0 and refetchOnWindowFocus is on, so this query
+  // refetches every time the tab regains focus. Writing form state from the
+  // fetch meant an alt-tab silently restored the server's values over
+  // whatever was being edited -- and the save that followed then sent the
+  // restored value and reported "Saved.", which is worse than failing,
+  // because it looks like it worked.
+  const seeded = useRef(false);
+  useEffect(() => {
+    if (!data || seeded.current) return;
+    seeded.current = true;
+    setUsername(data.username);
+    setEmail(data.email);
+    setDailyDigest(data.daily_digest);
+    setTimeZone(data.time_zone);
+  }, [data]);
+
+  /** Any edit invalidates a previous "Saved." -- otherwise it sits there
+   *  over an unsaved change, which is how someone concludes their change
+   *  was stored when it was not. */
+  function edit<T>(setter: (value: T) => void, value: T) {
+    setSaved(false);
+    setter(value);
+  }
 
   // Asked of the server rather than read from Intl.supportedValuesOf: the
   // browser's tzdata and the server's can disagree, and the disagreement
@@ -115,7 +137,7 @@ export function PreferencesRoute() {
           <input
             id="pref-username"
             value={username}
-            onChange={(event) => setUsername(event.target.value)}
+            onChange={(event) => edit(setUsername, event.target.value)}
             required
             className="w-full rounded-lg border border-border bg-input px-3 py-1.5"
           />
@@ -129,7 +151,7 @@ export function PreferencesRoute() {
             id="pref-email"
             type="email"
             value={email}
-            onChange={(event) => setEmail(event.target.value)}
+            onChange={(event) => edit(setEmail, event.target.value)}
             required
             className="w-full rounded-lg border border-border bg-input px-3 py-1.5"
           />
@@ -142,7 +164,7 @@ export function PreferencesRoute() {
           <select
             id="pref-time-zone"
             value={timeZone}
-            onChange={(event) => setTimeZone(event.target.value)}
+            onChange={(event) => edit(setTimeZone, event.target.value)}
             className="w-full rounded-lg border border-border bg-input px-3 py-1.5"
           >
             {/* Until the list arrives, the saved zone is the only option,
@@ -166,7 +188,10 @@ export function PreferencesRoute() {
               A morning email listing anything overdue or due today.
             </p>
           </div>
-          <Switch checked={dailyDigest} onCheckedChange={setDailyDigest} />
+          <Switch
+            checked={dailyDigest}
+            onCheckedChange={(next) => edit(setDailyDigest, next)}
+          />
         </div>
 
         {saveError && <p className="text-sm text-destructive">{saveError}</p>}

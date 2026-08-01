@@ -216,11 +216,12 @@ and should remain dependable under poor connectivity.
 ### M1 — idempotent capture writes
 
 **Current state:** the additive server implementation and migration are
-committed, and `manage.py test capture` passes in the project environment (98
-tests, SQLite) — the M1 commit message's caveat that it had never been run is
-now resolved. Before deploying it or starting M2, confirm the same suite
-against the Postgres-backed CI path, apply the migration in production, and
-complete B0.1's production smoke check.
+committed, and the capture suite passes both locally (98 tests, SQLite) and on
+the Postgres-backed CI path, where migration `0003_capture_idempotency_key` is
+applied by the test runner against Postgres 18. The M1 commit message's caveat
+that it had never been run is resolved. Two items remain before M2 may depend
+on it: apply the migration in production, and complete B0.1's production smoke
+check. Both sit on the far side of the Stage 0 gate.
 
 The current endpoint creates a capture for every successful POST. If Android
 sends a request, loses the response, and retries, it cannot know whether the

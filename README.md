@@ -58,7 +58,7 @@ $env:VITE_DEV_SERVER_URL = "http://127.0.0.1:5173"
 ## Checks
 
 ```powershell
-.\.venv\Scripts\python.exe src\manage.py test accounts lists
+.\.venv\Scripts\python.exe src\manage.py test accounts lists capture
 pnpm --dir frontend test
 pnpm --dir frontend build
 ```
@@ -66,6 +66,11 @@ pnpm --dir frontend build
 CI (`.github/workflows/ci.yml`) runs the same three checks on every push and
 pull request, with the Django suite run against a Postgres service
 container instead of SQLite, matching production's database engine.
+
+Keep the Django app list here matching CI's. It previously omitted `capture`,
+so following this file ran every suite except the one covering the capture
+API -- the reason an idempotency change could be committed claiming its
+tests had never been run.
 
 The local recovery path for a forgotten password is Django's authenticated
 management command:

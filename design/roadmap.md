@@ -621,7 +621,7 @@ Neither spec is built yet.
 
 ---
 
-## Track A — Next: closed, with one follow-up queued
+## Track A — Next: closed, with two follow-ups built
 
 **Everything in this queue has shipped**, all of it on July 31, 2026, and
 the queue is kept here as a record rather than a plan. `main` is at
@@ -682,6 +682,55 @@ checkbox and the per-subtask toggle only appear once the parent actually
 repeats, since on a task that doesn't, "comes back next time" has nothing
 to mean. The flag still defaults to `true` underneath, so nothing is lost
 by not showing it.
+
+**A second follow-up, also built: the orphaned subtask.** The same query
+that hid the carry-forward bug hid a second one on the way out. A subtask
+completed before its recurring parent was left at `completed` under a
+parent that had just archived itself, because `complete_item`'s cascade
+asked for children that were still *active*. `/api/v1/lists/{id}` drops
+archived items from the payload, so the parent vanished and
+`TaskWorkspace`'s `rows()` — which promotes a child whose parent isn't on
+screen to the top level rather than losing it — drew the leftover subtask
+as a root task. Confirmed live on July 31, 2026 before it was fixed.
+
+The rule that settles it was already written down, just not applied here:
+`archive_item` has always taken *every* non-archived child with it, on the
+grounds that an archived parent must not leave live children behind. A
+recurring completion archives a parent too, so it now obeys the same rule
+through the same query (`_lock_live_children`, shared by both).
+
+What made this more than a filter change is that one query was answering
+two questions again, exactly as before:
+
+- **What the cascade must sweep** is now "every child not already
+  archived", because the orphan is what that prevents.
+- **What an undo reopens** stays "the children that were active", because
+  reopening a child finished before its parent would silently un-complete
+  work nobody undid. That set is still what `_cascaded` carries on the
+  completing path.
+
+The two only diverge when the parent archives, and on that path undo is
+`restore_item`, which reads each child's own `completed_at` to decide
+where it goes back to rather than reopening the set wholesale — the
+pattern migration `0018` established. So the early-completed child keeps
+its real completion time through the archive instead of being stamped
+with the parent's, which is the whole reason restore can tell the two
+kinds of child apart afterwards.
+
+The client had to change too, or the fix was invisible in the session that
+triggered it: the server had been returning `cascaded` since the subtask
+work and nothing consumed it, so a completed parent's children sat in
+local state at their old status until a reload. Both workspaces now fold
+it in. That also fixed a quieter version of the same staleness on the
+agenda, where a cascaded child stayed in the open list.
+
+**Known gap, deliberately not fixed here:** the spawned next occurrence
+comes back without the fresh copies of its subtasks, which the server
+creates in the same transaction but doesn't serialize. So a recurring
+parent with subtasks shows up childless until the page is reloaded. It's
+a missing-children bug rather than the orphan one, wants its own decision
+about the response shape, and is noted at the call site in
+`TaskWorkspace.changeStatus`.
 
 The original queue, for the record:
 

@@ -7,6 +7,7 @@ interface ApiErrors {
 interface ApiResponse<T> {
   data?: T;
   spawned?: Task;
+  cascaded?: Task[];
   errors?: ApiErrors;
 }
 
@@ -140,6 +141,12 @@ export interface StatusUpdateResult {
   /** Set when completing a recurring task auto-archives it and creates
    * the next occurrence in the same request. */
   spawned?: Task;
+  /** The subtasks this one status change also moved, each already carrying
+   * its new status. Completing a parent takes its children with it, and a
+   * caller holding its own copy of the list has to be told -- otherwise a
+   * child left at `completed` under a parent that just archived itself keeps
+   * being drawn, now at the top level, its parent no longer on screen. */
+  cascaded: Task[];
 }
 
 export async function updateTaskStatus(
@@ -147,7 +154,11 @@ export async function updateTaskStatus(
   status: TaskStatus,
 ): Promise<StatusUpdateResult> {
   const payload = await requestPayload<Task>(task.url, "PATCH", { status });
-  return { task: payload.data as Task, spawned: payload.spawned };
+  return {
+    task: payload.data as Task,
+    spawned: payload.spawned,
+    cascaded: payload.cascaded ?? [],
+  };
 }
 
 export async function deleteTask(task: Task): Promise<number> {

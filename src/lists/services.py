@@ -334,16 +334,27 @@ def _spawn_next_occurrence(completed_item, carry_forward=()):
     return next_item
 
 
-def _lock_open_children(item):
-    """Children still open, locked parent-first.
+def _lock_live_children(item):
+    """Every child still on the board -- active or completed, but not
+    archived -- locked parent-first and in pk order.
 
     Lock ordering matters now that select_for_update() is real on Postgres:
-    every cascade takes the parent's lock before its children's, so two
-    cascades can't deadlock by grabbing them in opposite orders.
+    every cascade takes the parent's lock before its children's, and all of
+    them in the same pk order, so two cascades can't deadlock by grabbing
+    them in opposite orders.
+
+    Deliberately not "children still active". Whatever archives a parent has
+    to take its completed children too: /api/v1/lists/{id} drops archived
+    items from the payload entirely, so a child left behind at `completed`
+    loses the parent it was nested under and the list page draws it as a root
+    task. Callers that only mean to *complete* a parent filter this down
+    themselves -- a completed parent stays in the payload, so its already-
+    completed children are no orphan risk and are left alone.
     """
     return list(
         Item.objects.select_for_update()
-        .filter(parent=item, status=Item.Status.ACTIVE)
+        .filter(parent=item)
+        .exclude(status=Item.Status.ARCHIVED)
         .order_by("pk")
     )
 
@@ -354,7 +365,7 @@ def _children_to_carry_forward(item):
     it's still active, already completed, or about to be cascaded by this
     same action.
 
-    Deliberately not the same query as _lock_open_children: that one is about
+    Deliberately not the same query as _lock_live_children: that one is about
     cascade bookkeeping ("what must be resolved because an archived or
     completed parent can't have live children"), this one is about what the
     next occurrence looks like. Sharing one answer between them is the bug
@@ -379,11 +390,18 @@ def complete_item(item):
     item._cascaded = []
     if item.status != Item.Status.COMPLETED:
         now = timezone.now()
-        # Captured before the parent moves, and returned to the caller: the
-        # server cannot reconstruct this set afterwards, because children
-        # already completed before the parent was ticked are indistinguishable
-        # from ones this action completed. Undo has to reopen exactly these.
-        children = _lock_open_children(item)
+        # Captured before the parent moves, and split by what each child
+        # already was, because afterwards they are indistinguishable: a child
+        # ticked off ten minutes ago and one ticked off by this very action
+        # both read as done. The caller is handed the difference rather than
+        # left to recompute it.
+        children = _lock_live_children(item)
+        open_children = [
+            each for each in children if each.status == Item.Status.ACTIVE
+        ]
+        done_children = [
+            each for each in children if each.status == Item.Status.COMPLETED
+        ]
         is_recurring = item.recurrence != Item.Recurrence.NONE
         # Read before the cascade below mutates anything. A recurring parent
         # archives its open children on the way out, so running this query
@@ -403,16 +421,36 @@ def complete_item(item):
             item.archive_group = uuid4()
         item.save()
 
-        for child in children:
+        for child in open_children:
             child.status = item.status
             child.completed_at = now
             child.archived_at = item.archived_at
             child.archive_group = item.archive_group
             child.save()
-        item._cascaded = children
-
+        # _cascaded is the children this action moved, in pk order.
         if is_recurring:
+            # A child finished before its parent still can't stay behind: an
+            # archived parent is filtered out of the list payload, and a
+            # completed child under it would be drawn as a root task. Note
+            # what is *not* touched -- its completed_at. It was genuinely
+            # done earlier, and that timestamp is what restore_item reads to
+            # send it back to `completed` rather than `active`.
+            for child in done_children:
+                child.status = Item.Status.ARCHIVED
+                child.archived_at = now
+                child.archive_group = item.archive_group
+                child.save()
+            # Everything, because everything moved. Undoing an archive is
+            # restore_item, which asks each child's own completed_at where it
+            # belongs instead of reopening the set wholesale, so widening
+            # this doesn't wrongly reopen the early-completed one.
+            item._cascaded = children
             item._spawned = _spawn_next_occurrence(item, carry_forward=carry_forward)
+        else:
+            # The open ones and only those: a parent that merely completes
+            # leaves an already-done child exactly where it was, and an undo
+            # reopens precisely what this action closed.
+            item._cascaded = open_children
     return item
 
 
@@ -438,13 +476,9 @@ def archive_item(item):
         group = uuid4()
         # Everything still live under this parent goes with it: an archived
         # parent cannot have live children, or the list page would show an
-        # orphan whose parent is nowhere on screen.
-        children = list(
-            Item.objects.select_for_update()
-            .filter(parent=item)
-            .exclude(status=Item.Status.ARCHIVED)
-            .order_by("pk")
-        )
+        # orphan whose parent is nowhere on screen. The same rule complete_item
+        # applies on the recurring path, and now the same query.
+        children = _lock_live_children(item)
         item.status = Item.Status.ARCHIVED
         item.archived_at = now
         item.archive_group = group

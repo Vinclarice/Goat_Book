@@ -997,9 +997,18 @@ Tagged on the commit that actually reached production, not the one that
 merged — in this project those have already differed by hours more than
 once.
 
-| Tag | Commit | Contents |
+**Three tags per deploy, each answering a different question**, and they
+predate the bird scheme rather than being replaced by it:
+
+| Tag | Kind | Answers |
 | --- | --- | --- |
-| `albatross` | (pending deploy) | The first release to carry the whole feature set: subtasks and `always_recurs`, notes, the side nav, self-service password reset, personal access tokens with `POST /api/v1/capture`, and Capture triage with the `Idea` domain. Also the first deployed against a firewalled database with a proven restore path. |
+| `LIVE` | moving, lightweight | What is running right now? Force-moved on every deploy. It sat 80 commits stale between July 24 and August 1, which is what a moving tag does when nobody moves it. |
+| `DEPLOYED-<date>/<HHMM>` | permanent, lightweight | When did each deploy happen? Local time, matching the existing markers. This is the deploy *event*. |
+| bird name | permanent, annotated | What went out, and why it mattered? The release, in language a person uses. The annotation carries the contents and the verification. |
+
+| Release | Commit | Contents |
+| --- | --- | --- |
+| `albatross` | `f5ddb85`, deployed 2026-07-31 22:24 EDT (`DEPLOYED-2026-07-31/2224`) | The first release carrying the whole feature set: subtasks with `always_recurs` and the orphan fix behind it, notes, the side nav, self-service password reset, personal access tokens with `POST /api/v1/capture`, and Capture triage with the `Idea` domain. Seven migrations, 53 → 60, no existing row changed. Also the first deployed against a database firewalled to the droplet (A5) with a restore path actually proven (A2). |
 
 Two rules that keep the scheme honest:
 

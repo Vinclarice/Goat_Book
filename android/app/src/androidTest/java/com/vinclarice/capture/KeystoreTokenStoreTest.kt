@@ -24,12 +24,36 @@ class KeystoreTokenStoreTest {
 
     private val context = InstrumentationRegistry.getInstrumentation().targetContext
     private val alias = "clarice_test_token"
+    // Its own file, not the app's. See KeystoreTokenStore's comment:
+    // sharing it once cost a live token off a real phone.
+    private val prefsName = "clarice_test_secret"
 
-    private fun store() = KeystoreTokenStore(context, alias = alias)
+    private fun store() = KeystoreTokenStore(context, alias = alias, prefsName = prefsName)
 
     @Before
     fun startClean() {
         store().clear()
+    }
+
+    @Test
+    fun these_tests_never_touch_the_real_app_storage() {
+        // Written after these tests deleted a live token off a real phone.
+        // The alias was parameterised and the preference file was not, so
+        // every run wrote to the app's own file with a key the app could
+        // not decrypt -- and its owner was sent back to Connect.
+        //
+        // Isolating one half of the storage is isolating neither.
+        val real = context.getSharedPreferences(
+            "clarice_capture_secret",
+            android.content.Context.MODE_PRIVATE,
+        )
+        val before = real.getString("token", null)
+
+        store().save("tok_from_a_test")
+        store().clear()
+
+        assertEquals(before, real.getString("token", null))
+        assertNotEquals("clarice_capture_secret", prefsName)
     }
 
     @Test
@@ -71,7 +95,7 @@ class KeystoreTokenStoreTest {
         store().save(token)
 
         val raw = context
-            .getSharedPreferences("clarice_capture_secret", android.content.Context.MODE_PRIVATE)
+            .getSharedPreferences(prefsName, android.content.Context.MODE_PRIVATE)
             .getString("token", "")
 
         assertNotEquals("", raw)
@@ -89,7 +113,7 @@ class KeystoreTokenStoreTest {
         // for the token again.
         store().save("tok_value")
         context
-            .getSharedPreferences("clarice_capture_secret", android.content.Context.MODE_PRIVATE)
+            .getSharedPreferences(prefsName, android.content.Context.MODE_PRIVATE)
             .edit()
             .putString("token", "bm90:cmVhbGx5")
             .commit()
@@ -101,7 +125,7 @@ class KeystoreTokenStoreTest {
     fun a_corrupted_value_does_not_poison_the_next_connection() {
         store().save("tok_value")
         context
-            .getSharedPreferences("clarice_capture_secret", android.content.Context.MODE_PRIVATE)
+            .getSharedPreferences(prefsName, android.content.Context.MODE_PRIVATE)
             .edit()
             .putString("token", "garbage-without-a-separator")
             .commit()

@@ -33,10 +33,17 @@ import javax.crypto.spec.GCMParameterSpec
 class KeystoreTokenStore(
     context: Context,
     private val alias: String = DEFAULT_ALIAS,
+    // Parameterised alongside the alias, and for the same reason. When only
+    // the alias was overridable, the instrumentation tests wrote to the real
+    // app's preference file with a key the real app could not decrypt --
+    // deleting a live token from a phone and sending its owner back to the
+    // Connect screen. Isolating one half of the storage is isolating
+    // neither.
+    prefsName: String = DEFAULT_PREFS,
 ) : TokenStore {
 
     private val prefs: SharedPreferences =
-        context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        context.applicationContext.getSharedPreferences(prefsName, Context.MODE_PRIVATE)
 
     override fun save(token: String) {
         val cipher = Cipher.getInstance(TRANSFORMATION)
@@ -122,7 +129,7 @@ class KeystoreTokenStore(
         const val ANDROID_KEYSTORE = "AndroidKeyStore"
         const val TRANSFORMATION = "AES/GCM/NoPadding"
         const val DEFAULT_ALIAS = "clarice_capture_token"
-        const val PREFS_NAME = "clarice_capture_secret"
+        const val DEFAULT_PREFS = "clarice_capture_secret"
         const val KEY_TOKEN = "token"
         const val KEY_SIZE_BITS = 256
         const val TAG_LENGTH_BITS = 128

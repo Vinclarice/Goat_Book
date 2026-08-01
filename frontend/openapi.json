@@ -293,6 +293,43 @@
           }
         ]
       }
+    },
+    "/api/v1/capture": {
+      "post": {
+        "operationId": "capture_api_v1_new_capture",
+        "summary": "New Capture",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaptureOut"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CaptureIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "TokenAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -933,6 +970,37 @@
         ],
         "title": "PreferencesIn",
         "type": "object"
+      },
+      "CaptureOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "created_at"
+        ],
+        "title": "CaptureOut",
+        "type": "object"
+      },
+      "CaptureIn": {
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "CaptureIn",
+        "type": "object"
       }
     },
     "securitySchemes": {
@@ -940,6 +1008,10 @@
         "type": "apiKey",
         "in": "cookie",
         "name": "sessionid"
+      },
+      "TokenAuth": {
+        "type": "http",
+        "scheme": "bearer"
       }
     }
   },

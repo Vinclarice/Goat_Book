@@ -9,6 +9,9 @@ urlpatterns = [
     path("logout/", auth_views.LogoutView.as_view(), name="logout"),
     path("settings/", views.account_settings, name="account_settings"),
     path("password/change/", views.change_password, name="change_password"),
+    path("tokens/", views.tokens, name="tokens"),
+    path("tokens/new/", views.new_token, name="new_token"),
+    path("tokens/<int:token_id>/delete/", views.delete_token, name="delete_token"),
     # Django's four-step reset flow, wired to Clarice's own templates. Only
     # the confirm step needs a subclass (it clears the axes lockout too);
     # the rest are the built-ins with a template name.

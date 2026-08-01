@@ -137,12 +137,20 @@ export function PreferencesRoute() {
         />
       </div>
 
-      <a
-        href="/accounts/password/change/"
-        className="text-sm text-muted-foreground hover:text-foreground"
-      >
-        Change password
-      </a>
+      <div className="flex flex-wrap gap-4">
+        <a
+          href="/accounts/password/change/"
+          className="text-sm text-muted-foreground hover:text-foreground"
+        >
+          Change password
+        </a>
+        <a
+          href="/accounts/tokens/"
+          className="text-sm text-muted-foreground hover:text-foreground"
+        >
+          Access tokens
+        </a>
+      </div>
     </div>
   );
 }

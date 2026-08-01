@@ -205,8 +205,35 @@ again in CI.
 
 ## B0.1 — verify the production capture service
 
-Before mobile development depends on it, run a production smoke test using a
-new, labelled personal access token:
+**Status: three of five steps verified on August 1, 2026 — by the phone
+itself, not by curl.** A capture typed on a Samsung SM-F966U reached
+production and appeared in the web Inbox:
+
+```text
+id 1  2026-08-01T22:01:48Z  145c6689-be80-4f2a-be25-d0892ec42eee  Vrbeall01
+total captures: 1        with an idempotency key: 1
+```
+
+The stored key is what makes this conclusive. Browser captures never send
+an `Idempotency-Key`, so a persisted UUID means the write went through M1's
+path with a bearer token — the token decrypted out of the Keystore, the
+header sent, `create_capture_idempotent` storing it, the migration holding
+it, and exactly one row at the end.
+
+Two steps remain, neither of which the app can trigger on its own:
+
+- **The keyed replay.** Sending the *same* key twice should return `200`
+  with the original capture and leave one row. The app generates a fresh
+  key per press, correctly, so forcing a replay needs `curl` with the
+  token.
+- **Revocation.** Delete the token on the web and confirm the next capture
+  is refused.
+
+Until those pass, M1's duplicate protection is proven by the Django suite
+and by CI against Postgres, but has never been exercised against the
+production service it protects.
+
+Original steps, for whoever finishes it:
 
 1. Create the token through the existing account page and save it only in the
    test client.
@@ -339,7 +366,18 @@ production contract gap — precisely the situation this plan says never to
 allow. Check the deployed OpenAPI schema before pointing a client at an
 endpoint, not after.
 
-Still to come: the Capture and Settings screens.
+**Capture is verified on a physical device, August 1, 2026.** Text typed on
+the phone reached production and appeared in the web Inbox, carrying the
+idempotency key that proves it travelled M1's path rather than a browser's.
+
+One defect found by running the real thing, worth keeping because no test
+would have caught it: the instrumentation suite shared the app's own
+preference file, so running it deleted a live token off the phone and sent
+its owner back to Connect. The alias was parameterised; the file name was
+not. Isolating one half of a store's identity is isolating neither. Fixed,
+with a test that asserts the app's file is untouched.
+
+Still to come: the Settings screen.
 
 #### Sequencing note
 

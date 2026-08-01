@@ -14,6 +14,17 @@ android {
         versionCode = 1
         versionName = "0.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Configuration, not source. The plan is explicit that no endpoint
+        // is hard-coded into this app; overriding it is
+        // -PclariceBaseUrl=https://staging.example/ at build time, which is
+        // also how anyone pointing a debug build at their own machine does
+        // it without editing a file they might commit.
+        buildConfigField(
+            "String",
+            "CLARICE_BASE_URL",
+            "\"${project.findProperty("clariceBaseUrl") ?: "https://vinclarice.com/"}\"",
+        )
     }
 
     buildTypes {
@@ -35,6 +46,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 

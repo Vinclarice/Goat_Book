@@ -14,6 +14,8 @@ okhttp = "5.4.0"
 coroutines = "1.11.0"
 junit = "4.13.2"
 json = "20260719"
+androidxTestJunit = "1.3.0"
+androidxTestRunner = "1.7.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -37,6 +39,11 @@ kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-cor
 # tests for a reason unrelated to the code under test. This backs it with
 # the real implementation; production still uses the platform's.
 json = { group = "org.json", name = "json", version.ref = "json" }
+# Instrumentation only. The Keystore has no JVM implementation, so the
+# encryption path can only be exercised on a device or emulator -- these
+# tests compile in CI but run at M4's device pilot.
+androidx-test-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidxTestJunit" }
+androidx-test-runner = { group = "androidx.test", name = "runner", version.ref = "androidxTestRunner" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

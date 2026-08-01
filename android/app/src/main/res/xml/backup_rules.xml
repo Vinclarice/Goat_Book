@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  API 31+ backup rules.
+
+  The encrypted token is excluded from every transfer mode. Not because the
+  ciphertext is dangerous to copy (the Keystore key never leaves the device,
+  so a backup carries something no other device can read) but because
+  restoring it is a correctness problem: the new device would hold
+  ciphertext with no key, and decryption would fail where "not connected
+  yet" is the honest state.
+
+  Every mode is listed on purpose. Omitting a section leaves that transfer
+  path fully enabled, so silence here means the opposite of caution.
+
+  Note for anyone editing: XML comments may not contain a double hyphen, so
+  this file cannot use the dashes the rest of the codebase writes with.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" path="clarice_capture_secret.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="clarice_capture_secret.xml" />
+    </device-transfer>
+</data-extraction-rules>

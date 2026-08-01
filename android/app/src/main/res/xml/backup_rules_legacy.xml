@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The same exclusion for API 30 and below, which uses the older format.
+  Both attributes are needed on the application tag: apps targeting Android
+  12+ still run on older releases, and each version reads only its own file.
+-->
+<full-backup-content>
+    <exclude domain="sharedpref" path="clarice_capture_secret.xml" />
+</full-backup-content>

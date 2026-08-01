@@ -299,8 +299,30 @@ outright, which nearly every guide still tells you to do. And neither
 builds need both pointed at Android Studio's bundled JDK and SDK — see
 `CLAUDE.md`.
 
-Still to come: the three screens, Keystore-backed token storage, and the
-HTTPS client.
+Since then: the HTTPS client (tested against MockWebServer), the connection
+logic behind a `TokenStore` seam, and a Keystore-backed implementation of
+that seam.
+
+**`androidx.security:security-crypto` is not used, and must not be added.**
+It is deprecated; its 1.1.0 "stable" release shipped with every API already
+marked deprecated and no further releases planned, which reads exactly like
+the opposite of a deprecation. Google's replacement guidance is direct
+Android Keystore use with no dependency, which is what
+`KeystoreTokenStore` does.
+
+Two details there are load-bearing rather than incidental:
+`setUserAuthenticationRequired(false)`, because a key requiring user
+authentication is permanently invalidated when the lock screen is removed
+or biometrics are re-enrolled — after which every capture would throw; and
+the backup exclusion, which exists for correctness rather than secrecy,
+since a restore would otherwise hand a new device ciphertext with no key.
+
+**Unverified:** the encryption path has never executed. `AndroidKeyStore`
+exists only on a device, so its seven tests live in `androidTest`, compile
+in CI, and run at M4. No AVD exists on the development machine yet.
+
+Still to come: the three screens, and moving the base URL into build
+configuration rather than a constructor argument.
 
 #### Sequencing note
 

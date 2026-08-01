@@ -9,7 +9,9 @@
     <application
         android:label="Clarice Capture"
         android:supportsRtl="true"
-        android:theme="@style/Theme.ClariceCapture">
+        android:theme="@style/Theme.ClariceCapture"
+        android:dataExtractionRules="@xml/backup_rules"
+        android:fullBackupContent="@xml/backup_rules_legacy">
         <activity
             android:name=".MainActivity"
             android:exported="true"

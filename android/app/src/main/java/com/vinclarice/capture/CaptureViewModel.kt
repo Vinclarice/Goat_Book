@@ -34,6 +34,10 @@ class CaptureViewModel(
     private val api: ClariceApi,
     private val store: TokenStore,
     private val queue: CaptureQueue,
+    // A seam rather than WorkManager itself, so these decisions stay
+    // testable on the JVM. Everything this class knows about background
+    // delivery is "ask for one".
+    private val scheduler: DeliveryScheduler = DeliveryScheduler {},
     // Injected so a test can watch which keys were used. In production a
     // random UUID per capture, which is what the server's uniqueness
     // constraint is scoped to.
@@ -53,7 +57,13 @@ class CaptureViewModel(
     /** Recount what is waiting. Suspending because reading the queue means
      *  decrypting it, and Keystore calls are real IPC. */
     suspend fun refresh() = withContext(Dispatchers.IO) {
-        _state.value = _state.value.copy(pending = queue.waiting().size)
+        val waiting = queue.waiting().size
+        _state.value = _state.value.copy(pending = waiting)
+        // Covers the gap where the process died between queueing a capture
+        // and scheduling its delivery. Asking twice is free -- the work is
+        // enqueued under one name and a duplicate request is dropped -- and
+        // not asking at all leaves a queue with nothing arranged to drain it.
+        if (waiting > 0) scheduler.schedule()
     }
 
     suspend fun submit() = withContext(Dispatchers.IO) {
@@ -70,6 +80,7 @@ class CaptureViewModel(
             // Not a refusal any more. The queue can hold this until a token
             // exists, which is strictly better than making somebody reconnect
             // before they are allowed to think.
+            scheduler.schedule()
             report(NEEDS_TOKEN, isError = false)
             return@withContext
         }
@@ -85,13 +96,17 @@ class CaptureViewModel(
             // people to distrust a queue that is working perfectly.
             Disposition.RETRY_LATER -> {
                 queue.failed(item.key)
+                scheduler.schedule()
                 report("Saved — will send when online.", isError = false)
             }
             // No attempt charged. The ceiling bounds pointless repetition,
             // and this has a known cause and a known fix; spending attempts
             // here would strand the queue at the very moment reconnecting
             // was meant to drain it.
-            Disposition.NEEDS_RECONNECT -> report(NEEDS_TOKEN, isError = false)
+            Disposition.NEEDS_RECONNECT -> {
+                scheduler.schedule()
+                report(NEEDS_TOKEN, isError = false)
+            }
             Disposition.REJECTED -> {
                 queue.rejected(item.key)
                 // The only path that returns the text. It is still queued --

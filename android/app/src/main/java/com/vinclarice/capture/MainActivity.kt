@@ -31,11 +31,18 @@ class MainActivity : ComponentActivity() {
         val store = KeystoreTokenStore(applicationContext)
         val connector = Connector(api = api, store = store)
         val queue = CaptureQueue(EncryptedQueueStorage(applicationContext))
+        val scheduler = CaptureWorker.prepare(applicationContext)
 
         setContent {
             MaterialTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    Root(connector = connector, api = api, store = store, queue = queue)
+                    Root(
+                        connector = connector,
+                        api = api,
+                        store = store,
+                        queue = queue,
+                        scheduler = scheduler,
+                    )
                 }
             }
         }
@@ -48,13 +55,14 @@ private fun Root(
     api: ClariceApi,
     store: TokenStore,
     queue: CaptureQueue,
+    scheduler: DeliveryScheduler,
 ) {
     val connectModel = remember { ConnectViewModel(connector) }
     // Held here rather than inside the Capture branch, so that a trip to
     // Settings and back does not drop it out of composition along with
     // whatever half-finished thought was in the field. The queue now covers
     // everything already submitted; this covers what is still being typed.
-    val captureModel = remember { CaptureViewModel(api, store, queue) }
+    val captureModel = remember { CaptureViewModel(api, store, queue, scheduler) }
 
     var connected by remember { mutableStateOf(connectModel.isConnected) }
     var showSettings by remember { mutableStateOf(false) }

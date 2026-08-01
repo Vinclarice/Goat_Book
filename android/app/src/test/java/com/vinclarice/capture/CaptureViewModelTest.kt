@@ -54,10 +54,16 @@ class CaptureViewModelTest {
         }
     }
 
+    private class FakeScheduler : DeliveryScheduler {
+        var asked = 0
+        override fun schedule() { asked++ }
+    }
+
     private class Fixture(
         val api: FakeApi,
         val queue: CaptureQueue,
         val model: CaptureViewModel,
+        val scheduler: FakeScheduler,
     )
 
     private fun fixture(
@@ -68,13 +74,15 @@ class CaptureViewModelTest {
         val api = FakeApi(disposition)
         val queue = CaptureQueue(FakeStorage(), ceiling = ceiling)
         api.queue = queue
+        val scheduler = FakeScheduler()
         var clock = 1_000L
         return Fixture(
             api,
             queue,
             // Advancing, so two captures in one test are ordered rather than
             // tied -- the queue sorts by created-at.
-            CaptureViewModel(api, store, queue, now = { clock += 1; clock }),
+            CaptureViewModel(api, store, queue, scheduler, now = { clock += 1; clock }),
+            scheduler,
         )
     }
 
@@ -283,6 +291,73 @@ class CaptureViewModelTest {
         f.model.submit()
 
         assertEquals(0, f.model.state.value.pending)
+    }
+
+    @Test
+    fun `an unsent capture asks for a background delivery`() = runTest {
+        // Otherwise "will send when online" is a promise nothing in the app
+        // is arranged to keep.
+        val f = fixture(Disposition.RETRY_LATER)
+        f.model.onTextChange("buy milk")
+
+        f.model.submit()
+
+        assertEquals(1, f.scheduler.asked)
+    }
+
+    @Test
+    fun `a revoked token also asks, because reconnecting is what unblocks it`() = runTest {
+        val f = fixture(Disposition.NEEDS_RECONNECT)
+        f.model.onTextChange("buy milk")
+
+        f.model.submit()
+
+        assertEquals(1, f.scheduler.asked)
+    }
+
+    @Test
+    fun `a delivered capture asks for nothing`() = runTest {
+        // A wake-up scheduled over an empty queue is pure battery.
+        val f = fixture(Disposition.DELIVERED)
+        f.model.onTextChange("buy milk")
+
+        f.model.submit()
+
+        assertEquals(0, f.scheduler.asked)
+    }
+
+    @Test
+    fun `a rejected capture asks for nothing either`() = runTest {
+        // No amount of retrying makes a 400 acceptable; only editing does.
+        val f = fixture(Disposition.REJECTED)
+        f.model.onTextChange("buy milk")
+
+        f.model.submit()
+
+        assertEquals(0, f.scheduler.asked)
+    }
+
+    @Test
+    fun `opening with something already queued asks for a delivery`() = runTest {
+        // Covers the gap where the process died between queueing a capture
+        // and scheduling its delivery -- the queue would otherwise sit there
+        // with nothing arranged to drain it.
+        val f = fixture(Disposition.RETRY_LATER)
+        f.queue.add("from a previous life", "key-old", 1)
+
+        f.model.refresh()
+
+        assertEquals(1, f.scheduler.asked)
+        assertEquals(1, f.model.state.value.pending)
+    }
+
+    @Test
+    fun `opening with an empty queue asks for nothing`() = runTest {
+        val f = fixture()
+
+        f.model.refresh()
+
+        assertEquals(0, f.scheduler.asked)
     }
 
     @Test

@@ -67,6 +67,11 @@ def serialize_item(item):
             if item.parent_id
             else None
         ),
+        # Only means anything when `parent` is set -- a root task carries the
+        # model default and nothing reads it. Serialised unconditionally
+        # anyway, so the field is a plain bool rather than a nullable one the
+        # client would have to narrow before using.
+        "always_recurs": item.always_recurs,
         # Counts rather than nested children: the list page fetches the whole
         # list anyway and nests client-side, while the agenda only needs "2/5".
         "subtask_counts": subtask_counts_for(item),

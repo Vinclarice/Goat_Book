@@ -46,6 +46,11 @@ export function SideNav() {
             <span className={styles.count}>{data.inbox_count}</span>
           )}
         </a>
+        {/* No count: unlike the inbox, a pile of ideas isn't a backlog to
+            work down, so a number next to it would read as pressure. */}
+        <a className={styles.link} href={data?.ideas_url ?? "/capture/ideas/"}>
+          Ideas
+        </a>
         <NavLink to="/archive" className={navLinkClass}>
           Archive
           {data && data.archived_count > 0 && (

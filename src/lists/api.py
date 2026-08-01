@@ -124,6 +124,12 @@ def create_item(request, list_id):
     parent, parent_error = _resolve_parent(request, payload.get("parent"))
     if parent_error:
         return parent_error
+    always_recurs = payload.get("always_recurs")
+    if always_recurs is not None and not isinstance(always_recurs, bool):
+        return JsonResponse(
+            {"errors": {"always_recurs": ["Send true or false."]}},
+            status=400,
+        )
     try:
         item = services.create_item(
             our_list,
@@ -132,6 +138,9 @@ def create_item(request, list_id):
             tags=tags,
             recurrence=recurrence,
             parent=parent,
+            # Left as None when absent, so the service can tell "not asked
+            # for" from an explicit False on a task that can't have it.
+            always_recurs=always_recurs,
         )
     except services.TaskConflict as error:
         return JsonResponse(
@@ -209,6 +218,7 @@ def item_detail(request, item_id):
         return error_response
     changed_fields = {
         "text", "status", "due_date", "tags", "recurrence", "notes", "parent",
+        "always_recurs",
     }.intersection(payload)
     if len(changed_fields) != 1:
         return JsonResponse(
@@ -216,7 +226,8 @@ def item_detail(request, item_id):
                 "errors": {
                     "body": [
                         "Change exactly one of text, status, due_date, tags, "
-                        "recurrence, notes, or parent per request."
+                        "recurrence, notes, parent, or always_recurs per "
+                        "request."
                     ]
                 }
             },
@@ -256,6 +267,14 @@ def item_detail(request, item_id):
                     status=400,
                 )
             item = services.set_item_notes(item, notes)
+        elif "always_recurs" in changed_fields:
+            always_recurs = payload["always_recurs"]
+            if not isinstance(always_recurs, bool):
+                return JsonResponse(
+                    {"errors": {"always_recurs": ["Send true or false."]}},
+                    status=400,
+                )
+            item = services.set_always_recurs(item, always_recurs)
         elif "parent" in changed_fields:
             # null promotes a subtask to a root task; an id demotes a root
             # task under that parent, or moves a subtask to a new one.

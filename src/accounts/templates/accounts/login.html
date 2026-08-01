@@ -53,6 +53,10 @@
           {% endif %}
         </div>
 
+        <div class="flex justify-end">
+          <a class="text-sm text-accent hover:underline" href="{% url 'password_reset' %}">Forgot your password?</a>
+        </div>
+
         {% if next %}
           <input type="hidden" name="next" value="{{ next }}">
         {% endif %}

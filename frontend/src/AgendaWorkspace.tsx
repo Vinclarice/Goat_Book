@@ -215,14 +215,32 @@ export function AgendaWorkspace({ initialData }: Props) {
     );
     if (!result) return;
 
+    // Ticking a parent off moves its subtasks too. They leave the open list
+    // either way; where they land depends on what the parent did. A parent
+    // that merely completed sends them to "completed today" alongside it; a
+    // recurring one archived itself and took them out of the day entirely,
+    // including any that were already sitting there done.
+    const moved = new Set(result.cascaded.map((child) => child.id));
+    const nowCompleted = result.cascaded.filter(
+      (child) => child.status === "completed",
+    );
+
     setTasks((current) => {
-      const remaining = current.filter((each) => each.id !== task.id);
+      const remaining = current.filter(
+        (each) => each.id !== task.id && !moved.has(each.id),
+      );
       // A recurring task archives itself and returns its next occurrence
       // in the same response; drop it in so the list stays truthful.
       return sortAgendaTasks(
         result.spawned ? [...remaining, result.spawned] : remaining,
       );
     });
+
+    setCompletedToday((current) => [
+      // The parent only rests here when it isn't recurring.
+      ...(result.spawned ? nowCompleted : [result.task, ...nowCompleted]),
+      ...current.filter((each) => !moved.has(each.id)),
+    ]);
 
     if (result.spawned) {
       const next = result.spawned;
@@ -234,7 +252,6 @@ export function AgendaWorkspace({ initialData }: Props) {
       return;
     }
 
-    setCompletedToday((current) => [result.task, ...current]);
     notify(`Completed “${task.text}”`, () => reopen(result.task, true));
   }
 

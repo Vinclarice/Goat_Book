@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
 from django.contrib.messages.storage.fallback import FallbackStorage
 from django.contrib.staticfiles import finders
@@ -62,6 +63,44 @@ class NewBaseTemplateTest(TestCase):
         html = render_to_string("base.html", request=self._request(user))
 
         self.assertIn('SERVER_THEME = "dark"', html)
+
+
+class TemplateCommentSyntaxTest(TestCase):
+    """No template may open a `{#` it doesn't close on the same line.
+
+    Django's `{# #}` is single-line only: spread one over two lines and it
+    stops being a comment, rendering verbatim on the page. It has now
+    happened twice -- on the password reset pages, then again on the Ideas
+    page -- and both times the suite stayed green, because assertions look
+    for the copy they expect rather than the noise they don't.
+
+    A static sweep of the files rather than a sweep of rendered pages, on
+    purpose: this one covers templates nobody has written yet, which is
+    exactly what the two page-scoped versions of this check failed to do.
+    """
+
+    def test_no_template_opens_a_comment_it_does_not_close(self):
+        offenders = []
+        for path in (settings.BASE_DIR).rglob("templates/**/*.html"):
+            for number, line in enumerate(
+                path.read_text(encoding="utf-8").splitlines(), start=1
+            ):
+                if "{#" in line and "#}" not in line:
+                    offenders.append(f"{path.name}:{number}")
+
+        self.assertEqual(
+            offenders,
+            [],
+            "Multi-line {# #} renders as visible page text -- "
+            "use {% comment %} instead.",
+        )
+
+    def test_the_sweep_actually_reaches_the_templates(self):
+        # A positive control: an empty file list would make the check above
+        # pass forever, and silently, if the layout ever moves.
+        found = list((settings.BASE_DIR).rglob("templates/**/*.html"))
+
+        self.assertGreater(len(found), 5)
 
 
 class BootstrapRemovalTest(TestCase):

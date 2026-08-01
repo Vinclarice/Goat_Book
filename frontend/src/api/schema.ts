@@ -134,6 +134,23 @@ export interface paths {
         patch: operations["accounts_api_v1_update_preferences"];
         trace?: never;
     };
+    "/api/v1/capture": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** New Capture */
+        post: operations["capture_api_v1_new_capture"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -173,6 +190,8 @@ export interface components {
             settings_url: string;
             /** Inbox Url */
             inbox_url: string;
+            /** Ideas Url */
+            ideas_url: string;
         };
         /** AgendaBucketOut */
         AgendaBucketOut: {
@@ -271,6 +290,8 @@ export interface components {
             /** Notes */
             notes: string;
             parent: components["schemas"]["TaskParentOut"] | null;
+            /** Always Recurs */
+            always_recurs: boolean;
             subtask_counts: components["schemas"]["SubtaskCountsOut"];
             /** List Id */
             list_id: number;
@@ -362,6 +383,18 @@ export interface components {
              * @enum {string}
              */
             theme: "system" | "light" | "dark";
+        };
+        /** CaptureOut */
+        CaptureOut: {
+            /** Id */
+            id: number;
+            /** Created At */
+            created_at: string;
+        };
+        /** CaptureIn */
+        CaptureIn: {
+            /** Text */
+            text: string;
         };
     };
     responses: never;
@@ -582,6 +615,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PreferencesOut"];
+                };
+            };
+        };
+    };
+    capture_api_v1_new_capture: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CaptureIn"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaptureOut"];
                 };
             };
         };

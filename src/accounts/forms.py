@@ -87,6 +87,19 @@ class AdminUserChangeForm(UserChangeForm):
         model = User
 
 
+class TokenForm(forms.Form):
+    """Just a label. The token itself is generated server-side and never
+    submitted by anyone, so there's nothing else to collect.
+    """
+
+    label = forms.CharField(
+        label="What's it for?",
+        max_length=100,
+        required=False,
+        widget=forms.TextInput(attrs={"placeholder": "Phone"}),
+    )
+
+
 class AccountSettingsForm(forms.ModelForm):
     class Meta:
         model = User

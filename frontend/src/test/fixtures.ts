@@ -15,6 +15,7 @@ export function task(overrides: Partial<Task> = {}): Task {
     recurrence: "none",
     notes: "",
     parent: null,
+    always_recurs: true,
     subtask_counts: { total: 0, done: 0 },
     list_id: 1,
     url: "/api/items/1/",

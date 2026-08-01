@@ -293,6 +293,43 @@
           }
         ]
       }
+    },
+    "/api/v1/capture": {
+      "post": {
+        "operationId": "capture_api_v1_new_capture",
+        "summary": "New Capture",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaptureOut"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CaptureIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "TokenAuth": []
+          },
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -382,6 +419,10 @@
           "inbox_url": {
             "title": "Inbox Url",
             "type": "string"
+          },
+          "ideas_url": {
+            "title": "Ideas Url",
+            "type": "string"
           }
         },
         "required": [
@@ -389,7 +430,8 @@
           "archived_count",
           "inbox_count",
           "settings_url",
-          "inbox_url"
+          "inbox_url",
+          "ideas_url"
         ],
         "title": "NavOut",
         "type": "object"
@@ -665,6 +707,10 @@
               }
             ]
           },
+          "always_recurs": {
+            "title": "Always Recurs",
+            "type": "boolean"
+          },
           "subtask_counts": {
             "$ref": "#/components/schemas/SubtaskCountsOut"
           },
@@ -695,6 +741,7 @@
           "recurrence",
           "notes",
           "parent",
+          "always_recurs",
           "subtask_counts",
           "list_id",
           "url",
@@ -928,10 +975,50 @@
         ],
         "title": "PreferencesIn",
         "type": "object"
+      },
+      "CaptureOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "created_at"
+        ],
+        "title": "CaptureOut",
+        "type": "object"
+      },
+      "CaptureIn": {
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "CaptureIn",
+        "type": "object"
       }
     },
     "securitySchemes": {
       "SessionAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "sessionid"
+      },
+      "TokenAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      },
+      "SessionAuthIfLoggedIn": {
         "type": "apiKey",
         "in": "cookie",
         "name": "sessionid"

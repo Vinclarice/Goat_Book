@@ -43,6 +43,7 @@ const NAV = {
   inbox_count: 3,
   settings_url: "/accounts/settings/",
   inbox_url: "/capture/",
+  ideas_url: "/capture/ideas/",
 };
 
 function renderNav(initialPath = "/agenda") {
@@ -107,6 +108,18 @@ describe("SideNav", () => {
     // A Django page, so a real href rather than a router link.
     expect(inbox).toHaveAttribute("href", "/capture/");
     expect(inbox).toHaveTextContent("3");
+  });
+
+  it("links out to the ideas page, without a count", async () => {
+    renderNav();
+    await screen.findByText("Programming");
+
+    const ideas = screen.getByRole("link", { name: "Ideas" });
+
+    expect(ideas).toHaveAttribute("href", "/capture/ideas/");
+    // Deliberately bare: a pile of ideas isn't a backlog to work down, and
+    // a number beside it would read as pressure to empty it.
+    expect(ideas).toHaveTextContent(/^Ideas$/);
   });
 
   it("renders the nav before its data arrives", () => {

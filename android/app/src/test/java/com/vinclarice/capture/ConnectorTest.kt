@@ -34,6 +34,10 @@ class ConnectorTest {
             lastToken = token
             return result
         }
+
+        // Connecting never sends a capture; CaptureApiTest covers this.
+        override suspend fun capture(token: String, text: String, idempotencyKey: String) =
+            Disposition.DELIVERED
     }
 
     private val alice = Identity("alice", "alice@example.com")

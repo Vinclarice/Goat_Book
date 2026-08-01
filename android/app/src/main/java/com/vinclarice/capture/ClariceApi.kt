@@ -4,8 +4,10 @@ import java.io.IOException
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONException
 import org.json.JSONObject
 
@@ -31,6 +33,21 @@ data class Unreachable(val reason: String) : IdentifyResult
 
 interface ClariceApi {
     suspend fun identify(token: String): IdentifyResult
+
+    /**
+     * Send one capture.
+     *
+     * [idempotencyKey] identifies the *thought*, not the attempt: every
+     * retry of the same capture must pass the same key, which is what lets
+     * the server answer "already stored" instead of storing it twice.
+     * Generating a fresh key on retry is exactly how a lost response
+     * becomes a duplicated note.
+     */
+    suspend fun capture(
+        token: String,
+        text: String,
+        idempotencyKey: String,
+    ): Disposition
 }
 
 /**
@@ -70,6 +87,32 @@ class OkHttpClariceApi(
             }
         }
 
+    override suspend fun capture(
+        token: String,
+        text: String,
+        idempotencyKey: String,
+    ): Disposition = withContext(Dispatchers.IO) {
+        // Built with JSONObject rather than string concatenation: capture
+        // text is prose typed in a hurry, and quotes, newlines and
+        // backslashes are ordinary in it.
+        val body = JSONObject().put("text", text).toString()
+        val request = Request.Builder()
+            .url(baseUrl.trimEnd('/') + "/api/v1/capture")
+            .header("Authorization", "Bearer $token")
+            .header("Idempotency-Key", idempotencyKey)
+            .post(body.toRequestBody(JSON))
+            .build()
+        try {
+            client.newCall(request).execute().use { response ->
+                dispositionFor(response.code)
+            }
+        } catch (failure: IOException) {
+            // Offline, timed out, DNS gone. Nothing is wrong with the
+            // capture, so it is worth another attempt later.
+            Disposition.RETRY_LATER
+        }
+    }
+
     private fun parseIdentity(body: String): IdentifyResult = try {
         val json = JSONObject(body)
         Identified(
@@ -86,6 +129,8 @@ class OkHttpClariceApi(
     }
 
     companion object {
+        private val JSON = "application/json; charset=utf-8".toMediaType()
+
         fun defaultClient(): OkHttpClient = OkHttpClient.Builder()
             // Short on purpose. Connect is a foreground action with someone
             // watching it; a minute of spinner is worse than a clear failure

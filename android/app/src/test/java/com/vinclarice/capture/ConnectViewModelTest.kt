@@ -27,6 +27,9 @@ class ConnectViewModelTest {
 
     private class FakeApi(var result: IdentifyResult) : ClariceApi {
         override suspend fun identify(token: String) = result
+
+        override suspend fun capture(token: String, text: String, idempotencyKey: String) =
+            Disposition.DELIVERED
     }
 
     private val alice = Identity("alice", "alice@example.com")

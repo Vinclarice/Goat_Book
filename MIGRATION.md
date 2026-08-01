@@ -104,6 +104,75 @@ rm ~/db.sqlite3 ~/clarice-data.json   # on the server
 Keep the `scp`'d backup copy of `clarice-data.json` somewhere safe for a
 while longer, just in case.
 
+## Restore drill
+
+Managed Postgres was chosen partly so backups would be someone else's
+problem. That is only true once a restore has actually been performed, so
+this is the procedure, and the record of it having been run.
+
+**Backups are cluster-wide, not per-database.** Recovering Clarice means
+restoring the *whole* cluster to a new one and taking `Clarice_todo` out of
+it — there is no single-database restore, and testing one would prove
+nothing about the procedure a real incident forces. Run the drill the
+awkward way or don't bother.
+
+```bash
+# 1. What does the live data look like right now? Read it from the droplet
+#    rather than opening the cluster firewall to do it.
+ssh <user>@<droplet> 'docker exec -i clarice python manage.py shell' <<'EOF'
+from django.db import connection
+with connection.cursor() as c:
+    c.execute("SELECT table_name FROM information_schema.tables "
+              "WHERE table_schema='public' ORDER BY table_name")
+    for (t,) in c.fetchall():
+        c.execute(f'SELECT COUNT(*) FROM "{t}"')
+        print(t, c.fetchone()[0])
+EOF
+
+# 2. Restore the whole cluster into a scratch one. Omitting a timestamp
+#    takes the most recent backup.
+doctl databases create clarice-restore-drill \
+  --restore-from-cluster-name db-pgsql-nyc1-16061 \
+  --region nyc1 --size db-s-1vcpu-1gb --num-nodes 1 --engine pg --version 18
+
+# 3. Lock it down before using it -- a fresh cluster with no rules is open
+#    to the internet, which is the exact hole roadmap item A5 closed.
+doctl databases firewalls append <new-id> --rule ip_addr:<your-ip>
+
+# 4. Compare row counts per table and django_migrations against step 1,
+#    connecting to Clarice_todo (not defaultdb) on the restored cluster.
+
+# 5. Tear it down. It bills by the hour.
+doctl databases delete <new-id> --force
+```
+
+**Run August 1, 2026 (roadmap item A2). Result: passed.** All 18 tables
+matched the live cluster exactly — `lists_item` 24, `lists_list` 17,
+`accounts_user` 3, `django_migrations` 53 — on Postgres 18.4, restored
+from the 2026-07-31 06:56 UTC backup. Provisioning the clone took about
+seven minutes end to end.
+
+Three things worth knowing before the next one:
+
+- **The restore inherits the source cluster's trusted sources.** The clone
+  came up already carrying the droplet firewall rule, so A5's lockdown
+  survives a recovery instead of needing to be redone under pressure. It
+  does *not* mean a restored cluster is safe by default — one created from
+  scratch has no rules at all.
+- **The restored cluster's default database is `defaultdb`.** The URI
+  `doctl databases connection` prints points there, not at `Clarice_todo`;
+  connect to the wrong one and you will find an empty database and think
+  the restore failed.
+- **Retention is DigitalOcean's, not ours.** Daily backups, roughly one
+  per day (observed 2026-07-29 22:59, 07-30 10:59, 07-31 06:56 UTC), kept
+  for 7 days on this plan. That is the real answer to "how far back can a
+  bad migration be undone" — a week, not indefinitely.
+
+Between drills, `infra/check-backup-freshness.sh` answers the cheap half
+of the question — when did this cluster last back up successfully — and
+exits non-zero if the answer is "too long ago" or "never", so it can run
+unattended.
+
 ## Rollback
 
 If something goes wrong before step 7's cleanup, the old `~/db.sqlite3` on

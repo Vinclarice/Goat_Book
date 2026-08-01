@@ -83,13 +83,16 @@ triage model has not. See Track A/Next and Track B below.
 
 ### What is left, and it is not all code
 
-- **A5 — the database cluster firewall.** Zero rules, reachable from any
-  IP, password-only. The only live production exposure recorded anywhere
-  in this document.
-- **A2 — the backup restore drill.** Still the unbanked reason the
-  Postgres move happened at all.
-- **A deploy.** None of the work above is running anywhere. Production is
-  still serving the code as it stood before any of this.
+- ~~**A5 — the database cluster firewall.**~~ Closed August 1, 2026: one
+  droplet rule, verified from both sides. It was the only live production
+  exposure recorded in this document, and it no longer is.
+- ~~**A2 — the backup restore drill.**~~ Run and passed August 1, 2026;
+  see `MIGRATION.md`. The Postgres move's central promise is now banked
+  rather than assumed.
+- **A deploy.** The last thing standing. None of the work above is running
+  anywhere — production still serves the code as it stood before any of
+  it, and its database has no `capture_*` tables at all, which is the
+  bluntest measure of the gap. Rotating `clarice_app` rides along with it.
 - **No specs left to build.** All four written in this stretch are done:
   `recurring-subtasks-addendum.md` (migration `0021`),
   `password-reset-plan.md` (A6, speced and shipped the same day after a
@@ -266,12 +269,12 @@ the isolation tests both land with automated coverage instead of a manual,
 one-time check. After that the order is preference, not dependency — A2,
 A4, A5, and A6 are independent of each other and of the feature plan.
 
-**Status:** A0, A1, A3 and A6 are done; A4 is written and waiting on a
-deploy. **A2 and A5 are what's left**, and they're the two that need
-`doctl` against the live account rather than code — which is exactly why
-they've outlasted everything that could be done from an editor. A6, the
-one piece of Now that was ordinary coding work, shipped the day it was
-scoped.
+**Status: Track A/Now is closed.** A0, A1, A2, A3, A5 and A6 are all done
+as of August 1, 2026 — A2 and A5, the two that needed `doctl` against the
+live account and had outlasted everything doable from an editor, went
+together in one pass. A4 is written and takes effect on the next deploy,
+which is the only thing this track is still waiting on. One follow-up
+rides with that deploy: rotating the `clarice_app` credential (see A5).
 
 ### A0. Stand up CI with a Postgres service container — done
 
@@ -346,7 +349,43 @@ credential.
 - Cross-referenced from `infra/provision-postgres.sh`, `MIGRATION.md`, and
   `design/subtasks-plan.md`'s "One cluster, several projects" section.
 
-### A2. Prove the backups actually work
+### A2. Prove the backups actually work — done
+
+**Drill run August 1, 2026. It passed.** The whole cluster was restored
+into a scratch clone from the 2026-07-31 06:56 UTC backup, and all 18
+tables matched the live cluster exactly (`lists_item` 24, `lists_list` 17,
+`accounts_user` 3, `django_migrations` 53, Postgres 18.4). Clone torn down
+afterwards; the procedure and the result are written up in `MIGRATION.md`
+under "Restore drill", because a restore that happened once and wasn't
+recorded is indistinguishable from one that didn't.
+
+All five sub-items below are closed:
+
+- Backups confirmed on, cadence roughly daily (observed 07-29 22:59,
+  07-30 10:59, 07-31 06:56 UTC), retention 7 days on this plan. That's the
+  real answer to how far back a bad migration can be undone: a week.
+- Restored the awkward, cluster-wide way, which is the only way there is.
+- Verified by per-table row counts and `django_migrations` against live,
+  not by "it connects".
+- Staleness check added: `infra/check-backup-freshness.sh`, exit-code
+  driven so cron can run it unattended. Verified on all three paths —
+  fresh, stale, and no-such-cluster.
+- Scratch cluster destroyed; `doctl databases list` shows only production.
+
+Two things the drill taught that weren't in the plan:
+
+- **A restore inherits the source's trusted sources.** The clone came up
+  already carrying A5's droplet rule, so the firewall fix survives a
+  recovery rather than needing to be redone during an incident. A cluster
+  created from scratch still has none, which is the hole A5 existed to
+  close.
+- **The restored cluster's default database is `defaultdb`.** The URI
+  `doctl databases connection` prints points there, not at `Clarice_todo`.
+  Connect to the wrong one mid-incident and the restore looks empty.
+
+The original specification follows.
+
+### A2 (original). Prove the backups actually work
 
 Backups were the strongest reason to move to managed Postgres in the first
 place — the plan was to solve them by procurement instead of a hand-rolled
@@ -464,7 +503,47 @@ for a while, but nothing invoked it, so the digest reached nobody.
 the first live run wants checking against real data before it's trusted
 unattended. Don't mark this closed until that's happened.
 
-### A5. Close the database cluster's firewall
+### A5. Close the database cluster's firewall — done
+
+**Closed August 1, 2026.** The cluster had zero trusted-source rules,
+confirmed by `doctl databases firewalls list` returning nothing but a
+header. It now has exactly one, by droplet resource
+(`--rule droplet:585969543`) rather than by IP, so the droplet's address
+never becomes a second thing to keep in sync.
+
+Verified both directions, because only one of them is reassuring on its
+own:
+
+- The app still reaches the database — `/` returns 200 repeatedly and
+  `/dashboard/` still 302s for an anonymous visitor.
+- An unlisted host cannot open the port at all: `Test-NetConnection` to
+  25060 from the operator's machine reports `TcpTestSucceeded: False`,
+  where minutes earlier it answered anyone on the internet.
+
+No operator-IP rule was left behind. The A2 drill needed live row counts
+and read them through the droplet over SSH instead of reopening the
+cluster, which is strictly better than A1's temporary-whitelist pattern
+and is what `MIGRATION.md`'s drill procedure now recommends.
+
+`provision-postgres.sh` needed no correction: line 82 already appends
+exactly this rule. The live cluster simply wasn't created by the script —
+the same reason A1 found its name and database didn't match the docs — so
+it never got one. Script and reality now agree.
+
+**One thing this surfaced, since it's the kind of note that otherwise
+disappears:** while gathering cluster metadata for A2, a `doctl ... --output
+json` call printed the `doadmin` and `clarice_app` passwords into a session
+transcript. `doadmin` was rotated immediately (nothing uses it since A1
+moved the app to `clarice_app`, and the app was verified still serving 200s
+afterwards). **`clarice_app` is still owed a rotation**, deliberately
+deferred to the next deploy because its new URL has to reach the droplet's
+`~/.db-connection-url` anyway. Do not close this item out until that has
+happened. The exposure is contained by the firewall above — which is a
+fair illustration of why defence in depth is worth the hour.
+
+The original specification follows.
+
+### A5 (original). Close the database cluster's firewall
 
 **New in the review pass — surfaced by A1's live run and originally left as
 a note inside A1's own entry, which is where items go to be forgotten.**

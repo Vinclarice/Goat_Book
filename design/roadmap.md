@@ -150,6 +150,40 @@ deliberate product decision.
 
 Password recovery and adversarial per-user isolation tests are already done.
 
+### Public updates page
+
+An unauthenticated page announcing what has shipped, written for people rather
+than for the repository — closer to a short press release per release than to
+a changelog. No account, no login wall.
+
+**No broad roadmap preview.** The page does not publish tracks, Later items,
+or what the next release might contain. The single exception is a specific
+named feature already in development, which may be announced as coming.
+Everything else is described only once it exists.
+
+That exception needs a definition or it drifts back into promising. The
+existing practice supplies one: a focused spec is written in `design/` once
+work is ready to start, so a feature qualifies when it has that spec and work
+has actually begun — not when it is merely wanted. A candidate sitting in a
+Later list or a deferred-item table never qualifies.
+
+Two things still to settle:
+
+- **Where the text comes from.** The material exists: each release gets an
+  annotated bird tag describing what shipped and how it was verified, and
+  `roadmap-history.md` records the same at length. Both are written for the
+  developer, and announcement-style writing is a different job from either.
+  Expect to write the public version by hand and treat the tag and history as
+  its sources, not its draft.
+- **Which stack renders it.** This is unauthenticated, cacheable, and wants to
+  be indexable, so it is a Django-rendered page rather than an SPA route, in
+  keeping with the settled boundary that only the task UI is SPA-only.
+
+**What would promote it:** there is currently nobody unauthenticated to read
+it. This earns work when strangers can actually arrive — realistically
+alongside self-service signup, or whenever a public `/contact/` page from B3
+means the site has a public face at all.
+
 ### Longer-term product direction
 
 - Build the Daily Page and its weekly, monthly, and quarterly review cadence

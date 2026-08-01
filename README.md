@@ -100,17 +100,52 @@ today. Users with nothing due are skipped, so quiet days stay quiet, and the
 preference lives on the account (`User.daily_digest`, toggled at
 `/accounts/settings/`).
 
+Each user gets it at 07:00 in *their* time zone (`User.time_zone`), which is
+also what decides their overdue/due-today boundaries -- see "Time zones" below.
+
 Preview it without sending anything:
 
 ```powershell
 .\.venv\Scripts\python.exe src\manage.py send_due_digest --dry-run
 ```
 
-On the server, run it once each morning from cron:
+On the server, run it hourly from cron:
 
 ```
-0 7 * * * docker exec clarice python manage.py send_due_digest
+0 * * * * docker exec clarice python manage.py send_due_digest
 ```
+
+Hourly, not daily: one daily run can only be somebody's morning. The schedule
+no longer expresses an intended send time -- it wakes the command, and the
+command decides per recipient. `User.last_digest_date` records the user's own
+local date of the last send, so the other twenty-three runs are no-ops and a
+retry, restart, or DST repeat cannot send twice.
+
+The morning is a window, 07:00 to 12:00 local, not just a start time. Past it
+the day is written off: nothing is sent, but it is recorded as decided, so a
+container that was down all morning does not deliver "Good morning, here is
+your day" at 20:00 -- by then the summary is not late, it is wrong.
+
+A run outside that window therefore does nothing, which makes a manual test
+look broken. Open both ends to check it by hand:
+
+```powershell
+.\.venv\Scripts\python.exe src\manage.py send_due_digest --dry-run --send-hour 0 --until-hour 24
+```
+
+## Time zones
+
+`settings.TIME_ZONE` is the fallback for anonymous requests, not the
+definition of everyone's day. Each account carries its own `time_zone`, and
+`accounts.middleware.TimeZoneMiddleware` activates it for the request, so
+every day boundary -- agenda buckets, per-list overdue counts, snooze
+presets, the completed-today range -- is computed against that user's date
+without any of that code knowing a user exists.
+
+Token-authenticated API requests are outside this, because Ninja resolves the
+token inside the view and `request.user` is still anonymous at middleware
+time. Capture stores timestamps rather than local dates, so it is unaffected;
+a future date-bearing token endpoint must activate the owner's zone itself.
 
 ## Brute-force protection
 

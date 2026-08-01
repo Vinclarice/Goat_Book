@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
@@ -27,8 +27,32 @@ function preferencesData(overrides: Record<string, unknown> = {}) {
     email: "vince@example.com",
     daily_digest: true,
     theme: "system",
+    time_zone: "America/New_York",
     ...overrides,
   };
+}
+
+const TIME_ZONES = ["America/New_York", "Asia/Makassar", "Europe/London"];
+
+/** Routes by URL, since the route now reads two endpoints. */
+function mockApi(onPatch: () => object = () => preferencesData()) {
+  return vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+    const request = input as Request;
+    if (request.url.includes("/api/v1/time-zones")) {
+      return jsonResponse({ time_zones: TIME_ZONES });
+    }
+    if (request.method === "PATCH") {
+      return jsonResponse(onPatch());
+    }
+    return jsonResponse(preferencesData());
+  });
+}
+
+async function patchBody(fetchMock: ReturnType<typeof mockApi>) {
+  const call = fetchMock.mock.calls.find(
+    ([request]) => (request as Request).method === "PATCH",
+  );
+  return JSON.parse(await (call![0] as Request).text());
 }
 
 function renderRoute() {
@@ -50,9 +74,7 @@ describe("PreferencesRoute", () => {
   });
 
   it("renders the current preferences once the query resolves", async () => {
-    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
-      jsonResponse(preferencesData()),
-    );
+    mockApi();
 
     renderRoute();
 
@@ -81,13 +103,7 @@ describe("PreferencesRoute", () => {
 
   it("saves the account fields on submit", async () => {
     const user = userEvent.setup();
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
-      const request = input as Request;
-      if (request.method === "PATCH") {
-        return jsonResponse(preferencesData({ username: "vince2" }));
-      }
-      return jsonResponse(preferencesData());
-    });
+    const fetchMock = mockApi(() => preferencesData({ username: "vince2" }));
 
     renderRoute();
     await screen.findByDisplayValue("vince");
@@ -105,15 +121,73 @@ describe("PreferencesRoute", () => {
     expect(patchCall).toBeDefined();
   });
 
+  it("shows the account's current time zone", async () => {
+    mockApi();
+
+    renderRoute();
+
+    expect(await screen.findByLabelText("Time zone")).toHaveValue(
+      "America/New_York",
+    );
+  });
+
+  it("offers the zones the server will accept", async () => {
+    // Not the browser's own Intl list: the two can disagree, and the
+    // disagreement would be a validation error on an offered option.
+    mockApi();
+
+    renderRoute();
+
+    const picker = await screen.findByLabelText("Time zone");
+    expect(
+      within(picker).getByRole("option", { name: "Asia/Makassar" }),
+    ).toBeInTheDocument();
+  });
+
+  it("saves a changed time zone", async () => {
+    const user = userEvent.setup();
+    const fetchMock = mockApi(() =>
+      preferencesData({ time_zone: "Asia/Makassar" }),
+    );
+
+    renderRoute();
+    await screen.findByDisplayValue("vince");
+
+    await user.selectOptions(
+      screen.getByLabelText("Time zone"),
+      "Asia/Makassar",
+    );
+    await user.click(screen.getByRole("button", { name: "Save settings" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Saved.")).toBeInTheDocument();
+    });
+    expect(await patchBody(fetchMock)).toMatchObject({
+      time_zone: "Asia/Makassar",
+    });
+  });
+
+  it("keeps the time zone when only the theme changes", async () => {
+    // The theme mutation sends the whole preferences object, so a missing
+    // time_zone here would silently reset the user's day boundaries.
+    const user = userEvent.setup();
+    const fetchMock = mockApi(() => preferencesData({ theme: "dark" }));
+
+    renderRoute();
+    await screen.findByDisplayValue("vince");
+
+    await user.click(screen.getByRole("button", { name: "Dark" }));
+
+    await waitFor(async () => {
+      expect(await patchBody(fetchMock)).toMatchObject({
+        time_zone: "America/New_York",
+      });
+    });
+  });
+
   it("applies and persists a theme change immediately", async () => {
     const user = userEvent.setup();
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
-      const request = input as Request;
-      if (request.method === "PATCH") {
-        return jsonResponse(preferencesData({ theme: "dark" }));
-      }
-      return jsonResponse(preferencesData());
-    });
+    const fetchMock = mockApi(() => preferencesData({ theme: "dark" }));
 
     renderRoute();
     await screen.findByDisplayValue("vince");

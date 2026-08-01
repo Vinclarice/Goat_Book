@@ -238,6 +238,31 @@
         ]
       }
     },
+    "/api/v1/time-zones": {
+      "get": {
+        "operationId": "accounts_api_v1_list_time_zones",
+        "summary": "List Time Zones",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TimeZonesOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "The zones the picker may offer.\n\nServed rather than read from the browser's own Intl list: the two can\ndisagree, and a disagreement would show up as a validation error on a\nzone this application had just offered the person.",
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/me/preferences": {
       "get": {
         "operationId": "accounts_api_v1_get_preferences",
@@ -302,6 +327,16 @@
         "responses": {
           "201": {
             "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaptureOut"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -910,6 +945,22 @@
         "title": "ArchiveOut",
         "type": "object"
       },
+      "TimeZonesOut": {
+        "properties": {
+          "time_zones": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Time Zones",
+            "type": "array"
+          }
+        },
+        "required": [
+          "time_zones"
+        ],
+        "title": "TimeZonesOut",
+        "type": "object"
+      },
       "PreferencesOut": {
         "properties": {
           "username": {
@@ -932,13 +983,18 @@
             ],
             "title": "Theme",
             "type": "string"
+          },
+          "time_zone": {
+            "title": "Time Zone",
+            "type": "string"
           }
         },
         "required": [
           "username",
           "email",
           "daily_digest",
-          "theme"
+          "theme",
+          "time_zone"
         ],
         "title": "PreferencesOut",
         "type": "object"
@@ -965,13 +1021,18 @@
             ],
             "title": "Theme",
             "type": "string"
+          },
+          "time_zone": {
+            "title": "Time Zone",
+            "type": "string"
           }
         },
         "required": [
           "username",
           "email",
           "daily_digest",
-          "theme"
+          "theme",
+          "time_zone"
         ],
         "title": "PreferencesIn",
         "type": "object"

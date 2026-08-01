@@ -161,13 +161,20 @@
     # The command has existed and worked for a while but nothing invoked it,
     # so the digest reached nobody. Users with nothing to report are skipped
     # by the command itself, so a quiet day stays quiet.
-    - name: Schedule the daily due-task digest
+    - name: Schedule the due-task digest
       ansible.builtin.cron:
         name: clarice-due-digest
         minute: "0"
-        hour: "7"
+        hour: "*"
         job: docker exec clarice ./manage.py send_due_digest
         user: root
+      # Hourly, and deliberately not pinned to any hour: users are in
+      # different time zones, so a single daily run can only ever be
+      # somebody's morning -- and this entry used to say hour 7 while cron
+      # ran in the server's UTC, delivering at 03:00 Eastern. The command
+      # now decides per recipient (07:00 local, once per their day), which
+      # takes the server's own zone out of the picture rather than
+      # requiring it to be configured correctly.
       # Writing *root's* crontab needs root: without this the module runs
       # `crontab -u root` as the deploy user and is refused. Every other
       # task here that touches something outside the deploy user's home

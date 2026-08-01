@@ -12,6 +12,9 @@ The completed Albatross work, deployment notes, and lessons learned live in
 [`roadmap-history.md`](roadmap-history.md). Keeping that record separate
 makes this document useful when deciding what to work on next.
 
+The cross-cutting engineering and product standards used to deliver roadmap
+work live in [`principles.md`](principles.md).
+
 ## Current product baseline
 
 Albatross is live. It established the API-backed SPA and Postgres foundation,
@@ -70,11 +73,15 @@ before writing a redesign spec.
 None of these ship in Bittern. They remain future candidates and need their
 own product trigger or focused brief before joining an active release.
 
+Per-user time zones left this list on August 1, 2026, when both halves of
+its stated trigger fired at once: a second active user in Indonesia, and a
+real scheduling error caused by the global zone. It is built and awaiting
+the same deploy as M1 — see
+[`per-user-time-zones-plan.md`](per-user-time-zones-plan.md).
+
 - **Reference/Idea search.** Start with ranked full-text and typo-tolerant
   search for Ideas, especially the `reference` archive. The Inbox is a queue
   to clear, not a library to search.
-- **Per-user time zones.** Make “due today” and the daily digest local to
-  each user rather than tied to one application time zone.
 - **Audit log and general undo.** Use structured change records to make more
   than task completion safely reversible.
 - **Time blocking.** Model calendar ranges and prevent a user’s blocks from
@@ -183,6 +190,47 @@ Two things still to settle:
 it. This earns work when strangers can actually arrive — realistically
 alongside self-service signup, or whenever a public `/contact/` page from B3
 means the site has a public face at all.
+
+### Mobile web experience
+
+Making the browser application genuinely usable on a phone, as opposed to
+merely surviving a narrow window. This is not the Android app: Bittern's
+native client captures and nothing else, so every other thing you might want
+to do from a phone — triage the Inbox, complete a task, read an Idea — happens
+in the browser. “The Android app captures; the web app reviews” quietly
+assumes the web app is reachable from a phone, and today it is not really.
+
+**Measured starting point, not a guess.** Both shells already set
+`<meta name="viewport" content="width=device-width, initial-scale=1">`, so the
+foundation is there. Beyond that there are exactly two layout breakpoints: the
+side navigation collapses at 760px and the workspace input row stacks at
+768px. Those two numbers should agree and do not. Everything else is
+desktop-first. B0 already has to confirm the navigation works at its mobile
+disclosure breakpoint, so the first real evidence arrives with Stage 0.
+
+Considerations to settle before this becomes a spec:
+
+- **One responsive application, not a mobile site.** No `m.` host, no second
+  codebase, no divergent templates. There is one API and one SPA; say this
+  once so it is not reopened later.
+- **The overlap with the native client is real and should be decided, not
+  discovered.** Native earns its cost through launch speed, Keystore-backed
+  token storage, WorkManager retries, and the Android share target. A capable
+  installable web app can approximate the share target and an offline queue,
+  less reliably. If mobile web lands well, M5 and parts of M3 deserve a fresh
+  look rather than being finished out of momentum.
+- **Sequencing against Crane.** Crane makes the Daily Page the home surface.
+  A mobile pass done first would be redone for a surface that does not exist
+  yet; done as part of Crane, the Daily Page is designed mobile-aware from its
+  first day — which is what the vision document already implies when it calls
+  the Daily Page the shared center of the website "and, later, the mobile
+  experience." Fix concrete breakpoint defects as they are found; save the
+  layout work for Crane.
+
+**What would promote it:** M4's device pilot. The moment captures arrive from
+a phone daily, triaging from that same phone will be attempted, and the
+friction becomes specific and observable. Treat it the way C2 is treated —
+watch real failures rather than redesigning from a hunch.
 
 ### Longer-term product direction
 

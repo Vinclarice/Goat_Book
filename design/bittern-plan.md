@@ -88,7 +88,7 @@ capture service and migration have been verified.
 | --- | --- | --- |
 | C2 information architecture redesign | Observe after the navigation is actually visible. | At least three specific, repeatable navigation failures remain after B0/B2. |
 | Ranked full-text search | Existing substring search already serves Inbox and Ideas. | Real reference-library usage makes simple filtering insufficient. |
-| Per-user time zones | Valuable, but changes agenda and digest semantics globally. | A second active user in another time zone or a real scheduling error caused by the global zone. |
+| ~~Per-user time zones~~ | **Trigger fired August 1, 2026 — now built.** Both halves at once: a second active user in Indonesia, and the digest delivering at 03:00 Eastern. | n/a. See [`per-user-time-zones-plan.md`](per-user-time-zones-plan.md). |
 | Audit/general undo and time blocking | Separate product-model work. | A focused product brief, not availability of Postgres alone. |
 | Account export/deletion | Export is ready to scope; irreversible deletion needs an explicit retention decision. | Decide immediate deletion versus a grace period. |
 
@@ -101,6 +101,12 @@ capture service and migration have been verified.
 - No navigation redesign before the current navigation is proven to render.
 - No Android triage, Idea management, task editing, push notifications, or
   account/token administration. The Android app captures; the web app reviews.
+- No mobile-web work. Bittern does not make the browser application usable on
+  a phone, which means the sentence above is load-bearing in a way worth
+  naming: review happens on the web, and until the mobile web experience in
+  the roadmap's Later section is addressed, that in practice means a desktop
+  browser. Stage 0's mobile-breakpoint check is a defect check, not the start
+  of that work.
 
 ## Order of work
 

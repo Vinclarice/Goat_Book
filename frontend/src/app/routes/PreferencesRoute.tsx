@@ -12,6 +12,7 @@ export function PreferencesRoute() {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [dailyDigest, setDailyDigest] = useState(true);
+  const [timeZone, setTimeZone] = useState("");
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
@@ -23,15 +24,35 @@ export function PreferencesRoute() {
       setUsername(data.username);
       setEmail(data.email);
       setDailyDigest(data.daily_digest);
+      setTimeZone(data.time_zone);
       return data;
     },
+  });
+
+  // Asked of the server rather than read from Intl.supportedValuesOf: the
+  // browser's tzdata and the server's can disagree, and the disagreement
+  // would surface as a validation error on an option we had just offered.
+  const { data: timeZones } = useQuery({
+    queryKey: ["time-zones"],
+    queryFn: async () => {
+      const { data, error } = await apiV1.GET("/api/v1/time-zones");
+      if (error) throw error;
+      return data.time_zones;
+    },
+    staleTime: Infinity,
   });
 
   const saveMutation = useMutation({
     mutationFn: async () => {
       const theme = data?.theme ?? "system";
       const { data: updated, error } = await apiV1.PATCH("/api/v1/me/preferences", {
-        body: { username, email, daily_digest: dailyDigest, theme },
+        body: {
+          username,
+          email,
+          daily_digest: dailyDigest,
+          theme,
+          time_zone: timeZone,
+        },
       });
       if (error) throw new Error(typeof error === "string" ? error : "Couldn't save preferences.");
       return updated;
@@ -58,6 +79,10 @@ export function PreferencesRoute() {
           email: data?.email ?? email,
           daily_digest: data?.daily_digest ?? dailyDigest,
           theme,
+          // This request sends the whole preferences object, so leaving
+          // the zone out would silently reset the user's day boundaries
+          // as a side effect of clicking a theme button.
+          time_zone: data?.time_zone ?? timeZone,
         },
       });
       if (error) throw error;
@@ -108,6 +133,30 @@ export function PreferencesRoute() {
             required
             className="w-full rounded-lg border border-border bg-input px-3 py-1.5"
           />
+        </div>
+
+        <div className="space-y-1">
+          <label htmlFor="pref-time-zone" className="text-sm font-bold">
+            Time zone
+          </label>
+          <select
+            id="pref-time-zone"
+            value={timeZone}
+            onChange={(event) => setTimeZone(event.target.value)}
+            className="w-full rounded-lg border border-border bg-input px-3 py-1.5"
+          >
+            {/* Until the list arrives, the saved zone is the only option,
+                so the control shows the truth rather than an empty box. */}
+            {(timeZones ?? [timeZone]).map((zone) => (
+              <option key={zone} value={zone}>
+                {zone}
+              </option>
+            ))}
+          </select>
+          <p className="text-sm text-muted-foreground">
+            Decides what counts as overdue or due today, and when the daily
+            summary arrives.
+          </p>
         </div>
 
         <div className="flex items-center justify-between gap-4 rounded-lg border border-border bg-input px-3 py-2.5">

@@ -27,6 +27,14 @@ class UserAdmin(ModelAdmin, DjangoUserAdmin):
     fieldsets = (
         (None, {"fields": ("username", "password")}),
         ("Personal info", {"fields": ("email",)}),
+        # Explicit fieldsets mean a new field is invisible here until it is
+        # named. time_zone in particular is worth reaching from admin: it
+        # decides what "overdue" means for that person, so a wrong one is
+        # something you may need to correct on their behalf.
+        (
+            "Preferences",
+            {"fields": ("time_zone", "daily_digest", "theme")},
+        ),
         (
             "Permissions",
             {

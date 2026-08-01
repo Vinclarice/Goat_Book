@@ -146,6 +146,11 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    # Straight after authentication, since it needs request.user: it
+    # activates that user's own time zone so every day-boundary decision
+    # below (and in every view) is made against their day, not the
+    # server's.
+    'accounts.middleware.TimeZoneMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     # Must be last: axes needs to see the response/exception from

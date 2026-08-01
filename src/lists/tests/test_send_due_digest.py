@@ -1,5 +1,7 @@
-from datetime import timedelta
+from datetime import date, datetime, timedelta
 from io import StringIO
+from unittest.mock import patch
+from zoneinfo import ZoneInfo
 
 from django.core import mail
 from django.core.management import call_command
@@ -35,6 +37,11 @@ class SendDueDigestTest(TestCase):
         )
 
     def run_command(self, **options):
+        # These cover what a digest says, not when it goes out. Opening the
+        # hour gate keeps them from depending on what time the suite runs
+        # at; the scheduling rules have their own tests below.
+        options.setdefault("send_hour", 0)
+        options.setdefault("until_hour", 24)
         out = StringIO()
         call_command("send_due_digest", stdout=out, **options)
         return out.getvalue()
@@ -148,3 +155,182 @@ class SendDueDigestTest(TestCase):
         self.run_command()
 
         self.assertEqual(mail.outbox, [])
+
+
+# One hour apart, chosen so the two real users are on opposite sides of
+# the 07:00 rule at the same instant:
+#
+#   22:00 UTC -> 06:00 Aug 2 in Makassar (too early), 18:00 Aug 1 in New York
+#   23:00 UTC -> 07:00 Aug 2 in Makassar (due),       19:00 Aug 1 in New York
+#
+# The twelve-hour spread is why one daily run cannot serve both.
+BEFORE_MAKASSAR_MORNING = datetime(2026, 8, 1, 22, 0, tzinfo=ZoneInfo("UTC"))
+AT_MAKASSAR_MORNING = datetime(2026, 8, 1, 23, 0, tzinfo=ZoneInfo("UTC"))
+MID_MAKASSAR_MORNING = datetime(2026, 8, 2, 1, 0, tzinfo=ZoneInfo("UTC"))
+
+# 15:00 Aug 2 in Makassar -- his morning is spent. Also 03:00 Aug 2 in New
+# York, before Edith's window opens, so she stays out of the way here.
+MAKASSAR_AFTERNOON = datetime(2026, 8, 2, 7, 0, tzinfo=ZoneInfo("UTC"))
+
+# 07:00 Aug 2 in New York. The two windows never overlap -- Obi's 07:00-12:00
+# is 23:00-04:00 UTC and Edith's is 11:00-16:00 UTC -- which is the whole
+# point, and why these tests assert per user rather than about the outbox.
+NEW_YORK_MORNING = datetime(2026, 8, 2, 11, 0, tzinfo=ZoneInfo("UTC"))
+
+
+class DigestSchedulingTest(TestCase):
+    """When the hourly run decides each person's morning has arrived."""
+
+    def setUp(self):
+        self.obi = self.make_user("obi", "Asia/Makassar")
+        self.edith = self.make_user("edith", "America/New_York")
+        # Each has one task due on their own August date.
+        self.give(self.obi, "Pay the landlord", date(2026, 8, 2))
+        self.give(self.edith, "Renew insurance", date(2026, 8, 1))
+
+    def make_user(self, username, time_zone):
+        return User.objects.create_user(
+            username,
+            f"{username}@example.com",
+            "sekrit-password",
+            time_zone=time_zone,
+        )
+
+    def give(self, user, text, due_date):
+        Item.objects.create(
+            list=List.objects.create(owner=user, title=f"{user.username}'s"),
+            text=text,
+            due_date=due_date,
+        )
+
+    def run_at(self, moment, **options):
+        out = StringIO()
+        with patch("django.utils.timezone.now", return_value=moment):
+            call_command("send_due_digest", stdout=out, **options)
+        return out.getvalue()
+
+    def recipients(self):
+        return sorted(message.to[0] for message in mail.outbox)
+
+    def got_mail(self, user):
+        return user.email in self.recipients()
+
+    def test_sends_when_the_users_own_morning_arrives(self):
+        self.run_at(AT_MAKASSAR_MORNING)
+
+        self.assertTrue(self.got_mail(self.obi))
+
+    def test_does_not_send_before_the_users_morning(self):
+        # 06:00 for Obi. Not sent, and left undecided -- his morning is
+        # still ahead of him, unlike a written-off one.
+        self.run_at(BEFORE_MAKASSAR_MORNING)
+        self.obi.refresh_from_db()
+
+        self.assertFalse(self.got_mail(self.obi))
+        self.assertIsNone(self.obi.last_digest_date)
+
+    def test_the_far_side_of_the_world_gets_a_different_hour_entirely(self):
+        self.run_at(AT_MAKASSAR_MORNING)
+        obi_hour = AT_MAKASSAR_MORNING
+        mail.outbox.clear()
+
+        self.run_at(NEW_YORK_MORNING)
+
+        self.assertTrue(self.got_mail(self.edith))
+        self.assertEqual(NEW_YORK_MORNING - obi_hour, timedelta(hours=12))
+
+    def test_running_again_the_same_local_day_sends_nothing(self):
+        self.run_at(AT_MAKASSAR_MORNING)
+        mail.outbox.clear()
+
+        self.run_at(MID_MAKASSAR_MORNING)
+
+        self.assertEqual(mail.outbox, [])
+
+    def test_a_missed_morning_still_gets_its_digest_later(self):
+        # The 07:00 run never happened -- reboot, slow image pull, a DST
+        # transition that skipped the hour. 09:00 local should still send.
+        self.run_at(MID_MAKASSAR_MORNING)
+
+        self.assertIn("obi@example.com", self.recipients())
+
+    def test_a_quiet_day_is_still_marked_decided(self):
+        # Nothing due, so no mail -- but the day must be recorded as
+        # handled, or a task turning overdue at 14:00 mails a "good
+        # morning" at 15:00.
+        Item.objects.filter(list__owner=self.obi).delete()
+
+        self.run_at(AT_MAKASSAR_MORNING)
+        self.obi.refresh_from_db()
+
+        self.assertNotIn("obi@example.com", self.recipients())
+        self.assertEqual(self.obi.last_digest_date, date(2026, 8, 2))
+
+    def test_stamps_the_users_own_local_date(self):
+        self.run_at(AT_MAKASSAR_MORNING)
+        self.obi.refresh_from_db()
+        self.edith.refresh_from_db()
+
+        # The same instant, recorded as two different dates.
+        self.assertEqual(self.obi.last_digest_date, date(2026, 8, 2))
+        self.assertEqual(self.edith.last_digest_date, date(2026, 8, 1))
+
+    def test_dry_run_decides_nothing(self):
+        self.run_at(AT_MAKASSAR_MORNING, dry_run=True)
+        self.obi.refresh_from_db()
+
+        self.assertEqual(mail.outbox, [])
+        self.assertIsNone(self.obi.last_digest_date)
+
+        # And the real run that follows is unaffected by it.
+        self.run_at(AT_MAKASSAR_MORNING)
+        self.assertIn("obi@example.com", self.recipients())
+
+    def test_an_unresolvable_stored_zone_does_not_stop_the_run(self):
+        User.objects.filter(pk=self.obi.pk).update(time_zone="Mars/Olympus_Mons")
+
+        self.run_at(NEW_YORK_MORNING)
+
+        # Obi falls back to the project default rather than raising, so
+        # Edith -- who is sorted after him -- is still reached.
+        self.assertTrue(self.got_mail(self.edith))
+
+    def test_a_morning_missed_entirely_is_written_off_not_sent_late(self):
+        # By 15:00 a "Good morning, here is your day" is no longer useful,
+        # it is just wrong. The day is marked decided so tomorrow's run
+        # starts clean, and nothing is sent.
+        self.run_at(MAKASSAR_AFTERNOON)
+        self.obi.refresh_from_db()
+
+        self.assertNotIn("obi@example.com", self.recipients())
+        self.assertEqual(self.obi.last_digest_date, date(2026, 8, 2))
+
+    def test_writing_off_one_day_does_not_touch_the_next(self):
+        self.run_at(MAKASSAR_AFTERNOON)
+        mail.outbox.clear()
+
+        # 07:00 Aug 3 in Makassar.
+        self.run_at(MAKASSAR_AFTERNOON + timedelta(hours=16))
+
+        self.assertIn("obi@example.com", self.recipients())
+
+    def test_someone_whose_window_has_not_opened_is_left_undecided(self):
+        # Edith is at 03:00 here. Not sent, and crucially not written off
+        # either -- her morning is still ahead of her.
+        self.run_at(MAKASSAR_AFTERNOON)
+        self.edith.refresh_from_db()
+
+        self.assertNotIn("edith@example.com", self.recipients())
+        self.assertIsNone(self.edith.last_digest_date)
+
+    def test_eighteen_hourly_runs_send_exactly_one_digest_each(self):
+        # Long enough to contain both windows -- Obi's opens at 23:00 UTC,
+        # Edith's at 11:00 -- and short enough not to reach anyone's second
+        # morning, where another digest would be correct rather than a
+        # duplicate.
+        for hour in range(18):
+            self.run_at(BEFORE_MAKASSAR_MORNING + timedelta(hours=hour))
+
+        self.assertEqual(
+            self.recipients(), ["edith@example.com", "obi@example.com"]
+        )

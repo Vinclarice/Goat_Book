@@ -103,7 +103,11 @@ class TokenForm(forms.Form):
 class AccountSettingsForm(forms.ModelForm):
     class Meta:
         model = User
-        fields = ("username", "email", "daily_digest")
+        # time_zone belongs here rather than only on the API schema: the
+        # endpoint validates through this form precisely so the two paths
+        # cannot enforce different rules, and being a model field it picks
+        # up validate_time_zone for free.
+        fields = ("username", "email", "daily_digest", "time_zone")
 
     def clean_email(self):
         return self.cleaned_data["email"].strip().lower()

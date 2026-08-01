@@ -124,6 +124,12 @@ Crane follows Bittern. It is deliberately sequenced after production stabilizati
   focus, retain enough history to distinguish an intentional decommitment from
   an unfinished planned commitment in a later review.
 - Make the Daily Page the authenticated home surface while preserving direct access to Agenda, Inbox, Ideas, lists, and archive.
+- Design its layout for a phone from the first day rather than adapting a
+  desktop layout afterwards. The existing surfaces are desktop-first with two
+  lone breakpoints, so Crane is the first chance to build the home surface
+  mobile-aware instead of retrofitting it. See the roadmap's mobile web
+  experience entry for why the layout work waits for this rather than
+  preceding it.
 - Embed existing agenda output as Action Items rather than duplicating task state.
 - Add a direct capture action to the page.
 

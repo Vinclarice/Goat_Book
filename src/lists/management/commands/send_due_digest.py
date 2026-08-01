@@ -1,19 +1,41 @@
-"""Emails each opted-in user what's overdue or due today.
+"""Emails each opted-in user what's overdue or due today, in their morning.
 
-Intended to run once a morning from cron on the server, e.g.
+Runs hourly from cron on the server, e.g.
 
-    0 7 * * * docker exec clarice python manage.py send_due_digest
+    0 * * * * docker exec clarice python manage.py send_due_digest
+
+Hourly rather than once at 07:00 because users are in different time
+zones: a single daily run can only be somebody's morning. The schedule no
+longer expresses an intended send time at all -- it just wakes the command
+up, and the command decides per recipient. That takes the server's own
+zone out of the picture entirely, which is better than configuring it
+correctly, since nothing then has to stay correct.
 
 Users with nothing to report are skipped, so a quiet day stays quiet.
 """
+from zoneinfo import ZoneInfo
+
 from django.conf import settings
 from django.core.mail import send_mail
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 from django.utils.formats import date_format
 
-from accounts.models import User
+from accounts.models import User, resolve_time_zone
 from lists import agenda as agenda_reader
+
+
+# The local hours a digest is considered due, as [start, end). Not a
+# per-user preference yet: everyone gets their own morning, nobody gets to
+# move it.
+#
+# The end matters as much as the start. Without it, a container that was
+# down all morning delivers "Good morning, here is your day" at 20:00 --
+# by which point the summary is not late, it is wrong. Past the window the
+# day is written off instead: nothing sent, but recorded as decided so the
+# next morning starts clean.
+DIGEST_HOUR = 7
+DIGEST_LAST_HOUR = 12
 
 
 def _describe(item, today):
@@ -75,39 +97,91 @@ class Command(BaseCommand):
             "--username",
             help="Only consider this one user (useful for testing).",
         )
+        parser.add_argument(
+            "--send-hour",
+            type=int,
+            default=DIGEST_HOUR,
+            help=(
+                "The local hour a digest becomes due (default 7). Lowering "
+                "it lets a manual run happen without waiting for morning "
+                "somewhere."
+            ),
+        )
+        parser.add_argument(
+            "--until-hour",
+            type=int,
+            default=DIGEST_LAST_HOUR,
+            help=(
+                "The local hour the morning is considered over (default "
+                "12, exclusive). Past it the day is written off unsent. "
+                "Raise it to 24 to send at any hour."
+            ),
+        )
 
     def handle(self, *args, **options):
-        today = timezone.localdate()
+        dry_run = options["dry_run"]
+        send_hour = options["send_hour"]
+        until_hour = options["until_hour"]
         recipients = User.objects.filter(is_active=True, daily_digest=True)
         if options["username"]:
             recipients = recipients.filter(username=options["username"])
 
+        now = timezone.now()
         sent = 0
         for user in recipients.order_by("username"):
-            items = agenda_reader.digest_items_for(user, today)
-            if not items:
+            zone = resolve_time_zone(user.time_zone) or ZoneInfo(settings.TIME_ZONE)
+            local_now = now.astimezone(zone)
+            today = local_now.date()
+
+            # Their day is already decided, so an hourly run is a no-op for
+            # them. This is what makes running twelve more times today safe.
+            if user.last_digest_date == today:
                 continue
 
-            subject = build_subject(items, today)
-            body = build_message(user, items, today)
-
-            if options["dry_run"]:
-                self.stdout.write(f"--- {user.email} ---")
-                self.stdout.write(subject)
-                self.stdout.write(body)
+            # "At or after" rather than "equals": an equality test silently
+            # drops a whole day whenever the 07:00 run is missed -- a
+            # reboot, a slow image pull, or a spring-forward transition that
+            # skips the hour outright in some zones.
+            if local_now.hour < send_hour:
                 continue
 
-            send_mail(
-                subject=subject,
-                message=body,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[user.email],
-            )
-            sent += 1
+            # Inside the window this sends; past it the day falls straight
+            # through to being stamped, which is how a missed morning is
+            # written off rather than delivered stale in the evening.
+            if local_now.hour < until_hour:
+                items = agenda_reader.digest_items_for(user, today)
+                if items:
+                    subject = build_subject(items, today)
+                    body = build_message(user, items, today)
 
-        if options["dry_run"]:
+                    if dry_run:
+                        self.stdout.write(
+                            f"--- {user.email} ({user.time_zone}) ---"
+                        )
+                        self.stdout.write(subject)
+                        self.stdout.write(body)
+                    else:
+                        send_mail(
+                            subject=subject,
+                            message=body,
+                            from_email=settings.DEFAULT_FROM_EMAIL,
+                            recipient_list=[user.email],
+                        )
+                        sent += 1
+
+            if not dry_run:
+                # Stamped even when nothing was sent, which is the whole
+                # difference between a morning digest and an alarm. Without
+                # it the hourly job keeps reconsidering, and a task that
+                # becomes overdue at 14:00 mails a "good morning" at 15:00.
+                user.last_digest_date = today
+                user.save(update_fields=["last_digest_date"])
+
+        if dry_run:
             self.stdout.write(self.style.SUCCESS("Dry run complete."))
-        else:
+        elif sent:
+            # Silent otherwise: this runs 24 times a day now, and a line
+            # per run is 24 pieces of cron mail saying nothing happened.
             self.stdout.write(
                 self.style.SUCCESS(f"Sent {sent} digest email(s).")
             )

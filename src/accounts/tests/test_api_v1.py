@@ -68,6 +68,7 @@ class PreferencesEndpointTest(TestCase):
                 "email": "alice@example.com",
                 "daily_digest": True,
                 "theme": "system",
+                "time_zone": "America/New_York",
             },
         )
 
@@ -80,6 +81,7 @@ class PreferencesEndpointTest(TestCase):
                 "email": "alice@example.com",
                 "daily_digest": False,
                 "theme": "dark",
+                "time_zone": "America/New_York",
             },
         )
 
@@ -97,6 +99,7 @@ class PreferencesEndpointTest(TestCase):
                 "email": "bob@example.com",
                 "daily_digest": True,
                 "theme": "system",
+                "time_zone": "America/New_York",
             },
         )
 

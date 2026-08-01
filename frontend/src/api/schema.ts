@@ -116,6 +116,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/time-zones": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Time Zones
+         * @description The zones the picker may offer.
+         *
+         *     Served rather than read from the browser's own Intl list: the two can
+         *     disagree, and a disagreement would show up as a validation error on a
+         *     zone this application had just offered the person.
+         */
+        get: operations["accounts_api_v1_list_time_zones"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/preferences": {
         parameters: {
             query?: never;
@@ -356,6 +380,11 @@ export interface components {
             /** Lists */
             lists: components["schemas"]["TaskListSummaryOut"][];
         };
+        /** TimeZonesOut */
+        TimeZonesOut: {
+            /** Time Zones */
+            time_zones: string[];
+        };
         /** PreferencesOut */
         PreferencesOut: {
             /** Username */
@@ -369,6 +398,8 @@ export interface components {
              * @enum {string}
              */
             theme: "system" | "light" | "dark";
+            /** Time Zone */
+            time_zone: string;
         };
         /** PreferencesIn */
         PreferencesIn: {
@@ -383,6 +414,8 @@ export interface components {
              * @enum {string}
              */
             theme: "system" | "light" | "dark";
+            /** Time Zone */
+            time_zone: string;
         };
         /** CaptureOut */
         CaptureOut: {
@@ -575,6 +608,26 @@ export interface operations {
             };
         };
     };
+    accounts_api_v1_list_time_zones: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TimeZonesOut"];
+                };
+            };
+        };
+    };
     accounts_api_v1_get_preferences: {
         parameters: {
             query?: never;
@@ -632,6 +685,15 @@ export interface operations {
             };
         };
         responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaptureOut"];
+                };
+            };
             /** @description Created */
             201: {
                 headers: {

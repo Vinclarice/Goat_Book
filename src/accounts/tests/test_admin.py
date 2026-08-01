@@ -35,6 +35,12 @@ class UserAdminTest(TestCase):
                 "username": "edith",
                 "email": "edith@example.com",
                 "is_active": "on",
+                # Required by the Preferences fieldset: the admin change
+                # form posts every field it renders, so omitting these
+                # would fail validation and quietly not approve anyone.
+                "time_zone": "America/New_York",
+                "theme": "system",
+                "daily_digest": "on",
                 "initial-last_login": "",
                 "date_joined_0": "",
                 "date_joined_1": "",

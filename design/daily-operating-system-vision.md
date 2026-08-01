@@ -56,7 +56,8 @@ A review is not another task list. It is a guided view of completed work, unfini
 | --- | --- | --- |
 | Something actionable | `Item` task | Shows it when relevant; completion changes the task itself. |
 | Something to remember or explore | Capture, then `Idea` | Offers capture and triage; never makes a fake task to hold a thought. |
-| What mattered or happened today | Future dated Daily Entry | Stores the day's intention/reflection in place. |
+| What mattered or happened today | Future dated Daily Entry | Stores the day's intention/reflection and chosen focus tasks in place. |
+| Why this work matters | Future user-level Personal Compass | Displays a rarely edited purpose and guiding question without copying them into each day. |
 | A repeating commitment | Recurring task today; future Routine where needed | Produces the next occurrence or shows today's target. |
 | A wider planning decision | Future Review Entry | Summarizes evidence and records the resulting decision. |
 
@@ -78,6 +79,30 @@ partial completion, skipped days, and historical edits. It also needs a
 per-user time-zone decision before day boundaries and streaks can be trusted.
 Do not misuse task recurrence to fake this before those rules are designed.
 
+## Crane 0 — Routine and target domain design
+
+Do this design work immediately after Bittern, before Crane implementation,
+even though routine implementation follows the Daily Page foundation. The
+“five daily lessons” case is a central reason Clarice exists and must not stay
+as a placeholder while adjacent surfaces ship.
+
+Settle, in a focused design brief:
+
+- A `Routine` template's owner, title, active/paused state, cadence, target
+  quantity, and human unit such as “lessons” or “sessions.”
+- A dated `RoutineOccurrence` record with target, actual progress, and an
+  explicit completed/skipped/open outcome; history must not be recalculated
+  from a routine's current settings.
+- The minimum initial cadence, how a person logs one unit of progress, how
+  they correct it, and what a deliberate skip means.
+- The per-user time-zone model required for day boundaries, streaks, and
+  weekly habit metrics.
+- The boundary with tasks: a routine measures repeated practice; a recurring
+  task represents one discrete commitment that creates its next occurrence.
+
+The deliverable is a spec and acceptance examples, not a migration. Use the
+lesson target, a daily exercise target, and a weekly practice target as cases.
+
 ## Crane — Daily Page foundation
 
 Crane follows Bittern. It is deliberately sequenced after production stabilization and Android capture so the daily surface can rely on a dependable task and capture loop.
@@ -86,17 +111,31 @@ Crane follows Bittern. It is deliberately sequenced after production stabilizati
 
 - Add an owner-scoped, date-unique Daily Entry record.
 - Start with plain-text or simple structured fields for intentions, gratitude, and happenings; do not build a rich block editor.
+- Add a user-level **Personal Compass**: a rarely edited purpose statement and
+  guiding question, such as “What is the most I can do?” Display it on the
+  Daily Page, but keep it separate from that day's Intentions and do not copy
+  it into every Daily Entry.
+- Add a date-scoped **Daily Focus** join between a Daily Entry and an existing
+  task. “Pin this to today” creates a focus record; it does not alter the
+  task's due date, status, or ownership. Show the deliberate focus list above
+  the broader embedded Agenda output so the Daily Page is visibly a planning
+  surface on its first day.
+- Give focus records an order and selection timestamp. If a person removes a
+  focus, retain enough history to distinguish an intentional decommitment from
+  an unfinished planned commitment in a later review.
 - Make the Daily Page the authenticated home surface while preserving direct access to Agenda, Inbox, Ideas, lists, and archive.
 - Embed existing agenda output as Action Items rather than duplicating task state.
 - Add a direct capture action to the page.
 
-**Success:** opening Clarice each morning gives a useful working page without rebuilding a template or transferring yesterday's unfinished work.
+**Success:** opening Clarice each morning gives a useful working page without
+rebuilding a template or transferring yesterday's unfinished work — and makes
+the person’s chosen commitments visibly different from the rest of the agenda.
 
-### Crane 2 — daily planning and routines
+### Crane 2 — refine daily planning
 
-- Decide how a person chooses today's focus from open tasks without creating a second task lifecycle.
 - Show task age and overdue context so carry-forward is visible, not silently punitive.
-- Design the Routine/target model from real examples such as lesson counts, exercise, or study sessions; write a separate spec before implementation.
+- Implement routine/target behavior only after Crane 0's design has settled
+  its occurrence and progress model.
 
 ### Crane 3 — weekly review and trends
 
@@ -139,10 +178,18 @@ ship: define the boundary between an idea, reference, project, task, and
 routine; decide whether links and sources are plain text or structured data;
 and establish what a relationship between two ideas actually means.
 
-Only then examine retrieval and resurfacing: make old references easy to find,
-let exploring ideas reappear at useful moments without anxiety, and later allow
-related ideas and an append-only idea log. The system needs real information
-volume before it guesses what deserves resurfacing.
+Before a visual map or AI-assisted grouping, ship a cheap, human-controlled
+interim step: shared topic tags on Ideas and/or a manually selected “related
+idea” link. Render those connections as ordinary chips or links, not a graph.
+They let real use answer whether “relates to” means a shared topic, a source,
+a follow-on, or something else — and create the relationship data a later map
+would need.
+
+Only after that examine richer retrieval and resurfacing: make old references
+easy to find, let exploring ideas reappear at useful moments without anxiety,
+and later consider a visual relationship view or an append-only idea log. The
+system needs real information volume before it guesses what deserves
+resurfacing or asks AI to make those connections.
 
 ## AI comes after the practice, as assistance
 

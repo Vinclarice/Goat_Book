@@ -27,11 +27,11 @@ the owner's Inbox through the token-authenticated API.
 
 | Slice | Why it belongs | Dependency |
 | --- | --- | --- |
-| A1 — idempotent mobile capture contract | A retry must never create a duplicate thought after a lost response. | Stage 0 production API check. |
-| A2 — native capture client | The core requested product: open, type, submit, and return to life. | A1 contract. |
-| A3 — durable offline delivery | Capture must work when the thought arrives before the network does. | A1 and A2. |
-| A4 — device/pilot verification | Confirms the real capture loop, token lifecycle, and background retry work outside an emulator. | A2 and A3. |
-| A5 — share to capture | Lets text and links move from another Android app into an editable Clarice capture draft. | A4's dependable capture flow. |
+| M1 — idempotent mobile capture contract | A retry must never create a duplicate thought after a lost response. | Stage 0 production API check. |
+| M2 — native capture client | The core requested product: open, type, submit, and return to life. | M1 contract. |
+| M3 — durable offline delivery | Capture must work when the thought arrives before the network does. | M1 and M2. |
+| M4 — device/pilot verification | Confirms the real capture loop, token lifecycle, and background retry work outside an emulator. | M2 and M3. |
+| M5 — share to capture | Lets text and links move from another Android app into an editable Clarice capture draft. | M4's dependable capture flow. |
 
 **Exit condition:** an Android user can authenticate with a personal access
 token, capture online or offline, safely retry without duplicates, and see the
@@ -68,7 +68,7 @@ result in the web Inbox.
 
 - No list sharing, real-time sync, or conflict resolution.
 - No broad React rewrite of Capture or Ideas.
-- No new recurring-task rules or task-model migration; A1's small capture
+- No new recurring-task rules or task-model migration; M1's small capture
   idempotency migration is the sole planned schema change.
 - No navigation redesign before the current navigation is proven to render.
 - No Android triage, Idea management, task editing, push notifications, or
@@ -84,10 +84,10 @@ B0: establish production artifact and capture-API truth
         │
         └── Stage 1: Android Capture MVP
                 │
-                ├── A1: idempotent writes
-                ├── A2: native capture flow
-                ├── A3: offline queue and retry
-                └── A4: real-device pilot
+                ├── M1: idempotent writes
+                ├── M2: native capture flow
+                ├── M3: offline queue and retry
+                └── M4: real-device pilot
                         │
                         └── Stage 2: web usability completion
                                 ├── B1: spawned subtasks
@@ -98,7 +98,7 @@ B0: establish production artifact and capture-API truth
 ```
 
 Stage 0 is a hard gate because it verifies the service the phone will call.
-Within Stage 1, A2 can begin once A1's contract is settled, while A3 works
+Within Stage 1, M2 can begin once M1's contract is settled, while M3 works
 alongside the basic online flow. B4 must not block Android or web usability if
 the monitoring account or DSN is not yet available.
 
@@ -179,7 +179,7 @@ submit it, and immediately return to what you were doing. The thought may be
 triaged later on the web. The app should feel faster than opening the browser
 and should remain dependable under poor connectivity.
 
-### A1 — idempotent capture writes
+### M1 — idempotent capture writes
 
 The current endpoint creates a capture for every successful POST. If Android
 sends a request, loses the response, and retries, it cannot know whether the
@@ -202,7 +202,7 @@ the original row; concurrent retries result in one row; different owners may
 reuse a key; malformed keys fail; omitted keys still work; revoked or inactive
 tokens cannot access another user's capture.
 
-### A2 — native app and token lifecycle
+### M2 — native app and token lifecycle
 
 Create a standalone Kotlin Android project using Jetpack Compose. Its first
 release has three screens only:
@@ -220,7 +220,7 @@ and the normal `Authorization: Bearer` header. A `401`/`403` marks the queue
 as needing reconnection; it never discards captured text. Replacing a token
 must retain pending captures.
 
-### A3 — durable offline delivery
+### M3 — durable offline delivery
 
 An accepted local capture must survive app close, restart, and a network drop.
 Store its text, idempotency UUID, local creation time, and delivery state in
@@ -242,7 +242,7 @@ without preventing another capture.
 retry uses the same key; process restart retains the queue; invalid token keeps
 the text; and offline submission remains responsive and visibly queued.
 
-### A4 — real-device pilot and release criteria
+### M4 — real-device pilot and release criteria
 
 Verify on at least one physical device as well as an emulator: Wi-Fi,
 cellular, airplane-mode transitions, app process death, and a revoked token.
@@ -254,7 +254,7 @@ production, online/offline captures survive those flows, forced retries create
 no duplicates, token revocation is recoverable without data loss, and the app
 stores only the encrypted credential and explicitly visible pending queue.
 
-### A5 — share to capture
+### M5 — share to capture
 
 After the basic Android capture loop is reliable, register Clarice as an
 Android share target for plain text and URLs. A share opens an editable capture
@@ -508,7 +508,7 @@ does not hold Android or web usability work.
 
 ### Before merge
 
-- Django tests covering A1/B1/B2, including idempotency and ownership/security
+- Django tests covering M1/B1/B2, including idempotency and ownership/security
   regressions.
 - Android unit and instrumentation tests covering token storage, queue
   persistence, offline retry, and reconnect behavior.
@@ -520,7 +520,7 @@ does not hold Android or web usability work.
 
 ### Before deploy
 
-- Apply and verify the A1 idempotency migration before releasing a client that
+- Apply and verify the M1 idempotency migration before releasing a client that
   depends on it; use the existing Postgres-backed CI path.
 - Confirm the production configuration has the monitoring DSN only if B4 is
   included.

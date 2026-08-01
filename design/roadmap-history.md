@@ -40,6 +40,9 @@ from 53 to 60 without changing existing rows.
   orphaned when their recurring parent archives.
 - Added persistent SPA navigation in source. Its absence in production is
   now Bittern C0.
+- Added direct Inbox and Ideas links to the Agenda workspace as a fallback
+  entry point. They mitigate a missing side nav only once the current frontend
+  bundle is deployed; they do not replace B0's production-bundle diagnosis.
 
 ### Capture and account work
 

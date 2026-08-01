@@ -60,8 +60,8 @@ before writing a redesign spec.
 
 ### Track D — Postgres-enabled features
 
-Choose at most one for Bittern unless a later decision explicitly expands the
-release.
+None of these ship in Bittern. They remain future candidates and need their
+own product trigger or focused brief before joining an active release.
 
 - **Reference/Idea search.** Start with ranked full-text and typo-tolerant
   search for Ideas, especially the `reference` archive. The Inbox is a queue
@@ -75,13 +75,12 @@ release.
 
 ### Track E — Public-readiness essentials
 
+Bittern includes only the two items below. Account export/deletion remains
+deferred until the immediate-versus-grace-period decision is made.
+
 - **Branded email and contact.** Move account mail to verified Clarice-owned
   addresses and add a rate-limited contact path that routes to a product
   support inbox. This starts once an email provider is chosen.
-- **Account export and deletion.** Export all user-owned data — lists,
-  tasks, captures, ideas, and token metadata without token secrets — as a
-  downloadable file. Decide before implementation whether deletion is
-  immediate or has a grace period.
 - **Error monitoring.** Add production exception reporting with a DSN-backed
   service such as Sentry. This is deliberately small and independent.
 
@@ -108,8 +107,13 @@ tasks, captures, reflections, and ideas as distinct records with clear sources
 of truth — never duplicate a task into a day page merely to make it visible.
 Weekly review and its trustworthy completion/routine trends are the first
 planning feature after that foundation. Routines and habits will be a separate
-domain from recurring tasks. The product direction, data boundaries, review
-metrics, second-brain questions, and eventual AI guardrails are in
+domain from recurring tasks. Crane also preserves the old template's persistent
+purpose/guiding-question block as a user-level Personal Compass, separate from
+daily intentions, and adds a durable “pin this to today” focus layer above the
+broader agenda. Routine/target domain design begins as Crane 0, before Daily
+Page implementation; its implementation follows the foundation. The product
+direction, data boundaries, review metrics, second-brain questions, and
+eventual AI guardrails are in
 [`daily-operating-system-vision.md`](daily-operating-system-vision.md).
 
 ## Later — visible, not scheduled
@@ -127,6 +131,8 @@ deliberate product decision.
 - Self-service signup with email verification.
 - Rate limiting for signup and capture.
 - Transactional email instead of personal Gmail SMTP.
+- Account export and deletion, after deciding immediate deletion versus a
+  grace period before purge.
 - Privacy policy and terms of service.
 
 Password recovery and adversarial per-user isolation tests are already done.

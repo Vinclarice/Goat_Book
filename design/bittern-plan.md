@@ -1,10 +1,10 @@
 # Bittern — delivery plan
 
-**Status: ready to start.** Bittern is staged work: first make the deployed
-web application trustworthy enough to be a dependable capture backend, then
-ship the Android capture client, then close the remaining web-session and
-state gaps. It is not a grab bag of every attractive Postgres or
-public-readiness idea.
+**Status: M1 implemented; release verification and the remaining stages are
+next.** Bittern is staged work: make the deployed web application trustworthy
+enough to be a dependable capture backend, ship the Android capture client,
+then close the remaining web-session and state gaps. It is not a grab bag of
+every attractive Postgres or public-readiness idea.
 
 This document is the implementation plan for the active Bittern entry in
 [`roadmap.md`](roadmap.md). Completed Albatross decisions and deploy history
@@ -36,6 +36,25 @@ the owner's Inbox through the token-authenticated API.
 **Exit condition:** an Android user can authenticate with a personal access
 token, capture online or offline, safely retry without duplicates, and see the
 result in the web Inbox.
+
+### Mobile repository and sequencing decision
+
+Keep native clients in this repository: create `android/` at the repository
+root when real Android work begins, and reserve `ios/` as its future sibling.
+The Django API, web application, mobile clients, release checks, and product
+plans are one product and one delivery narrative today; splitting repositories
+would add coordination cost without a present benefit. Revisit only if
+separate teams or release processes earn that cost.
+
+M1 is deliberately shared backend work, not Android scaffolding. It can be
+implemented and fully tested without Gradle, Android Studio, or a device, and
+both eventual native clients use the same contract. The native Android project
+starts at M2 on a development machine with Android Studio and real dependency
+resolution available; do not add an unbuildable placeholder project here.
+
+Stage 0/B0.1 remains the deployment gate: M1 may be prepared before that
+production check, but no mobile client should rely on it until the production
+capture service and migration have been verified.
 
 ### Stage 2 — web usability completion
 
@@ -181,6 +200,11 @@ and should remain dependable under poor connectivity.
 
 ### M1 — idempotent capture writes
 
+**Current state:** the additive server implementation and migration are
+committed. Before deploying it or starting M2, run the Django capture suite
+against the real project environment, apply the migration on a safe
+Postgres-backed path, and complete B0.1's production smoke check.
+
 The current endpoint creates a capture for every successful POST. If Android
 sends a request, loses the response, and retries, it cannot know whether the
 first request was stored. Retrying risks duplicate ideas — the precise failure
@@ -201,6 +225,22 @@ key because the client owns retry identity.
 the original row; concurrent retries result in one row; different owners may
 reuse a key; malformed keys fail; omitted keys still work; revoked or inactive
 tokens cannot access another user's capture.
+
+#### Mobile handoff contract
+
+M2 receives a small, stable contract rather than needing to infer server
+behavior from implementation:
+
+| Situation | Client request / response | Client action |
+| --- | --- | --- |
+| New or queued capture | `POST /api/v1/capture`, bearer token, text payload, and the capture's locally generated UUID in `Idempotency-Key` | Treat `201` plus `{id, created_at}` as delivered. |
+| Lost response or retry | Send the exact same UUID again | Treat `200` with the same response shape as delivered; never create a new UUID for a retry. |
+| Invalid key or invalid capture | `400` | Keep the text, show a fixable error, and do not retry blindly. |
+| Revoked, expired, or invalid token | `401` or `403` | Keep the queued text and require reconnection; never discard it. |
+
+The Android engineer records the production base URL and TLS verification from
+B0.1 in the client configuration; no endpoint, token, or server secret is
+hard-coded into the app. The same table is the future iOS handoff.
 
 ### M2 — native app and token lifecycle
 

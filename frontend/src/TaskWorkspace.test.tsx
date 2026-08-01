@@ -444,7 +444,13 @@ describe("TaskWorkspace subtasks", () => {
       expect(fetchSpy).toHaveBeenCalledWith(
         "/api/lists/1/items/",
         expect.objectContaining({
-          body: JSON.stringify({ text: "Book trains", parent: 1 }),
+          // always_recurs rides along at its default -- the list row has no
+          // control for it, so opting out happens from the detail view.
+          body: JSON.stringify({
+            text: "Book trains",
+            parent: 1,
+            always_recurs: true,
+          }),
         }),
       ),
     );

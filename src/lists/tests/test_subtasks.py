@@ -241,6 +241,106 @@ class RecurringParentTest(SubtaskServiceTest):
         )
 
 
+class AlwaysRecursTest(SubtaskServiceTest):
+    """What comes back on the next occurrence, as opposed to what the cascade
+    happened to touch on the way out -- see
+    design/recurring-subtasks-addendum.md.
+    """
+
+    def make_recurring(self):
+        services.set_recurrence(
+            self.refresh(self.parent), Item.Recurrence.WEEKLY
+        )
+
+    def spawn(self):
+        return services.complete_item(self.refresh(self.parent))._spawned
+
+    def test_a_new_subtask_carries_forward_by_default(self):
+        self.assertTrue(self.child_a.always_recurs)
+
+    def test_a_subtask_can_be_created_opted_out(self):
+        child = services.create_item(
+            self.list_, "Renew passport", parent=self.parent, always_recurs=False
+        )
+
+        self.assertFalse(child.always_recurs)
+
+    def test_creating_a_root_task_with_the_flag_is_rejected(self):
+        with self.assertRaises(services.TaskConflict):
+            services.create_item(self.list_, "Pack", always_recurs=False)
+
+    def test_setting_the_flag_on_a_root_task_is_rejected(self):
+        with self.assertRaises(services.TaskConflict):
+            services.set_always_recurs(self.parent, False)
+
+    def test_a_child_completed_before_its_parent_still_comes_back(self):
+        # The bug this closes: ticking a subtask off early used to take it out
+        # of the cascade query, and the cascade query was also -- wrongly --
+        # what decided the next occurrence's children.
+        services.complete_item(self.child_a)
+        self.make_recurring()
+
+        spawned = self.spawn()
+
+        self.assertEqual(
+            sorted(each.text for each in spawned.subtasks.all()),
+            ["Book flights", "Book hotel"],
+        )
+
+    def test_an_opted_out_child_does_not_come_back(self):
+        # The pre-addendum behaviour for an early-completed child, now an
+        # explicit choice rather than a side effect of which query ran first.
+        services.set_always_recurs(self.child_a, False)
+        self.make_recurring()
+
+        spawned = self.spawn()
+
+        self.assertEqual(
+            [each.text for each in spawned.subtasks.all()], ["Book hotel"]
+        )
+
+    def test_a_child_archived_before_its_parent_does_not_come_back(self):
+        # Archiving reads as "removed", not "done", so the flag doesn't
+        # override it.
+        services.archive_item(self.child_a)
+        self.make_recurring()
+
+        spawned = self.spawn()
+
+        self.assertEqual(
+            [each.text for each in spawned.subtasks.all()], ["Book hotel"]
+        )
+
+    def test_the_clone_keeps_the_flag(self):
+        # Only ever True today, since the carry-forward query filters on it --
+        # this guards the clone against silently falling back to the model
+        # default if that filter is ever loosened.
+        self.make_recurring()
+
+        spawned = self.spawn()
+
+        self.assertTrue(all(each.always_recurs for each in spawned.subtasks.all()))
+
+    def test_an_active_child_is_both_cascaded_and_carried_forward(self):
+        # The two queries answer different questions about the same child:
+        # it gets archived with its parent *and* reappears next time.
+        self.make_recurring()
+
+        completed = services.complete_item(self.refresh(self.parent))
+
+        self.assertEqual(
+            [each.pk for each in completed._cascaded],
+            [self.child_a.pk, self.child_b.pk],
+        )
+        self.assertEqual(completed._spawned.subtasks.count(), 2)
+        self.assertTrue(
+            all(
+                self.refresh(child).status == Item.Status.ARCHIVED
+                for child in (self.child_a, self.child_b)
+            )
+        )
+
+
 class SiblingReorderTest(SubtaskServiceTest):
     def test_reorder_is_scoped_to_one_sibling_group(self):
         services.reorder_items(

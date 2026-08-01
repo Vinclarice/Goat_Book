@@ -1,5 +1,11 @@
 # Recurring subtasks: `always_recurs`
 
+**Built July 31, 2026** — migration `0021_item_always_recurs`. Kept as
+written rather than rewritten in the past tense; where the build departed
+from this spec (the carry-forward query runs only when the task actually
+recurs, and the UI controls appear only on a parent that repeats), the
+roadmap's Track A/Next entry records why.
+
 Addendum to `subtasks-plan.md` — closes a gap a review of the shipped subtask
 work found: a subtask completed *before* its recurring parent silently never
 reappeared in the next occurrence, because `complete_item` reused the same

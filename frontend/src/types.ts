@@ -34,6 +34,10 @@ export interface Task {
   // id + text so a subtask row can render its breadcrumb without a second
   // lookup. null means this is a root task.
   parent: { id: number; text: string } | null;
+  // Whether this subtask reappears on its parent's next occurrence. Only
+  // meaningful when `parent` is set; a root task carries the default and
+  // nothing reads it.
+  always_recurs: boolean;
   // Counts, not nested children: the list page fetches the whole list and
   // nests client-side, the agenda only needs "2/5". Always present, 0/0 for
   // a task with no subtasks.

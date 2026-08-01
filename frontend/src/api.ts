@@ -95,8 +95,18 @@ export function createSubtask(
   url: string,
   text: string,
   parent: number,
+  alwaysRecurs = true,
 ): Promise<Task> {
-  return request<Task>(url, "POST", { text, parent });
+  return request<Task>(url, "POST", { text, parent, always_recurs: alwaysRecurs });
+}
+
+/** Only valid for a subtask -- the server rejects it on a root task, where
+ * "comes back with the parent" has nothing to mean. */
+export function updateTaskAlwaysRecurs(
+  task: Task,
+  alwaysRecurs: boolean,
+): Promise<Task> {
+  return request<Task>(task.url, "PATCH", { always_recurs: alwaysRecurs });
 }
 
 export function updateTaskText(task: Task, text: string): Promise<Task> {

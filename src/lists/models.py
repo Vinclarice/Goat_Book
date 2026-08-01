@@ -48,6 +48,12 @@ class Item(models.Model):
         on_delete=models.CASCADE,
         related_name="subtasks",
     )
+    # Whether this subtask reappears on the parent's next occurrence. Only
+    # meaningful when parent_id is set, and defaulted to True because a
+    # subtask is assumed part of the recurring routine unless said otherwise.
+    # It exists because "what must be cascaded" and "what comes back next
+    # time" are different questions -- see design/recurring-subtasks-addendum.md.
+    always_recurs = models.BooleanField(default=True)
     # Stamped on every archive, single or cascade, so restore can regroup
     # exactly what one action archived. An explicit marker rather than
     # matching on archived_at: same-instant timestamps would be a timestamp

@@ -25,9 +25,10 @@ the gate on Track A/Next to A0 alone. Those changes are marked in place.
 
 **A further follow-up session reviewed the shipped subtask and Capture MVP
 code directly** — not waiting for a deploy or a checkpoint — and produced
-three more specs, now sitting in `design/` and queued for whichever session
-builds next: `recurring-subtasks-addendum.md`, `capture-api-and-tokens-plan.md`,
-and `capture-triage-and-polish-plan.md`. Details under Track A/Next and
+three more specs, which went into `design/`:
+`recurring-subtasks-addendum.md` (built since — see Track A/Next),
+`capture-api-and-tokens-plan.md`, and
+`capture-triage-and-polish-plan.md`. Details under Track A/Next and
 Track B below. This document is now the single planning artifact for
 Clarice — the parallel copy that lived in the planning conversation's own
 document viewer has been retired in its favor.
@@ -88,9 +89,13 @@ now specs in `design/`, unbuilt. See Track A/Next and Track B below.
   Postgres move happened at all.
 - **A deploy.** None of the work above is running anywhere. Production is
   still serving the code as it stood before any of this.
-- **Three specs to build.** `recurring-subtasks-addendum.md`,
-  `capture-api-and-tokens-plan.md`, `capture-triage-and-polish-plan.md` --
-  see below for what each contains.
+- **Three specs to build.** `capture-api-and-tokens-plan.md` and
+  `capture-triage-and-polish-plan.md` under Track B -- see below for what
+  each contains -- plus `password-reset-plan.md` under Track A/Now (A6),
+  triggered by a real lockout-plus-forgotten-password incident rather than
+  either track's own planning. `recurring-subtasks-addendum.md` is the one
+  of the original three that's now built (migration `0021`, July 31,
+  2026) and, like everything else here, undeployed.
 
 The first three need `doctl` or an Ansible run against the live account,
 which is why they have outlasted everything that could be done from an
@@ -166,17 +171,22 @@ currently in scope.
 
 **The quality bar — public-ready, not necessarily commercial.**
 
-- Self-service signup with email verification and self-service password
-  recovery, replacing the current manual admin-approval flow.
+- Self-service signup with email verification, replacing the current
+  manual admin-approval flow. Self-service password recovery used to be
+  bundled into this bullet; it's been split out and pulled forward — see
+  A6 below, `design/password-reset-plan.md`.
 - Per-user data isolation that's been adversarially tested (a real test
   suite that tries to read/edit/delete another user's data by id), not just
   assumed correct from ownership filters. **Pulled forward into Track A/Now
-  as item A3 — see below.** Everything else on this list stays deferred.
+  as item A3 — see below.**
 - Rate limiting on signup and capture, not just login.
 - A transactional email provider in place of personal Gmail SMTP.
 - An account export/deletion flow.
 - Basic error monitoring beyond `docker logs`.
 - A privacy policy and terms of service.
+
+Password recovery (A6) and isolation tests (A3) are the two pieces of this
+bar pulled into Track A/Now; everything else above stays deferred.
 
 This is the bar that matters for a portfolio-grade public deployment, and
 it's mostly productization work layered on architecture that's already
@@ -202,9 +212,10 @@ time, instead of staying a vague aspiration.
 
 Two tracks ran at once, and both had emptied of code — briefly:
 
-- **Track A** — Now (infra hygiene, A0–A5) → Next (the feature plan).
-  Next is closed, but has one follow-up queued (the recurring-subtasks
-  addendum, below); Now has A2 and A5 left, both ops rather than code.
+- **Track A** — Now (infra hygiene, A0–A6) → Next (the feature plan).
+  Next is closed, and its one follow-up (the recurring-subtasks addendum)
+  is now built too; Now has A2, A5, and the new A6 (password reset) left —
+  A2 and A5 are ops, A6 is code.
 - **Track B** — Capture MVP, built, waiting on a deploy to start its
   clock, with two more specs now queued behind it (the API/token
   foundation, and the triage model).
@@ -212,13 +223,14 @@ Two tracks ran at once, and both had emptied of code — briefly:
 **That "empty queue" state lasted about a day.** A direct review of the
 shipped work found one real bug worth fixing and settled the triage
 question the two-week checkpoint was meant to answer — ahead of schedule
-and on purpose, not by accident. Three specs sit in `design/` now, all
-unbuilt: `recurring-subtasks-addendum.md`, `capture-api-and-tokens-plan.md`,
-and `capture-triage-and-polish-plan.md`. None of them compete for priority
-in an interesting way — the subtask fix is small and self-contained, the
-two Capture specs are already sequenced against each other (tokens/API
-before Android, triage before either), and all three are independent of
-Track A's remaining ops work (A2, A5).
+and on purpose, not by accident. Three specs went into `design/`:
+`recurring-subtasks-addendum.md`, `capture-api-and-tokens-plan.md`, and
+`capture-triage-and-polish-plan.md`. **The first is now built**; the two
+Capture specs are not. None of them competed for priority in an
+interesting way — the subtask fix was small and self-contained, the two
+Capture specs are already sequenced against each other (tokens/API before
+Android, triage before either), and all three are independent of Track A's
+remaining ops work (A2, A5).
 
 The original caution here — don't fill Next with the largest idea from
 **Later** just because the queue looks empty — still applies in spirit.
@@ -236,20 +248,22 @@ open-ended parallel effort.
 ## Track A — Now: close the infrastructure gaps
 
 The Postgres move solves the easy 80% of a few problems and leaves the rest
-half-finished. Four items from the original plan, one pulled forward from
-the public-readiness bar (A3), and one surfaced by A1's live run (A5). All
-six are cheap now and get more annoying to retrofit once schema work
+half-finished. Four items from the original plan, two pulled forward from
+the public-readiness bar (A3, A6), and one surfaced by A1's live run (A5).
+All seven are cheap now and get more annoying to retrofit once schema work
 (Track A/Next) lands on top.
 
 Order matters at the front: CI goes first, so the DB-user restriction and
 the isolation tests both land with automated coverage instead of a manual,
 one-time check. After that the order is preference, not dependency — A2,
-A4, and A5 are independent of each other and of the feature plan.
+A4, A5, and A6 are independent of each other and of the feature plan.
 
 **Status:** A0, A1 and A3 are done; A4 is written and waiting on a deploy.
-**A2 and A5 are what's left**, and they're the two that need `doctl`
-against the live account rather than code — which is exactly why they
-outlasted everything that could be done from an editor. Neither is hard.
+**A2, A5, and A6 are what's left.** A2 and A5 need `doctl` against the
+live account rather than code, which is why they've outlasted everything
+that could be done from an editor. A6 is ordinary coding work — it just
+wasn't scoped until a real lockout-plus-forgotten-password incident
+surfaced it.
 
 ### A0. Stand up CI with a Postgres service container — done
 
@@ -466,6 +480,39 @@ here rather than deferred to the public-readiness bar.
   exists to make true.
 - Verify from outside: the app still connects, an unlisted host doesn't.
 
+### A6. Self-service password reset
+
+**New from a real incident, not a review pass** — someone locked out of
+their account by too many failed attempts (see `AXES_FAILURE_LIMIT`
+above) also couldn't remember their password, and there was no way to
+reset it: no "forgot password" link on the login page, and none on the
+admin login either, because the admin's own login template only shows
+that link when the URL name `admin_password_reset` actually resolves, and
+it didn't.
+
+`design/password-reset-plan.md` specs the fix: Django's standard
+email-based reset flow (the `User` model's email is already unique and
+required, so no new field is needed), styled to match the existing
+card-based login/lockout pages, wired into `accounts/urls.py`, with a
+`ClearLockoutPasswordResetConfirmView` that also clears any axes lockout
+for that username on successful completion — otherwise setting a new
+password wouldn't actually get someone back in until the hour-long
+cooloff expired. It reuses the SMTP/console email setup already in
+`clarice/settings.py` for signup and lockout notifications; nothing new
+to configure there.
+
+- Register `admin_password_reset` as a URL name in `clarice/urls.py`,
+  *before* the `admin/` include — Django's admin login template silently
+  omits the "Forgot your password?" link if the name doesn't resolve, and
+  the ordering matters because `admin.site.urls` would otherwise try (and
+  fail) to match `password_reset/` itself first.
+- Add a "Forgot your password?" link to
+  `accounts/templates/accounts/login.html`.
+- Add a reset link to `accounts/templates/accounts/lockout.html` too —
+  that page is exactly where someone in this situation lands, and axes
+  doesn't block the reset flow itself, only the login view.
+- Not built yet.
+
 ---
 
 ## Track B — Capture MVP — built, clock starts on deploy
@@ -587,17 +634,39 @@ Two things this queue taught that were not in the plan:
   history is readable, but the individual pieces were never merged
   separately, so none of them was ever `main` on its own.
 
-**One follow-up queued, not yet built.** A direct review of the shipped
-subtask work found a real gap: a subtask completed *before* its recurring
-parent silently never reappeared in the next occurrence, because
-`complete_item` reused the same "still-active children" query both to
-decide what to cascade-complete and what to clone forward into the next
-occurrence — two different questions that had been sharing one answer.
-`design/recurring-subtasks-addendum.md` specs the fix: a per-subtask
-`always_recurs` boolean (default `true`), so a subtask carries forward to
-the next occurrence by explicit choice rather than as a side effect of
-which query happened to run first. Small, self-contained, independent of
-everything else queued. Not yet implemented.
+**One follow-up, now built.** A direct review of the shipped subtask work
+found a real gap: a subtask completed *before* its recurring parent
+silently never reappeared in the next occurrence, because `complete_item`
+reused the same "still-active children" query both to decide what to
+cascade-complete and what to clone forward into the next occurrence — two
+different questions that had been sharing one answer.
+`design/recurring-subtasks-addendum.md` speced the fix and it shipped
+July 31, 2026: migration `0021_item_always_recurs`, a per-subtask
+`always_recurs` boolean (default `true`), and a `_children_to_carry_forward`
+query kept deliberately separate from `_lock_open_children`.
+
+Three things worth recording from the build:
+
+- **The bug was confirmed before it was fixed, not just reasoned about.**
+  The new test was run against the old one-query behaviour first and
+  failed exactly as predicted (the early-completed subtask missing from
+  the spawned occurrence), so the suite is known to catch a regression
+  rather than merely assumed to.
+- **The carry-forward query only runs when the task actually recurs.**
+  The spec put it unconditionally before the cascade; guarding it on
+  `is_recurring` keeps the ordering the spec cared about while sparing
+  every non-recurring completion an extra query.
+- **The spec's last test is vacuous, and is kept anyway.** "The clone
+  keeps its source's `always_recurs`" can only ever observe `True`,
+  because the carry-forward query filters on exactly that field. It's
+  retained as a guard for the day that filter widens, with a comment
+  saying so rather than leaving it looking like it proves more than it does.
+
+The UI landed narrower than "a checkbox at creation": both the creation
+checkbox and the per-subtask toggle only appear once the parent actually
+repeats, since on a task that doesn't, "comes back next time" has nothing
+to mean. The flag still defaults to `true` underneath, so nothing is lost
+by not showing it.
 
 The original queue, for the record:
 
@@ -680,11 +749,12 @@ from scratch when it does become relevant.
 
 ### Rest of the public-readiness quality bar
 
-Self-service signup/email verification/password recovery, rate limiting on
-signup and capture, a transactional email provider, account export/
-deletion, error monitoring beyond `docker logs`, privacy policy and ToS.
-Isolation tests (A3) are the one piece of this bar pulled into Track A/Now;
-the rest waits for a deliberate decision to pursue public deployment.
+Self-service signup/email verification, rate limiting on signup and
+capture, a transactional email provider, account export/deletion, error
+monitoring beyond `docker logs`, privacy policy and ToS. Isolation tests
+(A3) and password recovery (A6) are the two pieces of this bar pulled into
+Track A/Now; the rest waits for a deliberate decision to pursue public
+deployment.
 
 ### Business bar
 
@@ -732,8 +802,9 @@ if real usage disagrees with it — don't leave it silently open-ended. When
 something from Later gets a real reason to happen, it graduates into Next
 with its own one-liner — that's the whole maintenance loop.
 
-**The three specs queued in `design/` — the subtask addendum, the
-capture/token plan, the triage plan — are the next coding tasks**, not a
+**The three specs still queued in `design/` — the capture/token plan, the
+triage plan, and the password-reset plan — are the next coding tasks**
+(the subtask addendum, the fourth of the original set, is built), not a
 reason to pick something new from Later or the public-readiness bar. Once
 those land, the first three questions are: has it been deployed; did A2
 and A5 get done; and does the shipped triage model actually hold up

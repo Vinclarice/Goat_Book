@@ -271,6 +271,8 @@ export interface components {
             /** Notes */
             notes: string;
             parent: components["schemas"]["TaskParentOut"] | null;
+            /** Always Recurs */
+            always_recurs: boolean;
             subtask_counts: components["schemas"]["SubtaskCountsOut"];
             /** List Id */
             list_id: number;

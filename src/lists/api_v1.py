@@ -62,6 +62,7 @@ class TaskOut(Schema):
     recurrence: TaskRecurrence
     notes: str
     parent: TaskParentOut | None
+    always_recurs: bool
     subtask_counts: SubtaskCountsOut
     list_id: int
     url: str

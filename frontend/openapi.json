@@ -665,6 +665,10 @@
               }
             ]
           },
+          "always_recurs": {
+            "title": "Always Recurs",
+            "type": "boolean"
+          },
           "subtask_counts": {
             "$ref": "#/components/schemas/SubtaskCountsOut"
           },
@@ -695,6 +699,7 @@
           "recurrence",
           "notes",
           "parent",
+          "always_recurs",
           "subtask_counts",
           "list_id",
           "url",

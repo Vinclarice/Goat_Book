@@ -196,7 +196,91 @@ describe("TaskDetailRoute", () => {
 
     expect(await screen.findByText("Subtask added.")).toBeInTheDocument();
     // The parent id has to travel with it, or it lands as a root task.
-    expect(posted).toEqual({ text: "Book flights", parent: 1 });
+    expect(posted).toEqual({
+      text: "Book flights",
+      parent: 1,
+      always_recurs: true,
+    });
+  });
+
+  it("keeps the repeat controls off a task that doesn't repeat", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(taskDetailData({ subtasks: [task({ id: 2, text: "Book hotel" })] })),
+    );
+
+    renderAt("1");
+    await screen.findByText("Book hotel");
+
+    // Nothing to repeat with, so the question isn't worth asking.
+    expect(
+      screen.queryByLabelText("Repeat Book hotel next time"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("Bring this back on the next occurrence"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("adds a subtask opted out of the next occurrence", async () => {
+    const user = userEvent.setup();
+    let posted: Record<string, unknown> | null = null;
+    vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
+      if (typeof input !== "string") {
+        return jsonResponse(taskDetailData({ task: task({ recurrence: "weekly" }) }));
+      }
+      if (init?.method === "POST") {
+        posted = JSON.parse((init?.body as string) ?? "{}");
+        return jsonResponse({
+          data: task({ id: 5, text: "Renew passport", always_recurs: false }),
+        });
+      }
+      return jsonResponse({ data: task() });
+    });
+
+    renderAt("1");
+    await screen.findByDisplayValue("Write tests");
+
+    await user.type(screen.getByLabelText("New subtask"), "Renew passport");
+    await user.click(
+      screen.getByLabelText("Bring this back on the next occurrence"),
+    );
+    await user.click(screen.getByRole("button", { name: "Add" }));
+
+    expect(await screen.findByText("Subtask added.")).toBeInTheDocument();
+    expect(posted).toEqual({
+      text: "Renew passport",
+      parent: 1,
+      always_recurs: false,
+    });
+  });
+
+  it("toggles whether an existing subtask comes back", async () => {
+    const user = userEvent.setup();
+    let patched: Record<string, unknown> | null = null;
+    vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
+      if (typeof input !== "string") {
+        return jsonResponse(
+          taskDetailData({
+            task: task({ recurrence: "weekly" }),
+            subtasks: [task({ id: 2, text: "Book hotel" })],
+          }),
+        );
+      }
+      patched = JSON.parse((init?.body as string) ?? "{}");
+      return jsonResponse({
+        data: task({ id: 2, text: "Book hotel", always_recurs: false }),
+      });
+    });
+
+    renderAt("1");
+    const toggle = await screen.findByLabelText("Repeat Book hotel next time");
+    expect(toggle).toBeChecked();
+
+    await user.click(toggle);
+
+    expect(patched).toEqual({ always_recurs: false });
+    await waitFor(() =>
+      expect(screen.getByLabelText("Repeat Book hotel next time")).not.toBeChecked(),
+    );
   });
 
   it("shows a subtask its parent and offers to promote it", async () => {

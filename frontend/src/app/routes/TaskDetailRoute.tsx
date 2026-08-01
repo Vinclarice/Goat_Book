@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 
 import {
   createSubtask,
+  updateTaskAlwaysRecurs,
   updateTaskDueDate,
   updateTaskNotes,
   updateTaskParent,
@@ -46,6 +47,7 @@ export function TaskDetailRoute() {
   const [notesDraft, setNotesDraft] = useState("");
   const [subtasks, setSubtasks] = useState<Task[]>([]);
   const [subtaskDraft, setSubtaskDraft] = useState("");
+  const [subtaskRecurs, setSubtaskRecurs] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -156,9 +158,13 @@ export function TaskDetailRoute() {
         `/api/lists/${listRef.id}/items/`,
         text,
         task.id,
+        subtaskRecurs,
       );
       setSubtasks((current) => [...current, created]);
       setSubtaskDraft("");
+      // Back to the default: opting a subtask out is a per-subtask decision,
+      // not a mode you stay in for everything you add next.
+      setSubtaskRecurs(true);
       setNotice("Subtask added.");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to add subtask.");
@@ -179,6 +185,24 @@ export function TaskDetailRoute() {
       );
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to update subtask.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleToggleAlwaysRecurs(subtask: Task) {
+    setError(null);
+    setNotice(null);
+    setBusy(true);
+    try {
+      const updated = await updateTaskAlwaysRecurs(subtask, !subtask.always_recurs);
+      setSubtasks((current) =>
+        current.map((each) => (each.id === updated.id ? updated : each)),
+      );
+    } catch (caught) {
+      setError(
+        caught instanceof Error ? caught.message : "Unable to update subtask.",
+      );
     } finally {
       setBusy(false);
     }
@@ -273,6 +297,11 @@ export function TaskDetailRoute() {
 
   if (isPending) return <p className="p-6">Loading…</p>;
   if (isError || !task || !listRef) return <p className="p-6">Something went wrong.</p>;
+
+  // Whether "does this subtask come back next time?" is a question worth
+  // asking at all. The flag exists on every subtask regardless; this only
+  // decides whether the controls for it are worth the screen space.
+  const repeats = task.recurrence !== "none";
 
   return (
     <div className="max-w-lg mx-auto px-4 py-8 space-y-6">
@@ -409,6 +438,21 @@ export function TaskDetailRoute() {
                 >
                   {subtask.text}
                 </label>
+                {repeats && (
+                  // Only shown once the parent actually repeats: on a task
+                  // that doesn't, "comes back next time" has nothing to mean,
+                  // and the flag sits at its default until it does.
+                  <label className="flex items-center gap-1 text-sm text-muted-foreground">
+                    <input
+                      type="checkbox"
+                      checked={subtask.always_recurs}
+                      onChange={() => handleToggleAlwaysRecurs(subtask)}
+                      disabled={busy}
+                      aria-label={`Repeat ${subtask.text} next time`}
+                    />
+                    Repeats
+                  </label>
+                )}
                 <Link
                   to={`/tasks/${subtask.id}`}
                   className="text-sm text-muted-foreground hover:text-text"
@@ -428,19 +472,32 @@ export function TaskDetailRoute() {
             ))}
           </ul>
 
-          <form onSubmit={handleAddSubtask} className="flex items-center gap-2">
-            <input
-              type="text"
-              aria-label="New subtask"
-              placeholder="Add a subtask…"
-              value={subtaskDraft}
-              onChange={(event) => setSubtaskDraft(event.target.value)}
-              disabled={busy}
-              className="flex-1 rounded-lg border border-border bg-input px-3 py-1.5"
-            />
-            <Button type="submit" variant="outline" disabled={busy}>
-              Add
-            </Button>
+          <form onSubmit={handleAddSubtask} className="space-y-2">
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                aria-label="New subtask"
+                placeholder="Add a subtask…"
+                value={subtaskDraft}
+                onChange={(event) => setSubtaskDraft(event.target.value)}
+                disabled={busy}
+                className="flex-1 rounded-lg border border-border bg-input px-3 py-1.5"
+              />
+              <Button type="submit" variant="outline" disabled={busy}>
+                Add
+              </Button>
+            </div>
+            {repeats && (
+              <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                <input
+                  type="checkbox"
+                  checked={subtaskRecurs}
+                  onChange={(event) => setSubtaskRecurs(event.target.checked)}
+                  disabled={busy}
+                />
+                Bring this back on the next occurrence
+              </label>
+            )}
           </form>
         </div>
       )}

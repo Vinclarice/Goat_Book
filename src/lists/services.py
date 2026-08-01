@@ -13,6 +13,7 @@ EMPTY_ITEM_ERROR = "You can't have an empty list item"
 DUPLICATE_ITEM_ERROR = "You've already got this in your list"
 ARCHIVED_DELETE_ERROR = "Only archived tasks can be permanently deleted"
 SUBTASK_RECURRENCE_ERROR = "Only top-level tasks can repeat"
+ALWAYS_RECURS_ON_ROOT_ERROR = "Only subtasks can repeat with their parent"
 NESTED_SUBTASK_ERROR = "Subtasks can't have subtasks of their own"
 FOREIGN_PARENT_ERROR = "That parent task isn't in this list"
 
@@ -104,11 +105,22 @@ def _resolve_tags(owner, tag_names):
 
 @transaction.atomic
 def create_item(
-    for_list, text, due_date=None, tags=None, recurrence=None, parent=None
+    for_list,
+    text,
+    due_date=None,
+    tags=None,
+    recurrence=None,
+    parent=None,
+    always_recurs=None,
 ):
     normalized = normalize_task_text(text)
     if parent is not None:
         _reject_invalid_parent(for_list, parent)
+    # None means "not asked for", which is different from False: only an
+    # explicit choice on a root task is an error, since the flag says nothing
+    # there. Children left unspecified take the model default.
+    if always_recurs is not None and parent is None:
+        raise TaskConflict(ALWAYS_RECURS_ON_ROOT_ERROR)
     if _duplicate_exists(for_list, normalized, parent=parent):
         raise TaskConflict(DUPLICATE_ITEM_ERROR)
     if recurrence and recurrence not in Item.Recurrence.values:
@@ -123,6 +135,7 @@ def create_item(
             position=_next_position(for_list, parent=parent),
             recurrence=recurrence or Item.Recurrence.NONE,
             parent=parent,
+            always_recurs=True if always_recurs is None else always_recurs,
         )
     except IntegrityError as error:
         raise TaskConflict(DUPLICATE_ITEM_ERROR) from error
@@ -224,6 +237,24 @@ def set_item_notes(item, notes):
 
 
 @transaction.atomic
+def set_always_recurs(item, value):
+    """Whether this subtask comes back on its parent's next occurrence.
+
+    Guarded the same way set_recurrence guards a subtask: the flag answers a
+    question a root task cannot be asked, so setting it there is a conflict
+    rather than a silent no-op.
+    """
+    item = Item.objects.select_for_update().get(pk=item.pk)
+    if item.parent_id is None:
+        raise TaskConflict(ALWAYS_RECURS_ON_ROOT_ERROR)
+    if item.status == Item.Status.ARCHIVED:
+        raise InvalidTaskTransition("Restore this task before editing it")
+    item.always_recurs = bool(value)
+    item.save()
+    return item
+
+
+@transaction.atomic
 def set_parent(item, parent):
     """Promote a subtask to a root task (parent=None) or demote a root task
     under another. Moving between parents is the same operation.
@@ -267,7 +298,7 @@ def _advance_due_date(due_date, recurrence):
     return None
 
 
-def _spawn_next_occurrence(completed_item, cascaded=()):
+def _spawn_next_occurrence(completed_item, carry_forward=()):
     next_item = Item.objects.create(
         list=completed_item.list,
         text=completed_item.text,
@@ -280,12 +311,12 @@ def _spawn_next_occurrence(completed_item, cascaded=()):
     # The next occurrence gets a fresh copy of the children, reset to active.
     # Their due dates shift by the same delta the parent's did, so a subtask
     # due two days before its parent stays two days before it; undated
-    # children stay undated. Children archived by the cascade are the ones
-    # being cloned -- they carry the whole subtree forward.
+    # children stay undated. What gets cloned is _children_to_carry_forward's
+    # answer, not the cascade's -- see that function for why they differ.
     delta = None
     if completed_item.due_date and next_item.due_date:
         delta = next_item.due_date - completed_item.due_date
-    for child in cascaded:
+    for child in carry_forward:
         clone = Item.objects.create(
             list=child.list,
             text=child.text,
@@ -294,6 +325,10 @@ def _spawn_next_occurrence(completed_item, cascaded=()):
             position=child.position,
             notes=child.notes,
             parent=next_item,
+            # Carried over rather than left to the model default, so a
+            # subtask marked "don't bring this back" stays that way for every
+            # cycle after the one it was set in.
+            always_recurs=child.always_recurs,
         )
         clone.tags.set(child.tags.all())
     return next_item
@@ -313,6 +348,29 @@ def _lock_open_children(item):
     )
 
 
+def _children_to_carry_forward(item):
+    """Every child flagged always_recurs that hasn't been independently
+    archived -- what clones into the next occurrence, regardless of whether
+    it's still active, already completed, or about to be cascaded by this
+    same action.
+
+    Deliberately not the same query as _lock_open_children: that one is about
+    cascade bookkeeping ("what must be resolved because an archived or
+    completed parent can't have live children"), this one is about what the
+    next occurrence looks like. Sharing one answer between them is the bug
+    this exists to fix -- a subtask ticked off before its parent was
+    invisible to the cascade query and so never came back.
+
+    Archived children are excluded even when flagged: archiving reads as
+    "removed", not "done", so it shouldn't come back on its own.
+    """
+    return list(
+        Item.objects.filter(parent=item, always_recurs=True)
+        .exclude(status=Item.Status.ARCHIVED)
+        .order_by("pk")
+    )
+
+
 @transaction.atomic
 def complete_item(item):
     item = Item.objects.select_for_update().select_related("list").get(pk=item.pk)
@@ -326,10 +384,15 @@ def complete_item(item):
         # already completed before the parent was ticked are indistinguishable
         # from ones this action completed. Undo has to reopen exactly these.
         children = _lock_open_children(item)
+        is_recurring = item.recurrence != Item.Recurrence.NONE
+        # Read before the cascade below mutates anything. A recurring parent
+        # archives its open children on the way out, so running this query
+        # afterwards would find them already archived and exclude every one
+        # of them from the occurrence they're supposed to reappear in.
+        carry_forward = _children_to_carry_forward(item) if is_recurring else []
         item.status = Item.Status.COMPLETED
         item.completed_at = now
         item.archived_at = None
-        is_recurring = item.recurrence != Item.Recurrence.NONE
         if is_recurring:
             # Recurring tasks skip the "completed" resting state: archive
             # immediately (freeing up its text for the next occurrence,
@@ -349,7 +412,7 @@ def complete_item(item):
         item._cascaded = children
 
         if is_recurring:
-            item._spawned = _spawn_next_occurrence(item, cascaded=children)
+            item._spawned = _spawn_next_occurrence(item, carry_forward=carry_forward)
     return item
 
 

@@ -67,12 +67,14 @@ email_delivery = os.environ.get(
 )
 if email_delivery == "smtp":
     EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-    EMAIL_HOST = "smtp.gmail.com"
-    EMAIL_PORT = 587
+    # Resend authenticates with the literal username "resend" and an API
+    # key as the password; the host is only overridable so that a future
+    # provider change doesn't need a code change.
+    EMAIL_HOST = os.environ.get("DJANGO_EMAIL_HOST", "smtp.resend.com")
+    EMAIL_PORT = int(os.environ.get("DJANGO_EMAIL_PORT", "587"))
     EMAIL_USE_TLS = True
     EMAIL_HOST_USER = os.environ["DJANGO_EMAIL_HOST_USER"]
     EMAIL_HOST_PASSWORD = os.environ["DJANGO_EMAIL_HOST_PASSWORD"]
-    DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 elif email_delivery == "console":
     EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 else:
@@ -80,8 +82,28 @@ else:
         "DJANGO_EMAIL_BACKEND must be either 'smtp' or 'console'."
     )
 
+# Sender identity, deliberately outside the branch above. These are what a
+# recipient sees, and they must not vary with how a message happened to be
+# delivered. DEFAULT_FROM_EMAIL used to be defined as EMAIL_HOST_USER,
+# which had two consequences: every password reset was visibly signed by a
+# personal Gmail account, and dev and the test suite -- which take the
+# console branch -- never exercised the real sender at all, silently
+# falling through to Django's webmaster@localhost.
+EMAIL_DOMAIN = os.environ.get("DJANGO_EMAIL_DOMAIN", "vinclarice.com")
+DEFAULT_FROM_EMAIL = os.environ.get(
+    "DJANGO_DEFAULT_FROM_EMAIL", f"Clarice <accounts@{EMAIL_DOMAIN}>"
+)
+# mail_admins() and Django's own error mail send From SERVER_EMAIL, whose
+# default is root@localhost. That is not a cosmetic problem now: it is not
+# an address on the verified sending domain, so Resend rejects it outright
+# and the first production lockout would fail to report itself.
+SERVER_EMAIL = os.environ.get(
+    "DJANGO_SERVER_EMAIL", f"Clarice notices <notices@{EMAIL_DOMAIN}>"
+)
+
 # Who gets emailed about pending signups and account lockouts
-# (see accounts.emails and accounts.apps.AccountsConfig.ready).
+# (see accounts.emails and accounts.apps.AccountsConfig.ready). This is an
+# internal routing decision and never appears in a header a user reads.
 ADMINS = [("Vince", os.environ.get("DJANGO_ADMIN_EMAIL", "vincentjg01@gmail.com"))]
 
 

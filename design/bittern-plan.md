@@ -715,11 +715,29 @@ a built app before release; B0 verifies the artifact actually served after it.
 
 ## B3 — branded email and contact
 
-### Provider decision required
+### Provider decision — Resend, August 1, 2026
 
-This work starts once a transactional provider or an IONOS domain mailbox is
-chosen and a product-owned sender is verified. Do not send public mail through
-the developer's personal Gmail account, and do not merely change its display
+**Sending is Resend; receiving stays IONOS.** The domain's MX records already
+point at IONOS and always did, so `support@vinclarice.com` is an IONOS mailbox.
+Resend only sends. That split is the whole arrangement, and it is worth stating
+plainly because a transactional provider looks like it replaces your mail
+host and does not.
+
+Two consequences that changed what this section originally said:
+
+- **The SPF merge below does not apply.** Resend puts the Return-Path on a
+  `send.` subdomain, so its SPF TXT and bounce MX land on
+  `send.vinclarice.com` and the existing root record —
+  `v=spf1 include:_spf-us.ionos.com ~all` — is left alone. DKIM at
+  `resend._domainkey.vinclarice.com` signs `d=vinclarice.com`, which is what
+  aligns DMARC for a `From:` on the root domain. The merge advice stands only
+  if root-domain sending is ever chosen instead.
+- **Resend's SMTP username is the literal string `resend`**, not an address,
+  with a sending API key as the password. Django's stock SMTP backend covers
+  it, so no provider SDK enters the dependency list.
+
+The original constraint is unchanged: do not send public mail through the
+developer's personal Gmail account, and do not merely change its display
 name: the visible sender must be a Clarice address on `vinclarice.com`.
 
 Use distinct, real addresses (mailboxes or forwarding aliases are fine):
@@ -731,6 +749,27 @@ Use distinct, real addresses (mailboxes or forwarding aliases are fine):
 | Internal signup, lockout, and error notices | Private admin recipient | The developer only; never in user-facing headers. |
 
 ### Outbound-email implementation
+
+**Sender identity done, August 1, 2026; not yet sent through Resend.** The
+credential and the identity are now separate settings, which they were not:
+`DEFAULT_FROM_EMAIL` was defined as `EMAIL_HOST_USER`, so the address a
+stranger saw on a password reset *was* the SMTP login.
+
+Splitting them exposed a second defect the coupling had hidden. Both senders
+were set inside the `smtp` branch, so dev and the whole test suite — which
+take the `console` branch — never exercised a Clarice sender at all. They
+fell through to Django's `webmaster@localhost`, which is why no existing test
+noticed the Gmail address: in the only environment the tests ran in, it was
+never there. The sender settings are now unconditional, so the three
+environments agree.
+
+`SERVER_EMAIL` is the one that would have failed silently in production.
+`mail_admins()` sends From it, its Django default is `root@localhost`, and
+Resend rejects an unverified sending domain outright — so the first real
+lockout would have failed to report itself, with nothing to say why.
+
+Remaining: the DNS records, an API key on the server, and a real send
+inspected at an external inbox.
 
 - Decouple SMTP/API credentials from the visible `DEFAULT_FROM_EMAIL` in
   Django settings and deployment configuration.
@@ -745,6 +784,25 @@ Use distinct, real addresses (mailboxes or forwarding aliases are fine):
   internal notifications still target the private admin address.
 - Send a real test to an external inbox and inspect the displayed sender plus
   SPF, DKIM, and DMARC results before enabling stranger signups.
+
+### Deferred: tighten DMARC to `p=quarantine`
+
+`_dmarc.vinclarice.com` is `v=DMARC1; p=none;`, which asks receivers to
+report on failures and act on none of them. That is the correct setting
+while Resend is new and unproven — a stricter policy applied before real
+mail has been observed authenticating would send legitimate password resets
+to spam, and the failure would be invisible from this end.
+
+It is also a policy that does no work. Publishing DMARC at `p=none`
+indefinitely is a common way to have domain authentication in name only.
+
+**Trigger:** several real sends observed passing SPF, DKIM, and DMARC at an
+external inbox — Gmail's "Show original" reports all three. Then move to
+`p=quarantine`. Do not skip to `p=reject`; quarantine fails a mistake into a
+spam folder where it can be found, and reject fails it into silence.
+
+Verify against DNS rather than the Resend dashboard, which reports on the
+records it asked for and not on what the zone actually serves.
 
 ### Contact page MVP
 

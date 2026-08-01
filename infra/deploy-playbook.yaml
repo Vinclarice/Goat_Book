@@ -13,12 +13,16 @@
     # ALLOW_REMOTE_DB_RESET=<exact-host> in the client running the tests.
     deployment_environment: production
     allow_database_flush: "0"
-    # Sends signup/lockout notification emails via Gmail SMTP. The app
-    # password itself lives in ~/.email-app-password on the server (see
-    # the "Ensure Gmail app password file exists" task below) rather than
-    # here, since it shouldn't be committed or passed on the CLI.
+    # Outbound mail goes through Resend, whose SMTP username is the literal
+    # string "resend" -- it is not an address, and nothing a recipient sees
+    # is derived from it. The API key that serves as its password lives in
+    # ~/.resend-api-key on the server (see the task below) rather than here,
+    # since it shouldn't be committed or passed on the CLI.
     email_backend: smtp
-    email_host_user: vincentjg01@gmail.com
+    email_host_user: resend
+    # Where internal signup/lockout notices land. Deliberately still a
+    # personal inbox: it is the developer's, not a product address, and it
+    # never appears in mail sent to a user.
     admin_email: vincentjg01@gmail.com
 
   tasks:
@@ -93,24 +97,25 @@
         src: ~/.secret-key
       register: secret_key
 
-    - name: Check whether the Gmail app password file exists
+    - name: Check whether the Resend API key file exists
       ansible.builtin.stat:
-        path: ~/.email-app-password
+        path: ~/.resend-api-key
       register: email_password_file
       when: email_backend == 'smtp'
 
-    - name: Fail with instructions if the Gmail app password file is missing
+    - name: Fail with instructions if the Resend API key file is missing
       ansible.builtin.fail:
         msg: >
-          ~/.email-app-password is missing on the server. Generate a Gmail
-          app password for {{ email_host_user }} (myaccount.google.com ->
-          Security -> App passwords), then on the server run:
-          umask 077 && echo -n 'your-app-password' > ~/.email-app-password
+          ~/.resend-api-key is missing on the server. Create a sending API
+          key at resend.com/api-keys, then on the server run:
+          umask 077 && echo -n 're_your-api-key' > ~/.resend-api-key
+          The older ~/.email-app-password held a Gmail app password and is
+          no longer read; delete it once this deploy succeeds.
       when: email_backend == 'smtp' and not email_password_file.stat.exists
 
-    - name: Read Gmail app password back from file
+    - name: Read Resend API key back from file
       ansible.builtin.slurp:
-        src: ~/.email-app-password
+        src: ~/.resend-api-key
       register: email_password
       when: email_backend == 'smtp'
 

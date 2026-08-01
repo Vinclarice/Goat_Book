@@ -163,13 +163,32 @@ In addition to `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOST`, and
 `infra/provision-postgres.sh` and `MIGRATION.md`), production
 (`DJANGO_ENVIRONMENT=production`) requires:
 
-- `DJANGO_EMAIL_HOST_USER` / `DJANGO_EMAIL_HOST_PASSWORD` -- Gmail SMTP
-  credentials used to send admin notification emails. Use a
-  [Gmail app password](https://myaccount.google.com/apppasswords), not
-  your regular password.
-- `DJANGO_ADMIN_EMAIL` (optional) -- where notifications are sent;
-  defaults to vincentjg01@gmail.com.
+- `DJANGO_EMAIL_HOST_USER` / `DJANGO_EMAIL_HOST_PASSWORD` -- SMTP
+  credentials. Outbound mail goes through [Resend](https://resend.com),
+  whose username is the literal string `resend` and whose password is a
+  sending API key.
+- `DJANGO_ADMIN_EMAIL` (optional) -- where internal signup and lockout
+  notices are sent; defaults to vincentjg01@gmail.com. This is a private
+  routing address and never appears in mail sent to a user.
 
-`infra/deploy-playbook.yaml` reads the app password from
-`~/.email-app-password` on the server rather than accepting it as a
-playbook variable -- see that file for how to create it.
+`infra/deploy-playbook.yaml` reads the API key from `~/.resend-api-key` on
+the server rather than accepting it as a playbook variable -- see that file
+for how to create it.
+
+### What a recipient sees
+
+The visible sender is deliberately separate from the credential above, so
+that changing providers can't change Clarice's identity (and so that dev,
+the test suite, and production agree on it). All three default to the
+`vinclarice.com` sending domain and are overridable:
+
+- `DJANGO_DEFAULT_FROM_EMAIL` -- password resets and the daily digest.
+  Defaults to `Clarice <accounts@vinclarice.com>`.
+- `DJANGO_SERVER_EMAIL` -- internal notices via `mail_admins()`. Defaults
+  to `Clarice notices <notices@vinclarice.com>`. Django's own default,
+  `root@localhost`, is not on the verified domain and Resend rejects it.
+- `DJANGO_EMAIL_DOMAIN` -- the domain the two defaults above are built
+  from.
+
+Resend only sends. `support@vinclarice.com` receives through the IONOS
+mailboxes the domain's MX records already point at.

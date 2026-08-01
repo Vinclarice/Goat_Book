@@ -35,7 +35,7 @@ umask 077 && echo -n 'postgresql://...the URL from step 1...' > ~/.db-connection
 ```
 
 The deploy playbook reads this file the same way it already reads
-`~/.email-app-password` -- it's never committed or passed on the CLI.
+`~/.resend-api-key` -- it's never committed or passed on the CLI.
 
 ## 3. Dump the existing SQLite data
 

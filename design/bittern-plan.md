@@ -317,12 +317,29 @@ or biometrics are re-enrolled — after which every capture would throw; and
 the backup exclusion, which exists for correctness rather than secrecy,
 since a restore would otherwise hand a new device ciphertext with no key.
 
-**Unverified:** the encryption path has never executed. `AndroidKeyStore`
-exists only on a device, so its seven tests live in `androidTest`, compile
-in CI, and run at M4. No AVD exists on the development machine yet.
+**Connect is verified on a physical device, August 1, 2026.** A Samsung
+SM-F966U running Android 16 installed the debug build, connected to
+production with a real personal access token, and stayed connected across a
+force-stop — which is what proves the decrypt path, not just the write. The
+seven Keystore instrumentation tests then ran on that device: 7 passed, 0
+failed, including that the token is not written to disk in the clear, that
+a corrupted value reads as no token rather than throwing, and that it does
+not poison the next connection. Those last two are the failure modes the
+deprecated library was abandoned over.
 
-Still to come: the three screens, and moving the base URL into build
-configuration rather than a constructor argument.
+That happened earlier than planned. M4 still owns the capture loop, the
+offline transitions and the revoked-token path; what is settled early is
+the credential half.
+
+One thing this exposed, and it is the reason B0.1 exists: the first attempt
+failed with "Clarice did not accept that token" because the bearer-auth
+`/api/v1/me` endpoint the client depends on was still only on `main`. The
+token was always valid. A phone was the first thing to discover a
+production contract gap — precisely the situation this plan says never to
+allow. Check the deployed OpenAPI schema before pointing a client at an
+endpoint, not after.
+
+Still to come: the Capture and Settings screens.
 
 #### Sequencing note
 

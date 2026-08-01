@@ -26,8 +26,18 @@
     - name: Install docker
       ansible.builtin.apt:
         name: docker.io
-        state: latest
+        # present, not latest. `latest` made every ordinary Clarice deploy
+        # willing to upgrade the Docker daemon -- which restarts it, killing
+        # the running container partway through the deploy that asked for
+        # it. Upgrading Docker should be a deliberate act, not a side
+        # effect of shipping a Django change. It was also why this task took
+        # minutes on every run while apt resolved candidates.
+        state: present
+        # Skip the refresh when the cache is under an hour old. Deploys
+        # often come in bursts, and re-fetching every index each time is
+        # the rest of that wasted wall-clock.
         update_cache: true
+        cache_valid_time: 3600
       become: true
 
     - name: Add our user to the docker group, so we don't need sudo/become

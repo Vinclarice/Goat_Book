@@ -17,6 +17,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -41,7 +42,12 @@ fun CaptureScreen(
     val scope = rememberCoroutineScope()
     val focus = remember { FocusRequester() }
 
-    LaunchedEffect(Unit) { focus.requestFocus() }
+    LaunchedEffect(Unit) {
+        focus.requestFocus()
+        // What is already queued from a previous session, so a restart does
+        // not look like an empty queue.
+        model.refresh()
+    }
 
     Column(
         modifier = Modifier
@@ -53,8 +59,16 @@ fun CaptureScreen(
         // a band of height off the field on every screen for one action.
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End,
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
+            // Visible rather than silent. A queue nobody can see is
+            // indistinguishable from a capture that went missing.
+            Text(
+                if (state.pending > 0) "${state.pending} waiting to send" else "",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             TextButton(onClick = onOpenSettings) { Text("Settings") }
         }
 

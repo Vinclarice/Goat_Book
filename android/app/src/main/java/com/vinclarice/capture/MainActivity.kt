@@ -30,11 +30,12 @@ class MainActivity : ComponentActivity() {
         val api = OkHttpClariceApi(baseUrl = BuildConfig.CLARICE_BASE_URL)
         val store = KeystoreTokenStore(applicationContext)
         val connector = Connector(api = api, store = store)
+        val queue = CaptureQueue(EncryptedQueueStorage(applicationContext))
 
         setContent {
             MaterialTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    Root(connector = connector, api = api, store = store)
+                    Root(connector = connector, api = api, store = store, queue = queue)
                 }
             }
         }
@@ -42,13 +43,18 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-private fun Root(connector: Connector, api: ClariceApi, store: TokenStore) {
+private fun Root(
+    connector: Connector,
+    api: ClariceApi,
+    store: TokenStore,
+    queue: CaptureQueue,
+) {
     val connectModel = remember { ConnectViewModel(connector) }
     // Held here rather than inside the Capture branch, so that a trip to
-    // Settings and back does not drop it out of composition -- along with
-    // whatever half-finished thought was in the field. Until M3 exists that
-    // field is the only place an undelivered capture lives.
-    val captureModel = remember { CaptureViewModel(api, store) }
+    // Settings and back does not drop it out of composition along with
+    // whatever half-finished thought was in the field. The queue now covers
+    // everything already submitted; this covers what is still being typed.
+    val captureModel = remember { CaptureViewModel(api, store, queue) }
 
     var connected by remember { mutableStateOf(connectModel.isConnected) }
     var showSettings by remember { mutableStateOf(false) }

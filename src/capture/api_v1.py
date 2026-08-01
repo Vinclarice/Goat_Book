@@ -5,11 +5,13 @@ browser-only (see design/capture-api-and-tokens-plan.md). A phone client
 exists to get a thought out of your head in three seconds, which needs
 exactly one verb.
 """
+import uuid
+
 from ninja import Router, Schema
 from ninja.errors import HttpError
 
 from accounts.auth import SessionAuthIfLoggedIn, TokenAuth
-from capture.services import CaptureConflict, create_capture
+from capture.services import CaptureConflict, create_capture, create_capture_idempotent
 
 router = Router()
 
@@ -25,7 +27,10 @@ class CaptureOut(Schema):
 
 @router.post(
     "/capture",
-    response={201: CaptureOut},
+    # 201 for a genuine write, 200 for an Idempotency-Key replay -- see
+    # create_capture_idempotent. A caller that ignores the status and just
+    # parses the body gets the same shape either way.
+    response={201: CaptureOut, 200: CaptureOut},
     # Token first: ninja stops at the first auth that resolves, so a
     # bearer request never reaches the cookie auth's CSRF check, while a
     # browser request (no bearer header) falls through to it unchanged.
@@ -35,13 +40,31 @@ class CaptureOut(Schema):
     auth=[TokenAuth(), SessionAuthIfLoggedIn()],
 )
 def new_capture(request, payload: CaptureIn):
+    # Bittern M1: optional, mobile-only. A browser POST from CaptureForm's
+    # own submit never sends this header, so that path is byte-for-byte
+    # what it was before this existed -- see create_capture below.
+    raw_key = request.headers.get("Idempotency-Key")
+    idempotency_key = None
+    if raw_key is not None:
+        try:
+            idempotency_key = uuid.UUID(raw_key)
+        except ValueError:
+            # The client owns retry identity; the server must not invent
+            # or silently ignore a key it can't use.
+            raise HttpError(400, "Idempotency-Key must be a UUID")
+
     try:
-        capture = create_capture(request.user, payload.text)
+        if idempotency_key is not None:
+            capture, created = create_capture_idempotent(
+                request.user, payload.text, idempotency_key
+            )
+        else:
+            capture, created = create_capture(request.user, payload.text), True
     except CaptureConflict as error:
         # The same rule CaptureForm shows on the Inbox page, from the same
         # function -- there is one definition of "that's not a capture".
         raise HttpError(400, str(error))
-    return 201, {
+    return (201 if created else 200), {
         "id": capture.id,
         "created_at": capture.created_at.isoformat(),
     }

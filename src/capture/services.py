@@ -5,7 +5,7 @@ view, for the same reason lists.services exists: there are now several
 entry points (the Inbox, the Ideas page, the API) and one of them being
 subtly more permissive than the others is how data goes wrong quietly.
 """
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from capture.models import Capture, Idea
@@ -33,6 +33,38 @@ def normalize_capture_text(text):
 
 def create_capture(owner, text):
     return Capture.objects.create(owner=owner, text=normalize_capture_text(text))
+
+
+def create_capture_idempotent(owner, text, idempotency_key):
+    """Bittern M1: a mobile client's retry-safe write.
+
+    The browser path above is untouched -- CaptureForm always calls
+    create_capture directly, with no key, exactly as it did before this
+    existed. This is only for POST /api/v1/capture with an
+    Idempotency-Key header: a request whose response got lost and was
+    retried must produce one row, not two.
+
+    Returns (capture, created) so the caller can answer 201 for a genuine
+    write and 200 for a replay without a second query to tell them apart.
+    """
+    normalized = normalize_capture_text(text)
+    try:
+        with transaction.atomic():
+            capture = Capture.objects.create(
+                owner=owner, text=normalized, idempotency_key=idempotency_key
+            )
+        return capture, True
+    except IntegrityError:
+        # Lost the constraint race, or this genuinely is a retry: a row
+        # for this (owner, key) already exists. Return it as recorded
+        # rather than this call's text -- the first successful write is
+        # the one of record, the same rule every other "already happened"
+        # outcome in this app follows (see _triage's ALREADY_RESOLVED_ERROR
+        # below).
+        return (
+            Capture.objects.get(owner=owner, idempotency_key=idempotency_key),
+            False,
+        )
 
 
 def edit_capture(capture, text):

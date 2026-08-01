@@ -7,12 +7,13 @@ that's the whole attack surface -- materially smaller than `parent` was in
 lists/tests/test_isolation.py.
 """
 import json
+import uuid
 
 from django.test import Client, TestCase
 
 from accounts.models import PersonalAccessToken, User
 from capture.models import Capture
-from capture.services import EMPTY_CAPTURE_ERROR
+from capture.services import EMPTY_CAPTURE_ERROR, create_capture_idempotent
 
 
 PASSWORD = "correct horse battery staple 47!"
@@ -142,3 +143,99 @@ class CaptureEndpointTest(TestCase):
 
         self.assertEqual(response.status_code, 403)
         self.assertFalse(Capture.objects.exists())
+
+
+class CaptureIdempotencyKeyTest(CaptureEndpointTest):
+    """Bittern M1: POST /api/v1/capture's Idempotency-Key header.
+
+    Inherits CaptureEndpointTest's setUp (an owner with a valid token and
+    a CSRF-enforcing client) rather than duplicating it -- this is the
+    same endpoint, one more optional header.
+    """
+
+    def post(self, payload, token=None, idempotency_key=None, **extra):
+        if idempotency_key is not None:
+            extra["HTTP_IDEMPOTENCY_KEY"] = str(idempotency_key)
+        return super().post(payload, token=token, **extra)
+
+    def test_a_keyed_request_creates_one_capture(self):
+        key = uuid.uuid4()
+
+        response = self.post(
+            {"text": "Call the vet"}, token=self.raw, idempotency_key=key
+        )
+
+        self.assertEqual(response.status_code, 201)
+        capture = Capture.objects.get()
+        self.assertEqual(capture.idempotency_key, key)
+
+    def test_repeating_the_same_key_returns_the_original_capture_not_a_new_one(self):
+        key = uuid.uuid4()
+        first = self.post(
+            {"text": "Call the vet"}, token=self.raw, idempotency_key=key
+        )
+
+        retry = self.post(
+            # Different text on purpose: a lost-response retry sends the
+            # same request, but even if it didn't, the first successful
+            # write is the one of record -- see create_capture_idempotent.
+            {"text": "Call the vet (retry)"}, token=self.raw, idempotency_key=key
+        )
+
+        self.assertEqual(retry.status_code, 200)
+        self.assertEqual(retry.json()["id"], first.json()["id"])
+        self.assertEqual(Capture.objects.count(), 1)
+        self.assertEqual(Capture.objects.get().text, "Call the vet")
+
+    def test_a_lost_race_returns_the_row_the_winner_created(self):
+        # Simulates the case a real concurrent retry hits: another request
+        # already committed a row for this (owner, key) by the time this
+        # one reaches the constraint. create_capture_idempotent must catch
+        # that IntegrityError and return the existing row rather than
+        # raising it up through the view.
+        key = uuid.uuid4()
+        winner = Capture.objects.create(
+            owner=self.user, text="Already there", idempotency_key=key
+        )
+
+        capture, created = create_capture_idempotent(self.user, "Also mine", key)
+
+        self.assertFalse(created)
+        self.assertEqual(capture, winner)
+        self.assertEqual(Capture.objects.count(), 1)
+
+    def test_different_owners_may_reuse_the_same_key(self):
+        other = User.objects.create_user("bob", "bob@example.com", PASSWORD)
+        _, other_raw = PersonalAccessToken.generate(other)
+        key = uuid.uuid4()
+
+        self.post({"text": "Mine"}, token=self.raw, idempotency_key=key)
+        response = self.post({"text": "Theirs"}, token=other_raw, idempotency_key=key)
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(Capture.objects.count(), 2)
+        self.assertEqual(
+            {c.owner for c in Capture.objects.all()}, {self.user, other}
+        )
+
+    def test_a_malformed_key_is_rejected_and_creates_nothing(self):
+        response = self.post(
+            {"text": "Call the vet"}, token=self.raw, idempotency_key="not-a-uuid"
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(Capture.objects.exists())
+
+    def test_omitting_the_header_still_works_exactly_as_before(self):
+        response = self.post({"text": "Call the vet"}, token=self.raw)
+
+        self.assertEqual(response.status_code, 201)
+        capture = Capture.objects.get()
+        self.assertIsNone(capture.idempotency_key)
+
+    def test_two_keyless_requests_never_collide_with_each_other(self):
+        self.post({"text": "One"}, token=self.raw)
+        response = self.post({"text": "Two"}, token=self.raw)
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(Capture.objects.count(), 2)

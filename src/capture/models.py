@@ -97,6 +97,15 @@ class Capture(models.Model):
         on_delete=models.SET_NULL,
         related_name="+",
     )
+    # A mobile client's retry identity, not the server's. Optional --
+    # browser captures (the Inbox form) never send one, and that path is
+    # unchanged. Scoped per owner rather than globally unique so two
+    # different clients can't collide on the same UUID by coincidence, and
+    # left NULL for the common case: Postgres (and every backend Django
+    # supports) treats NULL as distinct from every other NULL in a unique
+    # constraint by default, so any number of keyless captures coexist
+    # exactly as before this field existed.
+    idempotency_key = models.UUIDField(null=True, blank=True)
 
     class Meta:
         # Newest first: the Inbox reads as a stack of what you just wrote,
@@ -109,6 +118,17 @@ class Capture(models.Model):
             models.Index(
                 fields=("owner", "resolved_at", "-created_at"),
                 name="capture_owner_inbox_idx",
+            ),
+        ]
+        constraints = [
+            # The actual retry-safety guarantee: two rows can never share
+            # an (owner, key) pair, so a concurrent retry either creates
+            # the one row or loses a race and finds it already there --
+            # see services.create_capture_idempotent. NULL keys are exempt from this
+            # by ordinary SQL NULL semantics, not a special case here.
+            models.UniqueConstraint(
+                fields=("owner", "idempotency_key"),
+                name="capture_owner_idempotency_key_uniq",
             ),
         ]
 

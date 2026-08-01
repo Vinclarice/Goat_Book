@@ -343,6 +343,13 @@ and confirmation that the content reaches Inbox exactly once.
 
 ## B1 — return and render spawned recurring subtasks
 
+**Status: done August 1, 2026, not yet deployed.** Implemented as specified
+below: `spawned_subtasks` is a sibling array on the task-status response,
+the recurrence rules are untouched, and both workspaces insert parent and
+children as one update. Eight API tests plus one workspace test each; the
+existing service tests stand unchanged as the regression guard that B1
+altered serialization and not the lifecycle.
+
 ### Behavior to preserve
 
 When a repeating parent is completed, the service creates the next parent and

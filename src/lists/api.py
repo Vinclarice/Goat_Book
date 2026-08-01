@@ -7,7 +7,7 @@ from django.views.decorators.http import require_http_methods
 
 from lists import services
 from lists.models import Item, List
-from lists.serializers import serialize_item
+from lists.serializers import annotate_subtask_counts, serialize_item
 
 
 class _InvalidDueDate(Exception):
@@ -316,6 +316,23 @@ def item_detail(request, item_id):
     if spawned is not None:
         spawned = Item.objects.select_related("list").get(pk=spawned.pk)
         response["spawned"] = serialize_item(spawned)
+        # The children the same transaction just cloned onto the new
+        # occurrence. A sibling array rather than children nested inside
+        # every serialised Task: the list, agenda and detail reads stay the
+        # size they are, and only the one mutation that creates children
+        # pays to carry them. Always present when `spawned` is, empty when
+        # nothing recurred, so the client reads an array without branching.
+        response["spawned_subtasks"] = [
+            serialize_item(child)
+            for child in annotate_subtask_counts(
+                Item.objects.filter(parent=spawned).exclude(
+                    status=Item.Status.ARCHIVED
+                )
+            )
+            .select_related("list", "parent")
+            .prefetch_related("tags")
+            .order_by("position", "id")
+        ]
     if cascaded:
         # Which children this one action moved. The client needs the exact
         # set to undo it: children already completed before the parent was

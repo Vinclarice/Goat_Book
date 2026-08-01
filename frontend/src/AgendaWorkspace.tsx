@@ -230,9 +230,14 @@ export function AgendaWorkspace({ initialData }: Props) {
         (each) => each.id !== task.id && !moved.has(each.id),
       );
       // A recurring task archives itself and returns its next occurrence
-      // in the same response; drop it in so the list stays truthful.
+      // in the same response, along with the children cloned onto it. Both
+      // go in before the re-bucket, so each lands in whichever bucket its
+      // own due date puts it -- the agenda is flat, so the children appear
+      // as their own rows carrying a parent breadcrumb rather than nested.
       return sortAgendaTasks(
-        result.spawned ? [...remaining, result.spawned] : remaining,
+        result.spawned
+          ? [...remaining, result.spawned, ...result.spawnedSubtasks]
+          : remaining,
       );
     });
 

@@ -318,6 +318,88 @@ describe("TaskWorkspace", () => {
     expect(screen.getByText("Take out trash")).toBeInTheDocument();
   });
 
+  it("renders the spawned occurrence's fresh subtasks without a reload", async () => {
+    // The server clones the recurring children in the same transaction and
+    // returns them as spawned_subtasks. Before B1 they were absent from the
+    // response, so the new parent appeared childless until the next query.
+    const user = userEvent.setup();
+    const original = task({ id: 1, text: "Weekly review", recurrence: "weekly" });
+    const archived = { ...original, status: "archived" as const };
+    const spawned = task({
+      id: 2,
+      text: "Weekly review",
+      recurrence: "weekly",
+      status: "active",
+    });
+    const freshChildren = [
+      task({
+        id: 3,
+        text: "Read the notes",
+        status: "active",
+        parent: { id: 2, text: "Weekly review" },
+      }),
+      task({
+        id: 4,
+        text: "Write the summary",
+        status: "active",
+        parent: { id: 2, text: "Weekly review" },
+      }),
+    ];
+    vi.spyOn(globalThis, "fetch").mockReturnValue(
+      jsonResponse({ data: archived, spawned, spawned_subtasks: freshChildren }),
+    );
+    render(
+      <TaskWorkspace
+        initialData={{
+          list: {
+            id: 1,
+            title: "Programming",
+            create_item_url: "/api/lists/1/items/",
+            reorder_url: "/api/lists/1/items/reorder/",
+          },
+          items: [original],
+        }}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Mark complete" }));
+
+    expect(await screen.findByText(/next occurrence added/)).toBeInTheDocument();
+    expect(screen.getByText("Read the notes")).toBeInTheDocument();
+    expect(screen.getByText("Write the summary")).toBeInTheDocument();
+  });
+
+  it("copes with a recurring task that has no children", async () => {
+    // Guard: spawned_subtasks is always an array, empty when nothing
+    // recurred, so nothing here has to branch on the field existing.
+    const user = userEvent.setup();
+    const original = task({ id: 1, text: "Take out trash", recurrence: "weekly" });
+    vi.spyOn(globalThis, "fetch").mockReturnValue(
+      jsonResponse({
+        data: { ...original, status: "archived" },
+        spawned: task({ id: 2, text: "Take out trash", recurrence: "weekly" }),
+        spawned_subtasks: [],
+      }),
+    );
+    render(
+      <TaskWorkspace
+        initialData={{
+          list: {
+            id: 1,
+            title: "Programming",
+            create_item_url: "/api/lists/1/items/",
+            reorder_url: "/api/lists/1/items/reorder/",
+          },
+          items: [original],
+        }}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Mark complete" }));
+
+    expect(await screen.findByText(/next occurrence added/)).toBeInTheDocument();
+  });
+
   it("sends tags on task creation", async () => {
     const user = userEvent.setup();
     vi.spyOn(globalThis, "fetch").mockReturnValue(

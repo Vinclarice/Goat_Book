@@ -88,9 +88,9 @@ The original queue — archive/restore correction, snooze presets, task detail,
 notes, subtasks, and persistent navigation — is complete. The recurring
 subtask follow-up is also complete.
 
-One deliberately unscoped consequence remains: a spawned recurring task does
-not serialize its copied subtasks in the mutation response, so they appear
-after refresh. This is retained in the active roadmap as a known gap.
+The one deliberately unscoped consequence — a spawned recurring task not
+serializing its copied subtasks, so they appeared only after a refresh — was
+closed as Bittern B1 on August 1, 2026.
 
 ## Bittern B0 — the missing side navigation, diagnosed August 1, 2026
 

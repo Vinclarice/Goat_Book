@@ -202,20 +202,20 @@ export function TaskWorkspace({ initialData }: Props) {
     setNotice("");
     setBusyId(task.id);
     try {
-      const { task: updated, spawned, cascaded } = await updateTaskStatus(
-        task,
-        status,
-      );
+      const { task: updated, spawned, spawnedSubtasks, cascaded } =
+        await updateTaskStatus(task, status);
       if (updated.status === "archived") {
         setItems((current) => {
           const withoutArchived = applyCascade(current, cascaded).filter(
             (item) => item.id !== updated.id,
           );
-          // The spawned occurrence arrives without its fresh copies of the
-          // subtasks, which the server made in the same breath. Nothing here
-          // knows them, so the list is only right again after a reload --
-          // see design/roadmap.md, Track A.
-          return spawned ? [...withoutArchived, spawned] : withoutArchived;
+          // Parent and its fresh children go in as one update, so the
+          // row-nesting helper sees both together and can attach each child
+          // under the new occurrence. Adding the parent alone would draw it
+          // childless until the next query.
+          return spawned
+            ? [...withoutArchived, spawned, ...spawnedSubtasks]
+            : withoutArchived;
         });
         setNotice(
           spawned

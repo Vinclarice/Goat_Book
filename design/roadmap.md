@@ -22,11 +22,11 @@ then shipped task notes, subtasks, recurrence, Capture triage and Ideas,
 password recovery, personal access tokens, CI, backups, and production
 hardening. The full record is in the history file.
 
-One known task-UI gap remains: when a recurring task completes, the server
-creates the next occurrence and its recurring subtasks in one transaction,
-but the response does not include the new children. The next parent appears
-childless until refresh. This is a response-shape decision, not an emergency
-patch; scope it before changing the task mutation contract.
+The last known task-UI gap is closed. Completing a recurring task used to
+return the next occurrence without the children created alongside it, so the
+new parent appeared childless until a refresh. The mutation now carries a
+`spawned_subtasks` sibling array and both workspaces place parent and
+children in one update — Bittern B1, August 1, 2026.
 
 ## Bittern — next release
 

@@ -266,6 +266,43 @@ describe("AgendaWorkspace", () => {
     expect(screen.queryByText("Completed today")).not.toBeInTheDocument();
   });
 
+  it("buckets the spawned occurrence's fresh subtasks without a reload", async () => {
+    // The agenda is flat, so the cloned children appear as their own rows
+    // in whichever bucket their own due date puts them -- not nested under
+    // the new parent.
+    const user = userEvent.setup();
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse({
+        data: { ...task({ id: 2 }), status: "archived" },
+        spawned: task({
+          id: 99,
+          text: "Ship the fix",
+          due_date: "2026-08-04",
+          recurrence: "weekly",
+        }),
+        spawned_subtasks: [
+          task({
+            id: 100,
+            text: "Read the notes",
+            due_date: "2026-08-04",
+            status: "active",
+            parent: { id: 99, text: "Ship the fix" },
+          }),
+        ],
+      }),
+    );
+    renderAgenda();
+
+    await user.click(
+      screen.getByRole("button", { name: /Complete “Ship the fix”/ }),
+    );
+
+    await waitFor(() =>
+      expect(screen.getByText(/Next one due/)).toBeInTheDocument(),
+    );
+    expect(screen.getByText("Read the notes")).toBeInTheDocument();
+  });
+
   it("clears a subtask out of the day when its recurring parent archives it", async () => {
     // "Book flights" was finished earlier today, so it is sitting under
     // "Completed today". Its parent recurring takes it out of the day

@@ -7,6 +7,7 @@ interface ApiErrors {
 interface ApiResponse<T> {
   data?: T;
   spawned?: Task;
+  spawned_subtasks?: Task[];
   cascaded?: Task[];
   errors?: ApiErrors;
 }
@@ -141,6 +142,11 @@ export interface StatusUpdateResult {
   /** Set when completing a recurring task auto-archives it and creates
    * the next occurrence in the same request. */
   spawned?: Task;
+  /** The fresh subtasks cloned onto `spawned` by that same request. Always
+   * an array so callers never branch on the field existing; empty when the
+   * occurrence had no recurring children. Distinct from `cascaded`, which
+   * is existing rows this action moved rather than rows it created. */
+  spawnedSubtasks: Task[];
   /** The subtasks this one status change also moved, each already carrying
    * its new status. Completing a parent takes its children with it, and a
    * caller holding its own copy of the list has to be told -- otherwise a
@@ -157,6 +163,7 @@ export async function updateTaskStatus(
   return {
     task: payload.data as Task,
     spawned: payload.spawned,
+    spawnedSubtasks: payload.spawned_subtasks ?? [],
     cascaded: payload.cascaded ?? [],
   };
 }

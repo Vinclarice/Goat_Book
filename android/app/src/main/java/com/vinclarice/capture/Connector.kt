@@ -53,20 +53,41 @@ class Connector(
         val token = rawInput.trim()
         if (token.isEmpty()) return Blank
 
-        return when (val result = api.identify(token)) {
-            is Identified -> {
-                store.save(token)
-                Connected(result.identity)
-            }
-            // Storage is untouched on both failure paths. Re-pasting a token
-            // while offline must not cost someone the working one they had.
+        val outcome = ask(token)
+        // Storage is written only on success, and untouched on both failure
+        // paths. Re-pasting a token while offline must not cost someone the
+        // working one they had.
+        if (outcome is Connected) store.save(token)
+        return outcome
+    }
+
+    /**
+     * Who the stored token belongs to, according to the server.
+     *
+     * Asked rather than remembered. Caching the account name at connect time
+     * would leave Settings cheerfully displaying an account for a token that
+     * was revoked an hour ago -- and revocation is precisely what someone
+     * opens that screen to check.
+     *
+     * [Blank] means there is no token to ask about. Nothing here writes to
+     * storage: a [Refused] token stays exactly where it is, because
+     * disconnecting is an action someone takes, not one that befalls them
+     * because a request came back badly.
+     */
+    suspend fun whoAmI(): ConnectOutcome {
+        val token = store.read() ?: return Blank
+        return ask(token)
+    }
+
+    private suspend fun ask(token: String): ConnectOutcome =
+        when (val result = api.identify(token)) {
+            is Identified -> Connected(result.identity)
             Unauthorised -> Refused(
                 "Clarice did not accept that token. Create a new one on the " +
                     "web and paste it again."
             )
             is Unreachable -> Failed(result.reason)
         }
-    }
 
     fun isConnected(): Boolean = store.read() != null
 

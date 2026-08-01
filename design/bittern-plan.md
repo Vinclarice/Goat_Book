@@ -227,7 +227,9 @@ Two steps remain, neither of which the app can trigger on its own:
   key per press, correctly, so forcing a replay needs `curl` with the
   token.
 - **Revocation.** Delete the token on the web and confirm the next capture
-  is refused.
+  is refused. The M2 Settings screen makes this checkable without curl:
+  revoke on the web, open Settings, and it should name no account and say
+  the token was not accepted.
 
 Until those pass, M1's duplicate protection is proven by the Django suite
 and by CI against Postgres, but has never been exercised against the
@@ -377,7 +379,33 @@ its owner back to Connect. The alias was parameterised; the file name was
 not. Isolating one half of a store's identity is isolating neither. Fixed,
 with a test that asserts the app's file is untouched.
 
-Still to come: the Settings screen.
+**Settings shipped August 1, 2026, completing M2's three screens.** It shows
+the account the stored token belongs to, and offers Disconnect.
+
+Two decisions there are worth stating, because both were tempting to get
+wrong:
+
+The account name is **asked of the server on every open, never remembered**.
+Caching it at connect time would leave Settings cheerfully naming an account
+for a token that was revoked an hour ago — and revocation is precisely what
+somebody opens that screen to check. So `Connector.whoAmI()` re-validates the
+stored token, and its three answers stay distinct all the way to the text on
+screen: a named account, "Clarice did not accept that token", or "could not
+reach Clarice". Collapsing the last two would tell a person on a train that
+their credentials are broken.
+
+A refused token is **reported but not discarded**. Disconnecting is an action
+someone takes, not one that befalls them because a request came back badly;
+silently clearing it would eject them to Connect before they had read why.
+
+The pending-queue display the screens list asks for is deferred to M3, since
+there is no queue to report until then. Showing "nothing waiting" while the
+Capture field is the only thing holding an unsent thought would be true and
+misleading at once. For the same reason the `CaptureViewModel` is held above
+the navigation branch: a trip to Settings must not drop the field — and the
+thought in it — out of composition.
+
+M2 closes with 75 JVM tests and 8 instrumentation tests.
 
 #### Sequencing note
 

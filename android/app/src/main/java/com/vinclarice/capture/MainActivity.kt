@@ -2,6 +2,7 @@ package com.vinclarice.capture
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
@@ -43,14 +44,37 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun Root(connector: Connector, api: ClariceApi, store: TokenStore) {
     val connectModel = remember { ConnectViewModel(connector) }
+    // Held here rather than inside the Capture branch, so that a trip to
+    // Settings and back does not drop it out of composition -- along with
+    // whatever half-finished thought was in the field. Until M3 exists that
+    // field is the only place an undelivered capture lives.
+    val captureModel = remember { CaptureViewModel(api, store) }
+
     var connected by remember { mutableStateOf(connectModel.isConnected) }
+    var showSettings by remember { mutableStateOf(false) }
 
     if (!connected) {
-        ConnectScreen(model = connectModel, onConnected = { connected = true })
+        ConnectScreen(
+            model = connectModel,
+            onConnected = { connected = true; showSettings = false },
+        )
+        return
+    }
+
+    if (showSettings) {
+        // Not remembered across visits, deliberately: a fresh model per open
+        // is what makes it ask the server again instead of showing the
+        // account it saw last time.
+        val settingsModel = remember { SettingsViewModel(connector) }
+        BackHandler { showSettings = false }
+        SettingsScreen(
+            model = settingsModel,
+            onBack = { showSettings = false },
+            onDisconnected = { connected = false; showSettings = false },
+        )
         return
     }
 
     // Capture is the destination; Connect exists only to get here once.
-    val captureModel = remember { CaptureViewModel(api, store) }
-    CaptureScreen(model = captureModel)
+    CaptureScreen(model = captureModel, onOpenSettings = { showSettings = true })
 }

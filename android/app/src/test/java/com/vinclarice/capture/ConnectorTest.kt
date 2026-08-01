@@ -147,4 +147,53 @@ class ConnectorTest {
         assertTrue(Connector(FakeApi(Identified(alice)), store).isConnected())
         assertFalse(Connector(FakeApi(Identified(alice)), FakeStore()).isConnected())
     }
+
+    @Test
+    fun `who the stored token belongs to is asked, not remembered`() = runTest {
+        // Settings shows the account name, and the only honest source for it
+        // is the server. Caching it locally would keep displaying an account
+        // for a token that was revoked an hour ago.
+        val api = FakeApi(Identified(alice))
+        val store = FakeStore().apply { save("tok_good") }
+
+        val outcome = Connector(api, store).whoAmI()
+
+        assertEquals(Connected(alice), outcome)
+        assertEquals("tok_good", api.lastToken)
+    }
+
+    @Test
+    fun `with no stored token nobody is asked anything`() = runTest {
+        val api = FakeApi(Identified(alice))
+
+        val outcome = Connector(api, FakeStore()).whoAmI()
+
+        assertEquals(Blank, outcome)
+        assertEquals(0, api.calls)
+    }
+
+    @Test
+    fun `a revoked token is reported without being thrown away`() = runTest {
+        // Deliberate. Forgetting it here would drop somebody straight back to
+        // the Connect screen the moment they opened Settings on a flaky
+        // connection -- and worse, it would do so silently. Disconnecting is
+        // an action someone takes, not something that happens to them.
+        val store = FakeStore().apply { save("tok_revoked") }
+
+        val outcome = Connector(FakeApi(Unauthorised), store).whoAmI()
+
+        assertTrue(outcome is Refused)
+        assertEquals("tok_revoked", store.read())
+        assertEquals(0, store.clearedTimes)
+    }
+
+    @Test
+    fun `an unreachable server leaves the stored token alone`() = runTest {
+        val store = FakeStore().apply { save("tok_good") }
+
+        val outcome = Connector(FakeApi(Unreachable("offline")), store).whoAmI()
+
+        assertEquals(Failed("offline"), outcome)
+        assertEquals("tok_good", store.read())
+    }
 }

@@ -2,6 +2,7 @@ package com.vinclarice.capture
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -9,6 +10,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -31,7 +33,10 @@ import kotlinx.coroutines.launch
  * difference. All the decisions live in [CaptureViewModel]; this draws them.
  */
 @Composable
-fun CaptureScreen(model: CaptureViewModel) {
+fun CaptureScreen(
+    model: CaptureViewModel,
+    onOpenSettings: () -> Unit = {},
+) {
     val state by model.state.collectAsState()
     val scope = rememberCoroutineScope()
     val focus = remember { FocusRequester() }
@@ -44,6 +49,15 @@ fun CaptureScreen(model: CaptureViewModel) {
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        // A plain text button rather than an app bar: an app bar would take
+        // a band of height off the field on every screen for one action.
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+        ) {
+            TextButton(onClick = onOpenSettings) { Text("Settings") }
+        }
+
         OutlinedTextField(
             value = state.text,
             onValueChange = model::onTextChange,

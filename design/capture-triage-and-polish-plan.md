@@ -1,5 +1,12 @@
 # Capture triage: task, idea, reference, or discard
 
+**Built July 31, 2026** — migration `capture.0002` (one migration rather
+than the two sketched below; Django ordered the additive operations
+correctly in a single file). Kept as written. Two things the build added
+that this spec didn't call for: Ideas went into both navs, and the
+`{% comment %}` sweep in `lists/tests/test_base_template.py` came out of a
+bug found on the Ideas page. The **Future** section below is still future.
+
 Replaces Capture MVP's single undifferentiated "Clear" with four real
 outcomes, now that real usage (not a two-week experiment) has settled what
 the shape needs to be: promote to a task, mark as an idea worth exploring,

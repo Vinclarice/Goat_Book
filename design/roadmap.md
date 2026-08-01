@@ -26,9 +26,9 @@ the gate on Track A/Next to A0 alone. Those changes are marked in place.
 **A further follow-up session reviewed the shipped subtask and Capture MVP
 code directly** — not waiting for a deploy or a checkpoint — and produced
 three more specs, which went into `design/`:
-`recurring-subtasks-addendum.md` and `capture-api-and-tokens-plan.md`
-(both built since), and the still-unbuilt
-`capture-triage-and-polish-plan.md`. Details under Track A/Next and
+`recurring-subtasks-addendum.md`, `capture-api-and-tokens-plan.md`, and
+`capture-triage-and-polish-plan.md` — all three built since. Details
+under Track A/Next and
 Track B below. This document is now the single planning artifact for
 Clarice — the parallel copy that lived in the planning conversation's own
 document viewer has been retired in its favor.
@@ -90,13 +90,15 @@ triage model has not. See Track A/Next and Track B below.
   Postgres move happened at all.
 - **A deploy.** None of the work above is running anywhere. Production is
   still serving the code as it stood before any of this.
-- **One spec to build.** `capture-triage-and-polish-plan.md`, under
-  Track B -- see below. The other three written in this stretch are all
-  built: `recurring-subtasks-addendum.md` (migration `0021`),
+- **No specs left to build.** All four written in this stretch are done:
+  `recurring-subtasks-addendum.md` (migration `0021`),
   `password-reset-plan.md` (A6, speced and shipped the same day after a
-  real lockout-plus-forgotten-password incident), and
-  `capture-api-and-tokens-plan.md` (tokens plus `POST /api/v1/capture`).
-  Like everything else here, none of it is deployed.
+  real lockout-plus-forgotten-password incident),
+  `capture-api-and-tokens-plan.md` (tokens plus `POST /api/v1/capture`),
+  and `capture-triage-and-polish-plan.md` (migration `capture.0002` — the
+  `Idea` domain and the four triage outcomes). None of it is deployed,
+  which is now the only thing standing between all of this and being
+  usable.
 
 A2, A5 and the deploy all need `doctl` or an Ansible run against the live
 account, which is why they have outlasted everything that could be done
@@ -226,9 +228,8 @@ shipped work found one real bug worth fixing and settled the triage
 question the two-week checkpoint was meant to answer — ahead of schedule
 and on purpose, not by accident. Three specs went into `design/`:
 `recurring-subtasks-addendum.md`, `capture-api-and-tokens-plan.md`, and
-`capture-triage-and-polish-plan.md`. **The first two are now built**; the
-triage model is not. None of them competed for priority in an interesting
-way — the subtask fix was small and self-contained, the two Capture specs
+`capture-triage-and-polish-plan.md`. **All three are now built.** None of
+them competed for priority in an interesting way — the subtask fix was small and self-contained, the two Capture specs
 were already sequenced against each other (tokens/API before Android,
 triage before either), and all three were independent of Track A's
 remaining ops work (A2, A5).
@@ -435,11 +436,13 @@ adversarially tested end-to-end.
   from the rest of the quality bar because they're cheap and high-signal on
   their own.
 
-**Note for whoever builds `capture-triage-and-polish-plan.md`:** it comes
-with its own "Tests to add" section extending this same isolation
-discipline to `Idea` and the new Capture triage actions. Same expectation
-as A3 set for subtasks — land the isolation coverage in the same change,
-not a follow-up.
+**The triage build honoured this too.** `capture-triage-and-polish-plan.md`
+came with its own "Tests to add" section extending this discipline to
+`Idea` and the Capture triage actions, and the coverage landed in the same
+change rather than a follow-up — an intruder is refused on all nine new
+id-addressable routes, including the two that take a list id in a POST
+body rather than a path. Those tests live in `capture/tests/` rather than
+here, since every route is capture-owned.
 
 ### A4. Wire up the digest email — written, not yet live
 
@@ -623,8 +626,30 @@ of it is to find out whether a shortcut alone solves the friction — which
 would make the case for a native app weaker, not stronger. Worth knowing
 before writing any Kotlin.
 
-**`design/capture-triage-and-polish-plan.md`** is the bigger departure
-from plan: it designs the triage model — promote to a task, mark an idea
+**`design/capture-triage-and-polish-plan.md` — built July 31, 2026.**
+Migration `capture.0002`: the `Idea` model, `Capture.resolution` and the
+two lineage FKs, the four triage outcomes with undo, the Ideas page
+(filter, search over text and notes, inline editing, promote, hard
+delete), and the polish items — capture editing, inbox search, and an
+oldest-waiting signal. Ideas went into both navs, because the Capture MVP
+already taught that a page reachable only by URL collects nothing.
+
+Two things worth recording:
+
+- **The multi-line `{# #}` bug came back**, on the Ideas page. The guard
+  written when A6 hit it swept the pages that had already broken, not the
+  ones nobody had written yet — so it was silent, and a live page caught
+  it again. Replaced with a static sweep of every template file in the
+  project (`lists/tests/test_base_template.py`), verified by planting an
+  offender and watching it fail. A scoped guard against a general mistake
+  is barely a guard.
+- **Undo is safe precisely because it's brief.** It deletes whatever the
+  resolution created, which is only sound while nothing else can have
+  referenced the new row — so the offer lives for exactly one page load,
+  popped from the session, rather than sitting on a resolved capture
+  indefinitely.
+
+The spec's own design, for the record: it designs the triage model — promote to a task, mark an idea
 `exploring` or `reference`, or discard outright — from direct usage
 conviction rather than waiting out the checkpoint above. The spec adds a
 lightweight `Idea` model (its own `notes`, anytime editing while not yet
@@ -638,7 +663,9 @@ remembering to check, and how ideas relate to each other — is named
 explicitly in the spec's own **Future** section (a mind-map-style view,
 possibly AI-assisted sorting) rather than guessed at now.
 
-Of the two, only the triage plan is still unbuilt.
+Both are now built. What neither solves — how an `exploring` idea
+resurfaces on its own, and how ideas relate to each other — stays in the
+triage spec's **Future** section, undesigned on purpose.
 
 ---
 
@@ -838,14 +865,19 @@ if real usage disagrees with it — don't leave it silently open-ended. When
 something from Later gets a real reason to happen, it graduates into Next
 with its own one-liner — that's the whole maintenance loop.
 
-**The one spec still queued in `design/` — the triage plan — is the next
-coding task** (the subtask addendum, the password-reset plan and the
-capture API/tokens plan, the other three of the four, are built), not a
-reason to pick something new from Later or the public-readiness bar. Once
-it lands, the first three questions are: has it been deployed; did A2
-and A5 get done; and does the shipped triage model actually hold up
-against real use, now that it's been decided ahead of the original
-checkpoint. Only after those does it make sense to graduate anything from
-Later. The caution underneath the old "empty queue" framing still applies
-in spirit — don't reach for the largest remaining idea out of momentum —
-it's just that the queue isn't empty right now.
+**`design/` is empty of unbuilt specs** — the subtask addendum, the
+password-reset plan, the capture API/tokens plan and the triage plan are
+all done. So the queue is genuinely empty again, and this time nothing is
+left that can be done from an editor. The next three questions are, in
+order: has any of it been deployed; did A2 and A5 get done; and does the
+shipped triage model actually hold up against real use, now that it was
+decided ahead of the checkpoint that was meant to originate it. The
+zero-code home-screen shortcut experiment sits alongside those — it needs
+the deploy first, and its result decides whether an Android app is worth
+building at all. Only after all that does it make sense to graduate
+anything from Later.
+
+The original caution now applies literally rather than in spirit: the
+queue *is* empty, and the temptation is to reach for the largest remaining
+idea out of momentum. Don't. Four features shipped in a day and none of
+them are running anywhere — the honest next move is a deploy, not a fifth.

@@ -138,15 +138,15 @@ the monitoring account or DSN is not yet available.
 
 ## B0 — establish production bundle truth
 
-**Status: diagnosed and patched August 1, 2026; awaiting production
-verification.** The artifact was current — the served bundle contained the
-navigation and the served CSS was byte-identical to a local build. The cause
-was a source defect: `AppLayout` sealed the nav inside a `<details>` that
-nothing opened, above a breakpoint where the CSS hides its `<summary>`.
-Full evidence, including the measurement that settled it and the false trail
-that delayed it, is in [`roadmap-history.md`](roadmap-history.md). The
-checklist below is retained because it is what produced the answer; only
-step 5's browser re-check remains, after deploy.
+**Status: closed August 1, 2026.** The artifact was never at fault — the
+served bundle contained the navigation and the served CSS was byte-identical
+to a local build. The cause was a source defect: `AppLayout` sealed the nav
+inside a `<details>` that nothing opened, above a breakpoint where the CSS
+hides its `<summary>`. Patched, deployed at 11:56 EDT, and confirmed in an
+authenticated browser at both widths. Full evidence, including the
+measurement that settled it and the false trail that delayed it, is in
+[`roadmap-history.md`](roadmap-history.md). The checklist below is retained
+because it is what produced the answer.
 
 ### Problem statement
 

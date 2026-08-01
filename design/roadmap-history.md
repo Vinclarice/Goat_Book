@@ -151,6 +151,15 @@ and only closes on navigation when narrow. Verified by measurement: with
 the patch applied the disclosure's own box goes from `210x0` to `210x145`,
 matching its content, so no engine has anything left to disagree about.
 
+### Verified in production, August 1, 2026
+
+Deployed at 11:56 EDT. The served bundle rotated from
+`app-shell.b94af7d63d1b.js` to `app-shell.98590f71d7af.js`, byte-identical
+to a local build of the same source, and contains the fix's own
+`min-width: 761px` breakpoint. An authenticated visit confirmed what the
+measurements predicted: the nav panel appears down the left above the
+cutoff, and collapses into the ☰ menu below it. B0 is closed.
+
 ### A false trail worth keeping
 
 The first reproduction reported the nav as "visible" in every browser,
@@ -175,6 +184,47 @@ contradiction that can only mean skipped content.
   Django-rendered where that is the better fit.
 - The agenda is a date-based cross-list view; lists are navigation targets,
   not agenda filters in the persistent navigation.
+
+### Deploy: the "Install docker" task that looked hung
+
+Seen on at least two deploys before August 1, 2026, and again that day:
+the playbook appears to stall on **Install docker** for minutes, long
+enough that the natural response is to cancel the run — which is what
+happened each time, leaving the deploy unfinished.
+
+It was never hung. Read-only inspection of the droplet during the stall
+showed the work genuinely in progress and nothing blocking it:
+
+```text
+142818   03:08  AnsiballZ_apt.py      <- the apt task, 3 minutes in
+143131   02:03  apt-check --human-readable
+load average: 2.49
+```
+
+The dpkg and apt lock files were unheld. The `unattended-upgrades` process
+that normally deserves suspicion was only the `--wait-for-signal` shutdown
+daemon, idle for twelve days, and that day's real unattended run had
+finished cleanly hours earlier. The cause was the task's own configuration:
+`state: latest` plus an unconditional `update_cache` made apt refresh every
+index and resolve upgrade candidates for `docker.io` on a small busy
+droplet, every single deploy.
+
+Worse than slow, it was unsafe. `state: latest` meant an ordinary Clarice
+deploy was willing to upgrade the Docker daemon, and upgrading Docker
+restarts it — killing the running container partway through the deploy that
+asked for it, at the one moment nobody would look for that as the cause.
+
+Fixed in `fed210b` by using `state: present` with `cache_valid_time: 3600`,
+so Docker is installed once and upgrading it becomes a deliberate act rather
+than a side effect of shipping a Django change. The task now completes in
+about twenty seconds.
+
+If a deploy ever appears to stall on an apt task again, check before
+cancelling: `ps -eo pid,etime,cmd | grep AnsiballZ`, the lock files under
+`/var/lib/dpkg` and `/var/lib/apt/lists`, and `dpkg --audit`. Cancelling
+mid-apt happened to leave the droplet consistent each time here — verified
+by `dpkg --audit` and a check for half-configured packages before the rerun
+— but that is luck rather than a property to rely on.
 
 ### Engineering lessons
 

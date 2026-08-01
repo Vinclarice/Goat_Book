@@ -47,8 +47,37 @@ pnpm --dir frontend generate:api
 
 ## Deploying
 
-`ansible-playbook -i infra/production-inventory.ini infra/deploy-playbook.yaml -K`
+Run from WSL, where ansible, Docker and the ssh key all live:
 
-That inventory has one host and it is production. There is no staging
-environment to rehearse against, so read-only diagnosis comes before any
-redeploy that would overwrite the evidence.
+```bash
+cd /mnt/c/Users/vince/goat-book
+.venv-wsl/bin/ansible-playbook -i infra/production-inventory.ini infra/deploy-playbook.yaml -K
+```
+
+`-K` prompts for the become password, so this is the user's to run, not
+yours. That inventory has one host and it is production. There is no
+staging environment to rehearse against, so read-only diagnosis comes
+before any redeploy that would overwrite the evidence.
+
+**An apt task that looks hung is usually not.** The "Install docker" step
+stalled for minutes on three separate deploys and was cancelled each time,
+because `state: latest` plus an unconditional `update_cache` made apt
+resolve upgrade candidates on every run — and it could have restarted the
+Docker daemon mid-deploy, killing the running container. Fixed in `fed210b`
+(`state: present`, `cache_valid_time`); the task now takes about twenty
+seconds. Before ever suggesting a cancel, check rather than assume:
+
+```bash
+ps -eo pid,etime,cmd | grep AnsiballZ    # is the task actually working?
+ls -l /var/lib/dpkg/lock-frontend /var/lib/apt/lists/lock
+dpkg --audit                              # empty = consistent
+```
+
+Generalise it: `state: latest` on an infrastructure package means a routine
+application deploy is willing to upgrade and restart the thing running the
+application. Prefer `present` and make upgrades deliberate.
+
+**The container is recreated and migrated before the nginx and certbot
+tasks.** New assets therefore start being served while the run still has
+work to do — a rotated bundle hash proves the container step succeeded, not
+that the deploy finished. Wait for the play recap.

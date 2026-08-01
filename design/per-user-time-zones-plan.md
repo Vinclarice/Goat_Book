@@ -1,13 +1,23 @@
 # Per-user time zones — delivery plan
 
-**Status: built, not deployed.** Promoted out of Track D and implemented on
-August 1, 2026. The field, middleware, per-user digest, preferences API,
-picker, admin and settings form are all in; 437 backend and 120 frontend
-tests pass locally, and CI run `30704717836` passed the same Django suite
-against the Postgres 18 service container, applying migration
-`accounts/0010` on production's database engine. It has not run against
-production itself, and it adds that migration to the deploy that already
-owes M1's `capture/0003`.
+**Status: deployed August 1, 2026; per-user behaviour not yet exercised.**
+Promoted out of Track D and implemented the same day. The field, middleware,
+per-user digest, preferences API, picker, admin and settings form are all
+in; 437 backend and 120 frontend tests pass locally, CI run `30704717836`
+passed against Postgres 18, and migration `accounts/0010` is applied in
+production alongside M1's `capture/0003`.
+
+The hourly cron is confirmed running — it stamped every account's
+`last_digest_date` four minutes after the container came up, which a daily
+job could not have done. That first run also exercised the catch-up window
+correctly: it was 12:00 Eastern, outside the 07:00–12:00 window, so the day
+was written off unsent rather than delivering a late "Good morning."
+
+What remains unproven is the thing the work exists for. Every account is
+still on the `America/New_York` default, including the Indonesian user, so
+no two users have yet had different day boundaries in production and no
+digest has yet been delivered at a non-Eastern 07:00. That is verified by
+setting that account to `Asia/Makassar` and watching its next morning.
 
 Two decisions were taken during implementation that this plan did not
 originally contain:

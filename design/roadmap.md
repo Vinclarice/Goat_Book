@@ -44,17 +44,14 @@ committing every candidate below at once.
 These carry their Bittern slice numbers, since `bittern-plan.md` is where they
 are actually specified. They were originally written here as C0, C1, and C2.
 
-**B0. Diagnose the missing production side navigation.**
+**B0. Diagnose the missing production side navigation. — Done, August 1, 2026.**
 
-The source renders `AppLayout` and `SideNav`, but neither appears in the
-Albatross production screenshot, even after a hard refresh. First confirm
-which frontend bundle the running container serves. If it is stale, force a
-clean rebuild and redeploy; verify the served bundle contains the Inbox and
-Ideas links. Do this before evaluating any navigation redesign.
-
-Production is currently several commits behind `main`, and a redeploy is the
-repair step for one of B0's two candidate causes. Record the served artifact
-first — see B0's investigation checklist — or the diagnosis is lost.
+The deployed bundle was never stale. `AppLayout` sealed the nav inside a
+`<details>` that nothing ever opened, above a breakpoint where the CSS hides
+its `<summary>`, so the disclosure collapsed to zero height and left an empty
+210px gutter in browsers that skip rendering closed disclosure contents.
+Patched, deployed, and confirmed in an authenticated browser at both widths.
+Evidence in [`roadmap-history.md`](roadmap-history.md).
 
 **B2. Add logout to the SPA.**
 

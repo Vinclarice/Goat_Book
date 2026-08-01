@@ -38,7 +38,10 @@ committing every candidate below at once.
 
 ### Track C — Navigation and UI
 
-**C0. Diagnose the missing production side navigation.**
+These carry their Bittern slice numbers, since `bittern-plan.md` is where they
+are actually specified. They were originally written here as C0, C1, and C2.
+
+**B0. Diagnose the missing production side navigation.**
 
 The source renders `AppLayout` and `SideNav`, but neither appears in the
 Albatross production screenshot, even after a hard refresh. First confirm
@@ -46,13 +49,17 @@ which frontend bundle the running container serves. If it is stale, force a
 clean rebuild and redeploy; verify the served bundle contains the Inbox and
 Ideas links. Do this before evaluating any navigation redesign.
 
-**C1. Add logout to the SPA.**
+Production is currently several commits behind `main`, and a redeploy is the
+repair step for one of B0's two candidate causes. Record the served artifact
+first — see B0's investigation checklist — or the diagnosis is lost.
+
+**B2. Add logout to the SPA.**
 
 The only current logout flow lives in a legacy Django template. Add an
 equivalent POST-backed control to the SPA navigation or preferences surface.
-This is worthwhile whether or not C0 turns out to be a stale bundle.
+This is worthwhile whether or not B0 turns out to be a stale bundle.
 
-**C2. Reassess information architecture after C0.**
+**C2. Reassess information architecture after B0.**
 
 The original complaint — “I can’t tell where things are” — may disappear
 once the navigation is actually rendered. Observe the real remaining friction

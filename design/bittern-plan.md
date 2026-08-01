@@ -1,10 +1,10 @@
 # Bittern — delivery plan
 
-**Status: M1 implemented; release verification and the remaining stages are
-next.** Bittern is staged work: make the deployed web application trustworthy
-enough to be a dependable capture backend, ship the Android capture client,
-then close the remaining web-session and state gaps. It is not a grab bag of
-every attractive Postgres or public-readiness idea.
+**Status: M1 implemented and passing locally; release verification and the
+remaining stages are next.** Bittern is staged work: make the deployed web
+application trustworthy enough to be a dependable capture backend, ship the
+Android capture client, then close the remaining web-session and state gaps.
+It is not a grab bag of every attractive Postgres or public-readiness idea.
 
 This document is the implementation plan for the active Bittern entry in
 [`roadmap.md`](roadmap.md). Completed Albatross decisions and deploy history
@@ -22,6 +22,15 @@ are in [`roadmap-history.md`](roadmap-history.md).
 **Exit condition:** the running image and static bundle are identified, the SPA
 navigation is visible after a hard refresh, and a newly created capture reaches
 the owner's Inbox through the token-authenticated API.
+
+**Evidence before repair.** Production is several commits behind `main`, and
+two of those commits are code: the Agenda's direct Inbox/Ideas fallback links
+and M1's idempotency migration. A deploy is therefore already owed — and a
+deploy is also the repair step for B0's stale-artifact hypothesis. Do the
+read-only half of B0 against the *currently running* container before pushing
+anything new, or the redeploy destroys the only evidence that distinguishes a
+stale bundle from a current bundle that fails at runtime. This ordering
+constraint expires the moment production is updated.
 
 ### Stage 1 — Android Capture MVP
 
@@ -142,6 +151,12 @@ check says which one occurred.
 
 ### Investigation checklist
 
+Steps 1–4 are read-only and must be completed before any redeploy; step 5 is
+the first step permitted to change what production serves. The host is the
+single entry in `infra/production-inventory.ini`; there is no staging
+environment to rehearse against, which is the other reason to gather evidence
+before touching it.
+
 1. Record the deployed commit/image identity and the response headers for
    `/app/agenda` and its referenced `app-shell.js` asset.
 2. Inspect the running container's static files and verify that the served
@@ -201,9 +216,11 @@ and should remain dependable under poor connectivity.
 ### M1 — idempotent capture writes
 
 **Current state:** the additive server implementation and migration are
-committed. Before deploying it or starting M2, run the Django capture suite
-against the real project environment, apply the migration on a safe
-Postgres-backed path, and complete B0.1's production smoke check.
+committed, and `manage.py test capture` passes in the project environment (98
+tests, SQLite) — the M1 commit message's caveat that it had never been run is
+now resolved. Before deploying it or starting M2, confirm the same suite
+against the Postgres-backed CI path, apply the migration in production, and
+complete B0.1's production smoke check.
 
 The current endpoint creates a capture for every successful POST. If Android
 sends a request, loses the response, and retries, it cannot know whether the

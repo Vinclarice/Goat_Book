@@ -67,7 +67,7 @@ From your own machine, run the existing deploy playbook against
 production (same as any normal deploy):
 
 ```
-ansible-playbook -i <your-production-inventory> infra/deploy-playbook.yaml -K
+ansible-playbook -i infra/production-inventory.ini infra/deploy-playbook.yaml -K
 ```
 
 This builds the new image (with `psycopg`/`dj-database-url`), starts the

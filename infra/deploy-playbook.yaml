@@ -2,8 +2,10 @@
 - hosts: all
 
   vars:
-    # Override on the command line if needed, e.g.:
-    #   --extra-vars '{"site_domain":"staging.vinclarice.com","include_www_alias":false}'
+    # These defaults are correct for the only host in
+    # infra/production-inventory.ini. Override on the command line if a
+    # second host is ever brought up that must not claim the apex domain:
+    #   --extra-vars '{"site_domain":"other.vinclarice.com","include_www_alias":false}'
     site_domain: vinclarice.com
     include_www_alias: true
     letsencrypt_email: vincentjg01@gmail.com

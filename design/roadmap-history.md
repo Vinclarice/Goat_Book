@@ -25,7 +25,10 @@ from 53 to 60 without changing existing rows.
 - Restricted the application to a dedicated Postgres database user, proved
   the backup/restore path, and restricted the database firewall to the
   application droplet.
-- Added the daily-digest cron job and confirmed its first production run.
+- Added the daily-digest cron job, verified by dry run. Its first unattended
+  cron fire is 07:00 on August 1, 2026; "runs as root from cron on a
+  schedule" has a failure mode that "prints to stdout when I run it" does
+  not, so this is not proven until that run is checked.
 - Added self-service password reset and production-ready static asset
   handling through Docker, Gunicorn, WhiteNoise, nginx, and Ansible.
 
@@ -39,7 +42,7 @@ from 53 to 60 without changing existing rows.
   parent, plus the follow-up fix that prevents completed children from being
   orphaned when their recurring parent archives.
 - Added persistent SPA navigation in source. Its absence in production is
-  now Bittern C0.
+  now Bittern B0.
 - Added direct Inbox and Ideas links to the Agenda workspace as a fallback
   entry point. They mitigate a missing side nav only once the current frontend
   bundle is deployed; they do not replace B0's production-bundle diagnosis.
@@ -67,7 +70,7 @@ All A0–A6 work is complete:
 | A1 | Dedicated production database user, including ownership correction required for Django migrations. |
 | A2 | Restore drill passed against a cloned managed database. |
 | A3 | Adversarial per-user isolation suite, including id-based task/list and subtask cases. |
-| A4 | Daily digest cron installed and live. |
+| A4 | Daily digest cron installed; first unattended run still to be checked. |
 | A5 | Database firewall closed to the production droplet. |
 | A6 | Self-service password reset, including live validation of lockout behavior. |
 

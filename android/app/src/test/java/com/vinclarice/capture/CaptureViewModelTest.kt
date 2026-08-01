@@ -1,5 +1,9 @@
 package com.vinclarice.capture
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -56,7 +60,9 @@ class CaptureViewModelTest {
 
     private class FakeScheduler : DeliveryScheduler {
         var asked = 0
+        val finished = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
         override fun schedule() { asked++ }
+        override fun completions(): Flow<Unit> = finished
     }
 
     private class Fixture(
@@ -81,7 +87,16 @@ class CaptureViewModelTest {
             queue,
             // Advancing, so two captures in one test are ordered rather than
             // tied -- the queue sorts by created-at.
-            CaptureViewModel(api, store, queue, scheduler, now = { clock += 1; clock }),
+            CaptureViewModel(
+                api,
+                store,
+                queue,
+                scheduler,
+                // Unconfined so queue work runs inline: these assertions are
+                // about decisions, not about thread hops.
+                io = Dispatchers.Unconfined,
+                now = { clock += 1; clock },
+            ),
             scheduler,
         )
     }
@@ -358,6 +373,41 @@ class CaptureViewModelTest {
         f.model.refresh()
 
         assertEquals(0, f.scheduler.asked)
+    }
+
+    @Test
+    fun `a background delivery updates the count with nobody touching the screen`() = runTest {
+        // Found on a real phone: three captures drained themselves when the
+        // network returned, and "3 waiting to send" stayed on screen until
+        // the screen was left and re-entered. A stale count over an empty
+        // queue reads exactly like the failure this feature exists to
+        // prevent.
+        val f = fixture(Disposition.RETRY_LATER)
+        f.model.onTextChange("buy milk")
+        f.model.submit()
+        assertEquals(1, f.model.state.value.pending)
+
+        val watching = launch(Dispatchers.Unconfined) { f.model.watchDeliveries() }
+        // The worker, in effect: it drains the queue in another coroutine
+        // and the view model learns about it only through this signal.
+        f.queue.delivered(f.queue.all().single().key)
+        f.scheduler.finished.emit(Unit)
+
+        assertEquals(0, f.model.state.value.pending)
+        watching.cancel()
+    }
+
+    @Test
+    fun `watching does not itself schedule anything`() = runTest {
+        // refresh() asks for a delivery when it finds a queue, and watching
+        // calls refresh. An empty queue must not turn that into a wake-up.
+        val f = fixture()
+
+        val watching = launch(Dispatchers.Unconfined) { f.model.watchDeliveries() }
+        f.scheduler.finished.emit(Unit)
+
+        assertEquals(0, f.scheduler.asked)
+        watching.cancel()
     }
 
     @Test

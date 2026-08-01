@@ -1,7 +1,9 @@
 package com.vinclarice.capture
 
 import java.util.UUID
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -37,7 +39,10 @@ class CaptureViewModel(
     // A seam rather than WorkManager itself, so these decisions stay
     // testable on the JVM. Everything this class knows about background
     // delivery is "ask for one".
-    private val scheduler: DeliveryScheduler = DeliveryScheduler {},
+    private val scheduler: DeliveryScheduler = DeliveryScheduler.None,
+    // Queue work means decrypting, and Keystore calls are real IPC that has
+    // no business on the main thread. Injected so tests can run it inline.
+    private val io: CoroutineDispatcher = Dispatchers.IO,
     // Injected so a test can watch which keys were used. In production a
     // random UUID per capture, which is what the server's uniqueness
     // constraint is scoped to.
@@ -56,7 +61,7 @@ class CaptureViewModel(
 
     /** Recount what is waiting. Suspending because reading the queue means
      *  decrypting it, and Keystore calls are real IPC. */
-    suspend fun refresh() = withContext(Dispatchers.IO) {
+    suspend fun refresh() = withContext(io) {
         val waiting = queue.waiting().size
         _state.value = _state.value.copy(pending = waiting)
         // Covers the gap where the process died between queueing a capture
@@ -66,7 +71,19 @@ class CaptureViewModel(
         if (waiting > 0) scheduler.schedule()
     }
 
-    suspend fun submit() = withContext(Dispatchers.IO) {
+    /**
+     * Keep the count honest while the screen is open.
+     *
+     * Suspends for as long as somebody is looking at Capture. Without it the
+     * count is a snapshot taken when the screen opened, and a queue drained
+     * by the worker leaves a number on screen that its owner cannot tell
+     * apart from lost captures.
+     */
+    suspend fun watchDeliveries() {
+        scheduler.completions().collect { refresh() }
+    }
+
+    suspend fun submit() = withContext(io) {
         val text = _state.value.text.trim()
         if (text.isEmpty()) return@withContext
 

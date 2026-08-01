@@ -47,6 +47,10 @@ fun CaptureScreen(
         // What is already queued from a previous session, so a restart does
         // not look like an empty queue.
         model.refresh()
+        // Then keep it honest. This suspends for as long as the screen is
+        // open; a count that only updates on open sat at "3 waiting to send"
+        // over an empty queue on a real phone.
+        model.watchDeliveries()
     }
 
     Column(

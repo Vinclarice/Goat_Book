@@ -10,16 +10,33 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.map
 
 /**
- * Asking for the queue to be delivered.
+ * Asking for the queue to be delivered, and hearing when it was.
  *
  * An interface so the view model can be tested on the JVM without
- * WorkManager, and because everything the app needs to say is "there is
- * something to send" -- when and how are the system's business.
+ * WorkManager. The app says "there is something to send"; when and how are
+ * the system's business.
+ *
+ * [completions] exists because a screen cannot see a background drain. A
+ * count read once when the screen opened will happily keep displaying "3
+ * waiting to send" over a queue the worker emptied minutes ago -- observed
+ * on a real phone, and indistinguishable to its owner from three captures
+ * having gone missing.
  */
-fun interface DeliveryScheduler {
+interface DeliveryScheduler {
     fun schedule()
+
+    /** Emits when a background delivery run reaches a conclusion. */
+    fun completions(): Flow<Unit> = emptyFlow()
+
+    /** For tests and for the Connect screen, where nothing is queued yet. */
+    object None : DeliveryScheduler {
+        override fun schedule() = Unit
+    }
 }
 
 /**
@@ -83,6 +100,21 @@ class CaptureWorker(
             // queue's next attempt further away with every capture.
             WorkManager.getInstance(context)
                 .enqueueUniqueWork(WORK_NAME, ExistingWorkPolicy.KEEP, request)
+        }
+
+        /**
+         * Every change in the delivery work's state, collapsed to a nudge.
+         *
+         * Deliberately not filtered to finished runs only. The listener's
+         * response is to re-read the queue, which is cheap and always
+         * correct, whereas guessing which WorkInfo transitions matter is how
+         * a screen ends up stale again in some case nobody thought of.
+         */
+        override fun completions(): Flow<Unit> {
+            val context = appContext ?: return emptyFlow()
+            return WorkManager.getInstance(context)
+                .getWorkInfosForUniqueWorkFlow(WORK_NAME)
+                .map { }
         }
 
         private const val WORK_NAME = "clarice-capture-delivery"

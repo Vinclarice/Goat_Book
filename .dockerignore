@@ -3,6 +3,7 @@
 .gitignore
 .agents
 .codex
+.claude
 .venv
 .venv-wsl
 .vscode
@@ -16,9 +17,16 @@
 *.db
 *.zip
 
+# Unanchored on purpose: the anchored /frontend/node_modules/ above misses
+# nested copies, and .claude/worktrees/*/frontend/node_modules is a real
+# one -- a whole second checkout that would otherwise ride into the build
+# context.
+**/node_modules/
 /frontend/node_modules/
 /src/static/
 /src/lists/static/tests/
+.db-backups/
+.pnpm-store/
 
 infra/
 Dockerfile.txt

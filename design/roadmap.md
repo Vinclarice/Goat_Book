@@ -89,10 +89,11 @@ triage model has not. See Track A/Next and Track B below.
 - ~~**A2 — the backup restore drill.**~~ Run and passed August 1, 2026;
   see `MIGRATION.md`. The Postgres move's central promise is now banked
   rather than assumed.
-- **A deploy.** The last thing standing. None of the work above is running
-  anywhere — production still serves the code as it stood before any of
-  it, and its database has no `capture_*` tables at all, which is the
-  bluntest measure of the gap. Rotating `clarice_app` rides along with it.
+- ~~**A deploy.**~~ **Done — `albatross`, 2026-07-31 22:24 EDT.** Seven
+  migrations (53 → 60), every new table and column in place, and not one
+  row of existing data changed. `clarice_app` rotated in the same pass.
+  The gap this bullet used to measure — a production database with no
+  `capture_*` tables — is closed.
 - **No specs left to build.** All four written in this stretch are done:
   `recurring-subtasks-addendum.md` (migration `0021`),
   `password-reset-plan.md` (A6, speced and shipped the same day after a
@@ -113,12 +114,28 @@ A2, A5 and the deploy all need `doctl` or an Ansible run against the live
 account, which is why they have outlasted everything that could be done
 from an editor. The two remaining specs are ordinary coding work.
 
-**The deploy is still the one that unblocks the most.** It activates A4's
-digest cron, puts the archive/restore fix in front of real data, and —
-the part with a date attached — starts Track B's two-week capture clock.
-That clock has not started. The mid-to-late August checkpoint was written
-assuming it had, so it now resolves later than planned, or on thinner
-usage.
+**The deploy has happened, and everything it gated is now live.** A4's
+digest cron is installed and its first run was checked against real data
+(it correctly found one task due today). The archive/restore fix is in
+front of real data. And **Track B's two-week capture clock started on the
+night of July 31, 2026**, which puts its checkpoint at **August 14, 2026**
+— close to the mid-to-late August target the original entry assumed,
+after all.
+
+What the deploy itself taught, since both were invisible until a real run:
+
+- **A playbook task that has never executed is not a working task.** A4's
+  cron line was written weeks ago and looked fine; it set `user: root`
+  with no `become`, so it would have failed on `crontab -u root` — and it
+  sat immediately after the migration step, the worst place to stop.
+  Fixed in `8ec93c8` before the successful run.
+- **A hung SSH control socket looks exactly like a slow apt install.**
+  Sixteen minutes of apparent progress on "Install docker" was a wedged
+  multiplexed connection: no apt process on the server, no build locally,
+  nothing happening at either end. `ControlMaster=no` plus
+  `ServerAliveInterval` made the re-run proceed immediately, and the image
+  then built in under ninety seconds. Worth reaching for that combination
+  before believing a deploy is merely slow.
 
 ---
 
@@ -269,12 +286,12 @@ the isolation tests both land with automated coverage instead of a manual,
 one-time check. After that the order is preference, not dependency — A2,
 A4, A5, and A6 are independent of each other and of the feature plan.
 
-**Status: Track A/Now is closed.** A0, A1, A2, A3, A5 and A6 are all done
-as of August 1, 2026 — A2 and A5, the two that needed `doctl` against the
-live account and had outlasted everything doable from an editor, went
-together in one pass. A4 is written and takes effect on the next deploy,
-which is the only thing this track is still waiting on. One follow-up
-rides with that deploy: rotating the `clarice_app` credential (see A5).
+**Status: Track A/Now is closed, all seven of it.** A0 through A6 are done
+as of July 31, 2026 — A2 and A5, the two that needed `doctl` against the
+live account and had outlasted everything doable from an editor, went in
+one pass, and A4 came live with the `albatross` deploy that evening along
+with the `clarice_app` rotation. Nothing in this track is waiting on
+anything.
 
 ### A0. Stand up CI with a Postgres service container — done
 
@@ -489,7 +506,21 @@ id-addressable routes, including the two that take a list id in a POST
 body rather than a path. Those tests live in `capture/tests/` rather than
 here, since every route is capture-owned.
 
-### A4. Wire up the digest email — written, not yet live
+### A4. Wire up the digest email — done
+
+**Live since the `albatross` deploy, 2026-07-31.** The cron is installed
+and the first run was checked against real data rather than trusted
+unattended, as this entry insisted: `send_due_digest --dry-run` in the
+production container produced a correct digest for the real user, naming
+one task genuinely due today. It fires at 07:00 daily.
+
+The task itself needed a fix first — it wrote root's crontab without
+`become`, so it had never been able to work. See the deploy notes under
+"Where things stand".
+
+The original entry follows.
+
+### A4 (original). Wire up the digest email — written, not yet live
 
 **Scheduled July 31, 2026** in `infra/deploy-playbook.yaml`, as an
 `ansible.builtin.cron` task rather than a raw crontab line so the entry is
@@ -535,11 +566,17 @@ disappears:** while gathering cluster metadata for A2, a `doctl ... --output
 json` call printed the `doadmin` and `clarice_app` passwords into a session
 transcript. `doadmin` was rotated immediately (nothing uses it since A1
 moved the app to `clarice_app`, and the app was verified still serving 200s
-afterwards). **`clarice_app` is still owed a rotation**, deliberately
-deferred to the next deploy because its new URL has to reach the droplet's
-`~/.db-connection-url` anyway. Do not close this item out until that has
-happened. The exposure is contained by the firewall above — which is a
-fair illustration of why defence in depth is worth the hour.
+afterwards). **`clarice_app` was rotated too, right after the `albatross`
+deploy** — reset, new URL written to the droplet's `~/.db-connection-url`,
+and the container recreated in place with its other eight environment
+variables copied verbatim off the running one, so the outage was seconds
+rather than the minutes a second playbook run would have cost. Verified by
+connecting as `clarice_app` and reading 24 items back. The old URL backup
+was shredded afterwards, since it held the very password being retired.
+
+Both credentials are now clean. Throughout, the exposure was contained by
+the firewall above — a fair illustration of why defence in depth is worth
+the hour it took.
 
 The original specification follows.
 

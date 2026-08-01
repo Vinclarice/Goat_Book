@@ -29,7 +29,8 @@ pnpm --dir frontend test
 pnpm --dir frontend build
 ```
 
-Those three are the full check. Keep the Django app list matched to
+Those three cover the web application; `android/` has its own check below,
+and CI runs all four. Keep the Django app list matched to
 `.github/workflows/ci.yml` — it once omitted `capture`, so following the
 README ran every suite except the one covering the capture API.
 

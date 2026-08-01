@@ -154,6 +154,23 @@ export function TaskWorkspace({ initialData }: Props) {
     );
   }
 
+  /** Folds the subtasks a status change also moved back into the list. An
+   * archived one leaves altogether -- this page never shows archived tasks --
+   * and the rest take their new status. Without this a child ticked off by
+   * its parent's completion keeps rendering as open, and one whose parent
+   * archived itself keeps rendering at all: rows() promotes a child whose
+   * parent is missing to the top level, so it would sit there looking like a
+   * root task until the next reload. */
+  function applyCascade(items: Task[], cascaded: Task[]): Task[] {
+    if (cascaded.length === 0) return items;
+    const moved = new Map(cascaded.map((child) => [child.id, child]));
+    return items.flatMap((item) => {
+      const child = moved.get(item.id);
+      if (!child) return [item];
+      return child.status === "archived" ? [] : [child];
+    });
+  }
+
   async function handleCreate(event: FormEvent) {
     event.preventDefault();
     setError("");
@@ -185,10 +202,19 @@ export function TaskWorkspace({ initialData }: Props) {
     setNotice("");
     setBusyId(task.id);
     try {
-      const { task: updated, spawned } = await updateTaskStatus(task, status);
+      const { task: updated, spawned, cascaded } = await updateTaskStatus(
+        task,
+        status,
+      );
       if (updated.status === "archived") {
         setItems((current) => {
-          const withoutArchived = current.filter((item) => item.id !== updated.id);
+          const withoutArchived = applyCascade(current, cascaded).filter(
+            (item) => item.id !== updated.id,
+          );
+          // The spawned occurrence arrives without its fresh copies of the
+          // subtasks, which the server made in the same breath. Nothing here
+          // knows them, so the list is only right again after a reload --
+          // see design/roadmap.md, Track A.
           return spawned ? [...withoutArchived, spawned] : withoutArchived;
         });
         setNotice(
@@ -197,7 +223,11 @@ export function TaskWorkspace({ initialData }: Props) {
             : "Task moved to Done & archived.",
         );
       } else {
-        replaceItem(updated);
+        setItems((current) =>
+          applyCascade(current, cascaded).map((item) =>
+            item.id === updated.id ? updated : item,
+          ),
+        );
         setNotice(status === "active" ? "Task reopened." : "Task completed.");
       }
     } catch (caught) {

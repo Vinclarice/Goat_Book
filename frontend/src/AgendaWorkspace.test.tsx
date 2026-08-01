@@ -266,6 +266,76 @@ describe("AgendaWorkspace", () => {
     expect(screen.queryByText("Completed today")).not.toBeInTheDocument();
   });
 
+  it("clears a subtask out of the day when its recurring parent archives it", async () => {
+    // "Book flights" was finished earlier today, so it is sitting under
+    // "Completed today". Its parent recurring takes it out of the day
+    // altogether -- it belongs to the occurrence that just ended.
+    const user = userEvent.setup();
+    const child = task({
+      id: 7,
+      text: "Book flights",
+      status: "completed",
+      parent: { id: 2, text: "Ship the fix" },
+    });
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse({
+        data: { ...task({ id: 2 }), status: "archived" },
+        spawned: task({ id: 99, text: "Ship the fix", recurrence: "weekly" }),
+        cascaded: [{ ...child, status: "archived" }],
+      }),
+    );
+    renderAgenda({ completed_today: [child] });
+
+    expect(screen.getByText("Book flights")).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", { name: /Complete “Ship the fix”/ }),
+    );
+
+    await waitFor(() =>
+      expect(screen.queryByText("Book flights")).not.toBeInTheDocument(),
+    );
+  });
+
+  it("moves a subtask into the day when its parent completes", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse({
+        data: task({ id: 2, text: "Ship the fix", status: "completed" }),
+        cascaded: [
+          task({
+            id: 7,
+            text: "Book flights",
+            status: "completed",
+            parent: { id: 2, text: "Ship the fix" },
+          }),
+        ],
+      }),
+    );
+    renderAgenda({
+      items: [
+        ...sampleItems(),
+        task({
+          id: 7,
+          text: "Book flights",
+          parent: { id: 2, text: "Ship the fix" },
+        }),
+      ],
+    });
+
+    await user.click(
+      screen.getByRole("button", { name: /Complete “Ship the fix”/ }),
+    );
+
+    // It leaves the open list with its parent and lands under the day's
+    // completed work, rather than lingering as an open task with nothing
+    // above it.
+    const done = await screen.findByRole("heading", { name: /Completed today/ });
+    expect(
+      within(done.closest<HTMLElement>("section")!).getByText("Book flights"),
+    ).toBeInTheDocument();
+  });
+
   it("snoozes a dated task to tomorrow from the menu", async () => {
     const user = userEvent.setup();
     const fetchMock = vi

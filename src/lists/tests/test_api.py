@@ -390,6 +390,29 @@ class TaskApiTest(TestCase):
         body = response.json()
         self.assertEqual([each["id"] for each in body["cascaded"]], [child["id"]])
 
+    def test_a_recurring_parent_reports_an_early_child_as_archived(self):
+        # The end of the orphan: the client is told the already-done subtask
+        # went with its parent, and told so with the status it now has, which
+        # is what lets it take the row off screen instead of leaving it
+        # sitting at the top level under a parent that is no longer there.
+        early = self.request(
+            "post",
+            f"/api/lists/{self.list_.id}/items/",
+            {"text": "Book flights", "parent": self.item.id},
+        ).json()["data"]
+        self.request("patch", early["url"], {"status": Item.Status.COMPLETED})
+        self.request(
+            "patch", f"/api/items/{self.item.id}/", {"recurrence": "weekly"}
+        )
+
+        body = self.request(
+            "patch", f"/api/items/{self.item.id}/", {"status": Item.Status.COMPLETED}
+        ).json()
+
+        cascaded = {each["id"]: each for each in body["cascaded"]}
+        self.assertIn(early["id"], cascaded)
+        self.assertEqual(cascaded[early["id"]]["status"], Item.Status.ARCHIVED)
+
     def make_subtask(self, text="Book flights", **extra):
         return self.request(
             "post",

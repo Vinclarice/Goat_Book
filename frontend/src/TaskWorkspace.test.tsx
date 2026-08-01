@@ -498,4 +498,75 @@ describe("TaskWorkspace subtasks", () => {
       ),
     );
   });
+
+  it("takes the children off screen when a recurring parent archives itself", async () => {
+    // "Book hotel" was already done before its parent came round again, so
+    // the server archives it alongside the still-open "Book flights". Left
+    // here, it would keep rendering -- and rows() would promote it to the top
+    // level, its parent having gone, so it would read as a root task.
+    const user = userEvent.setup();
+    vi.spyOn(globalThis, "fetch").mockReturnValue(
+      jsonResponse({
+        data: task({ id: 1, text: "Plan Japan trip", status: "archived" }),
+        spawned: task({ id: 4, text: "Plan Japan trip", status: "active" }),
+        cascaded: [
+          task({
+            id: 2,
+            text: "Book flights",
+            status: "archived",
+            parent: { id: 1, text: "Plan Japan trip" },
+          }),
+          task({
+            id: 3,
+            text: "Book hotel",
+            status: "archived",
+            parent: { id: 1, text: "Plan Japan trip" },
+          }),
+        ],
+      }),
+    );
+    renderNested();
+
+    await user.click(
+      screen.getAllByRole("button", { name: "Mark complete" })[0],
+    );
+
+    expect(await screen.findByText(/next occurrence added/)).toBeInTheDocument();
+    expect(screen.queryByText("Book flights")).not.toBeInTheDocument();
+    expect(screen.queryByText("Book hotel")).not.toBeInTheDocument();
+    // The next occurrence took the old one's place, under the same text.
+    expect(screen.getByText("Plan Japan trip")).toBeInTheDocument();
+  });
+
+  it("marks the children done when a plain parent completes", async () => {
+    // No archiving here, so nothing leaves the list -- the open child just
+    // stops being open, and has to say so without waiting for a reload.
+    const user = userEvent.setup();
+    vi.spyOn(globalThis, "fetch").mockReturnValue(
+      jsonResponse({
+        data: task({ id: 1, text: "Plan Japan trip", status: "completed" }),
+        cascaded: [
+          task({
+            id: 2,
+            text: "Book flights",
+            status: "completed",
+            parent: { id: 1, text: "Plan Japan trip" },
+          }),
+        ],
+      }),
+    );
+    renderNested();
+
+    await user.click(
+      screen.getAllByRole("button", { name: "Mark complete" })[0],
+    );
+
+    await waitFor(() =>
+      // Three tasks, all of them done: the filter counts local state, so it
+      // only reads 3 once the cascaded child has been folded in.
+      expect(
+        screen.getByRole("button", { name: /Completed 3/ }),
+      ).toBeInTheDocument(),
+    );
+  });
 });

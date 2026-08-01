@@ -241,6 +241,138 @@ class RecurringParentTest(SubtaskServiceTest):
         )
 
 
+class NoOrphanedChildTest(SubtaskServiceTest):
+    """An archived parent must leave nothing of its own behind.
+
+    archive_item has always held this line; complete_item's recurring branch
+    archives a parent too, and did not. A child ticked off before its parent
+    stayed `completed` under an archived parent, and the list page -- which
+    filters archived items out of the payload entirely -- drew it as a root
+    task. See design/roadmap.md, Track A.
+    """
+
+    def make_recurring(self):
+        services.set_recurrence(
+            self.refresh(self.parent), Item.Recurrence.WEEKLY
+        )
+
+    def test_a_child_completed_before_a_recurring_parent_goes_with_it(self):
+        services.complete_item(self.child_a)
+        self.make_recurring()
+
+        services.complete_item(self.refresh(self.parent))
+
+        self.assertEqual(
+            self.refresh(self.child_a).status, Item.Status.ARCHIVED
+        )
+
+    def test_a_recurring_parent_leaves_no_child_behind(self):
+        # The invariant itself, rather than one route to breaking it: after
+        # the parent is gone there is nothing under it still on the board.
+        services.complete_item(self.child_a)
+        self.make_recurring()
+
+        services.complete_item(self.refresh(self.parent))
+
+        self.assertFalse(
+            Item.objects.filter(parent=self.parent)
+            .exclude(status=Item.Status.ARCHIVED)
+            .exists()
+        )
+
+    def test_the_early_child_keeps_the_time_it_was_actually_finished(self):
+        # Not stamped with the parent's completion time: completed_at is what
+        # restore reads to decide where each child goes back to, and this
+        # child really was finished earlier.
+        services.complete_item(self.child_a)
+        finished_at = self.refresh(self.child_a).completed_at
+        self.make_recurring()
+
+        services.complete_item(self.refresh(self.parent))
+
+        self.assertEqual(self.refresh(self.child_a).completed_at, finished_at)
+
+    def test_the_early_child_joins_the_parents_archive_group(self):
+        services.complete_item(self.child_a)
+        self.make_recurring()
+
+        parent = services.complete_item(self.refresh(self.parent))
+
+        self.assertIsNotNone(parent.archive_group)
+        self.assertEqual(
+            self.refresh(self.child_a).archive_group, parent.archive_group
+        )
+
+    def test_restoring_the_parent_brings_the_whole_subtree_back_done(self):
+        # Both children come back completed, and rightly so: one was finished
+        # early, the other by the parent's own completion. The difference the
+        # cascade preserves is *when* -- child_a's timestamp is its own, not
+        # the moment the parent was ticked.
+        services.complete_item(self.child_a)
+        finished_early_at = self.refresh(self.child_a).completed_at
+        self.make_recurring()
+        parent = services.complete_item(self.refresh(self.parent))
+        # The occurrence this completion spawned has to go first -- it holds
+        # the parent's text, and restore refuses to bring back a duplicate.
+        services.archive_item(parent._spawned)
+
+        services.restore_item(self.refresh(parent))
+
+        self.assertEqual(
+            self.refresh(self.child_a).status, Item.Status.COMPLETED
+        )
+        self.assertEqual(
+            self.refresh(self.child_b).status, Item.Status.COMPLETED
+        )
+        self.assertEqual(
+            self.refresh(self.child_a).completed_at, finished_early_at
+        )
+        self.assertGreater(
+            self.refresh(self.child_b).completed_at, finished_early_at
+        )
+
+    def test_the_early_child_is_reported_as_cascaded(self):
+        # The response's cascaded set is what the client reconciles its own
+        # state against. A child it is never told about stays on screen under
+        # a parent that just left it.
+        services.complete_item(self.child_a)
+        self.make_recurring()
+
+        parent = services.complete_item(self.refresh(self.parent))
+
+        self.assertEqual(
+            sorted(each.pk for each in parent._cascaded),
+            sorted([self.child_a.pk, self.child_b.pk]),
+        )
+
+    def test_a_child_archived_early_is_not_swept_up_again(self):
+        # Already archived on its own, so it keeps its own archive group and
+        # does not come back when the parent is restored.
+        services.archive_item(self.child_a)
+        own_group = self.refresh(self.child_a).archive_group
+        self.make_recurring()
+
+        parent = services.complete_item(self.refresh(self.parent))
+
+        self.assertEqual(self.refresh(self.child_a).archive_group, own_group)
+        self.assertNotEqual(own_group, parent.archive_group)
+
+    def test_completing_a_plain_parent_still_leaves_a_done_child_alone(self):
+        # The non-recurring parent rests at `completed` and stays in the
+        # payload, so there is no orphan to prevent and nothing to change.
+        services.complete_item(self.child_a)
+        done_at = self.refresh(self.child_a).completed_at
+
+        parent = services.complete_item(self.refresh(self.parent))
+
+        self.assertEqual(parent.status, Item.Status.COMPLETED)
+        self.assertEqual(
+            self.refresh(self.child_a).status, Item.Status.COMPLETED
+        )
+        self.assertEqual(self.refresh(self.child_a).completed_at, done_at)
+        self.assertEqual([each.pk for each in parent._cascaded], [self.child_b.pk])
+
+
 class AlwaysRecursTest(SubtaskServiceTest):
     """What comes back on the next occurrence, as opposed to what the cascade
     happened to touch on the way out -- see

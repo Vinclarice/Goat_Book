@@ -79,8 +79,18 @@ jobs:
       # Accepting the licences is all this step exists to do.
       - name: Accept Android SDK licences
         run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null
-      # assembleDebug as well as the tests: the unit tests compile only what
-      # they touch, while packaging an APK is what exercises the manifest,
-      # resources and dexing. A project that tests green and cannot be
-      # installed is not one anybody can use.
-      - run: ./gradlew :app:assembleDebug :app:testDebugUnitTest
+      # Three targets, each catching something the others cannot:
+      #
+      # assembleDebug packages an APK, exercising the manifest, resources
+      # and dexing -- a project that tests green and cannot be installed is
+      # not one anybody can use. It is what caught a backup-rules XML file
+      # that no compiler would have looked at.
+      #
+      # testDebugUnitTest is the JVM suite.
+      #
+      # assembleDebugAndroidTest only *compiles* the instrumentation tests;
+      # running them needs a device, which arrives at M4. Without this they
+      # would rot silently for weeks against the code they cover, and be
+      # discovered broken at exactly the moment someone finally plugs a
+      # phone in to check the encryption.
+      - run: ./gradlew :app:assembleDebug :app:testDebugUnitTest :app:assembleDebugAndroidTest

@@ -17,7 +17,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import include, path
 from django.views.generic import RedirectView
-from accounts.views import LandingLoginView
+from accounts.views import LandingLoginView, contact
 from lists import views as list_views
 
 from clarice.api import api as api_v1
@@ -25,6 +25,9 @@ from clarice.api import api as api_v1
 
 urlpatterns = [
     path("", LandingLoginView.as_view(), name="home"),
+    # Public and unauthenticated, hence the root rather than under
+    # accounts/: a stranger with a question does not have an account.
+    path("contact/", contact, name="contact"),
     path("dashboard/", list_views.dashboard, name="dashboard"),
     path("archive/", list_views.archive, name="archive"),
     path("app/", list_views.spa_shell, name="app_shell"),

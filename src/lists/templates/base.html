@@ -22,6 +22,10 @@
         </a>
 
         <div class="flex items-center gap-3 text-sm">
+          {# Outside the branch on purpose: someone locked out of their #}
+          {# account needs the support path more than anyone, and they are #}
+          {# by definition not authenticated when they need it. #}
+          <a class="text-muted-foreground hover:text-text" href="{% url 'contact' %}">Contact</a>
           {% if user.is_authenticated %}
             <a class="text-muted-foreground hover:text-text" href="{% url 'dashboard' %}">Today</a>
             <a class="text-muted-foreground hover:text-text" href="{% url 'capture_inbox' %}">Inbox</a>

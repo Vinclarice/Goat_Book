@@ -100,6 +100,39 @@ class TokenForm(forms.Form):
     )
 
 
+class ContactForm(forms.Form):
+    """The one public form a stranger can reach, so every field is hostile
+    input until validated.
+
+    Nothing collected here reaches a mail header. The name and message are
+    rendered into the body and the only header built from user input is
+    Reply-To, from an address EmailField has already validated. That is
+    what makes header injection impossible rather than merely filtered --
+    there is no code path that concatenates typed text into a header for a
+    newline to break out of.
+    """
+
+    name = forms.CharField(label="Your name", max_length=100)
+    email = forms.EmailField(label="Your email")
+    message = forms.CharField(
+        label="Message",
+        max_length=5000,
+        widget=forms.Textarea(attrs={"rows": 6}),
+    )
+    # Honeypot. Hidden from people and irresistible to form-fillers, so a
+    # value here is never an accident. Named for plausibility rather than
+    # accuracy: "website" is a field a bot expects to find.
+    website = forms.CharField(
+        label="Website",
+        required=False,
+        widget=forms.HiddenInput,
+    )
+
+    @property
+    def looks_automated(self):
+        return bool(self.cleaned_data.get("website"))
+
+
 class AccountSettingsForm(forms.ModelForm):
     class Meta:
         model = User

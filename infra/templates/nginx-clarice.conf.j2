@@ -7,6 +7,13 @@
 # after repeated failures regardless of which IP they come from.
 limit_req_zone $binary_remote_addr zone=clarice_auth:10m rate=5r/m;
 
+# The contact form is the one page a stranger can POST to, so it gets the
+# same two-layer treatment. This throttles *requests*; accounts.views.contact
+# separately caps how many messages actually leave per hour. Different jobs:
+# this stops a flood, that stops a patient script sending five valid
+# messages and waiting.
+limit_req_zone $binary_remote_addr zone=clarice_contact:10m rate=10r/m;
+
 # Reject unknown hostnames before they reach Django. The TLS catch-all rejects
 # the handshake without needing to present a certificate for an unknown name.
 server {
@@ -46,6 +53,21 @@ server {
 
     location ~ ^/(accounts/login|accounts/signup)/ {
         limit_req zone=clarice_auth burst=3 nodelay;
+        limit_req_status 429;
+
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # X-Real-IP is load-bearing here rather than informational: the view
+    # keys its per-visitor send limit on it, because REMOTE_ADDR is this
+    # proxy for everyone. nginx overwrites any client-supplied value, which
+    # is what makes it trustworthy.
+    location = /contact/ {
+        limit_req zone=clarice_contact burst=5 nodelay;
         limit_req_status 429;
 
         proxy_pass http://127.0.0.1:8000;

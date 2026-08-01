@@ -1,15 +1,20 @@
 from axes.utils import reset as axes_reset
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth.views import LoginView, PasswordResetConfirmView
+from django.core.cache import cache
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
-from accounts.emails import notify_admins_of_pending_signup
-from accounts.forms import LoginForm, SignUpForm, TokenForm
+from accounts.emails import notify_admins_of_pending_signup, send_support_message
+from accounts.forms import ContactForm, LoginForm, SignUpForm, TokenForm
 from accounts.models import PersonalAccessToken
+
+
+CONTACT_WINDOW_SECONDS = 60 * 60
 
 
 class LandingLoginView(LoginView):
@@ -118,3 +123,79 @@ def change_password(request):
         return redirect("account_settings")
 
     return render(request, "accounts/change_password.html", {"form": form})
+
+
+def visitor_ip(request):
+    """The visitor's address, not the proxy's.
+
+    Django sits behind nginx, which connects from localhost -- so
+    REMOTE_ADDR is the same value for every visitor on earth and anything
+    keyed on it is one shared bucket, not a per-visitor limit. nginx sets
+    X-Real-IP to the real peer and *overwrites* whatever the client sent,
+    and gunicorn only listens on 127.0.0.1, so nginx is the only way in and
+    the header cannot be forged. Off-proxy -- dev, tests -- there is no
+    header and REMOTE_ADDR is already the real peer.
+    """
+    return request.headers.get("X-Real-IP") or request.META.get("REMOTE_ADDR", "")
+
+
+def _contact_sends_key(ip):
+    return f"contact-form-sends:{ip}"
+
+
+def _record_contact_send(ip):
+    key = _contact_sends_key(ip)
+    # add() only writes when the key is absent, so the hour is measured
+    # from the first send. cache.set() here instead would let a steady
+    # drip keep pushing the expiry out and never reset the count.
+    cache.add(key, 0, CONTACT_WINDOW_SECONDS)
+    try:
+        cache.incr(key)
+    except ValueError:
+        # Expired in the gap between add() and incr(). Start a fresh window
+        # rather than lose the count entirely.
+        cache.set(key, 1, CONTACT_WINDOW_SECONDS)
+
+
+def contact(request):
+    """Public support contact. Deliberately not a ticketing system: it has
+    no model and keeps no record, so the message only exists in the support
+    inbox it was sent to.
+
+    Rate limiting counts *sends*, not requests. Someone mistyping their
+    address four times has not used up their allowance; a script posting
+    valid messages has.
+    """
+    form = ContactForm()
+
+    if request.method == "POST":
+        ip = visitor_ip(request)
+        if cache.get(_contact_sends_key(ip), 0) >= settings.CONTACT_MAX_PER_HOUR:
+            return render(
+                request,
+                "accounts/contact.html",
+                {"form": form, "rate_limited": True},
+                status=429,
+            )
+
+        form = ContactForm(request.POST)
+        if form.is_valid():
+            # A caught bot gets the same page a person gets. Saying "you
+            # tripped the honeypot" only tells whoever wrote it which field
+            # to leave alone next time.
+            if not form.looks_automated:
+                send_support_message(
+                    name=form.cleaned_data["name"],
+                    email=form.cleaned_data["email"],
+                    message=form.cleaned_data["message"],
+                )
+                _record_contact_send(ip)
+
+            messages.success(
+                request,
+                "Thanks — your message is on its way. We'll reply to the "
+                "address you gave us.",
+            )
+            return redirect("contact")
+
+    return render(request, "accounts/contact.html", {"form": form})

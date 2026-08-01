@@ -101,6 +101,15 @@ SERVER_EMAIL = os.environ.get(
     "DJANGO_SERVER_EMAIL", f"Clarice notices <notices@{EMAIL_DOMAIN}>"
 )
 
+# Where the public contact form delivers. A real mailbox rather than a
+# send-only address: Resend only sends, so this receives through the IONOS
+# mailboxes the domain's MX records point at.
+SUPPORT_EMAIL = os.environ.get("DJANGO_SUPPORT_EMAIL", f"support@{EMAIL_DOMAIN}")
+# Successful contact-form sends allowed per client IP per hour. nginx
+# throttles the same path more bluntly (see infra/templates/
+# nginx-clarice.conf.j2); this is the layer with a test.
+CONTACT_MAX_PER_HOUR = int(os.environ.get("DJANGO_CONTACT_MAX_PER_HOUR", "5"))
+
 # Who gets emailed about pending signups and account lockouts
 # (see accounts.emails and accounts.apps.AccountsConfig.ready). This is an
 # internal routing decision and never appears in a header a user reads.

@@ -166,6 +166,12 @@
         hour: "7"
         job: docker exec clarice ./manage.py send_due_digest
         user: root
+      # Writing *root's* crontab needs root: without this the module runs
+      # `crontab -u root` as the deploy user and is refused. Every other
+      # task here that touches something outside the deploy user's home
+      # already had it; this one was written but never executed, so the
+      # omission survived until the first real run.
+      become: true
 
     - name: Install nginx and certbot
       ansible.builtin.apt:

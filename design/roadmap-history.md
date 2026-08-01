@@ -41,8 +41,9 @@ from 53 to 60 without changing existing rows.
 - Added `always_recurs` to decide which subtasks return with a recurring
   parent, plus the follow-up fix that prevents completed children from being
   orphaned when their recurring parent archives.
-- Added persistent SPA navigation in source. Its absence in production is
-  now Bittern B0.
+- Added persistent SPA navigation in source. Its absence in production was
+  Bittern B0, diagnosed and patched on August 1, 2026 — see below. The
+  deployed bundle was never the problem.
 - Added direct Inbox and Ideas links to the Agenda workspace as a fallback
   entry point. They mitigate a missing side nav only once the current frontend
   bundle is deployed; they do not replace B0's production-bundle diagnosis.
@@ -91,6 +92,77 @@ One deliberately unscoped consequence remains: a spawned recurring task does
 not serialize its copied subtasks in the mutation response, so they appear
 after refresh. This is retained in the active roadmap as a known gap.
 
+## Bittern B0 — the missing side navigation, diagnosed August 1, 2026
+
+### The artifact was never the problem
+
+B0 existed to decide between two causes: a stale or mispackaged frontend
+bundle, or a current bundle failing at runtime. Read-only evidence gathered
+against the running albatross deployment, before any redeploy:
+
+| Check | Result |
+| --- | --- |
+| Deployed asset | `frontend/app-shell.b94af7d63d1b.js`, 179,011 bytes |
+| `Last-Modified` | 2026-08-01 02:23:16 GMT — the `DEPLOYED-2026-07-31/2224` deploy |
+| Deployed `staticfiles.json` | Maps `frontend/app-shell.js` to that hash, so it is what `app_shell.html` referenced |
+| Navigation strings in the served JS | Agenda, Inbox, Ideas, Archive, Preferences all present |
+| `Log out` in the served JS | Absent, correctly — B2 was unbuilt, corroborating the artifact as albatross |
+| Served `app.css` | Byte-identical to a local build, including the shell grid and the 760px rule |
+| `AppLayout`/`SideNav`/`sidenav.module.css` at `f5ddb85` vs `main` | Unchanged |
+
+The bundle was current and correct. The stale-artifact branch was closed on
+evidence rather than assumption.
+
+### The cause
+
+`AppLayout` wrapped `SideNav` in a `<details>` that nothing ever opened,
+while `sidenav.module.css` hid its `<summary>` unconditionally. Above the
+breakpoint the nav was therefore sealed inside a closed disclosure with no
+handle to open it — the source comment asserted "above it the nav is always
+open," but no code implemented that.
+
+A closed `<details>` has its contents skipped, so the element collapsed to
+zero height. Measured on the live page:
+
+```text
+detailsBox: 210x0     <- the empty gutter the user could see
+navBox:     210x306   <- a skipped subtree keeps its geometry
+shellCols:  210px 1814px
+```
+
+Firefox does not paint skipped content, so the column was simply empty.
+Chromium 148 still paints it, which is why the same page looked correct in
+Edge and on a Chromium phone, and why the defect shipped.
+
+### Why no test caught it
+
+`SideNav.test.tsx` renders the component directly, never inside the
+`<details>`, and jsdom has no paint model in any case. The condition is
+invisible to unit tests by construction. `AppLayout.test.tsx` now asserts
+the invariant that was violated — above the breakpoint the disclosure is
+open, and stays open across navigation — but proving what a person actually
+sees needs B2.2's browser-level coverage.
+
+### The fix
+
+The layout now holds the disclosure open above the breakpoint via
+`matchMedia`, rather than depending on how an engine treats a closed one,
+and only closes on navigation when narrow. Verified by measurement: with
+the patch applied the disclosure's own box goes from `210x0` to `210x145`,
+matching its content, so no engine has anything left to disagree about.
+
+### A false trail worth keeping
+
+The first reproduction reported the nav as "visible" in every browser,
+which discarded the correct hypothesis for most of the investigation. The
+instrument was wrong: it tested `getBoundingClientRect().width > 0 &&
+height > 0`. **A layout box is not paint.** Content skipped by a closed
+disclosure keeps its geometry, so the probe answered "visible" for
+something invisible on screen, and the user's own report was trusted less
+than a faulty measurement. The signal that finally settled it was a
+container measuring `210x0` while its child measured `210x306` — a
+contradiction that can only mean skipped content.
+
 ## Decisions and lessons retained from the work
 
 ### Product decisions
@@ -113,6 +185,13 @@ after refresh. This is retained in the active roadmap as a known gap.
 - A clean hard refresh does not prove the deployed frontend image contains
   current source. Inspect the served bundle when UI source and production
   disagree.
+- A layout box is not paint. `getBoundingClientRect` returns real geometry
+  for content a browser has skipped rendering, so "has a box" is not
+  evidence that anyone can see it. When a probe and a person disagree about
+  what is on screen, suspect the probe.
+- Markup must not depend on how an engine renders a closed `<details>`.
+  Engines differ and are still converging; a layout that only works in the
+  browser it was built in will look correct to whoever built it.
 - Token and session authentication need deliberately different CSRF behavior.
 - Every id-taking surface requires direct per-user isolation tests, not just
   trust in a general ownership convention.

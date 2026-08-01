@@ -770,6 +770,26 @@ export function AgendaWorkspace({ initialData }: Props) {
             </details>
           </div>
 
+          {/* A direct entry point to Capture from the main page itself,
+              not just the persistent side nav -- the inbox is where
+              anything gets in, and Ideas is the "second brain" list, so
+              neither should be reachable only through a nav element that
+              could fail to render. Plain hrefs, same fallback pattern
+              SideNav.tsx already uses, since AgendaOut doesn't carry
+              these URLs today. */}
+          <div className="side-card">
+            <h3>Capture</h3>
+            {/* .side-link is inline-block in site.css, meant for one link
+                per card (see "Daily reminder" below) -- forced block here
+                so two links stack instead of running together. */}
+            <a className="side-link" style={{ display: "block" }} href="/capture/">
+              Inbox →
+            </a>
+            <a className="side-link" style={{ display: "block" }} href="/capture/ideas/">
+              Ideas →
+            </a>
+          </div>
+
           {tags.length > 0 && (
             <div className="side-card">
               <h3>Tags</h3>

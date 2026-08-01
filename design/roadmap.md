@@ -100,9 +100,8 @@ triage model has not. See Track A/Next and Track B below.
   real lockout-plus-forgotten-password incident),
   `capture-api-and-tokens-plan.md` (tokens plus `POST /api/v1/capture`),
   and `capture-triage-and-polish-plan.md` (migration `capture.0002` — the
-  `Idea` domain and the four triage outcomes). None of it is deployed,
-  which is now the only thing standing between all of this and being
-  usable.
+  `Idea` domain and the four triage outcomes). All of it shipped live in
+  `albatross`, 2026-07-31 22:24 EDT.
 - **One known gap, small and unspeced.** A spawned recurring occurrence
   renders childless until the page is reloaded — the server creates the
   fresh subtask copies in the same transaction but doesn't serialize them.
@@ -117,10 +116,12 @@ from an editor. The two remaining specs are ordinary coding work.
 **The deploy has happened, and everything it gated is now live.** A4's
 digest cron is installed and its first run was checked against real data
 (it correctly found one task due today). The archive/restore fix is in
-front of real data. And **Track B's two-week capture clock started on the
-night of July 31, 2026**, which puts its checkpoint at **August 14, 2026**
-— close to the mid-to-late August target the original entry assumed,
-after all.
+front of real data. **Track B's two-week usage checkpoint has been
+dropped as a gate** — the triage model already shipped from direct
+conviction rather than from that checkpoint, and there is no reason to
+hold the next release back waiting on a calendar date. Real usage still
+informs the design; it just does not block anything anymore. See Track B
+below.
 
 What the deploy itself taught, since both were invisible until a real run:
 
@@ -270,6 +271,12 @@ They don't share code — Capture is an isolated model with no FK into
 `List`/`Item` — so they don't block each other technically. They do share
 the same developer, so Track B still gets a fixed, small scope rather than
 open-ended parallel effort.
+
+**Bittern adds four more tracks, C through D through F, once `albatross`
+was actually live and its scope got talked through.** Same discipline as
+above: each one stays independently small rather than one open-ended
+Bittern queue. See the `## Bittern` section below, after Track A/Next, for
+what's in each.
 
 ---
 
@@ -655,7 +662,7 @@ to configure there.
 
 ---
 
-## Track B — Capture MVP — built, clock starts on deploy
+## Track B — Capture MVP — built and deployed, no checkpoint gate
 
 **Shipped July 31, 2026** as a Django-only `capture` app: model, entry
 form, Inbox, and one resolve action, with an Inbox link in the nav. No
@@ -697,10 +704,16 @@ weeks, and let what actually gets typed into it settle whether the
 task/idea/note split holds up, rather than designing that shape from
 speculation.
 
-**Checkpoint, not open-ended — and the clock has not started yet.** The
-MVP is built but not deployed; the two weeks of real use begin when it's
-live on the production droplet, not when it merged. Target stays
-mid-to-late August 2026.
+**No longer a scheduled gate.** The MVP deployed with `albatross` on
+July 31, 2026, and the triage model
+(`design/capture-triage-and-polish-plan.md`) shipped the same day from
+direct conviction rather than from waiting on usage data. The original
+plan held further Capture work behind a two-week real-use checkpoint
+(target: mid-to-late August); that gate is dropped, and Bittern is not
+waiting on it. Real usage is still worth watching informally, and if it
+disagrees with the shipped task/idea/reference/discard split, that is
+still a real signal to revisit — it just does not have a calendar
+deadline attached anymore.
 
 **What the checkpoint validates changed.** It was meant to be the source
 of the triage design — use it for real, then design the task/idea/note
@@ -710,10 +723,10 @@ rather than waiting out the two weeks. That's a legitimate call to make,
 but it means the checkpoint's job now is to confirm the decided model
 holds up against real use, not to originate it. If two weeks of real
 captures disagree with the task/idea/reference/discard split, that's
-still a real signal worth revisiting — the checkpoint just isn't the only
-source of truth for that shape anymore. This checkpoint is what stops
-Track B from quietly becoming a second, open-ended feature queue running
-alongside Track A.
+still a real signal worth revisiting — it just is not gated behind a
+calendar date anymore. What keeps Track B from becoming an open-ended
+queue is no longer a fixed checkpoint but keeping each release's scope
+explicit, the same discipline Track A already runs on.
 
 ### Two more specs queued behind this — one built, one still to go
 
@@ -965,6 +978,97 @@ aren't dead, they just aren't the task UI any more.
 
 ---
 
+## Bittern — scoping the next release
+
+**Not started. Scoping only, as of August 1, 2026.** Everything below is
+new work identified after `albatross` shipped, split into four tracks the
+same way Track A and Track B ran side by side — each one independently
+small, so Bittern doesn't become the open-ended queue the empty-queue
+caution above kept warning against. List sharing (real-time sync,
+conflict handling) is explicitly held off for now; see `Later` below.
+
+### Track C — Navigation & UI
+
+**C0. The persistent side nav isn't rendering in production, and a hard
+refresh didn't fix it.** `frontend/src/app/main.tsx` correctly wraps
+`/agenda` (and every other SPA route) in `AppLayout`, which renders
+`SideNav` — Inbox, Ideas, Archive, Lists, Preferences, and Settings are
+all there in the source on `main`. A live screenshot taken after the
+`albatross` deploy shows none of it, and a real hard refresh (not just a
+stale tab) didn't surface it either, which rules out ordinary browser
+caching. The likely cause is the production image itself: the Docker
+frontend build stage (`pnpm build`) may not have actually re-run with the
+current source, or a build-cache layer reused an older `frontend/`
+checkout. This needs droplet access to diagnose properly — confirm what
+JS bundle the container is actually serving, force a clean rebuild
+(`docker build --no-cache`), and verify by checking that the served
+bundle includes the Inbox/Ideas links — before anything else in this
+track is worth touching. Until it's fixed, Ideas and Inbox are still
+reachable directly at `/capture/ideas/` and `/capture/`, which are plain
+Django pages independent of the broken bundle.
+
+**C1. No logout anywhere in the SPA.** Confirmed by reading
+`SideNav.tsx` and `PreferencesRoute.tsx` — neither has one. The only
+working logout is a POST form in `base.html`, the legacy Django template
+the SPA cutover left behind. Small, concrete, and worth fixing regardless
+of how C0 resolves.
+
+**C2. An information-architecture pass, once C0 is confirmed fixed.**
+The complaint that prompted this track — "I can't tell where things are"
+— needs to be re-evaluated against a nav that's actually rendering before
+scoping a real redesign. Concrete friction points once that's true (not
+guessed at now) are what this item should be built from.
+
+### Track D — Postgres-unlocked features
+
+Four of the six ideas in the old `Later` table, each independently
+shippable. List-sharing-only items (real-time sync, conflict handling)
+are cut, since list sharing itself is on hold.
+
+- **Ranked full-text search.** `SearchVector`/`SearchRank` + a GIN index,
+  `pg_trgm` for typo tolerance. Prioritize the Ideas/`reference` page
+  first, not the Inbox — `capture-triage-and-polish-plan.md` already
+  notes basic substring search matters more there, since a `reference`
+  archive nobody can find again defeats its own purpose, and the Inbox is
+  meant to be worked down quickly rather than searched.
+- **Per-user timezones.** `AT TIME ZONE` makes "due today" a per-user
+  answer instead of one global one.
+- **Audit log / general undo.** `JSONB` with GIN indexing for change
+  payloads.
+- **Time blocking.** `tstzrange` + an `ExclusionConstraint` to stop
+  overlapping blocks at the database level.
+
+### Track E — Public-readiness residuals
+
+Two of the remaining quality-bar items, examined and ready to scope;
+transactional email stays parked in `Later` for now.
+
+- **Account export/deletion.** Export is a view that serializes
+  everything a user owns (Lists, Items, Captures, Ideas, token metadata
+  minus secrets) to a downloadable JSON, the same mechanism `dumpdata`
+  already uses for the whole database, just scoped to one owner.
+  Deletion should cascade cleanly, since every model already FKs to
+  `User` with `CASCADE`. Open decision, and it echoes the Idea-vs-Capture
+  deletion split already made in this app: does account deletion happen
+  immediately on confirmation, or soft-delete with a grace period before
+  a real purge?
+- **Error monitoring.** Sentry (`sentry-sdk` + the Django integration) —
+  a few lines in `settings.py`, one new prod env var for the DSN, same
+  pattern as the existing email credentials. Catches unhandled exceptions
+  automatically with no per-view changes. Free tier comfortably covers a
+  2-3 user app; probably the cheapest item in this whole document.
+
+### Track F — Android capture MVP
+
+A basic native Kotlin app whose only job is capturing input against
+`POST /api/v1/capture` (`design/capture-api-and-tokens-plan.md`) using a
+personal access token. The spec's own sequencing suggested trying the
+zero-code home-screen-shortcut experiment first, to see whether a
+shortcut alone solves the friction before writing any Kotlin — deliberate
+call made to skip that and go straight to a basic Kotlin app instead.
+
+---
+
 ## Later — on the radar, not scheduled
 
 Nothing here is planned yet. Kept visible so none of it gets re-litigated
@@ -972,23 +1076,24 @@ from scratch when it does become relevant.
 
 ### What the Postgres move specifically unlocked
 
+Four of the six ideas originally here (ranked full-text search, per-user
+timezones, audit log/undo, time blocking) moved into Bittern's Track D.
+What's left is sharing-only, and held with list sharing itself:
+
 | Idea | Why it needs Postgres |
 | --- | --- |
-| Ranked full-text search | Native `SearchVector`/`SearchRank` + GIN index; `pg_trgm` for typo tolerance. The single biggest win on this list. |
 | Real-time sync for shared lists | `LISTEN`/`NOTIFY` as a push channel, no Redis needed — pairs with SSE. |
 | Conflict handling on shared lists | `select_for_update()` becomes real, plus `skip_locked`/`nowait` — a prerequisite for sharing at all. |
-| Per-user timezones | `AT TIME ZONE` makes "due today" a per-user answer instead of one global one. |
-| Audit log / general undo | `JSONB` with GIN indexing for change payloads. |
-| Time blocking | `tstzrange` + `ExclusionConstraint` to stop overlapping blocks at the database level. |
 
 ### Rest of the public-readiness quality bar
 
-Self-service signup/email verification, rate limiting on signup and
-capture, a transactional email provider, account export/deletion, error
-monitoring beyond `docker logs`, privacy policy and ToS. Isolation tests
-(A3) and password recovery (A6) are the two pieces of this bar pulled into
-Track A/Now; the rest waits for a deliberate decision to pursue public
-deployment.
+Account export/deletion and error monitoring moved into Bittern's Track
+E. Still here, deliberately not yet scoped: self-service signup/email
+verification, rate limiting on signup and capture, a transactional email
+provider (held off for now), and privacy policy/ToS. Isolation tests (A3)
+and password recovery (A6) are the two pieces of this bar already pulled
+into Track A/Now; the rest waits for a deliberate decision to pursue
+public deployment.
 
 ### Business bar
 
@@ -1004,9 +1109,12 @@ Promoting the agenda to the app's home surface, and the review cadence
 this list: it's speced in `design/capture-triage-and-polish-plan.md`,
 decided from direct usage conviction rather than waiting on the Track B
 checkpoint. What that spec itself defers — how an exploring idea ever
-resurfaces, and how ideas relate to each other — is tracked in that
-document's own **Future** section (a mind-map-style view, possibly
-AI-assisted sorting).
+resurfaces, how ideas relate to each other, and an append-only
+comment/log on an idea rather than its single `notes` field — is tracked
+in that document's own **Future** section (a mind-map-style view,
+possibly AI-assisted sorting), all deliberately bundled together as the
+same underlying problem rather than picked off piecemeal. The native
+Android capture app is no longer here either — it's Bittern's Track F.
 
 ---
 
@@ -1064,32 +1172,27 @@ that lived in the planning conversation's own document viewer has been
 retired in its favor, so there's exactly one place this history lives.
 
 Update "Where things stand" after each Now item ships, and slide finished
-Next items out as they land. When the Track B checkpoint resolves
-(mid/late August 2026, once deployed), replace its entry above with either
-a confirmation that the shipped triage design holds up, or a scope change
-if real usage disagrees with it — don't leave it silently open-ended. When
+Next items out as they land. The Track B checkpoint is no longer tied to a
+fixed date — watch real Capture usage on an ongoing basis, and if it
+disagrees with the shipped triage design, record that as a scope change
+when it actually happens rather than waiting on a calendar entry. When
 something from Later gets a real reason to happen, it graduates into Next
 with its own one-liner — that's the whole maintenance loop.
 
-**`design/` is empty of unbuilt specs** — the subtask addendum, the
-password-reset plan, the capture API/tokens plan and the triage plan are
-all done. So the queue is genuinely empty again, and this time nothing is
-left that can be done from an editor. The next three questions are, in
-order: has any of it been deployed; did A2 and A5 get done; and does the
-shipped triage model actually hold up against real use, now that it was
-decided ahead of the checkpoint that was meant to originate it. The
-zero-code home-screen shortcut experiment sits alongside those — it needs
-the deploy first, and its result decides whether an Android app is worth
-building at all. Only after all that does it make sense to graduate
-anything from Later.
+**`design/` was empty of unbuilt specs at the `albatross` deploy** — the
+subtask addendum, the password-reset plan, the capture API/tokens plan and
+the triage plan were all done and all shipped. A2 and A5 are done too. So
+the deploy-era questions this section used to ask are answered, and Bittern
+is genuinely new scope, not a Later item promoted out of momentum: see
+`## Bittern — scoping the next release` above, Tracks C through F. The
+spec's own suggestion to try a zero-code home-screen shortcut before
+writing any Kotlin was deliberately not taken -- Track F goes straight to
+a basic native app instead.
 
-The original caution now applies literally rather than in spirit: the
-queue *is* empty of specs, and the temptation is to reach for the largest
-remaining idea out of momentum. Don't. Four features shipped in a day and
-none of them are running anywhere — the honest next move is a deploy, not
-a fifth. The one piece of code work still outstanding, the childless
-spawned occurrence above, is small and already scoped; it doesn't need
-this document to grow a new section to hold it.
+The original caution still applies in spirit: don't let Bittern grow past
+its four scoped tracks just because the queue looks open again. Each new
+addition earns its own track or its own item inside one, the same
+discipline Track A and Track B already ran on.
 
 ### Deploy naming: bird codenames
 

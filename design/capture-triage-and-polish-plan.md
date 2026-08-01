@@ -213,11 +213,18 @@ though its row isn't deleted and stays reachable for history.
 
 ## Future -- resurfacing and relating ideas
 
-Two open threads that turn out to be the same underlying problem: how
-does an `exploring` idea ever get looked at again without you remembering
-to go check, and how do ideas relate to each other once there are enough
-of them that two entries are obviously connected but nothing in the
-system knows that.
+Three open threads, treated as one underlying problem rather than three
+separate ones: how does an `exploring` idea ever get looked at again
+without you remembering to go check, how do ideas relate to each other
+once there are enough of them that two entries are obviously connected
+but nothing in the system knows that, and whether an idea needs more than
+its single `notes` field -- an append-only comment/log you add to over
+time, rather than one field you overwrite, for the case where thinking
+about an idea accumulates in pieces rather than arriving all at once.
+Deliberately deferred with the other two rather than built now, on the
+same reasoning: it wants real idea volume and a real sense of what
+"revisiting an idea" looks like in practice before it's designed, not a
+guess made in the same pass as the rest of triage.
 
 The instinct so far points toward something more visual than a filtered
 list -- a mind-map-style view of ideas and how they relate, possibly with

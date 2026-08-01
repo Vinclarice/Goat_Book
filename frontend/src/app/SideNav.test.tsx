@@ -131,6 +131,78 @@ describe("SideNav", () => {
     expect(screen.getByText("Agenda")).toBeInTheDocument();
   });
 
+  it("offers a way out of the session", async () => {
+    // Before B2 the only logout lived in a Django template the SPA never
+    // renders, so every /app route was a place you could not leave.
+    renderNav();
+
+    expect(
+      await screen.findByRole("button", { name: "Log out" }),
+    ).toBeInTheDocument();
+  });
+
+  it("posts to the logout endpoint and then leaves the app", async () => {
+    const user = userEvent.setup();
+    const assign = vi.fn();
+    vi.spyOn(window, "location", "get").mockReturnValue({
+      ...window.location,
+      assign,
+    } as unknown as Location);
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((input) => {
+        const request = input as Request;
+        if (request.url.includes("/me/logout")) {
+          return Promise.resolve({
+            ok: true,
+            status: 204,
+            headers: new Headers(),
+            text: () => Promise.resolve(""),
+            json: () => Promise.resolve(null),
+            clone() {
+              return this;
+            },
+          } as unknown as Response);
+        }
+        return jsonResponse(NAV);
+      });
+    renderNav();
+
+    await user.click(await screen.findByRole("button", { name: "Log out" }));
+
+    await waitFor(() => expect(assign).toHaveBeenCalledWith("/"));
+    const logoutCalls = fetchMock.mock.calls.filter(([request]) =>
+      (request as Request).url.includes("/me/logout"),
+    );
+    // Exactly once: a double-submit would race two session invalidations.
+    expect(logoutCalls).toHaveLength(1);
+    expect((logoutCalls[0][0] as Request).method).toBe("POST");
+  });
+
+  it("keeps you where you are when logging out fails", async () => {
+    // A failed logout means the session is still alive. Navigating anyway
+    // would look like it worked and leave the session open behind you.
+    const user = userEvent.setup();
+    const assign = vi.fn();
+    vi.spyOn(window, "location", "get").mockReturnValue({
+      ...window.location,
+      assign,
+    } as unknown as Location);
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const request = input as Request;
+      if (request.url.includes("/me/logout")) {
+        return jsonResponse({ detail: "nope" }, false);
+      }
+      return jsonResponse(NAV);
+    });
+    renderNav();
+
+    await user.click(await screen.findByRole("button", { name: "Log out" }));
+
+    expect(await screen.findByText(/Couldn't log out/)).toBeInTheDocument();
+    expect(assign).not.toHaveBeenCalled();
+  });
+
   it("closes the narrow-screen disclosure after navigating", async () => {
     const user = userEvent.setup();
     renderNav();

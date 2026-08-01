@@ -238,6 +238,24 @@
         ]
       }
     },
+    "/api/v1/me/logout": {
+      "post": {
+        "operationId": "accounts_api_v1_log_out",
+        "summary": "Log Out",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "description": "End the session the SPA is holding.\n\nAn endpoint rather than a logout form copied into React: the typed\nclient already sends X-CSRFToken on non-GET requests, Django's own\nlogout() keeps its session-invalidation and session-key-cycling\nbehaviour, and the SPA gets a definite success before it throws away\nits cached queries and navigates.\n\nPOST only, and CSRF-checked by the session auth the whole router uses,\nso a cross-site request cannot log someone out as a nuisance.",
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/time-zones": {
       "get": {
         "operationId": "accounts_api_v1_list_time_zones",

@@ -3,6 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import Http404
 from django.shortcuts import redirect, render
 from django.urls import reverse
+from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_POST
 
 from lists.forms import NewListForm
@@ -23,8 +24,16 @@ def archive(request):
 
 
 @login_required
+@ensure_csrf_cookie
 def spa_shell(request, subpath=""):
     """Serves every /app/... path -- React Router owns routing from here.
+
+    ensure_csrf_cookie because the SPA's mutations send X-CSRFToken and can
+    only do that if something has handed the browser the cookie. This page
+    renders no Django form, so until now that depended on the user having
+    passed through one on the way in -- true via the login page, but an
+    accident rather than a guarantee, and one that would break the moment
+    login itself moves into the SPA.
 
     Deliberately not extending base.html. The original reason was that
     base.html still carried Bootstrap; that stopped being true when

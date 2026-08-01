@@ -5,6 +5,7 @@ Password/security changes stay Django-owned (accounts.views.change_password)
 """
 from typing import Literal
 
+from django.contrib.auth import logout
 from ninja import Router, Schema
 from ninja.errors import HttpError
 
@@ -44,6 +45,23 @@ def _preferences_out(user: User) -> dict:
         "theme": user.theme,
         "time_zone": user.time_zone,
     }
+
+
+@router.post("/me/logout", response={204: None})
+def log_out(request):
+    """End the session the SPA is holding.
+
+    An endpoint rather than a logout form copied into React: the typed
+    client already sends X-CSRFToken on non-GET requests, Django's own
+    logout() keeps its session-invalidation and session-key-cycling
+    behaviour, and the SPA gets a definite success before it throws away
+    its cached queries and navigates.
+
+    POST only, and CSRF-checked by the session auth the whole router uses,
+    so a cross-site request cannot log someone out as a nuisance.
+    """
+    logout(request)
+    return 204, None
 
 
 @router.get("/time-zones", response=TimeZonesOut)

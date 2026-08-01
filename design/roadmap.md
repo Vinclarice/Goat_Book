@@ -53,11 +53,11 @@ its `<summary>`, so the disclosure collapsed to zero height and left an empty
 Patched, deployed, and confirmed in an authenticated browser at both widths.
 Evidence in [`roadmap-history.md`](roadmap-history.md).
 
-**B2. Add logout to the SPA.**
+**B2. Add logout to the SPA. — Done, August 1, 2026.**
 
-The only current logout flow lives in a legacy Django template. Add an
-equivalent POST-backed control to the SPA navigation or preferences surface.
-This is worthwhile whether or not B0 turns out to be a stale bundle.
+The only logout flow used to live in a Django template the SPA never
+renders. `POST /api/v1/me/logout` and a control in the nav's Account group
+now end a session from any SPA route.
 
 **C2. Reassess information architecture after B0.**
 

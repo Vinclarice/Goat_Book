@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { NavLink, useLocation } from "react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { colorForKey } from "../agenda";
 import { apiV1 } from "../api/client";
@@ -17,6 +18,8 @@ import styles from "./sidenav.module.css";
  */
 export function SideNav() {
   const location = useLocation();
+  const queryClient = useQueryClient();
+  const [logoutError, setLogoutError] = useState("");
   const { data } = useQuery({
     queryKey: ["nav"],
     queryFn: async () => {
@@ -30,6 +33,22 @@ export function SideNav() {
   // appears a beat after the page does makes every navigation feel like a
   // layout shift.
   const lists = data?.lists ?? [];
+
+  const logout = useMutation({
+    mutationFn: async () => {
+      const { error } = await apiV1.POST("/api/v1/me/logout", {});
+      if (error) throw new Error("Couldn't log out. Please try again.");
+    },
+    onSuccess: () => {
+      // A full navigation, not a router push: the session backing every
+      // query is gone, so continuing to render an authenticated SPA would
+      // only produce a screenful of 401s. Clearing the cache first stops
+      // anything refetching on the way out.
+      queryClient.clear();
+      window.location.assign("/");
+    },
+    onError: (caught: Error) => setLogoutError(caught.message),
+  });
 
   return (
     <nav className={styles.nav} aria-label="Main">
@@ -97,6 +116,21 @@ export function SideNav() {
         <a className={styles.link} href={data?.settings_url ?? "/accounts/settings/"}>
           Settings
         </a>
+        {/* In the nav rather than on a preferences page, so it is reachable
+            from every SPA route -- including the mobile disclosure, which
+            renders this same markup. */}
+        <button
+          type="button"
+          className={styles.link}
+          onClick={() => {
+            setLogoutError("");
+            logout.mutate();
+          }}
+          disabled={logout.isPending}
+        >
+          Log out
+        </button>
+        {logoutError && <p className={styles.empty}>{logoutError}</p>}
       </div>
 
       {/* Keyed on the path so navigating closes the disclosure: on a phone

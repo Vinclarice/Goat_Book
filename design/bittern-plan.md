@@ -423,6 +423,20 @@ An empty array is valid when no child recurs.
 
 ## B2 — add logout to the SPA
 
+**Status: done August 1, 2026, not yet deployed.** `POST /api/v1/me/logout`
+returns 204 and the control sits in `SideNav`'s Account group, so it is
+reachable from every SPA route including the mobile disclosure, which
+renders the same markup. `spa_shell` gained `ensure_csrf_cookie`: the SPA
+can only send `X-CSRFToken` if something handed it the cookie, and that had
+been relying on the user passing through a Django-rendered form on the way
+in.
+
+One behaviour worth recording, found while testing. An anonymous POST with
+no CSRF token returns **403, not 401** — Ninja's `SessionAuth` runs its CSRF
+check before it looks for a session, which `accounts.auth` already
+documents. Both cases are tested separately, since a test that sends
+neither a session nor a token proves only the first thing it trips over.
+
 ### Problem statement
 
 The Django `base.html` template has a valid POST logout form, but the SPA is

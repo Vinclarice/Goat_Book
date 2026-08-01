@@ -343,9 +343,39 @@ without preventing another capture.
 - Retain text on validation `400` and show a fixable error; do not retry it
   indefinitely.
 
+#### Retry has to have an end
+
+M2's `dispositionFor` maps every status it does not recognise — and every
+`5xx` and `429` — to retry rather than rejection, deliberately: a few
+backed-off attempts against something permanently broken cost little, while
+discarding a thought someone typed is the one failure this app exists to
+prevent. The cost of that choice lands here. A capture that keeps failing
+for an unrecognised reason — a misconfigured base URL answering `404`, a
+proxy stuck at `502` — would otherwise retry forever, burning battery on a
+queue that will never drain, and saying nothing about it.
+
+So the queue needs a ceiling, not just backoff:
+
+- Count attempts per item and stop after a bounded number.
+- A stopped item is **not** discarded and **not** silently dropped. It keeps
+  its text and its idempotency UUID, so a later manual retry is still the
+  same write rather than a second one.
+- Surface it. Settings already shows pending-queue state; a stalled item has
+  to be visibly distinct from one merely waiting for a network, and offer an
+  explicit retry.
+- Reaching the ceiling is a display change, never a data loss. "Never
+  discard" outranks "never churn".
+
+This is the same instinct as the `400` rule above, generalised: the client
+stops repeating a request that is not going to start working, and tells the
+person, rather than deciding on their behalf that the thought is gone.
+
 **Android tests:** online submission sends one authenticated request; a timeout
 retry uses the same key; process restart retains the queue; invalid token keeps
-the text; and offline submission remains responsive and visibly queued.
+the text; offline submission remains responsive and visibly queued; an item
+that exhausts its attempts stops retrying, keeps its text and UUID, and shows
+as needing attention; and a manual retry of that item reuses the original key
+rather than minting a new one.
 
 ### M4 — real-device pilot and release criteria
 

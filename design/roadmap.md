@@ -985,6 +985,20 @@ Decisions already made, kept here so they don't get re-opened by accident:
 
 ---
 
+## Releases
+
+Named after birds, tagged on the commit that actually reached production
+— not on the commit that merged, since those have differed by hours more
+than once in this project's short life.
+
+| Tag | Commit | Contents |
+| --- | --- | --- |
+| `albatross` | (pending deploy) | The first release to carry the whole feature set: subtasks and `always_recurs`, notes, the side nav, self-service password reset, personal access tokens with `POST /api/v1/capture`, and Capture triage with the `Idea` domain. Also the first deployed against a firewalled database with a proven restore path. |
+
+Tag after the deploy is verified, never before. A tag that points at code
+which turned out not to survive first contact with production is worse
+than no tag, because it looks authoritative.
+
 ## Keeping this current
 
 This is now the single planning document for Clarice — the parallel copy
@@ -1018,3 +1032,34 @@ none of them are running anywhere — the honest next move is a deploy, not
 a fifth. The one piece of code work still outstanding, the childless
 spawned occurrence above, is small and already scoped; it doesn't need
 this document to grow a new section to hold it.
+
+### Deploy naming: bird codenames
+
+Starting now, every production deploy gets a bird name alongside its
+mechanical tag, assigned alphabetically (A, B, C, ...) so a release is
+easy to talk about without memorizing a date or a SHA.
+
+**This deploy — the SPA + Postgres cutover currently live in
+production, the one the stale `LIVE`/`DEPLOYED-*` tags never caught up
+to — is codenamed Albatross.** (Long-haul migration, in both senses of
+the word.) Whatever ships next is Bittern, then Crane, and so on.
+
+Keep the existing `DEPLOYED-<date>/<time>` tag format for exact,
+sortable traceability — don't replace it, just make it an *annotated*
+tag whose message carries the codename:
+
+```
+git tag -a DEPLOYED-<date>/<time> -m "Codename: Albatross -- SPA migration + Postgres cutover"
+git push origin DEPLOYED-<date>/<time>
+```
+
+`LIVE` keeps floating to whatever's actually running, same as before:
+
+```
+git tag -f LIVE <commit>
+git push -f origin LIVE
+```
+
+Since nothing tagged `LIVE` since July 24 has matched what's actually
+running for a while now, moving it to the real current commit is also
+the retroactive fix for that gap, not just going-forward hygiene.

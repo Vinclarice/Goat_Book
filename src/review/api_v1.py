@@ -121,6 +121,41 @@ class WaitingCaptureOut(Schema):
     age_in_days: int
 
 
+class HabitPeriodOut(Schema):
+    """One period of one routine, described and not judged.
+
+    `outcome` is the occurrence's own word -- open, completed, skipped --
+    and there is deliberately no "missed" among them. crane-plan.md §3:
+    Crane 3 is where an elapsed-open period gets described, not where it
+    gets silently relabelled.
+    """
+
+    period_start: date
+    outcome: str
+    progress: int
+    target: int
+
+
+class HabitOut(Schema):
+    """A routine's week.
+
+    `expected` is the periods the week actually asked of it -- floored at
+    the routine's own beginning, capped at today, and with skips removed --
+    so `met` over `expected` is the vision document's "4 of 5 planned
+    lesson targets met" rather than a fraction of an arbitrary seven.
+    `skipped` rides alongside so the number cannot hide them.
+    """
+
+    routine_id: int
+    title: str
+    cadence: str
+    unit: str
+    met: int
+    expected: int
+    skipped: int
+    periods: list[HabitPeriodOut]
+
+
 class ReviewOut(Schema):
     """The written half of a week, and what was concluded from it.
 
@@ -171,6 +206,7 @@ class WeekOut(Schema):
     # Not week-scoped, and named so that is visible in the contract rather
     # than only in the read: an Inbox is a backlog, not seven days.
     unresolved_captures: list[WaitingCaptureOut]
+    habits: list[HabitOut]
     review: ReviewOut
 
 
@@ -269,6 +305,27 @@ def _week_out(owner, day):
                 "age_in_days": agenda.age_in_days(capture.created_at, today),
             }
             for capture in reads.captures_still_waiting(owner)
+        ],
+        "habits": [
+            {
+                "routine_id": habit.routine.id,
+                "title": habit.routine.title,
+                "cadence": habit.routine.cadence,
+                "unit": habit.routine.unit,
+                "met": habit.met,
+                "expected": habit.expected,
+                "skipped": habit.skipped,
+                "periods": [
+                    {
+                        "period_start": period.period_start,
+                        "outcome": period.outcome,
+                        "progress": period.progress,
+                        "target": period.target,
+                    }
+                    for period in habit.periods
+                ],
+            }
+            for habit in reads.habits_in_week(owner, week_start, week_end, today)
         ],
         "review": {
             "reflections": review.reflections if review else "",

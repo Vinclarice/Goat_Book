@@ -403,6 +403,101 @@ function Waiting({ captures }: { captures: WaitingCapture[] }) {
   );
 }
 
+type HabitPeriod = {
+  period_start: string;
+  outcome: string;
+  progress: number;
+  target: number;
+};
+
+type Habit = {
+  routine_id: number;
+  title: string;
+  cadence: string;
+  unit: string;
+  met: number;
+  expected: number;
+  skipped: number;
+  periods: HabitPeriod[];
+};
+
+/**
+ * What one period says about itself, in words rather than a verdict.
+ *
+ * A skip says what was decided; anything else says the count. There is no
+ * "missed" here and there is not meant to be — crane-plan.md §3 is that
+ * Crane 3 describes an elapsed-open period rather than relabelling it, and
+ * a red "missed" is the relabelling.
+ */
+function periodLabel(period: HabitPeriod): string {
+  if (period.outcome === "skipped") return "skipped";
+  return `${period.progress} of ${period.target}`;
+}
+
+/** The mark a period wears. Filled when it was met, struck when it was
+ *  deliberately skipped, and simply empty when it is still open. */
+function periodMark(period: HabitPeriod): string {
+  if (period.outcome === "completed") return "●";
+  if (period.outcome === "skipped") return "–";
+  return "○";
+}
+
+function Habits({ habits }: { habits: Habit[] }) {
+  return (
+    <ul className="space-y-2">
+      {habits.map((habit) => (
+        <li
+          key={habit.routine_id}
+          className="space-y-1 rounded-lg border border-border px-3 py-2"
+        >
+          <span className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+            <span className="min-w-0">
+              {habit.title}
+              {habit.cadence === "weekly" && (
+                <span className="ml-2 text-sm text-muted-foreground">
+                  weekly
+                </span>
+              )}
+            </span>
+            <span className="flex shrink-0 items-baseline gap-2 text-sm text-muted-foreground">
+              {habit.expected > 0 ? (
+                <>
+                  <span className="font-bold text-foreground">
+                    {habit.met} of {habit.expected}
+                  </span>
+                  <span>met</span>
+                </>
+              ) : (
+                // Nothing was asked of it: a routine kept on Saturday is
+                // not a routine that failed five days.
+                <span>nothing expected yet</span>
+              )}
+              {/* Beside the figure rather than inside it. A skip is out of
+                  the denominator on purpose — the same call released pins
+                  get — so the count that proves it stays visible. */}
+              {habit.skipped > 0 && <span>· {habit.skipped} skipped</span>}
+            </span>
+          </span>
+          {habit.periods.length > 0 && (
+            <span className="flex flex-wrap gap-1" aria-hidden={false}>
+              {habit.periods.map((period) => (
+                <span
+                  key={period.period_start}
+                  aria-label={`${weekday(period.period_start)}: ${periodLabel(period)}`}
+                  title={`${weekday(period.period_start)}: ${periodLabel(period)}`}
+                  className="text-sm text-muted-foreground"
+                >
+                  {periodMark(period)}
+                </span>
+              ))}
+            </span>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function Finished({ completed }: { completed: CompletedTask[] }) {
   if (completed.length === 0) {
     // Said plainly rather than left blank. An empty area reads as a page
@@ -629,6 +724,15 @@ export function ReviewRoute() {
         <h2 className="text-sm font-bold">Finished</h2>
         <Finished completed={data.completed} />
       </section>
+
+      {/* Absent when no routine existed in the week: a habit nobody kept
+          is not a habit that went badly. */}
+      {data.habits.length > 0 && (
+        <section className="space-y-2">
+          <h2 className="text-sm font-bold">Habits</h2>
+          <Habits habits={data.habits} />
+        </section>
+      )}
 
       <section className="space-y-2">
         <h2 className="text-sm font-bold">In your own words</h2>

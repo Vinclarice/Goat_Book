@@ -1012,6 +1012,56 @@ export interface components {
             list_id: number;
             parent: components["schemas"]["TaskParentOut"] | null;
         };
+        /**
+         * HabitOut
+         * @description A routine's week.
+         *
+         *     `expected` is the periods the week actually asked of it -- floored at
+         *     the routine's own beginning, capped at today, and with skips removed --
+         *     so `met` over `expected` is the vision document's "4 of 5 planned
+         *     lesson targets met" rather than a fraction of an arbitrary seven.
+         *     `skipped` rides alongside so the number cannot hide them.
+         */
+        HabitOut: {
+            /** Routine Id */
+            routine_id: number;
+            /** Title */
+            title: string;
+            /** Cadence */
+            cadence: string;
+            /** Unit */
+            unit: string;
+            /** Met */
+            met: number;
+            /** Expected */
+            expected: number;
+            /** Skipped */
+            skipped: number;
+            /** Periods */
+            periods: components["schemas"]["HabitPeriodOut"][];
+        };
+        /**
+         * HabitPeriodOut
+         * @description One period of one routine, described and not judged.
+         *
+         *     `outcome` is the occurrence's own word -- open, completed, skipped --
+         *     and there is deliberately no "missed" among them. crane-plan.md §3:
+         *     Crane 3 is where an elapsed-open period gets described, not where it
+         *     gets silently relabelled.
+         */
+        HabitPeriodOut: {
+            /**
+             * Period Start
+             * Format: date
+             */
+            period_start: string;
+            /** Outcome */
+            outcome: string;
+            /** Progress */
+            progress: number;
+            /** Target */
+            target: number;
+        };
         /** IdeaOut */
         IdeaOut: {
             /** Idea Id */
@@ -1149,6 +1199,8 @@ export interface components {
             ideas: components["schemas"]["IdeaOut"][];
             /** Unresolved Captures */
             unresolved_captures: components["schemas"]["WaitingCaptureOut"][];
+            /** Habits */
+            habits: components["schemas"]["HabitOut"][];
             review: components["schemas"]["ReviewOut"];
         };
         /**

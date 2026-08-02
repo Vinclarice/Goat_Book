@@ -35,6 +35,7 @@ function weekData(overrides: Record<string, unknown> = {}) {
     written: [],
     ideas: [],
     unresolved_captures: [],
+    habits: [],
     review: {
       reflections: "",
       plan: "",
@@ -66,6 +67,16 @@ function completedTask(overrides: Record<string, unknown> = {}) {
     completed_on: "2026-07-29",
     list_id: 3,
     parent: null,
+    ...overrides,
+  };
+}
+
+function habitPeriod(overrides: Record<string, unknown> = {}) {
+  return {
+    period_start: "2026-07-27",
+    outcome: "open",
+    progress: 0,
+    target: 5,
     ...overrides,
   };
 }
@@ -491,6 +502,106 @@ describe("ReviewRoute", () => {
     await screen.findByRole("heading", { level: 1 });
 
     expect(screen.queryByRole("button", { name: /on today/ })).toBeNull();
+  });
+
+  it("reads a habit as met over the periods the week expected", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        weekData({
+          habits: [
+            {
+              routine_id: 1,
+              title: "Practice Spanish",
+              cadence: "daily",
+              unit: "lessons",
+              met: 5,
+              expected: 7,
+              skipped: 0,
+              periods: [
+                habitPeriod({ period_start: "2026-07-27", outcome: "completed", progress: 5 }),
+                habitPeriod({ period_start: "2026-07-28", outcome: "open", progress: 2 }),
+              ],
+            },
+          ],
+        }),
+      ),
+    );
+
+    renderAt("/review");
+
+    expect(await screen.findByText("Practice Spanish")).toBeInTheDocument();
+    expect(screen.getByText("5 of 7")).toBeInTheDocument();
+  });
+
+  it("says what became of each period without calling any of it missed", async () => {
+    // crane-plan.md §3: an elapsed-open period gets described here, not
+    // relabelled. "Missed" is the verdict the product does not assert.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        weekData({
+          habits: [
+            {
+              routine_id: 1,
+              title: "Practice Spanish",
+              cadence: "daily",
+              unit: "lessons",
+              met: 1,
+              expected: 2,
+              skipped: 1,
+              periods: [
+                habitPeriod({ period_start: "2026-07-27", outcome: "completed", progress: 5 }),
+                habitPeriod({ period_start: "2026-07-28", outcome: "skipped" }),
+                habitPeriod({ period_start: "2026-07-29", outcome: "open", progress: 2 }),
+              ],
+            },
+          ],
+        }),
+      ),
+    );
+
+    renderAt("/review");
+
+    expect(await screen.findByLabelText(/Monday: 5 of 5/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Tuesday: skipped/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Wednesday: 2 of 5/)).toBeInTheDocument();
+    expect(screen.queryByText(/missed/i)).toBeNull();
+  });
+
+  it("says how many periods were skipped rather than hiding them in the figure", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        weekData({
+          habits: [
+            {
+              routine_id: 1,
+              title: "Practice Spanish",
+              cadence: "daily",
+              unit: "lessons",
+              met: 5,
+              expected: 6,
+              skipped: 1,
+              periods: [habitPeriod({ outcome: "skipped" })],
+            },
+          ],
+        }),
+      ),
+    );
+
+    renderAt("/review");
+
+    expect(await screen.findByText("5 of 6")).toBeInTheDocument();
+    expect(screen.getByText(/1 skipped/)).toBeInTheDocument();
+  });
+
+  it("leaves the habits section out when no routine existed", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(weekData()),
+    );
+
+    renderAt("/review");
+    await screen.findByRole("heading", { level: 1 });
+
+    expect(screen.queryByText("Habits")).toBeNull();
   });
 
   it("reaches the week before without editing the URL", async () => {

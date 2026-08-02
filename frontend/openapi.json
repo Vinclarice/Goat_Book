@@ -2253,6 +2253,88 @@
         "title": "CompletedTaskOut",
         "type": "object"
       },
+      "HabitOut": {
+        "description": "A routine's week.\n\n`expected` is the periods the week actually asked of it -- floored at\nthe routine's own beginning, capped at today, and with skips removed --\nso `met` over `expected` is the vision document's \"4 of 5 planned\nlesson targets met\" rather than a fraction of an arbitrary seven.\n`skipped` rides alongside so the number cannot hide them.",
+        "properties": {
+          "routine_id": {
+            "title": "Routine Id",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "cadence": {
+            "title": "Cadence",
+            "type": "string"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          },
+          "met": {
+            "title": "Met",
+            "type": "integer"
+          },
+          "expected": {
+            "title": "Expected",
+            "type": "integer"
+          },
+          "skipped": {
+            "title": "Skipped",
+            "type": "integer"
+          },
+          "periods": {
+            "items": {
+              "$ref": "#/components/schemas/HabitPeriodOut"
+            },
+            "title": "Periods",
+            "type": "array"
+          }
+        },
+        "required": [
+          "routine_id",
+          "title",
+          "cadence",
+          "unit",
+          "met",
+          "expected",
+          "skipped",
+          "periods"
+        ],
+        "title": "HabitOut",
+        "type": "object"
+      },
+      "HabitPeriodOut": {
+        "description": "One period of one routine, described and not judged.\n\n`outcome` is the occurrence's own word -- open, completed, skipped --\nand there is deliberately no \"missed\" among them. crane-plan.md \u00a73:\nCrane 3 is where an elapsed-open period gets described, not where it\ngets silently relabelled.",
+        "properties": {
+          "period_start": {
+            "format": "date",
+            "title": "Period Start",
+            "type": "string"
+          },
+          "outcome": {
+            "title": "Outcome",
+            "type": "string"
+          },
+          "progress": {
+            "title": "Progress",
+            "type": "integer"
+          },
+          "target": {
+            "title": "Target",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "period_start",
+          "outcome",
+          "progress",
+          "target"
+        ],
+        "title": "HabitPeriodOut",
+        "type": "object"
+      },
       "IdeaOut": {
         "properties": {
           "idea_id": {
@@ -2540,6 +2622,13 @@
             "title": "Unresolved Captures",
             "type": "array"
           },
+          "habits": {
+            "items": {
+              "$ref": "#/components/schemas/HabitOut"
+            },
+            "title": "Habits",
+            "type": "array"
+          },
           "review": {
             "$ref": "#/components/schemas/ReviewOut"
           }
@@ -2556,6 +2645,7 @@
           "written",
           "ideas",
           "unresolved_captures",
+          "habits",
           "review"
         ],
         "title": "WeekOut",

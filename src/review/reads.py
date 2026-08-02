@@ -20,7 +20,8 @@ from capture.models import Capture, Idea
 from daily.models import DailyEntry, DailyFocus
 from lists.models import Item
 from review.models import WeeklyReview
-from review.weeks import week_end_for, week_start_for
+from review.weeks import days_in, week_end_for, week_start_for
+from routines.models import Routine, RoutineOccurrence
 
 
 def week_bounds(day):
@@ -202,3 +203,133 @@ def review_for(owner, week_start):
     return WeeklyReview.objects.filter(
         owner=owner, week_start=week_start
     ).first()
+
+
+@dataclass(frozen=True)
+class HabitPeriod:
+    """One period of one routine, and what became of it.
+
+    ``target`` and ``progress`` come from the occurrence where there is
+    one, so a routine whose target changed last month cannot rewrite what
+    an older period expected -- charter rule 3, already paid for in
+    RoutineOccurrence. A period nobody logged has no row, so it is
+    described against what the routine says now, which is the same call
+    `routines.reads.standings_for` makes and for the same reason: nothing
+    has happened yet to preserve.
+    """
+
+    period_start: object
+    outcome: str
+    progress: int
+    target: int
+    unit: str
+
+    @property
+    def is_met(self):
+        return self.outcome == RoutineOccurrence.Outcome.COMPLETED
+
+    @property
+    def is_skipped(self):
+        return self.outcome == RoutineOccurrence.Outcome.SKIPPED
+
+
+@dataclass(frozen=True)
+class Habit:
+    """A routine's week: what was expected of it, and what happened.
+
+    ``expected`` excludes skipped periods, which is the decision worth
+    knowing about. A skip is "I chose not to today", and counting it
+    against the week would be the product disagreeing with a decision
+    somebody made deliberately -- exactly what `DailyFocus.released_at`
+    keeps out of the planned denominator. The skips are reported alongside
+    rather than swallowed, so the figure cannot hide them.
+    """
+
+    routine: object
+    periods: list
+
+    @property
+    def met(self):
+        return sum(1 for period in self.periods if period.is_met)
+
+    @property
+    def skipped(self):
+        return sum(1 for period in self.periods if period.is_skipped)
+
+    @property
+    def expected(self):
+        return len(self.periods) - self.skipped
+
+
+def _periods_expected_of(routine, week_start, week_end, today):
+    """Which periods this week actually asked of ``routine``.
+
+    Floored at the routine's own beginning and capped at today, because
+    both ends are the same rule: a period that never came round cannot
+    have been missed, and reporting one would assert a failure the person
+    never had the chance to have. A routine kept from Thursday is asked
+    about four days; a week still ahead is asked about none.
+    """
+    began = timezone.localtime(routine.created_at).date()
+    last = min(week_end, today)
+    if routine.cadence == Routine.Cadence.WEEKLY:
+        # One period covering the whole week, so there is nothing to cap
+        # day by day -- only whether the week has begun at all.
+        if began <= week_end and week_start <= today:
+            return [week_start]
+        return []
+    return [day for day in days_in(week_start) if began <= day <= last]
+
+
+def habits_in_week(owner, week_start, week_end, today):
+    """Every routine this week expected something of, and how it went.
+
+    Routines are included whether or not they are currently active: one
+    put down last month still has a history in this week, and dropping it
+    would make a paused routine's past disappear. What a *paused* stretch
+    should say for itself is slice 7's question, not this function's.
+
+    Two queries rather than one per routine, like `standings_for`.
+    """
+    routines = list(Routine.objects.filter(owner=owner))
+    if not routines:
+        return []
+    logged = {
+        (each.routine_id, each.period_start): each
+        for each in RoutineOccurrence.objects.filter(
+            owner=owner,
+            routine__in=routines,
+            period_start__gte=week_start,
+            period_start__lte=week_end,
+        )
+    }
+    habits = []
+    for routine in routines:
+        expected = _periods_expected_of(routine, week_start, week_end, today)
+        if not expected and timezone.localtime(routine.created_at).date() > week_end:
+            # It did not exist yet. Absent rather than nought: no data and a
+            # zero are different claims, and telling them apart is what this
+            # release is for.
+            continue
+        periods = []
+        for period_start in expected:
+            occurrence = logged.get((routine.id, period_start))
+            periods.append(
+                HabitPeriod(
+                    period_start=period_start,
+                    outcome=(
+                        occurrence.outcome
+                        if occurrence
+                        else RoutineOccurrence.Outcome.OPEN
+                    ),
+                    progress=occurrence.progress if occurrence else 0,
+                    target=(
+                        occurrence.target_quantity
+                        if occurrence
+                        else routine.target_quantity
+                    ),
+                    unit=occurrence.unit if occurrence else routine.unit,
+                )
+            )
+        habits.append(Habit(routine=routine, periods=periods))
+    return habits

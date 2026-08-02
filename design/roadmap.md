@@ -15,6 +15,13 @@ makes this document useful when deciding what to work on next.
 The cross-cutting engineering and product standards used to deliver roadmap
 work live in [`principles.md`](principles.md).
 
+The multi-release ordering behind Crane and the releases after it, the design
+constraints every new model has to satisfy, and the architectural directions
+this project has explicitly refused live in
+[`architecture-trajectory.md`](architecture-trajectory.md). This file stays the
+authority on what is active and what is deferred; that one explains the order
+and the reasoning, and does not schedule anything on its own.
+
 ## Current product baseline
 
 Albatross is live. It established the API-backed SPA and Postgres foundation,
@@ -92,6 +99,15 @@ discriminating between users in production at 07:00 WITA — see
 - **Reference/Idea search.** Start with ranked full-text and typo-tolerant
   search for Ideas, especially the `reference` archive. The Inbox is a queue
   to clear, not a library to search.
+
+  **What would promote it:** enough retained material that finding something
+  again is a felt problem rather than an anticipated one. Stated August 2,
+  2026 — this section asks each candidate for a trigger and none of the three
+  below had one, which is how a future candidate quietly becomes a plan. Audit
+  log and Time blocking still need theirs. The discovery pass on what an Idea,
+  reference and relationship actually are should precede the search work
+  either way — see the second-brain direction in
+  [`daily-operating-system-vision.md`](daily-operating-system-vision.md).
 - **Audit log and general undo.** Use structured change records to make more
   than task completion safely reversible.
 - **Time blocking.** Model calendar ranges and prevent a user’s blocks from
@@ -187,8 +203,19 @@ planning feature after that foundation. Routines and habits will be a separate
 domain from recurring tasks. Crane also preserves the old template's persistent
 purpose/guiding-question block as a user-level Personal Compass, separate from
 daily intentions, and adds a durable “pin this to today” focus layer above the
-broader agenda. Routine/target domain design begins as Crane 0, before Daily
-Page implementation; its implementation follows the foundation. The product
+broader agenda. Routine and target domain design begins as Crane 0, before
+Daily Page implementation; its implementation follows the foundation. A wider
+brief was proposed on August 2, 2026, covering repetition generally rather than
+routines alone, because a recurring task has no durable identity across its
+occurrences — `_spawn_next_occurrence` writes no link back to the item it
+spawned from — so no trend, streak or completion rate can be assembled from a
+recurring commitment's history the way it will be for a routine. That widening
+was accepted the same day in narrowed form: a thin commitment record and the
+missing foreign key ship before Crane 1 as Crane 0a, because the unlinkable
+history accrues fastest once the Daily Page makes this a daily practice, while
+moving text and cadence onto a real template waits for release D and the
+parent–child redesign it depends on. Both halves are described in
+[`crane-plan.md`](crane-plan.md) §3. The product
 direction, data boundaries, review metrics, second-brain questions, and
 eventual AI guardrails are in
 [`daily-operating-system-vision.md`](daily-operating-system-vision.md).
@@ -230,13 +257,24 @@ deliberate product decision.
 ### Remaining public-readiness work
 
 - Self-service signup with email verification.
-- Rate limiting for signup and capture.
-- Transactional email instead of personal Gmail SMTP.
+- Rate limiting for capture.
 - Account export and deletion, after deciding immediate deletion versus a
   grace period before purge.
 - Privacy policy and terms of service.
 
 Password recovery and adversarial per-user isolation tests are already done.
+
+Two items left this list on August 2, 2026, having shipped without being
+struck from it. **Transactional email** is live: `EMAIL_HOST` defaults to
+Resend and the provider decision is recorded in
+[`bittern-plan.md`](bittern-plan.md), so personal Gmail SMTP is no longer in
+the path. **Rate limiting for signup** is done at the edge —
+`infra/templates/nginx-clarice.conf.j2` throttles `/accounts/signup/` at 5r/m
+alongside login, and that is the only signup route. Capture is still
+unthrottled and stays on the list. Separately, the uncovered authentication
+surface is `/`, a full login view the login/signup rate-limit block does not
+match; that is a defect rather than a release item and is tracked in
+[`architecture-trajectory.md`](architecture-trajectory.md) §6.
 
 ### Support for people who are signed in
 
@@ -329,6 +367,15 @@ Considerations to settle before this becomes a spec:
 a phone daily, triaging from that same phone will be attempted, and the
 friction becomes specific and observable. Treat it the way C2 is treated —
 watch real failures rather than redesigning from a hunch.
+
+**Note on scope, August 2, 2026.** The pilot has run, but the stated condition
+is daily phone use producing observable triage friction, and one session is
+not that — so this stays here rather than being promoted on a technicality.
+What Crane does carry is narrower than this item: `crane-plan.md` slice 7 is a
+phone-viewport pass over the assembled Daily Page, one new surface. Triaging
+the Inbox, completing a task and reading an Idea from a phone, and reconciling
+the 760px and 768px breakpoints, are all still here. Crane makes the new
+surface mobile-aware; it does not close this entry.
 
 ### Longer-term product direction
 

@@ -86,6 +86,21 @@ even though routine implementation follows the Daily Page foundation. The
 “five daily lessons” case is a central reason Clarice exists and must not stay
 as a placeholder while adjacent surfaces ship.
 
+**Wider scope proposed and settled, August 2, 2026.** The brief below is the
+routine half and stands unchanged. The proposal was that it sit inside a wider
+one covering repetition generally, because recurring tasks are missing the same
+template-and-occurrence shape this section designs for routines:
+`_spawn_next_occurrence` writes no link back to the item that spawned it, so a
+recurring commitment has no identity across its occurrences beyond a matching
+text string. Nothing below is violated by that — the rules here already say not
+to fake a routine with task recurrence. The point is the mirror image: the
+routine half will be able to answer “how has this gone over eight weeks” and
+recurring commitments will not, for the same question, unless the same shape is
+designed for them at the same time. It was accepted in narrowed form: the
+missing occurrence link is built before Crane 1, and the fuller template that
+would move text and cadence off the task waits for release D. Both halves, and
+the reasoning for splitting them, are in [`crane-plan.md`](crane-plan.md) §3.
+
 Settle, in a focused design brief:
 
 - A `Routine` template's owner, title, active/paused state, cadence, target

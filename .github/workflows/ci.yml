@@ -41,7 +41,7 @@ jobs:
       # would never appear. First position is what makes it unmissable.
       - name: Per-user isolation tests
         run: python src/manage.py test lists.tests.test_isolation
-      - run: python src/manage.py test accounts lists capture
+      - run: python src/manage.py test accounts lists capture clarice
 
   frontend:
     runs-on: ubuntu-latest

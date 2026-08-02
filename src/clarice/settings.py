@@ -17,6 +17,8 @@ import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
 import sys
 
+from clarice.monitoring import initialise as initialise_error_monitoring
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -113,6 +115,19 @@ SUPPORT_EMAIL = os.environ.get("DJANGO_SUPPORT_EMAIL", f"support@{EMAIL_DOMAIN}"
 # throttles the same path more bluntly (see infra/templates/
 # nginx-clarice.conf.j2); this is the layer with a test.
 CONTACT_MAX_PER_HOUR = int(os.environ.get("DJANGO_CONTACT_MAX_PER_HOUR", "5"))
+
+# Production error reporting. The decision itself lives in
+# clarice.monitoring so it can be tested; this is only the wiring. Absent a
+# DSN nothing is initialised and the SDK is never even imported, which is
+# what keeps development and the test suite from reporting anywhere.
+ERROR_MONITORING_ENABLED = initialise_error_monitoring(
+    dsn=os.environ.get("DJANGO_SENTRY_DSN", ""),
+    environment=DEPLOYMENT_ENVIRONMENT,
+    # Set by the deploy playbook from the commit being built. "unknown" is
+    # honest rather than convenient: an event tagged with a release nobody
+    # can find is worse than one that admits it doesn't know.
+    release=os.environ.get("DJANGO_RELEASE", "unknown"),
+)
 
 # Who gets emailed about pending signups and account lockouts
 # (see accounts.emails and accounts.apps.AccountsConfig.ready). This is an

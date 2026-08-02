@@ -58,6 +58,20 @@
     - name: Reset ssh connection to allow the user/group change to take effect
       ansible.builtin.meta: reset_connection
 
+    # What an error report is tagged with, so an event names the deploy it
+    # came from. Read here rather than baked into the image: the commit
+    # being deployed is a property of this run, and burning it into a build
+    # layer would mean a rebuild to correct a mislabel. --dirty is
+    # deliberate -- a deploy from an unclean tree should say so in every
+    # event it produces rather than claim to be the commit it isn't.
+    - name: Identify the commit being deployed
+      ansible.builtin.command:
+        cmd: git describe --always --dirty --abbrev=12
+        chdir: "{{ playbook_dir }}/.."
+      register: deployed_commit
+      changed_when: false
+      delegate_to: 127.0.0.1
+
     - name: Build container image locally
       ansible.builtin.command:
         cmd: docker build --platform linux/amd64 -t clarice .
@@ -96,6 +110,21 @@
       ansible.builtin.slurp:
         src: ~/.secret-key
       register: secret_key
+
+    # Optional, unlike the secrets below it. B4 must not block a deploy:
+    # if no DSN has been provisioned, the file is simply absent and
+    # clarice.monitoring declines to initialise. Reporting is a thing you
+    # add to a working deploy, never a thing that prevents one.
+    - name: Check whether the Sentry DSN file exists
+      ansible.builtin.stat:
+        path: ~/.sentry-dsn
+      register: sentry_dsn_file
+
+    - name: Read Sentry DSN back from file
+      ansible.builtin.slurp:
+        src: ~/.sentry-dsn
+      register: sentry_dsn
+      when: sentry_dsn_file.stat.exists
 
     - name: Check whether the Resend API key file exists
       ansible.builtin.stat:
@@ -163,6 +192,11 @@
                if email_backend == 'smtp'
                else '' }}
           DJANGO_ADMIN_EMAIL: "{{ admin_email }}"
+          DJANGO_SENTRY_DSN: >-
+            {{ (sentry_dsn.content | b64decode | trim)
+               if sentry_dsn_file.stat.exists
+               else '' }}
+          DJANGO_RELEASE: "{{ deployed_commit.stdout | trim }}"
         ports:
           - "127.0.0.1:8000:8888"
       # Recreating here, before nginx is installed/reloaded, matters: on a

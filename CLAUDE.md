@@ -24,7 +24,7 @@ need their own `pnpm install`. Run Python through it directly rather than
 activating:
 
 ```powershell
-.\.venv\Scripts\python.exe src\manage.py test accounts lists capture
+.\.venv\Scripts\python.exe src\manage.py test accounts lists capture clarice
 pnpm --dir frontend test
 pnpm --dir frontend build
 ```

@@ -58,7 +58,7 @@ $env:VITE_DEV_SERVER_URL = "http://127.0.0.1:5173"
 ## Checks
 
 ```powershell
-.\.venv\Scripts\python.exe src\manage.py test accounts lists capture
+.\.venv\Scripts\python.exe src\manage.py test accounts lists capture clarice
 pnpm --dir frontend test
 pnpm --dir frontend build
 ```
@@ -192,3 +192,41 @@ the test suite, and production agree on it). All three default to the
 
 Resend only sends. `support@vinclarice.com` receives through the IONOS
 mailboxes the domain's MX records already point at.
+
+## Error monitoring
+
+Unhandled server errors are reported to [Sentry](https://sentry.io) when --
+and only when -- a DSN is configured *and* `DJANGO_ENVIRONMENT=production`.
+Both conditions are required: a DSN that finds its way into a development
+environment would otherwise report a developer's own broken experiments into
+the production project and bury real incidents underneath them. Without a
+DSN the SDK is never even imported.
+
+- `DJANGO_SENTRY_DSN` (optional) -- the project DSN from Sentry. Absent, no
+  reporting is configured and the deploy proceeds normally; monitoring is
+  something you add to a working deploy, never something that blocks one.
+- `DJANGO_RELEASE` (optional) -- what events are tagged with, so a report
+  names the deploy it came from. The playbook sets this from
+  `git describe --always --dirty`; it defaults to `unknown`.
+
+The playbook reads the DSN from `~/.sentry-dsn` on the server, the same way
+it reads the Resend key. To set it up:
+
+```bash
+umask 077 && read -rsp 'Sentry DSN: ' DSN && printf '%s' "$DSN" > ~/.sentry-dsn && unset DSN && echo ok
+```
+
+**To verify it after a deploy**, raise a controlled exception in the running
+container and confirm exactly one event appears in Sentry carrying the
+release and `production` environment:
+
+```bash
+ssh <user>@<host> 'docker exec -i clarice python manage.py shell' <<'EOF'
+from django.conf import settings
+print("monitoring enabled:", settings.ERROR_MONITORING_ENABLED)
+import sentry_sdk; sentry_sdk.capture_message("B4 verification probe")
+EOF
+```
+
+If it prints `False`, the DSN file is missing or unreadable -- that is the
+first thing to check, ahead of anything in Sentry's own interface.

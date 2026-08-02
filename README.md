@@ -216,17 +216,35 @@ it reads the Resend key. To set it up:
 umask 077 && read -rsp 'Sentry DSN: ' DSN && printf '%s' "$DSN" > ~/.sentry-dsn && unset DSN && echo ok
 ```
 
-**To verify it after a deploy**, raise a controlled exception in the running
-container and confirm exactly one event appears in Sentry carrying the
-release and `production` environment:
+**To verify it after a deploy**, run this against the running container.
+Sentry's own onboarding suggests adding a `/sentry-debug/` route that
+divides by zero; don't. That is a permanent public URL anyone can use to
+burn your event quota, and this answers the same question without one:
 
 ```bash
 ssh <user>@<host> 'docker exec -i clarice python manage.py shell' <<'EOF'
+import os, sentry_sdk
 from django.conf import settings
-print("monitoring enabled:", settings.ERROR_MONITORING_ENABLED)
-import sentry_sdk; sentry_sdk.capture_message("B4 verification probe")
+print("enabled:", settings.ERROR_MONITORING_ENABLED)
+print("release:", os.environ.get("DJANGO_RELEASE"))
+print("integrations:", sorted(sentry_sdk.get_client().integrations))
+sentry_sdk.capture_message("B4 verification probe")
+print("event sent")
 EOF
 ```
 
-If it prints `False`, the DSN file is missing or unreadable -- that is the
-first thing to check, ahead of anything in Sentry's own interface.
+Three things to read, and they fail in different ways:
+
+- `enabled: False` -- the DSN never reached the container. Check
+  `~/.sentry-dsn` on the server before looking at anything in Sentry.
+- `release:` should name a commit. `git describe` anchors it to the last
+  deploy tag, so it reads like
+  `DEPLOYED-2026-08-01/1156-41-g6f2e47d70f7e`. A `-dirty` suffix means the
+  deploy was built from an unclean tree.
+- **`django` must appear in the integrations list.** Without it the SDK can
+  still send explicit messages while unhandled 500s go unreported -- the
+  failure that looks exactly like success, which is the whole reason B4
+  exists.
+
+The flush line may say more events are pending than you sent; the extra is
+a release-health session envelope the SDK tracks on its own.

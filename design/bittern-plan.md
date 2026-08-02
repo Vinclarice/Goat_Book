@@ -1134,13 +1134,60 @@ be added to deployment secrets, but never committed to the repository. If it
 is not available during Bittern, B4 simply slides to the next release; it
 does not hold Android or web usability work.
 
+**Done — Sentry, August 2, 2026.** The DSN lives in `~/.sentry-dsn` on the
+server and is read the same way as the Resend key. It is optional
+throughout: absent, the playbook passes an empty value and nothing
+initialises, so a missing DSN can never fail a deploy.
+
+### Ignore the vendor's setup wizard
+
+Sentry's onboarding hands you a snippet for `settings.py`, and following it
+would undo most of this slice. It hardcodes the DSN in the repository, sets
+`send_default_pii=True`, and has no environment guard — so it would report
+from a developer's laptop into the production project while attaching
+usernames, cookies and request bodies to every event.
+
+Its placement advice is right and already followed: `init()` does belong in
+`settings.py`, which is where `clarice.monitoring` is called from. Adding
+the wizard's version *as well* would be worse than redundant, because a
+second `init()` wins and would silently restore both defaults the tests
+assert against.
+
+The same goes for the suggested `/sentry-debug/` route that divides by
+zero. It is a permanent public URL anyone can use to burn the event quota,
+and the shell probe in `README.md` answers the same question without one.
+
+The only thing needed from that screen is the DSN, which the wizard shows
+inline in the code sample rather than labelled as a DSN — easy to miss, and
+it caused exactly that confusion here.
+
 ### Acceptance criteria
 
-- Development and tests do not send events.
-- Production initializes the integration only when its DSN is configured.
-- A controlled staging/production exception creates one event with the
-  release/environment metadata needed to trace it back to a deploy.
-- Documentation explains the required secret and how to verify the setup.
+- ~~Development and tests do not send events.~~ Enforced by two conditions,
+  not one: no DSN *and* a non-production environment are each sufficient to
+  refuse. The second is the load-bearing one, since a DSN reaches a laptop
+  easily.
+- ~~Production initializes the integration only when its DSN is
+  configured.~~ Observed `enabled: True` in the production container.
+- ~~A controlled exception creates one event with the release/environment
+  metadata needed to trace it back to a deploy.~~ Verified August 2, 2026:
+
+  ```text
+  enabled: True
+  release: DEPLOYED-2026-08-01/1156-41-g6f2e47d70f7e
+  integrations: [... 'django' ...]
+  ```
+
+  `git describe` anchors the release to the last deploy tag, so it names
+  both a deployment event and an exact commit, and a `-dirty` suffix would
+  expose a build from an unclean tree.
+
+  **`django` in the integrations list is the assertion that matters.**
+  Without it the SDK still sends explicit messages while unhandled 500s go
+  unreported — success and failure look identical from the sending side,
+  which is precisely the shape of the mail failure that motivated B4.
+- ~~Documentation explains the required secret and how to verify the
+  setup.~~ `README.md`, "Error monitoring".
 
 ## Release gates and verification
 

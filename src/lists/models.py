@@ -2,6 +2,38 @@ from django.db import models
 from django.db.models import Q
 from django.urls import reverse
 
+class RecurringCommitment(models.Model):
+    """The durable identity of a repeating commitment, across its occurrences.
+
+    Deliberately thin: an owner and a lifespan, and nothing else. It is an
+    identity anchor rather than a template -- `text`, `list`, `recurrence`,
+    tags and notes stay on `Item`, where each occurrence is already its own
+    snapshot of what it ran under. Copying them here while `Item` still
+    carries them would create exactly the two-sources-of-truth drift the
+    design is meant to prevent; the whole vocabulary moves at once at release
+    D, or not at all. See design/crane-plan.md 3.
+
+    Owner is direct rather than reached through `List`, whose own owner is
+    still nullable for anonymous-era reasons. Nothing here inherits that.
+
+    Never deleted: `Item.commitment` is PROTECT, so a series with history
+    cannot be dropped. `ended_at` is how a commitment stops, and a resumed one
+    clears it rather than starting a second series -- a pause and a resume are
+    one commitment with a gap, and the gap is visible in the occurrences.
+    """
+
+    owner = models.ForeignKey(
+        "accounts.User",
+        related_name="recurring_commitments",
+        on_delete=models.CASCADE,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    ended_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"commitment {self.pk}"
+
+
 # Create your models here.
 class Item(models.Model):
     class Status(models.TextChoices):
@@ -60,6 +92,18 @@ class Item(models.Model):
     # doing a marker's job, and a child archived separately then re-archived
     # with its parent makes that ambiguous.
     archive_group = models.UUIDField(null=True, blank=True, editable=False)
+    # Which repeating commitment this task is an occurrence of. Null means an
+    # ordinary one-off task, which is what most rows will always mean.
+    # PROTECT rather than SET_NULL: nulling these on delete would silently
+    # turn a series back into unrelated one-offs, which is the precise failure
+    # this key exists to fix.
+    commitment = models.ForeignKey(
+        RecurringCommitment,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="occurrences",
+    )
 
     class Meta:
         ordering = ("position", "id")
@@ -120,6 +164,14 @@ class Item(models.Model):
             models.Index(
                 fields=("parent", "status"),
                 name="item_parent_state_idx",
+            ),
+            # Backs "every occurrence of this commitment, oldest first", which
+            # is the series read every trend and streak in release F runs.
+            # Nothing queries it yet -- charter rule 7 asks for the index the
+            # feature will actually run, and it costs a line now.
+            models.Index(
+                fields=("commitment", "created_at"),
+                name="item_commitment_seq_idx",
             ),
         ]
 

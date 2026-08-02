@@ -6,7 +6,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import Max
 from django.utils import timezone
 
-from lists.models import Item, List, Tag
+from lists.models import Item, List, RecurringCommitment, Tag
 
 
 EMPTY_ITEM_ERROR = "You can't have an empty list item"
@@ -103,6 +103,44 @@ def _resolve_tags(owner, tag_names):
     ]
 
 
+def _anchor_commitment(item):
+    """Give a repeating task the series identity it belongs to.
+
+    Called on every path that can leave a root task repeating. Reuses an
+    existing commitment rather than starting a second series, so a task that
+    was paused and resumed stays one commitment with a gap in it.
+
+    Returns None, and links nothing, when the list has no owner. That is only
+    reachable for anonymous-era rows -- `List.owner` is still nullable, though
+    every creation path supplies one -- and a task that can't be anchored is
+    better than a completion that raises. Removing the nullable column is on
+    the infrastructure list in design/architecture-trajectory.md 6, and this
+    guard goes with it.
+    """
+    if item.commitment_id is not None:
+        commitment = item.commitment
+        if commitment.ended_at is not None:
+            commitment.ended_at = None
+            commitment.save(update_fields=["ended_at"])
+        return commitment
+    owner = item.list.owner
+    if owner is None:
+        return None
+    commitment = RecurringCommitment.objects.create(owner=owner)
+    item.commitment = commitment
+    return commitment
+
+
+def _end_commitment(item):
+    """Stop a series accepting new occurrences, without disowning the old ones."""
+    if item.commitment_id is None:
+        return
+    commitment = item.commitment
+    if commitment.ended_at is None:
+        commitment.ended_at = timezone.now()
+        commitment.save(update_fields=["ended_at"])
+
+
 @transaction.atomic
 def create_item(
     for_list,
@@ -139,6 +177,9 @@ def create_item(
         )
     except IntegrityError as error:
         raise TaskConflict(DUPLICATE_ITEM_ERROR) from error
+    if item.parent_id is None and item.recurrence != Item.Recurrence.NONE:
+        if _anchor_commitment(item) is not None:
+            item.save(update_fields=["commitment"])
     if tags:
         item.tags.set(_resolve_tags(for_list.owner, tags))
     return item
@@ -220,6 +261,13 @@ def set_recurrence(item, recurrence):
     if item.parent_id is not None and recurrence != Item.Recurrence.NONE:
         raise TaskConflict(SUBTASK_RECURRENCE_ERROR)
     item.recurrence = recurrence
+    if recurrence == Item.Recurrence.NONE:
+        # The link stays. This task really was an occurrence of that series,
+        # and clearing the key would rewrite history to say it never was --
+        # only the series stops accepting new ones.
+        _end_commitment(item)
+    else:
+        _anchor_commitment(item)
     item.save()
     return item
 
@@ -299,12 +347,21 @@ def _advance_due_date(due_date, recurrence):
 
 
 def _spawn_next_occurrence(completed_item, carry_forward=()):
+    # Anchored here as well as on the paths that set a cadence, because rows
+    # predating this key reach completion without one. Their earlier
+    # occurrences can't be recovered -- that history is gone -- but adopting
+    # the pair here means no path leaves the series unlinked from now on.
+    was_linked = completed_item.commitment_id is not None
+    commitment = _anchor_commitment(completed_item)
+    if commitment is not None and not was_linked:
+        completed_item.save(update_fields=["commitment"])
     next_item = Item.objects.create(
         list=completed_item.list,
         text=completed_item.text,
         due_date=_advance_due_date(completed_item.due_date, completed_item.recurrence),
         recurrence=completed_item.recurrence,
         position=_next_position(completed_item.list),
+        commitment=commitment,
     )
     next_item.tags.set(completed_item.tags.all())
 

@@ -365,10 +365,11 @@ holds both halves of the symmetry.
 
 ### Crane 0a — the identity slice
 
-The one piece of Crane 0 that produces a migration. Sequenced **before Crane
-1**, for the accrual reason above: it is cheap today and gets more expensive
-every week the Daily Page drives real use. It is not a Daily Page slice and
-does not belong in §4's ordering.
+**Shipped August 2, 2026** — migrations `0022`–`0024`, merged to `main` and
+not yet deployed. The one piece of Crane 0 that produces a migration, and it
+ran ahead of Crane 1 for the accrual reason above: cheap that day, and more
+expensive every week the Daily Page drives real use. It was never a Daily Page
+slice and never belonged in §4's ordering.
 
 **The model.** `RecurringCommitment` — a non-null `owner` (charter rule 1;
 note it does *not* reach its owner through `List`, whose own `owner` is still
@@ -376,10 +377,21 @@ nullable), `created_at`, and a nullable `ended_at`. Nothing else. It is an
 identity anchor, not a template, per the note above.
 
 **The link.** `Item.commitment`, a nullable foreign key with `related_name="occurrences"`. Null means an ordinary one-off task, which is
-what the overwhelming majority of rows will keep meaning. `on_delete=PROTECT`,
-deliberately: `SET_NULL` would silently turn a series back into unrelated
-one-offs, which is the exact failure being fixed, and `CASCADE` would let
-deleting one record take years of tasks with it.
+what the overwhelming majority of rows will keep meaning. `on_delete=RESTRICT`:
+`SET_NULL` would silently turn a series back into unrelated one-offs, which is
+the exact failure being fixed, and `CASCADE` would let deleting one record take
+years of tasks with it.
+
+**`PROTECT` was the first choice and it was wrong**, recorded here because the
+distinction is not obvious and the next person will reach for it too. `PROTECT`
+refuses the delete even when the referring task is going in the same cascade,
+so deleting an account raised `ProtectedError` instead of removing it — an
+owner's commitments and their tasks both go, and `PROTECT` does not care that
+the referrer is on its way out. Account deletion is a roadmap item, so this
+would have surfaced later as a feature that could not be built. `RESTRICT`
+permits exactly that case and still refuses a bare commitment delete. Nothing
+in the suite caught it because nothing deleted a user; `test_commitment_deletion`
+now does.
 
 **Where the link gets written.**
 
@@ -417,14 +429,16 @@ non-null owner. Rule 2: no UUID — commitments are never created offline by a
 client, and Android captures only. Rule 3: satisfied without new fields, since
 each occurrence is already its own snapshot of the text, due date and cadence
 it ran under. Rule 4: mutations go through `services.py`; no read module yet,
-because nothing reads a series until Crane 3. Rule 6: hard deletion is
-prevented by `PROTECT`, and there is no offline client to strand. Rule 7: an
+because nothing reads a series until Crane 3. Rule 6: a bare hard delete is
+refused by `RESTRICT` while an account deletion still cascades cleanly, and
+there is no offline client to strand. Rule 7: an
 explicit `(commitment, created_at)` index, which is the series-ordered read
 release F will run. Rule 8: partially, by design — see above.
 
-**Acceptance:** the "Pay rent" example above. Four monthly occurrences, the
-fourth renamed, all four returned in order by one query against a single
-commitment. Today that same query returns a series of three and a series of
+**Acceptance — met.** The "Pay rent" example above, asserted end to end in
+`test_recurring_commitments.py`: four monthly occurrences, the fourth renamed,
+all four returned in order by one query against a single commitment. Before
+this slice that same query returned a series of three and a series of
 one, with nothing connecting them.
 
 ### Open questions this design leaves for Crane 2
@@ -460,8 +474,8 @@ Ordered as the thinnest usable path first, per `principles.md`'s vertical-
 slice practice: each slice below is something a person can actually do,
 not a layer of the stack finished in isolation. Later slices depend on
 earlier ones existing; none depends on Crane 0's routine work, which is why
-routines are Crane 2. None depends on Crane 0a either — that slice is sequenced
-first for the accrual reason given in §3, not because anything here needs it.
+routines are Crane 2. None depended on Crane 0a either — that slice ran first
+for the accrual reason given in §3, not because anything here needed it.
 
 1. **Write today.** An owner-scoped, date-unique Daily Entry record with
    plain-text intentions, gratitude, and happenings fields, reachable at a
@@ -536,8 +550,8 @@ for that redesign rather than patching it in place.
 
 - ~~**Crane 0's widened scope.**~~ **Answered August 2, 2026: widened, then
   narrowed.** The identity half — a thin commitment record and the foreign key
-  `_spawn_next_occurrence` never wrote — is accepted and ships before Crane 1
-  as §3's Crane 0a. The vocabulary half, moving text and cadence off the
+  `_spawn_next_occurrence` never wrote — was accepted and shipped ahead of
+  Crane 1 as §3's Crane 0a. The vocabulary half, moving text and cadence off the
   occurrence onto a real template, goes to release D with the parent–child
   redesign it depends on. What decided it was not the "designing the same shape
   twice" argument, which turned out to be weak once §4 rule 8 was noticed to

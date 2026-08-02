@@ -11,3 +11,11 @@ src/lists/static/frontend
 container.db.sqlite3
 .db-backups/
 .vscode
+
+# Claude Code. launch.json is deliberately not ignored -- it is the dev
+# server definition and is the same for everyone. The rest is per-machine:
+# worktrees are scratch checkouts, and settings.local.json holds personal
+# permission grants that would be wrong to impose on anybody else.
+.claude/worktrees/
+.claude/settings.local.json
+.claude/scheduled_tasks.lock

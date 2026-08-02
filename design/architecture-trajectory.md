@@ -374,8 +374,9 @@ one needs.** Nothing here is scheduled by appetite.
 Already specified in [`crane-plan.md`](crane-plan.md) and
 [`daily-operating-system-vision.md`](daily-operating-system-vision.md). Crane 0
 settles the repetition domain — widened from routines alone and then narrowed
-on August 2, 2026, with only the identity half building now as Crane 0a; see §8
-and `crane-plan.md` §3. Crane 1 ships the Daily Page — entry, compass, focus,
+on August 2, 2026, with only the identity half built, as Crane 0a — shipped
+that day; see §8 and `crane-plan.md` §3. Crane 1 ships the Daily Page —
+entry, compass, focus,
 embedded agenda, capture, home surface, and a phone-viewport pass over the
 assembled page at slice 7. Crane 2 refines daily planning and implements
 routines. Crane 3 is the first weekly review with the trustworthy denominators
@@ -686,8 +687,9 @@ has now happened three times in one week.
 ## 8. Decisions this plan cannot make
 
 - ~~**Does Crane 0 actually widen?**~~ **Answered August 2, 2026: yes, and then
-  narrower than §5 proposed.** The identity half ships before Crane 1 as
-  `crane-plan.md` §3's Crane 0a — a thin `RecurringCommitment` holding owner and
+  narrower than §5 proposed.** The identity half shipped ahead of Crane 1 the
+  same day as `crane-plan.md` §3's Crane 0a — a thin `RecurringCommitment`
+  holding owner and
   lifespan, plus the nullable `Item.commitment` key `_spawn_next_occurrence`
   never wrote. Additive only; no field leaves `Item` and no client changes. The
   vocabulary half — text, list and cadence moving onto a real template — goes to

@@ -51,6 +51,16 @@ jobs:
   # No Postgres service here, unlike the django job. These cover routing,
   # static assets, session cookies and browser navigation; none of that
   # changes with the database engine, and SQLite keeps the job quick.
+  #
+  # That decision was re-examined on August 2, 2026 and kept. SQLite did
+  # cost this job a flake -- an in-memory test database is unreachable from
+  # a second connection, so LiveServerTestCase handed its own to the server
+  # thread and concurrent requests interleaved on one cursor, surfacing as a
+  # 500 from a session lookup and a Playwright timeout that looked like a UI
+  # bug. Moving to Postgres would have fixed it as a side effect. Naming the
+  # SQLite test database fixes the actual cause instead, and does it for
+  # everyone running these locally rather than only for CI. See
+  # src/functional_tests/__init__.py and test_harness.py.
   browser:
     runs-on: ubuntu-latest
     steps:

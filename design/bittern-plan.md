@@ -873,6 +873,50 @@ Cover these critical journeys:
 The production deploy smoke check in B0 remains separate: this suite verifies
 a built app before release; B0 verifies the artifact actually served after it.
 
+### Done, August 2, 2026 — seven tests over those five journeys
+
+Playwright driven from `StaticLiveServerTestCase`, in `src/functional_tests`,
+with its own test label and its own CI job. Django then owns the server, the
+test database and static serving, so there is nothing to orchestrate and
+setup uses the ORM rather than a second fixture system. *Static*, not plain
+`Live`: the SPA is a built bundle, and a suite that silently served no
+JavaScript would pass an empty page and prove nothing.
+
+They log in through the real form rather than `force_login()`. The CSRF
+token, the session cookie and the redirect are among the things worth
+covering, and skipping to a forced session would skip them.
+
+**The mobile-navigation journey does not cover B0, and assuming it did would
+be the easy mistake.** B0 was never a mobile bug: above the breakpoint the
+CSS hides the `<summary>`, so a `<details>` nothing ever opened sealed the
+navigation shut *on desktop*. A narrow-width test would have passed happily
+throughout that outage — which is exactly what every test then in existence
+did. A separate wide-screen test, asserting the nav is visible with no
+interaction at all, is the actual regression guard. The journey list above
+asks only for the mobile disclosure; taking it literally would have produced
+a suite that still could not see the bug it was written after.
+
+**The logout journey was flaky, which is worth recording rather than
+quietly fixing.** It failed three runs in five, in two different ways:
+clicking Log out starts the SPA's own full navigation to `/`, and the next
+`goto()` raced it — sometimes aborting the navigation, sometimes landing
+before it. Waiting for that navigation first resolves it and asserts B2's
+documented behaviour into the bargain. A smoke suite nobody trusts gets
+ignored, and then it is not a smoke suite.
+
+**Checked for vacuity rather than assumed.** Breaking close-on-navigate in
+`AppLayout` makes journey 5 fail on the right assertion, while the
+wide-screen test correctly keeps passing. Browser tests that pass whatever
+the application does are the characteristic failure of this kind of suite,
+and the check costs one deliberate regression.
+
+Two environment notes. `DJANGO_ALLOW_ASYNC_UNSAFE` is set in the package
+`__init__` so it applies only when these tests are the chosen label —
+Playwright's sync API drives the browser from a greenlet that Django's ORM
+guard cannot distinguish from a real async context. And `pnpm build` must
+run first: the tests load `src/lists/static/frontend/`, which is gitignored,
+so without a rebuild they pass against stale JavaScript.
+
 ## B3 — branded email and contact
 
 ### Provider decision — Resend, August 1, 2026

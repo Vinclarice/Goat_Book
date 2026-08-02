@@ -60,6 +60,26 @@ The original complaint — “I can’t tell where things are” — may disappe
 once the navigation is actually rendered. Observe the real remaining friction
 before writing a redesign spec.
 
+**C2 has its evidence now, from B1's own verification on August 2, 2026.**
+Setting up one recurring parent with three children took three attempts, and
+each failure was the interface rather than the person:
+
+- A task's **Repeat** (a select, parent-only) sits directly above each
+  subtask's **Repeats** (a checkbox, child-only). Near-identical words, one
+  screen, opposite meanings — and setting the first to None silently hides
+  every instance of the second, so the control you were reaching for
+  disappears as a side effect of the mistake.
+- A subtask row carries two checkboxes with no visual distinction: the
+  leading one completes the task, a later one governs recurrence. Having
+  used the first, it reads as though the row is done with.
+- Neither failure produced an error. Both looked like success.
+
+The verdict from that session was blunt and is recorded as given: the web UI
+needs a complete overhaul, not adjustment. The Tailwind/shadcn work replaced
+how it looks; what is wrong now is what it *says* and what it lets you
+confuse. That is a design cycle of its own and should not be smuggled into
+Crane as incidental cleanup.
+
 ### Track D — Postgres-enabled features
 
 Future candidates. Each needs its own product trigger or focused brief
@@ -122,6 +142,30 @@ Page implementation; its implementation follows the foundation. The product
 direction, data boundaries, review metrics, second-brain questions, and
 eventual AI guardrails are in
 [`daily-operating-system-vision.md`](daily-operating-system-vision.md).
+
+### Named for the next design cycle
+
+Two pieces of work were identified on August 2, 2026, while verifying B1 in
+production. Both are design cycles rather than tasks, and neither should be
+started as a side effect of something else.
+
+**Parent–child domain redesign.** The relationship between a task and its
+subtasks is doing too many unrelated jobs, and its rules were arrived at one
+at a time rather than designed. Completing a parent cascades to its children;
+reopening it does not bring them back. Recurrence belongs only to parents,
+`always_recurs` only to children, and a child's flag is invisible unless its
+parent happens to repeat. Archiving cascades on one path and not another.
+Each rule is defensible alone; together they are not a model anybody could
+predict. Decide what a subtask *is* — a step, a dependent task, a checklist
+item — before adjusting any more of its behaviour.
+
+**Web UI overhaul, second pass.** The Tailwind v4 and shadcn work replaced
+how the application looks. What remains wrong is what it says and what it
+lets you confuse: near-identical labels for opposite concepts, controls that
+vanish as a side effect of an unrelated setting, and rows carrying two
+checkboxes that mean different things. See C2 above for the evidence. This
+is a redesign of language and interaction, not of styling, and it wants its
+own brief.
 
 ## Later — visible, not scheduled
 

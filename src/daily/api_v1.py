@@ -39,7 +39,7 @@ class DayOut(Schema):
     # TaskOut rather than a daily-shaped copy, because these *are* the same
     # records the agenda serves and a second schema would be free to drift
     # from the first.
-    action_items: list[TaskOut]
+    action_items: list["DayActionItemOut"]
     # Whether this day is showing them at all, decided by the server so the
     # client is not left inferring it from an empty list. Empty-because-done
     # and empty-because-not-today are different, and only one of them
@@ -79,6 +79,19 @@ class DayOut(Schema):
     # `routines` above, because a paused routine has no standing in this or
     # any period -- that is what pausing means.
     paused_routines: list[PausedRoutineOut]
+
+
+class DayActionItemOut(TaskOut):
+    """A task, plus the one thing the day knows about it that the agenda
+    does not: how long it has been waiting.
+
+    A subclass rather than a field added to TaskOut, so the agenda's
+    contract is untouched by a number only this page renders. Age needs a
+    "today" to be measured against, and TaskOut is serialised in places that
+    do not have one.
+    """
+
+    age_in_days: int
 
 
 class FocusOut(Schema):
@@ -122,6 +135,26 @@ def _today_for_request():
     Read once, here at the boundary, and passed down.
     """
     return timezone.localdate()
+
+
+def _age_in_days(item, today):
+    """How many of the owner's days a task has been waiting.
+
+    Measured between two *local* dates rather than from the raw timestamp,
+    because that is the number a person means -- and computed here rather
+    than in the browser, whose zone is not the account's. A phone in
+    Makassar and a laptop in New York must agree about how long something
+    has been open.
+
+    Never negative: clock skew or a backdated import should read as "made
+    today" rather than as the future.
+    """
+    created = timezone.localtime(item.created_at).date()
+    return max(0, (today - created).days)
+
+
+def _action_item_out(item, today):
+    return {**serialize_item(item), "age_in_days": _age_in_days(item, today)}
 
 
 def _focus_out(focus):
@@ -169,7 +202,10 @@ def _day_out(owner, day):
         "happenings": entry.happenings if entry else "",
         "today": today.isoformat(),
         "action_items": (
-            [serialize_item(item) for item in reads.action_items_for(owner, day)]
+            [
+                _action_item_out(item, today)
+                for item in reads.action_items_for(owner, day)
+            ]
             if shows_action_items
             else []
         ),

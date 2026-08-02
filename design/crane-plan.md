@@ -695,6 +695,20 @@ starts.
 
 ## 7. Crane 2 — daily planning and routines
 
+**All five slices shipped August 2, 2026**, each acceptance verified
+against a running server rather than only the test client. Merged to `main`
+and **not yet deployed** — production is eleven migrations behind, so
+neither Crane 1 nor this is reachable there.
+
+Three things the sequence taught, worth carrying into Crane 3. The slice
+list again omitted a surface — routine *creation* had none, the same shape
+of gap Crane 1 slice 6 found when the Daily Page was reachable only by
+typing its URL; slice 3 absorbed it. Pausing had to be enforced in the
+service rather than by hiding a button, and the endpoint answering 409 was
+a defect a test caught before a person could. And slice 5 turned out to be
+about `created_at` rather than `due_date`: overdue was already visible, and
+age is the half a moved due date hides.
+
 Numbered §7 rather than inserted after §4 so that §5 and §6 keep the numbers
 other documents already cite. §5's fences apply to this release too: the
 parent–child redesign and the UI overhaul are still release D's, and routines

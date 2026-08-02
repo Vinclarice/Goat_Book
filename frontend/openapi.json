@@ -1532,6 +1532,150 @@
         "title": "CaptureIn",
         "type": "object"
       },
+      "DayActionItemOut": {
+        "description": "A task, plus the one thing the day knows about it that the agenda\ndoes not: how long it has been waiting.\n\nA subclass rather than a field added to TaskOut, so the agenda's\ncontract is untouched by a number only this page renders. Age needs a\n\"today\" to be measured against, and TaskOut is serialised in places that\ndo not have one.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "active",
+              "completed",
+              "archived"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "archived_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archived At"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          },
+          "recurrence": {
+            "enum": [
+              "none",
+              "daily",
+              "weekly",
+              "monthly"
+            ],
+            "title": "Recurrence",
+            "type": "string"
+          },
+          "notes": {
+            "title": "Notes",
+            "type": "string"
+          },
+          "parent": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TaskParentOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "always_recurs": {
+            "title": "Always Recurs",
+            "type": "boolean"
+          },
+          "subtask_counts": {
+            "$ref": "#/components/schemas/SubtaskCountsOut"
+          },
+          "list_id": {
+            "title": "List Id",
+            "type": "integer"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          },
+          "edit_url": {
+            "title": "Edit Url",
+            "type": "string"
+          },
+          "age_in_days": {
+            "title": "Age In Days",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "status",
+          "created_at",
+          "updated_at",
+          "completed_at",
+          "archived_at",
+          "due_date",
+          "position",
+          "tags",
+          "recurrence",
+          "notes",
+          "parent",
+          "always_recurs",
+          "subtask_counts",
+          "list_id",
+          "url",
+          "edit_url",
+          "age_in_days"
+        ],
+        "title": "DayActionItemOut",
+        "type": "object"
+      },
       "DayOut": {
         "properties": {
           "date": {
@@ -1556,7 +1700,7 @@
           },
           "action_items": {
             "items": {
-              "$ref": "#/components/schemas/TaskOut"
+              "$ref": "#/components/schemas/DayActionItemOut"
             },
             "title": "Action Items",
             "type": "array"

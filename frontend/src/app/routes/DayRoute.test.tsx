@@ -74,6 +74,7 @@ function actionItem(overrides: Record<string, unknown> = {}) {
     text: "Pay rent",
     due_date: "2026-08-03",
     parent: null,
+    age_in_days: 0,
     ...overrides,
   };
 }
@@ -809,6 +810,70 @@ describe("DayRoute", () => {
     await screen.findByText("2 of 5 lessons");
     expect(screen.queryByRole("button", { name: /Pause/ })).toBeNull();
     expect(screen.queryByRole("button", { name: /Resume/ })).toBeNull();
+  });
+
+  it("says how long an old task has been waiting", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        dayData({ action_items: [actionItem({ age_in_days: 12 })] }),
+      ),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    const row = (await screen.findByText("Pay rent")).closest("li")!;
+    expect(within(row).getByText("Added 12 days ago")).toBeInTheDocument();
+  });
+
+  it("reports the age rather than scolding about it", async () => {
+    // The acceptance for this slice is a tone test: the vision document
+    // asks that history be useful "without making missed work feel like
+    // punishment", and a red "12 days late!" is the thing that fails it.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        dayData({ action_items: [actionItem({ age_in_days: 40 })] }),
+      ),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    const label = await screen.findByText("Added 40 days ago");
+    expect(label.className).toContain("text-muted-foreground");
+    expect(label.className).not.toContain("destructive");
+    expect(label.textContent).not.toMatch(/late|overdue|!/i);
+  });
+
+  it("stays quiet about a task that is merely a few days old", async () => {
+    // A task made on Tuesday and still open on Thursday is not
+    // carry-forward, it is Thursday.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(dayData({ action_items: [actionItem({ age_in_days: 3 })] })),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    await screen.findByText("Pay rent");
+    expect(screen.queryByText(/Added \d+ days ago/)).toBeNull();
+  });
+
+  it("shows age alongside the due label rather than instead of it", async () => {
+    // They answer different questions, and a snoozed task is exactly the
+    // case where only one of them says anything.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        dayData({
+          action_items: [
+            actionItem({ age_in_days: 30, due_date: "2026-08-03" }),
+          ],
+        }),
+      ),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    const row = (await screen.findByText("Pay rent")).closest("li")!;
+    expect(within(row).getByText("Added 30 days ago")).toBeInTheDocument();
+    expect(within(row).getByText("Today")).toBeInTheDocument();
   });
 
   it("offers a way out when the day cannot be loaded", async () => {

@@ -693,6 +693,60 @@ export interface components {
             /** Text */
             text: string;
         };
+        /**
+         * DayActionItemOut
+         * @description A task, plus the one thing the day knows about it that the agenda
+         *     does not: how long it has been waiting.
+         *
+         *     A subclass rather than a field added to TaskOut, so the agenda's
+         *     contract is untouched by a number only this page renders. Age needs a
+         *     "today" to be measured against, and TaskOut is serialised in places that
+         *     do not have one.
+         */
+        DayActionItemOut: {
+            /** Id */
+            id: number;
+            /** Text */
+            text: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "active" | "completed" | "archived";
+            /** Created At */
+            created_at: string;
+            /** Updated At */
+            updated_at: string;
+            /** Completed At */
+            completed_at: string | null;
+            /** Archived At */
+            archived_at: string | null;
+            /** Due Date */
+            due_date: string | null;
+            /** Position */
+            position: number;
+            /** Tags */
+            tags: string[];
+            /**
+             * Recurrence
+             * @enum {string}
+             */
+            recurrence: "none" | "daily" | "weekly" | "monthly";
+            /** Notes */
+            notes: string;
+            parent: components["schemas"]["TaskParentOut"] | null;
+            /** Always Recurs */
+            always_recurs: boolean;
+            subtask_counts: components["schemas"]["SubtaskCountsOut"];
+            /** List Id */
+            list_id: number;
+            /** Url */
+            url: string;
+            /** Edit Url */
+            edit_url: string;
+            /** Age In Days */
+            age_in_days: number;
+        };
         /** DayOut */
         DayOut: {
             /** Date */
@@ -706,7 +760,7 @@ export interface components {
             /** Today */
             today: string;
             /** Action Items */
-            action_items: components["schemas"]["TaskOut"][];
+            action_items: components["schemas"]["DayActionItemOut"][];
             /** Shows Action Items */
             shows_action_items: boolean;
             /** Focus */

@@ -1,11 +1,11 @@
 """Read-side logic for the weekly review.
 
-Query and derivation only. There is no `review.services` yet because slice 1
-writes nothing at all -- the module arrives with the first record, at slice
-4, rather than being created empty to satisfy a rule. What charter rule 4
-actually asks for is that reads and writes never share a home, and a review
-that reads is the strictest possible case of it: **this module must not
-write.** The routines domain creates its occurrences lazily, so a review
+Query and derivation only; every mutation is in review.services, which
+arrived with the first record at slice 4 rather than being created empty
+three slices earlier to satisfy a rule. What charter rule 4 asks for is that
+reads and writes never share a home, and a surface that is almost entirely
+read is the strictest case of it: **this module must not write.** The
+routines domain creates its occurrences lazily, so a review
 that touched one in order to describe it would be a page view inventing
 history. `test_reading_a_week_writes_nothing` holds that as a statement
 about executed SQL rather than about intent.
@@ -19,6 +19,7 @@ from django.utils import timezone
 from capture.models import Capture, Idea
 from daily.models import DailyEntry, DailyFocus
 from lists.models import Item
+from review.models import WeeklyReview
 from review.weeks import week_end_for, week_start_for
 
 
@@ -188,3 +189,16 @@ def captures_still_waiting(owner):
             "created_at", "id"
         )
     )
+
+
+def review_for(owner, week_start):
+    """This owner's review of the week, or None if they have not written one.
+
+    None rather than a created row: an unwritten review is a blank page,
+    not a missing one, and a GET that brought the record into existence
+    would be the page view inventing history this module opens by
+    refusing.
+    """
+    return WeeklyReview.objects.filter(
+        owner=owner, week_start=week_start
+    ).first()

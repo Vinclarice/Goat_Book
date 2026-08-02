@@ -1,5 +1,8 @@
-import { useQuery } from "@tanstack/react-query";
+import { FormEvent, useEffect, useRef, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router";
+
+import { Button } from "@/components/ui/button";
 
 import { ageLabel, dueLabel } from "../../agenda";
 import { apiV1 } from "../../api/client";
@@ -55,6 +58,22 @@ function byDay(completed: CompletedTask[]) {
     else days.push({ day: task.completed_on, tasks: [task] });
   }
   return days;
+}
+
+type ReviewRecord = {
+  reflections: string;
+  plan: string;
+  completed_at: string | null;
+  recorded_total: number | null;
+  recorded_met: number | null;
+};
+
+/** "2 August" — a timestamp said the way a person would say it. */
+function shortDate(isoInstant: string): string {
+  return new Intl.DateTimeFormat(undefined, {
+    day: "numeric",
+    month: "long",
+  }).format(new Date(isoInstant));
 }
 
 type PlannedTask = {
@@ -123,7 +142,27 @@ function PlannedRow({
  * commitments over planned commitments — and it is the reason unpinning
  * releases a record rather than deleting one.
  */
-function PlannedWork({ planned, today }: { planned: Planned; today: string }) {
+function PlannedWork({
+  planned,
+  today,
+  review,
+}: {
+  planned: Planned;
+  today: string;
+  review: ReviewRecord;
+}) {
+  // A completed review shows the figure it recorded, not a fresh count.
+  // Permanently deleting an archived task afterwards moves the live number
+  // — DailyFocus.task is SET_NULL and there is nothing left to ask — and a
+  // conclusion drawn on a Sunday should not be edited by a tidy-up on a
+  // Tuesday.
+  const recorded =
+    review.completed_at !== null &&
+    review.recorded_total !== null &&
+    review.recorded_met !== null;
+  const total = recorded ? review.recorded_total! : planned.total;
+  const met = recorded ? review.recorded_met! : planned.met;
+
   if (planned.total === 0 && planned.set_aside.length === 0) {
     // No rate at all rather than "0 of 0": a week nobody planned is not a
     // week that failed a plan, and a fraction with nothing behind it
@@ -136,12 +175,18 @@ function PlannedWork({ planned, today }: { planned: Planned; today: string }) {
   }
   return (
     <div className="space-y-4">
-      {planned.total > 0 && (
+      {total > 0 && (
         <p className="text-sm text-muted-foreground">
           <span className="text-base font-bold text-foreground">
-            {planned.met} of {planned.total}
+            {met} of {total}
           </span>{" "}
-          {planned.total === 1 ? "commitment" : "commitments"} finished
+          {total === 1 ? "commitment" : "commitments"} finished
+          {recorded && (
+            <>
+              {" — "}
+              <span>as you recorded it on {shortDate(review.completed_at!)}</span>
+            </>
+          )}
         </p>
       )}
 
@@ -370,9 +415,14 @@ function Finished({ completed }: { completed: CompletedTask[] }) {
  */
 export function ReviewRoute() {
   const { week } = useParams();
+  const queryClient = useQueryClient();
+  const queryKey = ["review", week ?? "current"];
+  const [draft, setDraft] = useState({ reflections: "", plan: "" });
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
 
   const { data, error, isPending, refetch } = useQuery({
-    queryKey: ["review", week ?? "current"],
+    queryKey,
     queryFn: async () => {
       const { data, response } = week
         ? await apiV1.GET("/api/v1/review/{day}", {
@@ -383,6 +433,76 @@ export function ReviewRoute() {
       return data;
     },
   });
+
+  // Seeded once per week rather than on every settle of the query, for the
+  // reason the Daily Page learned: this query refetches when the tab
+  // regains focus, and writing the draft from the fetch would mean an
+  // alt-tab silently restored the stored text over whatever was being
+  // typed — then "Saved." would confirm the restored version.
+  const seededFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (!data || seededFor.current === data.week_start) return;
+    seededFor.current = data.week_start;
+    setDraft({
+      reflections: data.review.reflections,
+      plan: data.review.plan,
+    });
+    setSaved(false);
+  }, [data]);
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const day = data?.week_start;
+      if (!day) throw new Error("Couldn't save this review.");
+      const { data: updated, error } = await apiV1.PATCH(
+        "/api/v1/review/{day}",
+        { params: { path: { day } }, body: draft },
+      );
+      if (error) throw new Error("Couldn't save this review.");
+      return updated;
+    },
+    onSuccess: (updated) => {
+      setSaveError(null);
+      setSaved(true);
+      // Written straight into the cache rather than invalidated: a refetch
+      // would settle the query again, and the draft is seeded only once.
+      queryClient.setQueryData(queryKey, updated);
+    },
+    onError: (caught: Error) => {
+      setSaved(false);
+      setSaveError(caught.message);
+    },
+  });
+
+  // Completing and reopening are separate statements, so separate routes —
+  // and neither is a field on the save above, which would make one control
+  // mean two things.
+  const decideMutation = useMutation({
+    mutationFn: async (decision: "complete" | "reopen") => {
+      const day = data?.week_start;
+      if (!day) throw new Error("Couldn't change this review.");
+      const { data: updated, error } = await apiV1.POST(
+        decision === "complete"
+          ? "/api/v1/review/{day}/complete"
+          : "/api/v1/review/{day}/reopen",
+        { params: { path: { day } } },
+      );
+      if (error) throw new Error("Couldn't change this review.");
+      return updated;
+    },
+    onSuccess: (updated) => queryClient.setQueryData(queryKey, updated),
+  });
+
+  function edit(field: "reflections" | "plan", value: string) {
+    setSaved(false);
+    setDraft((current) => ({ ...current, [field]: value }));
+  }
+
+  function handleSubmit(event: FormEvent) {
+    event.preventDefault();
+    setSaved(false);
+    saveMutation.mutate();
+  }
 
   if (isPending) return <p className="p-6">Loading…</p>;
   if (error || !data) {
@@ -425,7 +545,11 @@ export function ReviewRoute() {
           the day. */}
       <section className="space-y-2">
         <h2 className="text-sm font-bold">What you planned</h2>
-        <PlannedWork planned={data.planned} today={data.today} />
+        <PlannedWork
+          planned={data.planned}
+          today={data.today}
+          review={data.review}
+        />
       </section>
 
       <section className="space-y-2">
@@ -463,6 +587,88 @@ export function ReviewRoute() {
           </p>
         </section>
       )}
+
+      {/* Last, because it is the part written after reading everything
+          above it. Two fields and nothing that touches a task: the vision
+          document asks for "a short planning area", and anything that
+          scheduled work from here would be the automatic rescheduling it
+          forbids. */}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-2">
+          <label htmlFor="review-reflections" className="text-sm font-bold">
+            Reflections
+          </label>
+          <p className="text-sm text-muted-foreground">
+            What this week was actually like.
+          </p>
+          <textarea
+            id="review-reflections"
+            value={draft.reflections}
+            onChange={(event) => edit("reflections", event.target.value)}
+            rows={4}
+            className="w-full rounded-lg border border-border bg-input px-3 py-2"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <label htmlFor="review-plan" className="text-sm font-bold">
+            Next week
+          </label>
+          <p className="text-sm text-muted-foreground">
+            What the coming week is for. Nothing here schedules anything —
+            pinning work to a day is still yours to do.
+          </p>
+          <textarea
+            id="review-plan"
+            value={draft.plan}
+            onChange={(event) => edit("plan", event.target.value)}
+            rows={4}
+            className="w-full rounded-lg border border-border bg-input px-3 py-2"
+          />
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <Button type="submit" disabled={saveMutation.isPending}>
+            Save the review
+          </Button>
+          {data.review.completed_at ? (
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={decideMutation.isPending}
+              onClick={() => decideMutation.mutate("reopen")}
+            >
+              Reopen this review
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={decideMutation.isPending}
+              onClick={() => decideMutation.mutate("complete")}
+            >
+              Mark this week reviewed
+            </Button>
+          )}
+          {saved && <span className="text-sm text-muted-foreground">Saved.</span>}
+          {saveError && (
+            <span className="text-sm text-destructive">{saveError}</span>
+          )}
+          {decideMutation.isError && (
+            <span className="text-sm text-destructive">
+              {decideMutation.error.message}
+            </span>
+          )}
+        </div>
+        {!data.review.completed_at && (
+          // Says what the button does before it is pressed, because it
+          // records a number that then stops moving.
+          <p className="text-sm text-muted-foreground">
+            Marking it reviewed keeps the count above as it stands now, so a
+            later tidy-up cannot change what you concluded.
+          </p>
+        )}
+      </form>
     </div>
   );
 }

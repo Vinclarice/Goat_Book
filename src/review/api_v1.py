@@ -25,7 +25,7 @@ from ninja import Router, Schema
 
 from lists import agenda
 from lists.api_v1 import TaskParentOut
-from review import reads
+from review import reads, services
 from review.weeks import DAYS_IN_WEEK, week_start_for
 
 
@@ -121,6 +121,36 @@ class WaitingCaptureOut(Schema):
     age_in_days: int
 
 
+class ReviewOut(Schema):
+    """The written half of a week, and what was concluded from it.
+
+    Always present, even for a week nobody has reviewed -- an unwritten
+    review is a blank page rather than a missing one, so 404 would answer
+    the wrong question and make the client handle a case that is not an
+    error. The same call the day's endpoint makes for an unwritten day.
+    """
+
+    reflections: str
+    plan: str
+    completed_at: str | None
+    # What the finish rate said when the week was reviewed. Null while it
+    # is still open, because an unfinished review has concluded nothing --
+    # and null again after a reopen, for the same reason.
+    recorded_total: int | None
+    recorded_met: int | None
+
+
+class ReviewIn(Schema):
+    """Both fields optional, and absent is not the same as empty.
+
+    The page may save reflections without carrying the plan, so a field
+    left out keeps its stored value -- see services.write_review.
+    """
+
+    reflections: str | None = None
+    plan: str | None = None
+
+
 class WeekOut(Schema):
     week_start: date
     week_end: date
@@ -141,6 +171,7 @@ class WeekOut(Schema):
     # Not week-scoped, and named so that is visible in the contract rather
     # than only in the read: an Inbox is a backlog, not seven days.
     unresolved_captures: list[WaitingCaptureOut]
+    review: ReviewOut
 
 
 def _planned_task_out(focus, today):
@@ -190,6 +221,7 @@ def _week_out(owner, day):
     week_start, week_end = reads.week_bounds(day)
     today = timezone.localdate()
     planned = reads.planned_in_week(owner, week_start, week_end)
+    review = reads.review_for(owner, week_start)
     return {
         "week_start": week_start,
         "week_end": week_end,
@@ -238,6 +270,17 @@ def _week_out(owner, day):
             }
             for capture in reads.captures_still_waiting(owner)
         ],
+        "review": {
+            "reflections": review.reflections if review else "",
+            "plan": review.plan if review else "",
+            "completed_at": (
+                review.completed_at.isoformat()
+                if review and review.completed_at
+                else None
+            ),
+            "recorded_total": review.recorded_planned_total if review else None,
+            "recorded_met": review.recorded_planned_met if review else None,
+        },
     }
 
 
@@ -248,4 +291,49 @@ def get_current_week(request):
 
 @router.get("/review/{day}", response=WeekOut)
 def get_week(request, day: date):
+    return _week_out(request.user, day)
+
+
+@router.patch("/review/{day}", response=WeekOut)
+def write_review(request, day: date, payload: ReviewIn):
+    """Write into the requesting user's review of that week.
+
+    There is no ownership check to forget: the record is addressed by
+    (request.user, the week containing day), so the path names a date and
+    never a record. One person cannot reach another's review through this
+    endpoint at all, which is a smaller surface than an id would be -- the
+    same shape as the day's own write endpoint.
+    """
+    services.write_review(
+        request.user,
+        day,
+        **{
+            field: value
+            for field, value in (
+                ("reflections", payload.reflections),
+                ("plan", payload.plan),
+            )
+            if value is not None
+        },
+    )
+    return _week_out(request.user, day)
+
+
+@router.post("/review/{day}/complete", response=WeekOut)
+def complete_review(request, day: date):
+    """Say the week has been reviewed, recording the figure it reported.
+
+    Its own route rather than a field on the PATCH above, because it is a
+    different statement: one saves what somebody wrote, the other records
+    that they finished reading the week. Collapsing them would be the
+    near-identical-controls problem C2 found in the task UI.
+    """
+    services.complete_review(request.user, day)
+    return _week_out(request.user, day)
+
+
+@router.post("/review/{day}/reopen", response=WeekOut)
+def reopen_review(request, day: date):
+    """Un-finish it, dropping the recorded figure with it."""
+    services.reopen_review(request.user, day)
     return _week_out(request.user, day)

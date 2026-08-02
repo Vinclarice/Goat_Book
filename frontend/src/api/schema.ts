@@ -436,6 +436,61 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
+        /**
+         * Write Review
+         * @description Write into the requesting user's review of that week.
+         *
+         *     There is no ownership check to forget: the record is addressed by
+         *     (request.user, the week containing day), so the path names a date and
+         *     never a record. One person cannot reach another's review through this
+         *     endpoint at all, which is a smaller surface than an id would be -- the
+         *     same shape as the day's own write endpoint.
+         */
+        patch: operations["review_api_v1_write_review"];
+        trace?: never;
+    };
+    "/api/v1/review/{day}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Complete Review
+         * @description Say the week has been reviewed, recording the figure it reported.
+         *
+         *     Its own route rather than a field on the PATCH above, because it is a
+         *     different statement: one saves what somebody wrote, the other records
+         *     that they finished reading the week. Collapsing them would be the
+         *     near-identical-controls problem C2 found in the task UI.
+         */
+        post: operations["review_api_v1_complete_review"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/review/{day}/reopen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reopen Review
+         * @description Un-finish it, dropping the recorded figure with it.
+         */
+        post: operations["review_api_v1_reopen_review"];
+        delete?: never;
+        options?: never;
+        head?: never;
         patch?: never;
         trace?: never;
     };
@@ -1021,6 +1076,27 @@ export interface components {
             completed_on: string | null;
         };
         /**
+         * ReviewOut
+         * @description The written half of a week, and what was concluded from it.
+         *
+         *     Always present, even for a week nobody has reviewed -- an unwritten
+         *     review is a blank page rather than a missing one, so 404 would answer
+         *     the wrong question and make the client handle a case that is not an
+         *     error. The same call the day's endpoint makes for an unwritten day.
+         */
+        ReviewOut: {
+            /** Reflections */
+            reflections: string;
+            /** Plan */
+            plan: string;
+            /** Completed At */
+            completed_at: string | null;
+            /** Recorded Total */
+            recorded_total: number | null;
+            /** Recorded Met */
+            recorded_met: number | null;
+        };
+        /**
          * WaitingCaptureOut
          * @description A thought still in the Inbox, and how long it has been there.
          *
@@ -1073,6 +1149,7 @@ export interface components {
             ideas: components["schemas"]["IdeaOut"][];
             /** Unresolved Captures */
             unresolved_captures: components["schemas"]["WaitingCaptureOut"][];
+            review: components["schemas"]["ReviewOut"];
         };
         /**
          * WrittenDayOut
@@ -1095,6 +1172,19 @@ export interface components {
             gratitude: string;
             /** Happenings */
             happenings: string;
+        };
+        /**
+         * ReviewIn
+         * @description Both fields optional, and absent is not the same as empty.
+         *
+         *     The page may save reflections without carrying the plan, so a field
+         *     left out keeps its stored value -- see services.write_review.
+         */
+        ReviewIn: {
+            /** Reflections */
+            reflections?: string | null;
+            /** Plan */
+            plan?: string | null;
         };
     };
     responses: never;
@@ -1664,6 +1754,76 @@ export interface operations {
         };
     };
     review_api_v1_get_week: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                day: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeekOut"];
+                };
+            };
+        };
+    };
+    review_api_v1_write_review: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                day: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeekOut"];
+                };
+            };
+        };
+    };
+    review_api_v1_complete_review: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                day: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeekOut"];
+                };
+            };
+        };
+    };
+    review_api_v1_reopen_review: {
         parameters: {
             query?: never;
             header?: never;

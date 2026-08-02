@@ -844,6 +844,122 @@
             "SessionAuth": []
           }
         ]
+      },
+      "patch": {
+        "operationId": "review_api_v1_write_review",
+        "summary": "Write Review",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "day",
+            "schema": {
+              "format": "date",
+              "title": "Day",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeekOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Write into the requesting user's review of that week.\n\nThere is no ownership check to forget: the record is addressed by\n(request.user, the week containing day), so the path names a date and\nnever a record. One person cannot reach another's review through this\nendpoint at all, which is a smaller surface than an id would be -- the\nsame shape as the day's own write endpoint.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/review/{day}/complete": {
+      "post": {
+        "operationId": "review_api_v1_complete_review",
+        "summary": "Complete Review",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "day",
+            "schema": {
+              "format": "date",
+              "title": "Day",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeekOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Say the week has been reviewed, recording the figure it reported.\n\nIts own route rather than a field on the PATCH above, because it is a\ndifferent statement: one saves what somebody wrote, the other records\nthat they finished reading the week. Collapsing them would be the\nnear-identical-controls problem C2 found in the task UI.",
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/review/{day}/reopen": {
+      "post": {
+        "operationId": "review_api_v1_reopen_review",
+        "summary": "Reopen Review",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "day",
+            "schema": {
+              "format": "date",
+              "title": "Day",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeekOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Un-finish it, dropping the recorded figure with it.",
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
       }
     }
   },
@@ -2283,6 +2399,61 @@
         "title": "PlannedTaskOut",
         "type": "object"
       },
+      "ReviewOut": {
+        "description": "The written half of a week, and what was concluded from it.\n\nAlways present, even for a week nobody has reviewed -- an unwritten\nreview is a blank page rather than a missing one, so 404 would answer\nthe wrong question and make the client handle a case that is not an\nerror. The same call the day's endpoint makes for an unwritten day.",
+        "properties": {
+          "reflections": {
+            "title": "Reflections",
+            "type": "string"
+          },
+          "plan": {
+            "title": "Plan",
+            "type": "string"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "recorded_total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recorded Total"
+          },
+          "recorded_met": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recorded Met"
+          }
+        },
+        "required": [
+          "reflections",
+          "plan",
+          "completed_at",
+          "recorded_total",
+          "recorded_met"
+        ],
+        "title": "ReviewOut",
+        "type": "object"
+      },
       "WaitingCaptureOut": {
         "description": "A thought still in the Inbox, and how long it has been there.\n\nSame age rule as a task's, from the same place -- how long something\nhas been waiting means one thing in this product.",
         "properties": {
@@ -2368,6 +2539,9 @@
             },
             "title": "Unresolved Captures",
             "type": "array"
+          },
+          "review": {
+            "$ref": "#/components/schemas/ReviewOut"
           }
         },
         "required": [
@@ -2381,7 +2555,8 @@
           "planned",
           "written",
           "ideas",
-          "unresolved_captures"
+          "unresolved_captures",
+          "review"
         ],
         "title": "WeekOut",
         "type": "object"
@@ -2414,6 +2589,35 @@
           "happenings"
         ],
         "title": "WrittenDayOut",
+        "type": "object"
+      },
+      "ReviewIn": {
+        "description": "Both fields optional, and absent is not the same as empty.\n\nThe page may save reflections without carrying the plan, so a field\nleft out keeps its stored value -- see services.write_review.",
+        "properties": {
+          "reflections": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reflections"
+          },
+          "plan": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plan"
+          }
+        },
+        "title": "ReviewIn",
         "type": "object"
       }
     },

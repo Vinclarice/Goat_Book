@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router";
@@ -35,6 +35,13 @@ function weekData(overrides: Record<string, unknown> = {}) {
     written: [],
     ideas: [],
     unresolved_captures: [],
+    review: {
+      reflections: "",
+      plan: "",
+      completed_at: null,
+      recorded_total: null,
+      recorded_met: null,
+    },
     ...overrides,
   };
 }
@@ -300,6 +307,98 @@ describe("ReviewRoute", () => {
     expect(screen.queryByText("Ideas you added")).toBeNull();
     expect(screen.queryByText("Still in your inbox")).toBeNull();
     expect(screen.getByText(/Nothing written/)).toBeInTheDocument();
+  });
+
+  it("keeps a plan for the coming week", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((input) => {
+        const request = input as Request;
+        if (request.method === "PATCH") {
+          return jsonResponse(
+            weekData({
+              review: {
+                reflections: "",
+                plan: "Two mornings on the review",
+                completed_at: null,
+                recorded_total: null,
+                recorded_met: null,
+              },
+            }),
+          );
+        }
+        return jsonResponse(weekData());
+      });
+
+    renderAt("/review");
+    await userEvent.type(
+      await screen.findByLabelText("Next week"),
+      "Two mornings",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Save the review" }));
+
+    await waitFor(() => expect(screen.getByText("Saved.")).toBeInTheDocument());
+    const patched = fetchSpy.mock.calls
+      .map(([request]) => request as Request)
+      .filter((request) => request.method === "PATCH");
+    expect(patched).toHaveLength(1);
+  });
+
+  it("shows the figure the review recorded rather than a live recount", async () => {
+    // The whole reason for stamping: a task deleted from the archive
+    // afterwards moves the live number, and a conclusion drawn on a Sunday
+    // should not be edited by a tidy-up on a Tuesday.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        weekData({
+          planned: {
+            total: 1,
+            met: 0,
+            met_tasks: [],
+            unfinished: [plannedTask()],
+            set_aside: [],
+          },
+          review: {
+            reflections: "",
+            plan: "",
+            completed_at: "2026-08-02T18:00:00+00:00",
+            recorded_total: 1,
+            recorded_met: 1,
+          },
+        }),
+      ),
+    );
+
+    renderAt("/review");
+
+    expect(await screen.findByText("1 of 1")).toBeInTheDocument();
+    expect(screen.getByText(/as you recorded it/i)).toBeInTheDocument();
+  });
+
+  it("offers a way back out of a completed review", async () => {
+    // A one-way door on a mis-tap is not a recoverable failure.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        weekData({
+          review: {
+            reflections: "",
+            plan: "",
+            completed_at: "2026-08-02T18:00:00+00:00",
+            recorded_total: 0,
+            recorded_met: 0,
+          },
+        }),
+      ),
+    );
+
+    renderAt("/review");
+
+    expect(
+      await screen.findByRole("button", { name: "Reopen this review" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Mark this week reviewed" }),
+    ).toBeNull();
   });
 
   it("reaches the week before without editing the URL", async () => {

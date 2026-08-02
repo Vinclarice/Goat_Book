@@ -134,6 +134,56 @@ class RoutineEndpointTest(TestCase):
 
         self.assertEqual(self.client.get("/api/v1/routines").status_code, 401)
 
+    def test_pausing_takes_it_off_the_standings_and_lists_it_as_paused(self):
+        routine = services.create_routine(
+            self.alice, title="Practice Spanish", target_quantity=5
+        )
+
+        response = self.post(f"/api/v1/routines/{routine.id}/pause", {})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["standings"], [])
+        self.assertEqual(
+            [each["title"] for each in response.json()["paused"]],
+            ["Practice Spanish"],
+        )
+
+    def test_a_paused_routine_refuses_to_be_logged(self):
+        routine = services.create_routine(
+            self.alice, title="Practice Spanish", target_quantity=5
+        )
+        self.post(f"/api/v1/routines/{routine.id}/pause", {})
+
+        response = self.post(f"/api/v1/routines/{routine.id}/log", {"amount": 1})
+
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(RoutineOccurrence.objects.count(), 0)
+
+    def test_resuming_brings_it_back_without_backfilling(self):
+        routine = services.create_routine(
+            self.alice, title="Practice Spanish", target_quantity=5
+        )
+        self.post(f"/api/v1/routines/{routine.id}/log", {"amount": 5})
+        self.post(f"/api/v1/routines/{routine.id}/pause", {})
+
+        response = self.post(f"/api/v1/routines/{routine.id}/resume", {})
+
+        self.assertEqual(
+            [each["title"] for each in response.json()["standings"]],
+            ["Practice Spanish"],
+        )
+        self.assertEqual(response.json()["paused"], [])
+        self.assertEqual(RoutineOccurrence.objects.count(), 1)
+
+    def test_one_person_cannot_pause_anothers_routine(self):
+        bobs = services.create_routine(self.bob, title="Bob's practice")
+
+        response = self.post(f"/api/v1/routines/{bobs.id}/pause", {})
+
+        self.assertIn(response.status_code, (403, 404))
+        bobs.refresh_from_db()
+        self.assertTrue(bobs.is_active)
+
     def test_correcting_down_reopens_a_completed_period(self):
         routine = services.create_routine(
             self.alice, title="Practice Spanish", target_quantity=5

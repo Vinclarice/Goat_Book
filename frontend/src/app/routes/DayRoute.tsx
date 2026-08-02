@@ -252,12 +252,14 @@ function Routines({
   loggable,
   onLog,
   onSkip,
+  onPause,
   busy,
 }: {
   standings: Standing[];
   loggable: boolean;
   onLog: (routineId: number, amount: number) => void;
   onSkip: (routineId: number) => void;
+  onPause: (routineId: number) => void;
   busy: boolean;
 }) {
   if (standings.length === 0) {
@@ -324,6 +326,18 @@ function Routines({
                     Skip
                   </Button>
                 )}
+                {/* Skipping is about this period; pausing is about the
+                    routine. Adjacent because they are both "not now", and
+                    labelled apart because they are not the same not-now. */}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  disabled={busy}
+                  aria-label={`Pause ${standing.title}`}
+                  onClick={() => onPause(standing.routine_id)}
+                >
+                  Pause
+                </Button>
               </>
             )}
           </span>
@@ -411,6 +425,62 @@ function CaptureBox() {
         Goes to the Inbox to sort out later — not into this day&rsquo;s notes.
       </p>
     </form>
+  );
+}
+
+type PausedRoutine = {
+  routine_id: number;
+  title: string;
+  cadence: string;
+  target: number;
+  unit: string;
+};
+
+/**
+ * The ones put down, kept findable so they can be picked back up.
+ *
+ * Below the active list and quieter than it, because a paused routine is
+ * not work for today -- but present, because one that appeared nowhere
+ * would be one nobody could resume.
+ */
+function PausedRoutines({
+  paused,
+  onResume,
+  busy,
+}: {
+  paused: PausedRoutine[];
+  onResume: (routineId: number) => void;
+  busy: boolean;
+}) {
+  if (paused.length === 0) return null;
+  return (
+    <div className="space-y-1">
+      <p className="text-sm text-muted-foreground">Paused</p>
+      <ul className="space-y-1">
+        {paused.map((routine) => (
+          <li
+            key={routine.routine_id}
+            className="flex items-baseline justify-between gap-3 rounded-lg border border-border px-3 py-2 opacity-70"
+          >
+            <span className="min-w-0">{routine.title}</span>
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={busy}
+              aria-label={`Resume ${routine.title}`}
+              onClick={() => onResume(routine.routine_id)}
+            >
+              Resume
+            </Button>
+          </li>
+        ))}
+      </ul>
+      {/* Says the thing people worry about before they have to ask. */}
+      <p className="text-sm text-muted-foreground">
+        Everything a paused routine already did is kept. Picking it back up
+        starts from today rather than filling in the gap.
+      </p>
+    </div>
   );
 }
 
@@ -639,10 +709,25 @@ export function DayRoute() {
   const routineMutation = useMutation({
     mutationFn: async (
       action:
+        // One member per kind rather than a union of kinds on one member:
+        // TypeScript narrows a discriminated union by literal, and a member
+        // whose own discriminant is a union does not narrow away.
         | { kind: "log"; routineId: number; amount: number }
         | { kind: "skip"; routineId: number }
+        | { kind: "pause"; routineId: number }
+        | { kind: "resume"; routineId: number }
         | { kind: "create"; routine: Record<string, unknown> },
     ) => {
+      if (action.kind === "pause" || action.kind === "resume") {
+        const { data: updated, error } = await apiV1.POST(
+          action.kind === "pause"
+            ? "/api/v1/routines/{routine_id}/pause"
+            : "/api/v1/routines/{routine_id}/resume",
+          { params: { path: { routine_id: action.routineId } } },
+        );
+        if (error) throw new Error("Couldn't change that routine.");
+        return updated;
+      }
       if (action.kind === "create") {
         const { data: updated, error } = await apiV1.POST("/api/v1/routines", {
           body: action.routine as never,
@@ -670,7 +755,13 @@ export function DayRoute() {
     },
     onSuccess: (updated) =>
       queryClient.setQueryData(["day", date ?? "today"], (old: unknown) =>
-        old ? { ...(old as object), routines: updated?.standings ?? [] } : old,
+        old
+          ? {
+              ...(old as object),
+              routines: updated?.standings ?? [],
+              paused_routines: updated?.paused ?? [],
+            }
+          : old,
       ),
   });
 
@@ -770,8 +861,20 @@ export function DayRoute() {
           onSkip={(routineId) =>
             routineMutation.mutate({ kind: "skip", routineId })
           }
+          onPause={(routineId) =>
+            routineMutation.mutate({ kind: "pause", routineId })
+          }
           busy={routineMutation.isPending}
         />
+        {data.routines_are_loggable && (
+          <PausedRoutines
+            paused={data.paused_routines}
+            onResume={(routineId) =>
+              routineMutation.mutate({ kind: "resume", routineId })
+            }
+            busy={routineMutation.isPending}
+          />
+        )}
         {!data.routines_are_loggable && data.routines.length > 0 && (
           // Read-only rather than absent: an occurrence is a dated record,
           // so a past day can honestly say what happened -- it just cannot

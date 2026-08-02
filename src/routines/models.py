@@ -41,6 +41,21 @@ class Routine(models.Model):
     # Crane 2 slice 4; this field exists from the first migration so that
     # slice is a behaviour change rather than a schema one.
     is_active = models.BooleanField(default=True)
+    # When it was put down, cleared when it is picked back up.
+    #
+    # Added because §3 leaves an open question for Crane 3 -- whether a
+    # weekly review should say anything about a paused week, or stay silent
+    # -- and the "say something" answer needs to know a pause was in effect
+    # then. A pause is a discrete event, so the moment is recordable only
+    # while it is happening; unlike an entry-level progress log, which §6
+    # declined precisely because it stays addable later.
+    #
+    # **It is not a pause history.** Only the current pause is known, so a
+    # routine put down and picked up three times remembers the last. If
+    # Crane 3 wants to describe past pauses it needs its own record, and
+    # this field will not be enough -- said here so that is a finding rather
+    # than a surprise.
+    paused_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

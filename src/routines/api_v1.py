@@ -32,11 +32,29 @@ class StandingOut(Schema):
     is_met: bool
 
 
+class PausedRoutineOut(Schema):
+    """A routine that has been put down.
+
+    No standing, because a paused routine has no current period -- that is
+    what pausing means. Just enough to recognise it and pick it back up.
+    """
+
+    routine_id: int
+    title: str
+    cadence: str
+    target: int
+    unit: str
+
+
 class StandingsOut(Schema):
     # The owner's own today, so the client never has to work out what day it
     # is -- the day boundary belongs to their time zone and that lives here.
     today: date
     standings: list[StandingOut]
+    # Carried alongside rather than mixed in: hidden from the day is not the
+    # same as gone, and a paused routine nobody can see is one nobody can
+    # resume.
+    paused: list[PausedRoutineOut]
 
 
 class RoutineIn(Schema):
@@ -67,6 +85,16 @@ def _standings_out(owner):
                 "is_met": standing.is_met,
             }
             for standing in reads.standings_for(owner, today)
+        ],
+        "paused": [
+            {
+                "routine_id": routine.id,
+                "title": routine.title,
+                "cadence": routine.cadence,
+                "target": routine.target_quantity,
+                "unit": routine.unit,
+            }
+            for routine in reads.paused_routines_for(owner)
         ],
     }
 
@@ -117,9 +145,33 @@ def log_routine(request, routine_id: int, payload: LogIn):
     not to exist.
     """
     routine = _own_routine_or_404(request.user, routine_id)
-    services.log_progress(
-        request.user, routine, timezone.localdate(), amount=payload.amount
-    )
+    try:
+        services.log_progress(
+            request.user, routine, timezone.localdate(), amount=payload.amount
+        )
+    except services.RoutineError as error:
+        # 409 rather than 400: the request is well formed and the routine is
+        # real, it is the state that refuses. Reached when a routine was
+        # paused in another tab -- the button is not shown for a paused one,
+        # which is exactly why the server has to say no rather than trust
+        # that.
+        raise HttpError(409, str(error))
+    return _standings_out(request.user)
+
+
+@router.post("/routines/{routine_id}/pause", response=StandingsOut)
+def pause(request, routine_id: int):
+    """Put a routine down, keeping everything it has already done."""
+    routine = _own_routine_or_404(request.user, routine_id)
+    services.pause_routine(request.user, routine)
+    return _standings_out(request.user)
+
+
+@router.post("/routines/{routine_id}/resume", response=StandingsOut)
+def resume(request, routine_id: int):
+    """Pick it back up. Nothing is written for the time it was down."""
+    routine = _own_routine_or_404(request.user, routine_id)
+    services.resume_routine(request.user, routine)
     return _standings_out(request.user)
 
 
@@ -133,5 +185,8 @@ def skip_routine(request, routine_id: int):
     C2 found in the task UI, one layer down.
     """
     routine = _own_routine_or_404(request.user, routine_id)
-    services.skip_period(request.user, routine, timezone.localdate())
+    try:
+        services.skip_period(request.user, routine, timezone.localdate())
+    except services.RoutineError as error:
+        raise HttpError(409, str(error))
     return _standings_out(request.user)

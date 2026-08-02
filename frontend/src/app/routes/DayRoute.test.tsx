@@ -36,6 +36,7 @@ function dayData(overrides: Record<string, unknown> = {}) {
     compass_question: "",
     routines: [],
     routines_are_loggable: true,
+    paused_routines: [],
     ...overrides,
   };
 }
@@ -678,6 +679,136 @@ describe("DayRoute", () => {
     renderAt("/day/2026-08-03");
 
     expect(await screen.findByText(/rather than a task you finish once/)).toBeInTheDocument();
+  });
+
+  it("pauses a routine through its own endpoint", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const request = input as Request;
+      if (request.url.includes("/pause")) {
+        return jsonResponse({
+          today: "2026-08-03",
+          standings: [],
+          paused: [
+            {
+              routine_id: 1,
+              title: "Practice Spanish",
+              cadence: "daily",
+              target: 5,
+              unit: "lessons",
+            },
+          ],
+        });
+      }
+      return jsonResponse(dayData({ routines: [standing()] }));
+    });
+
+    renderAt("/day/2026-08-03");
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Pause Practice Spanish" }),
+    );
+
+    await waitFor(() => expect(screen.getByText("Paused")).toBeInTheDocument());
+    expect(
+      fetchSpy.mock.calls
+        .map(([input]) => (input as Request).url)
+        .some((url) => url.includes("/api/v1/routines/1/pause")),
+    ).toBe(true);
+  });
+
+  it("keeps a paused routine findable so it can be resumed", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        dayData({
+          routines: [],
+          paused_routines: [
+            {
+              routine_id: 1,
+              title: "Practice Spanish",
+              cadence: "daily",
+              target: 5,
+              unit: "lessons",
+            },
+          ],
+        }),
+      ),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    expect(
+      await screen.findByRole("button", { name: "Resume Practice Spanish" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/starts from today rather than filling in the gap/))
+      .toBeInTheDocument();
+  });
+
+  it("resumes through the resume endpoint", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const request = input as Request;
+      if (request.url.includes("/resume")) {
+        return jsonResponse({
+          today: "2026-08-03",
+          standings: [standing()],
+          paused: [],
+        });
+      }
+      return jsonResponse(
+        dayData({
+          routines: [],
+          paused_routines: [
+            {
+              routine_id: 1,
+              title: "Practice Spanish",
+              cadence: "daily",
+              target: 5,
+              unit: "lessons",
+            },
+          ],
+        }),
+      );
+    });
+
+    renderAt("/day/2026-08-03");
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Resume Practice Spanish" }),
+    );
+
+    await waitFor(() =>
+      expect(screen.getByText("2 of 5 lessons")).toBeInTheDocument(),
+    );
+    expect(
+      fetchSpy.mock.calls
+        .map(([input]) => (input as Request).url)
+        .some((url) => url.includes("/api/v1/routines/1/resume")),
+    ).toBe(true);
+  });
+
+  it("does not offer pausing or resuming on a past day", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        dayData({
+          date: "2026-08-01",
+          today: "2026-08-03",
+          routines: [standing()],
+          routines_are_loggable: false,
+          paused_routines: [
+            {
+              routine_id: 2,
+              title: "Guitar practice",
+              cadence: "weekly",
+              target: 3,
+              unit: "sessions",
+            },
+          ],
+        }),
+      ),
+    );
+
+    renderAt("/day/2026-08-01");
+
+    await screen.findByText("2 of 5 lessons");
+    expect(screen.queryByRole("button", { name: /Pause/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Resume/ })).toBeNull();
   });
 
   it("offers a way out when the day cannot be loaded", async () => {

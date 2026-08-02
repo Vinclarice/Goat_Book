@@ -36,6 +36,16 @@ def active_routines_for(owner):
     return list(Routine.objects.filter(owner=owner, is_active=True))
 
 
+def paused_routines_for(owner):
+    """The ones put down, so they can be picked back up.
+
+    Hidden from the day is not the same as gone: a paused routine that
+    appeared nowhere would be one nobody could resume, which is the shape of
+    gap slice 3 found when routine creation had no surface at all.
+    """
+    return list(Routine.objects.filter(owner=owner, is_active=False))
+
+
 def occurrence_for(owner, routine, day):
     """This owner's occurrence for the period ``day`` falls in, or None.
 

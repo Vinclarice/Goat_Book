@@ -340,6 +340,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/routines/{routine_id}/pause": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Pause
+         * @description Put a routine down, keeping everything it has already done.
+         */
+        post: operations["routines_api_v1_pause"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/routines/{routine_id}/resume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resume
+         * @description Pick it back up. Nothing is written for the time it was down.
+         */
+        post: operations["routines_api_v1_resume"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/routines/{routine_id}/skip": {
         parameters: {
             query?: never;
@@ -679,6 +719,8 @@ export interface components {
             routines: components["schemas"]["StandingOut"][];
             /** Routines Are Loggable */
             routines_are_loggable: boolean;
+            /** Paused Routines */
+            paused_routines: components["schemas"]["PausedRoutineOut"][];
         };
         /**
          * FocusOut
@@ -701,6 +743,25 @@ export interface components {
             parent: components["schemas"]["TaskParentOut"] | null;
             /** Selected At */
             selected_at: string;
+        };
+        /**
+         * PausedRoutineOut
+         * @description A routine that has been put down.
+         *
+         *     No standing, because a paused routine has no current period -- that is
+         *     what pausing means. Just enough to recognise it and pick it back up.
+         */
+        PausedRoutineOut: {
+            /** Routine Id */
+            routine_id: number;
+            /** Title */
+            title: string;
+            /** Cadence */
+            cadence: string;
+            /** Target */
+            target: number;
+            /** Unit */
+            unit: string;
         };
         /** StandingOut */
         StandingOut: {
@@ -755,6 +816,8 @@ export interface components {
             today: string;
             /** Standings */
             standings: components["schemas"]["StandingOut"][];
+            /** Paused */
+            paused: components["schemas"]["PausedRoutineOut"][];
         };
         /** RoutineIn */
         RoutineIn: {
@@ -1253,6 +1316,50 @@ export interface operations {
                 "application/json": components["schemas"]["LogIn"];
             };
         };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandingsOut"];
+                };
+            };
+        };
+    };
+    routines_api_v1_pause: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                routine_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandingsOut"];
+                };
+            };
+        };
+    };
+    routines_api_v1_resume: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                routine_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description OK */
             200: {

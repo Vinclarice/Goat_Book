@@ -682,6 +682,76 @@
         ]
       }
     },
+    "/api/v1/routines/{routine_id}/pause": {
+      "post": {
+        "operationId": "routines_api_v1_pause",
+        "summary": "Pause",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "routine_id",
+            "schema": {
+              "title": "Routine Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandingsOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Put a routine down, keeping everything it has already done.",
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/routines/{routine_id}/resume": {
+      "post": {
+        "operationId": "routines_api_v1_resume",
+        "summary": "Resume",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "routine_id",
+            "schema": {
+              "title": "Routine Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandingsOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Pick it back up. Nothing is written for the time it was down.",
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/routines/{routine_id}/skip": {
       "post": {
         "operationId": "routines_api_v1_skip_routine",
@@ -1520,6 +1590,13 @@
           "routines_are_loggable": {
             "title": "Routines Are Loggable",
             "type": "boolean"
+          },
+          "paused_routines": {
+            "items": {
+              "$ref": "#/components/schemas/PausedRoutineOut"
+            },
+            "title": "Paused Routines",
+            "type": "array"
           }
         },
         "required": [
@@ -1534,7 +1611,8 @@
           "compass_purpose",
           "compass_question",
           "routines",
-          "routines_are_loggable"
+          "routines_are_loggable",
+          "paused_routines"
         ],
         "title": "DayOut",
         "type": "object"
@@ -1603,6 +1681,40 @@
           "selected_at"
         ],
         "title": "FocusOut",
+        "type": "object"
+      },
+      "PausedRoutineOut": {
+        "description": "A routine that has been put down.\n\nNo standing, because a paused routine has no current period -- that is\nwhat pausing means. Just enough to recognise it and pick it back up.",
+        "properties": {
+          "routine_id": {
+            "title": "Routine Id",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "cadence": {
+            "title": "Cadence",
+            "type": "string"
+          },
+          "target": {
+            "title": "Target",
+            "type": "integer"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "routine_id",
+          "title",
+          "cadence",
+          "target",
+          "unit"
+        ],
+        "title": "PausedRoutineOut",
         "type": "object"
       },
       "StandingOut": {
@@ -1725,11 +1837,19 @@
             },
             "title": "Standings",
             "type": "array"
+          },
+          "paused": {
+            "items": {
+              "$ref": "#/components/schemas/PausedRoutineOut"
+            },
+            "title": "Paused",
+            "type": "array"
           }
         },
         "required": [
           "today",
-          "standings"
+          "standings",
+          "paused"
         ],
         "title": "StandingsOut",
         "type": "object"

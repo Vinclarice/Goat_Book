@@ -17,7 +17,7 @@ from lists.api_v1 import TaskOut, TaskParentOut
 from lists.models import Item
 from lists.serializers import serialize_item
 from routines import reads as routine_reads
-from routines.api_v1 import StandingOut
+from routines.api_v1 import PausedRoutineOut, StandingOut
 
 
 router = Router()
@@ -75,6 +75,10 @@ class DayOut(Schema):
     # surface than it has earned. The server says so rather than leaving the
     # client to infer it from the date.
     routines_are_loggable: bool
+    # Put down, and findable so they can be picked back up. Not in
+    # `routines` above, because a paused routine has no standing in this or
+    # any period -- that is what pausing means.
+    paused_routines: list[PausedRoutineOut]
 
 
 class FocusOut(Schema):
@@ -188,6 +192,16 @@ def _day_out(owner, day):
             for standing in routine_reads.standings_for(owner, day)
         ],
         "routines_are_loggable": day == today,
+        "paused_routines": [
+            {
+                "routine_id": routine.id,
+                "title": routine.title,
+                "cadence": routine.cadence,
+                "target": routine.target_quantity,
+                "unit": routine.unit,
+            }
+            for routine in routine_reads.paused_routines_for(owner)
+        ],
     }
 
 

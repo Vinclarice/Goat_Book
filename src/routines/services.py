@@ -30,6 +30,55 @@ def _own_routine(owner, routine):
     return routine
 
 
+def _active_routine(owner, routine):
+    """Owned, and not put down.
+
+    Checked here rather than by hiding the button, because pausing has to
+    actually stop new occurrences being created -- an endpoint that still
+    accepted a log would make "paused" a decoration.
+    """
+    _own_routine(owner, routine)
+    if not routine.is_active:
+        raise RoutineError("That routine is paused.")
+    return routine
+
+
+@transaction.atomic
+def pause_routine(owner, routine):
+    """Put a routine down, keeping everything it has already done.
+
+    Paused rather than deleted: the person means to come back to it, and
+    the occurrences already recorded are history either way.
+
+    Pausing something already paused keeps the original stamp -- it records
+    when the routine was put down, not when somebody last said so.
+    """
+    _own_routine(owner, routine)
+    if not routine.is_active:
+        return routine
+    routine.is_active = False
+    routine.paused_at = timezone.now()
+    routine.save(update_fields=["is_active", "paused_at"])
+    return routine
+
+
+@transaction.atomic
+def resume_routine(owner, routine):
+    """Pick it back up, without inventing the time it was down.
+
+    Nothing is written for the periods it missed. Lazy occurrence creation
+    makes that the default rather than an achievement, which is exactly why
+    the test asserts it: a later "helpful" job that pre-created rows would
+    break the rule silently. Those weeks are a fact about somebody's month,
+    not missing data.
+    """
+    _own_routine(owner, routine)
+    routine.is_active = True
+    routine.paused_at = None
+    routine.save(update_fields=["is_active", "paused_at"])
+    return routine
+
+
 @transaction.atomic
 def log_progress(owner, routine, day, amount=1):
     """Add ``amount`` to the period ``day`` falls in, creating it if needed.
@@ -55,7 +104,7 @@ def log_progress(owner, routine, day, amount=1):
     ``day`` is passed in and never read from the clock here: the request
     boundary decides what today means using the owner's own zone.
     """
-    _own_routine(owner, routine)
+    _active_routine(owner, routine)
     if amount <= 0:
         occurrence = RoutineOccurrence.objects.filter(
             routine=routine, period_start=period_start_for(routine.cadence, day)
@@ -92,7 +141,7 @@ def skip_period(owner, routine, day):
     progress, because the decision is about the period rather than the
     count.
     """
-    _own_routine(owner, routine)
+    _active_routine(owner, routine)
     occurrence = _occurrence_for_writing(owner, routine, day)
     occurrence.outcome = RoutineOccurrence.Outcome.SKIPPED
     occurrence.decided_at = timezone.now()

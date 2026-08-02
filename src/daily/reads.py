@@ -6,7 +6,7 @@ one charter rule that is about where code goes rather than what a table
 holds -- and the reason it is a rule is that `lists` got this right and it
 has stayed right.
 """
-from daily.models import DailyEntry
+from daily.models import DailyEntry, DailyFocus
 from lists import agenda
 
 
@@ -48,3 +48,19 @@ def action_items_for(owner, day):
     """
     grouped = agenda.bucketed(agenda.open_items_for(owner), day)
     return [item for key in DAY_BUCKETS for item in grouped[key]]
+
+
+def focus_for(owner, day):
+    """What this owner has deliberately chosen for ``day``, in their order.
+
+    Released pins are excluded: they are history for Crane 3's review to
+    read, not work still on the page. A read that wants them -- to tell a
+    decommitment from an unfinished commitment -- should ask for them
+    explicitly rather than filter this one, so that the page can never show
+    a pin somebody took off.
+    """
+    return list(
+        DailyFocus.objects.filter(
+            owner=owner, entry__date=day, released_at__isnull=True
+        ).select_related("task", "task__list", "task__parent")
+    )

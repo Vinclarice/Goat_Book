@@ -31,6 +31,19 @@ function dayData(overrides: Record<string, unknown> = {}) {
     today: "2026-08-03",
     action_items: [],
     shows_action_items: true,
+    focus: [],
+    ...overrides,
+  };
+}
+
+function focusRow(overrides: Record<string, unknown> = {}) {
+  return {
+    task_id: 1,
+    text: "Pay rent",
+    status: "active",
+    due_date: "2026-08-03",
+    parent: null,
+    selected_at: "2026-08-03T09:00:00",
     ...overrides,
   };
 }
@@ -325,6 +338,126 @@ describe("DayRoute", () => {
     expect(
       screen.getByText(/not into this day/i),
     ).toBeInTheDocument();
+  });
+
+  it("invites you to pin something when nothing is chosen yet", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(dayData({ action_items: [actionItem()] })),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    expect(await screen.findByText(/Nothing pinned yet/)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Pin to today" }),
+    ).toBeInTheDocument();
+  });
+
+  it("pins a task through the day's own focus endpoint", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const request = input as Request;
+      if (request.method === "POST") {
+        return jsonResponse(
+          dayData({ action_items: [actionItem()], focus: [focusRow()] }),
+        );
+      }
+      return jsonResponse(dayData({ action_items: [actionItem()] }));
+    });
+
+    renderAt("/day/2026-08-03");
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Pin to today" }),
+    );
+
+    await waitFor(() =>
+      expect(screen.queryByText(/Nothing pinned yet/)).not.toBeInTheDocument(),
+    );
+    const posted = fetchSpy.mock.calls
+      .map(([input]) => input as Request)
+      .find((request) => request.method === "POST");
+    expect(posted?.url).toContain("/api/v1/day/2026-08-03/focus");
+  });
+
+  it("marks a pinned task in the agenda instead of hiding it", async () => {
+    // The focus list sits above the agenda rather than carving it up, so
+    // the row has to say which it is -- two identical entries would be the
+    // C2 confusion again.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(dayData({ action_items: [actionItem()], focus: [focusRow()] })),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    const row = (await screen.findAllByText("Pay rent"))
+      .map((node) => node.closest("li")!)
+      .find((li) => within(li).queryByText("Pinned"));
+    expect(row).toBeTruthy();
+    expect(within(row!).getByRole("button", { name: "Unpin" })).toBeInTheDocument();
+  });
+
+  it("unpins through the delete endpoint", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const request = input as Request;
+      if (request.method === "DELETE") {
+        return jsonResponse(dayData({ action_items: [actionItem()] }));
+      }
+      return jsonResponse(
+        dayData({ action_items: [actionItem()], focus: [focusRow()] }),
+      );
+    });
+
+    renderAt("/day/2026-08-03");
+    const unpins = await screen.findAllByRole("button", { name: "Unpin" });
+    await userEvent.click(unpins[0]);
+
+    await waitFor(() =>
+      expect(screen.getByText(/Nothing pinned yet/)).toBeInTheDocument(),
+    );
+    const deleted = fetchSpy.mock.calls
+      .map(([input]) => input as Request)
+      .find((request) => request.method === "DELETE");
+    expect(deleted?.url).toContain("/api/v1/day/2026-08-03/focus/1");
+  });
+
+  it("does not lose a half-written day when something is pinned", async () => {
+    // Pinning returns the whole day, which lands in the cache. If that
+    // reseeded the form it would silently discard whatever was being typed.
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const request = input as Request;
+      if (request.method === "POST") {
+        return jsonResponse(
+          dayData({ action_items: [actionItem()], focus: [focusRow()] }),
+        );
+      }
+      return jsonResponse(dayData({ action_items: [actionItem()] }));
+    });
+
+    renderAt("/day/2026-08-03");
+    const intentions = await screen.findByLabelText("Intentions");
+    await userEvent.type(intentions, "Half a thought");
+    await userEvent.click(screen.getByRole("button", { name: "Pin to today" }));
+
+    await waitFor(() =>
+      expect(screen.queryByText(/Nothing pinned yet/)).not.toBeInTheDocument(),
+    );
+    expect(intentions).toHaveValue("Half a thought");
+  });
+
+  it("shows a pinned task whose task has been deleted, without an unpin", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        dayData({
+          focus: [
+            focusRow({ task_id: null, text: "Something since deleted", status: null }),
+          ],
+        }),
+      ),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    const row = (await screen.findByText("Something since deleted")).closest("li")!;
+    expect(within(row).queryByRole("button", { name: "Unpin" })).toBeNull();
   });
 
   it("offers a way out when the day cannot be loaded", async () => {

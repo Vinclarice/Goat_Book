@@ -39,6 +39,85 @@ type ActionItem = {
   parent: { id: number; text: string } | null;
 };
 
+type Focus = {
+  task_id: number | null;
+  text: string;
+  status: string | null;
+  due_date: string | null;
+  parent: { id: number; text: string } | null;
+};
+
+/** A task's breadcrumb, so a subtask row is not a fragment nobody can place. */
+function Breadcrumb({ parent }: { parent: { text: string } | null }) {
+  if (!parent) return null;
+  return (
+    <span className="text-sm text-muted-foreground">{parent.text} / </span>
+  );
+}
+
+/**
+ * The day's deliberate choices, above the broader agenda.
+ *
+ * Separate from Action Items rather than a filter over them, because they
+ * answer different questions: the agenda says what is due, this says what
+ * the person decided to do. Crane 3's finish rate divides one by the other,
+ * so conflating them here would make the metric meaningless later.
+ */
+function FocusList({
+  focus,
+  today,
+  onUnpin,
+  busy,
+}: {
+  focus: Focus[];
+  today: string;
+  onUnpin: (taskId: number) => void;
+  busy: boolean;
+}) {
+  if (focus.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        Nothing pinned yet. Choose from your action items below to plan the day.
+      </p>
+    );
+  }
+  return (
+    <ul className="space-y-1">
+      {focus.map((item) => (
+        <li
+          key={item.task_id ?? item.text}
+          className="flex items-baseline justify-between gap-3 rounded-lg border border-accent px-3 py-2"
+        >
+          <span className="min-w-0">
+            <Breadcrumb parent={item.parent} />
+            <span className={item.status === "completed" ? "line-through" : ""}>
+              {item.text}
+            </span>
+          </span>
+          <span className="flex shrink-0 items-baseline gap-3">
+            {item.due_date && (
+              <span className="text-sm text-muted-foreground">
+                {dueLabel(item.due_date, today)}
+              </span>
+            )}
+            {/* A deleted task leaves the record but nothing to unpin. */}
+            {item.task_id !== null && (
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={busy}
+                onClick={() => onUnpin(item.task_id!)}
+              >
+                Unpin
+              </Button>
+            )}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 /**
  * The agenda's rows, displayed rather than owned.
  *
@@ -48,7 +127,21 @@ type ActionItem = {
  * §5 is explicit that the Daily Page is new surface rather than a place to
  * restructure what it embeds.
  */
-function ActionItems({ items, today }: { items: ActionItem[]; today: string }) {
+function ActionItems({
+  items,
+  today,
+  pinnedIds,
+  onPin,
+  onUnpin,
+  busy,
+}: {
+  items: ActionItem[];
+  today: string;
+  pinnedIds: Set<number>;
+  onPin: (taskId: number) => void;
+  onUnpin: (taskId: number) => void;
+  busy: boolean;
+}) {
   if (items.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
@@ -58,33 +151,48 @@ function ActionItems({ items, today }: { items: ActionItem[]; today: string }) {
   }
   return (
     <ul className="space-y-1">
-      {items.map((item) => (
-        <li
-          key={item.id}
-          className="flex items-baseline justify-between gap-3 rounded-lg border border-border px-3 py-2"
-        >
-          <span className="min-w-0">
-            {/* The breadcrumb the agenda shows too, so a subtask row is not
-                a floating fragment of a task nobody can place. */}
-            {item.parent && (
-              <span className="text-sm text-muted-foreground">
-                {item.parent.text} /{" "}
-              </span>
-            )}
-            <a href={`/app/tasks/${item.id}`} className="hover:underline">
-              {item.text}
-            </a>
-          </span>
-          {item.due_date && (
-            <span className="shrink-0 text-sm text-muted-foreground">
-              {/* agenda.ts's own label, not a second date format invented
-                  here -- "3 days overdue" has to read the same on both
-                  pages or one of them is lying. */}
-              {dueLabel(item.due_date, today)}
+      {items.map((item) => {
+        const pinned = pinnedIds.has(item.id);
+        return (
+          <li
+            key={item.id}
+            className="flex items-baseline justify-between gap-3 rounded-lg border border-border px-3 py-2"
+          >
+            <span className="min-w-0">
+              {/* The breadcrumb the agenda shows too, so a subtask row is not
+                  a floating fragment of a task nobody can place. */}
+              <Breadcrumb parent={item.parent} />
+              <a href={`/app/tasks/${item.id}`} className="hover:underline">
+                {item.text}
+              </a>
+              {/* A pinned task stays in the agenda below -- the focus list is
+                  above it, not carved out of it -- so the row says which it
+                  is rather than leaving two identical-looking entries. */}
+              {pinned && (
+                <span className="ml-2 text-sm text-accent">Pinned</span>
+              )}
             </span>
-          )}
-        </li>
-      ))}
+            <span className="flex shrink-0 items-baseline gap-3">
+              {item.due_date && (
+                <span className="text-sm text-muted-foreground">
+                  {/* agenda.ts's own label, not a second date format invented
+                      here -- "3 days overdue" has to read the same on both
+                      pages or one of them is lying. */}
+                  {dueLabel(item.due_date, today)}
+                </span>
+              )}
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={busy}
+                onClick={() => (pinned ? onUnpin(item.id) : onPin(item.id))}
+              >
+                {pinned ? "Unpin" : "Pin to today"}
+              </Button>
+            </span>
+          </li>
+        );
+      })}
     </ul>
   );
 }
@@ -249,6 +357,29 @@ export function DayRoute() {
     },
   });
 
+  // Pin and unpin both answer with the whole day, so the focus list and the
+  // action items can never disagree for a frame. Written straight into the
+  // cache rather than invalidated: a refetch would settle the query again,
+  // and the day's draft is deliberately seeded only once.
+  const focusMutation = useMutation({
+    mutationFn: async ({ taskId, pin }: { taskId: number; pin: boolean }) => {
+      const day = data?.date;
+      if (!day) throw new Error("Couldn't change what's pinned.");
+      const { data: updated, error } = pin
+        ? await apiV1.POST("/api/v1/day/{day}/focus", {
+            params: { path: { day } },
+            body: { task_id: taskId },
+          })
+        : await apiV1.DELETE("/api/v1/day/{day}/focus/{task_id}", {
+            params: { path: { day, task_id: taskId } },
+          });
+      if (error) throw new Error("Couldn't change what's pinned.");
+      return updated;
+    },
+    onSuccess: (updated) =>
+      queryClient.setQueryData(["day", date ?? "today"], updated),
+  });
+
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
     setSaved(false);
@@ -261,6 +392,13 @@ export function DayRoute() {
   }
 
   const isToday = data.date === data.today;
+  // Derived rather than stored: what is pinned is the focus list's answer,
+  // and an action-item row asking "am I in it" must not be able to disagree.
+  const pinnedIds = new Set(
+    data.focus
+      .map((item) => item.task_id)
+      .filter((id): id is number => id !== null),
+  );
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 space-y-8">
@@ -272,9 +410,31 @@ export function DayRoute() {
       </div>
 
       <section className="space-y-2">
+        <h2 className="text-sm font-bold">Focus</h2>
+        <FocusList
+          focus={data.focus}
+          today={data.today}
+          onUnpin={(taskId) => focusMutation.mutate({ taskId, pin: false })}
+          busy={focusMutation.isPending}
+        />
+        {focusMutation.isError && (
+          <p className="text-sm text-destructive">
+            {focusMutation.error.message}
+          </p>
+        )}
+      </section>
+
+      <section className="space-y-2">
         <h2 className="text-sm font-bold">Action items</h2>
         {data.shows_action_items ? (
-          <ActionItems items={data.action_items} today={data.today} />
+          <ActionItems
+            items={data.action_items}
+            today={data.today}
+            pinnedIds={pinnedIds}
+            onPin={(taskId) => focusMutation.mutate({ taskId, pin: true })}
+            onUnpin={(taskId) => focusMutation.mutate({ taskId, pin: false })}
+            busy={focusMutation.isPending}
+          />
         ) : (
           // Said plainly rather than shown as an empty list: a task holds no
           // record of what it looked like on a past date, so this page can

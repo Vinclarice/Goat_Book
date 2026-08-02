@@ -67,3 +67,89 @@ class DailyEntry(models.Model):
 
     def __str__(self):
         return f"{self.owner}: {self.date}"
+
+
+class DailyFocus(models.Model):
+    """"I chose this task, on this day" -- and, if released, that I unchose it.
+
+    The deliberate half of the Daily Page. Action Items are whatever the
+    agenda says is due; a Focus is what the person actually committed to,
+    which is a different claim and the only one a finish rate can honestly
+    divide by. `daily-operating-system-vision.md` is explicit that the
+    planned denominator "cannot be reconstructed after the fact from a
+    mutable due date", so it is recorded at the moment of choosing.
+
+    **Unpinning releases rather than deletes**, which is the whole design.
+    Deciding on Tuesday morning that something is not for today, and simply
+    never getting to it, are different facts about a week. A row that
+    vanished would make them identical, and a review would then report a
+    number that looks authoritative and is not.
+
+    **Charter compliance** (architecture-trajectory.md §4):
+
+    - Rule 1: `owner` is direct and non-null, rather than reached through
+      `entry`. That document's own critique of the RoutineOccurrence sketch
+      is that a two-hop owner makes every isolation test a two-hop
+      assertion; this avoids inheriting it.
+    - Rule 3: `task_text` is snapshotted at selection time, because an
+      archived task can be permanently deleted (`delete_archived_item`) and
+      the record of having planned it has to outlive it. Without that the
+      denominator shrinks silently, which is worse than losing it loudly.
+    - Rule 5: nothing about the task's *state* is copied -- not status, not
+      due date, not completion. Whether the pinned work got done is still
+      the task's own answer, read live, so this can never drift from it.
+    - Rule 6: no hard delete. `released_at` is how a pin ends. The task FK
+      is SET_NULL for the same reason: deleting a task must not take the
+      history of having chosen it along.
+    - Rule 7: the unique constraint below indexes (entry, task), which is
+      the lookup every pin and unpin does.
+    """
+
+    owner = models.ForeignKey(
+        "accounts.User",
+        related_name="daily_focus",
+        on_delete=models.CASCADE,
+    )
+    entry = models.ForeignKey(
+        DailyEntry,
+        related_name="focus",
+        on_delete=models.CASCADE,
+    )
+    # Nullable because the task may be permanently deleted later; the choice
+    # to work on it that day happened regardless.
+    task = models.ForeignKey(
+        "lists.Item",
+        null=True,
+        blank=True,
+        related_name="+",
+        on_delete=models.SET_NULL,
+    )
+    # What was chosen, as it read when it was chosen. Only load-bearing once
+    # `task` is null -- until then the live task is the better answer, and
+    # this is deliberately not used for display.
+    task_text = models.TextField()
+    position = models.PositiveIntegerField(default=0)
+    selected_at = models.DateTimeField(auto_now_add=True)
+    # Set when the pin is deliberately removed. Null means "still chosen",
+    # which is not the same as "finished" -- that question belongs to the
+    # task.
+    released_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ("position", "id")
+        constraints = [
+            # One pin per task per day. A released pin keeps its row, so
+            # repinning finds it and clears released_at rather than starting
+            # a second, which would make one decision look like two.
+            #
+            # A deleted task leaves task NULL, and ordinary SQL NULL
+            # semantics keep those rows from colliding with each other.
+            models.UniqueConstraint(
+                fields=("entry", "task"),
+                name="unique_daily_focus_per_entry_task",
+            ),
+        ]
+        verbose_name_plural = "daily focus"
+
+    def __str__(self):
+        return f"{self.entry.date}: {self.task_text}"

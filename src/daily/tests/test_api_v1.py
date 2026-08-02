@@ -18,6 +18,8 @@ from django.utils import timezone
 
 from accounts.models import User
 from daily import services
+from daily import services as daily_services
+from daily.models import DailyFocus
 from lists import services as list_services
 from lists.models import List
 
@@ -124,6 +126,111 @@ class DayEndpointTest(TestCase):
 
     def test_a_nonsense_date_is_refused_rather_than_guessed(self):
         self.assertEqual(self.client.get("/api/v1/day/not-a-date").status_code, 422)
+
+
+class DayFocusEndpointTest(TestCase):
+    """Slice 4 over the wire: choosing work, and unchoosing it."""
+
+    def setUp(self):
+        self.alice = User.objects.create_user(
+            "alice", "alice@example.com", PASSWORD
+        )
+        self.bob = User.objects.create_user("bob", "bob@example.com", PASSWORD)
+        self.list_ = List.objects.create(owner=self.alice, title="Home")
+        self.task = list_services.create_item(self.list_, "Pay rent")
+        self.client = Client(enforce_csrf_checks=True)
+        self.client.force_login(self.alice)
+        response = self.client.get("/accounts/password/change/")
+        self.csrf = response.cookies["csrftoken"].value
+
+    def day_url(self):
+        return f"/api/v1/day/{timezone.localdate().isoformat()}"
+
+    def pin(self, task):
+        return self.client.post(
+            f"{self.day_url()}/focus",
+            data=json.dumps({"task_id": task.id}),
+            content_type="application/json",
+            HTTP_X_CSRFTOKEN=self.csrf,
+        )
+
+    def unpin(self, task):
+        return self.client.delete(
+            f"{self.day_url()}/focus/{task.id}",
+            HTTP_X_CSRFTOKEN=self.csrf,
+        )
+
+    def focus_texts(self):
+        return [row["text"] for row in self.client.get(self.day_url()).json()["focus"]]
+
+    def test_pinning_puts_the_task_on_the_day(self):
+        self.assertEqual(self.pin(self.task).status_code, 200)
+
+        self.assertEqual(self.focus_texts(), ["Pay rent"])
+
+    def test_pinning_leaves_the_task_untouched(self):
+        before = (self.task.due_date, self.task.status)
+
+        self.pin(self.task)
+
+        self.task.refresh_from_db()
+        self.assertEqual((self.task.due_date, self.task.status), before)
+
+    def test_unpinning_takes_it_off_but_keeps_the_record(self):
+        self.pin(self.task)
+
+        self.assertEqual(self.unpin(self.task).status_code, 200)
+
+        self.assertEqual(self.focus_texts(), [])
+        self.assertIsNotNone(DailyFocus.objects.get(task=self.task).released_at)
+
+    def test_one_person_cannot_pin_anothers_task(self):
+        bobs_list = List.objects.create(owner=self.bob, title="Bob's home")
+        bobs_task = list_services.create_item(bobs_list, "Bob's private task")
+
+        response = self.pin(bobs_task)
+
+        self.assertIn(response.status_code, (403, 404))
+        self.assertEqual(DailyFocus.objects.count(), 0)
+
+    def test_one_person_cannot_unpin_anothers_pin(self):
+        bobs_list = List.objects.create(owner=self.bob, title="Bob's home")
+        bobs_task = list_services.create_item(bobs_list, "Bob's private task")
+        daily_services.pin_task(self.bob, timezone.localdate(), bobs_task)
+
+        self.unpin(bobs_task)
+
+        self.assertIsNone(DailyFocus.objects.get(task=bobs_task).released_at)
+
+    def test_the_focus_list_keeps_the_order_pins_were_made_in(self):
+        second = list_services.create_item(self.list_, "Call the plumber")
+        self.pin(self.task)
+        self.pin(second)
+
+        self.assertEqual(self.focus_texts(), ["Pay rent", "Call the plumber"])
+
+    def test_a_focus_row_carries_what_it_needs_to_render(self):
+        self.pin(self.task)
+
+        row = self.client.get(self.day_url()).json()["focus"][0]
+
+        for field in ("task_id", "text", "status", "due_date", "selected_at"):
+            self.assertIn(field, row)
+
+    def test_a_pinned_task_still_appears_in_the_broader_action_items(self):
+        """The focus list sits above the agenda rather than carving it up --
+        'the broader embedded Agenda output', in the vision document's words.
+        Hiding a pinned task from it would make the two lists disagree about
+        what is due."""
+        task = list_services.create_item(
+            self.list_, "Due today", due_date=timezone.localdate()
+        )
+        self.pin(task)
+
+        body = self.client.get(self.day_url()).json()
+
+        self.assertIn("Due today", [row["text"] for row in body["focus"]])
+        self.assertIn("Due today", [row["text"] for row in body["action_items"]])
 
 
 class DayActionItemsTest(TestCase):

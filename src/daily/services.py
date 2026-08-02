@@ -3,8 +3,14 @@
 Mutations and the invariants they have to hold. Reads live in daily.reads.
 """
 from django.db import transaction
+from django.db.models import Max
+from django.utils import timezone
 
-from daily.models import DailyEntry
+from daily.models import DailyEntry, DailyFocus
+
+
+class FocusError(Exception):
+    """A pin that cannot be made -- today, only somebody else's task."""
 
 
 # Sentinel for "the caller did not mention this field", which is different
@@ -51,3 +57,76 @@ def write_entry(
     if updated:
         entry.save(update_fields=[*updated, "updated_at"])
     return entry
+
+
+def _entry_for_writing(owner, day):
+    """The day's entry, created if this is the first thing written to it.
+
+    Pinning is often the first thing that happens to a day, before a word
+    has been typed into it.
+    """
+    entry, _ = DailyEntry.objects.get_or_create(owner=owner, date=day)
+    return entry
+
+
+@transaction.atomic
+def pin_task(owner, day, task):
+    """Choose ``task`` as work for ``day``.
+
+    Touches nothing on the task itself -- not its due date, its status, or
+    its ownership. A pin is a statement about the person's intent for a
+    day, and the task goes on meaning exactly what it meant before.
+
+    Repinning something previously released clears the release rather than
+    writing a second row: one task chosen for one day is one decision,
+    however many times it was turned over.
+    """
+    if task.list.owner_id != owner.id:
+        # Fails closed, per principles.md. The API addresses tasks by id, so
+        # this is the check that stops one person pinning another's work --
+        # and the reason it lives here rather than in the view is that every
+        # caller needs it.
+        raise FocusError("That task isn't yours to plan.")
+
+    focus = DailyFocus.objects.filter(
+        owner=owner, entry__date=day, task=task
+    ).first()
+    if focus is not None:
+        if focus.released_at is not None:
+            focus.released_at = None
+            focus.save(update_fields=["released_at"])
+        return focus
+
+    entry = _entry_for_writing(owner, day)
+    highest = DailyFocus.objects.filter(entry=entry).aggregate(
+        top=Max("position")
+    )["top"]
+    return DailyFocus.objects.create(
+        owner=owner,
+        entry=entry,
+        task=task,
+        # Snapshotted now, while there is still a task to read it from.
+        task_text=task.text,
+        position=0 if highest is None else highest + 1,
+    )
+
+
+@transaction.atomic
+def unpin_task(owner, day, task):
+    """Take ``task`` off ``day``, keeping the record that it was chosen.
+
+    Not a delete. "I decided this wasn't for today" and "I never got to it"
+    are different facts, and Crane 3's review has to be able to tell them
+    apart -- see the model docstring.
+
+    Unpinning something that was never pinned is a no-op rather than an
+    error: the caller's intent is already satisfied.
+    """
+    focus = DailyFocus.objects.filter(
+        owner=owner, entry__date=day, task=task, released_at__isnull=True
+    ).first()
+    if focus is None:
+        return None
+    focus.released_at = timezone.now()
+    focus.save(update_fields=["released_at"])
+    return focus

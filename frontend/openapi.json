@@ -489,6 +489,97 @@
           }
         ]
       }
+    },
+    "/api/v1/day/{day}/focus": {
+      "post": {
+        "operationId": "daily_api_v1_pin_to_day",
+        "summary": "Pin To Day",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "day",
+            "schema": {
+              "format": "date",
+              "title": "Day",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DayOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Choose a task as work for this day.\n\nReturns the whole day rather than the one pin: the client has to\nre-render the focus list and the action items together anyway, and one\nresponse keeps them from disagreeing for a frame.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FocusIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/day/{day}/focus/{task_id}": {
+      "delete": {
+        "operationId": "daily_api_v1_unpin_from_day",
+        "summary": "Unpin From Day",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "day",
+            "schema": {
+              "format": "date",
+              "title": "Day",
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "in": "path",
+            "name": "task_id",
+            "schema": {
+              "title": "Task Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DayOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Take a task off this day, keeping the record that it was chosen.",
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -1224,6 +1315,13 @@
           "shows_action_items": {
             "title": "Shows Action Items",
             "type": "boolean"
+          },
+          "focus": {
+            "items": {
+              "$ref": "#/components/schemas/FocusOut"
+            },
+            "title": "Focus",
+            "type": "array"
           }
         },
         "required": [
@@ -1233,9 +1331,76 @@
           "happenings",
           "today",
           "action_items",
-          "shows_action_items"
+          "shows_action_items",
+          "focus"
         ],
         "title": "DayOut",
+        "type": "object"
+      },
+      "FocusOut": {
+        "description": "A pinned task, as the day needs to render it.\n\nNot TaskOut: a focus row is a different statement from an agenda row,\nand the fields that differ are the point. `selected_at` says when the\nchoice was made, and `task_id` is nullable because a task can be\npermanently deleted while the record of having planned it survives.",
+        "properties": {
+          "task_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Id"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "parent": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TaskParentOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "selected_at": {
+            "title": "Selected At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id",
+          "text",
+          "status",
+          "due_date",
+          "parent",
+          "selected_at"
+        ],
+        "title": "FocusOut",
         "type": "object"
       },
       "DayIn": {
@@ -1276,6 +1441,19 @@
           }
         },
         "title": "DayIn",
+        "type": "object"
+      },
+      "FocusIn": {
+        "properties": {
+          "task_id": {
+            "title": "Task Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "task_id"
+        ],
+        "title": "FocusIn",
         "type": "object"
       }
     },

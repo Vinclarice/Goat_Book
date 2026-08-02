@@ -247,6 +247,50 @@ export interface paths {
         patch: operations["daily_api_v1_write_day"];
         trace?: never;
     };
+    "/api/v1/day/{day}/focus": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Pin To Day
+         * @description Choose a task as work for this day.
+         *
+         *     Returns the whole day rather than the one pin: the client has to
+         *     re-render the focus list and the action items together anyway, and one
+         *     response keeps them from disagreeing for a frame.
+         */
+        post: operations["daily_api_v1_pin_to_day"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/day/{day}/focus/{task_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Unpin From Day
+         * @description Take a task off this day, keeping the record that it was chosen.
+         */
+        delete: operations["daily_api_v1_unpin_from_day"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -517,6 +561,30 @@ export interface components {
             action_items: components["schemas"]["TaskOut"][];
             /** Shows Action Items */
             shows_action_items: boolean;
+            /** Focus */
+            focus: components["schemas"]["FocusOut"][];
+        };
+        /**
+         * FocusOut
+         * @description A pinned task, as the day needs to render it.
+         *
+         *     Not TaskOut: a focus row is a different statement from an agenda row,
+         *     and the fields that differ are the point. `selected_at` says when the
+         *     choice was made, and `task_id` is nullable because a task can be
+         *     permanently deleted while the record of having planned it survives.
+         */
+        FocusOut: {
+            /** Task Id */
+            task_id: number | null;
+            /** Text */
+            text: string;
+            /** Status */
+            status: string | null;
+            /** Due Date */
+            due_date: string | null;
+            parent: components["schemas"]["TaskParentOut"] | null;
+            /** Selected At */
+            selected_at: string;
         };
         /**
          * DayIn
@@ -532,6 +600,11 @@ export interface components {
             gratitude?: string | null;
             /** Happenings */
             happenings?: string | null;
+        };
+        /** FocusIn */
+        FocusIn: {
+            /** Task Id */
+            task_id: number;
         };
     };
     responses: never;
@@ -883,6 +956,55 @@ export interface operations {
                 "application/json": components["schemas"]["DayIn"];
             };
         };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DayOut"];
+                };
+            };
+        };
+    };
+    daily_api_v1_pin_to_day: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                day: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FocusIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DayOut"];
+                };
+            };
+        };
+    };
+    daily_api_v1_unpin_from_day: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                day: string;
+                task_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description OK */
             200: {

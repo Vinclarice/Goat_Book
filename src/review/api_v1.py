@@ -23,6 +23,7 @@ from datetime import date, timedelta
 from django.utils import timezone
 from ninja import Router, Schema
 
+from lists import agenda
 from lists.api_v1 import TaskParentOut
 from review import reads
 from review.weeks import DAYS_IN_WEEK, week_start_for
@@ -48,6 +49,44 @@ class CompletedTaskOut(Schema):
     parent: TaskParentOut | None
 
 
+class PlannedTaskOut(Schema):
+    """A commitment somebody chose for a day in this week.
+
+    Nullable `task_id`, because a task can be permanently deleted from the
+    archive while the record of having planned it survives -- that
+    asymmetry is the whole design of DailyFocus and the reason a
+    denominator can be trusted at all.
+    """
+
+    task_id: int | None
+    text: str
+    # Which day it was chosen for. A week is seven decisions, not one.
+    day: date
+    due_date: date | None
+    parent: TaskParentOut | None
+    # The same number the Daily Page shows, from the same rule in
+    # lists.agenda -- reported rather than judged, per Crane 2 slice 5.
+    age_in_days: int
+    completed_on: date | None
+
+
+class PlannedOut(Schema):
+    """The finish rate, and the three groups behind it.
+
+    `met` over `total` is the figure daily-operating-system-vision.md
+    demands be honest: completed planned commitments over planned
+    commitments. `set_aside` is deliberately outside `total` and is sent
+    anyway, because a week where four things were reconsidered is a
+    different week from one where nothing was.
+    """
+
+    total: int
+    met: int
+    met_tasks: list[PlannedTaskOut]
+    unfinished: list[PlannedTaskOut]
+    set_aside: list[PlannedTaskOut]
+
+
 class WeekOut(Schema):
     week_start: date
     week_end: date
@@ -62,6 +101,36 @@ class WeekOut(Schema):
     previous_week: date
     next_week: date
     completed: list[CompletedTaskOut]
+    planned: PlannedOut
+
+
+def _planned_task_out(focus, today):
+    task = focus.task
+    return {
+        "task_id": focus.task_id,
+        # The live task while there is one, per charter rule 5 -- a renamed
+        # task reads the same here as everywhere else. `task_text` is the
+        # answer only when it is the only answer.
+        "text": task.text if task else focus.task_text,
+        "day": focus.entry.date,
+        "due_date": task.due_date if task else None,
+        "parent": (
+            {"id": task.parent_id, "text": task.parent.text}
+            if task and task.parent_id
+            else None
+        ),
+        # Falls back to when it was chosen, for a task that no longer
+        # exists: something was planned that day either way, and zero would
+        # claim it was new.
+        "age_in_days": agenda.age_in_days(
+            task.created_at if task else focus.selected_at, today
+        ),
+        "completed_on": (
+            timezone.localtime(task.completed_at).date()
+            if task and task.completed_at
+            else None
+        ),
+    }
 
 
 def _completed_out(item):
@@ -81,6 +150,7 @@ def _completed_out(item):
 def _week_out(owner, day):
     week_start, week_end = reads.week_bounds(day)
     today = timezone.localdate()
+    planned = reads.planned_in_week(owner, week_start, week_end)
     return {
         "week_start": week_start,
         "week_end": week_end,
@@ -92,6 +162,17 @@ def _week_out(owner, day):
             _completed_out(item)
             for item in reads.completed_in_week(owner, week_start, week_end)
         ],
+        "planned": {
+            "total": planned.total,
+            "met": len(planned.met),
+            "met_tasks": [_planned_task_out(each, today) for each in planned.met],
+            "unfinished": [
+                _planned_task_out(each, today) for each in planned.unfinished
+            ],
+            "set_aside": [
+                _planned_task_out(each, today) for each in planned.set_aside
+            ],
+        },
     }
 
 

@@ -957,6 +957,55 @@ export interface components {
             list_id: number;
             parent: components["schemas"]["TaskParentOut"] | null;
         };
+        /**
+         * PlannedOut
+         * @description The finish rate, and the three groups behind it.
+         *
+         *     `met` over `total` is the figure daily-operating-system-vision.md
+         *     demands be honest: completed planned commitments over planned
+         *     commitments. `set_aside` is deliberately outside `total` and is sent
+         *     anyway, because a week where four things were reconsidered is a
+         *     different week from one where nothing was.
+         */
+        PlannedOut: {
+            /** Total */
+            total: number;
+            /** Met */
+            met: number;
+            /** Met Tasks */
+            met_tasks: components["schemas"]["PlannedTaskOut"][];
+            /** Unfinished */
+            unfinished: components["schemas"]["PlannedTaskOut"][];
+            /** Set Aside */
+            set_aside: components["schemas"]["PlannedTaskOut"][];
+        };
+        /**
+         * PlannedTaskOut
+         * @description A commitment somebody chose for a day in this week.
+         *
+         *     Nullable `task_id`, because a task can be permanently deleted from the
+         *     archive while the record of having planned it survives -- that
+         *     asymmetry is the whole design of DailyFocus and the reason a
+         *     denominator can be trusted at all.
+         */
+        PlannedTaskOut: {
+            /** Task Id */
+            task_id: number | null;
+            /** Text */
+            text: string;
+            /**
+             * Day
+             * Format: date
+             */
+            day: string;
+            /** Due Date */
+            due_date: string | null;
+            parent: components["schemas"]["TaskParentOut"] | null;
+            /** Age In Days */
+            age_in_days: number;
+            /** Completed On */
+            completed_on: string | null;
+        };
         /** WeekOut */
         WeekOut: {
             /**
@@ -988,6 +1037,7 @@ export interface components {
             next_week: string;
             /** Completed */
             completed: components["schemas"]["CompletedTaskOut"][];
+            planned: components["schemas"]["PlannedOut"];
         };
     };
     responses: never;

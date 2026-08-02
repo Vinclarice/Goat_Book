@@ -106,6 +106,28 @@ def annotate_for_display(items, today):
     return items
 
 
+def age_in_days(created_at, today):
+    """How many of the owner's days something has been waiting.
+
+    Measured between two *local* dates rather than from the raw timestamp,
+    because that is the number a person means -- and computed here rather
+    than in the browser, whose zone is not the account's. A phone in
+    Makassar and a laptop in New York must agree about how long something
+    has been open.
+
+    Never negative: clock skew or a backdated import should read as "made
+    today" rather than as the future.
+
+    Lives in this module rather than on the Daily Page that first needed it
+    (Crane 2 slice 5), because Crane 3's weekly review reports the same
+    number about the same tasks, and two implementations of "how old is
+    this" would drift the first time one of them was corrected. What has
+    *not* moved is the contract decision: `age_in_days` stays off `TaskOut`,
+    and only surfaces with a "today" to measure against serialise it.
+    """
+    return max(0, (today - timezone.localtime(created_at).date()).days)
+
+
 def bucket_for(due_date, today):
     """Which agenda bucket a due date falls into, relative to ``today``."""
     if due_date is None:

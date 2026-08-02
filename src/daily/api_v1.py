@@ -13,6 +13,7 @@ from ninja import Router, Schema
 from ninja.errors import HttpError
 
 from daily import reads, services
+from lists import agenda
 from lists.api_v1 import TaskOut, TaskParentOut
 from lists.models import Item
 from lists.serializers import serialize_item
@@ -137,24 +138,14 @@ def _today_for_request():
     return timezone.localdate()
 
 
-def _age_in_days(item, today):
-    """How many of the owner's days a task has been waiting.
-
-    Measured between two *local* dates rather than from the raw timestamp,
-    because that is the number a person means -- and computed here rather
-    than in the browser, whose zone is not the account's. A phone in
-    Makassar and a laptop in New York must agree about how long something
-    has been open.
-
-    Never negative: clock skew or a backdated import should read as "made
-    today" rather than as the future.
-    """
-    created = timezone.localtime(item.created_at).date()
-    return max(0, (today - created).days)
-
-
 def _action_item_out(item, today):
-    return {**serialize_item(item), "age_in_days": _age_in_days(item, today)}
+    # The age rule itself lives in lists.agenda, because Crane 3's weekly
+    # review reports the same number about the same tasks and a second
+    # implementation would drift the first time one was corrected.
+    return {
+        **serialize_item(item),
+        "age_in_days": agenda.age_in_days(item.created_at, today),
+    }
 
 
 def _focus_out(focus):

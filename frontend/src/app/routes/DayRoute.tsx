@@ -4,7 +4,7 @@ import { useParams } from "react-router";
 
 import { Button } from "@/components/ui/button";
 
-import { dueLabel } from "../../agenda";
+import { ageLabel, dueLabel } from "../../agenda";
 import { apiV1 } from "../../api/client";
 import { RequestFailed, statusOf } from "../../api/failure";
 import { RouteFailure } from "./RouteFailure";
@@ -39,35 +39,6 @@ type ActionItem = {
   parent: { id: number; text: string } | null;
   age_in_days: number;
 };
-
-/**
- * Below this, age is noise. A task made on Tuesday and still open on
- * Thursday is not carry-forward, it is Thursday.
- *
- * Client-side because it is a display rule rather than a domain one -- the
- * server answers how old the task is, and how old is worth mentioning is a
- * question about this page. The same split as SCOPES in agenda.ts, and
- * named here so nobody looks for a Python authority that does not exist.
- */
-const AGE_WORTH_MENTIONING = 7;
-
-/**
- * How long a task has been waiting, said plainly.
- *
- * The acceptance for this is a tone test rather than a behaviour: the
- * vision document asks that history be "useful without making missed work
- * feel like punishment", and a red "12 days late!" fails it. So this
- * reports a fact and draws no conclusion from it -- "Added 12 days ago",
- * in the same muted grey as everything else on the row, next to a due
- * label that already says whatever there is to say about lateness.
- *
- * The person decides what it means. That is "automations propose; people
- * decide" applied to a sentence.
- */
-function ageLabel(days: number): string | null {
-  if (days < AGE_WORTH_MENTIONING) return null;
-  return `Added ${days} days ago`;
-}
 
 type Focus = {
   task_id: number | null;

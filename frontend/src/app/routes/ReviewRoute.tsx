@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router";
 
+import { ageLabel, dueLabel } from "../../agenda";
 import { apiV1 } from "../../api/client";
 import { RequestFailed, statusOf } from "../../api/failure";
 import { RouteFailure } from "./RouteFailure";
@@ -54,6 +55,148 @@ function byDay(completed: CompletedTask[]) {
     else days.push({ day: task.completed_on, tasks: [task] });
   }
   return days;
+}
+
+type PlannedTask = {
+  task_id: number | null;
+  text: string;
+  day: string;
+  due_date: string | null;
+  parent: { id: number; text: string } | null;
+  age_in_days: number;
+  completed_on: string | null;
+};
+
+type Planned = {
+  total: number;
+  met: number;
+  met_tasks: PlannedTask[];
+  unfinished: PlannedTask[];
+  set_aside: PlannedTask[];
+};
+
+/** One commitment, with whatever context the week has about it. */
+function PlannedRow({
+  task,
+  today,
+  muted = false,
+}: {
+  task: PlannedTask;
+  today: string;
+  muted?: boolean;
+}) {
+  const age = ageLabel(task.age_in_days);
+  return (
+    <li
+      className={`rounded-lg border border-border px-3 py-2${muted ? " opacity-70" : ""}`}
+    >
+      <span className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <span>
+          {task.parent && (
+            <span className="mr-2 text-sm text-muted-foreground">
+              {task.parent.text} ›
+            </span>
+          )}
+          {task.text}
+        </span>
+        {task.due_date && (
+          <span className="text-sm text-muted-foreground">
+            {dueLabel(task.due_date, today)}
+          </span>
+        )}
+        {/* A fact, in the same grey as everything else. The vision
+            document's test is that history be useful without making missed
+            work feel like punishment, and this page is the one most able
+            to fail it. */}
+        {age && <span className="text-sm text-muted-foreground">{age}</span>}
+      </span>
+    </li>
+  );
+}
+
+/**
+ * What was planned, and what came of it.
+ *
+ * The rate is met over total, and total counts only the pins that were
+ * still standing when the week ended. That is the definition
+ * daily-operating-system-vision.md insists on — completed planned
+ * commitments over planned commitments — and it is the reason unpinning
+ * releases a record rather than deleting one.
+ */
+function PlannedWork({ planned, today }: { planned: Planned; today: string }) {
+  if (planned.total === 0 && planned.set_aside.length === 0) {
+    // No rate at all rather than "0 of 0": a week nobody planned is not a
+    // week that failed a plan, and a fraction with nothing behind it
+    // invites a conclusion from nothing.
+    return (
+      <p className="text-sm text-muted-foreground">
+        Nothing was pinned to a day this week.
+      </p>
+    );
+  }
+  return (
+    <div className="space-y-4">
+      {planned.total > 0 && (
+        <p className="text-sm text-muted-foreground">
+          <span className="text-base font-bold text-foreground">
+            {planned.met} of {planned.total}
+          </span>{" "}
+          {planned.total === 1 ? "commitment" : "commitments"} finished
+        </p>
+      )}
+
+      {planned.met_tasks.length > 0 && (
+        <ul className="space-y-1">
+          {planned.met_tasks.map((task) => (
+            <PlannedRow
+              key={`${task.task_id}-${task.day}`}
+              task={task}
+              today={today}
+            />
+          ))}
+        </ul>
+      )}
+
+      {planned.unfinished.length > 0 && (
+        <div className="space-y-1">
+          <h3 className="text-sm text-muted-foreground">Still open</h3>
+          <ul className="space-y-1">
+            {planned.unfinished.map((task) => (
+              <PlannedRow
+                key={`${task.task_id}-${task.day}`}
+                task={task}
+                today={today}
+              />
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {planned.set_aside.length > 0 && (
+        <div className="space-y-1">
+          <h3 className="text-sm text-muted-foreground">
+            Set aside on purpose
+          </h3>
+          <ul className="space-y-1">
+            {planned.set_aside.map((task) => (
+              <PlannedRow
+                key={`${task.task_id}-${task.day}`}
+                task={task}
+                today={today}
+                muted
+              />
+            ))}
+          </ul>
+          {/* Says why they are not in the count, before anybody wonders
+              whether the number is hiding them. */}
+          <p className="text-sm text-muted-foreground">
+            Taken off a day deliberately, so they are not counted against the
+            week.
+          </p>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function Finished({ completed }: { completed: CompletedTask[] }) {
@@ -156,6 +299,14 @@ export function ReviewRoute() {
           </Link>
         )}
       </nav>
+
+      {/* Above what merely got finished, because it is the deliberate half
+          of the week -- the same reason Focus sits above Action Items on
+          the day. */}
+      <section className="space-y-2">
+        <h2 className="text-sm font-bold">What you planned</h2>
+        <PlannedWork planned={data.planned} today={data.today} />
+      </section>
 
       <section className="space-y-2">
         <h2 className="text-sm font-bold">Finished</h2>

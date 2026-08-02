@@ -31,6 +31,20 @@ function weekData(overrides: Record<string, unknown> = {}) {
     previous_week: "2026-07-20",
     next_week: "2026-08-03",
     completed: [],
+    planned: { total: 0, met: 0, met_tasks: [], unfinished: [], set_aside: [] },
+    ...overrides,
+  };
+}
+
+function plannedTask(overrides: Record<string, unknown> = {}) {
+  return {
+    task_id: 1,
+    text: "Pay rent",
+    day: "2026-07-27",
+    due_date: null,
+    parent: null,
+    age_in_days: 0,
+    completed_on: null,
     ...overrides,
   };
 }
@@ -115,6 +129,93 @@ describe("ReviewRoute", () => {
     expect(
       await screen.findByText(/Nothing was marked finished/),
     ).toBeInTheDocument();
+  });
+
+  it("reports the finish rate over what was planned, not over the backlog", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        weekData({
+          planned: {
+            total: 3,
+            met: 2,
+            met_tasks: [
+              plannedTask({ completed_on: "2026-07-29" }),
+              plannedTask({ task_id: 2, text: "Book the dentist", completed_on: "2026-07-31" }),
+            ],
+            unfinished: [plannedTask({ task_id: 3, text: "Call the bank" })],
+            set_aside: [],
+          },
+        }),
+      ),
+    );
+
+    renderAt("/review");
+
+    expect(await screen.findByText("2 of 3")).toBeInTheDocument();
+  });
+
+  it("keeps what was deliberately set aside out of the count and on the page", async () => {
+    // released_at's whole purpose: a decommitment is not a failure to
+    // finish, and a denominator that counted both would report a number
+    // that looks authoritative and is not.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        weekData({
+          planned: {
+            total: 1,
+            met: 1,
+            met_tasks: [plannedTask({ completed_on: "2026-07-29" })],
+            unfinished: [],
+            set_aside: [
+              plannedTask({ task_id: 9, text: "Reorganise the shed" }),
+            ],
+          },
+        }),
+      ),
+    );
+
+    renderAt("/review");
+
+    expect(await screen.findByText("1 of 1")).toBeInTheDocument();
+    expect(screen.getByText("Reorganise the shed")).toBeInTheDocument();
+    expect(screen.getByText(/Set aside/)).toBeInTheDocument();
+  });
+
+  it("says how long an unfinished commitment has been waiting", async () => {
+    // The Daily Page's wording, from the Daily Page's rule: a fact with no
+    // conclusion drawn from it. A red "12 days late!" fails the vision
+    // document's test that history be useful without being punishing.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        weekData({
+          planned: {
+            total: 1,
+            met: 0,
+            met_tasks: [],
+            unfinished: [plannedTask({ age_in_days: 12 })],
+            set_aside: [],
+          },
+        }),
+      ),
+    );
+
+    renderAt("/review");
+
+    expect(await screen.findByText("Added 12 days ago")).toBeInTheDocument();
+  });
+
+  it("does not report a rate for a week nobody planned", async () => {
+    // A week with no plan is not a week that failed one, and "0 of 0" is
+    // the shape of number that invites a conclusion from nothing.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(weekData()),
+    );
+
+    renderAt("/review");
+    await screen.findByRole("heading", { level: 1 });
+
+    expect(screen.queryByText("0 of 0")).toBeNull();
+    expect(screen.getByText(/Nothing was pinned/)).toBeInTheDocument();
   });
 
   it("reaches the week before without editing the URL", async () => {

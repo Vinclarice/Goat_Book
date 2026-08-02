@@ -2137,6 +2137,123 @@
         "title": "CompletedTaskOut",
         "type": "object"
       },
+      "PlannedOut": {
+        "description": "The finish rate, and the three groups behind it.\n\n`met` over `total` is the figure daily-operating-system-vision.md\ndemands be honest: completed planned commitments over planned\ncommitments. `set_aside` is deliberately outside `total` and is sent\nanyway, because a week where four things were reconsidered is a\ndifferent week from one where nothing was.",
+        "properties": {
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          },
+          "met": {
+            "title": "Met",
+            "type": "integer"
+          },
+          "met_tasks": {
+            "items": {
+              "$ref": "#/components/schemas/PlannedTaskOut"
+            },
+            "title": "Met Tasks",
+            "type": "array"
+          },
+          "unfinished": {
+            "items": {
+              "$ref": "#/components/schemas/PlannedTaskOut"
+            },
+            "title": "Unfinished",
+            "type": "array"
+          },
+          "set_aside": {
+            "items": {
+              "$ref": "#/components/schemas/PlannedTaskOut"
+            },
+            "title": "Set Aside",
+            "type": "array"
+          }
+        },
+        "required": [
+          "total",
+          "met",
+          "met_tasks",
+          "unfinished",
+          "set_aside"
+        ],
+        "title": "PlannedOut",
+        "type": "object"
+      },
+      "PlannedTaskOut": {
+        "description": "A commitment somebody chose for a day in this week.\n\nNullable `task_id`, because a task can be permanently deleted from the\narchive while the record of having planned it survives -- that\nasymmetry is the whole design of DailyFocus and the reason a\ndenominator can be trusted at all.",
+        "properties": {
+          "task_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Id"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "day": {
+            "format": "date",
+            "title": "Day",
+            "type": "string"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "parent": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TaskParentOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "age_in_days": {
+            "title": "Age In Days",
+            "type": "integer"
+          },
+          "completed_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed On"
+          }
+        },
+        "required": [
+          "task_id",
+          "text",
+          "day",
+          "due_date",
+          "parent",
+          "age_in_days",
+          "completed_on"
+        ],
+        "title": "PlannedTaskOut",
+        "type": "object"
+      },
       "WeekOut": {
         "properties": {
           "week_start": {
@@ -2174,6 +2291,9 @@
             },
             "title": "Completed",
             "type": "array"
+          },
+          "planned": {
+            "$ref": "#/components/schemas/PlannedOut"
           }
         },
         "required": [
@@ -2183,7 +2303,8 @@
           "is_current_week",
           "previous_week",
           "next_week",
-          "completed"
+          "completed",
+          "planned"
         ],
         "title": "WeekOut",
         "type": "object"

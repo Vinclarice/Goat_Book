@@ -4,7 +4,11 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -36,13 +40,22 @@ class MainActivity : ComponentActivity() {
         setContent {
             MaterialTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    Root(
-                        connector = connector,
-                        api = api,
-                        store = store,
-                        queue = queue,
-                        scheduler = scheduler,
-                    )
+                    // The Surface fills the screen so its background paints
+                    // behind the system bars; the content is inset so it
+                    // does not sit *under* them. Applications targeting
+                    // SDK 35 and above draw edge to edge whether they ask to
+                    // or not, and without this the Capture button sat under
+                    // the gesture bar -- reachable, but half-hidden and
+                    // easy to mistake for a mis-tap.
+                    Box(modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing)) {
+                        Root(
+                            connector = connector,
+                            api = api,
+                            store = store,
+                            queue = queue,
+                            scheduler = scheduler,
+                        )
+                    }
                 }
             }
         }

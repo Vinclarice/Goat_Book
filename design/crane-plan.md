@@ -480,18 +480,20 @@ one, with nothing connecting them.
   routines, and an entry-level log is additive whenever one of them changes
   — unlike the missing foreign key, which could not be invented after the
   fact. §6 records the reconsideration trigger.
-- **What a paused routine's gap means for review.** Pausing an active
-  routine stops new occurrences from being created; it does not touch
-  occurrences that already exist. What Crane 3's weekly review says about a
-  paused week — silence, or an explicit "paused" note distinct from an
-  elapsed-open occurrence — is not decided here.
-- **A satisfied-but-partial close.** The model gives exactly two ways an
+- ~~**What a paused routine's gap means for review.**~~ **Answered in §8:
+  an explicit "paused" note, backed by a record that can support one.**
+  Pausing an active routine stops new occurrences from being created; it
+  does not touch occurrences that already exist. Silence would be
+  indistinguishable from a routine that did not exist yet, so the review
+  says so — but `paused_at` holds only the current pause, which is why §8
+  slice 7 adds the record rather than inferring a pause from an absence.
+- ~~**A satisfied-but-partial close.**~~ **Answered in §8: yes, a third
+  outcome, and it is not a skip.** The model gave exactly two ways an
   occurrence leaves open: reaching `target_quantity` (automatic) or an
-  explicit skip. There is no path for "I did some of it and I'm satisfied,
-  close it as-is" — neither a full completion nor a skip, but a common real
-  case. Whether that needs a third outcome, or is better handled as a skip
-  with progress already logged (the weekly example above already reads that
-  way informally), is not settled here.
+  explicit skip. "I did some of it and I'm satisfied" is neither, and
+  recording it as a skip writes a false statement — `_settle_outcome`
+  already treats logging as the un-skip on exactly that ground. §8 slice 8
+  builds it, and settles that a partial close never counts as a met target.
 
 ## 4. Crane 1 — Daily Page foundation
 
@@ -825,3 +827,269 @@ recording occurrences properly now. No monthly cadence — §3 leaves it
 additive on purpose. And no routine logging from the Android client, which
 would need the token-authenticated zone activation
 `per-user-time-zones-plan.md` already flags and has no product trigger yet.
+
+## 8. Crane 3 — the weekly review
+
+Numbered §8 for the reason §7 gives: other documents cite §5 and §6 by
+number, and renumbering to put this in reading order would break them.
+
+This is the first feature that reads any of the record back. Everything
+before it — the Daily Entry, the Focus join that keeps `released_at`, the
+occurrence rows that snapshot what was expected of them, the commitment key
+Crane 0a spent a day on — was built so this one can be trustworthy. That
+inverts the usual risk: the danger here is not that the feature is hard to
+build, it is that a version whose numbers nobody should believe is easy to.
+
+**Its own app, `review`.** It is a read layer over four domains — `lists`
+for completed work, `daily` for the plan and the writing, `routines` for the
+habits, `capture` for what is still waiting — plus one small record of its
+own. `architecture-trajectory.md` §4 already anticipates it: once every
+repeating thing has a template, dated occurrences and a snapshot of what was
+expected, "one review-and-analytics read module can serve all of them." An
+app boundary is what stops that becoming a growing set of extra methods on
+`daily`, and stops a week becoming a kind of day. The consequences are
+mechanical and are named here so they are not discovered later by a silently
+skipped suite: `review` goes into `INSTALLED_APPS`, into
+`.github/workflows/ci.yml`, into `CLAUDE.md` and into `README.md` in the
+same commit as the app, and its first migration — slice 4, the first one
+with a model — pins `("accounts", "0004_numeric_user_primary_key")`, which
+three apps have now needed.
+
+### Settled before the first slice
+
+**A week is Monday to Sunday, and `routines.periods.period_start_for` is
+what says so.** §6 settled Monday on evidence — `agenda.py` has resolved the
+snooze menu's "Next week" to the coming Monday since Albatross — and warned
+in the same breath that two definitions of "this week" between a routine and
+the report about it would be wrong in a way nobody would see. So `review`
+imports that function rather than writing `day - timedelta(day.weekday())` a
+second time. A cross-app import of a pure, clock-free function is the
+cheapest way to honour `principles.md`'s one-authoritative-definition rule;
+if a third caller ever appears, that is the moment to move it somewhere
+neutral, and not before.
+
+**Nothing is rescheduled automatically.** `daily-operating-system-vision.md`
+is explicit — a review "should also retain a dated review record and any
+explicit task changes — never automatically reschedule everything left
+incomplete" — and `principles.md`'s "automations propose; people decide" says
+the same thing one level up. The consequence for the design is stronger than
+"do not add a job": **there is no bulk control anywhere on this surface.** No
+"roll everything forward", no "carry unfinished focus into next week", not
+even as a convenience behind a confirmation. Slice 5 gives one explicit
+decision per item and nothing else.
+
+**Reads must not write.** This is the largest read in the product and it
+crosses the one domain that creates its rows lazily. A `GET` of a week must
+not create a `RoutineOccurrence` for a period nobody logged, and must not
+create a `DailyEntry` for a day nobody wrote — a page view inventing history
+is exactly what §7's standings-rather-than-rows decision existed to prevent,
+and the review carries the same obligation over a seven-times-wider surface.
+Asserted with a row count taken across the read, not by inspecting the code.
+
+**The default week is the one you are in, and the page names it.** The
+vision document says a review gathers "from the preceding week", which is
+true of when a review is usually written and is not a good rule for what a
+URL with no date means: a server that silently showed last week on a
+Wednesday would be answering a question nobody asked. So `/api/v1/review`
+resolves to `period_start_for(WEEKLY, today)`, the response carries the
+week's start and end, and the surface both names the week in words and
+offers the week before it — which is one click, on the day a review actually
+gets written. **Reconsider** if real use turns out to be always "open it on
+a Monday for the week that just ended"; that is a default flip and nothing
+else.
+
+**The review record holds what a person wrote and concluded; the gathering
+stays a live read.** Charter rule 5. There is one deliberate exception, and
+it is rule 3 applied rather than rule 5 broken: **completing a review stamps
+the headline counts it reported.** The reason is specific. `DailyFocus`
+snapshots `task_text` so the planned *denominator* survives a task being
+permanently deleted from the archive — that is the number the vision
+document insisted could not be reconstructed after the fact. But the
+*numerator* is read through `focus.task`, which `delete_archived_item` sets
+to NULL, so a finish rate can quietly fall afterwards. A completed review is
+a record of what somebody concluded on a day, and it carries its own copy of
+the figure they concluded it from.
+
+### The two questions §3 left open, answered here
+
+**What a paused routine's gap means for a review — an explicit "paused"
+note, and a record that can honestly support one.** Silence is the wrong
+answer because it is indistinguishable from a routine that did not exist
+yet, and because a week somebody deliberately put a routine down is a
+different fact from a week it elapsed open. That is the same distinction
+`skip_period` already draws inside a single period, and a review that
+collapsed it across a week would undo the reason a skip was given its own
+route.
+
+`Routine.paused_at` cannot carry it, and the model docstring already says
+so: it records only the current pause, so a routine put down in July and
+picked back up in August leaves July's review nothing to read. That is the
+Crane 0a shape of problem — a fact recordable only while it is happening —
+and it is the one argument this project accepts for building something ahead
+of demand for it. Slice 7 adds a pause record, written by the pause and
+resume services that already exist, with a data migration seeding an open
+row for every routine currently paused, which is the one part of the past
+that is genuinely recoverable. **Where the record says nothing, the review
+says nothing** rather than inferring a pause from an absence.
+
+**Whether an occurrence needs a satisfied-but-partial close — yes, a third
+outcome, and it is not a skip.** Recording "I did three, and that was
+enough" as a skip writes a false statement: a skip says the person chose not
+to do the thing, and they did some of it. The model already knows the two
+contradict each other — `_settle_outcome` treats logging as the un-skip, on
+the stated ground that "doing some of the thing contradicts having decided
+not to." It also corrupts the number the vision document names, because a
+week of contented partials recorded as skips is indistinguishable from a
+week of deliberate non-doing.
+
+Adding a value to a `TextChoices` is additive, and §3 already used that
+argument for a future monthly cadence. Two things are settled along with it,
+so that the review cannot quietly decide them later: a partial close is
+**not** a met target and never counts toward one, and it is reported
+distinctly from an elapsed-open period rather than folded in with it.
+Logging further progress after a partial close settles exactly as it does
+after a skip — completed if the target is reached, open otherwise — because
+somebody who carries on has withdrawn the statement that they were done.
+
+### The slices
+
+Ordered thinnest usable path first, per `principles.md`. Two prior sequences
+shipped a capability with nowhere to reach it — the Daily Page had no
+navigation link until Crane 1 slice 6, routine creation had no surface until
+Crane 2 slice 3 — so this list was read back for that specific failure
+before it was written down. Three surfaces were missing on the first pass
+and are now in it: the navigation entry (slice 1, not last), the way to
+reach the week *before* this one (slice 1, without which a review written on
+a Monday cannot see the week it is about), and a control for the new partial
+close (slice 8, which would otherwise have been an outcome no person could
+produce).
+
+1. **A week you can open, and what you finished in it.** The `review` app
+   with a read module, `GET /api/v1/review` and `/api/v1/review/{week}`, a
+   `/review` route in the SPA, a nav entry beside Today, and movement to the
+   weeks either side. Completed work is this owner's items whose
+   `completed_at` falls inside the week, read in the owner's own zone.
+   *Acceptance:* a task completed on Wednesday appears on that week's page
+   and on no other week's; a second account's completed task never appears
+   on the first's; the week before is reachable from the page rather than by
+   editing the URL; and the whole `GET` writes no rows, asserted as a count
+   across the tables it touches rather than by reading the code.
+2. **What you planned, and what came of it.** The week's `DailyFocus`
+   records. The denominator is the pins that still stand — `released_at`
+   null — because a deliberate unpin is a decommitment rather than a
+   failure, which is the distinction that field was added for. The numerator
+   is those whose task is completed with `completed_at` on or before the
+   week's end. Unfinished pins carry age and due context, in the wording
+   Crane 2 slice 5 settled rather than a second phrasing of it; released
+   pins are listed apart, as what was deliberately set aside.
+   *Acceptance:* pin two tasks on Monday, complete one and unpin the other
+   on Wednesday, and the week reads one of one met — not one of two, and not
+   two of two — with the unpinned task under what was set aside rather than
+   under what was left undone. A pin finished the following Tuesday still
+   reads unfinished for this week, because at the week's end it was.
+3. **The week in your own words, and what is still waiting.** The week's
+   daily entries in date order, the ideas added during it, and the captures
+   that are *still* unresolved regardless of when they arrived — an Inbox is
+   a backlog rather than a week, and a thought from a fortnight ago is
+   exactly what a review should catch.
+   *Acceptance:* a gratitude line written on Tuesday appears under Tuesday
+   and under no other day; a capture triaged on Thursday is absent while one
+   still in the Inbox appears however old it is; an idea added last month
+   does not appear.
+4. **Write the review down, and plan the coming week.** `WeeklyReview` —
+   owner, `week_start`, the person's reflections, a plan for the coming
+   week, and `completed_at` — unique per owner and week. The app's first
+   migration, and the one that pins accounts `0004`. Completing a review
+   stamps the counts it reported, per the decision above.
+   *Acceptance:* a plan typed for the coming week survives a reload, belongs
+   to that week and that owner, and a second account's review of the same
+   week is a different record; and completing a review, then permanently
+   deleting one of the archived tasks behind its numbers, leaves the stamped
+   figure unchanged while a live recount moves — which is the whole reason
+   for stamping it.
+5. **Act on what is unfinished, one decision at a time.** From an unfinished
+   pin: put it on today, or leave it alone. Through the day's existing pin
+   service rather than a review-shaped write path of its own, so the review
+   proposes and the service that owns the rule still decides.
+   *Acceptance:* opening a review and completing it changes no task's due
+   date, status or ownership; pinning one unfinished commitment to today
+   moves exactly that one and touches nothing else; and there is no control
+   on the page that acts on more than one item.
+6. **How habits performed.** Per routine, the periods the week expected of
+   it and what became of each — met, skipped, closed as enough, or still
+   open. The denominator is floored at the routine's creation date, so a
+   routine made on Thursday is not reported as having missed Monday through
+   Wednesday. A weekly routine contributes one period; a daily one up to
+   seven.
+   *Acceptance:* the vision document's own sentence, made real — a daily
+   routine met on five of the seven days the week expected reads as five of
+   seven, and one created on Thursday reads out of four rather than seven; a
+   skipped day is reported as skipped and never as missed; an elapsed-open
+   day is reported as open, with no verdict attached to it.
+7. **A paused week says it was paused.** The pause record and its backfill,
+   written by the existing pause and resume services.
+   *Acceptance:* a routine put down a week ago reads as paused since that
+   date rather than as a row of empty days, and contributes nothing to the
+   met-of-expected count; a routine paused on Wednesday and resumed on
+   Friday counts the days it was up and not the days it was down; a week
+   that predates the record says nothing about pausing rather than inferring
+   it from an absence.
+8. **Enough, and content with it.** The third outcome, the service and
+   endpoint that set it, and the control on the Daily Page that a person
+   reaches it through.
+   *Acceptance:* closing a day at three of five as enough leaves progress at
+   three, records an outcome that is neither completed nor skipped, and
+   stamps `decided_at`; the review reports it distinctly from both a skip
+   and an elapsed-open day and counts it toward neither; and logging two
+   more afterwards completes the period, exactly as logging after a skip
+   already does.
+9. **Is this week usual?** The same two figures for the four weeks before
+   it: the finish rate, and each routine's met-of-expected. No new tables
+   and no new records — four more of a query that already exists.
+   *Acceptance:* four prior weeks render as four comparable figures with the
+   current one marked, and a week from before the account existed reads as
+   no data rather than as zero, which is a distinction this entire release
+   is about.
+10. **Prove it on a phone.** A browser-smoke pass at 375×812 against the
+    built bundle, over the assembled surface rather than any one section —
+    the same instrument Crane 1 slice 7 established, pointed at the page
+    most likely to defeat it, since a review is mostly numbers in rows.
+    *Acceptance:* horizontal overflow asserted as a number and naming its
+    offenders when it is not zero, no control past the right edge, every
+    section present, the plan writable and savable, and Review reachable
+    from behind the phone disclosure. If the assertions pass on the first
+    run, one is deliberately broken to prove it can fail — slice 7's
+    900-pixel element caught as "scrolls 525px sideways" is the precedent.
+
+### What Crane 3 is not
+
+**No monthly or quarterly review.** The vision document asks for "one guided
+weekly view, not weekly\monthly\quarterly at once", and says the wider
+windows reuse this model "only after weekly use proves helpful". That
+evidence does not exist yet and cannot be manufactured by building the
+surface.
+
+**No analytics surface.** `architecture-trajectory.md` §4 lists six
+questions the charter was paid for — streaks and recovery time, cadence
+drift, completion rate by list, load against closure, time-to-close
+distributions, abandonment — and puts their home in release F. Crane 3
+delivers exactly one cross-week comparison, slice 9, and it is the same
+figure the week already shows rather than a new kind of claim. The
+recurring-commitment series Crane 0a made queryable is deliberately not
+mined here; it belongs to F, and the reason to build the key early was that
+the history accrues now, not that it gets read now.
+
+**No AI summary.** `daily-operating-system-vision.md` puts a weekly-review
+summary first among the useful AI experiments and is equally clear that it
+comes after the practice exists, and summarises evidence already in Clarice.
+That evidence is what this release produces.
+
+§5's fences hold here as they did for Crane 2: the parent–child redesign and
+the UI overhaul are release D's, and a surface that embeds tasks is not a
+licence to relabel them. §2's remaining checklist is not Crane 3's either —
+nine of its fourteen items wait on a deploy or a phone rather than on work.
+
+When slices 1 through 10 are in production and verified, Crane 0a through 3
+are complete and the release earns its `crane` tag — after production is
+verified and not before, which is the one line `roadmap.md` draws from
+Bittern's mess.

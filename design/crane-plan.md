@@ -505,10 +505,18 @@ for the accrual reason given in §3, not because anything here needed it.
    entry. *Acceptance:* editing the Compass changes what every day's page
    shows going forward, including past dates viewed again, without writing
    anything into those days' own records.
-6. **Make it the front door.** Route an authenticated session to the Daily
-   Page by default on login, while Agenda, Inbox, Ideas, lists, and archive
-   remain directly reachable from navigation exactly as before.
-   *Acceptance:* a fresh login lands on today's Daily Page; navigating
+6. **Make it the front door, and let people close it.** Route an
+   authenticated session to the Daily Page by default on login, while
+   Agenda, Inbox, Ideas, lists, and archive remain directly reachable from
+   navigation exactly as before — **and add a landing-surface preference so
+   anyone who prefers the Agenda can have it back.** Decided August 2, 2026;
+   see §6. That makes this slice a User field alongside `daily_digest` and
+   `time_zone`, a control on the existing account settings page, and a
+   default the login redirect reads — not a hard-coded route change. The
+   default is the Daily Page, so the product still states a preference
+   rather than shrugging.
+   *Acceptance:* a fresh login lands on today's Daily Page; setting the
+   preference to Agenda makes the next login land there instead; navigating
    directly to `/app/agenda` still works unchanged for anyone who prefers it.
 7. **Prove it on a phone.** A browser-smoke pass at a phone viewport against
    the built bundle, covering the assembled page from slices 1–6 rather than
@@ -566,10 +574,16 @@ for that redesign rather than patching it in place.
   enough for Crane 2, or does correcting a log need its own audit trail
   from day one, given how much weight `principles.md` puts on preserving
   history?
-- **Home-surface reversibility.** Slice 6 makes the Daily Page the default
-  landing route. Is that a hard switch on the day it ships, or should
-  people be able to set their own landing surface back to Agenda while
-  trust in the new page builds?
+- ~~**Home-surface reversibility.**~~ **Answered August 2, 2026: default to
+  the Daily Page, with a preference to go back to Agenda.** Not a hard
+  switch. The product still takes a position — the Daily Page is the
+  default, and a fresh account gets it without choosing — but the surface a
+  person opens all day is not somewhere to be told they are wrong. It also
+  fits what `principles.md` says about automations proposing rather than
+  deciding, and it makes slice 6 reversible in the sense that section means:
+  if the Daily Page turns out not to earn the front door, the evidence is a
+  preference people actually flipped, not a complaint. Slice 6 in §4 now
+  carries the extra field and control this implies.
 - **Sequencing the carried-in checklist.** §2's items are mostly
   single production checks with no design cost — should they be cleared
   before Crane 1 begins, or worked through opportunistically alongside it?

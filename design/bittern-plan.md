@@ -16,11 +16,6 @@ The release closed with five of the after-deploy checks below never run and
 three infrastructure confirmations owed. That was a decision, not an
 oversight, and they are carried into Crane rather than left here.
 
-A caution for whoever checks that deploy landed: a marker has to be
-something the change actually introduced. `Something went wrong.` is in the
-deployed bundle and predates B2.1 by months; taking its presence as
-evidence would have confirmed a deploy that never happened.
-
 Bittern was staged work: make the deployed web application trustworthy
 enough to be a dependable capture backend, ship the Android capture client,
 then close the remaining web-session and state gaps. It was deliberately not

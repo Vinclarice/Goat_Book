@@ -28,28 +28,26 @@ new parent appeared childless until a refresh. The mutation now carries a
 `spawned_subtasks` sibling array and both workspaces place parent and
 children in one update — Bittern B1, August 1, 2026.
 
-## Bittern — implementation complete, deploy owed
+## Bittern — shipped August 2, 2026
 
-**Every slice is written, tested and on `main` as of August 2, 2026.** What
-was built and what it taught are in [`roadmap-history.md`](roadmap-history.md);
-the executable detail, including the acceptance criteria consciously not met,
-stays in [`bittern-plan.md`](bittern-plan.md).
+**Deployed and tagged.** Three deploys carried it: 11:56 EDT on August 1
+(`fed210b`), 21:51 EDT the same evening, and 00:35 EDT on August 2
+(`359a7e3`), which was the one that finally carried B2.1 and B2.2. What was
+built and what it taught are in [`roadmap-history.md`](roadmap-history.md);
+the executable detail, including the acceptance criteria consciously not
+met, stays in [`bittern-plan.md`](bittern-plan.md).
 
-**Bittern has not shipped**, and three things stand between here and the
-`bittern` tag. None of them is code:
+**Verified in production:** the deployed bundle carries `RequestFailed`, the
+class B2.1 introduced — checked with a marker the change actually added,
+after a weaker one nearly confirmed a deploy that had not happened. No
+unapplied migrations. Sentry active with `DEBUG` false. B1's spawned
+occurrence rendering with its children and no refresh. Android capture
+reaching the Inbox exactly once, across every network condition. Per-user
+time zones discriminating between accounts at 07:00 WITA.
 
-1. **A deploy.** Production carries B3 and B4 — the 01:51 UTC deploy — but
-   not B2.1 or B2.2, whose commits landed after it. Verified rather than
-   assumed: `RequestFailed` and `Request failed with status`, both
-   introduced by B2.1, are absent from the bundle the container is serving.
-   (`Something went wrong.` is present and proves nothing; it predates B2.1
-   by months. Pick a marker the change actually introduced.)
-2. **The after-deploy checklist** already written into `bittern-plan.md`:
-   the recurring-task round trip, logout at both widths, a hard-refreshed
-   nav, Android capture online and offline, and B4's controlled event.
-3. **The release tags.** `LIVE` still points at `fed210b`, and the 01:51
-   deploy has no `DEPLOYED-` tag. The `bittern` codename tag comes last, and
-   only after production is verified.
+**Closed with work outstanding**, deliberately rather than by omission: five
+after-deploy checks were never run and three infrastructure confirmations
+are still owed. All of them are carried into Crane and listed there.
 
 C2 outlived the release rather than shipping in it, and is an observation
 task rather than work:
@@ -123,7 +121,59 @@ production and will serve a future iOS client as a sibling under `ios/`.
 
 ## Crane — daily-page foundation
 
-**Direction only; begin after Bittern, not alongside it.** Clarice's central
+### Carried in from Bittern
+
+Bittern closed with these unfinished rather than pretending otherwise. None
+of them blocks Crane's design work, and none should be allowed to disappear
+quietly either. Deliberate decision on August 2, 2026: close the release,
+carry the remainder.
+
+**Verifications never run.** Each was written into Bittern's after-deploy
+checklist and left undone; the code is deployed and the behaviour is covered
+by tests, but nobody has watched it in production.
+
+- Logout at desktop and narrow widths, then confirm protected API calls
+  fail afterwards. (B2)
+- A hard-refreshed `/app/agenda` showing navigation content and counts. (B0)
+- A deliberately broken route — `/app/task/999999` — saying what went wrong
+  and offering a way out rather than rendering blank. (B2.1, the slice the
+  final deploy carried)
+- An Android capture after the redeploy, confirming the client still reaches
+  production.
+- B1's opt-out rule: a subtask with `always_recurs` false must *not* clone
+  onto the next occurrence. Three attempts to set this up failed on the
+  interface rather than the rule; the service tests cover it and the
+  production check does not.
+
+**Confirmations owed on tonight's infrastructure.** All three share the
+failure mode this release kept meeting — they look like success until
+somebody checks.
+
+- A forwarded contact message arriving in the inbox rather than spam, now
+  that DMARC enforces.
+- DMARC aggregate reports beginning to arrive at `dmarc@vinclarice.com`.
+- A real production 500 reaching Sentry, not only the controlled probe.
+
+**The New York morning digest**, 07:00–12:00 EDT on August 2. The Makassar
+account's digest fired at its own 07:00 while both `America/New_York`
+accounts stayed on the previous day, which proves the job discriminates.
+What has not been seen is the other side of the same day.
+
+**Android gaps**, all recorded in [`bittern-plan.md`](bittern-plan.md):
+no emulator run; the forced-retry path never exercised on a device; a
+plain-text share and an offline share never tested on hardware; no release
+signing, so the APK cannot be given to anybody else; and no way to discard a
+rejected capture, deferred deliberately while the app is a prototype.
+
+Two design cycles were also named — the parent–child domain redesign and the
+web UI overhaul — and are described under Bittern's C2 and in
+[Named for the next design cycle](#named-for-the-next-design-cycle). Neither
+is Crane's foundation work and neither should be started as a side effect
+of it.
+
+### The foundation itself
+
+**Direction only.** Clarice's central
 job is not maintaining task lists. It is removing the clerical work from a
 daily practice: capture without categorising, see the right commitments today,
 carry unfinished work forward automatically, and leave a useful record of the

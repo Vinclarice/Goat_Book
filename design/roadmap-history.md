@@ -9,13 +9,18 @@ This preserves the reasoning, deployment record, and lessons behind completed
 work without making the active roadmap hard to scan. The active plan is
 [`roadmap.md`](roadmap.md).
 
-## Bittern — implementation complete August 2, 2026, not yet shipped
+## Bittern — shipped August 2, 2026
 
-Recorded here while the reasoning is fresh, but **Bittern has not shipped**
-and this section should not be read as a release record until it has. Two
-deploys have gone out — 11:56 EDT on August 1 (`fed210b`) and 01:51 UTC on
-August 2 — and neither carried B2.1 or B2.2, whose commits landed after the
-second. The remaining steps live in [`roadmap.md`](roadmap.md); the
+`bittern` (`359a7e3`) was deployed at 00:35 EDT and marked by
+`DEPLOYED-2026-08-02/0035`. Three deploys carried the release: 11:56 EDT on
+August 1 (`fed210b`), 21:51 EDT that evening, and the last one, which was
+the only one to carry B2.1 and B2.2 — their commits landed after the second
+deploy, and an earlier claim that Bittern was already live rested on
+`/contact/` returning 200, which proved B3 and nothing else.
+
+It closed with work outstanding by decision rather than omission: five
+after-deploy checks never run, three infrastructure confirmations owed, and
+several Android gaps. All are carried into Crane and listed there. The
 executable detail is in [`bittern-plan.md`](bittern-plan.md), which is kept
 rather than archived.
 

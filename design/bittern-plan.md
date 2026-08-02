@@ -1,20 +1,20 @@
 # Bittern — delivery plan
 
-**Status: implementation complete on `main`, August 2, 2026. Not shipped.**
+**Status: shipped August 2, 2026, tagged `bittern` at `359a7e3`.**
 Stage 0 established production truth and closed B0/B0.1; Stage 1 delivered
 the Android capture client through M5; Stage 2 closed the web usability
 gaps; Stage 3 delivered branded email, a contact path, and error monitoring.
 This document is the record of what was built and why, including the
 criteria consciously not met — see M4 and M5 for those.
 
-**Production is behind `main` by B2.1 and B2.2.** The 01:51 UTC deploy
-carried B3 and B4; both of those slices' commits precede it, and B2.1 and
-B2.2 landed afterwards. Confirmed rather than assumed: `RequestFailed`, the
-class B2.1 introduced, is absent from the bundle the container is serving.
+**Production carries everything**, confirmed by the presence of
+`RequestFailed` — the class B2.1 introduced — in the served bundle. An
+earlier check used `Something went wrong.`, found it, and nearly concluded
+the opposite; that string predates B2.1 by months.
 
-The deploy, the after-deploy checklist below, and then the tags — `LIVE`
-still points at `fed210b`, the 01:51 deploy has no `DEPLOYED-` tag, and the
-`bittern` codename tag comes last.
+The release closed with five of the after-deploy checks below never run and
+three infrastructure confirmations owed. That was a decision, not an
+oversight, and they are carried into Crane rather than left here.
 
 A caution for whoever checks that deploy landed: a marker has to be
 something the change actually introduced. `Something went wrong.` is in the

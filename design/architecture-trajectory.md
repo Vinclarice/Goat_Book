@@ -159,6 +159,28 @@ step where a developer decides a change is finished. Moving local development
 to Postgres has therefore been promoted to the immediate infrastructure list in
 §6, and `settings.py`'s comment should be corrected in the same change.
 
+**A second instance, August 2, 2026, and it did bite.** The browser job went
+red and stayed red across two commits. The visible failure was a Playwright
+timeout; underneath it `/api/v1/agenda` was returning 500 from a *session*
+lookup, with `IndexError: list index out of range` inside Django's
+`apply_converters` — a result set being read while another statement was in
+flight. `manage.py test` puts SQLite in memory, an in-memory database cannot be
+reached by a second connection, so `LiveServerTestCase` hands the test's own
+connection to the server thread while `ThreadedWSGIServer` serves each request
+on a thread of its own. One connection, several threads, since the suite was
+written; four green runs beforehand were luck.
+
+Two things are worth extracting rather than leaving in the commit. The first is
+that this widens the claim above: SQLite does not only omit a constraint
+Postgres enforces, it changes the *concurrency* the test harness runs under,
+and it did so identically in CI — so this one is not a local-versus-CI
+divergence at all, which makes "the machine will notice" thinner still. The
+second is that the fix — naming the test database so it becomes a file — is a
+SQLite-specific workaround for a problem Postgres does not have, since separate
+connections are the default there. It is correct and it stays, because anyone
+may still run these locally on SQLite. But it is one more thing the §6 item
+would retire.
+
 ### Where this project dissents
 
 **Going headless.** Gemini's Phase 2 proposes deleting `src/lists/templates/`,
@@ -595,12 +617,31 @@ trigger stated so it can be deferred honestly rather than quietly.
   which asserts both halves of the symmetry so neither can regress alone. It
   was a bug with a regression test rather than a design decision, and it did
   not wait on Crane 0.
-- **Reconcile `frontend/src/agenda.ts` with `lists/agenda.py`.** Two exports
-  document themselves as mirroring Python definitions that do not exist. Either
-  restore the server-side authority or delete the claim — a comment naming an
-  authority that is absent is worse than no comment, because it reads as a
-  guarantee.
-- **Give `Idea` the index its future search will need.**
+- ~~**Reconcile `frontend/src/agenda.ts` with `lists/agenda.py`.**~~ **Done
+  August 2, 2026, by deleting the claim rather than restoring the authority.**
+  Both exports turned out to be genuinely client-only: the API delivers every
+  open task and filtering happens on the client, so no server code has ever
+  needed `SCOPES`, and `summary_counts` was never the same thing as
+  `list_summaries`'s per-list counts. Writing Python nobody calls, purely to
+  make a comment true, would have been dead code defending a comment. Both now
+  say what they are, why the server has no equivalent, and what would move them
+  server-side. Five of the file's seven mirror claims were accurate and are
+  untouched.
+
+  **The residual, stated so it is not mistaken for finished:** the claims that
+  *are* real — `WEEK_HORIZON_DAYS`, `bucket_for`, `next_weekday`,
+  `snooze_presets`, the weekday constants — still have no test proving the two
+  sides agree. `principles.md` asks a named mirror to be protected by tests and
+  this one is protected by matching comments. Cross-language agreement wants a
+  mechanism, probably serving the constants in the payload rather than
+  duplicating them, and that is a small design question rather than a line on
+  this list.
+- ~~**Give `Idea` the index its future search will need.**~~ **Done August 2,
+  2026:** `(owner, status, -created_at)`, matching the library view's actual
+  query — this owner's ideas, narrowed by status or excluding Promoted, newest
+  first — rather than a guess at what search will want. It deliberately does
+  not serve the substring `q` filter; that needs full-text or trigram support
+  and is release E's decision.
 - **Add a content security policy.** `X-Frame-Options` and content-type-nosniff
   are already covered — `XFrameOptionsMiddleware` and `SecurityMiddleware` are
   both enabled and Django's defaults for them are the safe ones. CSP is the

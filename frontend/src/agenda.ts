@@ -84,7 +84,21 @@ export function snoozePresets(today: string): SnoozePreset[] {
   ];
 }
 
-/** Mirrors lists.agenda.SCOPES. */
+/**
+ * Which buckets each filter scope includes.
+ *
+ * Client-only, and deliberately so: the API delivers every open task and
+ * the filtering happens here, so no server code has ever needed this. It
+ * used to claim it mirrored `lists.agenda.SCOPES`, which does not exist and
+ * never did -- a comment naming an absent authority reads as a guarantee,
+ * which is worse than saying nothing.
+ *
+ * The rule underneath it *is* mirrored: the bucket a task falls into comes
+ * from bucketFor, which does have a Python authority. This only groups
+ * those keys. If the server ever filters by scope -- a digest that reports
+ * "this week", say -- the definition moves there and this becomes a real
+ * mirror with a real test.
+ */
 export const SCOPES: Record<string, AgendaBucketKey[]> = {
   overdue: ["overdue"],
   today: ["today"],
@@ -124,7 +138,19 @@ export function applyFilters(
   });
 }
 
-/** Mirrors lists.agenda.summary_counts. */
+/**
+ * The header counts, derived from the tasks already on the client.
+ *
+ * Client-only for the same reason as SCOPES, and it carried the same false
+ * claim about a `lists.agenda.summary_counts`. The server does compute
+ * per-list open/overdue counts in `list_summaries`, which is a different
+ * thing -- those are per list and come down in the payload; these are
+ * across the whole agenda and are pure derivation over bucketFor.
+ *
+ * Note `week` is cumulative on purpose: overdue and today are inside "this
+ * week", so the number answers "what does this week hold" rather than
+ * "what falls strictly in the week bucket".
+ */
 export function summaryCounts(tasks: Task[], today: string) {
   let overdue = 0;
   let dueToday = 0;

@@ -41,6 +41,24 @@ class Idea(models.Model):
 
     class Meta:
         ordering = ("-created_at", "-id")
+        indexes = [
+            # Backs the library view's only query: this owner's ideas,
+            # narrowed by status -- either to one the person picked or by
+            # excluding Promoted, which is the default -- in created_at
+            # order. Same shape as Capture's Inbox index below, because it
+            # is the same kind of scan.
+            #
+            # Added ahead of the feature that will lean on it: release E's
+            # ranked search reads exactly this table, and an index costs a
+            # line now against a migration on a grown table later. It does
+            # not serve the substring `q` filter, and is not meant to --
+            # that one needs full-text or trigram support, which is release
+            # E's decision to make, not this index's job to pre-empt.
+            models.Index(
+                fields=("owner", "status", "-created_at"),
+                name="idea_owner_status_idx",
+            ),
+        ]
 
     def __str__(self):
         return self.text

@@ -1016,24 +1016,46 @@ Three things to carry forward:
 - Send a real test to an external inbox and inspect the displayed sender plus
   SPF, DKIM, and DMARC results before enabling stranger signups.
 
-### Deferred: tighten DMARC to `p=quarantine`
+### DMARC enforcement — done, August 1, 2026
 
-`_dmarc.vinclarice.com` is `v=DMARC1; p=none;`, which asks receivers to
-report on failures and act on none of them. That is the correct setting
-while Resend is new and unproven — a stricter policy applied before real
-mail has been observed authenticating would send legitimate password resets
-to spam, and the failure would be invisible from this end.
+The trigger was several real sends observed passing SPF, DKIM, and DMARC at
+an external inbox. Three did: the password reset, the `notices@` probe, and
+the contact-form message. `_dmarc.vinclarice.com` now serves
 
-It is also a policy that does no work. Publishing DMARC at `p=none`
-indefinitely is a common way to have domain authentication in name only.
+```text
+v=DMARC1; p=quarantine; rua=mailto:dmarc@vinclarice.com; pct=100
+```
 
-**Trigger:** several real sends observed passing SPF, DKIM, and DMARC at an
-external inbox — Gmail's "Show original" reports all three. Then move to
-`p=quarantine`. Do not skip to `p=reject`; quarantine fails a mistake into a
-spam folder where it can be found, and reject fails it into silence.
+confirmed at the authoritative nameservers and via a public resolver, with
+every other mail record re-checked afterwards and unchanged. Quarantine
+rather than reject was deliberate: quarantine fails a mistake into a spam
+folder where it can be found, reject fails it into silence.
 
-Verify against DNS rather than the Resend dashboard, which reports on the
-records it asked for and not on what the zone actually serves.
+**The record was not ours to begin with, which is the part worth keeping.**
+`_dmarc` was a CNAME pointing at `dmarc.ionos.com`, a record IONOS publishes
+and shares across customer domains. The `p=none` observed earlier was
+therefore never a Clarice setting — it was a default we did not control and
+would not have been told about if it changed. Two consequences followed:
+
+- **No reports were possible.** A `rua=` on a shared record cannot route to
+  one customer, so the domain could never have collected DMARC reports while
+  the CNAME stood.
+- **The fix is a replacement, not an edit.** DNS forbids a CNAME from
+  coexisting with any other type at the same name, so publishing our own
+  policy meant deleting the CNAME and creating a TXT. The gap between the
+  two is harmless: no DMARC record and `p=none` have the same practical
+  effect, so there was no protection to lose in the window.
+
+Generalise it: a managed DNS record that arrives by CNAME is a policy
+someone else owns. Check what a record actually resolves *through*, not just
+what it resolves *to* — the answer looked like ours and wasn't.
+
+**Watch once, then forget:** mail forwarded from `support@` to a personal
+address is the case most likely to fail under enforcement, since forwarding
+commonly breaks SPF and can break DKIM if the forwarder modifies the
+message. This domain is better placed than most — IONOS is already
+authorized in the root SPF record, so the forwarding hop can pass on its own
+— but confirm the first forwarded contact message doesn't land in spam.
 
 ### Contact page MVP
 

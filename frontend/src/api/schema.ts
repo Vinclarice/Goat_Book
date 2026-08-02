@@ -1233,7 +1233,36 @@ export interface components {
             unresolved_captures: components["schemas"]["WaitingCaptureOut"][];
             /** Habits */
             habits: components["schemas"]["HabitOut"][];
+            /** Recent Weeks */
+            recent_weeks: components["schemas"]["WeekSummaryOut"][];
             review: components["schemas"]["ReviewOut"];
+        };
+        /**
+         * WeekSummaryOut
+         * @description One row of the trend, or a row saying there is nothing to show.
+         *
+         *     Every figure is nullable, and that is the contract rather than an
+         *     oversight: a week from before the owner had anything recorded reads as
+         *     no data, not as nought. `daily-operating-system-vision.md` asks for
+         *     trustworthy denominators, and "0 of 0" for a week somebody was not here
+         *     for is the least trustworthy number a page could print.
+         */
+        WeekSummaryOut: {
+            /**
+             * Week Start
+             * Format: date
+             */
+            week_start: string;
+            /** Is Shown Week */
+            is_shown_week: boolean;
+            /** Planned Met */
+            planned_met: number | null;
+            /** Planned Total */
+            planned_total: number | null;
+            /** Habits Met */
+            habits_met: number | null;
+            /** Habits Expected */
+            habits_expected: number | null;
         };
         /**
          * WrittenDayOut

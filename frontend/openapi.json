@@ -2687,6 +2687,13 @@
             "title": "Habits",
             "type": "array"
           },
+          "recent_weeks": {
+            "items": {
+              "$ref": "#/components/schemas/WeekSummaryOut"
+            },
+            "title": "Recent Weeks",
+            "type": "array"
+          },
           "review": {
             "$ref": "#/components/schemas/ReviewOut"
           }
@@ -2704,9 +2711,78 @@
           "ideas",
           "unresolved_captures",
           "habits",
+          "recent_weeks",
           "review"
         ],
         "title": "WeekOut",
+        "type": "object"
+      },
+      "WeekSummaryOut": {
+        "description": "One row of the trend, or a row saying there is nothing to show.\n\nEvery figure is nullable, and that is the contract rather than an\noversight: a week from before the owner had anything recorded reads as\nno data, not as nought. `daily-operating-system-vision.md` asks for\ntrustworthy denominators, and \"0 of 0\" for a week somebody was not here\nfor is the least trustworthy number a page could print.",
+        "properties": {
+          "week_start": {
+            "format": "date",
+            "title": "Week Start",
+            "type": "string"
+          },
+          "is_shown_week": {
+            "title": "Is Shown Week",
+            "type": "boolean"
+          },
+          "planned_met": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planned Met"
+          },
+          "planned_total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planned Total"
+          },
+          "habits_met": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Habits Met"
+          },
+          "habits_expected": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Habits Expected"
+          }
+        },
+        "required": [
+          "week_start",
+          "is_shown_week",
+          "planned_met",
+          "planned_total",
+          "habits_met",
+          "habits_expected"
+        ],
+        "title": "WeekSummaryOut",
         "type": "object"
       },
       "WrittenDayOut": {

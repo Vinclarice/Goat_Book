@@ -168,6 +168,24 @@ class HabitOut(Schema):
     periods: list[HabitPeriodOut]
 
 
+class WeekSummaryOut(Schema):
+    """One row of the trend, or a row saying there is nothing to show.
+
+    Every figure is nullable, and that is the contract rather than an
+    oversight: a week from before the owner had anything recorded reads as
+    no data, not as nought. `daily-operating-system-vision.md` asks for
+    trustworthy denominators, and "0 of 0" for a week somebody was not here
+    for is the least trustworthy number a page could print.
+    """
+
+    week_start: date
+    is_shown_week: bool
+    planned_met: int | None
+    planned_total: int | None
+    habits_met: int | None
+    habits_expected: int | None
+
+
 class ReviewOut(Schema):
     """The written half of a week, and what was concluded from it.
 
@@ -219,6 +237,10 @@ class WeekOut(Schema):
     # than only in the read: an Inbox is a backlog, not seven days.
     unresolved_captures: list[WaitingCaptureOut]
     habits: list[HabitOut]
+    # The shown week and the four before it. Not an analytics surface: the
+    # six questions architecture-trajectory.md §4 names are release F's, and
+    # this is the same two figures the page already shows, four times more.
+    recent_weeks: list[WeekSummaryOut]
     review: ReviewOut
 
 
@@ -341,6 +363,17 @@ def _week_out(owner, day):
                 ],
             }
             for habit in reads.habits_in_week(owner, week_start, week_end, today)
+        ],
+        "recent_weeks": [
+            {
+                "week_start": summary.week_start,
+                "is_shown_week": summary.is_shown_week,
+                "planned_met": summary.planned_met,
+                "planned_total": summary.planned_total,
+                "habits_met": summary.habits_met,
+                "habits_expected": summary.habits_expected,
+            }
+            for summary in reads.recent_weeks(owner, week_start, today)
         ],
         "review": {
             "reflections": review.reflections if review else "",

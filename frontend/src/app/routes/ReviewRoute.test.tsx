@@ -36,6 +36,7 @@ function weekData(overrides: Record<string, unknown> = {}) {
     ideas: [],
     unresolved_captures: [],
     habits: [],
+    recent_weeks: [],
     review: {
       reflections: "",
       plan: "",
@@ -77,6 +78,18 @@ function habitPeriod(overrides: Record<string, unknown> = {}) {
     outcome: "open",
     progress: 0,
     target: 5,
+    ...overrides,
+  };
+}
+
+function weekSummary(overrides: Record<string, unknown> = {}) {
+  return {
+    week_start: "2026-07-20",
+    is_shown_week: false,
+    planned_met: null,
+    planned_total: null,
+    habits_met: null,
+    habits_expected: null,
     ...overrides,
   };
 }
@@ -701,6 +714,80 @@ describe("ReviewRoute", () => {
     await screen.findByRole("heading", { level: 1 });
 
     expect(screen.queryByText("Habits")).toBeNull();
+  });
+
+  it("puts the week beside the four before it", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        weekData({
+          recent_weeks: [
+            weekSummary({ week_start: "2026-06-29", planned_met: 1, planned_total: 4 }),
+            weekSummary({ week_start: "2026-07-06", planned_met: 2, planned_total: 4 }),
+            weekSummary({ week_start: "2026-07-13", planned_met: 3, planned_total: 4 }),
+            weekSummary({ week_start: "2026-07-20", planned_met: 4, planned_total: 4 }),
+            weekSummary({
+              week_start: "2026-07-27",
+              is_shown_week: true,
+              planned_met: 2,
+              planned_total: 3,
+            }),
+          ],
+        }),
+      ),
+    );
+
+    renderAt("/review");
+
+    expect(await screen.findByText("Recent weeks")).toBeInTheDocument();
+    const rows = screen.getAllByRole("listitem", { name: /week of/i });
+    expect(rows).toHaveLength(5);
+    // The one being read is marked, so a row cannot be mistaken for
+    // another week's.
+    expect(screen.getByText("this week")).toBeInTheDocument();
+  });
+
+  it("says a week has no data rather than printing nought of nought", async () => {
+    // The distinction the whole release is about. A week before somebody
+    // was here is not a week in which they planned nothing.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        weekData({
+          recent_weeks: [
+            weekSummary({ week_start: "2026-06-29" }),
+            weekSummary({
+              week_start: "2026-07-27",
+              is_shown_week: true,
+              planned_met: 0,
+              planned_total: 0,
+              habits_met: 0,
+              habits_expected: 0,
+            }),
+          ],
+        }),
+      ),
+    );
+
+    renderAt("/review");
+
+    expect(await screen.findByText("Nothing recorded yet")).toBeInTheDocument();
+  });
+
+  it("leaves the trend out entirely when there is no history behind it", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        weekData({
+          recent_weeks: [
+            weekSummary({ week_start: "2026-07-20" }),
+            weekSummary({ week_start: "2026-07-27", is_shown_week: true }),
+          ],
+        }),
+      ),
+    );
+
+    renderAt("/review");
+    await screen.findByRole("heading", { level: 1 });
+
+    expect(screen.queryByText("Recent weeks")).toBeNull();
   });
 
   it("reaches the week before without editing the URL", async () => {

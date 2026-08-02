@@ -20,7 +20,7 @@ from capture.models import Capture, Idea
 from daily.models import DailyEntry, DailyFocus
 from lists.models import Item
 from review.models import WeeklyReview
-from review.weeks import days_in, week_end_for, week_start_for
+from review.weeks import DAYS_IN_WEEK, days_in, week_end_for, week_start_for
 from routines.models import Routine, RoutineOccurrence, RoutinePause
 
 
@@ -436,3 +436,115 @@ def habits_in_week(owner, week_start, week_end, today):
             )
         )
     return habits
+
+
+# The week shown plus the four before it. Five is enough to see a shape and
+# few enough to stay a paragraph rather than a chart -- and the six deeper
+# questions architecture-trajectory.md §4 names are release F's, not this.
+TREND_WEEKS = 5
+
+
+@dataclass(frozen=True)
+class WeekSummary:
+    """One row of the trend: two figures, or none at all.
+
+    Null rather than nought where the account has no history yet. A week
+    before somebody was using Clarice is not a week in which they planned
+    nothing, and the difference between no data and a zero is the thing
+    this whole release exists to keep straight.
+    """
+
+    week_start: object
+    is_shown_week: bool
+    planned_met: object = None
+    planned_total: object = None
+    habits_met: object = None
+    habits_expected: object = None
+
+
+def first_trace_for(owner):
+    """The earliest day this owner left any mark, or None if they never have.
+
+    Their first written day, first task, first routine, first captured
+    thought. Deliberately not "when the account was created", which
+    `accounts.User` cannot answer -- it carries no creation timestamp at
+    all -- and which is the weaker question anyway: what a trend needs to
+    know is when there was first anything to report, not when a row in the
+    users table appeared.
+
+    Four cheap aggregates, run once for the whole trend rather than once
+    per week.
+    """
+    candidates = []
+    first_day = (
+        DailyEntry.objects.filter(owner=owner).order_by("date").values_list("date", flat=True).first()
+    )
+    if first_day:
+        candidates.append(first_day)
+    for queryset in (
+        Item.objects.filter(list__owner=owner),
+        Routine.objects.filter(owner=owner),
+        Capture.objects.filter(owner=owner),
+    ):
+        first = (
+            queryset.order_by("created_at")
+            .values_list("created_at", flat=True)
+            .first()
+        )
+        if first:
+            candidates.append(timezone.localtime(first).date())
+    return min(candidates) if candidates else None
+
+
+def recent_weeks(owner, shown_week_start, today):
+    """The shown week and the four before it, as two figures each.
+
+    No new table and no new record: it is the same `planned_in_week` and
+    `habits_in_week` the page already runs, four more times. That is the
+    whole of what §8 asks for here, and the deeper analytics stay in
+    release F where the charter put them.
+
+    A week whose review was completed reports the figure that review
+    recorded rather than a fresh count, so the trend and the headline above
+    it can never disagree about the same week on one page.
+    """
+    trace = first_trace_for(owner)
+    recorded = {
+        review.week_start: review
+        for review in WeeklyReview.objects.filter(
+            owner=owner,
+            week_start__gte=shown_week_start
+            - timedelta(days=DAYS_IN_WEEK * (TREND_WEEKS - 1)),
+            week_start__lte=shown_week_start,
+            completed_at__isnull=False,
+        )
+    }
+    summaries = []
+    for offset in range(TREND_WEEKS - 1, -1, -1):
+        week_start = shown_week_start - timedelta(days=DAYS_IN_WEEK * offset)
+        week_end = week_start + timedelta(days=DAYS_IN_WEEK - 1)
+        is_shown = week_start == shown_week_start
+        if trace is None or week_end < trace:
+            summaries.append(
+                WeekSummary(week_start=week_start, is_shown_week=is_shown)
+            )
+            continue
+        review = recorded.get(week_start)
+        if review is not None and review.recorded_planned_total is not None:
+            planned_met = review.recorded_planned_met
+            planned_total = review.recorded_planned_total
+        else:
+            planned = planned_in_week(owner, week_start, week_end)
+            planned_met, planned_total = len(planned.met), planned.total
+        habits = habits_in_week(owner, week_start, week_end, today)
+        summaries.append(
+            WeekSummary(
+                week_start=week_start,
+                is_shown_week=is_shown,
+                planned_met=planned_met,
+                planned_total=planned_total,
+                habits_met=sum(habit.met for habit in habits),
+                habits_expected=sum(habit.expected for habit in habits),
+            )
+        )
+    return summaries

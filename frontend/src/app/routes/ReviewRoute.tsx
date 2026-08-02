@@ -528,6 +528,67 @@ function Habits({ habits }: { habits: Habit[] }) {
   );
 }
 
+type WeekSummary = {
+  week_start: string;
+  is_shown_week: boolean;
+  planned_met: number | null;
+  planned_total: number | null;
+  habits_met: number | null;
+  habits_expected: number | null;
+};
+
+/** A pair of figures, or the reason there is not one. */
+function figure(met: number | null, total: number | null): string {
+  if (met === null || total === null) return "—";
+  if (total === 0) return "none";
+  return `${met} of ${total}`;
+}
+
+/**
+ * The shown week beside the four before it.
+ *
+ * One figure is a fact; five is a shape — two in three means something
+ * different after three weeks of three in three than after three weeks of
+ * one in five. Deliberately the same two numbers the page already shows
+ * rather than a new kind of claim: the six analytical questions
+ * architecture-trajectory.md §4 names have their home in release F.
+ */
+function RecentWeeks({ weeks }: { weeks: WeekSummary[] }) {
+  return (
+    <ul className="space-y-1">
+      {weeks.map((week) => (
+        <li
+          key={week.week_start}
+          aria-label={`Week of ${dayAndMonth(week.week_start)}`}
+          className={`flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 rounded-lg border px-3 py-2 ${
+            week.is_shown_week ? "border-accent" : "border-border"
+          }`}
+        >
+          <span className="min-w-0">
+            {dayAndMonth(week.week_start)}
+            {week.is_shown_week && (
+              <span className="ml-2 text-sm text-accent">this week</span>
+            )}
+          </span>
+          {week.planned_total === null && week.habits_expected === null ? (
+            // Never "0 of 0" for a week nobody was here for. That is the
+            // least trustworthy number a page about trustworthy
+            // denominators could print.
+            <span className="shrink-0 text-sm text-muted-foreground">
+              Nothing recorded yet
+            </span>
+          ) : (
+            <span className="flex shrink-0 items-baseline gap-4 text-sm text-muted-foreground">
+              <span>{figure(week.planned_met, week.planned_total)} planned</span>
+              <span>{figure(week.habits_met, week.habits_expected)} habits</span>
+            </span>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function Finished({ completed }: { completed: CompletedTask[] }) {
   if (completed.length === 0) {
     // Said plainly rather than left blank. An empty area reads as a page
@@ -761,6 +822,17 @@ export function ReviewRoute() {
         <section className="space-y-2">
           <h2 className="text-sm font-bold">Habits</h2>
           <Habits habits={data.habits} />
+        </section>
+      )}
+
+      {/* Absent when every week behind this one is empty: a trend with
+          no history in it is five rows saying nothing. */}
+      {data.recent_weeks.some(
+        (week) => week.planned_total !== null || week.habits_expected !== null,
+      ) && (
+        <section className="space-y-2">
+          <h2 className="text-sm font-bold">Recent weeks</h2>
+          <RecentWeeks weeks={data.recent_weeks} />
         </section>
       )}
 

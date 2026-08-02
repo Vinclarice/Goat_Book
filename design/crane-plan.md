@@ -33,15 +33,23 @@ independent of it. Reasoning in §6.
 Each is already deployed and covered by a test; nobody has watched it happen
 in production.
 
-- [ ] Log out at desktop and narrow widths, then confirm protected API calls
-  fail afterwards. (B2)
-- [ ] Hard-refresh `/app/agenda` and confirm navigation content and counts
-  render. (B0)
-- [ ] Visit a deliberately broken route, `/app/task/999999`, and confirm it
+**Four of the five were cleared on August 2, 2026**, in the session that
+deployed Crane 0a, 1 and 2 — which is the sequencing §6 predicted, since a
+deploy is the only thing that makes them possible. The fifth is still open
+and is still blocked on the same thing it was always blocked on: setting up
+a recurring parent with an opted-out subtask takes three attempts through
+the interface C2 found, and that is the UI overhaul's problem rather than
+this checklist's.
+
+- [x] Log out at desktop and narrow widths, then confirm protected API calls
+  fail afterwards. (B2) — August 2, 2026.
+- [x] Hard-refresh `/app/agenda` and confirm navigation content and counts
+  render. (B0) — August 2, 2026.
+- [x] Visit a deliberately broken route, `/app/task/999999`, and confirm it
   says what went wrong and offers a way out rather than rendering blank.
-  (B2.1)
-- [ ] Send an Android capture after the redeploy and confirm the client still
-  reaches production.
+  (B2.1) — August 2, 2026.
+- [x] Send an Android capture after the redeploy and confirm the client still
+  reaches production. — August 2, 2026.
 - [ ] Confirm B1's opt-out rule in production: a subtask with `always_recurs`
   false does not clone onto the parent's next occurrence. Three attempts
   to set this up by hand failed on the interface, not the rule — expect
@@ -369,8 +377,11 @@ holds both halves of the symmetry.
 
 ### Crane 0a — the identity slice
 
-**Shipped August 2, 2026** — migrations `0022`–`0024`, merged to `main` and
-not yet deployed. The one piece of Crane 0 that produces a migration, and it
+**Shipped August 2, 2026** — migrations `0022`–`0024`, deployed to
+production at 17:54 EDT the same day, where `0023` backfilled both existing
+repeating tasks and every series gained an identity. The accrual this slice
+was justified by stops running from there. The one piece of Crane 0 that
+produces a migration, and it
 ran ahead of Crane 1 for the accrual reason above: cheap that day, and more
 expensive every week the Daily Page drives real use. It was never a Daily Page
 slice and never belonged in §4's ordering.
@@ -476,9 +487,9 @@ one, with nothing connecting them.
 ## 4. Crane 1 — Daily Page foundation
 
 **All seven slices shipped August 2, 2026**, in order, each with its
-acceptance condition verified in a real browser rather than only in tests.
-Merged to `main` and **not yet deployed** — production is eight migrations
-behind, so none of this is reachable there yet.
+acceptance condition verified in a real browser rather than only in tests,
+and **deployed to production at 17:54 EDT the same day** — see §7 for the
+deploy's own verification.
 
 Two things worth carrying forward. Slice 6 found that slices 1–5 had built a
 surface reachable only by typing its URL, which is why the side nav now
@@ -696,9 +707,23 @@ starts.
 ## 7. Crane 2 — daily planning and routines
 
 **All five slices shipped August 2, 2026**, each acceptance verified
-against a running server rather than only the test client. Merged to `main`
-and **not yet deployed** — production is eleven migrations behind, so
-neither Crane 1 nor this is reachable there.
+against a running server rather than only the test client, and **deployed
+to production at 17:54 EDT the same day** alongside Crane 0a and Crane 1 —
+ten migrations in one run, `failed=0`.
+
+Verified with markers the change actually added, per the lesson Bittern
+learned when a weaker one nearly confirmed a deploy that had not happened:
+`/api/v1/day` and `/api/v1/routines` answer 401 while a made-up route
+answers 404, so the routes exist rather than the shell swallowing
+everything, and the served bundle carries "Keep a routine", "Personal
+compass" and "Nothing pinned yet". `showmigrations` reports nothing
+unapplied.
+
+**And `lists/0023` did real work for the first time.** It was a no-op
+locally because the dev database has no repeating tasks; production had
+two, and both came back linked — `repeating roots: 2 | linked: 2 |
+commitments: 2`. Every series that existed now has an identity, and the
+accrual argument that justified Crane 0a stops running from here.
 
 Three things the sequence taught, worth carrying into Crane 3. The slice
 list again omitted a surface — routine *creation* had none, the same shape

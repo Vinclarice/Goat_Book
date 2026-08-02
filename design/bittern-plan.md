@@ -843,8 +843,49 @@ environments agree.
 Resend rejects an unverified sending domain outright — so the first real
 lockout would have failed to report itself, with nothing to say why.
 
-Remaining: the DNS records, an API key on the server, and a real send
-inspected at an external inbox.
+**Verified in production, August 1, 2026, 20:06 EDT.** A password reset
+requested at `vinclarice.com` arrived at an external Gmail inbox one second
+later and authenticated on all three checks:
+
+```text
+From:    Clarice <accounts@vinclarice.com>
+Subject: Reset your Clarice password
+SPF:     PASS with IP 54.240.9.156
+DKIM:    PASS with domain vinclarice.com
+DMARC:   PASS
+```
+
+The DKIM line is what makes this conclusive rather than merely encouraging.
+`d=vinclarice.com` aligns directly with the visible `From:`, which is the
+whole reason the key sits at `resend._domainkey` on the root domain instead
+of on the `send.` subdomain. SPF passed from an SES address authorized via
+`send.vinclarice.com`, under relaxed alignment — the IONOS root record was
+never consulted, exactly as the provider decision above predicted. The
+`amazonses.com` Message-ID is Resend's infrastructure showing through and
+does not affect alignment.
+
+**Still unproven, and it is the sender this section warned about.** That
+reset used `DEFAULT_FROM_EMAIL`. `SERVER_EMAIL` — `notices@` — has never
+sent anything, and it is the one whose failure is silent by nature: nobody
+notices an admin notice that didn't arrive. Domain verification covers any
+address on the domain, so it *should* work, but "should" is what this
+section already got wrong once. Exercise it deliberately rather than
+waiting for a real lockout to be the test:
+
+```bash
+ssh elspeth@vinclarice.com 'docker exec -i clarice python manage.py shell' <<'EOF'
+from django.core.mail import mail_admins
+mail_admins("Clarice notices probe", "Checking SERVER_EMAIL authenticates.")
+EOF
+```
+
+Also unproven: whether `support@vinclarice.com` receives at all. Resend only
+sends; that address has to be a real IONOS mailbox or forwarder. If it was
+never created, contact-form mail bounces while the form still says "Thanks,
+your message is on its way" — the success state reveals nothing about
+delivery, which is right for strangers and unhelpful for diagnosis. Submit
+the production form once and confirm arrival; a bounce shows in Resend's
+dashboard logs.
 
 - Decouple SMTP/API credentials from the visible `DEFAULT_FROM_EMAIL` in
   Django settings and deployment configuration.

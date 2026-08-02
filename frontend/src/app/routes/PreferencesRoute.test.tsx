@@ -1,6 +1,7 @@
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MemoryRouter } from "react-router";
 
 import { PreferencesRoute } from "./PreferencesRoute";
 
@@ -67,7 +68,7 @@ function renderRoute() {
     queryClient,
     ...render(
       <QueryClientProvider client={queryClient}>
-        <PreferencesRoute />
+        <MemoryRouter><PreferencesRoute /></MemoryRouter>
       </QueryClientProvider>,
     ),
   };
@@ -105,7 +106,10 @@ describe("PreferencesRoute", () => {
 
     renderRoute();
 
-    expect(await screen.findByText("Something went wrong.")).toBeInTheDocument();
+    // B2.1: a 500 is the retryable kind of failure, so the person is
+    // offered a retry rather than told their work is gone.
+    expect(await screen.findByText(/Couldn't reach Clarice/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /try again/i })).toBeInTheDocument();
   });
 
   it("saves the account fields on submit", async () => {

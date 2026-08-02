@@ -1,6 +1,7 @@
 import type { ReactElement } from "react";
 import { render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MemoryRouter } from "react-router";
 
 import { AgendaRoute } from "./AgendaRoute";
 import { agendaData, agendaList, task } from "../../test/fixtures";
@@ -29,7 +30,9 @@ function renderWithClient(ui: ReactElement) {
     defaultOptions: { queries: { retry: false } },
   });
   return render(
-    <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>,
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter>{ui}</MemoryRouter>
+    </QueryClientProvider>,
   );
 }
 
@@ -61,6 +64,9 @@ describe("AgendaRoute", () => {
 
     renderWithClient(<AgendaRoute />);
 
-    expect(await screen.findByText("Something went wrong.")).toBeInTheDocument();
+    // B2.1: a 500 is the retryable kind of failure, so the person is
+    // offered a retry rather than told their work is gone.
+    expect(await screen.findByText(/Couldn't reach Clarice/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /try again/i })).toBeInTheDocument();
   });
 });

@@ -16,6 +16,8 @@ import {
 import { Button } from "@/components/ui/button";
 
 import { apiV1 } from "../../api/client";
+import { RequestFailed, statusOf } from "../../api/failure";
+import { RouteFailure } from "./RouteFailure";
 import { TaskWorkspace } from "../../TaskWorkspace";
 
 export function ListRoute() {
@@ -26,13 +28,13 @@ export function ListRoute() {
   const [title, setTitle] = useState("");
   const [renameError, setRenameError] = useState<string | null>(null);
 
-  const { data, error, isPending } = useQuery({
+  const { data, error: loadError, isPending, refetch } = useQuery({
     queryKey: ["list", id],
     queryFn: async () => {
-      const { data, error } = await apiV1.GET("/api/v1/lists/{list_id}", {
+      const { data, response } = await apiV1.GET("/api/v1/lists/{list_id}", {
         params: { path: { list_id: id } },
       });
-      if (error) throw error;
+      if (!response.ok || !data) throw new RequestFailed(response.status);
       setTitle(data.list.title);
       return data;
     },
@@ -73,7 +75,7 @@ export function ListRoute() {
   }
 
   if (isPending) return <p className="p-6">Loading…</p>;
-  if (error || !data) return <p className="p-6">Something went wrong.</p>;
+  if (loadError || !data) return <RouteFailure status={statusOf(loadError)} onRetry={() => refetch()} />;
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">

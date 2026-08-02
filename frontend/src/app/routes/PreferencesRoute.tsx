@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 
 import { apiV1 } from "../../api/client";
+import { RequestFailed, statusOf } from "../../api/failure";
+import { RouteFailure } from "./RouteFailure";
 import { ThemeToggle } from "../ThemeToggle";
 
 export function PreferencesRoute() {
@@ -16,11 +18,11 @@ export function PreferencesRoute() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
-  const { data, error, isPending } = useQuery({
+  const { data, error, isPending, refetch } = useQuery({
     queryKey: ["preferences"],
     queryFn: async () => {
-      const { data, error } = await apiV1.GET("/api/v1/me/preferences");
-      if (error) throw error;
+      const { data, response } = await apiV1.GET("/api/v1/me/preferences");
+      if (!response.ok || !data) throw new RequestFailed(response.status);
       return data;
     },
   });
@@ -120,7 +122,7 @@ export function PreferencesRoute() {
   }
 
   if (isPending) return <p className="p-6">Loading…</p>;
-  if (error || !data) return <p className="p-6">Something went wrong.</p>;
+  if (error || !data) return <RouteFailure status={statusOf(error)} onRetry={() => refetch()} />;
 
   return (
     <div className="max-w-lg mx-auto px-4 py-8 space-y-8">

@@ -73,7 +73,10 @@ describe("TaskDetailRoute", () => {
 
     renderAt("1");
 
-    expect(await screen.findByText("Something went wrong.")).toBeInTheDocument();
+    // B2.1: a 500 is the retryable kind of failure, so the person is
+    // offered a retry rather than told their work is gone.
+    expect(await screen.findByText(/Couldn't reach Clarice/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /try again/i })).toBeInTheDocument();
   });
 
   it("saves a text edit", async () => {

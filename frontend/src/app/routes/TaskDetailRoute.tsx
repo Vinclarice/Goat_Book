@@ -16,6 +16,8 @@ import {
   updateTaskText,
 } from "../../api";
 import { apiV1 } from "../../api/client";
+import { RequestFailed, statusOf } from "../../api/failure";
+import { RouteFailure } from "./RouteFailure";
 import type { Task, TaskRecurrence } from "../../types";
 
 const RECURRENCE_LABELS: Record<TaskRecurrence, string> = {
@@ -52,13 +54,13 @@ export function TaskDetailRoute() {
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const { isPending, isError } = useQuery({
+  const { isPending, isError, error: loadError, refetch } = useQuery({
     queryKey: ["task", id],
     queryFn: async () => {
-      const { data, error } = await apiV1.GET("/api/v1/tasks/{item_id}", {
+      const { data, response } = await apiV1.GET("/api/v1/tasks/{item_id}", {
         params: { path: { item_id: id } },
       });
-      if (error) throw error;
+      if (!response.ok || !data) throw new RequestFailed(response.status);
       setTask(data.task as Task);
       setListRef(data.list);
       setText(data.task.text);
@@ -296,7 +298,7 @@ export function TaskDetailRoute() {
   }
 
   if (isPending) return <p className="p-6">Loading…</p>;
-  if (isError || !task || !listRef) return <p className="p-6">Something went wrong.</p>;
+  if (isError || !task || !listRef) return <RouteFailure status={statusOf(loadError)} onRetry={() => refetch()} />;
 
   // Whether "does this subtask come back next time?" is a question worth
   // asking at all. The flag exists on every subtask regardless; this only

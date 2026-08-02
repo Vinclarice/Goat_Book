@@ -2284,6 +2284,22 @@
             "title": "Skipped",
             "type": "integer"
           },
+          "paused_since": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paused Since"
+          },
+          "paused_days": {
+            "title": "Paused Days",
+            "type": "integer"
+          },
           "periods": {
             "items": {
               "$ref": "#/components/schemas/HabitPeriodOut"
@@ -2300,6 +2316,8 @@
           "met",
           "expected",
           "skipped",
+          "paused_since",
+          "paused_days",
           "periods"
         ],
         "title": "HabitOut",

@@ -2,7 +2,7 @@
 from django.db import transaction
 from django.utils import timezone
 
-from routines.models import Routine, RoutineOccurrence
+from routines.models import Routine, RoutineOccurrence, RoutinePause
 from routines.periods import period_start_for
 
 
@@ -56,9 +56,14 @@ def pause_routine(owner, routine):
     _own_routine(owner, routine)
     if not routine.is_active:
         return routine
+    now = timezone.now()
     routine.is_active = False
-    routine.paused_at = timezone.now()
+    routine.paused_at = now
     routine.save(update_fields=["is_active", "paused_at"])
+    # The durable half, added in Crane 3 slice 7. The flags above answer
+    # "is it down right now"; this answers "what weeks was it down for",
+    # which no later migration could reconstruct once a pause has ended.
+    RoutinePause.objects.create(owner=owner, routine=routine, paused_at=now)
     return routine
 
 
@@ -76,6 +81,13 @@ def resume_routine(owner, routine):
     routine.is_active = True
     routine.paused_at = None
     routine.save(update_fields=["is_active", "paused_at"])
+    # Closed rather than deleted: the stretch it was down for is the thing
+    # being recorded, and a row that vanished here would leave exactly the
+    # gap RoutinePause exists to fill. Resuming something already running
+    # closes nothing, because there is nothing open.
+    RoutinePause.objects.filter(routine=routine, resumed_at__isnull=True).update(
+        resumed_at=timezone.now()
+    )
     return routine
 
 

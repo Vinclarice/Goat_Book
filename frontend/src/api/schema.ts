@@ -1037,6 +1037,10 @@ export interface components {
             expected: number;
             /** Skipped */
             skipped: number;
+            /** Paused Since */
+            paused_since: string | null;
+            /** Paused Days */
+            paused_days: number;
             /** Periods */
             periods: components["schemas"]["HabitPeriodOut"][];
         };

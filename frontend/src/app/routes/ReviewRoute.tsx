@@ -418,6 +418,8 @@ type Habit = {
   met: number;
   expected: number;
   skipped: number;
+  paused_since: string | null;
+  paused_days: number;
   periods: HabitPeriod[];
 };
 
@@ -467,10 +469,26 @@ function Habits({ habits }: { habits: Habit[] }) {
                   </span>
                   <span>met</span>
                 </>
+              ) : habit.paused_since ? (
+                // Said, not left blank. Silence here reads the same as a
+                // routine that did not exist yet, and a week somebody
+                // deliberately put a routine down is a different fact from
+                // a week it elapsed open — crane-plan.md §8.
+                <span>Paused since {dayAndMonth(habit.paused_since)}</span>
               ) : (
                 // Nothing was asked of it: a routine kept on Saturday is
                 // not a routine that failed five days.
                 <span>nothing expected yet</span>
+              )}
+              {/* A pause that started and finished inside the week leaves
+                  no "since", so the days it took out are said here instead
+                  — otherwise a denominator of four in a seven-day week
+                  would look like an error. */}
+              {!habit.paused_since && habit.paused_days > 0 && (
+                <span>
+                  · {habit.paused_days}{" "}
+                  {habit.paused_days === 1 ? "day" : "days"} paused
+                </span>
               )}
               {/* Beside the figure rather than inside it. A skip is out of
                   the denominator on purpose — the same call released pins

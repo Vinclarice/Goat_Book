@@ -593,6 +593,65 @@ describe("ReviewRoute", () => {
     expect(screen.getByText(/1 skipped/)).toBeInTheDocument();
   });
 
+  it("says a routine was paused rather than showing it as a row of nothing", async () => {
+    // §8's answer to the first question §3 left open. Silence reads the
+    // same as a routine that did not exist yet.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        weekData({
+          habits: [
+            {
+              routine_id: 1,
+              title: "Practice Spanish",
+              cadence: "daily",
+              unit: "lessons",
+              met: 0,
+              expected: 0,
+              skipped: 0,
+              paused_since: "2026-07-20",
+              paused_days: 7,
+              periods: [],
+            },
+          ],
+        }),
+      ),
+    );
+
+    renderAt("/review");
+
+    expect(await screen.findByText(/Paused since 20 July|Paused since July 20/)).toBeInTheDocument();
+    expect(screen.queryByText(/0 of 0/)).toBeNull();
+  });
+
+  it("counts the days a mid-week pause took out, without claiming it is still down", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        weekData({
+          habits: [
+            {
+              routine_id: 1,
+              title: "Practice Spanish",
+              cadence: "daily",
+              unit: "lessons",
+              met: 3,
+              expected: 4,
+              skipped: 0,
+              paused_since: null,
+              paused_days: 3,
+              periods: [habitPeriod({ outcome: "completed", progress: 5 })],
+            },
+          ],
+        }),
+      ),
+    );
+
+    renderAt("/review");
+
+    expect(await screen.findByText("3 of 4")).toBeInTheDocument();
+    expect(screen.getByText(/3 days paused/)).toBeInTheDocument();
+    expect(screen.queryByText(/Paused since/)).toBeNull();
+  });
+
   it("leaves the habits section out when no routine existed", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(() =>
       jsonResponse(weekData()),

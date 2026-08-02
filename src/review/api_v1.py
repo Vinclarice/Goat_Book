@@ -153,6 +153,13 @@ class HabitOut(Schema):
     met: int
     expected: int
     skipped: int
+    # When the pause that was still running at the week's end began, and how
+    # many of the week's days it was down for. Both null/zero wherever
+    # RoutinePause has nothing to say -- a pause that began and ended before
+    # that record existed leaves no row, and §8's rule is that the review
+    # stays silent rather than inferring one from an empty stretch.
+    paused_since: date | None
+    paused_days: int
     periods: list[HabitPeriodOut]
 
 
@@ -315,6 +322,8 @@ def _week_out(owner, day):
                 "met": habit.met,
                 "expected": habit.expected,
                 "skipped": habit.skipped,
+                "paused_since": habit.paused_since,
+                "paused_days": habit.paused_days,
                 "periods": [
                     {
                         "period_start": period.period_start,

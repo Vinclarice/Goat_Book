@@ -21,7 +21,7 @@ from daily.models import DailyEntry, DailyFocus
 from lists.models import Item
 from review.models import WeeklyReview
 from review.weeks import days_in, week_end_for, week_start_for
-from routines.models import Routine, RoutineOccurrence
+from routines.models import Routine, RoutineOccurrence, RoutinePause
 
 
 def week_bounds(day):
@@ -243,10 +243,17 @@ class Habit:
     somebody made deliberately -- exactly what `DailyFocus.released_at`
     keeps out of the planned denominator. The skips are reported alongside
     rather than swallowed, so the figure cannot hide them.
+
+    ``paused_since`` and ``paused_days`` say what a pause did to the week.
+    Both are read from `RoutinePause`, and both are silent where it is:
+    a pause that began and ended before that table existed leaves no row,
+    and inferring one from an empty stretch is precisely what §8 rules out.
     """
 
     routine: object
     periods: list
+    paused_since: object = None
+    paused_days: int = 0
 
     @property
     def met(self):
@@ -261,7 +268,50 @@ class Habit:
         return len(self.periods) - self.skipped
 
 
-def _periods_expected_of(routine, week_start, week_end, today):
+def _down_days(pauses, week_start, week_end):
+    """The dates in this week the routine was deliberately down for.
+
+    A day counts as down if a pause covered any part of it, which is the
+    kinder of the two readings at the boundaries: somebody who put a
+    routine down on Wednesday afternoon and picked it up on Friday morning
+    had it down for part of both, and asking them for those days would be
+    the product asserting a miss against a decision they made.
+    """
+    down = set()
+    for pause in pauses:
+        began = timezone.localtime(pause.paused_at).date()
+        ended = (
+            timezone.localtime(pause.resumed_at).date() if pause.resumed_at else None
+        )
+        for day in days_in(week_start):
+            if day < began or day > week_end:
+                continue
+            if ended is None or day <= ended:
+                down.add(day)
+    return down
+
+
+def _paused_since(pauses, week_start, week_end, today):
+    """When the pause that was still running at the week's end began.
+
+    Reported only when the routine was actually down at that point, so a
+    pause that started and finished mid-week leaves this null and shows up
+    in the day count instead. A pause that began after the week is not this
+    week's business at all: a decision taken later must not rewrite a week
+    already lived.
+    """
+    edge = min(week_end, today)
+    for pause in pauses:
+        began = timezone.localtime(pause.paused_at).date()
+        ended = (
+            timezone.localtime(pause.resumed_at).date() if pause.resumed_at else None
+        )
+        if began <= edge and (ended is None or ended > edge):
+            return began
+    return None
+
+
+def _periods_expected_of(routine, week_start, week_end, today, down):
     """Which periods this week actually asked of ``routine``.
 
     Floored at the routine's own beginning and capped at today, because
@@ -269,16 +319,28 @@ def _periods_expected_of(routine, week_start, week_end, today):
     have been missed, and reporting one would assert a failure the person
     never had the chance to have. A routine kept from Thursday is asked
     about four days; a week still ahead is asked about none.
+
+    Days it was deliberately down for come out too, on the same ground --
+    a paused routine is not a failing one. `down` is empty wherever
+    `RoutinePause` has nothing to say, which is how a week that predates
+    that record is described exactly as it was before it existed.
     """
     began = timezone.localtime(routine.created_at).date()
     last = min(week_end, today)
     if routine.cadence == Routine.Cadence.WEEKLY:
         # One period covering the whole week, so there is nothing to cap
-        # day by day -- only whether the week has begun at all.
-        if began <= week_end and week_start <= today:
-            return [week_start]
-        return []
-    return [day for day in days_in(week_start) if began <= day <= last]
+        # day by day -- only whether the week has begun at all, and whether
+        # the routine was down for the whole of it.
+        if began > week_end or week_start > today:
+            return []
+        if down and all(day in down for day in days_in(week_start) if day <= last):
+            return []
+        return [week_start]
+    return [
+        day
+        for day in days_in(week_start)
+        if began <= day <= last and day not in down
+    ]
 
 
 def habits_in_week(owner, week_start, week_end, today):
@@ -303,9 +365,22 @@ def habits_in_week(owner, week_start, week_end, today):
             period_start__lte=week_end,
         )
     }
+    pauses = {}
+    for pause in RoutinePause.objects.filter(owner=owner):
+        pauses.setdefault(pause.routine_id, []).append(pause)
     habits = []
     for routine in routines:
-        expected = _periods_expected_of(routine, week_start, week_end, today)
+        routine_pauses = pauses.get(routine.id, [])
+        down = _down_days(routine_pauses, week_start, week_end)
+        # A day it was down for but somebody logged into anyway is still
+        # reported. A record that exists is never hidden -- dropping it
+        # would be the review deciding somebody's history was inconvenient.
+        down -= {
+            period_start
+            for (routine_id, period_start) in logged
+            if routine_id == routine.id
+        }
+        expected = _periods_expected_of(routine, week_start, week_end, today, down)
         if not expected and timezone.localtime(routine.created_at).date() > week_end:
             # It did not exist yet. Absent rather than nought: no data and a
             # zero are different claims, and telling them apart is what this
@@ -331,5 +406,14 @@ def habits_in_week(owner, week_start, week_end, today):
                     unit=occurrence.unit if occurrence else routine.unit,
                 )
             )
-        habits.append(Habit(routine=routine, periods=periods))
+        habits.append(
+            Habit(
+                routine=routine,
+                periods=periods,
+                paused_since=_paused_since(
+                    routine_pauses, week_start, week_end, today
+                ),
+                paused_days=len(down),
+            )
+        )
     return habits

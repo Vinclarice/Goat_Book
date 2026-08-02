@@ -133,3 +133,58 @@ class RoutineEndpointTest(TestCase):
         self.client.logout()
 
         self.assertEqual(self.client.get("/api/v1/routines").status_code, 401)
+
+    def test_correcting_down_reopens_a_completed_period(self):
+        routine = services.create_routine(
+            self.alice, title="Practice Spanish", target_quantity=5
+        )
+        self.post(f"/api/v1/routines/{routine.id}/log", {"amount": 5})
+
+        self.post(f"/api/v1/routines/{routine.id}/log", {"amount": -1})
+
+        standing = self.standings()[0]
+        self.assertEqual(standing["progress"], 4)
+        self.assertEqual(standing["outcome"], "open")
+
+    def test_correcting_a_period_nobody_logged_writes_nothing(self):
+        routine = services.create_routine(
+            self.alice, title="Practice Spanish", target_quantity=5
+        )
+
+        response = self.post(f"/api/v1/routines/{routine.id}/log", {"amount": -1})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(RoutineOccurrence.objects.count(), 0)
+        self.assertEqual(self.standings()[0]["progress"], 0)
+
+    def test_skipping_a_period(self):
+        routine = services.create_routine(
+            self.alice, title="Practice Spanish", target_quantity=5
+        )
+
+        response = self.post(f"/api/v1/routines/{routine.id}/skip", {})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.standings()[0]["outcome"], "skipped")
+
+    def test_a_skip_reads_differently_from_a_period_left_alone(self):
+        skipped = services.create_routine(
+            self.alice, title="Practice Spanish", target_quantity=5
+        )
+        services.create_routine(
+            self.alice, title="Move today", target_quantity=1
+        )
+
+        self.post(f"/api/v1/routines/{skipped.id}/skip", {})
+
+        outcomes = {each["title"]: each["outcome"] for each in self.standings()}
+        self.assertEqual(outcomes["Practice Spanish"], "skipped")
+        self.assertEqual(outcomes["Move today"], "open")
+
+    def test_one_person_cannot_skip_anothers_routine(self):
+        bobs = services.create_routine(self.bob, title="Bob's practice")
+
+        response = self.post(f"/api/v1/routines/{bobs.id}/skip", {})
+
+        self.assertIn(response.status_code, (403, 404))
+        self.assertEqual(RoutineOccurrence.objects.count(), 0)

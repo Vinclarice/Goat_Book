@@ -44,14 +44,59 @@ def log_progress(owner, routine, day, amount=1):
     separate "mark done" once the count is there, which is the whole
     difference between measuring practice and ticking a box.
 
+    A negative ``amount`` is a correction, which `crane-plan.md` §3 asks to
+    be "the same write path with a different amount" rather than an action
+    of its own -- fixing a mis-tap is the same kind of statement as making
+    one. Two rules follow, and both are about not inventing history:
+    progress never goes below nothing, and correcting a period nobody has
+    logged does nothing at all rather than conjuring a row that says it was
+    touched. Returns None in that case.
+
     ``day`` is passed in and never read from the clock here: the request
     boundary decides what today means using the owner's own zone.
     """
     _own_routine(owner, routine)
-    occurrence = _occurrence_for_writing(owner, routine, day)
-    occurrence.progress += amount
+    if amount <= 0:
+        occurrence = RoutineOccurrence.objects.filter(
+            routine=routine, period_start=period_start_for(routine.cadence, day)
+        ).first()
+        if occurrence is None:
+            return None
+    else:
+        occurrence = _occurrence_for_writing(owner, routine, day)
+    # Clamped rather than allowed to go negative and be caught by the
+    # column's check constraint: "you cannot have done less than none of it"
+    # is a domain rule, and a database error is not how a person hears it.
+    occurrence.progress = max(0, occurrence.progress + amount)
     _settle_outcome(occurrence)
     occurrence.save(update_fields=["progress", "outcome", "decided_at"])
+    return occurrence
+
+
+@transaction.atomic
+def skip_period(owner, routine, day):
+    """Record that this period was deliberately not done.
+
+    A distinct action rather than silence, and the distinction is the whole
+    point: "I chose not to today" and "I meant to and didn't" are different
+    facts about a week, and Crane 3 reports them differently. A period that
+    merely elapses with nothing logged stays open, which is a fact about
+    what happened rather than a verdict asserted on the person's behalf.
+
+    Creates the occurrence if there isn't one -- unlike a correction, a
+    decision not to do something is itself worth recording, and it is the
+    common case: deciding on Monday morning that today is not one.
+
+    Whatever was already logged is kept. §3's weekly example is explicit
+    that skipping sets the occurrence to skipped regardless of partial
+    progress, because the decision is about the period rather than the
+    count.
+    """
+    _own_routine(owner, routine)
+    occurrence = _occurrence_for_writing(owner, routine, day)
+    occurrence.outcome = RoutineOccurrence.Outcome.SKIPPED
+    occurrence.decided_at = timezone.now()
+    occurrence.save(update_fields=["outcome", "decided_at"])
     return occurrence
 
 
@@ -78,11 +123,25 @@ def _occurrence_for_writing(owner, routine, day):
 def _settle_outcome(occurrence):
     """Completed once the target is reached, open again if it stops being.
 
-    Correction runs through here too (slice 2), which is why this reverts
-    rather than only advancing: a count that is no longer true must not
-    leave an outcome that says otherwise.
+    Corrections run through here, which is why it reverts rather than only
+    advancing: a count that is no longer true must not leave an outcome
+    saying otherwise.
+
+    Only ever called from the logging path, which is what makes the skip
+    branch safe -- reaching it means something was logged, and doing some of
+    the thing contradicts having decided not to.
     """
     reached = occurrence.progress >= occurrence.target_quantity
+    if occurrence.outcome == RoutineOccurrence.Outcome.SKIPPED:
+        # Logging is the un-skip. A skip is a statement about intent, and
+        # the person just did some of it.
+        occurrence.outcome = (
+            RoutineOccurrence.Outcome.COMPLETED
+            if reached
+            else RoutineOccurrence.Outcome.OPEN
+        )
+        occurrence.decided_at = timezone.now() if reached else None
+        return
     if reached and occurrence.outcome == RoutineOccurrence.Outcome.OPEN:
         occurrence.outcome = RoutineOccurrence.Outcome.COMPLETED
         occurrence.decided_at = timezone.now()

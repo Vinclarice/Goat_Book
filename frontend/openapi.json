@@ -664,7 +664,7 @@
             }
           }
         },
-        "description": "Add to the current period, returning every standing rather than one.\n\nThe Daily Page renders them together, so one response keeps the list\nfrom disagreeing with itself for a frame -- the same reason the day's\nfocus endpoints answer with the whole day.",
+        "description": "Add to the current period, returning every standing rather than one.\n\nThe Daily Page renders them together, so one response keeps the list\nfrom disagreeing with itself for a frame -- the same reason the day's\nfocus endpoints answer with the whole day.\n\nA negative amount is a correction, which is deliberately this endpoint\nrather than one of its own: fixing a mis-tap is the same kind of\nstatement as making one, and a separate route would invite a separate\nrule. Correcting a period nobody has logged is a no-op, so the response\nis the unchanged standings rather than an error about a row that ought\nnot to exist.",
         "requestBody": {
           "content": {
             "application/json": {
@@ -675,6 +675,41 @@
           },
           "required": true
         },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/routines/{routine_id}/skip": {
+      "post": {
+        "operationId": "routines_api_v1_skip_routine",
+        "summary": "Skip Routine",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "routine_id",
+            "schema": {
+              "title": "Routine Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandingsOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Record that this period was deliberately not done.\n\nIts own route rather than a flag on the log endpoint, because it is a\ndifferent statement: logging says what happened, skipping says what was\ndecided. Collapsing them would be the near-identical-controls problem\nC2 found in the task UI, one layer down.",
         "security": [
           {
             "SessionAuth": []

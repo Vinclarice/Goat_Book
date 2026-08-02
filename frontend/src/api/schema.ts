@@ -325,8 +325,40 @@ export interface paths {
          *     The Daily Page renders them together, so one response keeps the list
          *     from disagreeing with itself for a frame -- the same reason the day's
          *     focus endpoints answer with the whole day.
+         *
+         *     A negative amount is a correction, which is deliberately this endpoint
+         *     rather than one of its own: fixing a mis-tap is the same kind of
+         *     statement as making one, and a separate route would invite a separate
+         *     rule. Correcting a period nobody has logged is a no-op, so the response
+         *     is the unchanged standings rather than an error about a row that ought
+         *     not to exist.
          */
         post: operations["routines_api_v1_log_routine"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/routines/{routine_id}/skip": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Skip Routine
+         * @description Record that this period was deliberately not done.
+         *
+         *     Its own route rather than a flag on the log endpoint, because it is a
+         *     different statement: logging says what happened, skipping says what was
+         *     decided. Collapsing them would be the near-identical-controls problem
+         *     C2 found in the task UI, one layer down.
+         */
+        post: operations["routines_api_v1_skip_routine"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1217,6 +1249,28 @@ export interface operations {
                 "application/json": components["schemas"]["LogIn"];
             };
         };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandingsOut"];
+                };
+            };
+        };
+    };
+    routines_api_v1_skip_routine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                routine_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description OK */
             200: {

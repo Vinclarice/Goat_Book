@@ -108,9 +108,30 @@ def log_routine(request, routine_id: int, payload: LogIn):
     The Daily Page renders them together, so one response keeps the list
     from disagreeing with itself for a frame -- the same reason the day's
     focus endpoints answer with the whole day.
+
+    A negative amount is a correction, which is deliberately this endpoint
+    rather than one of its own: fixing a mis-tap is the same kind of
+    statement as making one, and a separate route would invite a separate
+    rule. Correcting a period nobody has logged is a no-op, so the response
+    is the unchanged standings rather than an error about a row that ought
+    not to exist.
     """
     routine = _own_routine_or_404(request.user, routine_id)
     services.log_progress(
         request.user, routine, timezone.localdate(), amount=payload.amount
     )
+    return _standings_out(request.user)
+
+
+@router.post("/routines/{routine_id}/skip", response=StandingsOut)
+def skip_routine(request, routine_id: int):
+    """Record that this period was deliberately not done.
+
+    Its own route rather than a flag on the log endpoint, because it is a
+    different statement: logging says what happened, skipping says what was
+    decided. Collapsing them would be the near-identical-controls problem
+    C2 found in the task UI, one layer down.
+    """
+    routine = _own_routine_or_404(request.user, routine_id)
+    services.skip_period(request.user, routine, timezone.localdate())
     return _standings_out(request.user)

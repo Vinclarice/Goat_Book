@@ -9,6 +9,67 @@ This preserves the reasoning, deployment record, and lessons behind completed
 work without making the active roadmap hard to scan. The active plan is
 [`roadmap.md`](roadmap.md).
 
+## Bittern — implementation complete August 2, 2026, not yet shipped
+
+Recorded here while the reasoning is fresh, but **Bittern has not shipped**
+and this section should not be read as a release record until it has. Two
+deploys have gone out — 11:56 EDT on August 1 (`fed210b`) and 01:51 UTC on
+August 2 — and neither carried B2.1 or B2.2, whose commits landed after the
+second. The remaining steps live in [`roadmap.md`](roadmap.md); the
+executable detail is in [`bittern-plan.md`](bittern-plan.md), which is kept
+rather than archived.
+
+### What shipped
+
+- **A native Android capture client** (`android/`, M1–M5). Personal access
+  token authentication, capture online or offline, a durable encrypted
+  queue drained in the background, a share target, and idempotent writes
+  that cannot duplicate a thought. 143 JVM tests and 16 instrumentation
+  tests.
+- **Per-user time zones.** Left the deferred list the day both halves of
+  its trigger fired: a second active user in Indonesia, and a digest
+  delivering at 03:00 Eastern.
+- **Web session and state gaps closed** — B1's spawned recurring subtasks,
+  B2's SPA logout, B2.1's failure states, B2.2's browser smoke coverage.
+- **Branded email and a contact path** (B3), and **production error
+  monitoring** (B4).
+- **B0** — the missing side navigation, diagnosed and fixed; see its own
+  section below.
+
+### What it taught
+
+- **A phone was the first thing to discover a production contract gap.**
+  The Android client's first real connection failed because the bearer-auth
+  `/api/v1/me` endpoint was still only on `main`. The token was always
+  valid. Check the deployed OpenAPI schema before pointing a client at an
+  endpoint, not after. B0.1 exists because of this.
+- **Verification tooling can lie.** The script written to prove production's
+  duplicate protection matched `"id":[0-9]*` against an API that renders
+  `"id": 2`, extracted nothing from either response, compared the two
+  nothings, and announced that production was broken — over evidence in its
+  own output showing it working. Assert on values you have proven you can
+  parse.
+- **Rebuilding a state object silently drops fields.** Twice in one evening:
+  a pending count left standing over an emptied queue, and a keyboard
+  preference reverting on every capture. Neither would ever be reported as a
+  bug; people would just quietly stop trusting the app.
+- **Some defects only exist on hardware.** Background delivery worked on its
+  first real attempt, and the count on screen did not update, because a
+  screen cannot see a background drain. Every unit test asserting that count
+  was correct.
+- **A marker has to be something the change introduced.** Checking whether
+  B2.1 was deployed, `Something went wrong.` was found in the served bundle
+  and nearly taken as proof — it predates B2.1 by months. `RequestFailed`,
+  which B2.1 actually added, was absent. The weaker check would have
+  confirmed a deploy that never happened, and the same instinct produced a
+  premature "Bittern is live" in these documents an hour earlier.
+- **`state: latest` on an infrastructure package** means a routine deploy is
+  willing to restart the thing running the application. The "Install docker"
+  task looked hung on three separate deploys and was cancelled each time.
+- **Isolating one half of a store's identity is isolating neither.** The
+  instrumentation tests parameterised the Keystore alias but not the
+  preference file, so running them deleted a live token off a real phone.
+
 ## Albatross — shipped July 31, 2026
 
 `albatross` (`f5ddb85`) was deployed at 22:24 EDT and marked by

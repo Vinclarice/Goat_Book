@@ -28,36 +28,31 @@ new parent appeared childless until a refresh. The mutation now carries a
 `spawned_subtasks` sibling array and both workspaces place parent and
 children in one update — Bittern B1, August 1, 2026.
 
-## Bittern — next release
+## Bittern — implementation complete, deploy owed
 
-**Status: scoping.** Bittern has four small, independent tracks. Do not turn
-them into one open-ended queue, and do not promote an item from Later without
-a concrete reason.
+**Every slice is written, tested and on `main` as of August 2, 2026.** What
+was built and what it taught are in [`roadmap-history.md`](roadmap-history.md);
+the executable detail, including the acceptance criteria consciously not met,
+stays in [`bittern-plan.md`](bittern-plan.md).
 
-The executable scope, sequencing, acceptance criteria, and deferred-item
-gates live in [`bittern-plan.md`](bittern-plan.md). That plan intentionally
-turns Bittern into a small reliability-and-navigation release rather than
-committing every candidate below at once.
+**Bittern has not shipped**, and three things stand between here and the
+`bittern` tag. None of them is code:
 
-### Track C — Navigation and UI
+1. **A deploy.** Production carries B3 and B4 — the 01:51 UTC deploy — but
+   not B2.1 or B2.2, whose commits landed after it. Verified rather than
+   assumed: `RequestFailed` and `Request failed with status`, both
+   introduced by B2.1, are absent from the bundle the container is serving.
+   (`Something went wrong.` is present and proves nothing; it predates B2.1
+   by months. Pick a marker the change actually introduced.)
+2. **The after-deploy checklist** already written into `bittern-plan.md`:
+   the recurring-task round trip, logout at both widths, a hard-refreshed
+   nav, Android capture online and offline, and B4's controlled event.
+3. **The release tags.** `LIVE` still points at `fed210b`, and the 01:51
+   deploy has no `DEPLOYED-` tag. The `bittern` codename tag comes last, and
+   only after production is verified.
 
-These carry their Bittern slice numbers, since `bittern-plan.md` is where they
-are actually specified. They were originally written here as C0, C1, and C2.
-
-**B0. Diagnose the missing production side navigation. — Done, August 1, 2026.**
-
-The deployed bundle was never stale. `AppLayout` sealed the nav inside a
-`<details>` that nothing ever opened, above a breakpoint where the CSS hides
-its `<summary>`, so the disclosure collapsed to zero height and left an empty
-210px gutter in browsers that skip rendering closed disclosure contents.
-Patched, deployed, and confirmed in an authenticated browser at both widths.
-Evidence in [`roadmap-history.md`](roadmap-history.md).
-
-**B2. Add logout to the SPA. — Done, August 1, 2026.**
-
-The only logout flow used to live in a Django template the SPA never
-renders. `POST /api/v1/me/logout` and a control in the nav's Account group
-now end a session from any SPA route.
+C2 outlived the release rather than shipping in it, and is an observation
+task rather than work:
 
 **C2. Reassess information architecture after B0.**
 
@@ -67,13 +62,13 @@ before writing a redesign spec.
 
 ### Track D — Postgres-enabled features
 
-None of these ship in Bittern. They remain future candidates and need their
-own product trigger or focused brief before joining an active release.
+Future candidates. Each needs its own product trigger or focused brief
+before joining an active release.
 
 Per-user time zones left this list on August 1, 2026, when both halves of
 its stated trigger fired at once: a second active user in Indonesia, and a
-real scheduling error caused by the global zone. It is built and awaiting
-the same deploy as M1 — see
+real scheduling error caused by the global zone. Shipped, and observed
+discriminating between users in production at 07:00 WITA — see
 [`per-user-time-zones-plan.md`](per-user-time-zones-plan.md).
 
 - **Reference/Idea search.** Start with ranked full-text and typo-tolerant
@@ -86,14 +81,9 @@ the same deploy as M1 — see
 
 ### Track E — Public-readiness essentials
 
-Bittern includes only the two items below. Account export/deletion remains
+Both Bittern items shipped: branded email with a rate-limited contact path
+(B3), and production error monitoring (B4). Account export/deletion remains
 deferred until the immediate-versus-grace-period decision is made.
-
-- **Branded email and contact.** Move account mail to verified Clarice-owned
-  addresses and add a rate-limited contact path that routes to a product
-  support inbox. This starts once an email provider is chosen.
-- **Error monitoring.** Add production exception reporting with a DSN-backed
-  service such as Sentry. This is deliberately small and independent.
 
 ### Track F — Android capture MVP
 
@@ -279,8 +269,9 @@ Production releases use alphabetic bird codenames: `albatross`, then
 
 ## Keeping this current
 
-Update this file when a Bittern item begins, changes scope, ships, or is
-explicitly deferred. Move completed detail into `roadmap-history.md` and
-keep only the resulting baseline or remaining consequence here. When an idea
-from Later earns work, give it a one-line reason and a focused spec before it
+Update this file when an item in the active release begins, changes scope,
+ships, or is explicitly deferred — Crane is that release now that Bittern
+has shipped. Move completed detail into `roadmap-history.md` and keep only
+the resulting baseline or remaining consequence here. When an idea from
+Later earns work, give it a one-line reason and a focused spec before it
 joins an active track.

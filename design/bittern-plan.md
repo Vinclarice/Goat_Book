@@ -1,10 +1,30 @@
 # Bittern — delivery plan
 
-**Status: M1 implemented and passing locally; release verification and the
-remaining stages are next.** Bittern is staged work: make the deployed web
-application trustworthy enough to be a dependable capture backend, ship the
-Android capture client, then close the remaining web-session and state gaps.
-It is not a grab bag of every attractive Postgres or public-readiness idea.
+**Status: implementation complete on `main`, August 2, 2026. Not shipped.**
+Stage 0 established production truth and closed B0/B0.1; Stage 1 delivered
+the Android capture client through M5; Stage 2 closed the web usability
+gaps; Stage 3 delivered branded email, a contact path, and error monitoring.
+This document is the record of what was built and why, including the
+criteria consciously not met — see M4 and M5 for those.
+
+**Production is behind `main` by B2.1 and B2.2.** The 01:51 UTC deploy
+carried B3 and B4; both of those slices' commits precede it, and B2.1 and
+B2.2 landed afterwards. Confirmed rather than assumed: `RequestFailed`, the
+class B2.1 introduced, is absent from the bundle the container is serving.
+
+The deploy, the after-deploy checklist below, and then the tags — `LIVE`
+still points at `fed210b`, the 01:51 deploy has no `DEPLOYED-` tag, and the
+`bittern` codename tag comes last.
+
+A caution for whoever checks that deploy landed: a marker has to be
+something the change actually introduced. `Something went wrong.` is in the
+deployed bundle and predates B2.1 by months; taking its presence as
+evidence would have confirmed a deploy that never happened.
+
+Bittern was staged work: make the deployed web application trustworthy
+enough to be a dependable capture backend, ship the Android capture client,
+then close the remaining web-session and state gaps. It was deliberately not
+a grab bag of every attractive Postgres or public-readiness idea.
 
 This document is the implementation plan for the active Bittern entry in
 [`roadmap.md`](roadmap.md). Completed Albatross decisions and deploy history

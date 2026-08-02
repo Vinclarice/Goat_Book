@@ -910,13 +910,11 @@ never consulted, exactly as the provider decision above predicted. The
 `amazonses.com` Message-ID is Resend's infrastructure showing through and
 does not affect alignment.
 
-**Still unproven, and it is the sender this section warned about.** That
-reset used `DEFAULT_FROM_EMAIL`. `SERVER_EMAIL` — `notices@` — has never
-sent anything, and it is the one whose failure is silent by nature: nobody
-notices an admin notice that didn't arrive. Domain verification covers any
-address on the domain, so it *should* work, but "should" is what this
-section already got wrong once. Exercise it deliberately rather than
-waiting for a real lockout to be the test:
+**`SERVER_EMAIL` verified the same evening.** That reset used
+`DEFAULT_FROM_EMAIL`; `notices@` is the sender whose failure is silent by
+nature, since nobody notices an admin notice that didn't arrive. Rather
+than wait for a real lockout to be the test, a `mail_admins()` probe was
+run against the container — no junk account, no self-inflicted lockout:
 
 ```bash
 ssh elspeth@vinclarice.com 'docker exec -i clarice python manage.py shell' <<'EOF'
@@ -925,13 +923,45 @@ mail_admins("Clarice notices probe", "Checking SERVER_EMAIL authenticates.")
 EOF
 ```
 
-Also unproven: whether `support@vinclarice.com` receives at all. Resend only
-sends; that address has to be a real IONOS mailbox or forwarder. If it was
-never created, contact-form mail bounces while the form still says "Thanks,
-your message is on its way" — the success state reveals nothing about
-delivery, which is right for strangers and unhelpful for diagnosis. Submit
-the production form once and confirm arrival; a bounce shows in Resend's
-dashboard logs.
+It arrived from `Clarice notices <notices@vinclarice.com>` — and its
+subject read `[Django] Clarice notices probe`, which is how the unset
+`EMAIL_SUBJECT_PREFIX` was found. Reading a delivered message caught what
+the whole test suite had no assertion for.
+
+### The suppression list, and why "fixed" looked broken
+
+`support@vinclarice.com` now receives, and the contact form is verified end
+to end against production. Getting there cost an evening to a failure mode
+worth naming, because nothing in this repository could have revealed it.
+
+The order of operations was: test the address, watch it bounce because no
+IONOS mailbox existed yet, create the mailbox, test again — and get
+nothing. The address was valid by then. The mail still never arrived.
+
+**A hard bounce puts the address on Resend's suppression list, and
+suppressed sends still look like successes.** SMTP returns 200, Django
+records a clean send, the visitor is told "Thanks — your message is on its
+way," and the message is discarded inside the provider before it reaches
+the receiving server at all. Nothing in Clarice can see this. The Resend
+dashboard shows the accepted payload — correct `From`, `To`, `Reply-To`,
+subject — which reads as proof of success and is nothing of the kind.
+
+The part that actually misleads: **fixing the root cause does not clear the
+suppression.** The entry outlives the condition that created it, so the
+repair appears not to have worked, and the next hour goes into forwarders,
+spam folders, and SPF alignment on a path that was already correct.
+
+Three things to carry forward:
+
+- **Create the mailbox before sending anything to it.** A bounce is not a
+  free test; it has a lasting side effect at the provider.
+- **"Accepted by the provider" is a weaker guarantee than it sounds** —
+  which matters directly for the acknowledgement-email line below, since
+  acceptance is not delivery.
+- **This is the argument for B4 stated in miniature.** A silent delivery
+  failure that no test, log, or user-visible state can expose is exactly
+  what production monitoring is for. Bounce and complaint webhooks from
+  Resend belong in that conversation, not in a separate one.
 
 - Decouple SMTP/API credentials from the visible `DEFAULT_FROM_EMAIL` in
   Django settings and deployment configuration.

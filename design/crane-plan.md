@@ -830,6 +830,45 @@ would need the token-authenticated zone activation
 
 ## 8. Crane 3 — the weekly review
 
+**All ten slices shipped on `main` on August 2, 2026**, in order, each
+acceptance verified against a running server or a real browser rather than
+only the test client. **Not yet deployed**: production is three migrations
+behind — `review/0001`, and `routines/0003`, `0004` and `0005` — and the
+release cannot be tagged `crane` until it is in production and verified,
+which is the one line `roadmap.md` draws from Bittern's mess. §2's carried-in
+checklist is still owed and is still waiting on that same deploy.
+
+Four things the sequence taught, worth carrying forward.
+
+**A rule fell out of the slices that none of them set out to make.** Slice 2
+kept released pins out of the planned denominator, slice 6 did the same for
+skipped periods, and slice 8 for a period closed as enough — three separate
+decisions that turned out to be one: **a deliberate decision leaves the
+denominator; only what merely elapsed stays in it.** `Habit.expected` is
+written that way rather than subtracting skips by name, so the next
+decision-shaped outcome inherits it instead of needing another patch.
+
+**`accounts.User` has no creation timestamp**, which slice 9 found by
+asserting against one that was not there — no `date_joined`, no
+`created_at`. So "before the account existed" is a question the schema
+cannot answer, and adding the field would have meant defaulting three real
+accounts to today and marking their whole history prehistoric. The line is
+drawn at the owner's first trace instead — earliest day written, task made,
+routine kept, thought captured — which is the better question anyway.
+
+**Two definitions moved rather than being written twice**, both when a
+second surface needed the same sentence: `age_in_days` into `lists.agenda`,
+and `ageLabel` into `agenda.ts` beside `dueLabel`. Neither changed what it
+said. The contract decision that came with the first — that age stays off
+`TaskOut` — did not move either.
+
+**The slice list did not omit a surface this time**, which is the first time
+in three sequences. It was read back for that specific failure before being
+written, and three were missing on the first pass: the nav entry, the way to
+reach the week before this one, and a control for the new partial close. All
+three are in the list above because of that reading, not because a later
+slice caught them.
+
 Numbered §8 for the reason §7 gives: other documents cite §5 and §6 by
 number, and renumbering to put this in reading order would break them.
 

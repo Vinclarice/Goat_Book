@@ -4,6 +4,7 @@ import { useParams } from "react-router";
 
 import { Button } from "@/components/ui/button";
 
+import { dueLabel } from "../../agenda";
 import { apiV1 } from "../../api/client";
 import { RequestFailed, statusOf } from "../../api/failure";
 import { RouteFailure } from "./RouteFailure";
@@ -30,6 +31,63 @@ type Field = (typeof SECTIONS)[number]["field"];
 type Draft = Record<Field, string>;
 
 const EMPTY: Draft = { intentions: "", gratitude: "", happenings: "" };
+
+type ActionItem = {
+  id: number;
+  text: string;
+  due_date: string | null;
+  parent: { id: number; text: string } | null;
+};
+
+/**
+ * The agenda's rows, displayed rather than owned.
+ *
+ * Read-only on purpose. Slice 2's acceptance is that completing a task the
+ * ordinary way shows up here on the next load; a Complete button would mean
+ * reimplementing the agenda's mutation and undo beside it, and crane-plan
+ * §5 is explicit that the Daily Page is new surface rather than a place to
+ * restructure what it embeds.
+ */
+function ActionItems({ items, today }: { items: ActionItem[]; today: string }) {
+  if (items.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        Nothing due today. Anything you add with today&rsquo;s date shows up here.
+      </p>
+    );
+  }
+  return (
+    <ul className="space-y-1">
+      {items.map((item) => (
+        <li
+          key={item.id}
+          className="flex items-baseline justify-between gap-3 rounded-lg border border-border px-3 py-2"
+        >
+          <span className="min-w-0">
+            {/* The breadcrumb the agenda shows too, so a subtask row is not
+                a floating fragment of a task nobody can place. */}
+            {item.parent && (
+              <span className="text-sm text-muted-foreground">
+                {item.parent.text} /{" "}
+              </span>
+            )}
+            <a href={`/app/tasks/${item.id}`} className="hover:underline">
+              {item.text}
+            </a>
+          </span>
+          {item.due_date && (
+            <span className="shrink-0 text-sm text-muted-foreground">
+              {/* agenda.ts's own label, not a second date format invented
+                  here -- "3 days overdue" has to read the same on both
+                  pages or one of them is lying. */}
+              {dueLabel(item.due_date, today)}
+            </span>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 /** "Saturday 3 August" -- the label a person recognises their own day by. */
 function longDate(isoDate: string): string {
@@ -131,6 +189,20 @@ export function DayRoute() {
         </p>
         <h1 className="text-2xl font-bold">{longDate(data.date)}</h1>
       </div>
+
+      <section className="space-y-2">
+        <h2 className="text-sm font-bold">Action items</h2>
+        {data.shows_action_items ? (
+          <ActionItems items={data.action_items} today={data.today} />
+        ) : (
+          // Said plainly rather than shown as an empty list: a task holds no
+          // record of what it looked like on a past date, so this page can
+          // show what was written and honestly nothing else.
+          <p className="text-sm text-muted-foreground">
+            Only today shows action items. What you wrote on this day is below.
+          </p>
+        )}
+      </section>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {SECTIONS.map(({ field, label, hint }) => (

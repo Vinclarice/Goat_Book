@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router";
@@ -29,6 +29,18 @@ function dayData(overrides: Record<string, unknown> = {}) {
     gratitude: "",
     happenings: "",
     today: "2026-08-03",
+    action_items: [],
+    shows_action_items: true,
+    ...overrides,
+  };
+}
+
+function actionItem(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 1,
+    text: "Pay rent",
+    due_date: "2026-08-03",
+    parent: null,
     ...overrides,
   };
 }
@@ -139,6 +151,79 @@ describe("DayRoute", () => {
     await client.refetchQueries({ queryKey: ["day", "2026-08-03"] });
 
     await waitFor(() => expect(intentions).toHaveValue("Half a thought"));
+  });
+
+  it("lists today's action items with the agenda's own due labels", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        dayData({
+          action_items: [
+            actionItem({ id: 1, text: "Pay rent" }),
+            actionItem({ id: 2, text: "Call the plumber", due_date: "2026-08-01" }),
+          ],
+        }),
+      ),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    const rent = (await screen.findByText("Pay rent")).closest("li")!;
+    const plumber = screen.getByText("Call the plumber").closest("li")!;
+
+    // dueLabel's wording, not a second date format invented in this route.
+    // Scoped to the rows: the page header also says "Today", which is a
+    // different statement about a different thing.
+    expect(within(rent).getByText("Today")).toBeInTheDocument();
+    expect(within(plumber).getByText("2 days overdue")).toBeInTheDocument();
+  });
+
+  it("says nothing is due rather than showing an empty box", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(dayData({ action_items: [], shows_action_items: true })),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    expect(await screen.findByText(/Nothing due today/)).toBeInTheDocument();
+  });
+
+  it("explains why a past day shows no action items", async () => {
+    // Empty-because-done and empty-because-not-today are different, and the
+    // page has to say which one it means.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        dayData({
+          date: "2026-08-01",
+          today: "2026-08-03",
+          action_items: [],
+          shows_action_items: false,
+        }),
+      ),
+    );
+
+    renderAt("/day/2026-08-01");
+
+    expect(
+      await screen.findByText(/Only today shows action items/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Nothing due today/)).not.toBeInTheDocument();
+  });
+
+  it("shows a subtask's parent so the row can be placed", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        dayData({
+          action_items: [
+            actionItem({ text: "Book flights", parent: { id: 9, text: "Trip" } }),
+          ],
+        }),
+      ),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    expect(await screen.findByText(/Trip/)).toBeInTheDocument();
+    expect(screen.getByText("Book flights")).toBeInTheDocument();
   });
 
   it("offers a way out when the day cannot be loaded", async () => {

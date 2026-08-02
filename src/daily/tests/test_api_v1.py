@@ -11,12 +11,15 @@ undated form answers with whatever "today" means in the requesting user's
 own time zone.
 """
 import json
-from datetime import date
+from datetime import date, timedelta
 
 from django.test import Client, TestCase
+from django.utils import timezone
 
 from accounts.models import User
 from daily import services
+from lists import services as list_services
+from lists.models import List
 
 
 PASSWORD = "correct horse battery staple 47!"
@@ -121,3 +124,70 @@ class DayEndpointTest(TestCase):
 
     def test_a_nonsense_date_is_refused_rather_than_guessed(self):
         self.assertEqual(self.client.get("/api/v1/day/not-a-date").status_code, 422)
+
+
+class DayActionItemsTest(TestCase):
+    """Slice 2 over the wire: the day shows tasks it does not own."""
+
+    def setUp(self):
+        self.alice = User.objects.create_user(
+            "alice", "alice@example.com", PASSWORD
+        )
+        self.bob = User.objects.create_user("bob", "bob@example.com", PASSWORD)
+        self.list_ = List.objects.create(owner=self.alice, title="Home")
+        self.client = Client(enforce_csrf_checks=True)
+        self.client.force_login(self.alice)
+
+    def today(self):
+        return timezone.localdate()
+
+    def action_item_texts(self, url="/api/v1/day"):
+        return [item["text"] for item in self.client.get(url).json()["action_items"]]
+
+    def test_todays_work_appears_on_todays_page(self):
+        list_services.create_item(self.list_, "Pay rent", due_date=self.today())
+
+        self.assertEqual(self.action_item_texts(), ["Pay rent"])
+
+    def test_completing_a_task_elsewhere_shows_on_the_next_load(self):
+        """The acceptance condition, end to end and through the ordinary path."""
+        task = list_services.create_item(
+            self.list_, "Pay rent", due_date=self.today()
+        )
+        self.assertEqual(self.action_item_texts(), ["Pay rent"])
+
+        list_services.complete_item(task)
+
+        self.assertEqual(self.action_item_texts(), [])
+
+    def test_another_persons_work_never_appears(self):
+        bobs_list = List.objects.create(owner=self.bob, title="Bob's home")
+        list_services.create_item(
+            bobs_list, "Bob's private task", due_date=self.today()
+        )
+
+        self.assertEqual(self.action_item_texts(), [])
+
+    def test_a_past_day_shows_no_action_items_rather_than_todays(self):
+        """A task carries no history, so today's open work bucketed against
+        a past date would assert something that was never true."""
+        list_services.create_item(self.list_, "Pay rent", due_date=self.today())
+        yesterday = (self.today() - timedelta(days=1)).isoformat()
+
+        body = self.client.get(f"/api/v1/day/{yesterday}").json()
+
+        self.assertEqual(body["action_items"], [])
+        self.assertFalse(body["shows_action_items"])
+
+    def test_todays_page_says_it_is_showing_action_items(self):
+        body = self.client.get("/api/v1/day").json()
+
+        self.assertTrue(body["shows_action_items"])
+
+    def test_an_action_item_carries_what_a_task_row_needs_to_render(self):
+        list_services.create_item(self.list_, "Pay rent", due_date=self.today())
+
+        item = self.client.get("/api/v1/day").json()["action_items"][0]
+
+        for field in ("id", "text", "status", "due_date", "list_id", "url"):
+            self.assertIn(field, item)

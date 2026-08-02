@@ -1213,6 +1213,17 @@
           "today": {
             "title": "Today",
             "type": "string"
+          },
+          "action_items": {
+            "items": {
+              "$ref": "#/components/schemas/TaskOut"
+            },
+            "title": "Action Items",
+            "type": "array"
+          },
+          "shows_action_items": {
+            "title": "Shows Action Items",
+            "type": "boolean"
           }
         },
         "required": [
@@ -1220,7 +1231,9 @@
           "intentions",
           "gratitude",
           "happenings",
-          "today"
+          "today",
+          "action_items",
+          "shows_action_items"
         ],
         "title": "DayOut",
         "type": "object"

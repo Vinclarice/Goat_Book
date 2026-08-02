@@ -513,6 +513,10 @@ export interface components {
             happenings: string;
             /** Today */
             today: string;
+            /** Action Items */
+            action_items: components["schemas"]["TaskOut"][];
+            /** Shows Action Items */
+            shows_action_items: boolean;
         };
         /**
          * DayIn

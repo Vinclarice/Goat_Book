@@ -401,6 +401,98 @@ describe("ReviewRoute", () => {
     ).toBeNull();
   });
 
+  it("puts one unfinished commitment on today, and only that one", async () => {
+    // Through the day's own pin endpoint rather than a review-shaped write
+    // path: the service that owns pinning still owns it.
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(() =>
+        jsonResponse(
+          weekData({
+            planned: {
+              total: 2,
+              met: 0,
+              met_tasks: [],
+              unfinished: [
+                plannedTask({ task_id: 3, text: "Call the bank" }),
+                plannedTask({ task_id: 4, text: "Fix the gate" }),
+              ],
+              set_aside: [],
+            },
+          }),
+        ),
+      );
+
+    renderAt("/review");
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Put Call the bank on today" }),
+    );
+
+    const pins = fetchSpy.mock.calls
+      .map(([request]) => request as Request)
+      .filter((request) => request.url.includes("/focus"));
+    expect(pins).toHaveLength(1);
+    expect(pins[0].url).toContain("/api/v1/day/2026-08-02/focus");
+    // Typographic apostrophe, as the rest of the app renders one.
+    expect(await screen.findByText(/On today.s page/)).toBeInTheDocument();
+  });
+
+  it("offers nothing that acts on more than one commitment", async () => {
+    // The forbidden convenience. daily-operating-system-vision.md: never
+    // automatically reschedule everything left incomplete.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        weekData({
+          planned: {
+            total: 2,
+            met: 0,
+            met_tasks: [],
+            unfinished: [
+              plannedTask({ task_id: 3, text: "Call the bank" }),
+              plannedTask({ task_id: 4, text: "Fix the gate" }),
+            ],
+            set_aside: [],
+          },
+        }),
+      ),
+    );
+
+    renderAt("/review");
+    await screen.findByRole("button", { name: "Put Call the bank on today" });
+
+    expect(
+      screen.getAllByRole("button", { name: /Put .* on today/ }),
+    ).toHaveLength(2);
+    // Word-anchored: an unanchored /all/ matches "Call the bank", which is
+    // how this assertion first failed against a page that was correct.
+    expect(
+      screen.queryByRole("button", {
+        name: /\b(all|everything|forward)\b/i,
+      }),
+    ).toBeNull();
+  });
+
+  it("does not offer to move something that is already on today", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        weekData({
+          planned: {
+            total: 1,
+            met: 0,
+            met_tasks: [],
+            unfinished: [plannedTask({ task_id: 3, day: "2026-08-02" })],
+            set_aside: [],
+          },
+        }),
+      ),
+    );
+
+    renderAt("/review");
+    await screen.findByRole("heading", { level: 1 });
+
+    expect(screen.queryByRole("button", { name: /on today/ })).toBeNull();
+  });
+
   it("reaches the week before without editing the URL", async () => {
     // The missing surface this sequence has now shipped twice. A review is
     // written on a Monday about the week that just ended, so the week

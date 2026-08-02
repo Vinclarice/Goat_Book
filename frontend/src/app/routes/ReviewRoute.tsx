@@ -99,12 +99,23 @@ function PlannedRow({
   task,
   today,
   muted = false,
+  onPinToToday,
+  pinned = false,
+  busy = false,
 }: {
   task: PlannedTask;
   today: string;
   muted?: boolean;
+  onPinToToday?: (taskId: number) => void;
+  pinned?: boolean;
+  busy?: boolean;
 }) {
   const age = ageLabel(task.age_in_days);
+  // Offered only where it means something: a task that still exists, and a
+  // day that is not already today. A control that would be a no-op is a
+  // control that teaches people the page does nothing.
+  const canPin =
+    onPinToToday !== undefined && task.task_id !== null && task.day !== today;
   return (
     <li
       className={`rounded-lg border border-border px-3 py-2${muted ? " opacity-70" : ""}`}
@@ -128,6 +139,25 @@ function PlannedRow({
             work feel like punishment, and this page is the one most able
             to fail it. */}
         {age && <span className="text-sm text-muted-foreground">{age}</span>}
+        {/* One item, one decision, and nothing that acts on the rest.
+            daily-operating-system-vision.md: never automatically
+            reschedule everything left incomplete. */}
+        {canPin &&
+          (pinned ? (
+            <span className="text-sm text-muted-foreground">
+              On today&rsquo;s page.
+            </span>
+          ) : (
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={busy}
+              aria-label={`Put ${task.text} on today`}
+              onClick={() => onPinToToday!(task.task_id!)}
+            >
+              Put on today
+            </Button>
+          ))}
       </span>
     </li>
   );
@@ -146,10 +176,16 @@ function PlannedWork({
   planned,
   today,
   review,
+  onPinToToday,
+  pinnedIds,
+  pinning,
 }: {
   planned: Planned;
   today: string;
   review: ReviewRecord;
+  onPinToToday: (taskId: number) => void;
+  pinnedIds: Set<number>;
+  pinning: boolean;
 }) {
   // A completed review shows the figure it recorded, not a fresh count.
   // Permanently deleting an archived task afterwards moves the live number
@@ -211,6 +247,9 @@ function PlannedWork({
                 key={`${task.task_id}-${task.day}`}
                 task={task}
                 today={today}
+                onPinToToday={onPinToToday}
+                pinned={task.task_id !== null && pinnedIds.has(task.task_id)}
+                busy={pinning}
               />
             ))}
           </ul>
@@ -493,6 +532,32 @@ export function ReviewRoute() {
     onSuccess: (updated) => queryClient.setQueryData(queryKey, updated),
   });
 
+  // Through the day's own endpoint, not one of the review's. The review
+  // proposes; the service that owns pinning still decides — and there is
+  // deliberately no review-shaped write path for a bulk convenience to
+  // grow out of later.
+  const [pinnedIds, setPinnedIds] = useState<Set<number>>(new Set());
+  const pinMutation = useMutation({
+    mutationFn: async (taskId: number) => {
+      const day = data?.today;
+      if (!day) throw new Error("Couldn't put that on today.");
+      const { error } = await apiV1.POST("/api/v1/day/{day}/focus", {
+        params: { path: { day } },
+        body: { task_id: taskId },
+      });
+      if (error) throw new Error("Couldn't put that on today.");
+      return taskId;
+    },
+    onSuccess: (taskId) => {
+      // Said on the row rather than left to the payload. Pinning to today
+      // changes nothing about a past week, so without this the click would
+      // look like it had done nothing at all.
+      setPinnedIds((current) => new Set(current).add(taskId));
+      queryClient.invalidateQueries({ queryKey: ["day"] });
+      queryClient.invalidateQueries({ queryKey: ["nav"] });
+    },
+  });
+
   function edit(field: "reflections" | "plan", value: string) {
     setSaved(false);
     setDraft((current) => ({ ...current, [field]: value }));
@@ -549,7 +614,15 @@ export function ReviewRoute() {
           planned={data.planned}
           today={data.today}
           review={data.review}
+          onPinToToday={(taskId) => pinMutation.mutate(taskId)}
+          pinnedIds={pinnedIds}
+          pinning={pinMutation.isPending}
         />
+        {pinMutation.isError && (
+          <p className="text-sm text-destructive">
+            {pinMutation.error.message}
+          </p>
+        )}
       </section>
 
       <section className="space-y-2">

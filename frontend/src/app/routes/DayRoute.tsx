@@ -99,6 +99,87 @@ function longDate(isoDate: string): string {
   }).format(new Date(`${isoDate}T00:00:00Z`));
 }
 
+/**
+ * Rapid logging, on the page you are already looking at.
+ *
+ * Posts to the capture endpoint the Inbox and the Android client already
+ * use, so the row it writes is the same row -- no daily-shaped capture, no
+ * second definition of what an empty capture is. See
+ * capture/tests/test_capture_paths_agree.py.
+ *
+ * Deliberately not part of the day's own form. What you capture is a
+ * thought going to the Inbox to be triaged later; what you write below is
+ * this day's record. Merging them into one save button is precisely the
+ * kind of near-identical-controls-with-opposite-meanings confusion C2
+ * found in the task UI, and this page is new surface with no excuse for it.
+ */
+function CaptureBox() {
+  const [text, setText] = useState("");
+  const [captured, setCaptured] = useState(false);
+
+  const mutation = useMutation({
+    mutationFn: async (thought: string) => {
+      const { error } = await apiV1.POST("/api/v1/capture", {
+        body: { text: thought },
+      });
+      if (error) throw new Error("Couldn't capture that. It's still here.");
+    },
+    onSuccess: () => {
+      // Cleared only now. principles.md: capture is durable before it is
+      // clever -- a thought must not be lost to a failed request, so the
+      // box empties on success and never on the way there.
+      setText("");
+      setCaptured(true);
+    },
+  });
+
+  function handleSubmit(event: FormEvent) {
+    event.preventDefault();
+    setCaptured(false);
+    if (!text.trim()) return;
+    mutation.mutate(text);
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-2">
+      <label htmlFor="day-capture" className="text-sm font-bold">
+        Capture a thought
+      </label>
+      <textarea
+        id="day-capture"
+        value={text}
+        onChange={(event) => {
+          setCaptured(false);
+          setText(event.target.value);
+        }}
+        rows={2}
+        placeholder="What's on your mind?"
+        className="w-full rounded-lg border border-border bg-input px-3 py-2"
+      />
+      <div className="flex items-center gap-3">
+        <Button type="submit" variant="secondary" disabled={mutation.isPending}>
+          Capture
+        </Button>
+        {/* Says where it went. Without this the thought appears to vanish,
+            and the next one gets typed into Intentions instead. */}
+        {captured && (
+          <span className="text-sm text-muted-foreground">
+            Sent to your Inbox.
+          </span>
+        )}
+        {mutation.isError && (
+          <span className="text-sm text-destructive">
+            {mutation.error.message}
+          </span>
+        )}
+      </div>
+      <p className="text-sm text-muted-foreground">
+        Goes to the Inbox to sort out later — not into this day&rsquo;s notes.
+      </p>
+    </form>
+  );
+}
+
 export function DayRoute() {
   const { date } = useParams();
   const queryClient = useQueryClient();
@@ -203,6 +284,8 @@ export function DayRoute() {
           </p>
         )}
       </section>
+
+      <CaptureBox />
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {SECTIONS.map(({ field, label, hint }) => (

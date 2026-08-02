@@ -226,6 +226,107 @@ describe("DayRoute", () => {
     expect(screen.getByText("Book flights")).toBeInTheDocument();
   });
 
+  it("sends a captured thought to the shared capture endpoint", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const request = input as Request;
+      if (request.url.includes("/api/v1/capture")) {
+        return jsonResponse({ id: 1, created_at: "2026-08-03T10:00:00" }, true, 201);
+      }
+      return jsonResponse(dayData());
+    });
+
+    renderAt("/day/2026-08-03");
+    await userEvent.type(
+      await screen.findByLabelText("Capture a thought"),
+      "A thought worth keeping",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Capture" }));
+
+    await waitFor(() =>
+      expect(screen.getByText("Sent to your Inbox.")).toBeInTheDocument(),
+    );
+    const posted = fetchSpy.mock.calls
+      .map(([input]) => input as Request)
+      .find((request) => request.url.includes("/api/v1/capture"));
+    // The endpoint the Inbox and the phone already use, not a daily one.
+    expect(posted?.method).toBe("POST");
+  });
+
+  it("empties the box only once the thought is actually captured", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const request = input as Request;
+      if (request.url.includes("/api/v1/capture")) {
+        return jsonResponse({ id: 1, created_at: "x" }, true, 201);
+      }
+      return jsonResponse(dayData());
+    });
+
+    renderAt("/day/2026-08-03");
+    const box = await screen.findByLabelText("Capture a thought");
+    await userEvent.type(box, "A thought worth keeping");
+    await userEvent.click(screen.getByRole("button", { name: "Capture" }));
+
+    await waitFor(() => expect(box).toHaveValue(""));
+  });
+
+  it("keeps the thought when the capture fails", async () => {
+    // principles.md: capture is durable before it is clever. Losing a
+    // half-typed thought to a failed request is the failure people blame
+    // on themselves.
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const request = input as Request;
+      if (request.url.includes("/api/v1/capture")) {
+        return jsonResponse({ detail: "nope" }, false, 500);
+      }
+      return jsonResponse(dayData());
+    });
+
+    renderAt("/day/2026-08-03");
+    const box = await screen.findByLabelText("Capture a thought");
+    await userEvent.type(box, "Do not eat this");
+    await userEvent.click(screen.getByRole("button", { name: "Capture" }));
+
+    await waitFor(() =>
+      expect(screen.getByText(/It's still here/)).toBeInTheDocument(),
+    );
+    expect(box).toHaveValue("Do not eat this");
+  });
+
+  it("does not capture an empty thought", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(() => jsonResponse(dayData()));
+
+    renderAt("/day/2026-08-03");
+    await screen.findByLabelText("Capture a thought");
+    await userEvent.click(screen.getByRole("button", { name: "Capture" }));
+
+    expect(
+      fetchSpy.mock.calls.filter(([input]) =>
+        (input as Request).url.includes("/api/v1/capture"),
+      ),
+    ).toHaveLength(0);
+  });
+
+  it("keeps capture separate from the day's own save", async () => {
+    // The C2 failure mode, refused on new surface: two controls that look
+    // alike and mean different things.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(dayData()),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    await screen.findByLabelText("Capture a thought");
+    expect(screen.getByRole("button", { name: "Capture" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Save the day" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/not into this day/i),
+    ).toBeInTheDocument();
+  });
+
   it("offers a way out when the day cannot be loaded", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(() =>
       jsonResponse({ detail: "nope" }, false, 500),

@@ -673,6 +673,10 @@
           "ideas_url": {
             "title": "Ideas Url",
             "type": "string"
+          },
+          "landing_surface": {
+            "title": "Landing Surface",
+            "type": "string"
           }
         },
         "required": [
@@ -681,7 +685,8 @@
           "inbox_count",
           "settings_url",
           "inbox_url",
-          "ideas_url"
+          "ideas_url",
+          "landing_surface"
         ],
         "title": "NavOut",
         "type": "object"
@@ -1212,6 +1217,15 @@
             "default": "",
             "title": "Compass Question",
             "type": "string"
+          },
+          "landing_surface": {
+            "default": "day",
+            "enum": [
+              "day",
+              "agenda"
+            ],
+            "title": "Landing Surface",
+            "type": "string"
           }
         },
         "required": [
@@ -1259,6 +1273,15 @@
           "compass_question": {
             "default": "",
             "title": "Compass Question",
+            "type": "string"
+          },
+          "landing_surface": {
+            "default": "day",
+            "enum": [
+              "day",
+              "agenda"
+            ],
+            "title": "Landing Surface",
             "type": "string"
           }
         },

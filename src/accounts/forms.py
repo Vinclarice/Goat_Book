@@ -153,6 +153,11 @@ class AccountSettingsForm(forms.ModelForm):
             "compass_purpose",
             "compass_question",
         )
+        # landing_surface is deliberately absent, following `theme`: both are
+        # a closed set of values with a default and no cross-field rule, so
+        # the API's Literal already validates them and a required ModelForm
+        # field would only mean every caller had to restate a preference it
+        # was not changing.
 
     def clean_email(self):
         return self.cleaned_data["email"].strip().lower()

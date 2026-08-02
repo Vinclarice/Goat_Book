@@ -149,6 +149,10 @@ class NavOut(Schema):
     settings_url: str
     inbox_url: str
     ideas_url: str
+    # So the SPA's own index route sends /app/ where the server would send
+    # a login, rather than hard-coding a second answer that could drift
+    # from lists.views.dashboard's.
+    landing_surface: str
 
 
 @router.get("/nav", response=NavOut)
@@ -176,6 +180,7 @@ def navigation(request):
         # Django pages, not SPA routes: these links leave the app shell.
         "inbox_url": reverse("capture_inbox"),
         "ideas_url": reverse("ideas"),
+        "landing_surface": user.landing_surface,
     }
 
 

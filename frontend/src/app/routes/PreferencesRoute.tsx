@@ -17,6 +17,7 @@ export function PreferencesRoute() {
   const [timeZone, setTimeZone] = useState("");
   const [compassPurpose, setCompassPurpose] = useState("");
   const [compassQuestion, setCompassQuestion] = useState("");
+  const [landingSurface, setLandingSurface] = useState<"day" | "agenda">("day");
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
@@ -47,6 +48,7 @@ export function PreferencesRoute() {
     setTimeZone(data.time_zone);
     setCompassPurpose(data.compass_purpose);
     setCompassQuestion(data.compass_question);
+    setLandingSurface(data.landing_surface);
   }, [data]);
 
   /** Any edit invalidates a previous "Saved." -- otherwise it sits there
@@ -82,6 +84,7 @@ export function PreferencesRoute() {
           time_zone: timeZone,
           compass_purpose: compassPurpose,
           compass_question: compassQuestion,
+          landing_surface: landingSurface,
         },
       });
       if (error) throw new Error(typeof error === "string" ? error : "Couldn't save preferences.");
@@ -117,6 +120,7 @@ export function PreferencesRoute() {
           time_zone: data?.time_zone ?? timeZone,
           compass_purpose: data?.compass_purpose ?? compassPurpose,
           compass_question: data?.compass_question ?? compassQuestion,
+          landing_surface: data?.landing_surface ?? landingSurface,
         },
       });
       if (error) throw error;
@@ -190,6 +194,27 @@ export function PreferencesRoute() {
           <p className="text-sm text-muted-foreground">
             Decides what counts as overdue or due today, and when the daily
             summary arrives.
+          </p>
+        </div>
+
+        <div className="space-y-1">
+          <label htmlFor="pref-landing-surface" className="text-sm font-bold">
+            Start me on
+          </label>
+          <select
+            id="pref-landing-surface"
+            value={landingSurface}
+            onChange={(event) =>
+              edit(setLandingSurface, event.target.value as "day" | "agenda")
+            }
+            className="w-full rounded-lg border border-border bg-input px-3 py-1.5"
+          >
+            <option value="day">Today&rsquo;s page</option>
+            <option value="agenda">Agenda</option>
+          </select>
+          <p className="text-sm text-muted-foreground">
+            Where Clarice opens when you sign in. Both stay in the navigation
+            either way.
           </p>
         </div>
 

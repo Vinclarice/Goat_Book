@@ -54,6 +54,14 @@ export function SideNav() {
     <nav className={styles.nav} aria-label="Main">
       <div className={styles.group}>
         <h3>Views</h3>
+        {/* First, because Crane makes the day the home surface -- and
+            present at all, which until slice 6 it was not: slices 1 to 5
+            built a page reachable only by typing its URL. Undated on
+            purpose, so the link always means "today" rather than whichever
+            day was current when the nav rendered. */}
+        <NavLink to="/day" className={navLinkClass}>
+          Today
+        </NavLink>
         <NavLink to="/agenda" className={navLinkClass}>
           Agenda
         </NavLink>

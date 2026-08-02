@@ -74,6 +74,9 @@ class PreferencesEndpointTest(TestCase):
                 # rather than absent so the client never narrows a maybe-null.
                 "compass_purpose": "",
                 "compass_question": "",
+                # Crane 1 slice 6. "day" is the default because Crane makes
+                # the Daily Page the home surface.
+                "landing_surface": "day",
             },
         )
 

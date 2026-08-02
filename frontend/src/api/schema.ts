@@ -332,6 +332,8 @@ export interface components {
             inbox_url: string;
             /** Ideas Url */
             ideas_url: string;
+            /** Landing Surface */
+            landing_surface: string;
         };
         /** AgendaBucketOut */
         AgendaBucketOut: {
@@ -526,6 +528,12 @@ export interface components {
              * @default
              */
             compass_question: string;
+            /**
+             * Landing Surface
+             * @default day
+             * @enum {string}
+             */
+            landing_surface: "day" | "agenda";
         };
         /** PreferencesIn */
         PreferencesIn: {
@@ -552,6 +560,12 @@ export interface components {
              * @default
              */
             compass_question: string;
+            /**
+             * Landing Surface
+             * @default day
+             * @enum {string}
+             */
+            landing_surface: "day" | "agenda";
         };
         /** CaptureOut */
         CaptureOut: {

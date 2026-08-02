@@ -15,6 +15,7 @@ from accounts.models import User, known_time_zones
 router = Router()
 
 ThemeChoice = Literal["system", "light", "dark"]
+LandingChoice = Literal["day", "agenda"]
 
 
 class PreferencesOut(Schema):
@@ -28,6 +29,10 @@ class PreferencesOut(Schema):
     # crane-plan.md slice 5.
     compass_purpose: str = ""
     compass_question: str = ""
+    # Where a session lands. Defaulted here as well as on the model so an
+    # older client that has never heard of it cannot blank it by omission --
+    # the same trap the theme request nearly sprang on the time zone.
+    landing_surface: LandingChoice = "day"
 
 
 class PreferencesIn(Schema):
@@ -41,6 +46,10 @@ class PreferencesIn(Schema):
     # crane-plan.md slice 5.
     compass_purpose: str = ""
     compass_question: str = ""
+    # Where a session lands. Defaulted here as well as on the model so an
+    # older client that has never heard of it cannot blank it by omission --
+    # the same trap the theme request nearly sprang on the time zone.
+    landing_surface: LandingChoice = "day"
 
 
 class TimeZonesOut(Schema):
@@ -56,6 +65,7 @@ def _preferences_out(user: User) -> dict:
         "time_zone": user.time_zone,
         "compass_purpose": user.compass_purpose,
         "compass_question": user.compass_question,
+        "landing_surface": user.landing_surface,
     }
 
 
@@ -114,5 +124,6 @@ def update_preferences(request, payload: PreferencesIn):
         raise HttpError(400, form.errors[first_field][0])
     form.save()
     user.theme = payload.theme
-    user.save(update_fields=["theme"])
+    user.landing_surface = payload.landing_surface
+    user.save(update_fields=["theme", "landing_surface"])
     return _preferences_out(user)

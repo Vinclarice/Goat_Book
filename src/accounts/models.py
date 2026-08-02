@@ -60,6 +60,10 @@ def resolve_time_zone(key):
 class User(AbstractBaseUser, PermissionsMixin):
     username_validator = UnicodeUsernameValidator()
 
+    class LandingSurface(models.TextChoices):
+        DAY = "day", "Today's page"
+        AGENDA = "agenda", "Agenda"
+
     email = models.EmailField(unique=True)
     username = models.CharField(
         max_length=150,
@@ -89,6 +93,23 @@ class User(AbstractBaseUser, PermissionsMixin):
     # Deliberately not on DailyEntry. roadmap.md keeps the Compass separate
     # from a day's Intentions, and copying it onto each day would make
     # editing it rewrite history -- see daily/tests/test_compass.py.
+    # Where a session lands. Defaulted to the Daily Page because Crane makes
+    # it the home surface and the product should take a position; settable
+    # because the screen somebody opens every morning is a poor place to be
+    # told they are wrong about their own workflow. Decided August 2, 2026 --
+    # see crane-plan.md §6.
+    #
+    # Read in exactly one place, lists.views.dashboard, which is
+    # LOGIN_REDIRECT_URL -- so every way in agrees without any of them
+    # knowing the rule.
+    landing_surface = models.CharField(
+        max_length=10,
+        choices=LandingSurface.choices,
+        default=LandingSurface.DAY,
+        verbose_name="Start me on",
+        help_text="Where Clarice opens when you sign in.",
+    )
+
     compass_purpose = models.TextField(
         blank=True,
         default="",

@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, useLocation } from "react-router";
 
@@ -40,10 +40,51 @@ describe("AppRoutes", () => {
     vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("not used"));
   });
 
-  it("sends a bare /app/ visit to the Agenda instead of rendering nothing", async () => {
+  it("sends a bare /app/ visit somewhere real even if the preference is unreachable", async () => {
+    // B2.1's defect was a blank page, so the case that matters most is the
+    // one where the answer never arrives: it must still land on a surface
+    // rather than render nothing. fetch is rejected by the beforeEach
+    // above, which is exactly that case.
     renderAt("/");
 
-    expect(await screen.findByTestId("pathname")).toHaveTextContent("/agenda");
+    // waitFor rather than findBy: the probe is on screen from the first
+    // render, so findBy would resolve at "/" before the redirect happens.
+    // The redirect is asynchronous now that the destination is the
+    // server's answer.
+    await waitFor(() =>
+      expect(screen.getByTestId("pathname")).toHaveTextContent("/day"),
+    );
+  });
+
+  it("sends a bare /app/ visit to the landing surface the server names", async () => {
+    // Crane 1 slice 6 turned this from a fixed /agenda into a preference.
+    // The answer is the server's; this table only follows it.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        headers: new Headers({ "content-type": "application/json" }),
+        json: () => Promise.resolve({ landing_surface: "agenda", lists: [] }),
+        text: () =>
+          Promise.resolve(JSON.stringify({ landing_surface: "agenda", lists: [] })),
+        clone() {
+          return this;
+        },
+      } as unknown as Response),
+    );
+
+    renderAt("/");
+
+    await waitFor(() =>
+      expect(screen.getByTestId("pathname")).toHaveTextContent("/agenda"),
+    );
+  });
+
+  it("says something while it works out where to send you", async () => {
+    // Never a blank /app/, which is the exact shape of B2.1's defect.
+    renderAt("/");
+
+    expect(screen.getByText("Loading…")).toBeInTheDocument();
   });
 
   it("gives an unknown path a real page rather than an empty shell", async () => {

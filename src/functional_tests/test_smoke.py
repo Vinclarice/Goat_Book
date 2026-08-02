@@ -9,6 +9,44 @@ from functional_tests.base import BrowserTest
 from lists.models import Item, List
 
 
+class LandingSurfaceTest(BrowserTest):
+    """Crane 1 slice 6: where a real login actually ends up.
+
+    Asserted in a browser rather than only with the test client because the
+    journey crosses two things nothing else covers together -- Django's
+    login redirect and then the SPA's own router taking over -- and the
+    question "what page am I looking at after signing in" is only honestly
+    answered by signing in.
+    """
+
+    def test_a_fresh_login_lands_on_todays_page(self):
+        user = self.make_user()
+
+        self.log_in(user)
+
+        expect(self.page).to_have_url(f"{self.live_server_url}/app/day")
+        expect(self.page.get_by_role("heading", level=2, name="Focus")).to_be_visible()
+
+    def test_choosing_the_agenda_puts_it_back(self):
+        user = self.make_user()
+        user.landing_surface = user.LandingSurface.AGENDA
+        user.save(update_fields=["landing_surface"])
+
+        self.log_in(user)
+
+        expect(self.page).to_have_url(f"{self.live_server_url}/app/agenda")
+
+    def test_both_surfaces_stay_in_the_navigation_either_way(self):
+        """A default is not a redirect trap."""
+        user = self.make_user()
+        self.log_in(user)
+
+        nav = self.page.get_by_role("navigation", name="Main")
+
+        expect(nav.get_by_role("link", name="Today")).to_be_visible()
+        expect(nav.get_by_role("link", name="Agenda")).to_be_visible()
+
+
 class TaskJourneyTest(BrowserTest):
     def test_logging_in_then_creating_and_completing_a_task(self):
         """Journey 1. Proves the whole stack stands up together: the login

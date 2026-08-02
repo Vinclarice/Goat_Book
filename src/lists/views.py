@@ -15,7 +15,20 @@ def _spa_path(subpath):
 
 @login_required
 def dashboard(request):
-    return redirect(_spa_path("agenda"))
+    """Where a session lands, and the only place that decides it.
+
+    This is LOGIN_REDIRECT_URL, so the login form, a bookmark of /dashboard/
+    and the Django shell's own "Today" link all agree without any of them
+    knowing the rule. Crane made the Daily Page the default; the preference
+    is what keeps a default from being a redirect trap -- both surfaces stay
+    directly reachable either way.
+    """
+    surface = (
+        "day"
+        if request.user.landing_surface == request.user.LandingSurface.DAY
+        else "agenda"
+    )
+    return redirect(_spa_path(surface))
 
 
 @login_required

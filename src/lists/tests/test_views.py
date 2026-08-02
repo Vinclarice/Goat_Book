@@ -47,7 +47,24 @@ class DashboardTest(TestCase):
 
         self.assertRedirects(response, "/accounts/login/?next=/dashboard/")
 
-    def test_redirects_to_the_spa_agenda_route(self):
+    def test_redirects_to_the_surface_the_user_landed_on(self):
+        """Crane 1 slice 6 moved this from a fixed route to a preference.
+
+        It used to assert /app/agenda unconditionally. The Daily Page is now
+        the default home surface, and this view is the one place that
+        decides -- so both answers are asserted here rather than only the
+        new one. Reaching either surface directly is covered in
+        daily/tests/test_landing.py.
+        """
+        response = self.client.get("/dashboard/")
+
+        self.assertRedirects(
+            response, "/app/day", fetch_redirect_response=False,
+        )
+
+        self.user.landing_surface = User.LandingSurface.AGENDA
+        self.user.save(update_fields=["landing_surface"])
+
         response = self.client.get("/dashboard/")
 
         self.assertRedirects(

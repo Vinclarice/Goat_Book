@@ -1,5 +1,7 @@
+import { useQuery } from "@tanstack/react-query";
 import { Navigate, Route, Routes } from "react-router";
 
+import { apiV1 } from "../api/client";
 import { AppLayout } from "./AppLayout";
 import { AgendaRoute } from "./routes/AgendaRoute";
 import { ArchiveRoute } from "./routes/ArchiveRoute";
@@ -9,6 +11,38 @@ import { ListRoute } from "./routes/ListRoute";
 import { NotFoundRoute } from "./routes/NotFoundRoute";
 import { PreferencesRoute } from "./routes/PreferencesRoute";
 import { TaskDetailRoute } from "./routes/TaskDetailRoute";
+
+/**
+ * Sends a bare /app/ wherever a fresh login would have gone.
+ *
+ * Asks the nav endpoint rather than deciding here, so this and
+ * lists.views.dashboard cannot drift into disagreeing about the same
+ * preference. That makes the redirect asynchronous, where it used to be a
+ * synchronous <Navigate> -- so it says "Loading…" rather than rendering
+ * null while the answer is in flight. A blank /app/ is precisely the defect
+ * B2.1 fixed, and a brief one on a slow connection still reads as a broken
+ * deploy.
+ *
+ * If the answer never arrives it still lands somewhere, on the default,
+ * rather than stranding anyone on an empty shell.
+ */
+function LandingRedirect() {
+  const { data, isPending } = useQuery({
+    queryKey: ["nav"],
+    queryFn: async () => {
+      const { data, error } = await apiV1.GET("/api/v1/nav");
+      if (error) throw error;
+      return data;
+    },
+  });
+  if (isPending) return <p className="p-6">Loading…</p>;
+  return (
+    <Navigate
+      to={data?.landing_surface === "agenda" ? "/agenda" : "/day"}
+      replace
+    />
+  );
+}
 
 /**
  * The SPA's route table, kept separate from main.tsx so it can be rendered
@@ -25,14 +59,14 @@ export function AppRoutes() {
       <Route element={<AppLayout />}>
         {/* Without this, a direct visit to /app/ matched no route at all
             and rendered an empty shell -- indistinguishable, to anyone
-            looking at it, from a broken deploy. */}
-        <Route index element={<Navigate to="/agenda" replace />} />
+            looking at it, from a broken deploy. Where it goes is the
+            server's answer, not a second one hard-coded here: see
+            LandingRedirect. */}
+        <Route index element={<LandingRedirect />} />
         <Route path="/agenda" element={<AgendaRoute />} />
         {/* Two paths, one component. The undated one asks the server what
             today is rather than trusting the browser's clock, because the
-            day boundary belongs to the account's time zone. Slice 6 makes
-            one of these the landing route; for now both are just
-            reachable. */}
+            day boundary belongs to the account's time zone. */}
         <Route path="/day" element={<DayRoute />} />
         <Route path="/day/:date" element={<DayRoute />} />
         <Route path="/lists/:listId" element={<ListRoute />} />

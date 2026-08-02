@@ -409,6 +409,26 @@ export function DayRoute() {
         <h1 className="text-2xl font-bold">{longDate(data.date)}</h1>
       </div>
 
+      {/* Above everything, and quiet. It is the thing you re-read rather
+          than the thing you do -- and it is the same on every day's page,
+          because it is stored on you and not on any of them. */}
+      {(data.compass_purpose || data.compass_question) && (
+        <section className="space-y-1 rounded-lg border border-border bg-input/40 px-4 py-3">
+          {data.compass_purpose && (
+            <p className="text-sm">{data.compass_purpose}</p>
+          )}
+          {data.compass_question && (
+            <p className="text-sm font-bold">{data.compass_question}</p>
+          )}
+          <a
+            href="/app/preferences"
+            className="inline-block text-sm text-muted-foreground hover:text-foreground"
+          >
+            Edit your compass
+          </a>
+        </section>
+      )}
+
       <section className="space-y-2">
         <h2 className="text-sm font-bold">Focus</h2>
         <FocusList

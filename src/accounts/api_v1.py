@@ -23,6 +23,11 @@ class PreferencesOut(Schema):
     daily_digest: bool
     theme: ThemeChoice
     time_zone: str
+    # The Personal Compass. Edited here, on the one settings surface, and
+    # displayed on every Daily Page -- "stored and edited once", per
+    # crane-plan.md slice 5.
+    compass_purpose: str = ""
+    compass_question: str = ""
 
 
 class PreferencesIn(Schema):
@@ -31,6 +36,11 @@ class PreferencesIn(Schema):
     daily_digest: bool
     theme: ThemeChoice
     time_zone: str
+    # The Personal Compass. Edited here, on the one settings surface, and
+    # displayed on every Daily Page -- "stored and edited once", per
+    # crane-plan.md slice 5.
+    compass_purpose: str = ""
+    compass_question: str = ""
 
 
 class TimeZonesOut(Schema):
@@ -44,6 +54,8 @@ def _preferences_out(user: User) -> dict:
         "daily_digest": user.daily_digest,
         "theme": user.theme,
         "time_zone": user.time_zone,
+        "compass_purpose": user.compass_purpose,
+        "compass_question": user.compass_question,
     }
 
 
@@ -92,6 +104,8 @@ def update_preferences(request, payload: PreferencesIn):
             "email": payload.email,
             "daily_digest": payload.daily_digest,
             "time_zone": payload.time_zone,
+            "compass_purpose": payload.compass_purpose,
+            "compass_question": payload.compass_question,
         },
         instance=user,
     )

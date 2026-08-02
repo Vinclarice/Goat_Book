@@ -140,7 +140,19 @@ class AccountSettingsForm(forms.ModelForm):
         # endpoint validates through this form precisely so the two paths
         # cannot enforce different rules, and being a model field it picks
         # up validate_time_zone for free.
-        fields = ("username", "email", "daily_digest", "time_zone")
+        # The compass fields ride along for the same reason time_zone does:
+        # the endpoint validates through this form so there is one place
+        # where "what a settings save accepts" is defined. Both are
+        # blank=True on the model, so a person who has never written one
+        # saves the rest of the page without being asked for it.
+        fields = (
+            "username",
+            "email",
+            "daily_digest",
+            "time_zone",
+            "compass_purpose",
+            "compass_question",
+        )
 
     def clean_email(self):
         return self.cleaned_data["email"].strip().lower()

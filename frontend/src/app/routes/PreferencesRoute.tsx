@@ -15,6 +15,8 @@ export function PreferencesRoute() {
   const [email, setEmail] = useState("");
   const [dailyDigest, setDailyDigest] = useState(true);
   const [timeZone, setTimeZone] = useState("");
+  const [compassPurpose, setCompassPurpose] = useState("");
+  const [compassQuestion, setCompassQuestion] = useState("");
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
@@ -43,6 +45,8 @@ export function PreferencesRoute() {
     setEmail(data.email);
     setDailyDigest(data.daily_digest);
     setTimeZone(data.time_zone);
+    setCompassPurpose(data.compass_purpose);
+    setCompassQuestion(data.compass_question);
   }, [data]);
 
   /** Any edit invalidates a previous "Saved." -- otherwise it sits there
@@ -76,6 +80,8 @@ export function PreferencesRoute() {
           daily_digest: dailyDigest,
           theme,
           time_zone: timeZone,
+          compass_purpose: compassPurpose,
+          compass_question: compassQuestion,
         },
       });
       if (error) throw new Error(typeof error === "string" ? error : "Couldn't save preferences.");
@@ -105,8 +111,12 @@ export function PreferencesRoute() {
           theme,
           // This request sends the whole preferences object, so leaving
           // the zone out would silently reset the user's day boundaries
-          // as a side effect of clicking a theme button.
+          // as a side effect of clicking a theme button. The compass is
+          // here for exactly the same reason -- it is the newest field
+          // this trap could have swallowed.
           time_zone: data?.time_zone ?? timeZone,
+          compass_purpose: data?.compass_purpose ?? compassPurpose,
+          compass_question: data?.compass_question ?? compassQuestion,
         },
       });
       if (error) throw error;
@@ -182,6 +192,40 @@ export function PreferencesRoute() {
             summary arrives.
           </p>
         </div>
+
+        {/* Grouped and labelled as one thing, because it is: a standing
+            note re-read on every Daily Page, not two more settings. */}
+        <fieldset className="space-y-3 rounded-lg border border-border px-3 py-3">
+          <legend className="px-1 text-sm font-bold">Personal compass</legend>
+          <p className="text-sm text-muted-foreground">
+            Shown at the top of every day. Editing it changes every day at
+            once, including ones you have already written — it is not stored
+            in any of them.
+          </p>
+          <div className="space-y-1">
+            <label htmlFor="pref-compass-purpose" className="text-sm font-bold">
+              Purpose
+            </label>
+            <textarea
+              id="pref-compass-purpose"
+              value={compassPurpose}
+              onChange={(event) => edit(setCompassPurpose, event.target.value)}
+              rows={2}
+              className="w-full rounded-lg border border-border bg-input px-3 py-1.5"
+            />
+          </div>
+          <div className="space-y-1">
+            <label htmlFor="pref-compass-question" className="text-sm font-bold">
+              Guiding question
+            </label>
+            <input
+              id="pref-compass-question"
+              value={compassQuestion}
+              onChange={(event) => edit(setCompassQuestion, event.target.value)}
+              className="w-full rounded-lg border border-border bg-input px-3 py-1.5"
+            />
+          </div>
+        </fieldset>
 
         <div className="flex items-center justify-between gap-4 rounded-lg border border-border bg-input px-3 py-2.5">
           <div>

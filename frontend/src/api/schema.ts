@@ -516,6 +516,16 @@ export interface components {
             theme: "system" | "light" | "dark";
             /** Time Zone */
             time_zone: string;
+            /**
+             * Compass Purpose
+             * @default
+             */
+            compass_purpose: string;
+            /**
+             * Compass Question
+             * @default
+             */
+            compass_question: string;
         };
         /** PreferencesIn */
         PreferencesIn: {
@@ -532,6 +542,16 @@ export interface components {
             theme: "system" | "light" | "dark";
             /** Time Zone */
             time_zone: string;
+            /**
+             * Compass Purpose
+             * @default
+             */
+            compass_purpose: string;
+            /**
+             * Compass Question
+             * @default
+             */
+            compass_question: string;
         };
         /** CaptureOut */
         CaptureOut: {
@@ -563,6 +583,10 @@ export interface components {
             shows_action_items: boolean;
             /** Focus */
             focus: components["schemas"]["FocusOut"][];
+            /** Compass Purpose */
+            compass_purpose: string;
+            /** Compass Question */
+            compass_question: string;
         };
         /**
          * FocusOut

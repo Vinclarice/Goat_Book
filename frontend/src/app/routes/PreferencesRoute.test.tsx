@@ -29,6 +29,8 @@ function preferencesData(overrides: Record<string, unknown> = {}) {
     daily_digest: true,
     theme: "system",
     time_zone: "America/New_York",
+    compass_purpose: "Build something worth maintaining.",
+    compass_question: "What is the most I can do?",
     ...overrides,
   };
 }
@@ -259,6 +261,42 @@ describe("PreferencesRoute", () => {
     await waitFor(async () => {
       expect(await patchBody(fetchMock)).toMatchObject({
         time_zone: "America/New_York",
+      });
+    });
+  });
+
+  it("keeps the compass when only the theme changes", async () => {
+    // Same trap as the time zone above, and the compass is the newest field
+    // it could have swallowed: clicking Dark must not blank a standing note.
+    const user = userEvent.setup();
+    const fetchMock = mockApi(() => preferencesData({ theme: "dark" }));
+
+    renderRoute();
+    await screen.findByDisplayValue("vince");
+
+    await user.click(screen.getByRole("button", { name: "Dark" }));
+
+    await waitFor(async () => {
+      expect(await patchBody(fetchMock)).toMatchObject({
+        compass_purpose: "Build something worth maintaining.",
+        compass_question: "What is the most I can do?",
+      });
+    });
+  });
+
+  it("saves an edited compass", async () => {
+    const user = userEvent.setup();
+    const fetchMock = mockApi();
+
+    renderRoute();
+    const question = await screen.findByLabelText("Guiding question");
+    await user.clear(question);
+    await user.type(question, "What is worth finishing?");
+    await user.click(screen.getByRole("button", { name: "Save settings" }));
+
+    await waitFor(async () => {
+      expect(await patchBody(fetchMock)).toMatchObject({
+        compass_question: "What is worth finishing?",
       });
     });
   });

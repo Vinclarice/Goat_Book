@@ -77,6 +77,31 @@ class User(AbstractBaseUser, PermissionsMixin):
         ),
     )
 
+    # The Personal Compass: the paper template's standing purpose and
+    # guiding question, re-read every morning rather than answered again.
+    # Fields on the user rather than a model of their own, per the test in
+    # architecture-trajectory.md §4 -- a concept earns a model when it has a
+    # different life cycle, and this one has exactly the User's: one per
+    # person, for as long as the person exists. Blank rather than null for
+    # the same reason as Item.notes: "never written" and "cleared" are the
+    # same state and nothing should have to handle both.
+    #
+    # Deliberately not on DailyEntry. roadmap.md keeps the Compass separate
+    # from a day's Intentions, and copying it onto each day would make
+    # editing it rewrite history -- see daily/tests/test_compass.py.
+    compass_purpose = models.TextField(
+        blank=True,
+        default="",
+        verbose_name="Purpose",
+        help_text="Why this work matters. Shown on every day's page.",
+    )
+    compass_question = models.TextField(
+        blank=True,
+        default="",
+        verbose_name="Guiding question",
+        help_text="The question worth asking each morning.",
+    )
+
     time_zone = models.CharField(
         max_length=64,
         default=DEFAULT_TIME_ZONE,

@@ -1202,6 +1202,16 @@
           "time_zone": {
             "title": "Time Zone",
             "type": "string"
+          },
+          "compass_purpose": {
+            "default": "",
+            "title": "Compass Purpose",
+            "type": "string"
+          },
+          "compass_question": {
+            "default": "",
+            "title": "Compass Question",
+            "type": "string"
           }
         },
         "required": [
@@ -1239,6 +1249,16 @@
           },
           "time_zone": {
             "title": "Time Zone",
+            "type": "string"
+          },
+          "compass_purpose": {
+            "default": "",
+            "title": "Compass Purpose",
+            "type": "string"
+          },
+          "compass_question": {
+            "default": "",
+            "title": "Compass Question",
             "type": "string"
           }
         },
@@ -1322,6 +1342,14 @@
             },
             "title": "Focus",
             "type": "array"
+          },
+          "compass_purpose": {
+            "title": "Compass Purpose",
+            "type": "string"
+          },
+          "compass_question": {
+            "title": "Compass Question",
+            "type": "string"
           }
         },
         "required": [
@@ -1332,7 +1360,9 @@
           "today",
           "action_items",
           "shows_action_items",
-          "focus"
+          "focus",
+          "compass_purpose",
+          "compass_question"
         ],
         "title": "DayOut",
         "type": "object"

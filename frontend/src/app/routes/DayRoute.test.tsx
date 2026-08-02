@@ -32,6 +32,8 @@ function dayData(overrides: Record<string, unknown> = {}) {
     action_items: [],
     shows_action_items: true,
     focus: [],
+    compass_purpose: "",
+    compass_question: "",
     ...overrides,
   };
 }
@@ -458,6 +460,57 @@ describe("DayRoute", () => {
 
     const row = (await screen.findByText("Something since deleted")).closest("li")!;
     expect(within(row).queryByRole("button", { name: "Unpin" })).toBeNull();
+  });
+
+  it("shows the compass above the day", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        dayData({
+          compass_purpose: "Build something worth maintaining.",
+          compass_question: "What is the most I can do?",
+        }),
+      ),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    expect(
+      await screen.findByText("Build something worth maintaining."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("What is the most I can do?")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /Edit your compass/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the same compass on a past day", async () => {
+    // It is stored on the person, not the day, so a day written in July
+    // renders whatever the compass says now.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        dayData({
+          date: "2026-07-30",
+          today: "2026-08-03",
+          shows_action_items: false,
+          compass_purpose: "A purpose written later",
+        }),
+      ),
+    );
+
+    renderAt("/day/2026-07-30");
+
+    expect(await screen.findByText("A purpose written later")).toBeInTheDocument();
+  });
+
+  it("takes no room when no compass has been written", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(dayData()),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    await screen.findByLabelText("Intentions");
+    expect(screen.queryByText(/Edit your compass/)).not.toBeInTheDocument();
   });
 
   it("offers a way out when the day cannot be loaded", async () => {

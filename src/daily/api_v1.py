@@ -47,6 +47,13 @@ class DayOut(Schema):
     # Released pins are absent -- they are Crane 3's history, not today's
     # work.
     focus: list["FocusOut"]
+    # The Personal Compass, read from the user on every request and stored
+    # on no day. Sent with the day rather than fetched separately so the
+    # page renders in one round trip -- and because a day is exactly the
+    # context it is meant to be read in. Editing it changes every day at
+    # once, including ones already written, which is the point of it.
+    compass_purpose: str
+    compass_question: str
 
 
 class FocusOut(Schema):
@@ -143,6 +150,8 @@ def _day_out(owner, day):
         ),
         "shows_action_items": shows_action_items,
         "focus": [_focus_out(focus) for focus in reads.focus_for(owner, day)],
+        "compass_purpose": owner.compass_purpose,
+        "compass_question": owner.compass_question,
     }
 
 

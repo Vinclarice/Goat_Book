@@ -34,6 +34,23 @@ function dayData(overrides: Record<string, unknown> = {}) {
     focus: [],
     compass_purpose: "",
     compass_question: "",
+    routines: [],
+    routines_are_loggable: true,
+    ...overrides,
+  };
+}
+
+function standing(overrides: Record<string, unknown> = {}) {
+  return {
+    routine_id: 1,
+    title: "Practice Spanish",
+    cadence: "daily",
+    period_start: "2026-08-03",
+    progress: 2,
+    target: 5,
+    unit: "lessons",
+    outcome: "open",
+    is_met: false,
     ...overrides,
   };
 }
@@ -511,6 +528,156 @@ describe("DayRoute", () => {
 
     await screen.findByLabelText("Intentions");
     expect(screen.queryByText(/Edit your compass/)).not.toBeInTheDocument();
+  });
+
+  it("shows how far each routine has got", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(dayData({ routines: [standing()] })),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    const row = (await screen.findByText("Practice Spanish")).closest("li")!;
+    expect(within(row).getByText("2 of 5 lessons")).toBeInTheDocument();
+  });
+
+  it("reads a yes-or-no routine as done rather than as a count", async () => {
+    // crane-plan.md §3 left this to Crane 2: a blank unit means the target
+    // is a plain yes/no, and "1 of 1" is a strange way to say you moved.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        dayData({
+          routines: [
+            standing({ title: "Move today", target: 1, unit: "", progress: 0 }),
+          ],
+        }),
+      ),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    const row = (await screen.findByText("Move today")).closest("li")!;
+    expect(within(row).getByText("Not yet")).toBeInTheDocument();
+    expect(within(row).queryByText("0 of 1")).toBeNull();
+  });
+
+  it("logs a unit against the routine endpoint", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const request = input as Request;
+      if (request.url.includes("/log")) {
+        return jsonResponse({
+          today: "2026-08-03",
+          standings: [standing({ progress: 3 })],
+        });
+      }
+      return jsonResponse(dayData({ routines: [standing()] }));
+    });
+
+    renderAt("/day/2026-08-03");
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Log one for Practice Spanish" }),
+    );
+
+    await waitFor(() =>
+      expect(screen.getByText("3 of 5 lessons")).toBeInTheDocument(),
+    );
+    expect(
+      fetchSpy.mock.calls
+        .map(([input]) => (input as Request).url)
+        .some((url) => url.includes("/api/v1/routines/1/log")),
+    ).toBe(true);
+  });
+
+  it("offers no way to take back a routine at nothing", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(dayData({ routines: [standing({ progress: 0 })] })),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    await screen.findByText("Practice Spanish");
+    expect(
+      screen.queryByRole("button", { name: /Undo one/ }),
+    ).toBeNull();
+  });
+
+  it("skips through its own endpoint, not the log one", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const request = input as Request;
+      if (request.url.includes("/skip")) {
+        return jsonResponse({
+          today: "2026-08-03",
+          standings: [standing({ outcome: "skipped" })],
+        });
+      }
+      return jsonResponse(dayData({ routines: [standing()] }));
+    });
+
+    renderAt("/day/2026-08-03");
+    await userEvent.click(await screen.findByRole("button", { name: "Skip" }));
+
+    await waitFor(() => expect(screen.getByText("Skipped")).toBeInTheDocument());
+    expect(
+      fetchSpy.mock.calls
+        .map(([input]) => (input as Request).url)
+        .some((url) => url.includes("/api/v1/routines/1/skip")),
+    ).toBe(true);
+  });
+
+  it("shows a past day's routines without any way to change them", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        dayData({
+          date: "2026-08-01",
+          today: "2026-08-03",
+          shows_action_items: false,
+          routines: [standing({ progress: 3 })],
+          routines_are_loggable: false,
+        }),
+      ),
+    );
+
+    renderAt("/day/2026-08-01");
+
+    expect(await screen.findByText("3 of 5 lessons")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Log one/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Keep a routine" })).toBeNull();
+  });
+
+  it("keeps a new routine from the day page", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const request = input as Request;
+      if (request.method === "POST") {
+        return jsonResponse({ today: "2026-08-03", standings: [standing()] });
+      }
+      return jsonResponse(dayData());
+    });
+
+    renderAt("/day/2026-08-03");
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Keep a routine" }),
+    );
+    await userEvent.type(screen.getByLabelText("Routine"), "Practice Spanish");
+    await userEvent.click(screen.getByRole("button", { name: "Keep it" }));
+
+    await waitFor(() =>
+      expect(screen.getByText("Practice Spanish")).toBeInTheDocument(),
+    );
+    expect(
+      fetchSpy.mock.calls
+        .map(([input]) => (input as Request).url)
+        .some((url) => url.endsWith("/api/v1/routines")),
+    ).toBe(true);
+  });
+
+  it("says what a routine is when there are none", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(dayData()),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    expect(await screen.findByText(/rather than a task you finish once/)).toBeInTheDocument();
   });
 
   it("offers a way out when the day cannot be loaded", async () => {

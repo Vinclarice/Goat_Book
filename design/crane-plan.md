@@ -743,6 +743,22 @@ way to keep somebody from quietly making a routine a kind of `Item` later.
    Daily Page is the same occurrence as one logged anywhere else, and a
    routine never appears in Action Items — the agenda is tasks, and a
    routine is not one.
+
+   **This slice absorbed a gap in the list above**, found the same way slice
+   6 found the Daily Page had no navigation link: nowhere in these five
+   slices did routine *creation* get a surface, so a routine could be logged
+   against and never made. It lives here rather than in Preferences, where
+   the compass went, because a routine is content rather than a setting.
+
+   **Two decisions §3 deferred, settled here.** A blank unit with a target
+   of one reads "Done" / "Not yet" rather than "1 of 1" — §3 named the
+   toggle-versus-count question as a Crane 2 UI decision and this is it. And
+   routines *are* shown on a past day, read-only, where Action Items cannot
+   be: a task holds no record of what it looked like then, but an occurrence
+   is a dated record, so reading one back is history rather than inference.
+   Back-logging into that day is legitimate per §3 and is deliberately not
+   built — the acceptance does not need it and a date-taking log endpoint is
+   a wider surface than it has earned.
 4. **Pause without losing what happened.** *Acceptance:* pausing an active
    routine stops new occurrences being created and leaves every existing one
    untouched; resuming does not backfill the gap, because the gap is a fact

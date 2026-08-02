@@ -207,6 +207,132 @@ function longDate(isoDate: string): string {
   }).format(new Date(`${isoDate}T00:00:00Z`));
 }
 
+type Standing = {
+  routine_id: number;
+  title: string;
+  cadence: string;
+  progress: number;
+  target: number;
+  unit: string;
+  outcome: string;
+  is_met: boolean;
+};
+
+/**
+ * How far a routine has got, in words.
+ *
+ * crane-plan.md §3 left this to Crane 2 on purpose: a blank unit means the
+ * target is a plain yes/no for the period rather than a count of anything,
+ * and "how that difference should render (a toggle versus a running
+ * number)" was named as a UI decision rather than a domain one. So a
+ * one-of-one with no unit reads "Done" / "Not yet", and everything else
+ * reads as a count -- "1 of 1" is a strange way to tell somebody they moved
+ * today.
+ */
+function standingLabel(standing: Standing): string {
+  if (standing.outcome === "skipped") return "Skipped";
+  if (!standing.unit && standing.target === 1) {
+    return standing.progress >= 1 ? "Done" : "Not yet";
+  }
+  const unit = standing.unit ? ` ${standing.unit}` : "";
+  return `${standing.progress} of ${standing.target}${unit}`;
+}
+
+/**
+ * Practice, on the day it belongs to.
+ *
+ * A routine is not a task and never appears in Action Items -- the agenda
+ * is tasks, and the whole design rests on that staying true. It sits below
+ * them because what is due today is a stronger claim on attention than what
+ * you are practising, and above the day's writing because both are things
+ * you do rather than record.
+ */
+function Routines({
+  standings,
+  loggable,
+  onLog,
+  onSkip,
+  busy,
+}: {
+  standings: Standing[];
+  loggable: boolean;
+  onLog: (routineId: number, amount: number) => void;
+  onSkip: (routineId: number) => void;
+  busy: boolean;
+}) {
+  if (standings.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        No routines yet. A routine is practice you repeat — five lessons a day,
+        three sessions a week — rather than a task you finish once.
+      </p>
+    );
+  }
+  return (
+    <ul className="space-y-1">
+      {standings.map((standing) => (
+        <li
+          key={standing.routine_id}
+          className="flex items-baseline justify-between gap-3 rounded-lg border border-border px-3 py-2"
+        >
+          <span className="min-w-0">
+            <span className={standing.is_met ? "line-through" : ""}>
+              {standing.title}
+            </span>
+            {standing.cadence === "weekly" && (
+              <span className="ml-2 text-sm text-muted-foreground">weekly</span>
+            )}
+          </span>
+          <span className="flex shrink-0 items-baseline gap-2">
+            <span className="text-sm text-muted-foreground">
+              {standingLabel(standing)}
+            </span>
+            {loggable && (
+              <>
+                {/* Minus first and only when there is something to take
+                    back, so the common action is not the one you have to
+                    aim past. */}
+                {standing.progress > 0 && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    disabled={busy}
+                    aria-label={`Undo one for ${standing.title}`}
+                    onClick={() => onLog(standing.routine_id, -1)}
+                  >
+                    −1
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  disabled={busy}
+                  aria-label={`Log one for ${standing.title}`}
+                  onClick={() => onLog(standing.routine_id, 1)}
+                >
+                  +1
+                </Button>
+                {/* Says what was decided, not what happened -- a different
+                    statement from logging, so a different control. */}
+                {standing.outcome !== "skipped" && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    disabled={busy}
+                    onClick={() => onSkip(standing.routine_id)}
+                  >
+                    Skip
+                  </Button>
+                )}
+              </>
+            )}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 /**
  * Rapid logging, on the page you are already looking at.
  *
@@ -284,6 +410,132 @@ function CaptureBox() {
       <p className="text-sm text-muted-foreground">
         Goes to the Inbox to sort out later — not into this day&rsquo;s notes.
       </p>
+    </form>
+  );
+}
+
+/**
+ * Keeping a new routine.
+ *
+ * On this page because the slice list never gave routine creation a
+ * surface anywhere -- the same gap slice 6 found when the Daily Page
+ * itself turned out to be reachable only by typing its URL. A routine is
+ * content rather than a setting, so Preferences would have been the wrong
+ * home for it even though that is where the compass went.
+ *
+ * Folded away by default: keeping a routine is a rare act next to logging
+ * one, and four fields permanently open would make the day's page look
+ * like a form.
+ */
+function AddRoutine({
+  onCreate,
+  busy,
+}: {
+  onCreate: (routine: {
+    title: string;
+    cadence: string;
+    target_quantity: number;
+    unit: string;
+  }) => void;
+  busy: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState("");
+  const [cadence, setCadence] = useState("daily");
+  const [target, setTarget] = useState("1");
+  const [unit, setUnit] = useState("");
+
+  if (!open) {
+    return (
+      <Button type="button" variant="ghost" onClick={() => setOpen(true)}>
+        Keep a routine
+      </Button>
+    );
+  }
+
+  function submit(event: FormEvent) {
+    event.preventDefault();
+    if (!title.trim()) return;
+    onCreate({
+      title: title.trim(),
+      cadence,
+      target_quantity: Math.max(1, Number(target) || 1),
+      unit: unit.trim(),
+    });
+    setTitle("");
+    setUnit("");
+    setTarget("1");
+    setOpen(false);
+  }
+
+  return (
+    <form onSubmit={submit} className="space-y-2 rounded-lg border border-border px-3 py-3">
+      <div className="space-y-1">
+        <label htmlFor="routine-title" className="text-sm font-bold">
+          Routine
+        </label>
+        <input
+          id="routine-title"
+          value={title}
+          onChange={(event) => setTitle(event.target.value)}
+          placeholder="Practice Spanish"
+          className="w-full rounded-lg border border-border bg-input px-3 py-1.5"
+        />
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <div className="space-y-1">
+          <label htmlFor="routine-cadence" className="text-sm font-bold">
+            How often
+          </label>
+          <select
+            id="routine-cadence"
+            value={cadence}
+            onChange={(event) => setCadence(event.target.value)}
+            className="rounded-lg border border-border bg-input px-3 py-1.5"
+          >
+            <option value="daily">Every day</option>
+            <option value="weekly">Every week</option>
+          </select>
+        </div>
+        <div className="space-y-1">
+          <label htmlFor="routine-target" className="text-sm font-bold">
+            How many
+          </label>
+          <input
+            id="routine-target"
+            type="number"
+            min={1}
+            value={target}
+            onChange={(event) => setTarget(event.target.value)}
+            className="w-20 rounded-lg border border-border bg-input px-3 py-1.5"
+          />
+        </div>
+        <div className="space-y-1">
+          <label htmlFor="routine-unit" className="text-sm font-bold">
+            Of what
+          </label>
+          <input
+            id="routine-unit"
+            value={unit}
+            onChange={(event) => setUnit(event.target.value)}
+            placeholder="lessons"
+            className="w-32 rounded-lg border border-border bg-input px-3 py-1.5"
+          />
+        </div>
+      </div>
+      {/* Says what leaving it blank means, rather than leaving somebody to
+          find out by creating one. */}
+      <p className="text-sm text-muted-foreground">
+        Leave &ldquo;of what&rdquo; empty for a plain yes-or-no, like moving today.
+      </p>
+      <div className="flex items-center gap-3">
+        <Button type="submit" variant="secondary" disabled={busy}>
+          Keep it
+        </Button>
+        <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
+          Cancel
+        </Button>
+      </div>
     </form>
   );
 }
@@ -380,6 +632,48 @@ export function DayRoute() {
       queryClient.setQueryData(["day", date ?? "today"], updated),
   });
 
+  // Routine writes answer with today's standings rather than the whole day,
+  // so the day in cache is patched with them instead of refetched. Same
+  // reason as the focus mutations: a refetch would settle the query again,
+  // and the day's draft is deliberately seeded only once.
+  const routineMutation = useMutation({
+    mutationFn: async (
+      action:
+        | { kind: "log"; routineId: number; amount: number }
+        | { kind: "skip"; routineId: number }
+        | { kind: "create"; routine: Record<string, unknown> },
+    ) => {
+      if (action.kind === "create") {
+        const { data: updated, error } = await apiV1.POST("/api/v1/routines", {
+          body: action.routine as never,
+        });
+        if (error) throw new Error("Couldn't keep that routine.");
+        return updated;
+      }
+      if (action.kind === "skip") {
+        const { data: updated, error } = await apiV1.POST(
+          "/api/v1/routines/{routine_id}/skip",
+          { params: { path: { routine_id: action.routineId } } },
+        );
+        if (error) throw new Error("Couldn't skip that.");
+        return updated;
+      }
+      const { data: updated, error } = await apiV1.POST(
+        "/api/v1/routines/{routine_id}/log",
+        {
+          params: { path: { routine_id: action.routineId } },
+          body: { amount: action.amount },
+        },
+      );
+      if (error) throw new Error("Couldn't log that.");
+      return updated;
+    },
+    onSuccess: (updated) =>
+      queryClient.setQueryData(["day", date ?? "today"], (old: unknown) =>
+        old ? { ...(old as object), routines: updated?.standings ?? [] } : old,
+      ),
+  });
+
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
     setSaved(false);
@@ -461,6 +755,42 @@ export function DayRoute() {
           // show what was written and honestly nothing else.
           <p className="text-sm text-muted-foreground">
             Only today shows action items. What you wrote on this day is below.
+          </p>
+        )}
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="text-sm font-bold">Routines</h2>
+        <Routines
+          standings={data.routines}
+          loggable={data.routines_are_loggable}
+          onLog={(routineId, amount) =>
+            routineMutation.mutate({ kind: "log", routineId, amount })
+          }
+          onSkip={(routineId) =>
+            routineMutation.mutate({ kind: "skip", routineId })
+          }
+          busy={routineMutation.isPending}
+        />
+        {!data.routines_are_loggable && data.routines.length > 0 && (
+          // Read-only rather than absent: an occurrence is a dated record,
+          // so a past day can honestly say what happened -- it just cannot
+          // be changed from here.
+          <p className="text-sm text-muted-foreground">
+            What this day&rsquo;s routines came to. Logging happens on today.
+          </p>
+        )}
+        {data.routines_are_loggable && (
+          <AddRoutine
+            onCreate={(routine) =>
+              routineMutation.mutate({ kind: "create", routine })
+            }
+            busy={routineMutation.isPending}
+          />
+        )}
+        {routineMutation.isError && (
+          <p className="text-sm text-destructive">
+            {routineMutation.error.message}
           </p>
         )}
       </section>

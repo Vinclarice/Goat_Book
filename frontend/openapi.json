@@ -1509,6 +1509,17 @@
           "compass_question": {
             "title": "Compass Question",
             "type": "string"
+          },
+          "routines": {
+            "items": {
+              "$ref": "#/components/schemas/StandingOut"
+            },
+            "title": "Routines",
+            "type": "array"
+          },
+          "routines_are_loggable": {
+            "title": "Routines Are Loggable",
+            "type": "boolean"
           }
         },
         "required": [
@@ -1521,7 +1532,9 @@
           "shows_action_items",
           "focus",
           "compass_purpose",
-          "compass_question"
+          "compass_question",
+          "routines",
+          "routines_are_loggable"
         ],
         "title": "DayOut",
         "type": "object"
@@ -1592,59 +1605,6 @@
         "title": "FocusOut",
         "type": "object"
       },
-      "DayIn": {
-        "description": "Every field optional, and absent is not the same as empty.\n\nThe page may save one section without carrying the other two, so a\nfield left out keeps its stored value -- see services.write_entry.",
-        "properties": {
-          "intentions": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Intentions"
-          },
-          "gratitude": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Gratitude"
-          },
-          "happenings": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Happenings"
-          }
-        },
-        "title": "DayIn",
-        "type": "object"
-      },
-      "FocusIn": {
-        "properties": {
-          "task_id": {
-            "title": "Task Id",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "task_id"
-        ],
-        "title": "FocusIn",
-        "type": "object"
-      },
       "StandingOut": {
         "properties": {
           "routine_id": {
@@ -1697,6 +1657,59 @@
           "is_met"
         ],
         "title": "StandingOut",
+        "type": "object"
+      },
+      "DayIn": {
+        "description": "Every field optional, and absent is not the same as empty.\n\nThe page may save one section without carrying the other two, so a\nfield left out keeps its stored value -- see services.write_entry.",
+        "properties": {
+          "intentions": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Intentions"
+          },
+          "gratitude": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gratitude"
+          },
+          "happenings": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Happenings"
+          }
+        },
+        "title": "DayIn",
+        "type": "object"
+      },
+      "FocusIn": {
+        "properties": {
+          "task_id": {
+            "title": "Task Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "task_id"
+        ],
+        "title": "FocusIn",
         "type": "object"
       },
       "StandingsOut": {

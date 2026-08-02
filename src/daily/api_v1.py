@@ -16,6 +16,8 @@ from daily import reads, services
 from lists.api_v1 import TaskOut, TaskParentOut
 from lists.models import Item
 from lists.serializers import serialize_item
+from routines import reads as routine_reads
+from routines.api_v1 import StandingOut
 
 
 router = Router()
@@ -54,6 +56,25 @@ class DayOut(Schema):
     # once, including ones already written, which is the point of it.
     compass_purpose: str
     compass_question: str
+    # Where each routine stands in the period this day falls in, read live
+    # like the agenda and owned no more than it is.
+    #
+    # StandingOut rather than a daily-shaped copy: these are the same
+    # answers /api/v1/routines gives, and a second schema would be free to
+    # drift from the first.
+    #
+    # **Present on a past day, where action_items cannot be.** A task holds
+    # no record of what it looked like on the 30th, so showing today's open
+    # work there would assert something never true. An occurrence *is* a
+    # dated record of a period, so reading one back is history rather than
+    # inference. Two kinds of record, two honest answers, one page.
+    routines: list[StandingOut]
+    # Whether this day can be logged into. Back-logging is legitimate --
+    # §3 allows logging after the fact -- and is not built: slice 3's
+    # acceptance does not need it, and a date-taking log endpoint is a wider
+    # surface than it has earned. The server says so rather than leaving the
+    # client to infer it from the date.
+    routines_are_loggable: bool
 
 
 class FocusOut(Schema):
@@ -152,6 +173,21 @@ def _day_out(owner, day):
         "focus": [_focus_out(focus) for focus in reads.focus_for(owner, day)],
         "compass_purpose": owner.compass_purpose,
         "compass_question": owner.compass_question,
+        "routines": [
+            {
+                "routine_id": standing.routine.id,
+                "title": standing.routine.title,
+                "cadence": standing.routine.cadence,
+                "period_start": standing.period_start,
+                "progress": standing.progress,
+                "target": standing.target,
+                "unit": standing.unit,
+                "outcome": standing.outcome,
+                "is_met": standing.is_met,
+            }
+            for standing in routine_reads.standings_for(owner, day)
+        ],
+        "routines_are_loggable": day == today,
     }
 
 

@@ -675,6 +675,10 @@ export interface components {
             compass_purpose: string;
             /** Compass Question */
             compass_question: string;
+            /** Routines */
+            routines: components["schemas"]["StandingOut"][];
+            /** Routines Are Loggable */
+            routines_are_loggable: boolean;
         };
         /**
          * FocusOut
@@ -697,26 +701,6 @@ export interface components {
             parent: components["schemas"]["TaskParentOut"] | null;
             /** Selected At */
             selected_at: string;
-        };
-        /**
-         * DayIn
-         * @description Every field optional, and absent is not the same as empty.
-         *
-         *     The page may save one section without carrying the other two, so a
-         *     field left out keeps its stored value -- see services.write_entry.
-         */
-        DayIn: {
-            /** Intentions */
-            intentions?: string | null;
-            /** Gratitude */
-            gratitude?: string | null;
-            /** Happenings */
-            happenings?: string | null;
-        };
-        /** FocusIn */
-        FocusIn: {
-            /** Task Id */
-            task_id: number;
         };
         /** StandingOut */
         StandingOut: {
@@ -741,6 +725,26 @@ export interface components {
             outcome: string;
             /** Is Met */
             is_met: boolean;
+        };
+        /**
+         * DayIn
+         * @description Every field optional, and absent is not the same as empty.
+         *
+         *     The page may save one section without carrying the other two, so a
+         *     field left out keeps its stored value -- see services.write_entry.
+         */
+        DayIn: {
+            /** Intentions */
+            intentions?: string | null;
+            /** Gratitude */
+            gratitude?: string | null;
+            /** Happenings */
+            happenings?: string | null;
+        };
+        /** FocusIn */
+        FocusIn: {
+            /** Task Id */
+            task_id: number;
         };
         /** StandingsOut */
         StandingsOut: {

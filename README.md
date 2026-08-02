@@ -63,6 +63,23 @@ pnpm --dir frontend test
 pnpm --dir frontend build
 ```
 
+### Browser smoke tests
+
+A separate suite that drives a real browser against a real server, covering
+the seams the other two cannot: routing, the built bundle, static file
+serving, session cookies, and browser navigation. It is a separate test
+label because it needs a built bundle and a browser binary.
+
+```powershell
+.\.venv\Scripts\python.exe -m playwright install chromium   # once
+pnpm --dir frontend build
+.\.venv\Scripts\python.exe src\manage.py test functional_tests
+```
+
+Build first, or the tests run against whatever the last build produced --
+they load the real files from `src/lists/static/frontend/`. Set `HEADED=1`
+to watch them in a visible browser.
+
 CI (`.github/workflows/ci.yml`) runs the same three checks on every push and
 pull request, with the Django suite run against a Postgres service
 container instead of SQLite, matching production's database engine.

@@ -29,6 +29,21 @@ pnpm --dir frontend test
 pnpm --dir frontend build
 ```
 
+The browser smoke suite is deliberately not in that list — it needs a built
+bundle and a browser binary, which an ordinary edit-and-test loop should not
+have to install. Run it when you have touched routing, the app shell, static
+assets, session handling, or navigation:
+
+```powershell
+.\.venv\Scripts\python.exe -m playwright install chromium   # once
+pnpm --dir frontend build                                   # it loads the real bundle
+.\.venv\Scripts\python.exe src\manage.py test functional_tests
+```
+
+**Build first or you are testing the last build.** The tests serve
+`src/lists/static/frontend/`, so without a rebuild they will happily pass
+against stale JavaScript. `HEADED=1` runs them in a visible browser.
+
 Those three cover the web application; `android/` has its own check below,
 and CI runs all four. Keep the Django app list matched to
 `.github/workflows/ci.yml` — it once omitted `capture`, so following the

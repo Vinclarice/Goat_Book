@@ -5,3 +5,8 @@
 -r requirements.txt
 lxml==6.1.1
 cssselect==1.5.0
+# Drives the browser smoke suite (src/functional_tests). Needs its browser
+# binary fetched separately -- `python -m playwright install chromium` --
+# which is why those tests are their own test label and their own CI job
+# rather than part of the ordinary run.
+playwright==1.62.0

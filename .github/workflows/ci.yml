@@ -43,6 +43,40 @@ jobs:
         run: python src/manage.py test lists.tests.test_isolation
       - run: python src/manage.py test accounts lists capture clarice
 
+  # A separate job because it is the only one needing both toolchains at
+  # once. src/lists/static/frontend is gitignored, so the browser tests
+  # have to build the bundle themselves -- a suite that silently served no
+  # JavaScript would pass an empty page and prove nothing.
+  #
+  # No Postgres service here, unlike the django job. These cover routing,
+  # static assets, session cookies and browser navigation; none of that
+  # changes with the database engine, and SQLite keeps the job quick.
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: corepack enable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+        working-directory: frontend
+      - name: Build the bundle the browser tests will actually load
+        run: pnpm build
+        working-directory: frontend
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - run: pip install --disable-pip-version-check -r requirements-dev.txt
+      # --with-deps installs the system libraries Chromium needs on a bare
+      # runner; without it the browser downloads and then fails to launch.
+      - run: python -m playwright install --with-deps chromium
+      - run: python src/manage.py test functional_tests
+
   frontend:
     runs-on: ubuntu-latest
     defaults:

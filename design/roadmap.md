@@ -97,14 +97,15 @@ deferred until the immediate-versus-grace-period decision is made.
 
 ### Track F — Android capture MVP
 
-**M1–M4 shipped, August 1–2, 2026.** A native Kotlin client in `android/`
-authenticates with a personal access token, captures online or offline, and
-delivers a durable encrypted queue in the background without ever creating a
-duplicate. The device pilot ran against production on a Samsung SM-F966U:
-fifteen captures across Wi-Fi, cellular, a mid-request radio switch and
-airplane mode arrived as fifteen rows with fifteen distinct keys. Only M5
-(share to capture) remains, and it is optional for a prototype; the detail
-is in [`bittern-plan.md`](bittern-plan.md).
+**Complete — M1–M5 shipped August 1–2, 2026.** A native Kotlin client in
+`android/` authenticates with a personal access token, captures online or
+offline, accepts shares from other apps, and delivers a durable encrypted
+queue in the background without ever creating a duplicate. The device pilot
+ran against production on a Samsung SM-F966U: fifteen captures across Wi-Fi,
+cellular, a mid-request radio switch and airplane mode arrived as fifteen
+rows with fifteen distinct keys, and a link shared from the browser arrived
+with its title intact. The detail, including the criteria consciously not
+met, is in [`bittern-plan.md`](bittern-plan.md).
 
 Its only purpose is getting a thought into the inbox quickly; triage remains
 in the web app. The shared idempotent-write contract (M1) is verified against

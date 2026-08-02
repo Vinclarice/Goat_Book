@@ -46,11 +46,11 @@ constraint expires the moment production is updated.
 token, capture online or offline, safely retry without duplicates, and see the
 result in the web Inbox.
 
-**M1–M4 are done as of August 2, 2026.** Every clause of that exit condition
-has been observed on a physical device against production, in a deliberate
-pilot rather than opportunistically — see M4 for the evidence and for the
-two criteria consciously not met. Only M5 remains, and it is optional for a
-prototype.
+**Stage 1 is complete. M1–M5 are done as of August 2, 2026.** Every clause
+of that exit condition has been observed on a physical device against
+production, in a deliberate pilot rather than opportunistically — see M4 for
+the evidence and for the two criteria consciously not met, and M5 for the
+share target.
 
 ### Mobile repository and sequencing decision
 
@@ -642,6 +642,45 @@ no duplicates, token revocation is recoverable without data loss, and the app
 stores only the encrypted credential and explicitly visible pending queue.
 
 ### M5 — share to capture
+
+**Status: complete, August 2, 2026.** Clarice Capture is registered as a
+`text/plain` share target, verified with `cmd package query-activities`
+rather than by trusting the manifest, and exercised with a real share from
+the phone's browser:
+
+```text
+19  00:51:02  96510cb7-…
+    'Applying the 11 Laws of Systems Thinking to Personal Growth
+     https://www.the-lbm.com/post/applying-the-11-laws-of-systems-thinking-to-personal-growth'
+```
+
+That row is the argument for keeping the subject. The URL alone is
+`the-lbm.com/post/applying-the-11-laws…` — decodable, but the headline is
+what somebody recognises a week later, and browsers send the two as separate
+extras precisely because they are different information.
+
+**Seeded, never sent.** A share opens Capture with the content in the field
+and does nothing else. Posting on somebody's behalf would turn every share
+menu into a way to write to their Inbox without them reading it. Verified by
+sharing and backing out: the Inbox stayed at 18 rows.
+
+Three decisions in `SharedText` worth keeping:
+
+- A subject already contained in the body is not repeated. Some apps send
+  the same string as both, and two copies of a headline is not extra
+  information.
+- `getCharSequenceExtra`, not `getStringExtra`. Apps sharing formatted text
+  send a `Spanned`, for which `getStringExtra` returns null — a share that
+  silently arrives empty is worse than one that arrives plain.
+- **A share outranks the connection gate.** Sending somebody to Connect
+  would discard what they just shared, so a share opens Capture even when no
+  token is stored; the queue holds it and says so.
+
+**Not device-tested:** sharing plain text rather than a link, and sharing
+while offline. Both go through exactly the same code as paths that were
+tested — the parsing is one pure function with nine tests, and an offline
+share is an ordinary submit into the queue — but neither has been run on the
+phone.
 
 After the basic Android capture loop is reliable, register Clarice as an
 Android share target for plain text and URLs. A share opens an editable capture

@@ -107,6 +107,14 @@ class RoutineOccurrence(models.Model):
         OPEN = "open", "Open"
         COMPLETED = "completed", "Completed"
         SKIPPED = "skipped", "Skipped"
+        # "I did some of it, and that was enough." Added in Crane 3 slice 8
+        # as the answer to the second question crane-plan.md §3 left open,
+        # and deliberately not folded into SKIPPED: a skip says the person
+        # chose *not* to do the thing, and they did some of it. Two rules
+        # travel with it -- it is never a met target, and like a skip it
+        # leaves a review's denominator, because both are decisions rather
+        # than periods that merely elapsed.
+        PARTIAL = "partial", "Enough"
 
     owner = models.ForeignKey(
         "accounts.User",

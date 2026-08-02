@@ -608,6 +608,7 @@ describe("ReviewRoute", () => {
               met: 0,
               expected: 0,
               skipped: 0,
+              enough: 0,
               paused_since: "2026-07-20",
               paused_days: 7,
               periods: [],
@@ -636,6 +637,7 @@ describe("ReviewRoute", () => {
               met: 3,
               expected: 4,
               skipped: 0,
+              enough: 0,
               paused_since: null,
               paused_days: 3,
               periods: [habitPeriod({ outcome: "completed", progress: 5 })],
@@ -650,6 +652,44 @@ describe("ReviewRoute", () => {
     expect(await screen.findByText("3 of 4")).toBeInTheDocument();
     expect(screen.getByText(/3 days paused/)).toBeInTheDocument();
     expect(screen.queryByText(/Paused since/)).toBeNull();
+  });
+
+  it("reports a period called enough as neither met nor skipped", async () => {
+    // Crane 3 slice 8. Three states, three readings: a skip says the thing
+    // was not done, this says some of it was and that was right.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        weekData({
+          habits: [
+            {
+              routine_id: 1,
+              title: "Practice Spanish",
+              cadence: "daily",
+              unit: "lessons",
+              met: 4,
+              expected: 6,
+              skipped: 0,
+              enough: 1,
+              paused_since: null,
+              paused_days: 0,
+              periods: [
+                habitPeriod({
+                  period_start: "2026-07-27",
+                  outcome: "partial",
+                  progress: 3,
+                }),
+              ],
+            },
+          ],
+        }),
+      ),
+    );
+
+    renderAt("/review");
+
+    expect(await screen.findByLabelText(/Monday: 3 of 5 — enough/)).toBeInTheDocument();
+    expect(screen.getByText(/1 called enough/)).toBeInTheDocument();
+    expect(screen.queryByText(/skipped/)).toBeNull();
   });
 
   it("leaves the habits section out when no routine existed", async () => {

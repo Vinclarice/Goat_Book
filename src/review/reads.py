@@ -232,6 +232,16 @@ class HabitPeriod:
     def is_skipped(self):
         return self.outcome == RoutineOccurrence.Outcome.SKIPPED
 
+    @property
+    def was_enough(self):
+        return self.outcome == RoutineOccurrence.Outcome.PARTIAL
+
+    @property
+    def was_decided(self):
+        """Somebody said something about this period rather than it merely
+        running out. Both kinds of decision leave the denominator."""
+        return self.is_skipped or self.was_enough
+
 
 @dataclass(frozen=True)
 class Habit:
@@ -264,8 +274,17 @@ class Habit:
         return sum(1 for period in self.periods if period.is_skipped)
 
     @property
+    def enough(self):
+        return sum(1 for period in self.periods if period.was_enough)
+
+    @property
     def expected(self):
-        return len(self.periods) - self.skipped
+        # Every deliberate decision comes out, not only skips: a period
+        # closed at "that was enough" is a decision about it too, and
+        # crane-plan.md §8 settles that it counts toward neither the met
+        # nor the expected. What stays in the denominator is periods that
+        # merely ran out.
+        return sum(1 for period in self.periods if not period.was_decided)
 
 
 def _down_days(pauses, week_start, week_end):

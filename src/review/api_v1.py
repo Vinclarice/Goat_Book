@@ -153,6 +153,11 @@ class HabitOut(Schema):
     met: int
     expected: int
     skipped: int
+    # Periods closed at "that was enough". Out of `expected` like a skip,
+    # because both are decisions rather than periods that merely ran out --
+    # and reported separately from skips, because "I did some and stopped"
+    # and "I chose not to" are different facts. crane-plan.md §8.
+    enough: int
     # When the pause that was still running at the week's end began, and how
     # many of the week's days it was down for. Both null/zero wherever
     # RoutinePause has nothing to say -- a pause that began and ended before
@@ -322,6 +327,7 @@ def _week_out(owner, day):
                 "met": habit.met,
                 "expected": habit.expected,
                 "skipped": habit.skipped,
+                "enough": habit.enough,
                 "paused_since": habit.paused_since,
                 "paused_days": habit.paused_days,
                 "periods": [

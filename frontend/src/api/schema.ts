@@ -340,6 +340,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/routines/{routine_id}/enough": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Call It Enough
+         * @description Close this period at what was done, content with it.
+         *
+         *     A third route because it is a third statement. Logging says what
+         *     happened, skipping says the thing was not done, and this says some of
+         *     it was and that was the right amount -- crane-plan.md §8, answering the
+         *     question §3 left open. Folding it into the skip route would record
+         *     "I chose not to" about somebody who did.
+         */
+        post: operations["routines_api_v1_call_it_enough"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/routines/{routine_id}/pause": {
         parameters: {
             query?: never;
@@ -1037,6 +1063,8 @@ export interface components {
             expected: number;
             /** Skipped */
             skipped: number;
+            /** Enough */
+            enough: number;
             /** Paused Since */
             paused_since: string | null;
             /** Paused Days */
@@ -1711,6 +1739,28 @@ export interface operations {
                 "application/json": components["schemas"]["LogIn"];
             };
         };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StandingsOut"];
+                };
+            };
+        };
+    };
+    routines_api_v1_call_it_enough: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                routine_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description OK */
             200: {

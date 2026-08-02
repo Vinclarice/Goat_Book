@@ -238,3 +238,42 @@ class RoutineEndpointTest(TestCase):
 
         self.assertIn(response.status_code, (403, 404))
         self.assertEqual(RoutineOccurrence.objects.count(), 0)
+
+    def test_calling_a_period_enough(self):
+        """Crane 3 slice 8. Its own route rather than a flag on the log,
+        for the same reason skipping got one: logging says what happened,
+        and this says what was decided about it."""
+        routine = services.create_routine(
+            self.alice, title="Practice Spanish", target_quantity=5, unit="lessons"
+        )
+        self.post(f"/api/v1/routines/{routine.id}/log", {"amount": 3})
+
+        response = self.post(f"/api/v1/routines/{routine.id}/enough", {})
+
+        self.assertEqual(response.status_code, 200)
+        [standing] = self.standings()
+        self.assertEqual(standing["outcome"], "partial")
+        self.assertEqual(standing["progress"], 3)
+        # Never a met target, which is the rule crane-plan.md §8 settles
+        # along with the outcome itself.
+        self.assertFalse(standing["is_met"])
+
+    def test_calling_an_untouched_period_enough_is_refused(self):
+        routine = services.create_routine(
+            self.alice, title="Practice Spanish", target_quantity=5
+        )
+
+        response = self.post(f"/api/v1/routines/{routine.id}/enough", {})
+
+        # 409 rather than 400: the request is well formed and the routine is
+        # real, it is the state that refuses -- the same call the log
+        # endpoint makes for a paused routine.
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(RoutineOccurrence.objects.count(), 0)
+
+    def test_one_person_cannot_close_anothers_period(self):
+        bobs = services.create_routine(self.bob, title="Bob's practice")
+
+        response = self.post(f"/api/v1/routines/{bobs.id}/enough", {})
+
+        self.assertIn(response.status_code, (403, 404))

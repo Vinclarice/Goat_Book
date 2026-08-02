@@ -716,6 +716,66 @@ describe("DayRoute", () => {
     ).toBe(true);
   });
 
+  it("calls a period enough through its own endpoint", async () => {
+    // Crane 3 slice 8. Its own control because it is its own statement:
+    // "I did some and that was enough" is not "I chose not to".
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const request = input as Request;
+      if (request.url.includes("/enough")) {
+        return jsonResponse({
+          today: "2026-08-03",
+          standings: [standing({ outcome: "partial", progress: 3 })],
+          paused: [],
+        });
+      }
+      return jsonResponse(dayData({ routines: [standing({ progress: 3 })] }));
+    });
+
+    renderAt("/day/2026-08-03");
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Call it enough for Practice Spanish" }),
+    );
+
+    await waitFor(() =>
+      expect(screen.getByText("3 of 5 lessons — enough")).toBeInTheDocument(),
+    );
+    expect(
+      fetchSpy.mock.calls
+        .map(([input]) => (input as Request).url)
+        .some((url) => url.includes("/api/v1/routines/1/enough")),
+    ).toBe(true);
+  });
+
+  it("does not offer enough for a period with nothing done yet", async () => {
+    // "I did some of it" needs some of it. With nothing logged the honest
+    // statement is a skip, which already has its own control.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(dayData({ routines: [standing({ progress: 0 })] })),
+    );
+
+    renderAt("/day/2026-08-03");
+    await screen.findByText("Practice Spanish");
+
+    expect(screen.queryByRole("button", { name: /enough/i })).toBeNull();
+  });
+
+  it("does not offer enough for a period already met", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        dayData({
+          routines: [
+            standing({ progress: 5, outcome: "completed", is_met: true }),
+          ],
+        }),
+      ),
+    );
+
+    renderAt("/day/2026-08-03");
+    await screen.findByText("Practice Spanish");
+
+    expect(screen.queryByRole("button", { name: /enough/i })).toBeNull();
+  });
+
   it("keeps a paused routine findable so it can be resumed", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(() =>
       jsonResponse(

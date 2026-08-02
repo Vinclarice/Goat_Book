@@ -159,6 +159,26 @@ def log_routine(request, routine_id: int, payload: LogIn):
     return _standings_out(request.user)
 
 
+@router.post("/routines/{routine_id}/enough", response=StandingsOut)
+def call_it_enough(request, routine_id: int):
+    """Close this period at what was done, content with it.
+
+    A third route because it is a third statement. Logging says what
+    happened, skipping says the thing was not done, and this says some of
+    it was and that was the right amount -- crane-plan.md §8, answering the
+    question §3 left open. Folding it into the skip route would record
+    "I chose not to" about somebody who did.
+    """
+    routine = _own_routine_or_404(request.user, routine_id)
+    try:
+        services.close_period_as_enough(
+            request.user, routine, timezone.localdate()
+        )
+    except services.RoutineError as error:
+        raise HttpError(409, str(error))
+    return _standings_out(request.user)
+
+
 @router.post("/routines/{routine_id}/pause", response=StandingsOut)
 def pause(request, routine_id: int):
     """Put a routine down, keeping everything it has already done."""

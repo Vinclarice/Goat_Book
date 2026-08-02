@@ -245,7 +245,11 @@ function standingLabel(standing: Standing): string {
     return standing.progress >= 1 ? "Done" : "Not yet";
   }
   const unit = standing.unit ? ` ${standing.unit}` : "";
-  return `${standing.progress} of ${standing.target}${unit}`;
+  const count = `${standing.progress} of ${standing.target}${unit}`;
+  // Says the count and then what was decided about it, rather than
+  // replacing one with the other: "I did three and that was enough" is
+  // both halves, and dropping the three would lose what actually happened.
+  return standing.outcome === "partial" ? `${count} — enough` : count;
 }
 
 /**
@@ -262,6 +266,7 @@ function Routines({
   loggable,
   onLog,
   onSkip,
+  onEnough,
   onPause,
   busy,
 }: {
@@ -269,6 +274,7 @@ function Routines({
   loggable: boolean;
   onLog: (routineId: number, amount: number) => void;
   onSkip: (routineId: number) => void;
+  onEnough: (routineId: number) => void;
   onPause: (routineId: number) => void;
   busy: boolean;
 }) {
@@ -324,6 +330,25 @@ function Routines({
                 >
                   +1
                 </Button>
+                {/* "I did some of it, and that was enough." Offered only
+                    where it is true: something done, and the target not
+                    reached. With nothing done the honest statement is a
+                    skip, which is the control beside it — and once the
+                    target is met there is nothing left to be content
+                    about. */}
+                {standing.progress > 0 &&
+                  !standing.is_met &&
+                  standing.outcome !== "partial" && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      disabled={busy}
+                      aria-label={`Call it enough for ${standing.title}`}
+                      onClick={() => onEnough(standing.routine_id)}
+                    >
+                      Enough
+                    </Button>
+                  )}
                 {/* Says what was decided, not what happened -- a different
                     statement from logging, so a different control. */}
                 {standing.outcome !== "skipped" && (
@@ -724,6 +749,7 @@ export function DayRoute() {
         // whose own discriminant is a union does not narrow away.
         | { kind: "log"; routineId: number; amount: number }
         | { kind: "skip"; routineId: number }
+        | { kind: "enough"; routineId: number }
         | { kind: "pause"; routineId: number }
         | { kind: "resume"; routineId: number }
         | { kind: "create"; routine: Record<string, unknown> },
@@ -745,9 +771,11 @@ export function DayRoute() {
         if (error) throw new Error("Couldn't keep that routine.");
         return updated;
       }
-      if (action.kind === "skip") {
+      if (action.kind === "skip" || action.kind === "enough") {
         const { data: updated, error } = await apiV1.POST(
-          "/api/v1/routines/{routine_id}/skip",
+          action.kind === "skip"
+            ? "/api/v1/routines/{routine_id}/skip"
+            : "/api/v1/routines/{routine_id}/enough",
           { params: { path: { routine_id: action.routineId } } },
         );
         if (error) throw new Error("Couldn't skip that.");
@@ -870,6 +898,9 @@ export function DayRoute() {
           }
           onSkip={(routineId) =>
             routineMutation.mutate({ kind: "skip", routineId })
+          }
+          onEnough={(routineId) =>
+            routineMutation.mutate({ kind: "enough", routineId })
           }
           onPause={(routineId) =>
             routineMutation.mutate({ kind: "pause", routineId })

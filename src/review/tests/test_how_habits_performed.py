@@ -160,3 +160,47 @@ class HabitsInAWeekTest(TestCase):
         self.habits()
 
         self.assertEqual(RoutineOccurrence.objects.count(), 0)
+
+
+class CalledEnoughInAWeekTest(HabitsInAWeekTest):
+    """Crane 3 slice 8's half of the report.
+
+    Inherits the harness rather than repeating it. What is new is only how
+    a partial close reads: distinct from a skip, distinct from a day that
+    elapsed, and counted toward neither -- which is §8's settled rule and
+    the same one slice 6 applied to skips, since both are decisions rather
+    than periods that merely ran out.
+    """
+
+    def test_a_period_called_enough_is_reported_as_its_own_thing(self):
+        routine = self.routine_kept_since(
+            JULY_27 - timedelta(days=30), target_quantity=5, unit="lessons"
+        )
+        routine_services.log_progress(self.alice, routine, JULY_27, amount=3)
+        routine_services.close_period_as_enough(self.alice, routine, JULY_27)
+
+        [habit] = self.habits()
+
+        self.assertEqual(habit["periods"][0]["outcome"], "partial")
+        self.assertEqual(habit["periods"][0]["progress"], 3)
+        self.assertEqual(habit["enough"], 1)
+
+    def test_it_counts_toward_neither_the_numerator_nor_the_denominator(self):
+        routine = self.routine_kept_since(JULY_27 - timedelta(days=30), target_quantity=5)
+        routine_services.log_progress(self.alice, routine, JULY_27, amount=3)
+        routine_services.close_period_as_enough(self.alice, routine, JULY_27)
+
+        [habit] = self.habits()
+
+        self.assertEqual((habit["met"], habit["expected"]), (0, 6))
+
+    def test_it_is_not_reported_as_a_skip(self):
+        """The distinction the third outcome exists for. A skip says the
+        person chose not to do it, and they did some of it."""
+        routine = self.routine_kept_since(JULY_27 - timedelta(days=30), target_quantity=5)
+        routine_services.log_progress(self.alice, routine, JULY_27, amount=3)
+        routine_services.close_period_as_enough(self.alice, routine, JULY_27)
+
+        [habit] = self.habits()
+
+        self.assertEqual(habit["skipped"], 0)

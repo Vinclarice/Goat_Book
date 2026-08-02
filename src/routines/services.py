@@ -161,6 +161,39 @@ def skip_period(owner, routine, day):
     return occurrence
 
 
+@transaction.atomic
+def close_period_as_enough(owner, routine, day):
+    """Close a period at what was done, content with it.
+
+    The third way out of open, and neither of the other two. Reaching the
+    target completes a period automatically and a skip says the thing was
+    not done at all; this says some of it was and that was the right
+    amount. `crane-plan.md` §8 settles what it means for a report: never a
+    met target, and out of the denominator like a skip, because both are
+    decisions rather than periods that merely elapsed.
+
+    It refuses a period with nothing logged, because "I did some of it"
+    needs some of it -- with nothing done the honest statement is a skip,
+    which has its own action. And it refuses one already met, which is
+    completed and has nothing left to be content about.
+
+    Unlike a skip it never creates the occurrence: there is by definition
+    something already there.
+    """
+    _active_routine(owner, routine)
+    occurrence = RoutineOccurrence.objects.filter(
+        routine=routine, period_start=period_start_for(routine.cadence, day)
+    ).first()
+    if occurrence is None or occurrence.progress == 0:
+        raise RoutineError("Nothing has been logged for that period yet.")
+    if occurrence.progress >= occurrence.target_quantity:
+        raise RoutineError("That period is already met.")
+    occurrence.outcome = RoutineOccurrence.Outcome.PARTIAL
+    occurrence.decided_at = timezone.now()
+    occurrence.save(update_fields=["outcome", "decided_at"])
+    return occurrence
+
+
 def _occurrence_for_writing(owner, routine, day):
     """This period's row, created with its snapshot if it does not exist.
 
@@ -193,9 +226,13 @@ def _settle_outcome(occurrence):
     the thing contradicts having decided not to.
     """
     reached = occurrence.progress >= occurrence.target_quantity
-    if occurrence.outcome == RoutineOccurrence.Outcome.SKIPPED:
-        # Logging is the un-skip. A skip is a statement about intent, and
-        # the person just did some of it.
+    if occurrence.outcome in (
+        RoutineOccurrence.Outcome.SKIPPED,
+        RoutineOccurrence.Outcome.PARTIAL,
+    ):
+        # Logging is the un-skip, and equally the un-enough. Both are
+        # statements about intent, and somebody who carries on has
+        # withdrawn whichever one they made.
         occurrence.outcome = (
             RoutineOccurrence.Outcome.COMPLETED
             if reached

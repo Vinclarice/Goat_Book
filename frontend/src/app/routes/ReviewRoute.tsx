@@ -418,6 +418,7 @@ type Habit = {
   met: number;
   expected: number;
   skipped: number;
+  enough: number;
   paused_since: string | null;
   paused_days: number;
   periods: HabitPeriod[];
@@ -433,7 +434,11 @@ type Habit = {
  */
 function periodLabel(period: HabitPeriod): string {
   if (period.outcome === "skipped") return "skipped";
-  return `${period.progress} of ${period.target}`;
+  const count = `${period.progress} of ${period.target}`;
+  // Both halves: what was done, and that it was called enough. Dropping
+  // the count would lose what actually happened, and dropping the word
+  // would make a contented day read as an unfinished one.
+  return period.outcome === "partial" ? `${count} — enough` : count;
 }
 
 /** The mark a period wears. Filled when it was met, struck when it was
@@ -441,6 +446,9 @@ function periodLabel(period: HabitPeriod): string {
 function periodMark(period: HabitPeriod): string {
   if (period.outcome === "completed") return "●";
   if (period.outcome === "skipped") return "–";
+  // Half-filled: some of it was done, and that was the decision. Its own
+  // mark rather than either of the others, because it is neither.
+  if (period.outcome === "partial") return "◐";
   return "○";
 }
 
@@ -494,6 +502,10 @@ function Habits({ habits }: { habits: Habit[] }) {
                   the denominator on purpose — the same call released pins
                   get — so the count that proves it stays visible. */}
               {habit.skipped > 0 && <span>· {habit.skipped} skipped</span>}
+              {/* Beside the figure and apart from the skips, because "I did
+                  some and stopped" and "I chose not to" are different facts
+                  — which is the whole reason for a third outcome. */}
+              {habit.enough > 0 && <span>· {habit.enough} called enough</span>}
             </span>
           </span>
           {habit.periods.length > 0 && (

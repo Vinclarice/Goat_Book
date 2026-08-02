@@ -46,10 +46,11 @@ constraint expires the moment production is updated.
 token, capture online or offline, safely retry without duplicates, and see the
 result in the web Inbox.
 
-**M1, M2 and M3 are done as of August 1, 2026, and every clause of that exit
-condition has been observed on a physical device** — though observed
-opportunistically rather than as the deliberate pilot M4 asks for. M4 and M5
-remain.
+**M1–M4 are done as of August 2, 2026.** Every clause of that exit condition
+has been observed on a physical device against production, in a deliberate
+pilot rather than opportunistically — see M4 for the evidence and for the
+two criteria consciously not met. Only M5 remains, and it is optional for a
+prototype.
 
 ### Mobile repository and sequencing decision
 
@@ -571,19 +572,64 @@ rather than minting a new one.
 
 ### M4 — real-device pilot and release criteria
 
-**Partly done already, by accident rather than plan.** Much of this list was
-exercised on an SM-F966U during M2 and M3 because the device was to hand:
-fresh-token connection against production, survival across a force-stop,
-capture reaching the Inbox, token revocation recovered without data loss,
-airplane-mode queueing, and a self-draining queue when the network returned.
+**Status: pilot run August 2, 2026 on a Samsung SM-F966U (Android 16)
+against production. Every release criterion met except two, both recorded
+below.** Fifteen captures across every network condition the plan names,
+delivered to the production Inbox as fifteen rows with fifteen distinct
+idempotency keys — nothing lost, nothing duplicated, nothing out of order.
 
-What that leaves for M4 proper is the part ad-hoc testing does not give:
-running the list *deliberately*, in one sitting, and writing down what
-happened. Two items have never been tested at all — a Wi-Fi-to-cellular
-transition mid-capture, and several rapid captures checked for created-at
-order in the Inbox. The forced-retry-creates-no-duplicates criterion has
-been proven by `curl` against production (B0.1) but never through the app's
-own retry path.
+```text
+10  00:04:30  M4 wifi one          Wi-Fi, online
+11  00:04:36  M4 rapid 1           three in quick succession,
+12  00:04:40  M4 rapid 2           each its own request
+13  00:04:46  M4 rapid 3
+14  00:05:06  M4 cellular one      Wi-Fi off, mobile data
+15  00:05:29  M4 cellular 2
+16  00:15:07  M4 transition 1      radio switched mid-request
+17  00:15:52.101  M4 crosslink 1   queued in airplane mode,
+18  00:15:52.150  M4 crosslink 2   drained over Wi-Fi
+```
+
+The crosslink pair is the most informative line in that table: the queue was
+built with no network at all and delivered over a transport it had never
+seen, 49ms apart and in the order they were typed. Earlier the same evening,
+two airplane-mode batches (ids 4–6 and 7–9) survived a force-stop and
+drained themselves unattended, and a revoked token was recovered from
+without losing the text in the field.
+
+**Storage, verified with `run-as` rather than asserted.** The app's data
+directory holds exactly two files it wrote: the token and the queue, both
+ciphertext.
+
+```text
+shared_prefs/clarice_capture_secret.xml       JkKAHmU3cR3u3U1B:5Htos...
+shared_prefs/clarice_capture_queue_store.xml  003WkL7j0vPjZ25L:tnWnN...
+databases/                                    empty
+```
+
+WorkManager keeps its own scheduling database under `no_backup/`, which is
+app storage that is neither of those two things — so the criterion is met in
+substance rather than literally. It was searched for capture text and
+contains none, which is what the criterion is actually protecting: the
+worker takes no input data, so nothing anybody typed is stored outside the
+encrypted queue.
+
+**Two criteria not met on the device, deliberately:**
+
+- **No emulator run.** The plan asks for a physical device *and* an
+  emulator. A second API level would add something, but every radio
+  behaviour in this list is more honestly tested on real hardware, and the
+  instrumentation suite already runs on the device. Judged not worth the
+  setup for a prototype.
+- **Forced retry was not exercised through the app's own path.** Reaching
+  the stall ceiling needs five failures, and since the worker only runs when
+  a network is present, forcing it means a build pointed at a deliberately
+  broken URL plus roughly eight minutes of backoff. The behaviour is covered
+  by unit tests — that a manual retry reuses the original key rather than
+  minting a new one, at both the queue and the Settings layer — and the
+  server half was proven directly against production in B0.1, where the same
+  key sent twice returned `200` and left one row. What has not been observed
+  is those two halves meeting on a phone.
 
 Verify on at least one physical device as well as an emulator: Wi-Fi,
 cellular, airplane-mode transitions, app process death, and a revoked token.

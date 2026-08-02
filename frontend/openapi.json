@@ -386,6 +386,109 @@
           }
         ]
       }
+    },
+    "/api/v1/day": {
+      "get": {
+        "operationId": "daily_api_v1_get_today",
+        "summary": "Get Today",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DayOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/day/{day}": {
+      "get": {
+        "operationId": "daily_api_v1_get_day",
+        "summary": "Get Day",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "day",
+            "schema": {
+              "format": "date",
+              "title": "Day",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DayOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "daily_api_v1_write_day",
+        "summary": "Write Day",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "day",
+            "schema": {
+              "format": "date",
+              "title": "Day",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DayOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Write into the requesting user's day.\n\nThere is no ownership check to forget: the entry is addressed by\n(request.user, day), so the path names a date and never a record. One\nperson cannot reach another's day through this endpoint at all, which\nis a smaller surface than an id would be.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DayIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -1087,6 +1190,79 @@
           "text"
         ],
         "title": "CaptureIn",
+        "type": "object"
+      },
+      "DayOut": {
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "intentions": {
+            "title": "Intentions",
+            "type": "string"
+          },
+          "gratitude": {
+            "title": "Gratitude",
+            "type": "string"
+          },
+          "happenings": {
+            "title": "Happenings",
+            "type": "string"
+          },
+          "today": {
+            "title": "Today",
+            "type": "string"
+          }
+        },
+        "required": [
+          "date",
+          "intentions",
+          "gratitude",
+          "happenings",
+          "today"
+        ],
+        "title": "DayOut",
+        "type": "object"
+      },
+      "DayIn": {
+        "description": "Every field optional, and absent is not the same as empty.\n\nThe page may save one section without carrying the other two, so a\nfield left out keeps its stored value -- see services.write_entry.",
+        "properties": {
+          "intentions": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Intentions"
+          },
+          "gratitude": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gratitude"
+          },
+          "happenings": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Happenings"
+          }
+        },
+        "title": "DayIn",
         "type": "object"
       }
     },

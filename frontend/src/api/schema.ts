@@ -204,6 +204,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/day": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Today */
+        get: operations["daily_api_v1_get_today"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/day/{day}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Day */
+        get: operations["daily_api_v1_get_day"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Write Day
+         * @description Write into the requesting user's day.
+         *
+         *     There is no ownership check to forget: the entry is addressed by
+         *     (request.user, day), so the path names a date and never a record. One
+         *     person cannot reach another's day through this endpoint at all, which
+         *     is a smaller surface than an id would be.
+         */
+        patch: operations["daily_api_v1_write_day"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -457,6 +500,34 @@ export interface components {
         CaptureIn: {
             /** Text */
             text: string;
+        };
+        /** DayOut */
+        DayOut: {
+            /** Date */
+            date: string;
+            /** Intentions */
+            intentions: string;
+            /** Gratitude */
+            gratitude: string;
+            /** Happenings */
+            happenings: string;
+            /** Today */
+            today: string;
+        };
+        /**
+         * DayIn
+         * @description Every field optional, and absent is not the same as empty.
+         *
+         *     The page may save one section without carrying the other two, so a
+         *     field left out keeps its stored value -- see services.write_entry.
+         */
+        DayIn: {
+            /** Intentions */
+            intentions?: string | null;
+            /** Gratitude */
+            gratitude?: string | null;
+            /** Happenings */
+            happenings?: string | null;
         };
     };
     responses: never;
@@ -748,6 +819,74 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CaptureOut"];
+                };
+            };
+        };
+    };
+    daily_api_v1_get_today: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DayOut"];
+                };
+            };
+        };
+    };
+    daily_api_v1_get_day: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                day: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DayOut"];
+                };
+            };
+        };
+    };
+    daily_api_v1_write_day: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                day: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DayIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DayOut"];
                 };
             };
         };

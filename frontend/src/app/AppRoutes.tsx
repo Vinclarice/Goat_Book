@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from "react-router";
 import { AppLayout } from "./AppLayout";
 import { AgendaRoute } from "./routes/AgendaRoute";
 import { ArchiveRoute } from "./routes/ArchiveRoute";
+import { DayRoute } from "./routes/DayRoute";
 import { DevUiGallery } from "./routes/DevUiGallery";
 import { ListRoute } from "./routes/ListRoute";
 import { NotFoundRoute } from "./routes/NotFoundRoute";
@@ -27,6 +28,13 @@ export function AppRoutes() {
             looking at it, from a broken deploy. */}
         <Route index element={<Navigate to="/agenda" replace />} />
         <Route path="/agenda" element={<AgendaRoute />} />
+        {/* Two paths, one component. The undated one asks the server what
+            today is rather than trusting the browser's clock, because the
+            day boundary belongs to the account's time zone. Slice 6 makes
+            one of these the landing route; for now both are just
+            reachable. */}
+        <Route path="/day" element={<DayRoute />} />
+        <Route path="/day/:date" element={<DayRoute />} />
         <Route path="/lists/:listId" element={<ListRoute />} />
         <Route path="/tasks/:taskId" element={<TaskDetailRoute />} />
         <Route path="/archive" element={<ArchiveRoute />} />

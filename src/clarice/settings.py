@@ -151,6 +151,12 @@ INSTALLED_APPS = [
     "accounts",
     "lists",
     "capture",
+    # The daily domain -- Daily Entry now, Daily Focus and the Personal
+    # Compass as Crane 1 continues. Its own app rather than more tables in
+    # `lists`, because a day is not a task and the vision document's whole
+    # argument is that the Daily Page is a lens over durable records rather
+    # than another place to keep them.
+    "daily",
 ]
 
 

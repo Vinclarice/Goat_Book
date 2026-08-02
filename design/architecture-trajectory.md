@@ -765,7 +765,18 @@ has now happened three times in one week.
   argument for waiting is that three of the eight rules cite designs rather
   than shipped code; once Crane 0 and Crane 1 have applied the charter in a
   real migration, it probably belongs there and this section becomes a pointer.
-- **The other five open questions in `crane-plan.md` §6** — the weekly
+- ~~**The other five open questions in `crane-plan.md` §6**~~ — the weekly
   occurrence anchor, progress correction history, home-surface reversibility,
-  the carried-in checklist's sequencing, and Crane's shipping cadence — are
-  unchanged and still Crane's to answer, not this document's.
+  the carried-in checklist's sequencing, and Crane's shipping cadence — **are
+  all answered as of August 2, 2026**, in that document rather than this one,
+  which is where they belonged. Two are worth knowing here because they
+  correct or use this file: the week anchor is Monday on the evidence of
+  `agenda.py`'s existing snooze presets, not as a preference; and the
+  decision that routine progress needs no entry-level log turns on §4's
+  analytics list being answerable without one, plus the fact that a log is
+  additive later where the missing foreign key was not.
+
+  §6 is now empty of open questions. The decisions this document still
+  cannot make are the ones above it in this section — release D's pairing,
+  what a `List` is, whether the rest of the `Item` split happens, whether G
+  exists, when rich authored content lands, and where the charter lives.

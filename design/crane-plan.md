@@ -10,7 +10,8 @@ finished, a settled design for the repetition domain the vision document
 requires before any of it is built — routines and targets, plus the recurring
 commitments the brief widened to cover on August 2, 2026 — an ordered slice
 sequence for the Daily Page foundation itself, what is deliberately not part of
-this release, and the decisions this plan cannot make on its own. It does not
+this release, and the decisions it deferred to Vince — all of which were
+answered on August 2, 2026 and are kept in §6 as a record. It does not
 restate `daily-operating-system-vision.md`'s product direction or
 `principles.md`'s delivery practices — both are read alongside this, not
 duplicated into it.
@@ -20,9 +21,12 @@ duplicated into it.
 Bittern closed on August 2, 2026 with this work outstanding by decision, not
 omission. None of it blocks Crane 0's design work; none of it should be
 allowed to quietly drop off either. Most items are a single production check,
-not a design or implementation task — but whether to clear them before Crane 1
-begins or work through them alongside it is not decided here; see Open
-questions for Vince.
+not a design or implementation task. **Sequencing settled August 2, 2026:
+clear them at the next deploy, in one pass.** Nine of the fourteen cannot be
+done without one — every production verification, every infrastructure
+confirmation and the digest — so doing them beforehand was never actually
+available. The five Android gaps need a phone rather than a deploy and are
+independent of it. Reasoning in §6.
 
 ### Production verifications never run
 
@@ -443,18 +447,19 @@ one, with nothing connecting them.
 
 ### Open questions this design leaves for Crane 2
 
-- **Which weekday a weekly occurrence starts on.** The sketch above assumes
-  Monday (ISO calendar), but nothing in the existing codebase sets that
-  precedent — `Item`'s own weekly recurrence advances by a rolling 7 days
-  from whatever the due date was, not a calendar week, and routines are a
-  different domain making a different choice on purpose. Confirm the
-  Monday anchor is actually the right one before it's built. Listed again
-  under Open questions for Vince.
-- **Whether progress needs an entry-level audit trail.** The sketch keeps
-  `progress` a single mutable integer, corrected by overwriting it. That is
-  the minimal answer, but it loses the distinction between an original log
-  and a later correction — worth weighing against `principles.md`'s general
-  preference for preserving history before Crane 2 implements it, not after.
+- ~~**Which weekday a weekly occurrence starts on.**~~ **Settled: Monday**,
+  and this entry's premise was wrong. `lists/agenda.py` already resolves the
+  snooze menu's "Next week" to the coming Monday, so the product has been
+  saying a week starts there since Albatross. The observation about
+  `Item`'s rolling seven days stands and is not a counter-example — that is
+  recurrence arithmetic, not a claim about when a week begins. Full
+  reasoning in §6.
+- ~~**Whether progress needs an entry-level audit trail.**~~ **Settled: no,
+  with a trigger.** A single mutable integer answers every question the
+  vision document and `architecture-trajectory.md` §4 currently ask of
+  routines, and an entry-level log is additive whenever one of them changes
+  — unlike the missing foreign key, which could not be invented after the
+  fact. §6 records the reconsideration trigger.
 - **What a paused routine's gap means for review.** Pausing an active
   routine stops new occurrences from being created; it does not touch
   occurrences that already exist. What Crane 3's weekly review says about a
@@ -577,6 +582,16 @@ for that redesign rather than patching it in place.
 
 ## 6. Open questions for Vince
 
+**All six are answered as of August 2, 2026.** Kept struck through rather
+than deleted: what a decision replaced is often the useful part of it, and
+two of these turned out to rest on a premise that was wrong rather than a
+preference that needed stating. This section is now a record.
+
+Two questions Crane 2 still has to answer are in §3 rather than here — what
+a paused routine's gap means for a weekly review, and whether an occurrence
+needs a satisfied-but-partial close. Neither blocks anything before Crane 2
+starts.
+
 - ~~**Crane 0's widened scope.**~~ **Answered August 2, 2026: widened, then
   narrowed.** The identity half — a thin commitment record and the foreign key
   `_spawn_next_occurrence` never wrote — was accepted and shipped ahead of
@@ -587,14 +602,46 @@ for that redesign rather than patching it in place.
   have recorded the convention already; it was that the unlinkable history
   accrues fastest exactly when Crane makes the product a daily practice. The
   full reasoning is in §3.
-- **Weekly occurrence anchor.** Confirm Monday as the start of a weekly
-  routine's period before Crane 2 builds it — nothing existing in the
-  codebase sets this precedent, and it's a real product choice, not an
-  inferable one.
-- **Progress correction history.** Is a single mutable `progress` count
-  enough for Crane 2, or does correcting a log need its own audit trail
-  from day one, given how much weight `principles.md` puts on preserving
-  history?
+- ~~**Weekly occurrence anchor.**~~ **Answered August 2, 2026: Monday — and
+  the question was less open than it was written.** This entry claimed
+  nothing in the codebase set the precedent. It does. `lists/agenda.py`
+  defines `MONDAY = 0` and resolves the snooze menu's "Next week" to
+  `next_weekday(today, MONDAY)`, with a docstring spelling out that on a
+  Monday it means the Monday *after* this one. So the product already tells
+  people, in a control they use on ordinary tasks, that a week begins on a
+  Monday. A routine that disagreed would be the same word meaning two things
+  on two screens, which is the C2 failure in a new place.
+
+  That settles it on evidence rather than taste, and it binds one more
+  thing: Crane 3's weekly review has to use the same boundary. Two
+  definitions of "this week" between a routine and the review that reports
+  on it would make the report wrong in a way nobody would see.
+
+  What genuinely remains a preference is only whether *this* person's week
+  starts on a Monday, and the snooze menu has been answering yes since
+  Albatross without complaint.
+- ~~**Progress correction history.**~~ **Answered August 2, 2026: the single
+  mutable count is enough, with a named trigger for revisiting.** Nothing
+  currently asked of routines needs to know *when inside a period* a unit
+  was logged. Go through the list in `architecture-trajectory.md` §4 —
+  streaks and recovery time, cadence drift, completion rate by list, load
+  against closure, time-to-close, abandonment — and every one is answerable
+  from an occurrence's period, target, progress and outcome. So is the
+  vision document's own example, "4 of 5 planned lesson targets met".
+
+  The retrofit argument that carried Crane 0a does not apply here, and the
+  difference is worth being precise about rather than assuming the same
+  answer twice. A missing foreign key could not be invented later because
+  the relationships it would have recorded were gone. An entry-level log is
+  additive whenever it is wanted: add the table, keep `progress` as the
+  denormalised count, and lose only the detail from before that day —
+  detail no stated question needs.
+
+  **Reconsider when** a question arrives that needs time-of-day or
+  order-of-logging — "am I front-loading the week", a correction somebody
+  disputes, or a client that logs offline and needs to reconcile. Until one
+  does, `principles.md`'s instruction to measure behaviour before optimising
+  it applies squarely.
 - ~~**Home-surface reversibility.**~~ **Answered August 2, 2026: default to
   the Daily Page, with a preference to go back to Agenda.** Not a hard
   switch. The product still takes a position — the Daily Page is the
@@ -605,10 +652,43 @@ for that redesign rather than patching it in place.
   if the Daily Page turns out not to earn the front door, the evidence is a
   preference people actually flipped, not a complaint. Slice 6 in §4 now
   carries the extra field and control this implies.
-- **Sequencing the carried-in checklist.** §2's items are mostly
-  single production checks with no design cost — should they be cleared
-  before Crane 1 begins, or worked through opportunistically alongside it?
-- **Crane's own shipping cadence.** The vision doc numbers Crane 1 through
-  3 as one arc under one release name. Does Crane ship once, the way
-  Bittern eventually did, or in the same kind of staged deploys Bittern
-  used while B2.1 and B2.2 caught up to the tag?
+- ~~**Sequencing the carried-in checklist.**~~ **Answered August 2, 2026 by
+  events, and worth recording as a decision rather than leaving as a
+  drift.** Crane 1 shipped first and the checklist is untouched. That was
+  the right way round — none of it blocked the design work, exactly as §2
+  said — but the reason it stays untouched now is narrower and should be
+  named: **nine of the fourteen items cannot be done without a deploy.**
+  All five production verifications, all three infrastructure confirmations
+  and the New York digest need production to be running the code. Only the
+  five Android gaps are independent, and those need a phone rather than a
+  deploy.
+
+  So the sequencing answer is: **clear them at the next deploy, in one
+  pass.** The deploy puts most of them in front of you anyway — a session
+  that has just watched the play recap is already logged in, already looking
+  at production, and already the cheapest moment to check a logout, a hard
+  refresh and a broken route. Doing them piecemeal beforehand was never
+  available; doing them long afterwards is how Bittern's list got written in
+  the first place.
+- ~~**Crane's own shipping cadence.**~~ **Answered August 2, 2026: deploy
+  often, tag once — and the question contained a false choice.** "Ship once
+  or in stages" reads as one decision and is two, because this project's own
+  release practice already separates them. `roadmap.md` defines
+  `DEPLOYED-<date>/<HHMM>` as a permanent deployment-event tag, `LIVE` as a
+  moving one, and the bird codename as a release tag applied only after
+  production is verified. Deploying five times and tagging `crane` once is
+  not a compromise between the options; it is what those three tags were
+  designed to express.
+
+  So: deploy each phase when it is green and useful, because Crane 1's whole
+  point is removing clerical work from a day and it cannot do that from
+  `main`. Tag `crane` when 0a through 3 are all in production and verified.
+
+  **Bittern's mess is worth diagnosing correctly**, because this question
+  half-assumes staged deploys caused it. They did not. Bittern's difficulty
+  was that the tag went on while B2.1 and B2.2 were still catching up, and
+  that five after-deploy checks were never run — a verification failure, not
+  a cadence one. `roadmap.md` already draws the right lesson in one line:
+  tag only after production is verified. Staged deploys are how a person
+  gets value early; an early tag is how a release claims something that is
+  not true yet.

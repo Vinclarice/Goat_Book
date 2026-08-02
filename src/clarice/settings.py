@@ -157,6 +157,11 @@ INSTALLED_APPS = [
     # argument is that the Daily Page is a lens over durable records rather
     # than another place to keep them.
     "daily",
+    # Routines are a peer of tasks and of days, not a part of either. Its
+    # own app because that boundary is the load-bearing one in crane-plan.md
+    # §3, and an app is the cheapest way to stop a routine quietly becoming
+    # a kind of Item later.
+    "routines",
 ]
 
 

@@ -580,6 +580,107 @@
           }
         ]
       }
+    },
+    "/api/v1/routines": {
+      "get": {
+        "operationId": "routines_api_v1_routine_standings",
+        "summary": "Routine Standings",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandingsOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "routines_api_v1_new_routine",
+        "summary": "New Routine",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandingsOut"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoutineIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/routines/{routine_id}/log": {
+      "post": {
+        "operationId": "routines_api_v1_log_routine",
+        "summary": "Log Routine",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "routine_id",
+            "schema": {
+              "title": "Routine Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandingsOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Add to the current period, returning every standing rather than one.\n\nThe Daily Page renders them together, so one response keeps the list\nfrom disagreeing with itself for a frame -- the same reason the day's\nfocus endpoints answer with the whole day.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LogIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -1507,6 +1608,121 @@
           "task_id"
         ],
         "title": "FocusIn",
+        "type": "object"
+      },
+      "StandingOut": {
+        "properties": {
+          "routine_id": {
+            "title": "Routine Id",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "cadence": {
+            "title": "Cadence",
+            "type": "string"
+          },
+          "period_start": {
+            "format": "date",
+            "title": "Period Start",
+            "type": "string"
+          },
+          "progress": {
+            "title": "Progress",
+            "type": "integer"
+          },
+          "target": {
+            "title": "Target",
+            "type": "integer"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          },
+          "outcome": {
+            "title": "Outcome",
+            "type": "string"
+          },
+          "is_met": {
+            "title": "Is Met",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "routine_id",
+          "title",
+          "cadence",
+          "period_start",
+          "progress",
+          "target",
+          "unit",
+          "outcome",
+          "is_met"
+        ],
+        "title": "StandingOut",
+        "type": "object"
+      },
+      "StandingsOut": {
+        "properties": {
+          "today": {
+            "format": "date",
+            "title": "Today",
+            "type": "string"
+          },
+          "standings": {
+            "items": {
+              "$ref": "#/components/schemas/StandingOut"
+            },
+            "title": "Standings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "today",
+          "standings"
+        ],
+        "title": "StandingsOut",
+        "type": "object"
+      },
+      "RoutineIn": {
+        "properties": {
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "cadence": {
+            "default": "daily",
+            "title": "Cadence",
+            "type": "string"
+          },
+          "target_quantity": {
+            "default": 1,
+            "title": "Target Quantity",
+            "type": "integer"
+          },
+          "unit": {
+            "default": "",
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "title": "RoutineIn",
+        "type": "object"
+      },
+      "LogIn": {
+        "properties": {
+          "amount": {
+            "default": 1,
+            "title": "Amount",
+            "type": "integer"
+          }
+        },
+        "title": "LogIn",
         "type": "object"
       }
     },

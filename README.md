@@ -58,7 +58,7 @@ $env:VITE_DEV_SERVER_URL = "http://127.0.0.1:5173"
 ## Checks
 
 ```powershell
-.\.venv\Scripts\python.exe src\manage.py test accounts lists capture clarice daily
+.\.venv\Scripts\python.exe src\manage.py test accounts lists capture clarice daily routines
 pnpm --dir frontend test
 pnpm --dir frontend build
 ```

@@ -17,6 +17,7 @@ from accounts.auth import SessionAuthIfLoggedIn, TokenAuth
 from capture.api_v1 import router as capture_router
 from daily.api_v1 import router as daily_router
 from lists.api_v1 import router as lists_router
+from routines.api_v1 import router as routines_router
 
 api = NinjaAPI(auth=django_auth, urls_namespace="v1")
 api.add_router("", lists_router)
@@ -27,6 +28,10 @@ api.add_router("", accounts_router)
 api.add_router("", capture_router)
 # Session-only, like lists and accounts: a day is written from the browser.
 api.add_router("", daily_router)
+# Session-only too. Logging from the Android client would need the
+# token-authenticated zone activation per-user-time-zones-plan.md flags, and
+# has no product trigger yet.
+api.add_router("", routines_router)
 
 
 class MeOut(Schema):

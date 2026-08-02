@@ -692,3 +692,72 @@ starts.
   tag only after production is verified. Staged deploys are how a person
   gets value early; an early tag is how a release claims something that is
   not true yet.
+
+## 7. Crane 2 — daily planning and routines
+
+Numbered §7 rather than inserted after §4 so that §5 and §6 keep the numbers
+other documents already cite. §5's fences apply to this release too: the
+parent–child redesign and the UI overhaul are still release D's, and routines
+touching neither is part of what keeps them there.
+
+Crane 0 settled the domain and answered its own open questions in §3 and §6;
+this is where it gets built. The charter gaps
+`architecture-trajectory.md` §4 named against that sketch are closed here
+rather than inherited: `RoutineOccurrence` gets a direct non-null owner
+instead of a two-hop one, reads and services are split from the first slice,
+and the deletion and public-identifier decisions are stated in the models
+rather than left to be inferred.
+
+Its own app, `routines`, as §3's sketch assumed. A routine is a peer of a
+task and of a day, not a part of either — that boundary is the single most
+load-bearing thing in the whole design, and an app boundary is the cheapest
+way to keep somebody from quietly making a routine a kind of `Item` later.
+
+1. **Keep a routine, and log against it.** `Routine` and
+   `RoutineOccurrence`, occurrences created lazily on first log or view,
+   logging that adds an amount and completes the period automatically when
+   the target is reached. Both cadences, because the period is one function
+   and a weekly routine that had to wait would be a second implementation.
+   **Domain and API only** — this said "end to end" when it was drafted,
+   which was wrong: slice 3 is where routines reach a screen, so there is no
+   surface for this one to end at. What it delivers is the contract slice 3
+   consumes, and a `/api/v1/routines` that serves *standings* rather than
+   occurrence rows, because a period nobody has logged has no row and a GET
+   that wrote one to describe itself would be a page view inventing history.
+   *Acceptance:* §3's own examples. "Practice Spanish, 5 lessons
+   daily" logged 2 in the morning and 3 in the evening reads 5 of 5 and
+   completed, with `decided_at` stamped and no separate "mark done" action;
+   the next day starts at 0 and logging it never touches the first. "Guitar
+   practice, 3 sessions weekly" logged Monday and Wednesday sits at 2 of 3,
+   open, all week, and the following Monday starts a new period — anchored
+   to Monday on the evidence in §6.
+2. **Correct a mis-tap, and skip a day on purpose.** Correction is the same
+   write path with a different amount. *Acceptance:* correcting a completed
+   day from 5 down to 4 reverts its outcome to open rather than leaving a
+   count that is no longer true; an explicit skip is stored distinctly from
+   a period that merely elapsed with nothing logged, because "I chose not
+   to" and "I meant to and didn't" are different facts and Crane 3 reports
+   them differently.
+3. **Routines on the Daily Page.** Today's routines rendered with their
+   progress and loggable in place. *Acceptance:* a unit logged from the
+   Daily Page is the same occurrence as one logged anywhere else, and a
+   routine never appears in Action Items — the agenda is tasks, and a
+   routine is not one.
+4. **Pause without losing what happened.** *Acceptance:* pausing an active
+   routine stops new occurrences being created and leaves every existing one
+   untouched; resuming does not backfill the gap, because the gap is a fact
+   about the person's month rather than missing data.
+5. **Task age, and overdue without reproach.** The other half of Crane 2 in
+   `daily-operating-system-vision.md`: show how long a carried-forward task
+   has been open so the carry-forward is visible rather than silent.
+   *Acceptance:* an old task says how long it has been waiting, in wording
+   that reports rather than scolds — the vision document's "let history be
+   useful without making missed work feel like punishment" is the test, and
+   a red "12 days late!" badge fails it.
+
+**What Crane 2 is not.** No streaks, no trend views, no weekly summary:
+those read routine history and belong to Crane 3, which is the point of
+recording occurrences properly now. No monthly cadence — §3 leaves it
+additive on purpose. And no routine logging from the Android client, which
+would need the token-authenticated zone activation
+`per-user-time-zones-plan.md` already flags and has no product trigger yet.

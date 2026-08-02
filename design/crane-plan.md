@@ -71,13 +71,22 @@ until somebody checks.
 Separate from the two groups above because half of it is already proven: the
 Makassar account's digest fired at its own 07:00 on August 2 while the
 `America/New_York` accounts stayed on the previous day, which is the evidence
-that the job discriminates by user. What has not been seen is the other
+that the job discriminates by user. What had not been seen was the other
 side of the same day.
 
-- [ ] Confirm both `America/New_York` accounts received their digest at
+**Complete as of August 2, 2026.** The New York digest arrived at 07:00 EDT
+that morning — twelve hours after Makassar's window for the same date had
+closed. Two observations, one day, two zones, and `send_due_digest`
+demonstrably reading each recipient's own clock rather than the server's.
+
+- [x] Confirm both `America/New_York` accounts received their digest at
   07:00–12:00 EDT on a day where the Makassar account's window has
   already closed, completing the pair of observations B started on
-  August 2.
+  August 2. — **Seen at 07:00 EDT on August 2, 2026**, which completes it:
+  Makassar's own 07:00 WITA is 19:00 EDT the evening before, so that
+  window had closed roughly twelve hours earlier. Both sides of one day
+  now observed, and per-user time zones are proven in production rather
+  than only in tests.
 
 ### Android gaps
 

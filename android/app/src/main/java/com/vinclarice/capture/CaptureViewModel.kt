@@ -16,6 +16,8 @@ data class CaptureUiState(
     val isError: Boolean = false,
     /** Captures written down but not yet accepted by Clarice. */
     val pending: Int = 0,
+    /** Whether the keyboard's Enter key sends. Chosen in Settings. */
+    val enterSends: Boolean = true,
 )
 
 /**
@@ -40,6 +42,7 @@ class CaptureViewModel(
     // testable on the JVM. Everything this class knows about background
     // delivery is "ask for one".
     private val scheduler: DeliveryScheduler = DeliveryScheduler.None,
+    private val preferences: CapturePreferences,
     // Queue work means decrypting, and Keystore calls are real IPC that has
     // no business on the main thread. Injected so tests can run it inline.
     private val io: CoroutineDispatcher = Dispatchers.IO,
@@ -63,7 +66,12 @@ class CaptureViewModel(
      *  decrypting it, and Keystore calls are real IPC. */
     suspend fun refresh() = withContext(io) {
         val waiting = queue.waiting().size
-        _state.value = _state.value.copy(pending = waiting)
+        // Read on open rather than held, so a change made in Settings is in
+        // force the moment somebody comes back here.
+        _state.value = _state.value.copy(
+            pending = waiting,
+            enterSends = preferences.enterSends(),
+        )
         // Covers the gap where the process died between queueing a capture
         // and scheduling its delivery. Asking twice is free -- the work is
         // enqueued under one name and a duplicate request is dropped -- and
@@ -90,7 +98,16 @@ class CaptureViewModel(
         // Durable first. If the process dies during the request, or the radio
         // never answers, the thought is already written down.
         val item = queue.add(text, newKey(), now())
-        _state.value = CaptureUiState(text = "", sending = true, pending = queue.waiting().size)
+        // Rebuilt rather than copied, to clear the field and any previous
+        // message in one go -- so anything that is a *setting* rather than a
+        // result has to be carried across explicitly. A keyboard that
+        // changed behaviour halfway through a session would be maddening.
+        _state.value = CaptureUiState(
+            text = "",
+            sending = true,
+            pending = queue.waiting().size,
+            enterSends = _state.value.enterSends,
+        )
 
         val token = store.read()
         if (token == null) {

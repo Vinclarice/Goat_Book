@@ -58,6 +58,11 @@ class CaptureViewModelTest {
         }
     }
 
+    private class FakePreferences(private var sends: Boolean = true) : CapturePreferences {
+        override fun enterSends() = sends
+        override fun setEnterSends(sends: Boolean) { this.sends = sends }
+    }
+
     private class FakeScheduler : DeliveryScheduler {
         var asked = 0
         val finished = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
@@ -76,6 +81,7 @@ class CaptureViewModelTest {
         disposition: Disposition = Disposition.DELIVERED,
         store: TokenStore = FakeStore(),
         ceiling: Int = 5,
+        preferences: CapturePreferences = FakePreferences(),
     ): Fixture {
         val api = FakeApi(disposition)
         val queue = CaptureQueue(FakeStorage(), ceiling = ceiling)
@@ -92,6 +98,7 @@ class CaptureViewModelTest {
                 store,
                 queue,
                 scheduler,
+                preferences,
                 // Unconfined so queue work runs inline: these assertions are
                 // about decisions, not about thread hops.
                 io = Dispatchers.Unconfined,
@@ -408,6 +415,42 @@ class CaptureViewModelTest {
 
         assertEquals(0, f.scheduler.asked)
         watching.cancel()
+    }
+
+    @Test
+    fun `the screen learns how enter should behave when it opens`() = runTest {
+        // Read on open rather than held, so a change made in Settings is in
+        // force the moment somebody comes back to Capture.
+        val f = fixture(preferences = FakePreferences(sends = false))
+
+        f.model.refresh()
+
+        assertFalse(f.model.state.value.enterSends)
+    }
+
+    @Test
+    fun `capturing does not quietly change the keyboard back`() = runTest {
+        // submit() rebuilds the state rather than copying it, so a field
+        // added to CaptureUiState silently reverts to its default on every
+        // capture unless it is carried across. A keyboard that changes
+        // behaviour halfway through a session would be maddening and almost
+        // impossible to report.
+        val f = fixture(preferences = FakePreferences(sends = false))
+        f.model.refresh()
+        f.model.onTextChange("buy milk")
+
+        f.model.submit()
+
+        assertFalse(f.model.state.value.enterSends)
+    }
+
+    @Test
+    fun `enter sends unless somebody says otherwise`() = runTest {
+        val f = fixture()
+
+        f.model.refresh()
+
+        assertTrue(f.model.state.value.enterSends)
     }
 
     @Test

@@ -19,6 +19,8 @@ data class SettingsUiState(
     val waiting: Int = 0,
     /** Captures that have stopped trying and need a person. */
     val needsAttention: List<PendingCapture> = emptyList(),
+    /** Whether the keyboard's Enter key sends a capture or breaks a line. */
+    val enterSends: Boolean = true,
 )
 
 /**
@@ -40,6 +42,7 @@ class SettingsViewModel(
     private val connector: Connector,
     private val queue: CaptureQueue,
     private val scheduler: DeliveryScheduler = DeliveryScheduler.None,
+    private val preferences: CapturePreferences,
     private val io: CoroutineDispatcher = Dispatchers.IO,
 ) {
 
@@ -48,6 +51,10 @@ class SettingsViewModel(
 
     suspend fun load() {
         readQueue()
+        // Before the network call, and outside it. This is a keyboard
+        // preference, not an account fact; withholding it because a request
+        // failed would be absurd.
+        _state.value = _state.value.copy(enterSends = preferences.enterSends())
 
         when (val outcome = connector.whoAmI()) {
             is Connected -> _state.value = _state.value.copy(
@@ -77,6 +84,18 @@ class SettingsViewModel(
         withContext(io) { queue.retry(key) }
         scheduler.schedule()
         readQueue()
+    }
+
+    /**
+     * Whether Enter sends or breaks a line.
+     *
+     * Written through immediately rather than on leaving the screen: a
+     * preference that only takes effect if you exit the right way is a
+     * preference people stop trusting.
+     */
+    fun setEnterSends(sends: Boolean) {
+        preferences.setEnterSends(sends)
+        _state.value = _state.value.copy(enterSends = sends)
     }
 
     fun disconnect() {

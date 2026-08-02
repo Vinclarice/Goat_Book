@@ -54,12 +54,18 @@ class SettingsViewModelTest {
         return CaptureQueue(storage)
     }
 
+    private class FakePreferences(private var sends: Boolean = true) : CapturePreferences {
+        override fun enterSends() = sends
+        override fun setEnterSends(sends: Boolean) { this.sends = sends }
+    }
+
     private fun viewModel(
         result: IdentifyResult,
         store: TokenStore = FakeStore().apply { save("tok_stored") },
         queue: CaptureQueue = queueOf(),
         scheduler: DeliveryScheduler = FakeScheduler(),
-    ) = SettingsViewModel(Connector(FakeApi(result), store), queue, scheduler)
+        preferences: CapturePreferences = FakePreferences(),
+    ) = SettingsViewModel(Connector(FakeApi(result), store), queue, scheduler, preferences)
 
     @Test
     fun `it opens in a loading state rather than claiming to be disconnected`() {
@@ -282,6 +288,54 @@ class SettingsViewModelTest {
 
         assertEquals(1, queue.waiting().size)
         assertEquals(1, model.state.value.waiting)
+    }
+
+    @Test
+    fun `enter sends by default`() = runTest {
+        // The common case wins the default: captures are short, and the
+        // alternative costs a tap on every one of them.
+        val model = viewModel(Identified(alice), preferences = FakePreferences())
+
+        model.load()
+
+        assertTrue(model.state.value.enterSends)
+    }
+
+    @Test
+    fun `choosing a newline is remembered`() = runTest {
+        // Remembered where it outlives the screen: the whole point of the
+        // setting is that somebody should not have to make this choice twice.
+        val preferences = FakePreferences()
+        val model = viewModel(Identified(alice), preferences = preferences)
+        model.load()
+
+        model.setEnterSends(false)
+
+        assertFalse(model.state.value.enterSends)
+        assertFalse(preferences.enterSends())
+    }
+
+    @Test
+    fun `a saved choice is what the screen opens with`() = runTest {
+        val model = viewModel(Identified(alice), preferences = FakePreferences(sends = false))
+
+        model.load()
+
+        assertFalse(model.state.value.enterSends)
+    }
+
+    @Test
+    fun `the choice survives being unable to reach Clarice`() = runTest {
+        // It is a keyboard preference, not an account fact. Withholding it
+        // because a network call failed would be absurd.
+        val model = viewModel(
+            Unreachable("Could not reach Clarice."),
+            preferences = FakePreferences(sends = false),
+        )
+
+        model.load()
+
+        assertFalse(model.state.value.enterSends)
     }
 
     @Test

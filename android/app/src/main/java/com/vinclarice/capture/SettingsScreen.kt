@@ -2,6 +2,7 @@ package com.vinclarice.capture
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -10,6 +11,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -17,6 +19,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
@@ -41,6 +44,7 @@ fun SettingsScreen(
     val state by model.state.collectAsState()
     val scope = rememberCoroutineScope()
     val onRetry: (String) -> Unit = { key -> scope.launch { model.retry(key) } }
+    val onEnterSendsChange: (Boolean) -> Unit = model::setEnterSends
 
     // Asked on open, every open. The question this screen answers is whether
     // the connection still works, and only the server knows that.
@@ -86,6 +90,34 @@ fun SettingsScreen(
                 } else {
                     MaterialTheme.colorScheme.onSurfaceVariant
                 },
+            )
+        }
+
+        HorizontalDivider()
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Enter key sends", style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    // Says what is given up, not just what is gained. A
+                    // switch whose cost is invisible is a switch people flip
+                    // and then wonder what broke.
+                    if (state.enterSends) {
+                        "One tap to capture. The keyboard has no newline key."
+                    } else {
+                        "Enter starts a new line. Capture with the button."
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Switch(
+                checked = state.enterSends,
+                onCheckedChange = onEnterSendsChange,
             )
         }
 

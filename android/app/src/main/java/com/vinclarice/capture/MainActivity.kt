@@ -38,6 +38,7 @@ class MainActivity : ComponentActivity() {
         val connector = Connector(api = api, store = store)
         val queue = CaptureQueue(EncryptedQueueStorage(applicationContext))
         val scheduler = CaptureWorker.prepare(applicationContext)
+        val preferences = AndroidCapturePreferences(applicationContext)
 
         // getCharSequenceExtra rather than getStringExtra: apps sharing
         // formatted text send a Spanned, and getStringExtra returns null for
@@ -67,6 +68,7 @@ class MainActivity : ComponentActivity() {
                             store = store,
                             queue = queue,
                             scheduler = scheduler,
+                            preferences = preferences,
                             draft = draft,
                         )
                     }
@@ -83,6 +85,7 @@ private fun Root(
     store: TokenStore,
     queue: CaptureQueue,
     scheduler: DeliveryScheduler,
+    preferences: CapturePreferences,
     draft: String? = null,
 ) {
     val connectModel = remember { ConnectViewModel(connector) }
@@ -90,7 +93,7 @@ private fun Root(
     // Settings and back does not drop it out of composition along with
     // whatever half-finished thought was in the field. The queue now covers
     // everything already submitted; this covers what is still being typed.
-    val captureModel = remember { CaptureViewModel(api, store, queue, scheduler) }
+    val captureModel = remember { CaptureViewModel(api, store, queue, scheduler, preferences) }
 
     var connected by remember { mutableStateOf(connectModel.isConnected) }
     var showSettings by remember { mutableStateOf(false) }
@@ -116,7 +119,7 @@ private fun Root(
         // Not remembered across visits, deliberately: a fresh model per open
         // is what makes it ask the server again instead of showing the
         // account it saw last time.
-        val settingsModel = remember { SettingsViewModel(connector, queue, scheduler) }
+        val settingsModel = remember { SettingsViewModel(connector, queue, scheduler, preferences) }
         BackHandler { showSettings = false }
         SettingsScreen(
             model = settingsModel,

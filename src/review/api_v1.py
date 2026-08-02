@@ -87,6 +87,40 @@ class PlannedOut(Schema):
     set_aside: list[PlannedTaskOut]
 
 
+class WrittenDayOut(Schema):
+    """One day's own words, as they were written.
+
+    All three fields, blank ones included, so the client renders the
+    sections it has rather than inferring which exist. The date is here
+    because the page links back to the day itself: a review reads writing,
+    and changing it belongs on the page that owns it.
+    """
+
+    date: date
+    intentions: str
+    gratitude: str
+    happenings: str
+
+
+class IdeaOut(Schema):
+    idea_id: int
+    text: str
+    status: str
+    added_on: date
+
+
+class WaitingCaptureOut(Schema):
+    """A thought still in the Inbox, and how long it has been there.
+
+    Same age rule as a task's, from the same place -- how long something
+    has been waiting means one thing in this product.
+    """
+
+    capture_id: int
+    text: str
+    age_in_days: int
+
+
 class WeekOut(Schema):
     week_start: date
     week_end: date
@@ -102,6 +136,11 @@ class WeekOut(Schema):
     next_week: date
     completed: list[CompletedTaskOut]
     planned: PlannedOut
+    written: list[WrittenDayOut]
+    ideas: list[IdeaOut]
+    # Not week-scoped, and named so that is visible in the contract rather
+    # than only in the read: an Inbox is a backlog, not seven days.
+    unresolved_captures: list[WaitingCaptureOut]
 
 
 def _planned_task_out(focus, today):
@@ -173,6 +212,32 @@ def _week_out(owner, day):
                 _planned_task_out(each, today) for each in planned.set_aside
             ],
         },
+        "written": [
+            {
+                "date": entry.date,
+                "intentions": entry.intentions,
+                "gratitude": entry.gratitude,
+                "happenings": entry.happenings,
+            }
+            for entry in reads.written_in_week(owner, week_start, week_end)
+        ],
+        "ideas": [
+            {
+                "idea_id": idea.id,
+                "text": idea.text,
+                "status": idea.status,
+                "added_on": timezone.localtime(idea.created_at).date(),
+            }
+            for idea in reads.ideas_added_in_week(owner, week_start, week_end)
+        ],
+        "unresolved_captures": [
+            {
+                "capture_id": capture.id,
+                "text": capture.text,
+                "age_in_days": agenda.age_in_days(capture.created_at, today),
+            }
+            for capture in reads.captures_still_waiting(owner)
+        ],
     }
 
 

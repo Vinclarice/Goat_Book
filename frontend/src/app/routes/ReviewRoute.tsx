@@ -199,6 +199,126 @@ function PlannedWork({ planned, today }: { planned: Planned; today: string }) {
   );
 }
 
+type WrittenDay = {
+  date: string;
+  intentions: string;
+  gratitude: string;
+  happenings: string;
+};
+
+type IdeaAdded = {
+  idea_id: number;
+  text: string;
+  status: string;
+  added_on: string;
+};
+
+type WaitingCapture = {
+  capture_id: number;
+  text: string;
+  age_in_days: number;
+};
+
+/** The same three labels the day itself uses, so nothing is renamed on the
+ *  way into a review. */
+const WRITTEN_SECTIONS = [
+  { field: "intentions", label: "Intentions" },
+  { field: "gratitude", label: "Grateful for" },
+  { field: "happenings", label: "Happenings" },
+] as const;
+
+/**
+ * What the week was written in, day by day.
+ *
+ * Read-only, with a link back to the day that owns each entry: a review
+ * reads writing, and editing it belongs on the page it was written on
+ * rather than in a second form that could disagree with the first.
+ *
+ * Only the sections that have something in them are rendered. Three empty
+ * headings under every day would bury the one line that says anything.
+ */
+function Written({ written }: { written: WrittenDay[] }) {
+  if (written.length === 0) {
+    // Said out loud, unlike the other sections below, which simply do not
+    // appear. Writing is the habit under review, so a week with none of it
+    // is a fact about the week rather than an absent feature.
+    return (
+      <p className="text-sm text-muted-foreground">
+        Nothing written on any day this week.
+      </p>
+    );
+  }
+  return (
+    <div className="space-y-4">
+      {written.map((day) => (
+        <div key={day.date} className="space-y-1">
+          <h3 className="text-sm text-muted-foreground">
+            <a href={`/app/day/${day.date}`} className="hover:text-foreground">
+              {weekday(day.date)}
+            </a>
+          </h3>
+          {WRITTEN_SECTIONS.filter((section) => day[section.field]).map(
+            (section) => (
+              <div key={section.field} className="rounded-lg border border-border px-3 py-2">
+                <p className="text-sm font-bold">{section.label}</p>
+                {/* Plain text, preserved as typed -- the same decision the
+                    day's own fields make, and no Markdown renderer between
+                    somebody's words and the page. */}
+                <p className="whitespace-pre-wrap">{day[section.field]}</p>
+              </div>
+            ),
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Ideas({ ideas }: { ideas: IdeaAdded[] }) {
+  return (
+    <ul className="space-y-1">
+      {ideas.map((idea) => (
+        <li
+          key={idea.idea_id}
+          className="flex items-baseline justify-between gap-3 rounded-lg border border-border px-3 py-2"
+        >
+          <span className="min-w-0">{idea.text}</span>
+          {/* Only when it is not the ordinary case: a chip reading
+              "exploring" beside every row would be noise. */}
+          {idea.status !== "exploring" && (
+            <span className="shrink-0 text-sm text-muted-foreground">
+              {idea.status}
+            </span>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function Waiting({ captures }: { captures: WaitingCapture[] }) {
+  return (
+    <ul className="space-y-1">
+      {captures.map((capture) => {
+        const age = ageLabel(capture.age_in_days);
+        return (
+          <li
+            key={capture.capture_id}
+            className="flex items-baseline justify-between gap-3 rounded-lg border border-border px-3 py-2"
+          >
+            <span className="min-w-0">{capture.text}</span>
+            {age && (
+              <span className="shrink-0 text-sm text-muted-foreground">
+                {age}
+              </span>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 function Finished({ completed }: { completed: CompletedTask[] }) {
   if (completed.length === 0) {
     // Said plainly rather than left blank. An empty area reads as a page
@@ -312,6 +432,37 @@ export function ReviewRoute() {
         <h2 className="text-sm font-bold">Finished</h2>
         <Finished completed={data.completed} />
       </section>
+
+      <section className="space-y-2">
+        <h2 className="text-sm font-bold">In your own words</h2>
+        <Written written={data.written} />
+      </section>
+
+      {/* Absent rather than empty, unlike the writing above: an idea nobody
+          had is not a fact about the week worth a heading. */}
+      {data.ideas.length > 0 && (
+        <section className="space-y-2">
+          <h2 className="text-sm font-bold">Ideas you added</h2>
+          <Ideas ideas={data.ideas} />
+        </section>
+      )}
+
+      {data.unresolved_captures.length > 0 && (
+        <section className="space-y-2">
+          <h2 className="text-sm font-bold">Still in your inbox</h2>
+          <Waiting captures={data.unresolved_captures} />
+          {/* Says why old ones are here, and where they get dealt with.
+              This list is not week-scoped and would otherwise look like a
+              mistake on a review of one week. */}
+          <p className="text-sm text-muted-foreground">
+            Everything still waiting, whenever it arrived.{" "}
+            <a href="/capture/" className="underline hover:text-foreground">
+              Sort them out in the Inbox
+            </a>
+            .
+          </p>
+        </section>
+      )}
     </div>
   );
 }

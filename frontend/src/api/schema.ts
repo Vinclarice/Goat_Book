@@ -957,6 +957,20 @@ export interface components {
             list_id: number;
             parent: components["schemas"]["TaskParentOut"] | null;
         };
+        /** IdeaOut */
+        IdeaOut: {
+            /** Idea Id */
+            idea_id: number;
+            /** Text */
+            text: string;
+            /** Status */
+            status: string;
+            /**
+             * Added On
+             * Format: date
+             */
+            added_on: string;
+        };
         /**
          * PlannedOut
          * @description The finish rate, and the three groups behind it.
@@ -1006,6 +1020,21 @@ export interface components {
             /** Completed On */
             completed_on: string | null;
         };
+        /**
+         * WaitingCaptureOut
+         * @description A thought still in the Inbox, and how long it has been there.
+         *
+         *     Same age rule as a task's, from the same place -- how long something
+         *     has been waiting means one thing in this product.
+         */
+        WaitingCaptureOut: {
+            /** Capture Id */
+            capture_id: number;
+            /** Text */
+            text: string;
+            /** Age In Days */
+            age_in_days: number;
+        };
         /** WeekOut */
         WeekOut: {
             /**
@@ -1038,6 +1067,34 @@ export interface components {
             /** Completed */
             completed: components["schemas"]["CompletedTaskOut"][];
             planned: components["schemas"]["PlannedOut"];
+            /** Written */
+            written: components["schemas"]["WrittenDayOut"][];
+            /** Ideas */
+            ideas: components["schemas"]["IdeaOut"][];
+            /** Unresolved Captures */
+            unresolved_captures: components["schemas"]["WaitingCaptureOut"][];
+        };
+        /**
+         * WrittenDayOut
+         * @description One day's own words, as they were written.
+         *
+         *     All three fields, blank ones included, so the client renders the
+         *     sections it has rather than inferring which exist. The date is here
+         *     because the page links back to the day itself: a review reads writing,
+         *     and changing it belongs on the page that owns it.
+         */
+        WrittenDayOut: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Intentions */
+            intentions: string;
+            /** Gratitude */
+            gratitude: string;
+            /** Happenings */
+            happenings: string;
         };
     };
     responses: never;

@@ -16,7 +16,8 @@ from datetime import datetime, timedelta
 from django.db.models import F
 from django.utils import timezone
 
-from daily.models import DailyFocus
+from capture.models import Capture, Idea
+from daily.models import DailyEntry, DailyFocus
 from lists.models import Item
 from review.weeks import week_end_for, week_start_for
 
@@ -131,3 +132,59 @@ def planned_in_week(owner, week_start, week_end):
         else:
             unfinished.append(focus)
     return Planned(met=met, unfinished=unfinished, set_aside=set_aside)
+
+
+def written_in_week(owner, week_start, week_end):
+    """The days of this week that were actually written in, in order.
+
+    Entries with nothing in any of the three fields are left out. A row
+    exists as soon as anything is pinned to a day, so an empty one is the
+    ordinary state of a planned day rather than something to hand back as
+    writing -- and a review that listed seven blank days would bury the two
+    that say something.
+
+    Ascending, unlike `DailyEntry.Meta.ordering`. The model's most-recent-
+    first is right for "reopen a recent day"; a week is read forwards.
+    """
+    return list(
+        DailyEntry.objects.filter(
+            owner=owner, date__gte=week_start, date__lte=week_end
+        )
+        .exclude(intentions="", gratitude="", happenings="")
+        .order_by("date")
+    )
+
+
+def ideas_added_in_week(owner, week_start, week_end):
+    """Ideas from this week, oldest first.
+
+    Every status, including promoted ones. An idea that became a task was
+    still a thought somebody had that week, and the review is describing
+    the week rather than serving the Ideas library -- whose own default of
+    hiding promoted ones is a different question about a different page.
+    """
+    start, end = _instant_range(week_start, week_end)
+    return list(
+        Idea.objects.filter(
+            owner=owner, created_at__gte=start, created_at__lt=end
+        ).order_by("created_at", "id")
+    )
+
+
+def captures_still_waiting(owner):
+    """Everything still in the Inbox, oldest first, whatever week it is from.
+
+    Deliberately not week-scoped. An Inbox is a backlog rather than a
+    seven-day window, and a thought that has been sitting for a fortnight
+    is exactly the one a review should surface -- filtering to this week
+    would hide the ones that have waited longest, which is backwards.
+
+    Oldest first for the same reason, and against `Capture.Meta.ordering`:
+    newest-first reads as a stack of what you have just written, which is
+    right for the Inbox and wrong for deciding what has gone stale.
+    """
+    return list(
+        Capture.objects.filter(owner=owner, resolved_at__isnull=True).order_by(
+            "created_at", "id"
+        )
+    )

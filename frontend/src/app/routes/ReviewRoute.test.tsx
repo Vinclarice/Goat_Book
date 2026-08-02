@@ -32,6 +32,9 @@ function weekData(overrides: Record<string, unknown> = {}) {
     next_week: "2026-08-03",
     completed: [],
     planned: { total: 0, met: 0, met_tasks: [], unfinished: [], set_aside: [] },
+    written: [],
+    ideas: [],
+    unresolved_captures: [],
     ...overrides,
   };
 }
@@ -216,6 +219,87 @@ describe("ReviewRoute", () => {
 
     expect(screen.queryByText("0 of 0")).toBeNull();
     expect(screen.getByText(/Nothing was pinned/)).toBeInTheDocument();
+  });
+
+  it("shows a day's own words under the day they were written for", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        weekData({
+          written: [
+            {
+              date: "2026-07-28",
+              intentions: "",
+              gratitude: "The rain",
+              happenings: "",
+            },
+          ],
+        }),
+      ),
+    );
+
+    renderAt("/review");
+
+    expect(await screen.findByText("Tuesday")).toBeInTheDocument();
+    expect(screen.getByText("The rain")).toBeInTheDocument();
+    // Only the section that was written: three empty headings under every
+    // day would bury the one line that says something.
+    expect(screen.queryByText("Intentions")).toBeNull();
+  });
+
+  it("lists what is still waiting in the inbox, however old", async () => {
+    // Not week-scoped, and the age is the point: a fortnight-old thought
+    // is exactly what a review should catch.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        weekData({
+          unresolved_captures: [
+            { capture_id: 1, text: "Ask about the lease", age_in_days: 14 },
+          ],
+        }),
+      ),
+    );
+
+    renderAt("/review");
+
+    expect(await screen.findByText("Ask about the lease")).toBeInTheDocument();
+    expect(screen.getByText("Added 14 days ago")).toBeInTheDocument();
+  });
+
+  it("lists the ideas the week added", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        weekData({
+          ideas: [
+            {
+              idea_id: 1,
+              text: "A quieter inbox",
+              status: "exploring",
+              added_on: "2026-07-28",
+            },
+          ],
+        }),
+      ),
+    );
+
+    renderAt("/review");
+
+    expect(await screen.findByText("A quieter inbox")).toBeInTheDocument();
+  });
+
+  it("leaves out the sections a week has nothing for", async () => {
+    // A heading over an empty area reads as something that failed to load.
+    // The week's own words are the exception: a week nobody wrote in is
+    // worth saying out loud, because writing is the habit under review.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(weekData()),
+    );
+
+    renderAt("/review");
+    await screen.findByRole("heading", { level: 1 });
+
+    expect(screen.queryByText("Ideas you added")).toBeNull();
+    expect(screen.queryByText("Still in your inbox")).toBeNull();
+    expect(screen.getByText(/Nothing written/)).toBeInTheDocument();
   });
 
   it("reaches the week before without editing the URL", async () => {

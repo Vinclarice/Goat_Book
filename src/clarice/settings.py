@@ -100,6 +100,10 @@ DEFAULT_FROM_EMAIL = os.environ.get(
 SERVER_EMAIL = os.environ.get(
     "DJANGO_SERVER_EMAIL", f"Clarice notices <notices@{EMAIL_DOMAIN}>"
 )
+# mail_admins() prefixes every subject with this. Django's default is
+# "[Django] ", which labelled Clarice's own notices with the framework they
+# were built in -- caught by reading a real one, not by a test.
+EMAIL_SUBJECT_PREFIX = "[Clarice] "
 
 # Where the public contact form delivers. A real mailbox rather than a
 # send-only address: Resend only sends, so this receives through the IONOS

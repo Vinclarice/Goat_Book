@@ -91,6 +91,15 @@ class AdminNoticeTest(TestCase):
 
         self.assertEqual(message.to, [settings.ADMINS[0][1]])
 
+    def test_an_admin_notice_is_labelled_clarice_not_django(self):
+        # mail_admins() prefixes the subject with EMAIL_SUBJECT_PREFIX,
+        # whose Django default is "[Django] ". Left unset, every notice
+        # Clarice sends is labelled with the framework it was built in.
+        message = self.signup()
+
+        self.assertTrue(message.subject.startswith("[Clarice] "))
+        self.assertNotIn("Django", message.subject)
+
     def test_an_admin_notice_is_sent_from_a_clarice_address(self):
         # mail_admins() sends From SERVER_EMAIL, whose Django default is
         # root@localhost. Left alone that is not a cosmetic problem: Resend

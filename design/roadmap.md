@@ -97,19 +97,16 @@ deferred until the immediate-versus-grace-period decision is made.
 
 ### Track F — Android capture MVP
 
-Build a basic native Kotlin capture client that authenticates with a personal
-access token and calls `POST /api/v1/capture`. Its only purpose is getting a
-thought into the inbox quickly; triage remains in the web app.
-
-This is a committed Bittern stage, immediately after the production-bundle
-check. Its shared idempotent-write contract (M1) is implemented ahead of the
-client and still needs environment/deployment verification; that single
-contract will serve both Android and a future iOS client. When native work
-begins, keep it in this monorepo under `android/`; an eventual `ios/` client
-will be a sibling. Do not add a placeholder mobile project without the Android
-Studio environment needed to build and test it. The delivery plan — including
-secure token storage, offline delivery, and idempotent capture writes — is in
+**M1–M3 shipped August 1, 2026.** A native Kotlin client in `android/`
+authenticates with a personal access token, captures online or offline, and
+delivers a durable encrypted queue in the background without ever creating a
+duplicate. Verified on a physical device against production. M4 (a
+deliberate device pilot) and M5 (share to capture) remain; the detail is in
 [`bittern-plan.md`](bittern-plan.md).
+
+Its only purpose is getting a thought into the inbox quickly; triage remains
+in the web app. The shared idempotent-write contract (M1) is verified against
+production and will serve a future iOS client as a sibling under `ios/`.
 
 ## Crane — daily-page foundation
 

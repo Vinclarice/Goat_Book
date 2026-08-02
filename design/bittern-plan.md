@@ -46,6 +46,11 @@ constraint expires the moment production is updated.
 token, capture online or offline, safely retry without duplicates, and see the
 result in the web Inbox.
 
+**M1, M2 and M3 are done as of August 1, 2026, and every clause of that exit
+condition has been observed on a physical device** — though observed
+opportunistically rather than as the deliberate pilot M4 asks for. M4 and M5
+remain.
+
 ### Mobile repository and sequencing decision
 
 Keep native clients in this repository: create `android/` at the repository
@@ -458,6 +463,62 @@ must retain pending captures.
 
 ### M3 — durable offline delivery
 
+**Status: complete, August 1, 2026.** Five slices, 127 JVM tests and 16
+instrumentation tests, and one end-to-end run on a Samsung SM-F966U: three
+captures typed in airplane mode, the app force-stopped and reopened with the
+queue intact, and the queue draining itself when the network returned. Every
+capture reached the web Inbox exactly once.
+
+The slices, and the decision in each worth remembering:
+
+1. **The queue and its ceiling** (`CaptureQueue`). Attempts are counted and
+   stop at five. A stalled item keeps its text *and its key*, so a manual
+   retry weeks later is still the same write. A `400` is charged no attempt
+   at all — the ceiling bounds pointless repetition, and a refused text will
+   not be repeated.
+2. **Encryption** (`EncryptedQueueStorage`). Its own Keystore alias and its
+   own preference file, because disconnecting deletes the token's key and a
+   shared one would destroy every unsent thought at the moment somebody was
+   told their token had stopped working. The cipher was extracted from
+   `KeystoreTokenStore` rather than copied — two implementations of GCM is
+   two places to get it wrong silently.
+3. **Capture writes to the queue before the network.** This reverses three
+   M2 behaviours, each only safe once the queue existed: offline says "Saved
+   — will send when online" and is not an error; a capture typed with no
+   token is queued rather than refused; and a revoked token spends no
+   attempt. A server rejection is the one path that returns the text to the
+   field, because only a person can make a `400` acceptable and they cannot
+   edit what they cannot see.
+4. **Background delivery** (`QueueDrainer` + WorkManager 2.11.2). Every
+   decision is about when to stop: a failure about the *connection* ends the
+   run, a failure about one *capture* does not. `ExistingWorkPolicy.KEEP`,
+   not `REPLACE` — replacing restarts the backoff on every capture, so
+   somebody typing steadily through an outage would push their own queue's
+   next attempt further away with each thought.
+5. **Settings shows the queue.** Waiting and needs-attention are drawn
+   differently rather than collapsed into a count of problems, and a stalled
+   item shows its own text, since "a capture" is not enough to decide
+   anything about.
+
+**One defect found only by running it.** Background delivery worked on the
+first real try — and "3 waiting to send" stayed on screen over the emptied
+queue until the screen was left and re-entered. The count was a snapshot
+taken when Capture entered composition, and a screen cannot see a background
+drain. To its owner, a number sitting over an empty queue is
+indistinguishable from three captures having gone missing, which is the
+precise fear this whole milestone exists to remove. No unit test would have
+caught it: every assertion about the count was correct, and the gap was
+between the queue changing and anything telling the screen. Fixed by
+observing WorkManager's unique-work flow.
+
+**Deliberately not built:** there is no way to discard a rejected capture, so
+one will sit in Settings indefinitely once its text has been fixed and
+resent. Judged acceptable while the app is a prototype; adding a delete
+button to the one screen guarding against data loss deserves its own
+decision.
+
+The original specification follows.
+
 An accepted local capture must survive app close, restart, and a network drop.
 Store its text, idempotency UUID, local creation time, and delivery state in
 encrypted app storage. Use WorkManager for persisted network-constrained
@@ -509,6 +570,20 @@ as needing attention; and a manual retry of that item reuses the original key
 rather than minting a new one.
 
 ### M4 — real-device pilot and release criteria
+
+**Partly done already, by accident rather than plan.** Much of this list was
+exercised on an SM-F966U during M2 and M3 because the device was to hand:
+fresh-token connection against production, survival across a force-stop,
+capture reaching the Inbox, token revocation recovered without data loss,
+airplane-mode queueing, and a self-draining queue when the network returned.
+
+What that leaves for M4 proper is the part ad-hoc testing does not give:
+running the list *deliberately*, in one sitting, and writing down what
+happened. Two items have never been tested at all — a Wi-Fi-to-cellular
+transition mid-capture, and several rapid captures checked for created-at
+order in the Inbox. The forced-retry-creates-no-duplicates criterion has
+been proven by `curl` against production (B0.1) but never through the app's
+own retry path.
 
 Verify on at least one physical device as well as an emulator: Wi-Fi,
 cellular, airplane-mode transitions, app process death, and a revoked token.

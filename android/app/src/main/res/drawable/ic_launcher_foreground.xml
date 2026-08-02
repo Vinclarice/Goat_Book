@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    A C, drawn as a single open arc in the accent colour.
+
+    Deliberately one stroke and nothing else. A launcher icon is read at
+    about 48dp, in a hurry, next to thirty others, and detail at that size
+    turns to mush, while an open ring is still identifiable as a shape long
+    after it is too small to identify as a letter.
+
+    The art spans roughly 24 to 85 of the 108 viewport, inside the central
+    72 that an adaptive icon guarantees will survive whatever mask the
+    launcher applies. Anything outside that can be cropped to a circle, a
+    squircle or a teardrop depending on the phone.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#7BE0B8"
+        android:strokeWidth="9"
+        android:strokeLineCap="round"
+        android:pathData="M72.38,35.62 A26,26 0 1 0 72.38,72.38" />
+</vector>

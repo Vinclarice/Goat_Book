@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Adaptive only, with no PNG fallbacks, because minSdk is 26, which is
+    the exact release adaptive icons arrived in. Every device that can
+    install this app can mask a vector, so density buckets full of
+    generated bitmaps would be dead weight.
+
+    monochrome makes themed icons work on Android 13 and later: the system
+    ignores the colour and uses the alpha, so the same arc becomes a tinted
+    glyph on a themed home screen.
+-->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@drawable/ic_launcher_background" />
+    <foreground android:drawable="@drawable/ic_launcher_foreground" />
+    <monochrome android:drawable="@drawable/ic_launcher_foreground" />
+</adaptive-icon>

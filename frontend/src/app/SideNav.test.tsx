@@ -56,6 +56,7 @@ function renderNav(initialPath = "/agenda") {
         <Routes>
           <Route element={<AppLayout />}>
             <Route path="/agenda" element={<p>Agenda page</p>} />
+            <Route path="/review" element={<p>Review page</p>} />
             <Route path="/lists/:listId" element={<p>List page</p>} />
             <Route path="/archive" element={<p>Archive page</p>} />
           </Route>
@@ -88,6 +89,19 @@ describe("SideNav", () => {
     // The whole point of the split: the nav means the same thing on every
     // page, so it navigates and the header chips filter.
     expect(await screen.findByText("List page")).toBeInTheDocument();
+  });
+
+  it("offers the weekly review from every page", async () => {
+    // In this slice rather than a later one. The Daily Page spent five
+    // slices reachable only by typing its URL and routine creation had no
+    // surface at all until Crane 2 slice 3; a review nobody can open is
+    // the same gap a third time.
+    const user = userEvent.setup();
+    renderNav();
+
+    await user.click(await screen.findByRole("link", { name: "Review" }));
+
+    expect(await screen.findByText("Review page")).toBeInTheDocument();
   });
 
   it("marks the current view as active", async () => {

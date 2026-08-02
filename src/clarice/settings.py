@@ -162,6 +162,12 @@ INSTALLED_APPS = [
     # §3, and an app is the cheapest way to stop a routine quietly becoming
     # a kind of Item later.
     "routines",
+    # The weekly review: a read layer over lists, daily, routines and
+    # capture, plus one small record of its own. Its own app because
+    # architecture-trajectory.md §4 anticipates exactly one
+    # review-and-analytics module reading every occurrence table, and
+    # because a week is not a kind of day -- see crane-plan.md §8.
+    "review",
 ]
 
 

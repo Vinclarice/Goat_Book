@@ -105,6 +105,21 @@ describe("AppRoutes", () => {
     ).toHaveAttribute("href", "/agenda");
   });
 
+  it("gives the weekly review both an undated and a dated path", async () => {
+    // Two paths, one component, exactly as the day has: the undated one
+    // lets the server say which week it is, and the dated one is what the
+    // "week before" link points at. Without the dated path a review
+    // written on a Monday could not reach the week it is about.
+    renderAt("/review/2026-07-27");
+
+    await waitFor(() =>
+      expect(screen.getByTestId("pathname")).toHaveTextContent(
+        "/review/2026-07-27",
+      ),
+    );
+    expect(screen.queryByText(/page doesn't exist/i)).toBeNull();
+  });
+
   it("does not redirect a path that really exists", async () => {
     renderAt("/archive");
 

@@ -405,6 +405,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Current Week */
+        get: operations["review_api_v1_get_current_week"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/review/{day}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Week */
+        get: operations["review_api_v1_get_week"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -900,6 +934,60 @@ export interface components {
              * @default 1
              */
             amount: number;
+        };
+        /**
+         * CompletedTaskOut
+         * @description A finished task, as a week needs to read it.
+         *
+         *     Not `TaskOut`: a week reports what happened rather than offering
+         *     something to act on, and the field that matters here -- which day it was
+         *     finished on -- is one the agenda's contract has no reason to carry.
+         */
+        CompletedTaskOut: {
+            /** Task Id */
+            task_id: number;
+            /** Text */
+            text: string;
+            /**
+             * Completed On
+             * Format: date
+             */
+            completed_on: string;
+            /** List Id */
+            list_id: number;
+            parent: components["schemas"]["TaskParentOut"] | null;
+        };
+        /** WeekOut */
+        WeekOut: {
+            /**
+             * Week Start
+             * Format: date
+             */
+            week_start: string;
+            /**
+             * Week End
+             * Format: date
+             */
+            week_end: string;
+            /**
+             * Today
+             * Format: date
+             */
+            today: string;
+            /** Is Current Week */
+            is_current_week: boolean;
+            /**
+             * Previous Week
+             * Format: date
+             */
+            previous_week: string;
+            /**
+             * Next Week
+             * Format: date
+             */
+            next_week: string;
+            /** Completed */
+            completed: components["schemas"]["CompletedTaskOut"][];
         };
     };
     responses: never;
@@ -1444,6 +1532,48 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StandingsOut"];
+                };
+            };
+        };
+    };
+    review_api_v1_get_current_week: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeekOut"];
+                };
+            };
+        };
+    };
+    review_api_v1_get_week: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                day: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeekOut"];
                 };
             };
         };

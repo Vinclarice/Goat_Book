@@ -17,6 +17,7 @@ from accounts.auth import SessionAuthIfLoggedIn, TokenAuth
 from capture.api_v1 import router as capture_router
 from daily.api_v1 import router as daily_router
 from lists.api_v1 import router as lists_router
+from review.api_v1 import router as review_router
 from routines.api_v1 import router as routines_router
 
 api = NinjaAPI(auth=django_auth, urls_namespace="v1")
@@ -32,6 +33,9 @@ api.add_router("", daily_router)
 # token-authenticated zone activation per-user-time-zones-plan.md flags, and
 # has no product trigger yet.
 api.add_router("", routines_router)
+# Session-only as well. The review reads everything and writes nothing until
+# slice 4, and what it writes then is a person's own reflection.
+api.add_router("", review_router)
 
 
 class MeOut(Schema):

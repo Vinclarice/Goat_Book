@@ -41,7 +41,7 @@ jobs:
       # would never appear. First position is what makes it unmissable.
       - name: Per-user isolation tests
         run: python src/manage.py test lists.tests.test_isolation
-      - run: python src/manage.py test accounts lists capture clarice daily routines
+      - run: python src/manage.py test accounts lists capture clarice daily routines review
 
   # A separate job because it is the only one needing both toolchains at
   # once. src/lists/static/frontend is gitignored, so the browser tests

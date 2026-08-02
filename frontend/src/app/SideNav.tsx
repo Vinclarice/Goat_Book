@@ -65,6 +65,14 @@ export function SideNav() {
         <NavLink to="/agenda" className={navLinkClass}>
           Agenda
         </NavLink>
+        {/* Beside the day rather than under Account, because a review is a
+            view of the work and not a setting -- and present in the slice
+            that builds it, since a surface nobody can reach has now been
+            shipped twice. Undated, so the link always means the week you
+            are in rather than whichever one the nav last rendered. */}
+        <NavLink to="/review" className={navLinkClass}>
+          Review
+        </NavLink>
         {/* A Django page, not an SPA route, so a plain anchor: React Router
             would try to handle /capture/ itself and 404 inside the shell. */}
         <a className={styles.link} href={data?.inbox_url ?? "/capture/"}>

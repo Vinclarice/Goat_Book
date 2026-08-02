@@ -786,6 +786,65 @@
           }
         ]
       }
+    },
+    "/api/v1/review": {
+      "get": {
+        "operationId": "review_api_v1_get_current_week",
+        "summary": "Get Current Week",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeekOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/review/{day}": {
+      "get": {
+        "operationId": "review_api_v1_get_week",
+        "summary": "Get Week",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "day",
+            "schema": {
+              "format": "date",
+              "title": "Day",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeekOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -2035,6 +2094,98 @@
           }
         },
         "title": "LogIn",
+        "type": "object"
+      },
+      "CompletedTaskOut": {
+        "description": "A finished task, as a week needs to read it.\n\nNot `TaskOut`: a week reports what happened rather than offering\nsomething to act on, and the field that matters here -- which day it was\nfinished on -- is one the agenda's contract has no reason to carry.",
+        "properties": {
+          "task_id": {
+            "title": "Task Id",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "completed_on": {
+            "format": "date",
+            "title": "Completed On",
+            "type": "string"
+          },
+          "list_id": {
+            "title": "List Id",
+            "type": "integer"
+          },
+          "parent": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TaskParentOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "task_id",
+          "text",
+          "completed_on",
+          "list_id",
+          "parent"
+        ],
+        "title": "CompletedTaskOut",
+        "type": "object"
+      },
+      "WeekOut": {
+        "properties": {
+          "week_start": {
+            "format": "date",
+            "title": "Week Start",
+            "type": "string"
+          },
+          "week_end": {
+            "format": "date",
+            "title": "Week End",
+            "type": "string"
+          },
+          "today": {
+            "format": "date",
+            "title": "Today",
+            "type": "string"
+          },
+          "is_current_week": {
+            "title": "Is Current Week",
+            "type": "boolean"
+          },
+          "previous_week": {
+            "format": "date",
+            "title": "Previous Week",
+            "type": "string"
+          },
+          "next_week": {
+            "format": "date",
+            "title": "Next Week",
+            "type": "string"
+          },
+          "completed": {
+            "items": {
+              "$ref": "#/components/schemas/CompletedTaskOut"
+            },
+            "title": "Completed",
+            "type": "array"
+          }
+        },
+        "required": [
+          "week_start",
+          "week_end",
+          "today",
+          "is_current_week",
+          "previous_week",
+          "next_week",
+          "completed"
+        ],
+        "title": "WeekOut",
         "type": "object"
       }
     },

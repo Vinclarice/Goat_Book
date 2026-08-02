@@ -10,6 +10,7 @@ import { DevUiGallery } from "./routes/DevUiGallery";
 import { ListRoute } from "./routes/ListRoute";
 import { NotFoundRoute } from "./routes/NotFoundRoute";
 import { PreferencesRoute } from "./routes/PreferencesRoute";
+import { ReviewRoute } from "./routes/ReviewRoute";
 import { TaskDetailRoute } from "./routes/TaskDetailRoute";
 
 /**
@@ -69,6 +70,13 @@ export function AppRoutes() {
             day boundary belongs to the account's time zone. */}
         <Route path="/day" element={<DayRoute />} />
         <Route path="/day/:date" element={<DayRoute />} />
+        {/* Same two-path shape as the day, for the same reason: the
+            undated one lets the server say which week it is, since a week
+            boundary belongs to the account's time zone. The dated one is
+            what the "week before" link points at, and a review written on
+            a Monday is about the week before. */}
+        <Route path="/review" element={<ReviewRoute />} />
+        <Route path="/review/:week" element={<ReviewRoute />} />
         <Route path="/lists/:listId" element={<ListRoute />} />
         <Route path="/tasks/:taskId" element={<TaskDetailRoute />} />
         <Route path="/archive" element={<ArchiveRoute />} />

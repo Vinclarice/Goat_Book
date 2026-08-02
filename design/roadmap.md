@@ -380,6 +380,22 @@ a phone daily, triaging from that same phone will be attempted, and the
 friction becomes specific and observable. Treat it the way C2 is treated —
 watch real failures rather than redesigning from a hunch.
 
+**A measured finding, from Crane 1 slice 7.** This entry asks for observed
+failures rather than a redesign from a hunch, and slice 7's phone pass
+produced one with numbers attached. At 375px the Daily Page itself is sound —
+no horizontal overflow, no control past the right edge, and writing, saving
+and capturing all work. What it exposed is application-wide and older than
+Crane: **touch targets are well under the ~44px both platform guidelines and
+WCAG 2.5.8 ask for.** The Daily Page's buttons measure 32px and its "Edit
+your compass" link 20px; the Agenda, which nothing in Crane touched, is worse
+at 19–31px.
+
+That is not slice 7's to fix. The height lives on the shared `Button`
+component, so changing it restyles every page in the application — which
+`crane-plan.md` §5 fences off, and which is the web UI overhaul's second pass
+rather than a side effect of a smoke test. Recorded here, with the
+measurements, so it is a finding rather than a feeling when that work starts.
+
 **Note on scope, August 2, 2026.** The pilot has run, but the stated condition
 is daily phone use producing observable triage friction, and one session is
 not that — so this stays here rather than being promoted on a technicality.

@@ -470,6 +470,19 @@ one, with nothing connecting them.
 
 ## 4. Crane 1 — Daily Page foundation
 
+**All seven slices shipped August 2, 2026**, in order, each with its
+acceptance condition verified in a real browser rather than only in tests.
+Merged to `main` and **not yet deployed** — production is eight migrations
+behind, so none of this is reachable there yet.
+
+Two things worth carrying forward. Slice 6 found that slices 1–5 had built a
+surface reachable only by typing its URL, which is why the side nav now
+carries Today; a home surface with no way in is the kind of gap a slice
+sequence can hide from itself. And slice 7's phone pass found the page sound
+at 375px but the application's touch targets well under the 44px guideline —
+older than Crane, owned by the UI overhaul, and recorded with measurements in
+`roadmap.md`'s mobile web entry.
+
 Ordered as the thinnest usable path first, per `principles.md`'s vertical-
 slice practice: each slice below is something a person can actually do,
 not a layer of the stack finished in isolation. Later slices depend on
@@ -518,7 +531,15 @@ for the accrual reason given in §3, not because anything here needed it.
    *Acceptance:* a fresh login lands on today's Daily Page; setting the
    preference to Agenda makes the next login land there instead; navigating
    directly to `/app/agenda` still works unchanged for anyone who prefers it.
-7. **Prove it on a phone.** A browser-smoke pass at a phone viewport against
+7. **Prove it on a phone — done, and it measures rather than eyeballs.**
+   Six tests at 375×812 against the built bundle: horizontal overflow
+   asserted as a number (and naming the offenders when it is not zero), no
+   control past the right edge, every section present, the day writable and
+   savable, a thought capturable, and Today reachable from behind the phone
+   disclosure. All passed on the first run, so the overflow assertion was
+   deliberately made to fail once — a 900px element injected, caught as
+   "scrolls 525px sideways" — rather than trusted.
+   A browser-smoke pass at a phone viewport against
    the built bundle, covering the assembled page from slices 1–6 rather than
    any one field in isolation — each slice above is built mobile-aware as it
    lands, per the vision doc's instruction not to retrofit this surface, but

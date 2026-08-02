@@ -56,18 +56,60 @@ class BrowserTest(StaticLiveServerTestCase):
         cls._playwright.stop()
         super().tearDownClass()
 
+    # None means the browser's default desktop window. A subclass sets this
+    # to open every page at a phone's width instead -- see PhoneTest.
+    viewport = None
+
     def setUp(self):
         super().setUp()
         # A fresh context per test, so a session from one journey can never
         # authenticate another -- the logout test in particular would pass
         # for the wrong reason if cookies leaked between them.
-        self.context = self.browser.new_context()
+        self.context = self.browser.new_context(
+            **({"viewport": self.viewport} if self.viewport else {})
+        )
         self.context.set_default_timeout(TIMEOUT_MS)
         self.page = self.context.new_page()
         self.addCleanup(self.context.close)
 
     def visit(self, path):
         self.page.goto(f"{self.live_server_url}{path}")
+
+    def horizontal_overflow(self):
+        """How far the page scrolls sideways, in pixels. Zero is the answer.
+
+        Measured on documentElement rather than body because the overflow
+        usually comes from a child that is wider than the viewport, and the
+        document is what ends up scrollable when it does.
+        """
+        return self.page.evaluate(
+            "document.documentElement.scrollWidth"
+            " - document.documentElement.clientWidth"
+        )
+
+    def overflowing_elements(self):
+        """Which elements are wider than the viewport, for a useful failure.
+
+        A bare "the page scrolls sideways" tells you there is a problem and
+        nothing about where, which on a page of six sections is most of the
+        work. Returns the widest offenders, innermost first.
+        """
+        return self.page.evaluate(
+            """() => {
+                const limit = document.documentElement.clientWidth;
+                return [...document.querySelectorAll('body *')]
+                    .map(el => ({
+                        tag: el.tagName.toLowerCase(),
+                        id: el.id || null,
+                        cls: (el.className && typeof el.className === 'string')
+                            ? el.className.slice(0, 60) : null,
+                        right: Math.round(el.getBoundingClientRect().right),
+                    }))
+                    .filter(el => el.right > limit + 1)
+                    .sort((a, b) => b.right - a.right)
+                    .slice(0, 8);
+            }"""
+        )
 
     def make_user(self, username="edith"):
         return User.objects.create_user(

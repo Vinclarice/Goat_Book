@@ -1,5 +1,6 @@
 package com.vinclarice.capture
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -37,6 +39,17 @@ class MainActivity : ComponentActivity() {
         val queue = CaptureQueue(EncryptedQueueStorage(applicationContext))
         val scheduler = CaptureWorker.prepare(applicationContext)
 
+        // getCharSequenceExtra rather than getStringExtra: apps sharing
+        // formatted text send a Spanned, and getStringExtra returns null for
+        // it -- a share that silently arrives empty is worse than one that
+        // arrives plain.
+        val draft = SharedText.from(
+            action = intent?.action,
+            type = intent?.type,
+            text = intent?.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString(),
+            subject = intent?.getCharSequenceExtra(Intent.EXTRA_SUBJECT)?.toString(),
+        )
+
         setContent {
             MaterialTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
@@ -54,6 +67,7 @@ class MainActivity : ComponentActivity() {
                             store = store,
                             queue = queue,
                             scheduler = scheduler,
+                            draft = draft,
                         )
                     }
                 }
@@ -69,6 +83,7 @@ private fun Root(
     store: TokenStore,
     queue: CaptureQueue,
     scheduler: DeliveryScheduler,
+    draft: String? = null,
 ) {
     val connectModel = remember { ConnectViewModel(connector) }
     // Held here rather than inside the Capture branch, so that a trip to
@@ -80,7 +95,16 @@ private fun Root(
     var connected by remember { mutableStateOf(connectModel.isConnected) }
     var showSettings by remember { mutableStateOf(false) }
 
-    if (!connected) {
+    // Seeded, never sent. Another app's content is put in front of a person
+    // to edit or abandon; posting it on their behalf would make every share
+    // menu a way to write to somebody's Inbox without them reading it.
+    LaunchedEffect(draft) { draft?.let(captureModel::onTextChange) }
+
+    // A share outranks the connection gate. Sending somebody to Connect
+    // would discard what they just shared, and the queue can hold a capture
+    // with no token perfectly well -- it says so, and delivers it once a
+    // token exists.
+    if (!connected && draft == null) {
         ConnectScreen(
             model = connectModel,
             onConnected = { connected = true; showSettings = false },

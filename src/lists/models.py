@@ -94,14 +94,21 @@ class Item(models.Model):
     archive_group = models.UUIDField(null=True, blank=True, editable=False)
     # Which repeating commitment this task is an occurrence of. Null means an
     # ordinary one-off task, which is what most rows will always mean.
-    # PROTECT rather than SET_NULL: nulling these on delete would silently
-    # turn a series back into unrelated one-offs, which is the precise failure
-    # this key exists to fix.
+    #
+    # RESTRICT rather than SET_NULL, because nulling these on delete would
+    # silently turn a series back into unrelated one-offs, which is the
+    # precise failure this key exists to fix -- and rather than PROTECT,
+    # which was the first choice and was wrong. PROTECT refuses even when the
+    # referring task is being deleted in the same cascade, so deleting an
+    # account raised ProtectedError instead of removing it: the owner's
+    # commitments and their tasks both go, but PROTECT does not care that the
+    # referrer is on its way out. RESTRICT allows exactly that case and still
+    # refuses a bare commitment delete. Covered by test_commitment_deletion.
     commitment = models.ForeignKey(
         RecurringCommitment,
         null=True,
         blank=True,
-        on_delete=models.PROTECT,
+        on_delete=models.RESTRICT,
         related_name="occurrences",
     )
 

@@ -132,10 +132,12 @@ class CommitmentIdentityTest(TestCase):
         self.assertEqual(legacy.commitment, spawned.commitment)
 
     def test_a_commitment_with_history_cannot_be_deleted(self):
-        """PROTECT, deliberately.
+        """RESTRICT, deliberately.
 
         SET_NULL would silently turn a series back into unrelated one-off
-        tasks, which is the exact failure this slice exists to fix.
+        tasks, which is the exact failure this slice exists to fix. Deleting
+        the owner is a different case and is allowed -- see
+        test_commitment_deletion.
         """
         item = services.create_item(
             self.list_, "Pay rent", recurrence=Item.Recurrence.MONTHLY

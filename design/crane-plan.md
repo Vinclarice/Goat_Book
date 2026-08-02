@@ -354,11 +354,14 @@ because every one of them points at a single template rather than matching on a
 string. Today that same query returns a series of three and a series of one,
 with nothing to indicate they were ever the same commitment.
 
-**Noted while writing this, and separable from it.** The spawn copies each
-child's `notes` explicitly and never the parent's own, so a recurring task with
-notes loses them on every cycle. That is a bug with a regression test rather
-than a design question, and it should be fixed whether or not this widening is
-accepted.
+**Noted while writing this, and separable from it — since fixed.** The spawn
+copied each child's `notes` explicitly and never the parent's own, so a
+recurring task with notes lost them on every cycle. That was a bug with a
+regression test rather than a design question, and it was fixed as one on
+August 2, 2026 without waiting on the widening: `_spawn_next_occurrence` now
+passes `notes` for the parent too, and
+`RecurringParentTest.test_a_recurring_task_keeps_its_own_notes_on_the_next_occurrence`
+holds both halves of the symmetry.
 
 ### Crane 0a — the identity slice
 

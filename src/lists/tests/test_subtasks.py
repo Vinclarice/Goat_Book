@@ -228,6 +228,22 @@ class RecurringParentTest(SubtaskServiceTest):
         # ...and the undated one stays undated.
         self.assertIsNone(clones["Book hotel"].due_date)
 
+    def test_a_recurring_task_keeps_its_own_notes_on_the_next_occurrence(self):
+        services.set_item_notes(self.parent, "Renew the visa before booking")
+        services.set_item_notes(self.child_a, "Window seat")
+        services.set_recurrence(
+            self.refresh(self.parent), Item.Recurrence.WEEKLY
+        )
+
+        completed = services.complete_item(self.refresh(self.parent))
+        spawned = completed._spawned
+
+        # The children's notes were always cloned explicitly; the parent's own
+        # were not, so a recurring task with notes lost them every cycle.
+        self.assertEqual(spawned.notes, "Renew the visa before booking")
+        clones = {each.text: each for each in spawned.subtasks.all()}
+        self.assertEqual(clones["Book flights"].notes, "Window seat")
+
     def test_the_clones_do_not_inherit_recurrence(self):
         services.set_recurrence(self.parent, Item.Recurrence.WEEKLY)
 

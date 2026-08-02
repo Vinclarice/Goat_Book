@@ -94,10 +94,13 @@ streak and rate the vision document goes on to ask for. It is a missing
 relationship rather than a crowded table, which is why it sits beside the `Item`
 overload on this ledger rather than inside it.
 
-One genuine defect surfaced while checking the above and belongs in a bug
-report rather than a plan: the spawn copies each *child's* `notes` explicitly
-but never the parent's own, so a recurring task with notes loses them on every
-cycle. The asymmetry looks like an oversight rather than a decision.
+One genuine defect surfaced while checking the above and belonged in a bug
+report rather than a plan: the spawn copied each *child's* `notes` explicitly
+but never the parent's own, so a recurring task with notes lost them on every
+cycle. The asymmetry looked like an oversight rather than a decision, and was
+fixed as one on August 2, 2026 — see §6. Forward-only for the same reason the
+key is: notes dropped by earlier cycles were never written anywhere and cannot
+be recovered.
 
 **The consequence for planning.** The interesting risk to Clarice is no longer
 behind it. Retrospective cleanup is bounded and nearly finished, and making it
@@ -584,11 +587,13 @@ trigger stated so it can be deferred honestly rather than quietly.
 - **Make `List.owner` non-null:** audit live rows, backfill or remove orphans,
   then a schema migration. Closes the last anonymous-era hole and lets charter
   rule 1 be stated without an exception.
-- **Copy a recurring task's own `notes` onto its next occurrence.**
-  `_spawn_next_occurrence` copies each child's `notes` explicitly and never the
-  parent's, so a recurring task with notes loses them every cycle. A bug with a
-  regression test, not a design decision — and independent of whether Crane 0
-  widens.
+- ~~**Copy a recurring task's own `notes` onto its next occurrence.**~~ **Done
+  August 2, 2026.** `_spawn_next_occurrence` now passes `notes` for the parent
+  as it always did for the children, guarded by
+  `RecurringParentTest.test_a_recurring_task_keeps_its_own_notes_on_the_next_occurrence`,
+  which asserts both halves of the symmetry so neither can regress alone. It
+  was a bug with a regression test rather than a design decision, and it did
+  not wait on Crane 0.
 - **Reconcile `frontend/src/agenda.ts` with `lists/agenda.py`.** Two exports
   document themselves as mirroring Python definitions that do not exist. Either
   restore the server-side authority or delete the claim — a comment naming an

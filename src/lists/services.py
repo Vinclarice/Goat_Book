@@ -362,6 +362,7 @@ def _spawn_next_occurrence(completed_item, carry_forward=()):
         recurrence=completed_item.recurrence,
         position=_next_position(completed_item.list),
         commitment=commitment,
+        notes=completed_item.notes,
     )
     next_item.tags.set(completed_item.tags.all())
 

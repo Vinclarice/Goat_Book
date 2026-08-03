@@ -45,7 +45,7 @@ export function TaskDetailRoute() {
   const id = Number(taskId);
   const navigate = useNavigate();
   const [task, setTask] = useState<Task | null>(null);
-  const [listRef, setListRef] = useState<{ id: number; title: string } | null>(null);
+  const [areaRef, setAreaRef] = useState<{ id: number; title: string } | null>(null);
   const [text, setText] = useState("");
   const [tagsDraft, setTagsDraft] = useState("");
   const [notesDraft, setNotesDraft] = useState("");
@@ -65,7 +65,7 @@ export function TaskDetailRoute() {
       });
       if (!response.ok || !data) throw new RequestFailed(response.status);
       setTask(data.task as Task);
-      setListRef(data.list);
+      setAreaRef(data.area);
       setText(data.task.text);
       setTagsDraft(data.task.tags.join(", "));
       setNotesDraft(data.task.notes);
@@ -282,7 +282,7 @@ export function TaskDetailRoute() {
       if (updated.status === "archived") {
         // Completing a recurring task auto-archives it and spawns the
         // next occurrence -- it's no longer viewable at this URL.
-        navigate(listRef ? `/lists/${listRef.id}` : "/agenda");
+        navigate(areaRef ? `/areas/${areaRef.id}` : "/agenda");
         return;
       }
       setTask(updated);
@@ -301,7 +301,7 @@ export function TaskDetailRoute() {
     setBusy(true);
     try {
       await updateTaskStatus(task, "archived");
-      navigate(listRef ? `/lists/${listRef.id}` : "/agenda");
+      navigate(areaRef ? `/areas/${areaRef.id}` : "/agenda");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to archive task.");
       setBusy(false);
@@ -309,7 +309,7 @@ export function TaskDetailRoute() {
   }
 
   if (isPending) return <p className="p-6">Loading…</p>;
-  if (isError || !task || !listRef) return <RouteFailure status={statusOf(loadError)} onRetry={() => refetch()} />;
+  if (isError || !task || !areaRef) return <RouteFailure status={statusOf(loadError)} onRetry={() => refetch()} />;
 
   // Whether "does this subtask come back next time?" is a question worth
   // asking at all. The flag exists on every subtask regardless; this only
@@ -319,15 +319,15 @@ export function TaskDetailRoute() {
   return (
     <div className="max-w-lg mx-auto px-4 py-8 space-y-6">
       <Link
-        to={`/lists/${listRef.id}`}
+        to={`/areas/${areaRef.id}`}
         className="text-sm text-muted-foreground hover:text-foreground"
       >
-        ← Back to {listRef.title}
+        ← Back to {areaRef.title}
       </Link>
 
       <div>
         <p className="text-xs font-bold uppercase tracking-wide text-accent">
-          {listRef.title}
+          {areaRef.title}
         </p>
         <h1 className="text-2xl font-bold">Task detail</h1>
       </div>

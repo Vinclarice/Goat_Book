@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router";
 
-import { ListRoute } from "./ListRoute";
+import { AreaRoute } from "./AreaRoute";
 import { task } from "../../test/fixtures";
 
 function jsonResponse(data: object, ok = true, status = ok ? 200 : 500) {
@@ -25,11 +25,11 @@ function jsonResponse(data: object, ok = true, status = ok ? 200 : 500) {
 
 function listDetailData(overrides: Record<string, unknown> = {}) {
   return {
-    list: {
+    area: {
       id: 7,
       title: "Programming",
-      create_item_url: "/api/lists/7/items/",
-      reorder_url: "/api/lists/7/items/reorder/",
+      create_item_url: "/api/areas/7/items/",
+      reorder_url: "/api/areas/7/items/reorder/",
     },
     items: [task({ text: "Write tests" })],
     archived_count: 0,
@@ -38,15 +38,15 @@ function listDetailData(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function renderAt(listId: string) {
+function renderAt(areaId: string) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={[`/lists/${listId}`]}>
+      <MemoryRouter initialEntries={[`/areas/${areaId}`]}>
         <Routes>
-          <Route path="/lists/:listId" element={<ListRoute />} />
+          <Route path="/areas/:areaId" element={<AreaRoute />} />
           <Route path="/agenda" element={<p>Agenda page</p>} />
         </Routes>
       </MemoryRouter>
@@ -54,7 +54,7 @@ function renderAt(listId: string) {
   );
 }
 
-describe("ListRoute", () => {
+describe("AreaRoute", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     document.cookie = "csrftoken=test-token";
@@ -99,8 +99,8 @@ describe("ListRoute", () => {
     renderAt("7");
     await screen.findByText("Write tests");
 
-    await user.click(screen.getByRole("button", { name: "Delete list" }));
-    await user.click(screen.getByRole("button", { name: "Delete list permanently" }));
+    await user.click(screen.getByRole("button", { name: "Delete area" }));
+    await user.click(screen.getByRole("button", { name: "Delete area permanently" }));
 
     await waitFor(() => {
       expect(screen.getByText("Agenda page")).toBeInTheDocument();
@@ -109,7 +109,7 @@ describe("ListRoute", () => {
       ([request]) => (request as Request).method === "DELETE",
     );
     expect(deleteCall?.[0]).toEqual(
-      expect.objectContaining({ url: expect.stringContaining("/api/v1/lists/7") }),
+      expect.objectContaining({ url: expect.stringContaining("/api/v1/areas/7") }),
     );
   });
 });

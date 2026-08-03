@@ -38,7 +38,7 @@ function jsonResponse(data: object) {
 }
 
 const NAV = {
-  lists: [
+  areas: [
     { id: 1, title: "Programming", open_count: 5, overdue_count: 2, color_key: "sky" },
   ],
   archived_count: 4,
@@ -91,7 +91,7 @@ function renderLayout(initialPath = "/agenda") {
         <Routes>
           <Route element={<AppLayout />}>
             <Route path="/agenda" element={<p>Agenda page</p>} />
-            <Route path="/lists/:listId" element={<p>List page</p>} />
+            <Route path="/areas/:areaId" element={<p>Area page</p>} />
           </Route>
         </Routes>
       </MemoryRouter>
@@ -136,7 +136,7 @@ describe("AppLayout disclosure", () => {
 
     await user.click(await screen.findByText("Programming"));
 
-    expect(await screen.findByText("List page")).toBeInTheDocument();
+    expect(await screen.findByText("Area page")).toBeInTheDocument();
     expect(disclosure().open).toBe(true);
   });
 
@@ -148,7 +148,7 @@ describe("AppLayout disclosure", () => {
 
     await user.click(await screen.findByText("Programming"));
 
-    expect(await screen.findByText("List page")).toBeInTheDocument();
+    expect(await screen.findByText("Area page")).toBeInTheDocument();
     expect(disclosure().open).toBe(false);
   });
 

@@ -74,7 +74,7 @@ class ItemModelTest(TestCase):
 class ListModelTest(TestCase):
     def test_get_absolute_url(self):
         mylist = List.objects.create()
-        self.assertEqual(mylist.get_absolute_url(), f"/lists/{mylist.id}/")
+        self.assertEqual(mylist.get_absolute_url(), f"/areas/{mylist.id}/")
 
     def test_list_items_order(self):
         list1 = List.objects.create()

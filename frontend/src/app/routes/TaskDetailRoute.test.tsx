@@ -26,7 +26,7 @@ function jsonResponse(data: object, ok = true, status = ok ? 200 : 500) {
 function taskDetailData(overrides: Record<string, unknown> = {}) {
   return {
     task: task(),
-    list: { id: 1, title: "Programming" },
+    area: { id: 1, title: "Programming" },
     checklist_steps: [],
     create_checklist_step_url: "/api/tasks/1/checklist-steps/",
     ...overrides,
@@ -42,7 +42,7 @@ function renderAt(taskId: string) {
       <MemoryRouter initialEntries={[`/tasks/${taskId}`]}>
         <Routes>
           <Route path="/tasks/:taskId" element={<TaskDetailRoute />} />
-          <Route path="/lists/:listId" element={<p>List page</p>} />
+          <Route path="/areas/:areaId" element={<p>Area page</p>} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -425,7 +425,7 @@ describe("TaskDetailRoute", () => {
     await user.click(screen.getByRole("button", { name: "Move to archive" }));
 
     await waitFor(() => {
-      expect(screen.getByText("List page")).toBeInTheDocument();
+      expect(screen.getByText("Area page")).toBeInTheDocument();
     });
   });
 
@@ -451,7 +451,7 @@ describe("TaskDetailRoute", () => {
     await user.click(screen.getByRole("button", { name: "Mark complete" }));
 
     await waitFor(() => {
-      expect(screen.getByText("List page")).toBeInTheDocument();
+      expect(screen.getByText("Area page")).toBeInTheDocument();
     });
   });
 });

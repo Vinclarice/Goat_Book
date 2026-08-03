@@ -24,11 +24,11 @@ describe("TaskWorkspace", () => {
     render(
       <TaskWorkspace
         initialData={{
-          list: {
+          area: {
             id: 1,
             title: "Programming",
-            create_item_url: "/api/lists/1/items/",
-            reorder_url: "/api/lists/1/items/reorder/",
+            create_item_url: "/api/areas/1/items/",
+            reorder_url: "/api/areas/1/items/reorder/",
           },
           items: [
             task(),
@@ -50,11 +50,11 @@ describe("TaskWorkspace", () => {
     render(
       <TaskWorkspace
         initialData={{
-          list: {
+          area: {
             id: 1,
             title: "Programming",
-            create_item_url: "/api/lists/1/items/",
-            reorder_url: "/api/lists/1/items/reorder/",
+            create_item_url: "/api/areas/1/items/",
+            reorder_url: "/api/areas/1/items/reorder/",
           },
           items: [task(), task({ id: 2, text: "Review migrations" })],
         }}
@@ -80,11 +80,11 @@ describe("TaskWorkspace", () => {
     render(
       <TaskWorkspace
         initialData={{
-          list: {
+          area: {
             id: 1,
             title: "Programming",
-            create_item_url: "/api/lists/1/items/",
-            reorder_url: "/api/lists/1/items/reorder/",
+            create_item_url: "/api/areas/1/items/",
+            reorder_url: "/api/areas/1/items/reorder/",
           },
           items: [task()],
         }}
@@ -113,11 +113,11 @@ describe("TaskWorkspace", () => {
     render(
       <TaskWorkspace
         initialData={{
-          list: {
+          area: {
             id: 1,
             title: "Programming",
-            create_item_url: "/api/lists/1/items/",
-            reorder_url: "/api/lists/1/items/reorder/",
+            create_item_url: "/api/areas/1/items/",
+            reorder_url: "/api/areas/1/items/reorder/",
           },
           items: [task()],
         }}
@@ -149,11 +149,11 @@ describe("TaskWorkspace", () => {
     render(
       <TaskWorkspace
         initialData={{
-          list: {
+          area: {
             id: 1,
             title: "Programming",
-            create_item_url: "/api/lists/1/items/",
-            reorder_url: "/api/lists/1/items/reorder/",
+            create_item_url: "/api/areas/1/items/",
+            reorder_url: "/api/areas/1/items/reorder/",
           },
           items: [task()],
         }}
@@ -174,11 +174,11 @@ describe("TaskWorkspace", () => {
     render(
       <TaskWorkspace
         initialData={{
-          list: {
+          area: {
             id: 1,
             title: "Programming",
-            create_item_url: "/api/lists/1/items/",
-            reorder_url: "/api/lists/1/items/reorder/",
+            create_item_url: "/api/areas/1/items/",
+            reorder_url: "/api/areas/1/items/reorder/",
           },
           items: [task({ due_date: "2000-01-01" })],
         }}
@@ -196,11 +196,11 @@ describe("TaskWorkspace", () => {
     render(
       <TaskWorkspace
         initialData={{
-          list: {
+          area: {
             id: 1,
             title: "Programming",
-            create_item_url: "/api/lists/1/items/",
-            reorder_url: "/api/lists/1/items/reorder/",
+            create_item_url: "/api/areas/1/items/",
+            reorder_url: "/api/areas/1/items/reorder/",
           },
           items: [task()],
         }}
@@ -230,11 +230,11 @@ describe("TaskWorkspace", () => {
     render(
       <TaskWorkspace
         initialData={{
-          list: {
+          area: {
             id: 1,
             title: "Programming",
-            create_item_url: "/api/lists/1/items/",
-            reorder_url: "/api/lists/1/items/reorder/",
+            create_item_url: "/api/areas/1/items/",
+            reorder_url: "/api/areas/1/items/reorder/",
           },
           items: [first, second],
         }}
@@ -246,7 +246,7 @@ describe("TaskWorkspace", () => {
 
     await waitFor(() =>
       expect(fetch).toHaveBeenCalledWith(
-        "/api/lists/1/items/reorder/",
+        "/api/areas/1/items/reorder/",
         expect.objectContaining({
           method: "POST",
           body: JSON.stringify({ ordered_ids: [2, 1] }),
@@ -260,11 +260,11 @@ describe("TaskWorkspace", () => {
     render(
       <TaskWorkspace
         initialData={{
-          list: {
+          area: {
             id: 1,
             title: "Programming",
-            create_item_url: "/api/lists/1/items/",
-            reorder_url: "/api/lists/1/items/reorder/",
+            create_item_url: "/api/areas/1/items/",
+            reorder_url: "/api/areas/1/items/reorder/",
           },
           items: [
             task({ id: 1, text: "Buy milk", tags: ["groceries"] }),
@@ -301,11 +301,11 @@ describe("TaskWorkspace", () => {
     render(
       <TaskWorkspace
         initialData={{
-          list: {
+          area: {
             id: 1,
             title: "Programming",
-            create_item_url: "/api/lists/1/items/",
-            reorder_url: "/api/lists/1/items/reorder/",
+            create_item_url: "/api/areas/1/items/",
+            reorder_url: "/api/areas/1/items/reorder/",
           },
           items: [original],
         }}
@@ -327,11 +327,11 @@ describe("TaskWorkspace", () => {
     render(
       <TaskWorkspace
         initialData={{
-          list: {
+          area: {
             id: 1,
             title: "Programming",
-            create_item_url: "/api/lists/1/items/",
-            reorder_url: "/api/lists/1/items/reorder/",
+            create_item_url: "/api/areas/1/items/",
+            reorder_url: "/api/areas/1/items/reorder/",
           },
           items: [],
         }}
@@ -344,7 +344,7 @@ describe("TaskWorkspace", () => {
 
     await waitFor(() =>
       expect(fetch).toHaveBeenCalledWith(
-        "/api/lists/1/items/",
+        "/api/areas/1/items/",
         expect.objectContaining({
           method: "POST",
           body: JSON.stringify({

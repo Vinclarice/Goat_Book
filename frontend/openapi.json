@@ -50,7 +50,7 @@
             }
           }
         },
-        "description": "Everything the persistent side nav needs, on every page.\n\nA single endpoint rather than three payloads each growing the same\nfields: the agenda already carried list summaries, but the list page and\narchive didn't, and duplicating them into both schemas would mean three\nplaces to keep in step.",
+        "description": "Everything the persistent side nav needs, on every page.\n\nA single endpoint rather than three payloads each growing the same\nfields: the agenda already carried area summaries, but the area page and\narchive didn't, and duplicating them into both schemas would mean three\nplaces to keep in step.",
         "security": [
           {
             "SessionAuth": []
@@ -82,16 +82,16 @@
         ]
       }
     },
-    "/api/v1/lists/{list_id}": {
+    "/api/v1/areas/{area_id}": {
       "get": {
-        "operationId": "lists_api_v1_list_detail",
-        "summary": "List Detail",
+        "operationId": "lists_api_v1_area_detail",
+        "summary": "Area Detail",
         "parameters": [
           {
             "in": "path",
-            "name": "list_id",
+            "name": "area_id",
             "schema": {
-              "title": "List Id",
+              "title": "Area Id",
               "type": "integer"
             },
             "required": true
@@ -103,7 +103,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ListDetailOut"
+                  "$ref": "#/components/schemas/AreaDetailOut"
                 }
               }
             }
@@ -116,14 +116,14 @@
         ]
       },
       "patch": {
-        "operationId": "lists_api_v1_rename_list",
-        "summary": "Rename List",
+        "operationId": "lists_api_v1_rename_area",
+        "summary": "Rename Area",
         "parameters": [
           {
             "in": "path",
-            "name": "list_id",
+            "name": "area_id",
             "schema": {
-              "title": "List Id",
+              "title": "Area Id",
               "type": "integer"
             },
             "required": true
@@ -135,7 +135,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ListRefOut"
+                  "$ref": "#/components/schemas/AreaRefOut"
                 }
               }
             }
@@ -145,7 +145,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ListRenameIn"
+                "$ref": "#/components/schemas/AreaRenameIn"
               }
             }
           },
@@ -158,14 +158,14 @@
         ]
       },
       "delete": {
-        "operationId": "lists_api_v1_delete_list",
-        "summary": "Delete List",
+        "operationId": "lists_api_v1_delete_area",
+        "summary": "Delete Area",
         "parameters": [
           {
             "in": "path",
-            "name": "list_id",
+            "name": "area_id",
             "schema": {
-              "title": "List Id",
+              "title": "Area Id",
               "type": "integer"
             },
             "required": true
@@ -1018,7 +1018,7 @@
         "title": "MeOut",
         "type": "object"
       },
-      "NavListOut": {
+      "NavAreaOut": {
         "properties": {
           "id": {
             "title": "Id",
@@ -1058,16 +1058,16 @@
           "overdue_count",
           "color_key"
         ],
-        "title": "NavListOut",
+        "title": "NavAreaOut",
         "type": "object"
       },
       "NavOut": {
         "properties": {
-          "lists": {
+          "areas": {
             "items": {
-              "$ref": "#/components/schemas/NavListOut"
+              "$ref": "#/components/schemas/NavAreaOut"
             },
-            "title": "Lists",
+            "title": "Areas",
             "type": "array"
           },
           "archived_count": {
@@ -1096,7 +1096,7 @@
           }
         },
         "required": [
-          "lists",
+          "areas",
           "archived_count",
           "inbox_count",
           "settings_url",
@@ -1107,37 +1107,7 @@
         "title": "NavOut",
         "type": "object"
       },
-      "AgendaBucketOut": {
-        "properties": {
-          "key": {
-            "enum": [
-              "overdue",
-              "today",
-              "week",
-              "later",
-              "someday"
-            ],
-            "title": "Key",
-            "type": "string"
-          },
-          "label": {
-            "title": "Label",
-            "type": "string"
-          },
-          "collapsed": {
-            "title": "Collapsed",
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "key",
-          "label",
-          "collapsed"
-        ],
-        "title": "AgendaBucketOut",
-        "type": "object"
-      },
-      "AgendaListSummaryOut": {
+      "AgendaAreaSummaryOut": {
         "properties": {
           "id": {
             "title": "Id",
@@ -1187,7 +1157,37 @@
           "overdue_count",
           "color_key"
         ],
-        "title": "AgendaListSummaryOut",
+        "title": "AgendaAreaSummaryOut",
+        "type": "object"
+      },
+      "AgendaBucketOut": {
+        "properties": {
+          "key": {
+            "enum": [
+              "overdue",
+              "today",
+              "week",
+              "later",
+              "someday"
+            ],
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "collapsed": {
+            "title": "Collapsed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "collapsed"
+        ],
+        "title": "AgendaBucketOut",
         "type": "object"
       },
       "AgendaOut": {
@@ -1208,8 +1208,8 @@
             "title": "Archived Count",
             "type": "integer"
           },
-          "new_list_url": {
-            "title": "New List Url",
+          "new_area_url": {
+            "title": "New Area Url",
             "type": "string"
           },
           "settings_url": {
@@ -1241,11 +1241,11 @@
             "title": "Completed Today",
             "type": "array"
           },
-          "lists": {
+          "areas": {
             "items": {
-              "$ref": "#/components/schemas/AgendaListSummaryOut"
+              "$ref": "#/components/schemas/AgendaAreaSummaryOut"
             },
-            "title": "Lists",
+            "title": "Areas",
             "type": "array"
           }
         },
@@ -1254,13 +1254,13 @@
           "username",
           "archive_url",
           "archived_count",
-          "new_list_url",
+          "new_area_url",
           "settings_url",
           "daily_digest",
           "buckets",
           "items",
           "completed_today",
-          "lists"
+          "areas"
         ],
         "title": "AgendaOut",
         "type": "object"
@@ -1350,8 +1350,8 @@
             "title": "Notes",
             "type": "string"
           },
-          "list_id": {
-            "title": "List Id",
+          "area_id": {
+            "title": "Area Id",
             "type": "integer"
           },
           "url": {
@@ -1376,17 +1376,17 @@
           "tags",
           "recurrence",
           "notes",
-          "list_id",
+          "area_id",
           "url",
           "edit_url"
         ],
         "title": "TaskOut",
         "type": "object"
       },
-      "ListDetailOut": {
+      "AreaDetailOut": {
         "properties": {
-          "list": {
-            "$ref": "#/components/schemas/ListRefOut"
+          "area": {
+            "$ref": "#/components/schemas/AreaRefOut"
           },
           "items": {
             "items": {
@@ -1405,15 +1405,15 @@
           }
         },
         "required": [
-          "list",
+          "area",
           "items",
           "archived_count",
           "archive_url"
         ],
-        "title": "ListDetailOut",
+        "title": "AreaDetailOut",
         "type": "object"
       },
-      "ListRefOut": {
+      "AreaRefOut": {
         "properties": {
           "id": {
             "title": "Id",
@@ -1438,10 +1438,10 @@
           "create_item_url",
           "reorder_url"
         ],
-        "title": "ListRefOut",
+        "title": "AreaRefOut",
         "type": "object"
       },
-      "ListRenameIn": {
+      "AreaRenameIn": {
         "properties": {
           "title": {
             "title": "Title",
@@ -1451,7 +1451,7 @@
         "required": [
           "title"
         ],
-        "title": "ListRenameIn",
+        "title": "AreaRenameIn",
         "type": "object"
       },
       "ChecklistStepOut": {
@@ -1514,41 +1514,7 @@
         "title": "ChecklistStepOut",
         "type": "object"
       },
-      "TaskDetailOut": {
-        "properties": {
-          "task": {
-            "$ref": "#/components/schemas/TaskOut"
-          },
-          "list": {
-            "$ref": "#/components/schemas/TaskListSummaryOut"
-          },
-          "checklist_steps": {
-            "items": {
-              "$ref": "#/components/schemas/ChecklistStepOut"
-            },
-            "title": "Checklist Steps",
-            "type": "array"
-          },
-          "create_checklist_step_url": {
-            "title": "Create Checklist Step Url",
-            "type": "string"
-          },
-          "reorder_checklist_steps_url": {
-            "title": "Reorder Checklist Steps Url",
-            "type": "string"
-          }
-        },
-        "required": [
-          "task",
-          "list",
-          "checklist_steps",
-          "create_checklist_step_url",
-          "reorder_checklist_steps_url"
-        ],
-        "title": "TaskDetailOut",
-        "type": "object"
-      },
-      "TaskListSummaryOut": {
+      "TaskAreaSummaryOut": {
         "properties": {
           "id": {
             "title": "Id",
@@ -1568,7 +1534,41 @@
           "title",
           "url"
         ],
-        "title": "TaskListSummaryOut",
+        "title": "TaskAreaSummaryOut",
+        "type": "object"
+      },
+      "TaskDetailOut": {
+        "properties": {
+          "task": {
+            "$ref": "#/components/schemas/TaskOut"
+          },
+          "area": {
+            "$ref": "#/components/schemas/TaskAreaSummaryOut"
+          },
+          "checklist_steps": {
+            "items": {
+              "$ref": "#/components/schemas/ChecklistStepOut"
+            },
+            "title": "Checklist Steps",
+            "type": "array"
+          },
+          "create_checklist_step_url": {
+            "title": "Create Checklist Step Url",
+            "type": "string"
+          },
+          "reorder_checklist_steps_url": {
+            "title": "Reorder Checklist Steps Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "task",
+          "area",
+          "checklist_steps",
+          "create_checklist_step_url",
+          "reorder_checklist_steps_url"
+        ],
+        "title": "TaskDetailOut",
         "type": "object"
       },
       "ArchiveOut": {
@@ -1580,17 +1580,17 @@
             "title": "Items",
             "type": "array"
           },
-          "lists": {
+          "areas": {
             "items": {
-              "$ref": "#/components/schemas/TaskListSummaryOut"
+              "$ref": "#/components/schemas/TaskAreaSummaryOut"
             },
-            "title": "Lists",
+            "title": "Areas",
             "type": "array"
           }
         },
         "required": [
           "items",
-          "lists"
+          "areas"
         ],
         "title": "ArchiveOut",
         "type": "object"
@@ -1842,8 +1842,8 @@
             "title": "Notes",
             "type": "string"
           },
-          "list_id": {
-            "title": "List Id",
+          "area_id": {
+            "title": "Area Id",
             "type": "integer"
           },
           "url": {
@@ -1872,7 +1872,7 @@
           "tags",
           "recurrence",
           "notes",
-          "list_id",
+          "area_id",
           "url",
           "edit_url",
           "age_in_days"
@@ -2246,8 +2246,8 @@
             "title": "Completed On",
             "type": "string"
           },
-          "list_id": {
-            "title": "List Id",
+          "area_id": {
+            "title": "Area Id",
             "type": "integer"
           }
         },
@@ -2255,7 +2255,7 @@
           "task_id",
           "text",
           "completed_on",
-          "list_id"
+          "area_id"
         ],
         "title": "CompletedTaskOut",
         "type": "object"

@@ -128,7 +128,7 @@ export function TaskWorkspace({ initialData }: Props) {
     setBusyId("new");
     try {
       const created = await createTask(
-        initialData.list.create_item_url,
+        initialData.area.create_item_url,
         newText,
         newDueDate || null,
         parseTagInput(newTags),
@@ -249,7 +249,7 @@ export function TaskWorkspace({ initialData }: Props) {
       // The server requires the complete set, including any task the current
       // filter or search is hiding -- not just what's on screen.
       await reorderTasks(
-        initialData.list.reorder_url,
+        initialData.area.reorder_url,
         nextItems.map((item) => item.id),
       );
     } catch (caught) {
@@ -393,7 +393,7 @@ export function TaskWorkspace({ initialData }: Props) {
             type="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search this list"
+            placeholder="Search this area"
           />
         </label>
       </div>
@@ -614,7 +614,7 @@ export function TaskWorkspace({ initialData }: Props) {
         {visibleItems.length === 0 && (
           <div className={styles.empty}>
             {items.length === 0
-              ? "This list is ready for its first item."
+              ? "This area is ready for its first item."
               : "No tasks match this view."}
           </div>
         )}

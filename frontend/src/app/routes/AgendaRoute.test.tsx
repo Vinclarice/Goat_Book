@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router";
 
 import { AgendaRoute } from "./AgendaRoute";
-import { agendaData, agendaList, task } from "../../test/fixtures";
+import { agendaData, agendaArea, task } from "../../test/fixtures";
 
 function jsonResponse(data: object, ok = true) {
   const body = JSON.stringify(data);
@@ -47,7 +47,7 @@ describe("AgendaRoute", () => {
       jsonResponse(
         agendaData({
           items: [task({ text: "Ship the migration" })],
-          lists: [agendaList()],
+          areas: [agendaArea()],
         }),
       ),
     );

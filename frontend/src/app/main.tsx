@@ -9,7 +9,7 @@ import { AppRoutes } from "./AppRoutes";
 // {data, error}), so TanStack Query can't tell a permanent 404/401 apart
 // from a transient network failure -- without this, every route's own
 // Vitest suite sets retry: false locally, but the real app would retry
-// (and hang on "Loading...") for ordinary cases like a deleted list or
+// (and hang on "Loading...") for ordinary cases like a deleted area or
 // an archived task.
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: false } },

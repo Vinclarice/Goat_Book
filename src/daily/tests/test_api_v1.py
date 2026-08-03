@@ -296,5 +296,5 @@ class DayActionItemsTest(TestCase):
 
         item = self.client.get("/api/v1/day").json()["action_items"][0]
 
-        for field in ("id", "text", "status", "due_date", "list_id", "url"):
+        for field in ("id", "text", "status", "due_date", "area_id", "url"):
             self.assertIn(field, item)

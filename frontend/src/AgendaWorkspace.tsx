@@ -108,7 +108,7 @@ function SnoozeMenu({ taskText, presets, disabled, onSelect }: SnoozeMenuProps) 
 }
 
 export function AgendaWorkspace({ initialData }: Props) {
-  const { today, lists, buckets } = initialData;
+  const { today, areas, buckets } = initialData;
 
   const [tasks, setTasks] = useState(() =>
     sortAgendaTasks(initialData.items),
@@ -125,8 +125,8 @@ export function AgendaWorkspace({ initialData }: Props) {
   const [error, setError] = useState("");
 
   const [draftText, setDraftText] = useState("");
-  const [draftList, setDraftList] = useState(() =>
-    lists.length ? String(lists[0].id) : "",
+  const [draftArea, setDraftArea] = useState(() =>
+    areas.length ? String(areas[0].id) : "",
   );
   const [draftDue, setDraftDue] = useState("");
   const [adding, setAdding] = useState(false);
@@ -148,24 +148,24 @@ export function AgendaWorkspace({ initialData }: Props) {
     return groups;
   }, [visible, buckets, today]);
 
-  const listCounts = useMemo(() => {
+  const areaCounts = useMemo(() => {
     const open = new Map<number, number>();
     const overdue = new Map<number, number>();
     for (const task of tasks) {
-      open.set(task.list_id, (open.get(task.list_id) ?? 0) + 1);
+      open.set(task.area_id, (open.get(task.area_id) ?? 0) + 1);
       if (bucketFor(task.due_date, today) === "overdue") {
-        overdue.set(task.list_id, (overdue.get(task.list_id) ?? 0) + 1);
+        overdue.set(task.area_id, (overdue.get(task.area_id) ?? 0) + 1);
       }
     }
     return { open, overdue };
   }, [tasks, today]);
 
-  // Tasks only carry a list_id -- title/url live once in `lists`, so
-  // rendering a task's list pill looks them up here instead of the
+  // Tasks only carry an area_id -- title/url live once in `areas`, so
+  // rendering a task's area pill looks them up here instead of the
   // server repeating them on every task.
-  const listById = useMemo(
-    () => new Map(lists.map((each) => [each.id, each])),
-    [lists],
+  const areaById = useMemo(
+    () => new Map(areas.map((each) => [each.id, each])),
+    [areas],
   );
 
   function notify(message: string, undo?: () => void) {
@@ -279,7 +279,7 @@ export function AgendaWorkspace({ initialData }: Props) {
   async function submitQuickAdd(event: FormEvent) {
     event.preventDefault();
     const text = draftText.trim();
-    const target = lists.find((each) => String(each.id) === draftList);
+    const target = areas.find((each) => String(each.id) === draftArea);
     if (!text || !target) return;
 
     setAdding(true);
@@ -319,10 +319,10 @@ export function AgendaWorkspace({ initialData }: Props) {
     }));
   }
 
-  function toggleList(id: number) {
+  function toggleArea(id: number) {
     setFilters((current) => ({
       ...current,
-      list: current.list === id ? null : id,
+      area: current.area === id ? null : id,
     }));
   }
 
@@ -335,7 +335,7 @@ export function AgendaWorkspace({ initialData }: Props) {
 
   function renderRow(task: Task, done = false) {
     const bucket = bucketFor(task.due_date, today);
-    const taskList = listById.get(task.list_id);
+    const taskArea = areaById.get(task.area_id);
     const rowClass = [
       "agenda-row",
       done ? "is-done" : bucket === "overdue" ? "is-overdue" : "",
@@ -362,14 +362,14 @@ export function AgendaWorkspace({ initialData }: Props) {
         <div className="agenda-body">
           <span className="agenda-text">{task.text}</span>
           <div className="agenda-meta">
-            {taskList && (
-              <a className="pill pill-list" href={taskList.url}>
+            {taskArea && (
+              <a className="pill pill-list" href={taskArea.url}>
                 <span
                   className="dot"
                   aria-hidden="true"
-                  style={{ background: colorForKey(taskList.color_key) }}
+                  style={{ background: colorForKey(taskArea.color_key) }}
                 />
-                {taskList.title}
+                {taskArea.title}
               </a>
             )}
 
@@ -439,7 +439,7 @@ export function AgendaWorkspace({ initialData }: Props) {
   }
 
   const filtering = hasFilters(filters);
-  const activeList = lists.find((each) => each.id === filters.list);
+  const activeArea = areas.find((each) => each.id === filters.area);
 
   return (
     <>
@@ -500,22 +500,22 @@ export function AgendaWorkspace({ initialData }: Props) {
         </div>
       </header>
 
-      {/* List filtering used to live in the sidebar, where clicking a list
+      {/* Area filtering used to live in the sidebar, where clicking an area
           filtered rather than navigated. The side nav now navigates, so the
           filter has to exist somewhere -- as chips, here, alongside the
           scope filters it belongs with. */}
-      {lists.length > 1 && (
+      {areas.length > 1 && (
         <div className="agenda-list-chips">
-          {lists.map((each) => {
-            const overdue = listCounts.overdue.get(each.id) ?? 0;
+          {areas.map((each) => {
+            const overdue = areaCounts.overdue.get(each.id) ?? 0;
             return (
               <button
                 key={each.id}
                 type="button"
-                className={`tag-chip${filters.list === each.id ? " is-active" : ""}`}
-                aria-pressed={filters.list === each.id}
+                className={`tag-chip${filters.area === each.id ? " is-active" : ""}`}
+                aria-pressed={filters.area === each.id}
                 aria-label={`Show only ${each.title}`}
-                onClick={() => toggleList(each.id)}
+                onClick={() => toggleArea(each.id)}
               >
                 <span
                   className="dot"
@@ -524,7 +524,7 @@ export function AgendaWorkspace({ initialData }: Props) {
                 />
                 {each.title}
                 <span className={overdue ? "n warn" : "n"}>
-                  {listCounts.open.get(each.id) ?? 0}
+                  {areaCounts.open.get(each.id) ?? 0}
                 </span>
               </button>
             );
@@ -545,16 +545,16 @@ export function AgendaWorkspace({ initialData }: Props) {
           onChange={(event) => setDraftText(event.target.value)}
           autoComplete="off"
         />
-        <label className="visually-hidden" htmlFor="agenda-add-list">
-          List
+        <label className="visually-hidden" htmlFor="agenda-add-area">
+          Area
         </label>
         <select
-          id="agenda-add-list"
+          id="agenda-add-area"
           className="quick-add-select"
-          value={draftList}
-          onChange={(event) => setDraftList(event.target.value)}
+          value={draftArea}
+          onChange={(event) => setDraftArea(event.target.value)}
         >
-          {lists.map((each) => (
+          {areas.map((each) => (
             <option key={each.id} value={each.id}>
               {each.title}
             </option>
@@ -573,7 +573,7 @@ export function AgendaWorkspace({ initialData }: Props) {
         <button
           className="btn btn-primary"
           type="submit"
-          disabled={adding || !draftText.trim() || lists.length === 0}
+          disabled={adding || !draftText.trim() || areas.length === 0}
         >
           {adding ? "Adding…" : "Add"}
         </button>
@@ -589,7 +589,7 @@ export function AgendaWorkspace({ initialData }: Props) {
             Showing{" "}
             {[
               filters.scope,
-              activeList?.title,
+              activeArea?.title,
               filters.tag ? `#${filters.tag}` : null,
             ]
               .filter(Boolean)
@@ -623,9 +623,9 @@ export function AgendaWorkspace({ initialData }: Props) {
                     </button>
                   </p>
                 </>
-              ) : lists.length === 0 ? (
+              ) : areas.length === 0 ? (
                 <>
-                  <h3>Start your first list.</h3>
+                  <h3>Start your first area.</h3>
                   <p>Create one on the right, then add tasks to it.</p>
                 </>
               ) : (
@@ -694,20 +694,20 @@ export function AgendaWorkspace({ initialData }: Props) {
 
         <aside className="agenda-sidebar">
           <div className="side-card">
-            {/* Lists moved to the persistent side nav, which navigates
+            {/* Areas moved to the persistent side nav, which navigates
                 rather than filters (see design/side-nav-mockup.html). The
-                "filter the agenda to one list" job it used to do is now a
+                "filter the agenda to one area" job it used to do is now a
                 chip in the header, so this card keeps only what is neither
                 navigation nor filtering. */}
-            <h3>New list</h3>
+            <h3>New area</h3>
             <details className="new-list-details">
-              <summary>+ New list</summary>
-              {/* A plain Django POST: creating a list navigates to the new
-                  list anyway, so there's nothing for the SPA layer to do. */}
+              <summary>+ New area</summary>
+              {/* A plain Django POST: creating an area navigates to the new
+                  area anyway, so there's nothing for the SPA layer to do. */}
               <form
                 className="new-list-form"
                 method="post"
-                action={initialData.new_list_url}
+                action={initialData.new_area_url}
               >
                 <input
                   type="hidden"
@@ -715,13 +715,13 @@ export function AgendaWorkspace({ initialData }: Props) {
                   value={getCookie("csrftoken")}
                 />
                 <label className="visually-hidden" htmlFor="agenda-new-title">
-                  List name
+                  Area name
                 </label>
                 <input
                   id="agenda-new-title"
                   className="form-control"
                   name="title"
-                  placeholder="List name"
+                  placeholder="Area name"
                   maxLength={100}
                 />
                 <label className="visually-hidden" htmlFor="agenda-new-text">
@@ -735,7 +735,7 @@ export function AgendaWorkspace({ initialData }: Props) {
                   required
                 />
                 <button className="btn btn-primary btn-sm" type="submit">
-                  Create list
+                  Create area
                 </button>
               </form>
             </details>
@@ -743,7 +743,7 @@ export function AgendaWorkspace({ initialData }: Props) {
 
           {/* A direct entry point to Capture from the main page itself,
               not just the persistent side nav -- the inbox is where
-              anything gets in, and Ideas is the "second brain" list, so
+              anything gets in, and Ideas is the "second brain" shelf, so
               neither should be reachable only through a nav element that
               could fail to render. Plain hrefs, same fallback pattern
               SideNav.tsx already uses, since AgendaOut doesn't carry

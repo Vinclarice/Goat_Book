@@ -84,14 +84,14 @@ class NewListTest(TestCase):
     def test_requires_login(self):
         self.client.logout()
 
-        response = self.client.post("/lists/new", data={"text": "Private item"})
+        response = self.client.post("/areas/new", data={"text": "Private item"})
 
-        self.assertRedirects(response, "/accounts/login/?next=/lists/new")
+        self.assertRedirects(response, "/accounts/login/?next=/areas/new")
         self.assertEqual(Item.objects.count(), 0)
 
     def test_saves_item_and_owner_then_redirects(self):
         response = self.client.post(
-            "/lists/new",
+            "/areas/new",
             data={"title": "Programming", "text": "A new list item"},
         )
 
@@ -102,19 +102,19 @@ class NewListTest(TestCase):
         self.assertEqual(new_item.text, "A new list item")
         self.assertEqual(new_item.list, new_list)
         self.assertRedirects(
-            response, f"/lists/{new_list.id}/", target_status_code=302,
+            response, f"/areas/{new_list.id}/", target_status_code=302,
         )
 
     def test_uses_first_item_as_name_when_name_is_omitted(self):
         self.client.post(
-            "/lists/new",
+            "/areas/new",
             data={"title": "", "text": "Plan the weekend"},
         )
 
         self.assertEqual(List.objects.get().title, "Plan the weekend")
 
     def test_invalid_input_renders_the_new_list_form_without_saving(self):
-        response = self.client.post("/lists/new", data={"text": ""})
+        response = self.client.post("/areas/new", data={"text": ""})
 
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "new_list_form.html")
@@ -141,20 +141,20 @@ class ListViewTest(TestCase):
         list_ = self.create_list()
         self.client.logout()
 
-        response = self.client.get(f"/lists/{list_.id}/")
+        response = self.client.get(f"/areas/{list_.id}/")
 
         self.assertRedirects(
             response,
-            f"/accounts/login/?next=/lists/{list_.id}/",
+            f"/accounts/login/?next=/areas/{list_.id}/",
         )
 
     def test_redirects_to_the_spa_list_route(self):
         list_ = self.create_list()
 
-        response = self.client.get(f"/lists/{list_.id}/")
+        response = self.client.get(f"/areas/{list_.id}/")
 
         self.assertRedirects(
-            response, f"/app/lists/{list_.id}", fetch_redirect_response=False,
+            response, f"/app/areas/{list_.id}", fetch_redirect_response=False,
         )
 
 
@@ -172,15 +172,15 @@ class TaskDetailRedirectTest(TestCase):
     def test_requires_login(self):
         self.client.logout()
 
-        response = self.client.get(f"/lists/items/{self.item.id}/edit")
+        response = self.client.get(f"/areas/items/{self.item.id}/edit")
 
         self.assertRedirects(
             response,
-            f"/accounts/login/?next=/lists/items/{self.item.id}/edit",
+            f"/accounts/login/?next=/areas/items/{self.item.id}/edit",
         )
 
     def test_redirects_to_the_spa_task_route(self):
-        response = self.client.get(f"/lists/items/{self.item.id}/edit")
+        response = self.client.get(f"/areas/items/{self.item.id}/edit")
 
         self.assertRedirects(
             response, f"/app/tasks/{self.item.id}", fetch_redirect_response=False,

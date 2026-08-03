@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Navigate, Route, Routes } from "react-router";
+import { Navigate, Route, Routes, useParams } from "react-router";
 
 import { apiV1 } from "../api/client";
 import { AppLayout } from "./AppLayout";
@@ -7,7 +7,7 @@ import { AgendaRoute } from "./routes/AgendaRoute";
 import { ArchiveRoute } from "./routes/ArchiveRoute";
 import { DayRoute } from "./routes/DayRoute";
 import { DevUiGallery } from "./routes/DevUiGallery";
-import { ListRoute } from "./routes/ListRoute";
+import { AreaRoute } from "./routes/AreaRoute";
 import { NotFoundRoute } from "./routes/NotFoundRoute";
 import { PreferencesRoute } from "./routes/PreferencesRoute";
 import { ReviewRoute } from "./routes/ReviewRoute";
@@ -46,6 +46,20 @@ function LandingRedirect() {
 }
 
 /**
+ * Sends /app/lists/3 to /app/areas/3.
+ *
+ * Release D slice 5 renamed a List to an Area everywhere a person reads
+ * one, the route path included. That is a deliberate break of an existing
+ * URL, so the old spelling keeps working rather than 404ing on someone's
+ * bookmark. `replace` so the dead path does not sit in history and reappear
+ * on the back button.
+ */
+function LegacyListRedirect() {
+  const { areaId } = useParams();
+  return <Navigate to={`/areas/${areaId}`} replace />;
+}
+
+/**
  * The SPA's route table, kept separate from main.tsx so it can be rendered
  * inside a MemoryRouter by tests. main.tsx mounts to a real DOM node and
  * runs at import time, which made the table itself untestable -- and the
@@ -77,7 +91,14 @@ export function AppRoutes() {
             a Monday is about the week before. */}
         <Route path="/review" element={<ReviewRoute />} />
         <Route path="/review/:week" element={<ReviewRoute />} />
-        <Route path="/lists/:listId" element={<ListRoute />} />
+        <Route path="/areas/:areaId" element={<AreaRoute />} />
+        {/* An Area used to be a List. Kept so a bookmark from before
+            Release D slice 5 still lands on the page it named, rather
+            than on the not-found route. */}
+        <Route
+          path="/lists/:areaId"
+          element={<LegacyListRedirect />}
+        />
         <Route path="/tasks/:taskId" element={<TaskDetailRoute />} />
         <Route path="/archive" element={<ArchiveRoute />} />
         <Route path="/preferences" element={<PreferencesRoute />} />

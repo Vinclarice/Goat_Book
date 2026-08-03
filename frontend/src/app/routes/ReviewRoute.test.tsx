@@ -65,7 +65,7 @@ function completedTask(overrides: Record<string, unknown> = {}) {
     task_id: 1,
     text: "Pay rent",
     completed_on: "2026-07-29",
-    list_id: 3,
+    area_id: 3,
     ...overrides,
   };
 }

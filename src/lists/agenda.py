@@ -268,7 +268,7 @@ def workspace_data_for(user, *, today, all_open, completed_today, lists, archive
         "username": user.username,
         "archive_url": reverse("archive"),
         "archived_count": archived_count,
-        "new_list_url": reverse("new_list"),
+        "new_area_url": reverse("new_list"),
         "settings_url": reverse("account_settings"),
         "daily_digest": user.daily_digest,
         "buckets": [
@@ -281,7 +281,7 @@ def workspace_data_for(user, *, today, all_open, completed_today, lists, archive
         ],
         "items": [serialize_item(item) for item in all_open],
         "completed_today": [serialize_item(item) for item in completed_today],
-        "lists": [
+        "areas": [
             {
                 "id": each.id,
                 "title": each.title,

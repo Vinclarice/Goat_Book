@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router";
 
 import { ArchiveRoute } from "./ArchiveRoute";
-import { archiveData, archiveList, task } from "../../test/fixtures";
+import { archiveData, archiveArea, task } from "../../test/fixtures";
 
 function jsonResponse(data: object, ok = true) {
   const body = JSON.stringify(data);
@@ -47,7 +47,7 @@ describe("ArchiveRoute", () => {
       jsonResponse(
         archiveData({
           items: [task({ text: "Old task", status: "archived" })],
-          lists: [archiveList()],
+          areas: [archiveArea()],
         }),
       ),
     );

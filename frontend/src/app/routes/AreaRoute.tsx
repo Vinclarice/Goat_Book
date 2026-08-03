@@ -20,30 +20,30 @@ import { RequestFailed, statusOf } from "../../api/failure";
 import { RouteFailure } from "./RouteFailure";
 import { TaskWorkspace } from "../../TaskWorkspace";
 
-export function ListRoute() {
-  const { listId } = useParams();
-  const id = Number(listId);
+export function AreaRoute() {
+  const { areaId } = useParams();
+  const id = Number(areaId);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [title, setTitle] = useState("");
   const [renameError, setRenameError] = useState<string | null>(null);
 
   const { data, error: loadError, isPending, refetch } = useQuery({
-    queryKey: ["list", id],
+    queryKey: ["area", id],
     queryFn: async () => {
-      const { data, response } = await apiV1.GET("/api/v1/lists/{list_id}", {
-        params: { path: { list_id: id } },
+      const { data, response } = await apiV1.GET("/api/v1/areas/{area_id}", {
+        params: { path: { area_id: id } },
       });
       if (!response.ok || !data) throw new RequestFailed(response.status);
-      setTitle(data.list.title);
+      setTitle(data.area.title);
       return data;
     },
   });
 
   const renameMutation = useMutation({
     mutationFn: async (newTitle: string) => {
-      const { data, error } = await apiV1.PATCH("/api/v1/lists/{list_id}", {
-        params: { path: { list_id: id } },
+      const { data, error } = await apiV1.PATCH("/api/v1/areas/{area_id}", {
+        params: { path: { area_id: id } },
         body: { title: newTitle },
       });
       if (error) throw new Error(typeof error === "string" ? error : "Rename failed.");
@@ -52,8 +52,8 @@ export function ListRoute() {
     onSuccess: (updated) => {
       setRenameError(null);
       setTitle(updated.title);
-      queryClient.setQueryData(["list", id], (current: typeof data) =>
-        current ? { ...current, list: { ...current.list, title: updated.title } } : current,
+      queryClient.setQueryData(["area", id], (current: typeof data) =>
+        current ? { ...current, area: { ...current.area, title: updated.title } } : current,
       );
     },
     onError: (mutationError: Error) => setRenameError(mutationError.message),
@@ -61,8 +61,8 @@ export function ListRoute() {
 
   const deleteMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await apiV1.DELETE("/api/v1/lists/{list_id}", {
-        params: { path: { list_id: id } },
+      const { error } = await apiV1.DELETE("/api/v1/areas/{area_id}", {
+        params: { path: { area_id: id } },
       });
       if (error) throw error;
     },
@@ -85,12 +85,12 @@ export function ListRoute() {
 
       <div className="flex items-start justify-between gap-4">
         <form onSubmit={handleRename} className="flex-1 flex flex-col gap-2">
-          <label htmlFor="list-title" className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
-            List name
+          <label htmlFor="area-title" className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+            Area name
           </label>
           <div className="flex gap-2">
             <input
-              id="list-title"
+              id="area-title"
               value={title}
               onChange={(event) => setTitle(event.target.value)}
               maxLength={100}
@@ -117,21 +117,21 @@ export function ListRoute() {
       <AlertDialog>
         <AlertDialogTrigger asChild>
           <Button variant="destructive" size="sm">
-            Delete list
+            Delete area
           </Button>
         </AlertDialogTrigger>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete this list?</AlertDialogTitle>
+            <AlertDialogTitle>Delete this area?</AlertDialogTitle>
             <AlertDialogDescription>
-              <strong>{data.list.title}</strong> and all of its tasks will be permanently
+              <strong>{data.area.title}</strong> and all of its tasks will be permanently
               removed. This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Keep list</AlertDialogCancel>
+            <AlertDialogCancel>Keep area</AlertDialogCancel>
             <AlertDialogAction onClick={() => deleteMutation.mutate()}>
-              Delete list permanently
+              Delete area permanently
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

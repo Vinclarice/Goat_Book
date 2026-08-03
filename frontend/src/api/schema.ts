@@ -33,7 +33,7 @@ export interface paths {
          * @description Everything the persistent side nav needs, on every page.
          *
          *     A single endpoint rather than three payloads each growing the same
-         *     fields: the agenda already carried list summaries, but the list page and
+         *     fields: the agenda already carried area summaries, but the area page and
          *     archive didn't, and duplicating them into both schemas would mean three
          *     places to keep in step.
          */
@@ -63,23 +63,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/lists/{list_id}": {
+    "/api/v1/areas/{area_id}": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** List Detail */
-        get: operations["lists_api_v1_list_detail"];
+        /** Area Detail */
+        get: operations["lists_api_v1_area_detail"];
         put?: never;
         post?: never;
-        /** Delete List */
-        delete: operations["lists_api_v1_delete_list"];
+        /** Delete Area */
+        delete: operations["lists_api_v1_delete_area"];
         options?: never;
         head?: never;
-        /** Rename List */
-        patch: operations["lists_api_v1_rename_list"];
+        /** Rename Area */
+        patch: operations["lists_api_v1_rename_area"];
         trace?: never;
     };
     "/api/v1/tasks/{item_id}": {
@@ -531,8 +531,8 @@ export interface components {
             /** Email */
             email: string;
         };
-        /** NavListOut */
-        NavListOut: {
+        /** NavAreaOut */
+        NavAreaOut: {
             /** Id */
             id: number;
             /** Title */
@@ -549,8 +549,8 @@ export interface components {
         };
         /** NavOut */
         NavOut: {
-            /** Lists */
-            lists: components["schemas"]["NavListOut"][];
+            /** Areas */
+            areas: components["schemas"]["NavAreaOut"][];
             /** Archived Count */
             archived_count: number;
             /** Inbox Count */
@@ -564,20 +564,8 @@ export interface components {
             /** Landing Surface */
             landing_surface: string;
         };
-        /** AgendaBucketOut */
-        AgendaBucketOut: {
-            /**
-             * Key
-             * @enum {string}
-             */
-            key: "overdue" | "today" | "week" | "later" | "someday";
-            /** Label */
-            label: string;
-            /** Collapsed */
-            collapsed: boolean;
-        };
-        /** AgendaListSummaryOut */
-        AgendaListSummaryOut: {
+        /** AgendaAreaSummaryOut */
+        AgendaAreaSummaryOut: {
             /** Id */
             id: number;
             /** Title */
@@ -596,6 +584,18 @@ export interface components {
              */
             color_key: "sky" | "sage" | "amber" | "lilac" | "coral" | "azure" | "blush" | "straw";
         };
+        /** AgendaBucketOut */
+        AgendaBucketOut: {
+            /**
+             * Key
+             * @enum {string}
+             */
+            key: "overdue" | "today" | "week" | "later" | "someday";
+            /** Label */
+            label: string;
+            /** Collapsed */
+            collapsed: boolean;
+        };
         /** AgendaOut */
         AgendaOut: {
             /** Today */
@@ -606,8 +606,8 @@ export interface components {
             archive_url: string;
             /** Archived Count */
             archived_count: number;
-            /** New List Url */
-            new_list_url: string;
+            /** New Area Url */
+            new_area_url: string;
             /** Settings Url */
             settings_url: string;
             /** Daily Digest */
@@ -618,8 +618,8 @@ export interface components {
             items: components["schemas"]["TaskOut"][];
             /** Completed Today */
             completed_today: components["schemas"]["TaskOut"][];
-            /** Lists */
-            lists: components["schemas"]["AgendaListSummaryOut"][];
+            /** Areas */
+            areas: components["schemas"]["AgendaAreaSummaryOut"][];
         };
         /** TaskOut */
         TaskOut: {
@@ -653,16 +653,16 @@ export interface components {
             recurrence: "none" | "daily" | "weekly" | "monthly";
             /** Notes */
             notes: string;
-            /** List Id */
-            list_id: number;
+            /** Area Id */
+            area_id: number;
             /** Url */
             url: string;
             /** Edit Url */
             edit_url: string;
         };
-        /** ListDetailOut */
-        ListDetailOut: {
-            list: components["schemas"]["ListRefOut"];
+        /** AreaDetailOut */
+        AreaDetailOut: {
+            area: components["schemas"]["AreaRefOut"];
             /** Items */
             items: components["schemas"]["TaskOut"][];
             /** Archived Count */
@@ -670,8 +670,8 @@ export interface components {
             /** Archive Url */
             archive_url: string;
         };
-        /** ListRefOut */
-        ListRefOut: {
+        /** AreaRefOut */
+        AreaRefOut: {
             /** Id */
             id: number;
             /** Title */
@@ -681,8 +681,8 @@ export interface components {
             /** Reorder Url */
             reorder_url: string;
         };
-        /** ListRenameIn */
-        ListRenameIn: {
+        /** AreaRenameIn */
+        AreaRenameIn: {
             /** Title */
             title: string;
         };
@@ -707,19 +707,8 @@ export interface components {
             /** Promote Url */
             promote_url: string;
         };
-        /** TaskDetailOut */
-        TaskDetailOut: {
-            task: components["schemas"]["TaskOut"];
-            list: components["schemas"]["TaskListSummaryOut"];
-            /** Checklist Steps */
-            checklist_steps: components["schemas"]["ChecklistStepOut"][];
-            /** Create Checklist Step Url */
-            create_checklist_step_url: string;
-            /** Reorder Checklist Steps Url */
-            reorder_checklist_steps_url: string;
-        };
-        /** TaskListSummaryOut */
-        TaskListSummaryOut: {
+        /** TaskAreaSummaryOut */
+        TaskAreaSummaryOut: {
             /** Id */
             id: number;
             /** Title */
@@ -727,12 +716,23 @@ export interface components {
             /** Url */
             url: string;
         };
+        /** TaskDetailOut */
+        TaskDetailOut: {
+            task: components["schemas"]["TaskOut"];
+            area: components["schemas"]["TaskAreaSummaryOut"];
+            /** Checklist Steps */
+            checklist_steps: components["schemas"]["ChecklistStepOut"][];
+            /** Create Checklist Step Url */
+            create_checklist_step_url: string;
+            /** Reorder Checklist Steps Url */
+            reorder_checklist_steps_url: string;
+        };
         /** ArchiveOut */
         ArchiveOut: {
             /** Items */
             items: components["schemas"]["TaskOut"][];
-            /** Lists */
-            lists: components["schemas"]["TaskListSummaryOut"][];
+            /** Areas */
+            areas: components["schemas"]["TaskAreaSummaryOut"][];
         };
         /** TimeZonesOut */
         TimeZonesOut: {
@@ -856,8 +856,8 @@ export interface components {
             recurrence: "none" | "daily" | "weekly" | "monthly";
             /** Notes */
             notes: string;
-            /** List Id */
-            list_id: number;
+            /** Area Id */
+            area_id: number;
             /** Url */
             url: string;
             /** Edit Url */
@@ -1036,8 +1036,8 @@ export interface components {
              * Format: date
              */
             completed_on: string;
-            /** List Id */
-            list_id: number;
+            /** Area Id */
+            area_id: number;
         };
         /**
          * HabitOut
@@ -1368,12 +1368,12 @@ export interface operations {
             };
         };
     };
-    lists_api_v1_list_detail: {
+    lists_api_v1_area_detail: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                list_id: number;
+                area_id: number;
             };
             cookie?: never;
         };
@@ -1385,17 +1385,17 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ListDetailOut"];
+                    "application/json": components["schemas"]["AreaDetailOut"];
                 };
             };
         };
     };
-    lists_api_v1_delete_list: {
+    lists_api_v1_delete_area: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                list_id: number;
+                area_id: number;
             };
             cookie?: never;
         };
@@ -1410,18 +1410,18 @@ export interface operations {
             };
         };
     };
-    lists_api_v1_rename_list: {
+    lists_api_v1_rename_area: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                list_id: number;
+                area_id: number;
             };
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ListRenameIn"];
+                "application/json": components["schemas"]["AreaRenameIn"];
             };
         };
         responses: {
@@ -1431,7 +1431,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ListRefOut"];
+                    "application/json": components["schemas"]["AreaRefOut"];
                 };
             };
         };

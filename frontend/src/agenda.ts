@@ -1,15 +1,17 @@
-import type { AgendaBucketKey, ListColorKey, Task } from "./types";
+import type { AgendaBucketKey, AreaColorKey, Task } from "./types";
 
 /** Mirrors lists.agenda.WEEK_HORIZON_DAYS. */
 export const WEEK_HORIZON_DAYS = 7;
 
 /**
- * The server assigns each list a semantic color_key (see the List-Color
- * Contract) -- this just maps that key to the CSS token holding its
- * actual value, so light/dark theming and future color changes are
- * handled entirely by tailwind.css, not here.
+ * The server assigns each area a semantic color_key (see the List-Color
+ * Contract, named before Release D renamed a List to an Area) -- this just
+ * maps that key to the CSS token holding its actual value, so light/dark
+ * theming and future color changes are handled entirely by tailwind.css,
+ * not here. The `--list-color-*` token names are internal to the
+ * stylesheet and stay as they are; nobody reads a CSS variable.
  */
-export function colorForKey(key: ListColorKey): string {
+export function colorForKey(key: AreaColorKey): string {
   return `var(--list-color-${key})`;
 }
 
@@ -107,18 +109,18 @@ export const SCOPES: Record<string, AgendaBucketKey[]> = {
 
 export interface AgendaFilters {
   scope: string | null;
-  list: number | null;
+  area: number | null;
   tag: string | null;
 }
 
 export const NO_FILTERS: AgendaFilters = {
   scope: null,
-  list: null,
+  area: null,
   tag: null,
 };
 
 export function hasFilters(filters: AgendaFilters): boolean {
-  return Boolean(filters.scope || filters.list !== null || filters.tag);
+  return Boolean(filters.scope || filters.area !== null || filters.tag);
 }
 
 export function applyFilters(
@@ -132,7 +134,7 @@ export function applyFilters(
         return false;
       }
     }
-    if (filters.list !== null && task.list_id !== filters.list) return false;
+    if (filters.area !== null && task.area_id !== filters.area) return false;
     if (filters.tag && !task.tags.includes(filters.tag)) return false;
     return true;
   });
@@ -143,8 +145,8 @@ export function applyFilters(
  *
  * Client-only for the same reason as SCOPES, and it carried the same false
  * claim about a `lists.agenda.summary_counts`. The server does compute
- * per-list open/overdue counts in `list_summaries`, which is a different
- * thing -- those are per list and come down in the payload; these are
+ * per-area open/overdue counts in `list_summaries`, which is a different
+ * thing -- those are per area and come down in the payload; these are
  * across the whole agenda and are pure derivation over bucketFor.
  *
  * Note `week` is cumulative on purpose: overdue and today are inside "this

@@ -3,9 +3,16 @@
 Item mutations (create/complete/reorder/tags/due-date) stay on the
 hand-rolled lists.api endpoints -- they already work and are tested, so
 a route's migration PR only moves what doesn't already have a JSON
-path. List rename/delete never had one (the Django views redirect on
+path. Area rename/delete never had one (the Django views redirect on
 success, which doesn't suit a fetch-based caller), so those are genuinely
 new here rather than moved.
+
+**Vocabulary.** This boundary says Area; the ORM says `List`. Release D
+slice 5 moved the words and nothing else, per `architecture-trajectory.md`
+§7's refusal to rename the model or the app for a cosmetic reason -- the
+same split `Item`/"task" already lives with. Python locals below still read
+`our_list`, because renaming them would be churn no client can observe.
+See `lists/tests/test_area_vocabulary.py` for the guard.
 """
 from typing import Literal
 
@@ -22,8 +29,8 @@ from lists.forms import ListTitleForm
 from lists.models import Item, List
 from lists.serializers import (
     archive_workspace_data_for,
-    list_ref_for,
-    list_workspace_data_for,
+    area_ref_for,
+    area_workspace_data_for,
     task_detail_data_for,
 )
 
@@ -32,7 +39,7 @@ router = Router()
 TaskStatus = Literal["active", "completed", "archived"]
 TaskRecurrence = Literal["none", "daily", "weekly", "monthly"]
 BucketKey = Literal["overdue", "today", "week", "later", "someday"]
-ListColorKey = Literal[
+AreaColorKey = Literal[
     "sky", "sage", "amber", "lilac", "coral", "azure", "blush", "straw"
 ]
 
@@ -62,7 +69,7 @@ class TaskOut(Schema):
     tags: list[str]
     recurrence: TaskRecurrence
     notes: str
-    list_id: int
+    area_id: int
     url: str
     edit_url: str
 
@@ -73,14 +80,14 @@ class AgendaBucketOut(Schema):
     collapsed: bool
 
 
-class AgendaListSummaryOut(Schema):
+class AgendaAreaSummaryOut(Schema):
     id: int
     title: str
     url: str
     create_item_url: str
     open_count: int
     overdue_count: int
-    color_key: ListColorKey
+    color_key: AreaColorKey
 
 
 class AgendaOut(Schema):
@@ -88,34 +95,34 @@ class AgendaOut(Schema):
     username: str
     archive_url: str
     archived_count: int
-    new_list_url: str
+    new_area_url: str
     settings_url: str
     daily_digest: bool
     buckets: list[AgendaBucketOut]
     items: list[TaskOut]
     completed_today: list[TaskOut]
-    lists: list[AgendaListSummaryOut]
+    areas: list[AgendaAreaSummaryOut]
 
 
-class ListRefOut(Schema):
+class AreaRefOut(Schema):
     id: int
     title: str
     create_item_url: str
     reorder_url: str
 
 
-class ListDetailOut(Schema):
-    list: ListRefOut
+class AreaDetailOut(Schema):
+    area: AreaRefOut
     items: list[TaskOut]
     archived_count: int
     archive_url: str
 
 
-class ListRenameIn(Schema):
+class AreaRenameIn(Schema):
     title: str
 
 
-class TaskListSummaryOut(Schema):
+class TaskAreaSummaryOut(Schema):
     id: int
     title: str
     url: str
@@ -123,27 +130,27 @@ class TaskListSummaryOut(Schema):
 
 class ArchiveOut(Schema):
     items: list[TaskOut]
-    lists: list[TaskListSummaryOut]
+    areas: list[TaskAreaSummaryOut]
 
 
 class TaskDetailOut(Schema):
     task: TaskOut
-    list: TaskListSummaryOut
+    area: TaskAreaSummaryOut
     checklist_steps: list[ChecklistStepOut]
     create_checklist_step_url: str
     reorder_checklist_steps_url: str
 
 
-class NavListOut(Schema):
+class NavAreaOut(Schema):
     id: int
     title: str
     open_count: int
     overdue_count: int
-    color_key: ListColorKey
+    color_key: AreaColorKey
 
 
 class NavOut(Schema):
-    lists: list[NavListOut]
+    areas: list[NavAreaOut]
     archived_count: int
     inbox_count: int
     settings_url: str
@@ -160,13 +167,13 @@ def navigation(request):
     """Everything the persistent side nav needs, on every page.
 
     A single endpoint rather than three payloads each growing the same
-    fields: the agenda already carried list summaries, but the list page and
+    fields: the agenda already carried area summaries, but the area page and
     archive didn't, and duplicating them into both schemas would mean three
     places to keep in step.
     """
     user = request.user
     return {
-        "lists": agenda_reader.list_summaries(user),
+        "areas": agenda_reader.list_summaries(user),
         "archived_count": Item.objects.filter(
             list__owner=user, status=Item.Status.ARCHIVED
         ).count(),
@@ -210,20 +217,20 @@ def agenda(request):
     )
 
 
-def _owned_list(request, list_id):
-    return get_object_or_404(List, id=list_id, owner=request.user)
+def _owned_area(request, area_id):
+    return get_object_or_404(List, id=area_id, owner=request.user)
 
 
-@router.get("/lists/{list_id}", response=ListDetailOut)
-def list_detail(request, list_id: int):
-    our_list = _owned_list(request, list_id)
+@router.get("/areas/{area_id}", response=AreaDetailOut)
+def area_detail(request, area_id: int):
+    our_list = _owned_area(request, area_id)
     items = list(
         our_list.item_set.exclude(status=Item.Status.ARCHIVED)
         .select_related("list")
         .prefetch_related("tags")
     )
     return {
-        **list_workspace_data_for(our_list, items),
+        **area_workspace_data_for(our_list, items),
         "archived_count": our_list.item_set.filter(
             status=Item.Status.ARCHIVED,
         ).count(),
@@ -231,9 +238,9 @@ def list_detail(request, list_id: int):
     }
 
 
-@router.patch("/lists/{list_id}", response=ListRefOut)
-def rename_list(request, list_id: int, payload: ListRenameIn):
-    our_list = _owned_list(request, list_id)
+@router.patch("/areas/{area_id}", response=AreaRefOut)
+def rename_area(request, area_id: int, payload: AreaRenameIn):
+    our_list = _owned_area(request, area_id)
     # Reuses ListTitleForm's own validation (strip, required, max_length)
     # rather than re-implementing it, so the two entry points to the same
     # rule can't quietly drift.
@@ -241,14 +248,14 @@ def rename_list(request, list_id: int, payload: ListRenameIn):
     if not form.is_valid():
         raise HttpError(400, form.errors["title"][0])
     form.save()
-    return list_ref_for(our_list)
+    return area_ref_for(our_list)
 
 
-@router.delete("/lists/{list_id}")
-def delete_list(request, list_id: int):
-    our_list = _owned_list(request, list_id)
+@router.delete("/areas/{area_id}")
+def delete_area(request, area_id: int):
+    our_list = _owned_area(request, area_id)
     services.delete_list(our_list)
-    return {"deleted": list_id}
+    return {"deleted": area_id}
 
 
 @router.get("/tasks/{item_id}", response=TaskDetailOut)

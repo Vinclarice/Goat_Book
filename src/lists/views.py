@@ -66,10 +66,10 @@ def spa_shell(request, subpath=""):
 @login_required
 @require_POST
 def new_list(request):
-    """Still a real Django view, not a Ninja endpoint: creating a list was
-    never migrated onto the SPA/API -- AgendaWorkspace's "+ New list" form
+    """Still a real Django view, not a Ninja endpoint: creating an area was
+    never migrated onto the SPA/API -- AgendaWorkspace's "+ New area" form
     is a plain HTML POST straight here (see AgendaWorkspace.tsx), since
-    the resulting navigation to the new list's page is exactly what a
+    the resulting navigation to the new area's page is exactly what a
     fetch-based flow would have to fake anyway.
     """
     form = NewListForm(data=request.POST)
@@ -82,7 +82,7 @@ def new_list(request):
 
 @login_required
 def view_list(request, list_id):
-    return redirect(_spa_path(f"lists/{list_id}"))
+    return redirect(_spa_path(f"areas/{list_id}"))
 
 
 @login_required

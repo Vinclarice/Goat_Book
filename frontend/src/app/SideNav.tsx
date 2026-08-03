@@ -8,10 +8,10 @@ import styles from "./sidenav.module.css";
 
 /** The one nav, on every SPA page.
  *
- * It navigates and nothing else. Clicking a list here opens that list rather
+ * It navigates and nothing else. Clicking an area here opens that area rather
  * than filtering the agenda -- filtering lives in each page's own header, as
  * chips. That split is what lets a single nav mean the same thing on the
- * agenda, a list, and the archive; the old agenda sidebar could not, because
+ * agenda, an area, and the archive; the old agenda sidebar could not, because
  * a "filter the agenda" control has no meaning on the archive page.
  *
  * See design/side-nav-mockup.html.
@@ -32,7 +32,7 @@ export function SideNav() {
   // Renders its own shell while loading rather than nothing: a nav that
   // appears a beat after the page does makes every navigation feel like a
   // layout shift.
-  const lists = data?.lists ?? [];
+  const areas = data?.areas ?? [];
 
   const logout = useMutation({
     mutationFn: async () => {
@@ -95,12 +95,12 @@ export function SideNav() {
       </div>
 
       <div className={styles.group}>
-        <h3>Lists</h3>
-        {lists.length === 0 && <p className={styles.empty}>No lists yet.</p>}
-        {lists.map((each) => (
+        <h3>Areas</h3>
+        {areas.length === 0 && <p className={styles.empty}>No areas yet.</p>}
+        {areas.map((each) => (
           <NavLink
             key={each.id}
-            to={`/lists/${each.id}`}
+            to={`/areas/${each.id}`}
             className={navLinkClass}
             title={each.title}
           >

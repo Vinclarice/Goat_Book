@@ -89,7 +89,7 @@
                     {% csrf_token %}
                     <select
                       name="list"
-                      aria-label="List for {{ capture.text|truncatechars:30 }}"
+                      aria-label="Area for {{ capture.text|truncatechars:30 }}"
                       class="rounded-lg border border-border bg-input px-2 py-1 text-sm"
                     >
                       {% for each in lists %}
@@ -99,7 +99,7 @@
                     <button class="rounded-lg border border-border px-3 py-1 text-sm" type="submit">Task</button>
                   </form>
                 {% else %}
-                  <span class="text-xs text-muted-foreground">Make a list first to turn this into a task.</span>
+                  <span class="text-xs text-muted-foreground">Make an area first to turn this into a task.</span>
                 {% endif %}
 
                 <form method="post" action="{% url 'promote_capture_to_idea' capture.id %}">

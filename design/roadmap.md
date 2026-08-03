@@ -236,9 +236,14 @@ says not to mistake for production truth. The migration prints
 converted/promoted/skipped, so running it against production is itself the
 evidence for how many of each case really existed.
 
-**Slices 5 to 9 are not started:** the Area vocabulary rename, `List.owner`
-becoming non-null, the `Project` model and its UI, and then the UI overhaul's
-own brief.
+**Slice 5 followed**, and with it the vocabulary half of §3: a List is an Area
+everywhere a person reads one — copy, JSON fields, and URL paths — while the
+`List` model and the `lists` app keep their names, exactly the boundary
+`architecture-trajectory.md` §7 prescribes. No migration, and the old
+`/lists/` paths redirect rather than 404 so a saved URL still lands.
+
+**Slices 6 to 9 are not started:** `List.owner` becoming non-null, the
+`Project` model and its UI, and then the UI overhaul's own brief.
 
 **Both open questions in `architecture-trajectory.md` §8 are settled.** A
 subtask is a Checklist Step — its own model, no due date, no tags, cannot

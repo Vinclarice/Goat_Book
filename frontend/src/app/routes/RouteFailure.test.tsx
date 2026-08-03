@@ -40,14 +40,14 @@ describe("RouteFailure", () => {
     // Distinct from 401 on purpose. Logging in again does not help when
     // the answer is "this is not yours", and suggesting it would send
     // someone round a loop that cannot succeed.
-    renderAt("/lists/7", <RouteFailure status={403} />);
+    renderAt("/areas/7", <RouteFailure status={403} />);
 
     expect(screen.getByText(/no longer have access/i)).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /log in/i })).not.toBeInTheDocument();
   });
 
   it("offers the Agenda when the thing is gone", () => {
-    renderAt("/lists/7", <RouteFailure status={404} />);
+    renderAt("/areas/7", <RouteFailure status={404} />);
 
     expect(screen.getByText(/no longer exists/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /agenda/i })).toHaveAttribute(

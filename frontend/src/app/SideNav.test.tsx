@@ -23,7 +23,7 @@ function jsonResponse(data: object, ok = true) {
 }
 
 const NAV = {
-  lists: [
+  areas: [
     {
       id: 1,
       title: "Programming",
@@ -57,7 +57,7 @@ function renderNav(initialPath = "/agenda") {
           <Route element={<AppLayout />}>
             <Route path="/agenda" element={<p>Agenda page</p>} />
             <Route path="/review" element={<p>Review page</p>} />
-            <Route path="/lists/:listId" element={<p>List page</p>} />
+            <Route path="/areas/:areaId" element={<p>Area page</p>} />
             <Route path="/archive" element={<p>Archive page</p>} />
           </Route>
         </Routes>
@@ -88,7 +88,7 @@ describe("SideNav", () => {
 
     // The whole point of the split: the nav means the same thing on every
     // page, so it navigates and the header chips filter.
-    expect(await screen.findByText("List page")).toBeInTheDocument();
+    expect(await screen.findByText("Area page")).toBeInTheDocument();
   });
 
   it("offers the weekly review from every page", async () => {

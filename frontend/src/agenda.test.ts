@@ -141,39 +141,39 @@ describe("applyFilters", () => {
       id: 3,
       text: "Chores",
       due_date: null,
-      list_id: 2,
+      area_id: 2,
     }),
   ];
 
   it("returns everything when nothing is selected", () => {
-    const filters = { scope: null, list: null, tag: null };
+    const filters = { scope: null, area: null, tag: null };
     expect(applyFilters(tasks, TODAY, filters)).toHaveLength(3);
   });
 
   it("narrows by scope", () => {
-    const filters = { scope: "overdue", list: null, tag: null };
+    const filters = { scope: "overdue", area: null, tag: null };
     expect(applyFilters(tasks, TODAY, filters).map((t) => t.text)).toEqual([
       "Late",
     ]);
   });
 
   it("includes overdue tasks in the week scope", () => {
-    const filters = { scope: "week", list: null, tag: null };
+    const filters = { scope: "week", area: null, tag: null };
     expect(applyFilters(tasks, TODAY, filters).map((t) => t.text)).toEqual([
       "Late",
       "Now",
     ]);
   });
 
-  it("narrows by list", () => {
-    const filters = { scope: null, list: 2, tag: null };
+  it("narrows by area", () => {
+    const filters = { scope: null, area: 2, tag: null };
     expect(applyFilters(tasks, TODAY, filters).map((t) => t.text)).toEqual([
       "Chores",
     ]);
   });
 
   it("narrows by tag", () => {
-    const filters = { scope: null, list: null, tag: "urgent" };
+    const filters = { scope: null, area: null, tag: "urgent" };
     expect(applyFilters(tasks, TODAY, filters).map((t) => t.text)).toEqual([
       "Late",
     ]);

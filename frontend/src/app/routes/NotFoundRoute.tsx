@@ -4,7 +4,7 @@ import { Link } from "react-router";
  * An unknown path inside the SPA.
  *
  * Distinct from RouteFailure's 404, and the difference is worth keeping:
- * that one means "the task or list you asked for is gone", this one means
+ * that one means "the task or area you asked for is gone", this one means
  * "there was never a page at this address". Telling someone their work was
  * deleted because they mistyped a URL would be alarming and untrue.
  */

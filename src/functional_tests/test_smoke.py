@@ -106,7 +106,7 @@ class DirectLoadTest(BrowserTest):
         self.log_in(self.user)
 
     def test_a_list_url_pasted_into_the_address_bar_loads(self):
-        self.visit(f"/app/lists/{self.work.id}")
+        self.visit(f"/app/areas/{self.work.id}")
 
         expect(self.page.get_by_text("Deep-linked task", exact=True)).to_be_visible()
 

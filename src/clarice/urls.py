@@ -34,7 +34,15 @@ urlpatterns = [
     path("app/<path:subpath>", list_views.spa_shell, name="app_shell_path"),
     path("api/", include("lists.api_urls")),
     path("api/v1/", api_v1.urls),
-    path("lists/", include("lists.urls")),
+    path("areas/", include("lists.urls")),
+    # An Area used to be a List, and both of these paths only ever redirect
+    # into the SPA anyway. Kept so a bookmark from before Release D slice 5
+    # lands where it used to rather than 404ing; the url names stay on the
+    # canonical /areas/ entries above, so nothing generates these.
+    path(
+        "lists/<int:list_id>/",
+        RedirectView.as_view(pattern_name="view_list", permanent=False),
+    ),
     path("accounts/", include("accounts.urls")),
     path("capture/", include("capture.urls")),
     # Has to sit BEFORE the admin include, not just for tidiness:

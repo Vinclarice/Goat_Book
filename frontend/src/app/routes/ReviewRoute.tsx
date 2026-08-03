@@ -13,7 +13,7 @@ type CompletedTask = {
   task_id: number;
   text: string;
   completed_on: string;
-  list_id: number;
+  area_id: number;
 };
 
 /** "27 July" — the half of a date a week's title needs. */

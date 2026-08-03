@@ -1,6 +1,6 @@
 export type TaskStatus = "active" | "completed" | "archived";
 export type TaskRecurrence = "none" | "daily" | "weekly" | "monthly";
-export type ListColorKey =
+export type AreaColorKey =
   | "sky"
   | "sage"
   | "amber"
@@ -10,7 +10,7 @@ export type ListColorKey =
   | "blush"
   | "straw";
 
-export interface TaskListSummary {
+export interface TaskAreaSummary {
   id: number;
   title: string;
   url: string;
@@ -31,10 +31,10 @@ export interface Task {
   // Plain text, never Markdown. "" means no notes -- the API normalises
   // blank input to the empty string so this is never null.
   notes: string;
-  // Just the id -- title/url live once in the page's top-level `lists`
-  // array (see AgendaListSummary / ArchiveWorkspaceData.lists) instead of
+  // Just the id -- title/url live once in the page's top-level `areas`
+  // array (see AgendaAreaSummary / ArchiveWorkspaceData.areas) instead of
   // being repeated on every task.
-  list_id: number;
+  area_id: number;
   // Covers both update (PATCH) and delete (DELETE); it's the same
   // endpoint either way.
   url: string;
@@ -61,7 +61,7 @@ export interface ChecklistStep {
 }
 
 export interface TaskWorkspaceData {
-  list: {
+  area: {
     id: number;
     title: string;
     create_item_url: string;
@@ -72,7 +72,7 @@ export interface TaskWorkspaceData {
 
 export interface ArchiveWorkspaceData {
   items: Task[];
-  lists: TaskListSummary[];
+  areas: TaskAreaSummary[];
 }
 
 export type AgendaBucketKey =
@@ -88,14 +88,14 @@ export interface AgendaBucket {
   collapsed: boolean;
 }
 
-export interface AgendaListSummary {
+export interface AgendaAreaSummary {
   id: number;
   title: string;
   url: string;
   create_item_url: string;
   open_count: number;
   overdue_count: number;
-  color_key: ListColorKey;
+  color_key: AreaColorKey;
 }
 
 export interface AgendaWorkspaceData {
@@ -106,11 +106,11 @@ export interface AgendaWorkspaceData {
   username: string;
   archive_url: string;
   archived_count: number;
-  new_list_url: string;
+  new_area_url: string;
   settings_url: string;
   daily_digest: boolean;
   buckets: AgendaBucket[];
   items: Task[];
   completed_today: Task[];
-  lists: AgendaListSummary[];
+  areas: AgendaAreaSummary[];
 }

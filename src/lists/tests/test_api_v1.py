@@ -45,8 +45,8 @@ class AgendaEndpointTest(TestCase):
         self.assertEqual(payload["username"], "alice")
         self.assertEqual(len(payload["items"]), 1)
         self.assertEqual(payload["items"][0]["text"], "Ship the migration")
-        self.assertEqual(len(payload["lists"]), 1)
-        self.assertEqual(payload["lists"][0]["title"], "Programming")
+        self.assertEqual(len(payload["areas"]), 1)
+        self.assertEqual(payload["areas"][0]["title"], "Programming")
 
     def test_assigns_a_deterministic_semantic_color_key(self):
         self.client.force_login(self.user)
@@ -54,12 +54,12 @@ class AgendaEndpointTest(TestCase):
         payload = self.client.get("/api/v1/agenda").json()
 
         self.assertEqual(
-            payload["lists"][0]["color_key"],
+            payload["areas"][0]["color_key"],
             agenda_reader.color_key_for_list(self.list_.id),
         )
 
 
-class ListDetailEndpointTest(TestCase):
+class AreaDetailEndpointTest(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(
             "alice",
@@ -76,33 +76,33 @@ class ListDetailEndpointTest(TestCase):
         self.other_list = self.other_user.lists.create(title="Bob's list")
 
     def test_rejects_anonymous_requests(self):
-        response = self.client.get(f"/api/v1/lists/{self.list_.id}")
+        response = self.client.get(f"/api/v1/areas/{self.list_.id}")
 
         self.assertEqual(response.status_code, 401)
 
-    def test_404s_a_list_owned_by_someone_else(self):
+    def test_404s_an_area_owned_by_someone_else(self):
         self.client.force_login(self.user)
 
-        response = self.client.get(f"/api/v1/lists/{self.other_list.id}")
+        response = self.client.get(f"/api/v1/areas/{self.other_list.id}")
 
         self.assertEqual(response.status_code, 404)
 
-    def test_returns_the_list_and_its_open_items(self):
+    def test_returns_the_area_and_its_open_items(self):
         self.client.force_login(self.user)
 
-        response = self.client.get(f"/api/v1/lists/{self.list_.id}")
+        response = self.client.get(f"/api/v1/areas/{self.list_.id}")
 
         self.assertEqual(response.status_code, 200)
         payload = response.json()
-        self.assertEqual(payload["list"]["title"], "Programming")
+        self.assertEqual(payload["area"]["title"], "Programming")
         self.assertEqual(len(payload["items"]), 1)
         self.assertEqual(payload["items"][0]["text"], "Write tests")
 
-    def test_renames_the_list(self):
+    def test_renames_the_area(self):
         self.client.force_login(self.user)
 
         response = self.client.patch(
-            f"/api/v1/lists/{self.list_.id}",
+            f"/api/v1/areas/{self.list_.id}",
             data=json.dumps({"title": "Side Projects"}),
             content_type="application/json",
         )
@@ -116,7 +116,7 @@ class ListDetailEndpointTest(TestCase):
         self.client.force_login(self.user)
 
         response = self.client.patch(
-            f"/api/v1/lists/{self.list_.id}",
+            f"/api/v1/areas/{self.list_.id}",
             data=json.dumps({"title": "   "}),
             content_type="application/json",
         )
@@ -125,30 +125,30 @@ class ListDetailEndpointTest(TestCase):
         self.list_.refresh_from_db()
         self.assertEqual(self.list_.title, "Programming")
 
-    def test_cannot_rename_someone_else_s_list(self):
+    def test_cannot_rename_someone_else_s_area(self):
         self.client.force_login(self.user)
 
         response = self.client.patch(
-            f"/api/v1/lists/{self.other_list.id}",
+            f"/api/v1/areas/{self.other_list.id}",
             data=json.dumps({"title": "Hijacked"}),
             content_type="application/json",
         )
 
         self.assertEqual(response.status_code, 404)
 
-    def test_deletes_the_list_and_its_items(self):
+    def test_deletes_the_area_and_its_items(self):
         self.client.force_login(self.user)
 
-        response = self.client.delete(f"/api/v1/lists/{self.list_.id}")
+        response = self.client.delete(f"/api/v1/areas/{self.list_.id}")
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), {"deleted": self.list_.id})
         self.assertFalse(List.objects.filter(id=self.list_.id).exists())
 
-    def test_cannot_delete_someone_else_s_list(self):
+    def test_cannot_delete_someone_else_s_area(self):
         self.client.force_login(self.user)
 
-        response = self.client.delete(f"/api/v1/lists/{self.other_list.id}")
+        response = self.client.delete(f"/api/v1/areas/{self.other_list.id}")
 
         self.assertEqual(response.status_code, 404)
         self.assertTrue(List.objects.filter(id=self.other_list.id).exists())
@@ -201,8 +201,8 @@ class ArchiveEndpointTest(TestCase):
         payload = response.json()
         self.assertEqual(len(payload["items"]), 1)
         self.assertEqual(payload["items"][0]["text"], "Old task")
-        self.assertEqual(len(payload["lists"]), 1)
-        self.assertEqual(payload["lists"][0]["title"], "Programming")
+        self.assertEqual(len(payload["areas"]), 1)
+        self.assertEqual(payload["areas"][0]["title"], "Programming")
 
 class TaskDetailEndpointTest(TestCase):
     def setUp(self):
@@ -235,7 +235,7 @@ class TaskDetailEndpointTest(TestCase):
 
         self.assertEqual(response.status_code, 401)
 
-    def test_returns_the_task_and_its_list(self):
+    def test_returns_the_task_and_its_area(self):
         self.client.force_login(self.user)
 
         response = self.client.get(f"/api/v1/tasks/{self.item.id}")
@@ -243,7 +243,7 @@ class TaskDetailEndpointTest(TestCase):
         self.assertEqual(response.status_code, 200)
         payload = response.json()
         self.assertEqual(payload["task"]["text"], "Write tests")
-        self.assertEqual(payload["list"]["title"], "Programming")
+        self.assertEqual(payload["area"]["title"], "Programming")
 
     def test_404s_a_task_owned_by_someone_else(self):
         self.client.force_login(self.user)
@@ -297,14 +297,14 @@ class NavEndpointTest(TestCase):
 
         self.assertEqual(response.status_code, 401)
 
-    def test_returns_lists_with_counts_for_the_caller_only(self):
+    def test_returns_areas_with_counts_for_the_caller_only(self):
         self.client.force_login(self.user)
 
         body = self.client.get("/api/v1/nav").json()
 
-        self.assertEqual([each["title"] for each in body["lists"]], ["Programming"])
-        self.assertEqual(body["lists"][0]["open_count"], 2)
-        self.assertEqual(body["lists"][0]["overdue_count"], 1)
+        self.assertEqual([each["title"] for each in body["areas"]], ["Programming"])
+        self.assertEqual(body["areas"][0]["open_count"], 2)
+        self.assertEqual(body["areas"][0]["overdue_count"], 1)
 
     def test_counts_the_archive_and_the_unresolved_inbox(self):
         self.client.force_login(self.user)

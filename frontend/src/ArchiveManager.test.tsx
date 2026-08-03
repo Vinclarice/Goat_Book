@@ -35,7 +35,7 @@ describe("ArchiveManager", () => {
               archived_at: "2026-07-24T12:30:00-04:00",
             }),
           ],
-          lists: [{ id: 1, title: "Programming", url: "/lists/1/" }],
+          areas: [{ id: 1, title: "Programming", url: "/areas/1/" }],
         }}
       />,
     );
@@ -60,12 +60,12 @@ describe("ArchiveManager", () => {
               text: "Buy paint",
               status: "archived",
               archived_at: "2026-07-24T12:30:00-04:00",
-              list_id: 2,
+              area_id: 2,
             }),
           ],
-          lists: [
-            { id: 1, title: "Programming", url: "/lists/1/" },
-            { id: 2, title: "Home", url: "/lists/2/" },
+          areas: [
+            { id: 1, title: "Programming", url: "/areas/1/" },
+            { id: 2, title: "Home", url: "/areas/2/" },
           ],
         }}
       />,
@@ -92,7 +92,7 @@ describe("ArchiveManager", () => {
               archived_at: "2026-07-24T12:30:00-04:00",
             }),
           ],
-          lists: [{ id: 1, title: "Programming", url: "/lists/1/" }],
+          areas: [{ id: 1, title: "Programming", url: "/areas/1/" }],
         }}
       />,
     );

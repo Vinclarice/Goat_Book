@@ -36,10 +36,12 @@ def serialize_item(item):
         "tags": [tag.name for tag in item.tags.all()],
         "recurrence": item.recurrence,
         "notes": item.notes,
-        # Just the id -- callers already have (or can fetch) the list's
-        # title/url from the top-level `lists` array in the page payload,
+        # Just the id -- callers already have (or can fetch) the area's
+        # title/url from the top-level `areas` array in the page payload,
         # so it doesn't need repeating on every single task.
-        "list_id": item.list_id,
+        # `item.list_id` is the ORM's column; `area_id` is what the boundary
+        # calls it, the same split Item/"task" already lives with.
+        "area_id": item.list_id,
         # update and delete hit the same endpoint, just with different
         # HTTP methods, so one url covers both.
         "url": reverse("api_item_detail", args=(item.id,)),
@@ -47,22 +49,25 @@ def serialize_item(item):
     }
 
 
-def list_ref_for(our_list):
+def area_ref_for(our_list):
     return {
         "id": our_list.id,
         "title": our_list.title,
+        # Still `create_item_url`/`api_create_item`: that spelling belongs to
+        # the unfinished Item -> "task" rename, not to this one. Renaming it
+        # here would make one commit answer for two vocabularies.
         "create_item_url": reverse("api_create_item", args=(our_list.id,)),
         "reorder_url": reverse("api_reorder_items", args=(our_list.id,)),
     }
 
 
-def list_workspace_data_for(our_list, items):
-    """Shapes the list-detail JSON shared by the Django-rendered list page's
-    React bootstrap data and the /api/v1/lists/{id} endpoint, so the two
+def area_workspace_data_for(our_list, items):
+    """Shapes the area-detail JSON shared by the Django-rendered area page's
+    React bootstrap data and the /api/v1/areas/{id} endpoint, so the two
     can't drift apart -- same reasoning as agenda.workspace_data_for().
     """
     return {
-        "list": list_ref_for(our_list),
+        "area": area_ref_for(our_list),
         "items": [serialize_item(item) for item in items],
     }
 
@@ -75,7 +80,7 @@ def task_detail_data_for(item):
     """
     return {
         "task": serialize_item(item),
-        "list": {
+        "area": {
             "id": item.list.id,
             "title": item.list.title,
             "url": item.list.get_absolute_url(),
@@ -99,9 +104,9 @@ def archive_workspace_data_for(user, archived_items):
     """
     return {
         "items": [serialize_item(item) for item in archived_items],
-        # Task JSON only carries list_id; the frontend joins against this
-        # to show a list's title and link.
-        "lists": [
+        # Task JSON only carries area_id; the frontend joins against this
+        # to show an area's title and link.
+        "areas": [
             {
                 "id": each.id,
                 "title": each.title,

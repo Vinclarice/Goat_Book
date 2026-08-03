@@ -64,9 +64,9 @@ describe("AppRoutes", () => {
         ok: true,
         status: 200,
         headers: new Headers({ "content-type": "application/json" }),
-        json: () => Promise.resolve({ landing_surface: "agenda", lists: [] }),
+        json: () => Promise.resolve({ landing_surface: "agenda", areas: [] }),
         text: () =>
-          Promise.resolve(JSON.stringify({ landing_surface: "agenda", lists: [] })),
+          Promise.resolve(JSON.stringify({ landing_surface: "agenda", areas: [] })),
         clone() {
           return this;
         },
@@ -124,5 +124,16 @@ describe("AppRoutes", () => {
     renderAt("/archive");
 
     expect(await screen.findByTestId("pathname")).toHaveTextContent("/archive");
+  });
+
+  it("sends a pre-Release-D /lists/ bookmark to the area it names", async () => {
+    // Slice 5 renamed a List to an Area in the route path too, which breaks
+    // any URL someone saved. Redirecting rather than 404ing is the cheap
+    // half of `principles.md`'s recoverable-failure rule.
+    renderAt("/lists/7");
+
+    await waitFor(() =>
+      expect(screen.getByTestId("pathname")).toHaveTextContent("/areas/7"),
+    );
   });
 });

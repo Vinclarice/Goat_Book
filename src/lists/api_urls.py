@@ -3,14 +3,19 @@ from django.urls import path
 from lists import api
 
 
+# The `areas/` segment is Release D slice 5's vocabulary rename; the `items/`
+# one still awaits the Item -> "task" rename that /api/v1/tasks already made.
+# Two vocabularies in one path is untidy, but finishing the second here would
+# put two renames in one commit. The url *names* keep their Python spelling,
+# which no client reads.
 urlpatterns = [
     path(
-        "lists/<int:list_id>/items/",
+        "areas/<int:list_id>/items/",
         api.create_item,
         name="api_create_item",
     ),
     path(
-        "lists/<int:list_id>/items/reorder/",
+        "areas/<int:list_id>/items/reorder/",
         api.reorder_items,
         name="api_reorder_items",
     ),

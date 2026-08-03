@@ -2,7 +2,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { AgendaWorkspace } from "./AgendaWorkspace";
-import { agendaData, agendaList, task, TODAY } from "./test/fixtures";
+import { agendaData, agendaArea, task, TODAY } from "./test/fixtures";
 
 function jsonResponse(data: object, ok = true) {
   return Promise.resolve({
@@ -12,7 +12,7 @@ function jsonResponse(data: object, ok = true) {
   } as Response);
 }
 
-const home = { id: 2, title: "Home", url: "/lists/2/" };
+const home = { id: 2, title: "Home", url: "/areas/2/" };
 
 function sampleItems() {
   return [
@@ -22,7 +22,7 @@ function sampleItems() {
       id: 3,
       text: "Buy milk",
       due_date: "2026-07-30",
-      list_id: home.id,
+      area_id: home.id,
       tags: ["errand"],
     }),
     task({ id: 4, text: "Renew domain", due_date: "2026-09-01" }),
@@ -35,7 +35,7 @@ function renderAgenda(overrides = {}) {
     <AgendaWorkspace
       initialData={agendaData({
         items: sampleItems(),
-        lists: [agendaList(), agendaList({ id: 2, title: "Home" })],
+        areas: [agendaArea(), agendaArea({ id: 2, title: "Home" })],
         ...overrides,
       })}
     />,
@@ -335,20 +335,20 @@ describe("AgendaWorkspace", () => {
     const user = userEvent.setup();
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(() =>
       jsonResponse(
-        { data: task({ id: 6, text: "Water the plants", list_id: home.id }) },
+        { data: task({ id: 6, text: "Water the plants", area_id: home.id }) },
         true,
       ),
     );
     renderAgenda();
 
     await user.type(screen.getByLabelText("Task"), "Water the plants");
-    await user.selectOptions(screen.getByLabelText("List"), "2");
+    await user.selectOptions(screen.getByLabelText("Area"), "2");
     await user.click(screen.getByRole("button", { name: "Add" }));
 
     await waitFor(() =>
       expect(screen.getByText(/Added “Water the plants” to Home/)).toBeInTheDocument(),
     );
-    expect(fetchMock.mock.calls[0][0]).toBe("/api/lists/1/items/");
+    expect(fetchMock.mock.calls[0][0]).toBe("/api/areas/1/items/");
   });
 
   it("surfaces a server error instead of losing the task", async () => {
@@ -371,12 +371,12 @@ describe("AgendaWorkspace", () => {
     );
   });
 
-  it("invites a first list when the account is empty", () => {
+  it("invites a first area when the account is empty", () => {
     render(
-      <AgendaWorkspace initialData={agendaData({ items: [], lists: [] })} />,
+      <AgendaWorkspace initialData={agendaData({ items: [], areas: [] })} />,
     );
 
-    expect(screen.getByText("Start your first list.")).toBeInTheDocument();
+    expect(screen.getByText("Start your first area.")).toBeInTheDocument();
   });
 
   it("says so when everything is done", () => {

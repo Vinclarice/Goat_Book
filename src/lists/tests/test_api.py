@@ -41,7 +41,7 @@ class TaskApiTest(TestCase):
     def test_create_edit_and_complete_task(self):
         create_response = self.request(
             "post",
-            f"/api/lists/{self.list_.id}/items/",
+            f"/api/areas/{self.list_.id}/items/",
             {"text": "Build interface"},
         )
         created = create_response.json()["data"]
@@ -70,7 +70,7 @@ class TaskApiTest(TestCase):
     def test_create_with_due_date_and_update_it(self):
         create_response = self.request(
             "post",
-            f"/api/lists/{self.list_.id}/items/",
+            f"/api/areas/{self.list_.id}/items/",
             {"text": "Renew passport", "due_date": "2026-09-01"},
         )
         created = create_response.json()["data"]
@@ -102,7 +102,7 @@ class TaskApiTest(TestCase):
     def test_create_and_update_tags(self):
         create_response = self.request(
             "post",
-            f"/api/lists/{self.list_.id}/items/",
+            f"/api/areas/{self.list_.id}/items/",
             {"text": "Buy milk", "tags": ["groceries", "groceries", " home "]},
         )
         created = create_response.json()["data"]
@@ -127,7 +127,7 @@ class TaskApiTest(TestCase):
     def test_create_with_recurrence_and_update_it(self):
         create_response = self.request(
             "post",
-            f"/api/lists/{self.list_.id}/items/",
+            f"/api/areas/{self.list_.id}/items/",
             {"text": "Take out trash", "recurrence": "weekly"},
         )
         created = create_response.json()["data"]
@@ -143,7 +143,7 @@ class TaskApiTest(TestCase):
     def test_rejects_invalid_recurrence(self):
         response = self.request(
             "post",
-            f"/api/lists/{self.list_.id}/items/",
+            f"/api/areas/{self.list_.id}/items/",
             {"text": "Bad recurrence", "recurrence": "yearly"},
         )
         self.assertEqual(response.status_code, 400)
@@ -202,7 +202,7 @@ class TaskApiTest(TestCase):
 
         response = self.request(
             "post",
-            f"/api/lists/{self.list_.id}/items/reorder/",
+            f"/api/areas/{self.list_.id}/items/reorder/",
             {"ordered_ids": [second.id, self.item.id]},
         )
 
@@ -214,7 +214,7 @@ class TaskApiTest(TestCase):
     def test_reorder_rejects_mismatched_ids(self):
         response = self.request(
             "post",
-            f"/api/lists/{self.list_.id}/items/reorder/",
+            f"/api/areas/{self.list_.id}/items/reorder/",
             {"ordered_ids": [self.item.id, 999999]},
         )
         self.assertEqual(response.status_code, 409)
@@ -222,7 +222,7 @@ class TaskApiTest(TestCase):
     def test_reorder_requires_list_of_ints(self):
         response = self.request(
             "post",
-            f"/api/lists/{self.list_.id}/items/reorder/",
+            f"/api/areas/{self.list_.id}/items/reorder/",
             {"ordered_ids": "not-a-list"},
         )
         self.assertEqual(response.status_code, 400)

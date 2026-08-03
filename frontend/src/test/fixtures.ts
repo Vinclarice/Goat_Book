@@ -19,9 +19,9 @@ export function task(overrides: Partial<Task> = {}): Task {
     tags: [],
     recurrence: "none",
     notes: "",
-    list_id: 1,
+    area_id: 1,
     url: "/api/items/1/",
-    edit_url: "/lists/items/1/edit",
+    edit_url: "/areas/items/1/edit",
     ...overrides,
   };
 }
@@ -44,14 +44,14 @@ export function checklistStep(overrides: Partial<ChecklistStep> = {}): Checklist
 /** Fixed so bucket boundaries in tests don't move with the wall clock. */
 export const TODAY = "2026-07-28";
 
-export function agendaList(
-  overrides: Partial<AgendaWorkspaceData["lists"][number]> = {},
-): AgendaWorkspaceData["lists"][number] {
+export function agendaArea(
+  overrides: Partial<AgendaWorkspaceData["areas"][number]> = {},
+): AgendaWorkspaceData["areas"][number] {
   return {
     id: 1,
     title: "Programming",
-    url: "/lists/1/",
-    create_item_url: "/api/lists/1/items/",
+    url: "/areas/1/",
+    create_item_url: "/api/areas/1/items/",
     open_count: 0,
     overdue_count: 0,
     color_key: "sky",
@@ -67,7 +67,7 @@ export function agendaData(
     username: "vince",
     archive_url: "/archive/",
     archived_count: 0,
-    new_list_url: "/lists/new",
+    new_area_url: "/areas/new",
     settings_url: "/accounts/settings/",
     daily_digest: true,
     buckets: [
@@ -79,18 +79,18 @@ export function agendaData(
     ],
     items: [],
     completed_today: [],
-    lists: [agendaList()],
+    areas: [agendaArea()],
     ...overrides,
   };
 }
 
-export function archiveList(
-  overrides: Partial<ArchiveWorkspaceData["lists"][number]> = {},
+export function archiveArea(
+  overrides: Partial<ArchiveWorkspaceData["areas"][number]> = {},
 ) {
   return {
     id: 1,
     title: "Programming",
-    url: "/lists/1/",
+    url: "/areas/1/",
     ...overrides,
   };
 }
@@ -100,7 +100,7 @@ export function archiveData(
 ): ArchiveWorkspaceData {
   return {
     items: [],
-    lists: [archiveList(), archiveList({ id: 2, title: "Home", url: "/lists/2/" })],
+    areas: [archiveArea(), archiveArea({ id: 2, title: "Home", url: "/areas/2/" })],
     ...overrides,
   };
 }

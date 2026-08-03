@@ -11,10 +11,10 @@ interface Props {
 
 export function ArchiveManager({ initialData }: Props) {
   const [items, setItems] = useState(initialData.items);
-  // Tasks only carry a list_id -- title/url live once in `lists`.
-  const listById = useMemo(
-    () => new Map(initialData.lists.map((each) => [each.id, each])),
-    [initialData.lists],
+  // Tasks only carry an area_id -- title/url live once in `areas`.
+  const areaById = useMemo(
+    () => new Map(initialData.areas.map((each) => [each.id, each])),
+    [initialData.areas],
   );
   const [query, setQuery] = useState("");
   const [busyId, setBusyId] = useState<number | null>(null);
@@ -48,11 +48,11 @@ export function ArchiveManager({ initialData }: Props) {
     return items.filter(
       (item) =>
         item.text.toLocaleLowerCase().includes(normalized) ||
-        (listById.get(item.list_id)?.title ?? "")
+        (areaById.get(item.area_id)?.title ?? "")
           .toLocaleLowerCase()
           .includes(normalized),
     );
-  }, [items, query, listById]);
+  }, [items, query, areaById]);
 
   async function restore(item: Task) {
     setBusyId(item.id);
@@ -61,8 +61,8 @@ export function ArchiveManager({ initialData }: Props) {
     try {
       await updateTaskStatus(item, "completed");
       setItems((current) => current.filter((candidate) => candidate.id !== item.id));
-      const listTitle = listById.get(item.list_id)?.title ?? "its list";
-      setNotice(`Task restored to ${listTitle}.`);
+      const areaTitle = areaById.get(item.area_id)?.title ?? "its area";
+      setNotice(`Task restored to ${areaTitle}.`);
       focusWorkspace();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to restore task.");
@@ -114,7 +114,7 @@ export function ArchiveManager({ initialData }: Props) {
             type="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search archived tasks or lists"
+            placeholder="Search archived tasks or areas"
           />
         </label>
       )}
@@ -131,15 +131,15 @@ export function ArchiveManager({ initialData }: Props) {
       ) : (
         <div className="list-panel archived-list-panel">
           {visibleItems.map((item) => {
-            const itemList = listById.get(item.list_id);
+            const itemArea = areaById.get(item.area_id);
             return (
             <article className="archived-task-row" key={item.id}>
               <span className="list-icon archive-icon" aria-hidden="true">✓</span>
               <span className="list-row-copy">
                 <strong>{item.text}</strong>
                 <small>
-                  {itemList && (
-                    <>From <a href={itemList.url}>{itemList.title}</a> · </>
+                  {itemArea && (
+                    <>From <a href={itemArea.url}>{itemArea.title}</a> · </>
                   )}
                   Created{" "}
                   <time dateTime={item.created_at}>{formatDate(item.created_at)}</time>

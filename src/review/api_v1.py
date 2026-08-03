@@ -44,7 +44,7 @@ class CompletedTaskOut(Schema):
     # The owner's local date, computed here rather than in the browser,
     # whose zone is not the account's.
     completed_on: date
-    list_id: int
+    area_id: int
 
 
 class PlannedTaskOut(Schema):
@@ -270,7 +270,7 @@ def _completed_out(item):
         "task_id": item.id,
         "text": item.text,
         "completed_on": timezone.localtime(item.completed_at).date(),
-        "list_id": item.list_id,
+        "area_id": item.list_id,
     }
 
 

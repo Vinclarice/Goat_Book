@@ -530,8 +530,53 @@ schema and removes the path it's replacing.
    complete-recurring-task round trip still correctly carried the step
    onto the new occurrence, confirmed from the raw API response rather
    than just the UI.
-5. **Area vocabulary.** API and UI text only — no migration, no behaviour
-   change, deploy-able independently of everything else in this list.
+5. **Area vocabulary — done.** API and UI, no migration, and independently
+   deployable as the brief said. `lists/tests/test_area_vocabulary.py` is the
+   durable guard: six cases asserting that the agenda, nav, archive and task
+   payloads say `areas`/`area_id`/`area`, that `/api/v1/areas/{id}` reads,
+   renames and deletes, and that the old spelling is gone. Full required
+   suite green at 728, frontend at 208, the 23-test browser smoke suite green
+   against a fresh build, `tsc --noEmit` and the build both clean.
+
+   **The boundary rule this slice actually used**, since "API and UI text"
+   turned out to under-describe it. Everything a person reads says Area:
+   visible copy, `aria-label`s, JSON field and schema names, and URL paths
+   (`/api/v1/areas/{id}`, `/api/areas/{id}/items/`, `/app/areas/{id}`,
+   `/areas/new`). Everything only Python or the ORM reads keeps its old
+   spelling: the `List` model, the `lists` app, Django URL *names*, locals
+   like `our_list`, `agenda.list_summaries`, the `--list-color-*` CSS tokens,
+   and the `name="list"` field a capture form posts to its own Django view.
+   That last one is the edge case worth stating — a form field is not a
+   client contract, it is the same code on both ends, so it is a kwarg rather
+   than a boundary.
+
+   **Three scope decisions made while building it:**
+
+   - **URL paths changed, which the brief did not say.** A nav reading
+     "Areas" and linking to `/app/lists/3` is the half-rename this release
+     exists to remove, and the `Item` → "task" precedent renamed paths too.
+     Because that breaks a saved URL, both old spellings redirect rather than
+     404: `/lists/<id>/` at the Django layer and `/app/lists/:id` in the
+     route table, each with its own test confirmed to fail without the
+     redirect.
+   - **No compatibility window on the API, deliberately.** `principles.md`
+     prefers staged, compatible API changes, but that rule exists to avoid
+     stranding a client and there is none to strand — the SPA ships in the
+     same Django deploy, and the Android client only ever calls the capture
+     API. Dual-serving both spellings would preserve the drift. The reasoning
+     is recorded in the test that asserts the old route is gone.
+   - **`Item.notes`-style near-miss: the model default stays.**
+     `List.title` defaults to `"Untitled list"`, which reads like user-facing
+     text. It is not reachable — `create_list_with_item` always supplies a
+     title, falling back to the first task's text — so changing it would have
+     bought a state-only `AlterField` migration for a string nobody can see,
+     and cost this slice its "no migration" property.
+
+   `daily` and `review` both needed the same field renamed independently,
+   for the reason slice 4 recorded: `review.api_v1` hand-rolls its own
+   task-shaped schema rather than reusing `lists.serializers.serialize_item`.
+   `daily` does reuse it, and picked the rename up for free — the difference
+   between the two is the argument for the shared serializer.
 6. **`List.owner` non-null.** The small outstanding infra item from
    `architecture-trajectory.md` §6, done now because Area is meant to be
    "owned at birth" and this release is already in the model.

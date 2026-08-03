@@ -35,18 +35,18 @@ class ApiV1IsolationTest(TestCase):
         self.intruder_client.force_login(self.intruder)
 
     def test_404s_a_read_of_someone_else_s_list(self):
-        response = self.intruder_client.get(f"/api/v1/lists/{self.owner_list.id}")
+        response = self.intruder_client.get(f"/api/v1/areas/{self.owner_list.id}")
 
         self.assertEqual(response.status_code, 404)
-        owner_view = self.owner_client.get(f"/api/v1/lists/{self.owner_list.id}")
+        owner_view = self.owner_client.get(f"/api/v1/areas/{self.owner_list.id}")
         self.assertEqual(owner_view.status_code, 200)
-        self.assertEqual(owner_view.json()["list"]["title"], "Programming")
+        self.assertEqual(owner_view.json()["area"]["title"], "Programming")
 
     def test_404s_a_rename_of_someone_else_s_list(self):
         # The body has to be a valid ListRenameIn: ninja parses it before the
         # view runs, so an empty payload would 422 for the wrong reason.
         response = self.intruder_client.patch(
-            f"/api/v1/lists/{self.owner_list.id}",
+            f"/api/v1/areas/{self.owner_list.id}",
             data=json.dumps({"title": "Hijacked"}),
             content_type="application/json",
         )
@@ -58,7 +58,7 @@ class ApiV1IsolationTest(TestCase):
     def test_the_same_rename_succeeds_on_the_intruder_s_own_list(self):
         """Control: the 404 above is about ownership, not a bad request."""
         response = self.intruder_client.patch(
-            f"/api/v1/lists/{self.intruder_list.id}",
+            f"/api/v1/areas/{self.intruder_list.id}",
             data=json.dumps({"title": "Hijacked"}),
             content_type="application/json",
         )
@@ -68,17 +68,17 @@ class ApiV1IsolationTest(TestCase):
         self.assertEqual(self.intruder_list.title, "Hijacked")
 
     def test_404s_a_delete_of_someone_else_s_list(self):
-        response = self.intruder_client.delete(f"/api/v1/lists/{self.owner_list.id}")
+        response = self.intruder_client.delete(f"/api/v1/areas/{self.owner_list.id}")
 
         self.assertEqual(response.status_code, 404)
-        owner_view = self.owner_client.get(f"/api/v1/lists/{self.owner_list.id}")
+        owner_view = self.owner_client.get(f"/api/v1/areas/{self.owner_list.id}")
         self.assertEqual(owner_view.status_code, 200)
         self.assertTrue(Item.objects.filter(id=self.owner_item.id).exists())
 
     def test_the_same_delete_succeeds_on_the_intruder_s_own_list(self):
         """Control: the 404 above is about ownership, not a dead route."""
         response = self.intruder_client.delete(
-            f"/api/v1/lists/{self.intruder_list.id}",
+            f"/api/v1/areas/{self.intruder_list.id}",
         )
 
         self.assertEqual(response.status_code, 200)
@@ -154,7 +154,7 @@ class LegacyApiIsolationTest(TestCase):
         response = self.request(
             self.intruder_client,
             "post",
-            f"/api/lists/{self.owner_list.id}/items/",
+            f"/api/areas/{self.owner_list.id}/items/",
             {"text": "Planted"},
         )
 
@@ -170,7 +170,7 @@ class LegacyApiIsolationTest(TestCase):
         response = self.request(
             self.intruder_client,
             "post",
-            f"/api/lists/{self.intruder_list.id}/items/",
+            f"/api/areas/{self.intruder_list.id}/items/",
             {"text": "Planted"},
         )
 
@@ -181,7 +181,7 @@ class LegacyApiIsolationTest(TestCase):
         response = self.request(
             self.intruder_client,
             "post",
-            f"/api/lists/{self.owner_list.id}/items/reorder/",
+            f"/api/areas/{self.owner_list.id}/items/reorder/",
             {"ordered_ids": [self.owner_second_item.id, self.owner_item.id]},
         )
 
@@ -197,7 +197,7 @@ class LegacyApiIsolationTest(TestCase):
         response = self.request(
             self.owner_client,
             "post",
-            f"/api/lists/{self.owner_list.id}/items/reorder/",
+            f"/api/areas/{self.owner_list.id}/items/reorder/",
             {
                 "ordered_ids": [
                     self.owner_second_item.id,
@@ -225,7 +225,7 @@ class LegacyApiIsolationTest(TestCase):
         response = self.request(
             self.owner_client,
             "post",
-            f"/api/lists/{self.owner_list.id}/items/reorder/",
+            f"/api/areas/{self.owner_list.id}/items/reorder/",
             {"ordered_ids": [self.owner_second_item.id, self.owner_item.id]},
         )
 

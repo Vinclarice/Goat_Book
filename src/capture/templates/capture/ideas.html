@@ -91,7 +91,7 @@
                 {% csrf_token %}
                 <select
                   name="list"
-                  aria-label="List for {{ idea.text|truncatechars:30 }}"
+                  aria-label="Area for {{ idea.text|truncatechars:30 }}"
                   class="rounded-lg border border-border bg-input px-2 py-1 text-sm"
                 >
                   {% for each in lists %}

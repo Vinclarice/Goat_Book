@@ -160,6 +160,39 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Log In
+         * @description Trade a password for a token, once. design/android-login-plan.md.
+         *
+         *     Unauthenticated on purpose -- this is how the Android app gets its
+         *     first token instead of requiring someone to paste one created on the
+         *     web. Routed through authenticate() rather than a hand-rolled check so
+         *     axes' five-attempts lockout (AUTHENTICATION_BACKENDS, accounts/apps.py)
+         *     covers this exactly as it already covers the web login form; a
+         *     hand-rolled check here would be a second place that protection could
+         *     drift from the first.
+         *
+         *     One generic 401 for every failure -- wrong password, no such account,
+         *     a deactivated one, or a lockout in progress -- deliberately
+         *     indistinguishable, the same as the web login form gives away nothing
+         *     about which part was wrong.
+         */
+        post: operations["accounts_api_v1_log_in"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/logout": {
         parameters: {
             query?: never;
@@ -824,6 +857,27 @@ export interface components {
             items: components["schemas"]["TaskOut"][];
             /** Areas */
             areas: components["schemas"]["TaskAreaSummaryOut"][];
+        };
+        /** LoginOut */
+        LoginOut: {
+            /** Token */
+            token: string;
+            /** Username */
+            username: string;
+            /** Email */
+            email: string;
+        };
+        /** LoginIn */
+        LoginIn: {
+            /** Username */
+            username: string;
+            /** Password */
+            password: string;
+            /**
+             * Label
+             * @default Android
+             */
+            label: string;
         };
         /** TimeZonesOut */
         TimeZonesOut: {
@@ -1669,6 +1723,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ArchiveOut"];
+                };
+            };
+        };
+    };
+    accounts_api_v1_log_in: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoginIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoginOut"];
                 };
             };
         };

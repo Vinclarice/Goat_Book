@@ -25,8 +25,20 @@ class ConnectViewModelTest {
         override fun clear() { saved = null }
     }
 
-    private class FakeApi(var result: IdentifyResult) : ClariceApi {
+    private class FakeApi(
+        var result: IdentifyResult,
+        var loginResult: LoginResult = InvalidCredentials,
+    ) : ClariceApi {
+        var lastLoginUsername: String? = null
+        var lastLoginPassword: String? = null
+
         override suspend fun identify(token: String) = result
+
+        override suspend fun login(username: String, password: String, label: String): LoginResult {
+            lastLoginUsername = username
+            lastLoginPassword = password
+            return loginResult
+        }
 
         override suspend fun capture(token: String, text: String, idempotencyKey: String, tags: List<String>) =
             Disposition.DELIVERED
@@ -36,6 +48,14 @@ class ConnectViewModelTest {
 
     private fun viewModel(result: IdentifyResult, store: TokenStore = FakeStore()) =
         ConnectViewModel(Connector(FakeApi(result), store))
+
+    private fun loginViewModel(
+        loginResult: LoginResult,
+        store: TokenStore = FakeStore(),
+    ): Pair<ConnectViewModel, FakeApi> {
+        val api = FakeApi(Unreachable("unused"), loginResult)
+        return ConnectViewModel(Connector(api, store)) to api
+    }
 
     @Test
     fun `starts empty and idle`() {
@@ -142,6 +162,77 @@ class ConnectViewModelTest {
 
             assertFalse("after $result", model.state.value.checking)
         }
+    }
+
+    @Test
+    fun `typing updates the username and password fields`() {
+        val model = viewModel(Identified(alice))
+
+        model.onUsernameChange("alice")
+        model.onPasswordChange("hunter2")
+
+        assertEquals("alice", model.state.value.username)
+        assertEquals("hunter2", model.state.value.password)
+    }
+
+    @Test
+    fun `a successful login reports the account and stores the returned token`() = runTest {
+        val store = FakeStore()
+        val (model, _) = loginViewModel(LoggedIn("tok_fresh", alice), store)
+        model.onUsernameChange("alice")
+        model.onPasswordChange("correct horse")
+
+        model.logIn()
+
+        assertEquals(alice, model.state.value.connectedAs)
+        assertEquals("tok_fresh", store.read())
+    }
+
+    @Test
+    fun `the password never remains on screen, win or lose`() = runTest {
+        val (model, _) = loginViewModel(InvalidCredentials)
+        model.onUsernameChange("alice")
+        model.onPasswordChange("wrong")
+
+        model.logIn()
+
+        assertEquals("", model.state.value.password)
+    }
+
+    @Test
+    fun `invalid credentials keep the username so it need not be retyped`() = runTest {
+        val (model, _) = loginViewModel(InvalidCredentials)
+        model.onUsernameChange("alice")
+        model.onPasswordChange("wrong")
+
+        model.logIn()
+
+        assertEquals("alice", model.state.value.username)
+        assertNotNull(model.state.value.error)
+        assertNull(model.state.value.connectedAs)
+    }
+
+    @Test
+    fun `an unreachable server says so rather than blaming the credentials`() = runTest {
+        val (model, _) = loginViewModel(LoginUnreachable("Could not reach Clarice."))
+        model.onUsernameChange("alice")
+        model.onPasswordChange("correct horse")
+
+        model.logIn()
+
+        assertEquals("Could not reach Clarice.", model.state.value.error)
+    }
+
+    @Test
+    fun `an empty username or password is refused without a request`() = runTest {
+        val (model, api) = loginViewModel(LoggedIn("tok", alice))
+        model.onPasswordChange("correct horse")
+        // Username left blank.
+
+        model.logIn()
+
+        assertNotNull(model.state.value.error)
+        assertNull(api.lastLoginUsername)
     }
 
     @Test

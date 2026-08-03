@@ -5,14 +5,51 @@ Password/security changes stay Django-owned (accounts.views.change_password)
 """
 from typing import Literal
 
-from django.contrib.auth import logout
+from django.contrib.auth import authenticate, logout
 from ninja import Router, Schema
 from ninja.errors import HttpError
 
 from accounts.forms import AccountSettingsForm
-from accounts.models import User, known_time_zones
+from accounts.models import PersonalAccessToken, User, known_time_zones
 
 router = Router()
+
+
+class LoginIn(Schema):
+    username: str
+    password: str
+    label: str = "Android"
+
+
+class LoginOut(Schema):
+    token: str
+    username: str
+    email: str
+
+
+@router.post("/login", response={200: LoginOut}, auth=None)
+def log_in(request, payload: LoginIn):
+    """Trade a password for a token, once. design/android-login-plan.md.
+
+    Unauthenticated on purpose -- this is how the Android app gets its
+    first token instead of requiring someone to paste one created on the
+    web. Routed through authenticate() rather than a hand-rolled check so
+    axes' five-attempts lockout (AUTHENTICATION_BACKENDS, accounts/apps.py)
+    covers this exactly as it already covers the web login form; a
+    hand-rolled check here would be a second place that protection could
+    drift from the first.
+
+    One generic 401 for every failure -- wrong password, no such account,
+    a deactivated one, or a lockout in progress -- deliberately
+    indistinguishable, the same as the web login form gives away nothing
+    about which part was wrong.
+    """
+    user = authenticate(request, username=payload.username, password=payload.password)
+    if user is None:
+        raise HttpError(401, "Incorrect username or password.")
+    _, raw = PersonalAccessToken.generate(user, label=payload.label)
+    return {"token": raw, "username": user.username, "email": user.email}
+
 
 ThemeChoice = Literal["system", "light", "dark"]
 LandingChoice = Literal["day", "agenda"]

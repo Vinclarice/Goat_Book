@@ -32,8 +32,30 @@ data object Unauthorised : IdentifyResult
 /** Nothing is wrong with the token, only with right now. */
 data class Unreachable(val reason: String) : IdentifyResult
 
+/**
+ * What happened when someone tried to log in with a username and password.
+ *
+ * A separate sealed type from [IdentifyResult] rather than a reuse of it:
+ * logging in mints a token that has to travel back out to the caller so it
+ * can be stored, which identifying an already-stored one never needs to do.
+ */
+sealed interface LoginResult
+
+data class LoggedIn(val token: String, val identity: Identity) : LoginResult
+
+/** Wrong username, wrong password, a deactivated account, or a lockout in
+ *  progress -- deliberately indistinguishable, the same as the server. */
+data object InvalidCredentials : LoginResult
+
+/** Nothing is wrong with the credentials, only with right now. */
+data class LoginUnreachable(val reason: String) : LoginResult
+
 interface ClariceApi {
     suspend fun identify(token: String): IdentifyResult
+
+    /** Trade a password for a token, once. Never called again after the
+     *  token is stored -- the app never keeps the password itself. */
+    suspend fun login(username: String, password: String, label: String = "Android"): LoginResult
 
     /**
      * Send one capture.
@@ -88,6 +110,50 @@ class OkHttpClariceApi(
                 Unreachable("Could not reach Clarice.")
             }
         }
+
+    override suspend fun login(
+        username: String,
+        password: String,
+        label: String,
+    ): LoginResult = withContext(Dispatchers.IO) {
+        val body = JSONObject()
+            .put("username", username)
+            .put("password", password)
+            .put("label", label)
+            .toString()
+        val request = Request.Builder()
+            .url(baseUrl.trimEnd('/') + "/api/v1/login")
+            .post(body.toRequestBody(JSON))
+            .build()
+        try {
+            client.newCall(request).execute().use { response ->
+                when (response.code) {
+                    200 -> parseLogin(response.body.string())
+                    // 429 is axes' own lockout response, not this
+                    // endpoint's -- see design/android-login-plan.md. Both
+                    // it and a 401 mean the same thing to the person
+                    // typing: try again, or wait.
+                    401, 429 -> InvalidCredentials
+                    else -> LoginUnreachable("Clarice answered ${response.code}.")
+                }
+            }
+        } catch (failure: IOException) {
+            LoginUnreachable("Could not reach Clarice.")
+        }
+    }
+
+    private fun parseLogin(body: String): LoginResult = try {
+        val json = JSONObject(body)
+        LoggedIn(
+            token = json.getString("token"),
+            identity = Identity(
+                username = json.getString("username"),
+                email = json.getString("email"),
+            ),
+        )
+    } catch (malformed: JSONException) {
+        LoginUnreachable("Unexpected response from that address.")
+    }
 
     override suspend fun capture(
         token: String,

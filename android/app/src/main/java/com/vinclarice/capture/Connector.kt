@@ -62,6 +62,26 @@ class Connector(
     }
 
     /**
+     * Trade a password for a token, and keep only the token.
+     *
+     * The password itself never reaches [store] -- it exists for the one
+     * request this makes and nowhere else. What gets saved is whatever the
+     * server minted, the same as a pasted token would be.
+     */
+    suspend fun logIn(username: String, password: String): ConnectOutcome {
+        if (username.isBlank() || password.isBlank()) return Blank
+
+        return when (val result = api.login(username, password)) {
+            is LoggedIn -> {
+                store.save(result.token)
+                Connected(result.identity)
+            }
+            InvalidCredentials -> Refused("Incorrect username or password.")
+            is LoginUnreachable -> Failed(result.reason)
+        }
+    }
+
+    /**
      * Who the stored token belongs to, according to the server.
      *
      * Asked rather than remembered. Caching the account name at connect time

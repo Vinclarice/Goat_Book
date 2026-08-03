@@ -621,13 +621,6 @@ export interface components {
             /** Lists */
             lists: components["schemas"]["AgendaListSummaryOut"][];
         };
-        /** SubtaskCountsOut */
-        SubtaskCountsOut: {
-            /** Total */
-            total: number;
-            /** Done */
-            done: number;
-        };
         /** TaskOut */
         TaskOut: {
             /** Id */
@@ -660,23 +653,12 @@ export interface components {
             recurrence: "none" | "daily" | "weekly" | "monthly";
             /** Notes */
             notes: string;
-            parent: components["schemas"]["TaskParentOut"] | null;
-            /** Always Recurs */
-            always_recurs: boolean;
-            subtask_counts: components["schemas"]["SubtaskCountsOut"];
             /** List Id */
             list_id: number;
             /** Url */
             url: string;
             /** Edit Url */
             edit_url: string;
-        };
-        /** TaskParentOut */
-        TaskParentOut: {
-            /** Id */
-            id: number;
-            /** Text */
-            text: string;
         };
         /** ListDetailOut */
         ListDetailOut: {
@@ -704,12 +686,37 @@ export interface components {
             /** Title */
             title: string;
         };
+        /** ChecklistStepOut */
+        ChecklistStepOut: {
+            /** Id */
+            id: number;
+            /** Text */
+            text: string;
+            /** Position */
+            position: number;
+            /** Is Done */
+            is_done: boolean;
+            /** Completed At */
+            completed_at: string | null;
+            /** Carries Forward */
+            carries_forward: boolean;
+            /** Task Id */
+            task_id: number;
+            /** Url */
+            url: string;
+            /** Promote Url */
+            promote_url: string;
+        };
         /** TaskDetailOut */
         TaskDetailOut: {
             task: components["schemas"]["TaskOut"];
             list: components["schemas"]["TaskListSummaryOut"];
-            /** Subtasks */
-            subtasks: components["schemas"]["TaskOut"][];
+            /** Checklist Steps */
+            checklist_steps: components["schemas"]["ChecklistStepOut"][];
+            /** Create Checklist Step Url */
+            create_checklist_step_url: string;
+            /** Reorder Checklist Steps Url */
+            reorder_checklist_steps_url: string;
         };
         /** TaskListSummaryOut */
         TaskListSummaryOut: {
@@ -849,10 +856,6 @@ export interface components {
             recurrence: "none" | "daily" | "weekly" | "monthly";
             /** Notes */
             notes: string;
-            parent: components["schemas"]["TaskParentOut"] | null;
-            /** Always Recurs */
-            always_recurs: boolean;
-            subtask_counts: components["schemas"]["SubtaskCountsOut"];
             /** List Id */
             list_id: number;
             /** Url */
@@ -909,7 +912,6 @@ export interface components {
             status: string | null;
             /** Due Date */
             due_date: string | null;
-            parent: components["schemas"]["TaskParentOut"] | null;
             /** Selected At */
             selected_at: string;
         };
@@ -1036,7 +1038,6 @@ export interface components {
             completed_on: string;
             /** List Id */
             list_id: number;
-            parent: components["schemas"]["TaskParentOut"] | null;
         };
         /**
          * HabitOut
@@ -1151,7 +1152,6 @@ export interface components {
             day: string;
             /** Due Date */
             due_date: string | null;
-            parent: components["schemas"]["TaskParentOut"] | null;
             /** Age In Days */
             age_in_days: number;
             /** Completed On */

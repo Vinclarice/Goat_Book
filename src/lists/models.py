@@ -70,28 +70,6 @@ class Item(models.Model):
     # is a poor trade at two users. blank=True and no null -- "no notes" is
     # the empty string, so nothing has to handle both.
     notes = models.TextField(blank=True, default="")
-    # One level only: a subtask cannot itself have subtasks, enforced in
-    # services rather than the schema (SQL can't express depth). CASCADE
-    # because a deleted parent's children have nothing left to belong to.
-    parent = models.ForeignKey(
-        "self",
-        null=True,
-        blank=True,
-        on_delete=models.CASCADE,
-        related_name="subtasks",
-    )
-    # Whether this subtask reappears on the parent's next occurrence. Only
-    # meaningful when parent_id is set, and defaulted to True because a
-    # subtask is assumed part of the recurring routine unless said otherwise.
-    # It exists because "what must be cascaded" and "what comes back next
-    # time" are different questions -- see design/recurring-subtasks-addendum.md.
-    always_recurs = models.BooleanField(default=True)
-    # Stamped on every archive, single or cascade, so restore can regroup
-    # exactly what one action archived. An explicit marker rather than
-    # matching on archived_at: same-instant timestamps would be a timestamp
-    # doing a marker's job, and a child archived separately then re-archived
-    # with its parent makes that ambiguous.
-    archive_group = models.UUIDField(null=True, blank=True, editable=False)
     # Which repeating commitment this task is an occurrence of. Null means an
     # ordinary one-off task, which is what most rows will always mean.
     #
@@ -115,15 +93,9 @@ class Item(models.Model):
     class Meta:
         ordering = ("position", "id")
         constraints = [
-            # Postgres 15+ only: nulls_distinct=False is what lets one
-            # constraint cover both root tasks (parent IS NULL) and subtasks.
-            # Without it SQL treats every NULL parent as distinct, so this
-            # would stop preventing duplicate top-level tasks entirely --
-            # see design/subtasks-plan.md 6a.
             models.UniqueConstraint(
-                fields=("list", "parent", "text"),
+                fields=("list", "text"),
                 condition=~Q(status="archived"),
-                nulls_distinct=False,
                 name="unique_active_item",
             ),
             models.CheckConstraint(
@@ -166,12 +138,6 @@ class Item(models.Model):
                 fields=("list", "status", "completed_at"),
                 name="item_list_state_completed_idx",
             ),
-            # Backs "the open children of this parent", which every list
-            # render and every cascade walks.
-            models.Index(
-                fields=("parent", "status"),
-                name="item_parent_state_idx",
-            ),
             # Backs "every occurrence of this commitment, oldest first", which
             # is the series read every trend and streak in release F runs.
             # Nothing queries it yet -- charter rule 7 asks for the index the
@@ -184,6 +150,62 @@ class Item(models.Model):
 
     def __str__(self):
         return self.text
+
+class ChecklistStep(models.Model):
+    """A step inside a task's checklist -- release-d-plan.md 2.
+
+    Deliberately not a subtask: no due date, no tags, cannot recur, and has
+    no life apart from its task. Where a Task's status cycles through
+    active/completed/archived, a step has exactly one boolean, `is_done`,
+    because it never appears on the agenda on its own and never needs the
+    independent archive/restore cycle a Task's own history requires. A step
+    can be promoted into a full Task (see services.promote_checklist_step);
+    nothing here converts an existing Task into a step.
+    """
+
+    # Charter rule 1 (architecture-trajectory.md 4): a direct, non-null
+    # owner rather than reaching one through `task` alone, so an isolation
+    # test on this model is a one-hop assertion.
+    owner = models.ForeignKey(
+        "accounts.User",
+        related_name="checklist_steps",
+        on_delete=models.CASCADE,
+    )
+    # CASCADE: a step has no existence apart from its task -- "dies with its
+    # parent" is the whole point of this model over the old self-FK subtask.
+    task = models.ForeignKey(
+        "Item",
+        related_name="checklist_steps",
+        on_delete=models.CASCADE,
+    )
+    text = models.TextField(default="")
+    position = models.PositiveIntegerField(default=0)
+    is_done = models.BooleanField(default=False)
+    completed_at = models.DateTimeField(blank=True, null=True)
+    # Whether this step reappears when its task's next recurring occurrence
+    # is spawned. Only meaningful when `task` recurs -- the same question
+    # Item.always_recurs answered for subtasks, carried over under a name
+    # that can never collide with a task's own Repeat control, because a
+    # step has no recurrence control of its own to collide with.
+    carries_forward = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ("position", "id")
+        constraints = [
+            models.UniqueConstraint(
+                fields=("task", "text"),
+                condition=Q(is_done=False),
+                name="unique_open_checklist_step_text",
+            ),
+        ]
+        indexes = [
+            # Backs "this task's open steps", the only query this model runs.
+            models.Index(fields=("task", "is_done"), name="step_task_done_idx"),
+        ]
+
+    def __str__(self):
+        return self.text
+
 
 class List(models.Model):
     owner = models.ForeignKey(

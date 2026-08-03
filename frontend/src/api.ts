@@ -1,4 +1,4 @@
-import type { Task, TaskRecurrence, TaskStatus } from "./types";
+import type { ChecklistStep, Task, TaskRecurrence, TaskStatus } from "./types";
 
 interface ApiErrors {
   [field: string]: string[];
@@ -7,8 +7,7 @@ interface ApiErrors {
 interface ApiResponse<T> {
   data?: T;
   spawned?: Task;
-  spawned_subtasks?: Task[];
-  cascaded?: Task[];
+  spawned_checklist_steps?: ChecklistStep[];
   errors?: ApiErrors;
 }
 
@@ -89,28 +88,6 @@ export function createTask(
   });
 }
 
-/** Separate from createTask rather than a sixth positional argument to it:
- * a subtask takes none of the other options -- recurrence is rejected
- * outright for children, and due date and tags are set afterwards from the
- * detail view like any other field. */
-export function createSubtask(
-  url: string,
-  text: string,
-  parent: number,
-  alwaysRecurs = true,
-): Promise<Task> {
-  return request<Task>(url, "POST", { text, parent, always_recurs: alwaysRecurs });
-}
-
-/** Only valid for a subtask -- the server rejects it on a root task, where
- * "comes back with the parent" has nothing to mean. */
-export function updateTaskAlwaysRecurs(
-  task: Task,
-  alwaysRecurs: boolean,
-): Promise<Task> {
-  return request<Task>(task.url, "PATCH", { always_recurs: alwaysRecurs });
-}
-
 export function updateTaskText(task: Task, text: string): Promise<Task> {
   return request<Task>(task.url, "PATCH", { text });
 }
@@ -142,17 +119,10 @@ export interface StatusUpdateResult {
   /** Set when completing a recurring task auto-archives it and creates
    * the next occurrence in the same request. */
   spawned?: Task;
-  /** The fresh subtasks cloned onto `spawned` by that same request. Always
-   * an array so callers never branch on the field existing; empty when the
-   * occurrence had no recurring children. Distinct from `cascaded`, which
-   * is existing rows this action moved rather than rows it created. */
-  spawnedSubtasks: Task[];
-  /** The subtasks this one status change also moved, each already carrying
-   * its new status. Completing a parent takes its children with it, and a
-   * caller holding its own copy of the list has to be told -- otherwise a
-   * child left at `completed` under a parent that just archived itself keeps
-   * being drawn, now at the top level, its parent no longer on screen. */
-  cascaded: Task[];
+  /** The fresh checklist steps cloned onto `spawned` by that same request.
+   * Always an array so callers never branch on the field existing; empty
+   * when the occurrence had no recurring steps. */
+  spawnedChecklistSteps: ChecklistStep[];
 }
 
 export async function updateTaskStatus(
@@ -163,8 +133,7 @@ export async function updateTaskStatus(
   return {
     task: payload.data as Task,
     spawned: payload.spawned,
-    spawnedSubtasks: payload.spawned_subtasks ?? [],
-    cascaded: payload.cascaded ?? [],
+    spawnedChecklistSteps: payload.spawned_checklist_steps ?? [],
   };
 }
 
@@ -173,20 +142,58 @@ export async function deleteTask(task: Task): Promise<number> {
   return result.deleted;
 }
 
-export function reorderTasks(
+export function reorderTasks(url: string, orderedIds: number[]): Promise<Task[]> {
+  return request<Task[]>(url, "POST", { ordered_ids: orderedIds });
+}
+
+export function createChecklistStep(
   url: string,
-  orderedIds: number[],
-  // A reorder names one sibling group. Omitted means the root tasks, which
-  // is what every current caller wants; the nested list UI will pass a
-  // parent id to reorder that task's subtasks.
-  parent?: number | null,
-): Promise<Task[]> {
-  return request<Task[]>(url, "POST", {
-    ordered_ids: orderedIds,
-    ...(parent == null ? {} : { parent }),
+  text: string,
+  carriesForward = true,
+): Promise<ChecklistStep> {
+  return request<ChecklistStep>(url, "POST", {
+    text,
+    carries_forward: carriesForward,
   });
 }
 
-export function updateTaskParent(task: Task, parent: number | null): Promise<Task> {
-  return request<Task>(task.url, "PATCH", { parent });
+export function updateChecklistStepDone(
+  step: ChecklistStep,
+  isDone: boolean,
+): Promise<ChecklistStep> {
+  return request<ChecklistStep>(step.url, "PATCH", { is_done: isDone });
+}
+
+export function updateChecklistStepCarriesForward(
+  step: ChecklistStep,
+  carriesForward: boolean,
+): Promise<ChecklistStep> {
+  return request<ChecklistStep>(step.url, "PATCH", {
+    carries_forward: carriesForward,
+  });
+}
+
+export function updateChecklistStepText(
+  step: ChecklistStep,
+  text: string,
+): Promise<ChecklistStep> {
+  return request<ChecklistStep>(step.url, "PATCH", { text });
+}
+
+export async function deleteChecklistStep(step: ChecklistStep): Promise<number> {
+  const result = await request<{ deleted: number }>(step.url, "DELETE");
+  return result.deleted;
+}
+
+/** Turns a step into a task of its own. Returns the new Task -- the step no
+ * longer exists once this resolves. */
+export function promoteChecklistStep(step: ChecklistStep): Promise<Task> {
+  return request<Task>(step.promote_url, "POST");
+}
+
+export function reorderChecklistSteps(
+  url: string,
+  orderedIds: number[],
+): Promise<ChecklistStep[]> {
+  return request<ChecklistStep[]>(url, "POST", { ordered_ids: orderedIds });
 }

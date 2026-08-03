@@ -62,7 +62,6 @@ def completed_in_week(owner, week_start, week_end):
             completed_at__gte=start,
             completed_at__lt=end,
         )
-        .select_related("parent")
         .order_by(F("completed_at").asc(), "id")
     )
 
@@ -121,7 +120,7 @@ def planned_in_week(owner, week_start, week_end):
             entry__date__gte=week_start,
             entry__date__lte=week_end,
         )
-        .select_related("task", "task__parent", "entry")
+        .select_related("task", "entry")
         .order_by("entry__date", "position", "id")
     ):
         released_on = _local_date(focus.released_at)

@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router";
 
 import { TaskDetailRoute } from "./TaskDetailRoute";
-import { task } from "../../test/fixtures";
+import { checklistStep, task } from "../../test/fixtures";
 
 function jsonResponse(data: object, ok = true, status = ok ? 200 : 500) {
   const body = JSON.stringify(data);
@@ -27,7 +27,8 @@ function taskDetailData(overrides: Record<string, unknown> = {}) {
   return {
     task: task(),
     list: { id: 1, title: "Programming" },
-    subtasks: [],
+    checklist_steps: [],
+    create_checklist_step_url: "/api/tasks/1/checklist-steps/",
     ...overrides,
   };
 }
@@ -161,13 +162,13 @@ describe("TaskDetailRoute", () => {
     expect(fetchSpy.mock.calls.length).toBe(callsAfterLoad);
   });
 
-  it("lists subtasks with their done count", async () => {
+  it("lists checklist steps with their done count", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(() =>
       jsonResponse(
         taskDetailData({
-          subtasks: [
-            task({ id: 2, text: "Book flights", status: "completed" }),
-            task({ id: 3, text: "Book hotel" }),
+          checklist_steps: [
+            checklistStep({ id: 2, text: "Book flights", is_done: true }),
+            checklistStep({ id: 3, text: "Book hotel" }),
           ],
         }),
       ),
@@ -179,14 +180,14 @@ describe("TaskDetailRoute", () => {
     expect(screen.getByText("1/2")).toBeInTheDocument();
   });
 
-  it("adds a subtask under the current task", async () => {
+  it("adds a checklist step under the current task", async () => {
     const user = userEvent.setup();
     let posted: Record<string, unknown> | null = null;
     vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
       if (typeof input !== "string") return jsonResponse(taskDetailData());
       if (init?.method === "POST") {
         posted = JSON.parse((init?.body as string) ?? "{}");
-        return jsonResponse({ data: task({ id: 5, text: "Book flights" }) });
+        return jsonResponse({ data: checklistStep({ id: 5, text: "Book flights" }) });
       }
       return jsonResponse({ data: task() });
     });
@@ -194,21 +195,21 @@ describe("TaskDetailRoute", () => {
     renderAt("1");
     await screen.findByDisplayValue("Write tests");
 
-    await user.type(screen.getByLabelText("New subtask"), "Book flights");
+    await user.type(screen.getByLabelText("New checklist step"), "Book flights");
     await user.click(screen.getByRole("button", { name: "Add" }));
 
-    expect(await screen.findByText("Subtask added.")).toBeInTheDocument();
-    // The parent id has to travel with it, or it lands as a root task.
+    expect(await screen.findByText("Checklist step added.")).toBeInTheDocument();
     expect(posted).toEqual({
       text: "Book flights",
-      parent: 1,
-      always_recurs: true,
+      carries_forward: true,
     });
   });
 
-  it("keeps the repeat controls off a task that doesn't repeat", async () => {
+  it("keeps the carries-forward controls off a task that doesn't repeat", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(() =>
-      jsonResponse(taskDetailData({ subtasks: [task({ id: 2, text: "Book hotel" })] })),
+      jsonResponse(
+        taskDetailData({ checklist_steps: [checklistStep({ id: 2, text: "Book hotel" })] }),
+      ),
     );
 
     renderAt("1");
@@ -216,14 +217,14 @@ describe("TaskDetailRoute", () => {
 
     // Nothing to repeat with, so the question isn't worth asking.
     expect(
-      screen.queryByLabelText("Repeat Book hotel next time"),
+      screen.queryByLabelText("Carry Book hotel forward next time"),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByLabelText("Bring this back on the next occurrence"),
     ).not.toBeInTheDocument();
   });
 
-  it("adds a subtask opted out of the next occurrence", async () => {
+  it("adds a checklist step opted out of the next occurrence", async () => {
     const user = userEvent.setup();
     let posted: Record<string, unknown> | null = null;
     vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
@@ -233,7 +234,7 @@ describe("TaskDetailRoute", () => {
       if (init?.method === "POST") {
         posted = JSON.parse((init?.body as string) ?? "{}");
         return jsonResponse({
-          data: task({ id: 5, text: "Renew passport", always_recurs: false }),
+          data: checklistStep({ id: 5, text: "Renew passport", carries_forward: false }),
         });
       }
       return jsonResponse({ data: task() });
@@ -242,21 +243,20 @@ describe("TaskDetailRoute", () => {
     renderAt("1");
     await screen.findByDisplayValue("Write tests");
 
-    await user.type(screen.getByLabelText("New subtask"), "Renew passport");
+    await user.type(screen.getByLabelText("New checklist step"), "Renew passport");
     await user.click(
       screen.getByLabelText("Bring this back on the next occurrence"),
     );
     await user.click(screen.getByRole("button", { name: "Add" }));
 
-    expect(await screen.findByText("Subtask added.")).toBeInTheDocument();
+    expect(await screen.findByText("Checklist step added.")).toBeInTheDocument();
     expect(posted).toEqual({
       text: "Renew passport",
-      parent: 1,
-      always_recurs: false,
+      carries_forward: false,
     });
   });
 
-  it("toggles whether an existing subtask comes back", async () => {
+  it("toggles whether an existing checklist step comes back", async () => {
     const user = userEvent.setup();
     let patched: Record<string, unknown> | null = null;
     vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
@@ -264,68 +264,81 @@ describe("TaskDetailRoute", () => {
         return jsonResponse(
           taskDetailData({
             task: task({ recurrence: "weekly" }),
-            subtasks: [task({ id: 2, text: "Book hotel" })],
+            checklist_steps: [checklistStep({ id: 2, text: "Book hotel" })],
           }),
         );
       }
       patched = JSON.parse((init?.body as string) ?? "{}");
       return jsonResponse({
-        data: task({ id: 2, text: "Book hotel", always_recurs: false }),
+        data: checklistStep({ id: 2, text: "Book hotel", carries_forward: false }),
       });
     });
 
     renderAt("1");
-    const toggle = await screen.findByLabelText("Repeat Book hotel next time");
+    const toggle = await screen.findByLabelText("Carry Book hotel forward next time");
     expect(toggle).toBeChecked();
 
     await user.click(toggle);
 
-    expect(patched).toEqual({ always_recurs: false });
+    expect(patched).toEqual({ carries_forward: false });
     await waitFor(() =>
-      expect(screen.getByLabelText("Repeat Book hotel next time")).not.toBeChecked(),
+      expect(
+        screen.getByLabelText("Carry Book hotel forward next time"),
+      ).not.toBeChecked(),
     );
   });
 
-  it("shows a subtask its parent and offers to promote it", async () => {
+  it("promotes a checklist step to a task of its own", async () => {
     const user = userEvent.setup();
-    let patched: Record<string, unknown> | null = null;
     vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
       if (typeof input !== "string") {
         return jsonResponse(
           taskDetailData({
-            task: task({ parent: { id: 9, text: "Plan Japan trip" } }),
+            checklist_steps: [checklistStep({ id: 2, text: "Book hotel" })],
           }),
         );
       }
-      patched = JSON.parse((init?.body as string) ?? "{}");
-      return jsonResponse({ data: task({ parent: null }) });
+      if (init?.method === "POST") {
+        return jsonResponse({ data: task({ id: 9, text: "Book hotel" }) });
+      }
+      return jsonResponse({ data: task() });
     });
 
     renderAt("1");
-    await screen.findByText("Plan Japan trip");
+    await screen.findByText("Book hotel");
 
-    await user.click(screen.getByRole("button", { name: "Promote" }));
+    await user.click(screen.getByLabelText("Promote Book hotel"));
 
     expect(
-      await screen.findByText("Promoted to a task of its own."),
+      await screen.findByText('"Book hotel" is now a task of its own.'),
     ).toBeInTheDocument();
-    expect(patched).toEqual({ parent: null });
+    expect(screen.queryByText("Book hotel")).not.toBeInTheDocument();
   });
 
-  it("doesn't offer a subtask section on a task that is itself a subtask", async () => {
-    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
-      jsonResponse(
-        taskDetailData({
-          task: task({ parent: { id: 9, text: "Plan Japan trip" } }),
-        }),
-      ),
-    );
+  it("removes a checklist step", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
+      if (typeof input !== "string") {
+        return jsonResponse(
+          taskDetailData({
+            checklist_steps: [checklistStep({ id: 2, text: "Book hotel" })],
+          }),
+        );
+      }
+      if (init?.method === "DELETE") {
+        return jsonResponse({ data: { deleted: 2 } });
+      }
+      return jsonResponse({ data: task() });
+    });
 
     renderAt("1");
-    await screen.findByText("Plan Japan trip");
+    await screen.findByText("Book hotel");
 
-    // One level only -- a subtask has nowhere to put children.
-    expect(screen.queryByLabelText("New subtask")).not.toBeInTheDocument();
+    await user.click(screen.getByLabelText("Remove Book hotel"));
+
+    await waitFor(() =>
+      expect(screen.queryByText("Book hotel")).not.toBeInTheDocument(),
+    );
   });
 
   it("surfaces a conflict error from a duplicate rename", async () => {

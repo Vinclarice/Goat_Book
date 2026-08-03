@@ -14,7 +14,7 @@ from ninja.errors import HttpError
 
 from daily import reads, services
 from lists import agenda
-from lists.api_v1 import TaskOut, TaskParentOut
+from lists.api_v1 import TaskOut
 from lists.models import Item
 from lists.serializers import serialize_item
 from routines import reads as routine_reads
@@ -108,7 +108,6 @@ class FocusOut(Schema):
     text: str
     status: str | None
     due_date: str | None
-    parent: TaskParentOut | None
     selected_at: str
 
 
@@ -160,11 +159,6 @@ def _focus_out(focus):
         "text": task.text if task else focus.task_text,
         "status": task.status if task else None,
         "due_date": task.due_date.isoformat() if task and task.due_date else None,
-        "parent": (
-            {"id": task.parent_id, "text": task.parent.text}
-            if task and task.parent_id
-            else None
-        ),
         "selected_at": focus.selected_at.isoformat(),
     }
 

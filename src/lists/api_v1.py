@@ -21,7 +21,6 @@ from lists import services
 from lists.forms import ListTitleForm
 from lists.models import Item, List
 from lists.serializers import (
-    annotate_subtask_counts,
     archive_workspace_data_for,
     list_ref_for,
     list_workspace_data_for,
@@ -38,14 +37,16 @@ ListColorKey = Literal[
 ]
 
 
-class TaskParentOut(Schema):
+class ChecklistStepOut(Schema):
     id: int
     text: str
-
-
-class SubtaskCountsOut(Schema):
-    total: int
-    done: int
+    position: int
+    is_done: bool
+    completed_at: str | None
+    carries_forward: bool
+    task_id: int
+    url: str
+    promote_url: str
 
 
 class TaskOut(Schema):
@@ -61,9 +62,6 @@ class TaskOut(Schema):
     tags: list[str]
     recurrence: TaskRecurrence
     notes: str
-    parent: TaskParentOut | None
-    always_recurs: bool
-    subtask_counts: SubtaskCountsOut
     list_id: int
     url: str
     edit_url: str
@@ -131,7 +129,9 @@ class ArchiveOut(Schema):
 class TaskDetailOut(Schema):
     task: TaskOut
     list: TaskListSummaryOut
-    subtasks: list[TaskOut]
+    checklist_steps: list[ChecklistStepOut]
+    create_checklist_step_url: str
+    reorder_checklist_steps_url: str
 
 
 class NavListOut(Schema):
@@ -218,10 +218,8 @@ def _owned_list(request, list_id):
 def list_detail(request, list_id: int):
     our_list = _owned_list(request, list_id)
     items = list(
-        annotate_subtask_counts(
-            our_list.item_set.exclude(status=Item.Status.ARCHIVED)
-        )
-        .select_related("list", "parent")
+        our_list.item_set.exclude(status=Item.Status.ARCHIVED)
+        .select_related("list")
         .prefetch_related("tags")
     )
     return {

@@ -19,4 +19,24 @@ urlpatterns = [
         api.item_detail,
         name="api_item_detail",
     ),
+    path(
+        "tasks/<int:task_id>/checklist-steps/",
+        api.create_checklist_step,
+        name="api_create_checklist_step",
+    ),
+    path(
+        "tasks/<int:task_id>/checklist-steps/reorder/",
+        api.reorder_checklist_steps,
+        name="api_reorder_checklist_steps",
+    ),
+    path(
+        "checklist-steps/<int:step_id>/",
+        api.checklist_step_detail,
+        name="api_checklist_step_detail",
+    ),
+    path(
+        "checklist-steps/<int:step_id>/promote/",
+        api.promote_checklist_step,
+        name="api_checklist_step_promote",
+    ),
 ]

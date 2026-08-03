@@ -215,37 +215,21 @@ export function AgendaWorkspace({ initialData }: Props) {
     );
     if (!result) return;
 
-    // Ticking a parent off moves its subtasks too. They leave the open list
-    // either way; where they land depends on what the parent did. A parent
-    // that merely completed sends them to "completed today" alongside it; a
-    // recurring one archived itself and took them out of the day entirely,
-    // including any that were already sitting there done.
-    const moved = new Set(result.cascaded.map((child) => child.id));
-    const nowCompleted = result.cascaded.filter(
-      (child) => child.status === "completed",
-    );
-
     setTasks((current) => {
-      const remaining = current.filter(
-        (each) => each.id !== task.id && !moved.has(each.id),
-      );
-      // A recurring task archives itself and returns its next occurrence
-      // in the same response, along with the children cloned onto it. Both
-      // go in before the re-bucket, so each lands in whichever bucket its
-      // own due date puts it -- the agenda is flat, so the children appear
-      // as their own rows carrying a parent breadcrumb rather than nested.
+      const remaining = current.filter((each) => each.id !== task.id);
+      // A recurring task archives itself and returns its next occurrence in
+      // the same response, which goes in before the re-bucket so it lands
+      // in whichever bucket its own due date puts it.
       return sortAgendaTasks(
-        result.spawned
-          ? [...remaining, result.spawned, ...result.spawnedSubtasks]
-          : remaining,
+        result.spawned ? [...remaining, result.spawned] : remaining,
       );
     });
 
-    setCompletedToday((current) => [
-      // The parent only rests here when it isn't recurring.
-      ...(result.spawned ? nowCompleted : [result.task, ...nowCompleted]),
-      ...current.filter((each) => !moved.has(each.id)),
-    ]);
+    // The task only rests here when it isn't recurring -- a recurring one
+    // archived itself and left the day entirely.
+    if (!result.spawned) {
+      setCompletedToday((current) => [result.task, ...current]);
+    }
 
     if (result.spawned) {
       const next = result.spawned;
@@ -387,24 +371,6 @@ export function AgendaWorkspace({ initialData }: Props) {
                 />
                 {taskList.title}
               </a>
-            )}
-
-            {/* Subtasks appear here as their own dated rows -- the agenda is
-                the chronological view, the list page is the nested one -- so
-                the breadcrumb is what says where a row belongs. */}
-            {task.parent && (
-              <span className="pill" title={`Subtask of ${task.parent.text}`}>
-                {task.parent.text} ›
-              </span>
-            )}
-
-            {task.subtask_counts.total > 0 && (
-              <span
-                className="pill"
-                aria-label={`${task.subtask_counts.done} of ${task.subtask_counts.total} subtasks done`}
-              >
-                {task.subtask_counts.done}/{task.subtask_counts.total}
-              </span>
             )}
 
             {task.due_date && (

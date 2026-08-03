@@ -62,5 +62,5 @@ def focus_for(owner, day):
     return list(
         DailyFocus.objects.filter(
             owner=owner, entry__date=day, released_at__isnull=True
-        ).select_related("task", "task__list", "task__parent")
+        ).select_related("task", "task__list")
     )

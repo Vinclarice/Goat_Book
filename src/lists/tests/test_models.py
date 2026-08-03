@@ -1,6 +1,6 @@
 from accounts.models import User
-from django.test import TestCase, skipUnlessDBFeature
-from lists.models import Item, List
+from django.test import TestCase
+from lists.models import ChecklistStep, Item, List
 from django.db import IntegrityError
 from django.core.exceptions import ValidationError
 from django.utils import timezone
@@ -102,20 +102,19 @@ class ListModelTest(TestCase):
         self.assertEqual(List.objects.create().title, "Untitled list")
 
 
-class SubtaskConstraintTest(TestCase):
+class UniqueActiveItemConstraintTest(TestCase):
     """Exercises unique_active_item at the database, not through services.
 
     services._duplicate_exists short-circuits before the database is reached
     on most paths, so a service-level test would still pass against a broken
     or missing constraint. These go straight at it.
 
-    Skipped on SQLite, which cannot express nulls_distinct=False: Django omits
-    the constraint entirely there rather than failing, so on SQLite these
-    would assert an error that the database was never going to raise. CI runs
-    Postgres, which is where this actually gets checked.
+    No longer skipped on SQLite -- release-d-plan.md 5: dropping Item.parent
+    left `(list, text)` as the constraint's only fields, neither of them
+    nullable, so nulls_distinct=False was doing nothing and its removal lets
+    SQLite create the constraint like any other.
     """
 
-    @skipUnlessDBFeature("supports_nulls_distinct_unique_constraints")
     def test_duplicate_root_tasks_are_still_rejected(self):
         mylist = List.objects.create()
         Item.objects.create(list=mylist, text="Book flights")
@@ -123,39 +122,6 @@ class SubtaskConstraintTest(TestCase):
         with self.assertRaises(IntegrityError):
             Item.objects.create(list=mylist, text="Book flights")
 
-    @skipUnlessDBFeature("supports_nulls_distinct_unique_constraints")
-    def test_the_same_text_may_appear_under_different_parents(self):
-        mylist = List.objects.create()
-        japan = Item.objects.create(list=mylist, text="Plan Japan trip")
-        peru = Item.objects.create(list=mylist, text="Plan Peru trip")
-
-        Item.objects.create(list=mylist, text="Book flights", parent=japan)
-        Item.objects.create(list=mylist, text="Book flights", parent=peru)
-
-        self.assertEqual(Item.objects.filter(text="Book flights").count(), 2)
-
-    @skipUnlessDBFeature("supports_nulls_distinct_unique_constraints")
-    def test_duplicate_siblings_under_one_parent_are_rejected(self):
-        mylist = List.objects.create()
-        japan = Item.objects.create(list=mylist, text="Plan Japan trip")
-        Item.objects.create(list=mylist, text="Book flights", parent=japan)
-
-        with self.assertRaises(IntegrityError):
-            Item.objects.create(list=mylist, text="Book flights", parent=japan)
-
-    @skipUnlessDBFeature("supports_nulls_distinct_unique_constraints")
-    def test_a_subtask_may_share_its_text_with_a_root_task(self):
-        mylist = List.objects.create()
-        japan = Item.objects.create(list=mylist, text="Plan Japan trip")
-        root = Item.objects.create(list=mylist, text="Book flights")
-
-        child = Item.objects.create(
-            list=mylist, text="Book flights", parent=japan
-        )
-
-        self.assertNotEqual(root.pk, child.pk)
-
-    @skipUnlessDBFeature("supports_nulls_distinct_unique_constraints")
     def test_archiving_frees_the_text_for_reuse(self):
         mylist = List.objects.create()
         first = Item.objects.create(list=mylist, text="Book flights")
@@ -164,3 +130,90 @@ class SubtaskConstraintTest(TestCase):
         first.save()
 
         Item.objects.create(list=mylist, text="Book flights")  # should not raise
+
+
+class ChecklistStepModelTest(TestCase):
+    """release-d-plan.md 2: a Checklist Step is a new, lightweight model --
+    no due date, no tags, cannot recur, dies with its parent task.
+    """
+
+    def setUp(self):
+        self.owner = User.objects.create_user(
+            username="alice", email="a@b.com", password="x"
+        )
+        self.mylist = List.objects.create(owner=self.owner)
+        self.task = Item.objects.create(list=self.mylist, text="Get the dog ready")
+
+    def test_default_state(self):
+        step = ChecklistStep.objects.create(
+            owner=self.owner, task=self.task, text="Refill medication"
+        )
+        self.assertFalse(step.is_done)
+        self.assertIsNone(step.completed_at)
+        self.assertTrue(step.carries_forward)
+        self.assertEqual(step.position, 0)
+
+    def test_string_representation(self):
+        step = ChecklistStep(text="Book the kennel")
+        self.assertEqual(str(step), "Book the kennel")
+
+    def test_step_is_related_to_its_task(self):
+        step = ChecklistStep.objects.create(
+            owner=self.owner, task=self.task, text="Book the kennel"
+        )
+        self.assertIn(step, self.task.checklist_steps.all())
+
+    def test_step_is_related_to_its_owner(self):
+        step = ChecklistStep.objects.create(
+            owner=self.owner, task=self.task, text="Book the kennel"
+        )
+        self.assertIn(step, self.owner.checklist_steps.all())
+
+    def test_deleting_the_task_deletes_its_steps(self):
+        step = ChecklistStep.objects.create(
+            owner=self.owner, task=self.task, text="Book the kennel"
+        )
+        self.task.delete()
+        self.assertFalse(ChecklistStep.objects.filter(pk=step.pk).exists())
+
+    def test_steps_are_ordered_by_position(self):
+        second = ChecklistStep.objects.create(
+            owner=self.owner, task=self.task, text="second", position=1
+        )
+        first = ChecklistStep.objects.create(
+            owner=self.owner, task=self.task, text="first", position=0
+        )
+        self.assertEqual(
+            list(self.task.checklist_steps.all()), [first, second]
+        )
+
+    def test_duplicate_open_step_text_is_rejected(self):
+        ChecklistStep.objects.create(
+            owner=self.owner, task=self.task, text="Book the kennel"
+        )
+        with self.assertRaises(IntegrityError):
+            ChecklistStep.objects.create(
+                owner=self.owner, task=self.task, text="Book the kennel"
+            )
+
+    def test_a_done_step_frees_its_text_for_reuse(self):
+        first = ChecklistStep.objects.create(
+            owner=self.owner, task=self.task, text="Book the kennel"
+        )
+        first.is_done = True
+        first.completed_at = timezone.now()
+        first.save()
+
+        ChecklistStep.objects.create(  # should not raise
+            owner=self.owner, task=self.task, text="Book the kennel"
+        )
+
+    def test_the_same_text_may_appear_under_different_tasks(self):
+        other_task = Item.objects.create(list=self.mylist, text="Plan Japan trip")
+        ChecklistStep.objects.create(
+            owner=self.owner, task=self.task, text="Book flights"
+        )
+        ChecklistStep.objects.create(
+            owner=self.owner, task=other_task, text="Book flights"
+        )
+        self.assertEqual(ChecklistStep.objects.filter(text="Book flights").count(), 2)

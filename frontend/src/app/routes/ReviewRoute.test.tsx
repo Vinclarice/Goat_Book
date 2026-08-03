@@ -54,7 +54,6 @@ function plannedTask(overrides: Record<string, unknown> = {}) {
     text: "Pay rent",
     day: "2026-07-27",
     due_date: null,
-    parent: null,
     age_in_days: 0,
     completed_on: null,
     ...overrides,
@@ -67,7 +66,6 @@ function completedTask(overrides: Record<string, unknown> = {}) {
     text: "Pay rent",
     completed_on: "2026-07-29",
     list_id: 3,
-    parent: null,
     ...overrides,
   };
 }

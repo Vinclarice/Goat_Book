@@ -36,7 +36,6 @@ type ActionItem = {
   id: number;
   text: string;
   due_date: string | null;
-  parent: { id: number; text: string } | null;
   age_in_days: number;
 };
 
@@ -45,16 +44,7 @@ type Focus = {
   text: string;
   status: string | null;
   due_date: string | null;
-  parent: { id: number; text: string } | null;
 };
-
-/** A task's breadcrumb, so a subtask row is not a fragment nobody can place. */
-function Breadcrumb({ parent }: { parent: { text: string } | null }) {
-  if (!parent) return null;
-  return (
-    <span className="text-sm text-muted-foreground">{parent.text} / </span>
-  );
-}
 
 /**
  * The day's deliberate choices, above the broader agenda.
@@ -90,7 +80,6 @@ function FocusList({
           className="flex items-baseline justify-between gap-3 rounded-lg border border-accent px-3 py-2"
         >
           <span className="min-w-0">
-            <Breadcrumb parent={item.parent} />
             <span className={item.status === "completed" ? "line-through" : ""}>
               {item.text}
             </span>
@@ -160,9 +149,6 @@ function ActionItems({
             className="flex items-baseline justify-between gap-3 rounded-lg border border-border px-3 py-2"
           >
             <span className="min-w-0">
-              {/* The breadcrumb the agenda shows too, so a subtask row is not
-                  a floating fragment of a task nobody can place. */}
-              <Breadcrumb parent={item.parent} />
               <a href={`/app/tasks/${item.id}`} className="hover:underline">
                 {item.text}
               </a>

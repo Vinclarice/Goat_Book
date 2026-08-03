@@ -6,8 +6,8 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 
 from lists import services
-from lists.models import Item, List
-from lists.serializers import annotate_subtask_counts, serialize_item
+from lists.models import ChecklistStep, Item, List
+from lists.serializers import serialize_checklist_step, serialize_item
 
 
 class _InvalidDueDate(Exception):
@@ -59,32 +59,14 @@ def _owned_item(request, item_id):
     ).first()
 
 
-def _resolve_parent(request, raw):
-    """Turns a `parent` id from a request body into an owned Item.
-
-    Returns (parent, error_response); (None, None) means "no parent given",
-    which is a valid request rather than a failure.
-
-    This is the first id this API accepts in a body rather than a path, and
-    it goes through the same owner-scoped queryset the path ids do. Resolving
-    it with a bare Item.objects.get() would let one user graft a subtask onto
-    another user's task. 404 rather than 403, matching the rest of the API:
-    a task you don't own doesn't exist as far as you're concerned.
-    """
-    if raw is None:
-        return None, None
-    if not isinstance(raw, int) or isinstance(raw, bool):
-        return None, JsonResponse(
-            {"errors": {"parent": ["Send a task id."]}},
-            status=400,
-        )
-    parent = _owned_item(request, raw)
-    if parent is None:
-        return None, JsonResponse(
-            {"errors": {"parent": ["Task not found."]}},
-            status=404,
-        )
-    return parent, None
+def _owned_checklist_step(request, step_id):
+    # Charter rule 1 pays off here: a direct owner FK on ChecklistStep makes
+    # this a one-hop lookup, the same shape as _owned_item, rather than a
+    # join through task__list__owner.
+    return ChecklistStep.objects.select_related("task", "task__list").filter(
+        id=step_id,
+        owner=request.user,
+    ).first()
 
 
 @api_login_required
@@ -121,15 +103,6 @@ def create_item(request, list_id):
             {"errors": {"recurrence": ["Choose a valid recurrence."]}},
             status=400,
         )
-    parent, parent_error = _resolve_parent(request, payload.get("parent"))
-    if parent_error:
-        return parent_error
-    always_recurs = payload.get("always_recurs")
-    if always_recurs is not None and not isinstance(always_recurs, bool):
-        return JsonResponse(
-            {"errors": {"always_recurs": ["Send true or false."]}},
-            status=400,
-        )
     try:
         item = services.create_item(
             our_list,
@@ -137,10 +110,6 @@ def create_item(request, list_id):
             due_date=due_date,
             tags=tags,
             recurrence=recurrence,
-            parent=parent,
-            # Left as None when absent, so the service can tell "not asked
-            # for" from an explicit False on a task that can't have it.
-            always_recurs=always_recurs,
         )
     except services.TaskConflict as error:
         return JsonResponse(
@@ -172,14 +141,8 @@ def reorder_items(request, list_id):
             {"errors": {"ordered_ids": ["Send a list of item ids."]}},
             status=400,
         )
-    # A reorder now names one sibling group: omit `parent` for the root
-    # tasks, or send a parent id to reorder that task's subtasks.
-    parent, parent_error = _resolve_parent(request, payload.get("parent"))
-    if parent_error:
-        return parent_error
-
     try:
-        services.reorder_items(our_list, ordered_ids, parent=parent)
+        services.reorder_items(our_list, ordered_ids)
     except services.TaskConflict as error:
         return JsonResponse(
             {"errors": {"ordered_ids": [str(error)]}},
@@ -217,8 +180,7 @@ def item_detail(request, item_id):
     if error_response:
         return error_response
     changed_fields = {
-        "text", "status", "due_date", "tags", "recurrence", "notes", "parent",
-        "always_recurs",
+        "text", "status", "due_date", "tags", "recurrence", "notes",
     }.intersection(payload)
     if len(changed_fields) != 1:
         return JsonResponse(
@@ -226,8 +188,7 @@ def item_detail(request, item_id):
                 "errors": {
                     "body": [
                         "Change exactly one of text, status, due_date, tags, "
-                        "recurrence, notes, parent, or always_recurs per "
-                        "request."
+                        "recurrence, or notes per request."
                     ]
                 }
             },
@@ -267,21 +228,6 @@ def item_detail(request, item_id):
                     status=400,
                 )
             item = services.set_item_notes(item, notes)
-        elif "always_recurs" in changed_fields:
-            always_recurs = payload["always_recurs"]
-            if not isinstance(always_recurs, bool):
-                return JsonResponse(
-                    {"errors": {"always_recurs": ["Send true or false."]}},
-                    status=400,
-                )
-            item = services.set_always_recurs(item, always_recurs)
-        elif "parent" in changed_fields:
-            # null promotes a subtask to a root task; an id demotes a root
-            # task under that parent, or moves a subtask to a new one.
-            parent, parent_error = _resolve_parent(request, payload["parent"])
-            if parent_error:
-                return parent_error
-            item = services.set_parent(item, parent)
         else:
             requested_status = payload["status"]
             if requested_status == Item.Status.ACTIVE:
@@ -310,37 +256,161 @@ def item_detail(request, item_id):
             status=400,
         )
 
-    cascaded = getattr(item, "_cascaded", [])
     item = Item.objects.select_related("list").get(pk=item.pk)
     response = {"data": serialize_item(item)}
     if spawned is not None:
         spawned = Item.objects.select_related("list").get(pk=spawned.pk)
         response["spawned"] = serialize_item(spawned)
-        # The children the same transaction just cloned onto the new
-        # occurrence. A sibling array rather than children nested inside
-        # every serialised Task: the list, agenda and detail reads stay the
-        # size they are, and only the one mutation that creates children
-        # pays to carry them. Always present when `spawned` is, empty when
-        # nothing recurred, so the client reads an array without branching.
-        response["spawned_subtasks"] = [
-            serialize_item(child)
-            for child in annotate_subtask_counts(
-                Item.objects.filter(parent=spawned).exclude(
-                    status=Item.Status.ARCHIVED
-                )
-            )
-            .select_related("list", "parent")
-            .prefetch_related("tags")
-            .order_by("position", "id")
-        ]
-    if cascaded:
-        # Which children this one action moved. The client needs the exact
-        # set to undo it: children already completed before the parent was
-        # ticked look identical afterwards, so the server can't recompute it.
-        response["cascaded"] = [
-            serialize_item(child)
-            for child in Item.objects.select_related("list").filter(
-                pk__in=[each.pk for each in cascaded]
-            )
+        # The fresh checklist steps this same completion cloned onto the new
+        # occurrence. Always present when `spawned` is, empty when nothing
+        # recurred, so the client reads an array without branching.
+        response["spawned_checklist_steps"] = [
+            serialize_checklist_step(step)
+            for step in spawned.checklist_steps.order_by("position", "id")
         ]
     return JsonResponse(response)
+
+
+@api_login_required
+@require_http_methods(["POST"])
+def create_checklist_step(request, task_id):
+    task = _owned_item(request, task_id)
+    if task is None:
+        return JsonResponse(
+            {"errors": {"task": ["Task not found."]}},
+            status=404,
+        )
+
+    payload, error_response = _read_json(request)
+    if error_response:
+        return error_response
+    carries_forward = payload.get("carries_forward")
+    if carries_forward is not None and not isinstance(carries_forward, bool):
+        return JsonResponse(
+            {"errors": {"carries_forward": ["Send true or false."]}},
+            status=400,
+        )
+    try:
+        step = services.add_checklist_step(
+            task, payload.get("text"), carries_forward=carries_forward,
+        )
+    except services.TaskConflict as error:
+        return JsonResponse({"errors": {"text": [str(error)]}}, status=400)
+    except services.InvalidTaskTransition as error:
+        return JsonResponse({"errors": {"status": [str(error)]}}, status=400)
+    return JsonResponse({"data": serialize_checklist_step(step)}, status=201)
+
+
+@api_login_required
+@require_http_methods(["POST"])
+def reorder_checklist_steps(request, task_id):
+    task = _owned_item(request, task_id)
+    if task is None:
+        return JsonResponse(
+            {"errors": {"task": ["Task not found."]}},
+            status=404,
+        )
+
+    payload, error_response = _read_json(request)
+    if error_response:
+        return error_response
+    ordered_ids = payload.get("ordered_ids")
+    if not isinstance(ordered_ids, list) or not all(
+        isinstance(value, int) for value in ordered_ids
+    ):
+        return JsonResponse(
+            {"errors": {"ordered_ids": ["Send a list of step ids."]}},
+            status=400,
+        )
+    try:
+        steps = services.reorder_checklist_steps(task, ordered_ids)
+    except services.TaskConflict as error:
+        return JsonResponse(
+            {"errors": {"ordered_ids": [str(error)]}},
+            status=409,
+        )
+    return JsonResponse(
+        {"data": [serialize_checklist_step(step) for step in steps]},
+    )
+
+
+@api_login_required
+@require_http_methods(["PATCH", "DELETE"])
+def checklist_step_detail(request, step_id):
+    step = _owned_checklist_step(request, step_id)
+    if step is None:
+        return JsonResponse(
+            {"errors": {"step": ["Checklist step not found."]}},
+            status=404,
+        )
+
+    if request.method == "DELETE":
+        try:
+            services.delete_checklist_step(step)
+        except services.InvalidTaskTransition as error:
+            return JsonResponse(
+                {"errors": {"status": [str(error)]}},
+                status=400,
+            )
+        return JsonResponse({"data": {"deleted": step_id}})
+
+    payload, error_response = _read_json(request)
+    if error_response:
+        return error_response
+    changed_fields = {"text", "is_done", "carries_forward"}.intersection(payload)
+    if len(changed_fields) != 1:
+        return JsonResponse(
+            {
+                "errors": {
+                    "body": [
+                        "Change exactly one of text, is_done, or "
+                        "carries_forward per request."
+                    ]
+                }
+            },
+            status=400,
+        )
+
+    try:
+        if "text" in changed_fields:
+            step = services.edit_checklist_step_text(step, payload["text"])
+        elif "is_done" in changed_fields:
+            is_done = payload["is_done"]
+            if not isinstance(is_done, bool):
+                return JsonResponse(
+                    {"errors": {"is_done": ["Send true or false."]}},
+                    status=400,
+                )
+            step = services.set_checklist_step_done(step, is_done)
+        else:
+            carries_forward = payload["carries_forward"]
+            if not isinstance(carries_forward, bool):
+                return JsonResponse(
+                    {"errors": {"carries_forward": ["Send true or false."]}},
+                    status=400,
+                )
+            step = services.set_checklist_step_carries_forward(step, carries_forward)
+    except services.TaskConflict as error:
+        return JsonResponse({"errors": {"conflict": [str(error)]}}, status=409)
+    except services.InvalidTaskTransition as error:
+        return JsonResponse({"errors": {"status": [str(error)]}}, status=400)
+    return JsonResponse({"data": serialize_checklist_step(step)})
+
+
+@api_login_required
+@require_http_methods(["POST"])
+def promote_checklist_step(request, step_id):
+    step = _owned_checklist_step(request, step_id)
+    if step is None:
+        return JsonResponse(
+            {"errors": {"step": ["Checklist step not found."]}},
+            status=404,
+        )
+    try:
+        task = services.promote_checklist_step(step)
+    except services.TaskConflict as error:
+        return JsonResponse({"errors": {"conflict": [str(error)]}}, status=409)
+    except services.InvalidTaskTransition as error:
+        return JsonResponse({"errors": {"status": [str(error)]}}, status=400)
+    task = Item.objects.select_related("list").get(pk=task.pk)
+    return JsonResponse({"data": serialize_item(task)}, status=201)

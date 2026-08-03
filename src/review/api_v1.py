@@ -24,7 +24,6 @@ from django.utils import timezone
 from ninja import Router, Schema
 
 from lists import agenda
-from lists.api_v1 import TaskParentOut
 from review import reads, services
 from review.weeks import DAYS_IN_WEEK, week_start_for
 
@@ -46,7 +45,6 @@ class CompletedTaskOut(Schema):
     # whose zone is not the account's.
     completed_on: date
     list_id: int
-    parent: TaskParentOut | None
 
 
 class PlannedTaskOut(Schema):
@@ -63,7 +61,6 @@ class PlannedTaskOut(Schema):
     # Which day it was chosen for. A week is seven decisions, not one.
     day: date
     due_date: date | None
-    parent: TaskParentOut | None
     # The same number the Daily Page shows, from the same rule in
     # lists.agenda -- reported rather than judged, per Crane 2 slice 5.
     age_in_days: int
@@ -254,11 +251,6 @@ def _planned_task_out(focus, today):
         "text": task.text if task else focus.task_text,
         "day": focus.entry.date,
         "due_date": task.due_date if task else None,
-        "parent": (
-            {"id": task.parent_id, "text": task.parent.text}
-            if task and task.parent_id
-            else None
-        ),
         # Falls back to when it was chosen, for a task that no longer
         # exists: something was planned that day either way, and zero would
         # claim it was new.
@@ -279,11 +271,6 @@ def _completed_out(item):
         "text": item.text,
         "completed_on": timezone.localtime(item.completed_at).date(),
         "list_id": item.list_id,
-        "parent": (
-            {"id": item.parent_id, "text": item.parent.text}
-            if item.parent_id
-            else None
-        ),
     }
 
 

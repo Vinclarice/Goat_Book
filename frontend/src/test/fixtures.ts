@@ -1,4 +1,9 @@
-import type { ArchiveWorkspaceData, AgendaWorkspaceData, Task } from "../types";
+import type {
+  ArchiveWorkspaceData,
+  AgendaWorkspaceData,
+  ChecklistStep,
+  Task,
+} from "../types";
 
 export function task(overrides: Partial<Task> = {}): Task {
   return {
@@ -14,12 +19,24 @@ export function task(overrides: Partial<Task> = {}): Task {
     tags: [],
     recurrence: "none",
     notes: "",
-    parent: null,
-    always_recurs: true,
-    subtask_counts: { total: 0, done: 0 },
     list_id: 1,
     url: "/api/items/1/",
     edit_url: "/lists/items/1/edit",
+    ...overrides,
+  };
+}
+
+export function checklistStep(overrides: Partial<ChecklistStep> = {}): ChecklistStep {
+  return {
+    id: 1,
+    text: "Refill medication",
+    position: 0,
+    is_done: false,
+    completed_at: null,
+    carries_forward: true,
+    task_id: 1,
+    url: "/api/checklist-steps/1/",
+    promote_url: "/api/checklist-steps/1/promote/",
     ...overrides,
   };
 }

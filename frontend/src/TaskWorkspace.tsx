@@ -1,11 +1,9 @@
 import { FormEvent, useMemo, useState } from "react";
 
 import {
-  createSubtask,
   createTask,
   reorderTasks,
   updateTaskDueDate,
-  updateTaskParent,
   updateTaskRecurrence,
   updateTaskStatus,
   updateTaskTags,
@@ -88,11 +86,6 @@ export function TaskWorkspace({ initialData }: Props) {
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [draggedId, setDraggedId] = useState<number | null>(null);
-  // Collapsed rather than expanded state, so a newly-loaded list shows
-  // everything and only deliberate collapsing hides anything.
-  const [collapsed, setCollapsed] = useState<Set<number>>(new Set());
-  const [addingSubtaskFor, setAddingSubtaskFor] = useState<number | null>(null);
-  const [subtaskDraft, setSubtaskDraft] = useState("");
 
   const canReorder = filter === "all" && query.trim() === "" && tagFilter === null;
 
@@ -116,32 +109,6 @@ export function TaskWorkspace({ initialData }: Props) {
     });
   }, [filter, items, query, tagFilter]);
 
-  /** Flattens the visible tasks into render order, parents followed by their
-   * own children. A child whose parent was filtered out is rendered at the
-   * top level rather than hidden: the filter said to show it, and nesting it
-   * under something that isn't on screen would just lose it. */
-  const rows = useMemo(() => {
-    const visibleIds = new Set(visibleItems.map((item) => item.id));
-    const childrenOf = new Map<number, Task[]>();
-    for (const item of visibleItems) {
-      const parentId = item.parent?.id ?? null;
-      if (parentId !== null && visibleIds.has(parentId)) {
-        childrenOf.set(parentId, [...(childrenOf.get(parentId) ?? []), item]);
-      }
-    }
-    const out: { item: Task; depth: number }[] = [];
-    for (const item of visibleItems) {
-      const parentId = item.parent?.id ?? null;
-      if (parentId !== null && visibleIds.has(parentId)) continue;
-      out.push({ item, depth: 0 });
-      if (collapsed.has(item.id)) continue;
-      for (const child of childrenOf.get(item.id) ?? []) {
-        out.push({ item: child, depth: 1 });
-      }
-    }
-    return out;
-  }, [collapsed, visibleItems]);
-
   const allTags = useMemo(() => {
     const names = new Set<string>();
     items.forEach((item) => item.tags.forEach((tag) => names.add(tag)));
@@ -152,23 +119,6 @@ export function TaskWorkspace({ initialData }: Props) {
     setItems((current) =>
       current.map((item) => (item.id === updated.id ? updated : item)),
     );
-  }
-
-  /** Folds the subtasks a status change also moved back into the list. An
-   * archived one leaves altogether -- this page never shows archived tasks --
-   * and the rest take their new status. Without this a child ticked off by
-   * its parent's completion keeps rendering as open, and one whose parent
-   * archived itself keeps rendering at all: rows() promotes a child whose
-   * parent is missing to the top level, so it would sit there looking like a
-   * root task until the next reload. */
-  function applyCascade(items: Task[], cascaded: Task[]): Task[] {
-    if (cascaded.length === 0) return items;
-    const moved = new Map(cascaded.map((child) => [child.id, child]));
-    return items.flatMap((item) => {
-      const child = moved.get(item.id);
-      if (!child) return [item];
-      return child.status === "archived" ? [] : [child];
-    });
   }
 
   async function handleCreate(event: FormEvent) {
@@ -202,20 +152,11 @@ export function TaskWorkspace({ initialData }: Props) {
     setNotice("");
     setBusyId(task.id);
     try {
-      const { task: updated, spawned, spawnedSubtasks, cascaded } =
-        await updateTaskStatus(task, status);
+      const { task: updated, spawned } = await updateTaskStatus(task, status);
       if (updated.status === "archived") {
         setItems((current) => {
-          const withoutArchived = applyCascade(current, cascaded).filter(
-            (item) => item.id !== updated.id,
-          );
-          // Parent and its fresh children go in as one update, so the
-          // row-nesting helper sees both together and can attach each child
-          // under the new occurrence. Adding the parent alone would draw it
-          // childless until the next query.
-          return spawned
-            ? [...withoutArchived, spawned, ...spawnedSubtasks]
-            : withoutArchived;
+          const withoutArchived = current.filter((item) => item.id !== updated.id);
+          return spawned ? [...withoutArchived, spawned] : withoutArchived;
         });
         setNotice(
           spawned
@@ -224,9 +165,7 @@ export function TaskWorkspace({ initialData }: Props) {
         );
       } else {
         setItems((current) =>
-          applyCascade(current, cascaded).map((item) =>
-            item.id === updated.id ? updated : item,
-          ),
+          current.map((item) => (item.id === updated.id ? updated : item)),
         );
         setNotice(status === "active" ? "Task reopened." : "Task completed.");
       }
@@ -302,20 +241,16 @@ export function TaskWorkspace({ initialData }: Props) {
     }
   }
 
-  async function handleReorder(nextItems: Task[], parentId: number | null) {
+  async function handleReorder(nextItems: Task[]) {
     const previous = items;
     setItems(nextItems);
     setError("");
     try {
-      // The server takes one sibling group and requires the complete set, so
-      // this sends every task under `parentId` -- including any the current
+      // The server requires the complete set, including any task the current
       // filter or search is hiding -- not just what's on screen.
       await reorderTasks(
         initialData.list.reorder_url,
-        nextItems
-          .filter((item) => (item.parent?.id ?? null) === parentId)
-          .map((item) => item.id),
-        parentId,
+        nextItems.map((item) => item.id),
       );
     } catch (caught) {
       setItems(previous);
@@ -333,71 +268,13 @@ export function TaskWorkspace({ initialData }: Props) {
     setDraggedId(null);
     if (!dragged || !target) return;
 
-    const draggedParent = dragged.parent?.id ?? null;
-    const targetParent = target.parent?.id ?? null;
-    // Dragging across nesting levels is deliberately not a reorder: changing
-    // a task's parent is an explicit promote/demote, so a drag that lands in
-    // another group is refused rather than silently reparenting.
-    if (draggedParent !== targetParent) {
-      setError("Drag reorders within one group. Use promote or demote to move a task.");
-      return;
-    }
-
     const currentIndex = items.findIndex((item) => item.id === dragged.id);
     const targetIndex = items.findIndex((item) => item.id === target.id);
     if (currentIndex === -1 || targetIndex === -1) return;
     const next = [...items];
     const [moved] = next.splice(currentIndex, 1);
     next.splice(targetIndex, 0, moved);
-    handleReorder(next, draggedParent);
-  }
-
-  function toggleCollapsed(id: number) {
-    setCollapsed((current) => {
-      const next = new Set(current);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
-
-  async function handleAddSubtask(event: FormEvent, parent: Task) {
-    event.preventDefault();
-    const text = subtaskDraft.trim();
-    if (!text) return;
-    setError("");
-    setNotice("");
-    setBusyId(parent.id);
-    try {
-      const created = await createSubtask(
-        initialData.list.create_item_url,
-        text,
-        parent.id,
-      );
-      setItems((current) => [...current, created]);
-      setSubtaskDraft("");
-      setAddingSubtaskFor(null);
-      setNotice(`Added "${created.text}" under "${parent.text}".`);
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unable to add subtask.");
-    } finally {
-      setBusyId(null);
-    }
-  }
-
-  async function handlePromote(task: Task) {
-    setError("");
-    setNotice("");
-    setBusyId(task.id);
-    try {
-      const updated = await updateTaskParent(task, null);
-      replaceItem(updated);
-      setNotice(`"${updated.text}" is now a task of its own.`);
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unable to promote task.");
-    } finally {
-      setBusyId(null);
-    }
+    handleReorder(next);
   }
 
   function startEditing(task: Task) {
@@ -551,10 +428,9 @@ export function TaskWorkspace({ initialData }: Props) {
       </div>
 
       <div className="list-items" id="id_list_table">
-        {rows.map(({ item, depth }, index) => (
+        {visibleItems.map((item, index) => (
           <article
             key={item.id}
-            style={depth > 0 ? { marginInlineStart: "2rem" } : undefined}
             className={`list-item ${
               item.status === "completed" ? "is-completed" : ""
             } ${isOverdue(item) ? styles.overdue : ""} ${
@@ -581,29 +457,9 @@ export function TaskWorkspace({ initialData }: Props) {
                   ⠿
                 </span>
               )}
-              {depth > 0 ? (
-                <span className="item-number" aria-hidden="true">
-                  ↳
-                </span>
-              ) : (
-                <span className="item-number">
-                  {String(index + 1).padStart(2, "0")}
-                </span>
-              )}
-              {item.subtask_counts.total > 0 && (
-                <button
-                  type="button"
-                  onClick={() => toggleCollapsed(item.id)}
-                  aria-expanded={!collapsed.has(item.id)}
-                  aria-label={`${
-                    collapsed.has(item.id) ? "Show" : "Hide"
-                  } subtasks of ${item.text}`}
-                  className="text-sm text-muted-foreground"
-                >
-                  {collapsed.has(item.id) ? "▸" : "▾"} {item.subtask_counts.done}/
-                  {item.subtask_counts.total}
-                </button>
-              )}
+              <span className="item-number">
+                {String(index + 1).padStart(2, "0")}
+              </span>
             </span>
             <div className="task-copy">
               {editingId === item.id ? (
@@ -751,67 +607,7 @@ export function TaskWorkspace({ initialData }: Props) {
                 >
                   Move to archive
                 </button>
-                {/* One level only, so a subtask offers promote instead. */}
-                {item.parent ? (
-                  <button
-                    className="btn btn-outline-light btn-sm"
-                    type="button"
-                    onClick={() => handlePromote(item)}
-                    disabled={busyId === item.id}
-                  >
-                    Promote
-                  </button>
-                ) : (
-                  <button
-                    className="btn btn-outline-light btn-sm"
-                    type="button"
-                    onClick={() => {
-                      setAddingSubtaskFor(item.id);
-                      setSubtaskDraft("");
-                    }}
-                    disabled={busyId === item.id}
-                  >
-                    Add subtask
-                  </button>
-                )}
               </div>
-            )}
-
-            {addingSubtaskFor === item.id && (
-              <form
-                className={styles.editForm}
-                onSubmit={(event) => handleAddSubtask(event, item)}
-              >
-                <label
-                  className="visually-hidden"
-                  htmlFor={`new-subtask-${item.id}`}
-                >
-                  New subtask under {item.text}
-                </label>
-                <input
-                  id={`new-subtask-${item.id}`}
-                  className="form-control"
-                  placeholder="Add a subtask…"
-                  value={subtaskDraft}
-                  onChange={(event) => setSubtaskDraft(event.target.value)}
-                  autoFocus
-                  disabled={busyId === item.id}
-                />
-                <button
-                  className="btn btn-primary btn-sm"
-                  type="submit"
-                  disabled={busyId === item.id}
-                >
-                  Add
-                </button>
-                <button
-                  className="btn btn-outline-light btn-sm"
-                  type="button"
-                  onClick={() => setAddingSubtaskFor(null)}
-                >
-                  Cancel
-                </button>
-              </form>
             )}
           </article>
         ))}

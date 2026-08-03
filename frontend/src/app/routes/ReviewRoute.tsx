@@ -14,7 +14,6 @@ type CompletedTask = {
   text: string;
   completed_on: string;
   list_id: number;
-  parent: { id: number; text: string } | null;
 };
 
 /** "27 July" — the half of a date a week's title needs. */
@@ -81,7 +80,6 @@ type PlannedTask = {
   text: string;
   day: string;
   due_date: string | null;
-  parent: { id: number; text: string } | null;
   age_in_days: number;
   completed_on: string | null;
 };
@@ -121,14 +119,7 @@ function PlannedRow({
       className={`rounded-lg border border-border px-3 py-2${muted ? " opacity-70" : ""}`}
     >
       <span className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <span>
-          {task.parent && (
-            <span className="mr-2 text-sm text-muted-foreground">
-              {task.parent.text} ›
-            </span>
-          )}
-          {task.text}
-        </span>
+        <span>{task.text}</span>
         {task.due_date && (
           <span className="text-sm text-muted-foreground">
             {dueLabel(task.due_date, today)}
@@ -610,14 +601,6 @@ function Finished({ completed }: { completed: CompletedTask[] }) {
                 key={task.task_id}
                 className="rounded-lg border border-border px-3 py-2"
               >
-                {/* The breadcrumb, so a subtask row is not a fragment
-                    nobody can place — the same reason the agenda carries
-                    one. */}
-                {task.parent && (
-                  <span className="mr-2 text-sm text-muted-foreground">
-                    {task.parent.text} ›
-                  </span>
-                )}
                 <span>{task.text}</span>
               </li>
             ))}

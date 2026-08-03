@@ -31,17 +31,6 @@ export interface Task {
   // Plain text, never Markdown. "" means no notes -- the API normalises
   // blank input to the empty string so this is never null.
   notes: string;
-  // id + text so a subtask row can render its breadcrumb without a second
-  // lookup. null means this is a root task.
-  parent: { id: number; text: string } | null;
-  // Whether this subtask reappears on its parent's next occurrence. Only
-  // meaningful when `parent` is set; a root task carries the default and
-  // nothing reads it.
-  always_recurs: boolean;
-  // Counts, not nested children: the list page fetches the whole list and
-  // nests client-side, the agenda only needs "2/5". Always present, 0/0 for
-  // a task with no subtasks.
-  subtask_counts: { total: number; done: number };
   // Just the id -- title/url live once in the page's top-level `lists`
   // array (see AgendaListSummary / ArchiveWorkspaceData.lists) instead of
   // being repeated on every task.
@@ -50,6 +39,25 @@ export interface Task {
   // endpoint either way.
   url: string;
   edit_url: string;
+}
+
+// release-d-plan.md 2: what a subtask actually is. No due date, no tags,
+// cannot recur -- it dies with its task rather than carrying an independent
+// archive state, so it has exactly one boolean instead of Task's three-way
+// status.
+export interface ChecklistStep {
+  id: number;
+  text: string;
+  position: number;
+  is_done: boolean;
+  completed_at: string | null;
+  // Whether this step reappears when its task's next recurring occurrence
+  // is spawned. Only meaningful when the task actually recurs.
+  carries_forward: boolean;
+  task_id: number;
+  // update and delete hit the same endpoint, same shape as Task.url.
+  url: string;
+  promote_url: string;
 }
 
 export interface TaskWorkspaceData {

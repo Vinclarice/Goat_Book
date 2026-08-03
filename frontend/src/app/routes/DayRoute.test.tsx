@@ -62,7 +62,6 @@ function focusRow(overrides: Record<string, unknown> = {}) {
     text: "Pay rent",
     status: "active",
     due_date: "2026-08-03",
-    parent: null,
     selected_at: "2026-08-03T09:00:00",
     ...overrides,
   };
@@ -73,7 +72,6 @@ function actionItem(overrides: Record<string, unknown> = {}) {
     id: 1,
     text: "Pay rent",
     due_date: "2026-08-03",
-    parent: null,
     age_in_days: 0,
     ...overrides,
   };
@@ -241,23 +239,6 @@ describe("DayRoute", () => {
       await screen.findByText(/Only today shows action items/),
     ).toBeInTheDocument();
     expect(screen.queryByText(/Nothing due today/)).not.toBeInTheDocument();
-  });
-
-  it("shows a subtask's parent so the row can be placed", async () => {
-    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
-      jsonResponse(
-        dayData({
-          action_items: [
-            actionItem({ text: "Book flights", parent: { id: 9, text: "Trip" } }),
-          ],
-        }),
-      ),
-    );
-
-    renderAt("/day/2026-08-03");
-
-    expect(await screen.findByText(/Trip/)).toBeInTheDocument();
-    expect(screen.getByText("Book flights")).toBeInTheDocument();
   });
 
   it("sends a captured thought to the shared capture endpoint", async () => {

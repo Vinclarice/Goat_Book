@@ -841,6 +841,16 @@ has now happened three times in one week.
   argued for. "The parent-child redesign was enough" was the other legitimate
   answer named here; it wasn't the one chosen. See
   [`release-d-plan.md`](release-d-plan.md) §2.
+- ~~**Does release E happen next?**~~ **Answered August 3, 2026: no.** The
+  Android device-testing branch and capture tags — merged onto `main` the
+  same day — stay folded into release D rather than becoming a release of
+  their own, and Vince decided alongside that merge that the next release to
+  actually start is **F**, not E; the second mind is skipped for now rather
+  than deferred to after it. Worth flagging rather than silently accepting:
+  F's own promotion trigger above is several months of weekly reviews
+  actually being used, and Crane's first weekly review is days old at the
+  time of this decision. Whether F's work starts now or waits on that
+  trigger anyway is not answered by this bullet either.
 - **Does release G exist?** Everything in it is conditional on deciding that
   Clarice should have users who are not you.
 - **Is rich authored content release E, or earlier?** Named here for the first

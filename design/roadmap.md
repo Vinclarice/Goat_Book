@@ -317,19 +317,23 @@ permission grant.
 
 ### Capture tags — built alongside the Android device-testing session
 
-**Not part of any planned release; merged into `main` August 3, 2026, not
-yet deployed.** Optional tags on a capture, typed on the Android compose
-screen and displayed as pills in the web Inbox — see
-[`capture-tags-plan.md`](capture-tags-plan.md) for the trigger and the
-slice. Reuses `lists.Tag` rather than a parallel model (`_resolve_tags`
-became public `resolve_tags` so `capture.services` can call it), an additive
-`Capture.tags` migration, and the Android queue carries tags through
-offline capture the same way it already carries text. Triage still does not
-gain a tags field, and a capture's tags do not yet carry forward onto the
-task or idea it becomes — both named as deliberate non-goals in the brief,
-not oversights. Whether this becomes its own release or lands as ordinary
-work on `main` is Vince's call; see the carried-forward list above for the
-matching call on `ui-second-pass-plan.md`.
+**Decided August 3, 2026: stays folded into Dunlin, not promoted to its own
+release.** Merged onto `main` the same day, not yet deployed. Optional tags
+on a capture, typed on the Android compose screen and displayed as pills in
+the web Inbox — see [`capture-tags-plan.md`](capture-tags-plan.md) for the
+trigger and the slice. Reuses `lists.Tag` rather than a parallel model
+(`_resolve_tags` became public `resolve_tags` so `capture.services` can call
+it), an additive `Capture.tags` migration, and the Android queue carries
+tags through offline capture the same way it already carries text. Triage
+still does not gain a tags field, and a capture's tags do not yet carry
+forward onto the task or idea it becomes — both named as deliberate
+non-goals in the brief, not oversights.
+
+The same decision covers the rest of what the Android device-testing branch
+carried in — in-app login, the optional unlock gate, release signing wired
+into the build, and the three Android gaps closed above. None of it earns
+Release E; the next lettered release, whenever one actually starts, is
+**Release F** — see "Release practice" below for why the letter jumps.
 
 
 ## Later — visible, not scheduled
@@ -550,6 +554,12 @@ Production releases use alphabetic bird codenames: `albatross`, then
 `bittern`, `crane`, `dunlin`. Tag only after production is verified. The
 letter carries; the bird is chosen when the release ships.
 
+**The letter sequence skips E.** Decided August 3, 2026, by Vince: the
+Android device-testing branch and capture tags — merged onto `main` the same
+day — stay folded into Dunlin rather than being promoted to their own
+release, so there is no Release E. The next release to actually start is
+**Release F**; its bird is still chosen only when it ships, same as always.
+
 - `LIVE` is a moving tag for the code currently running.
 - `DEPLOYED-<date>/<HHMM>` is a permanent deployment-event tag.
 - The bird codename is a permanent annotated release tag describing what
@@ -559,12 +569,13 @@ letter carries; the bird is chosen when the release ships.
 
 Update this file when an item in the active release begins, changes scope,
 ships, or is explicitly deferred. **There is no active release right now** —
-Dunlin shipped and nothing has been promoted to replace it. The nearest thing
-to a next one is `ui-second-pass-plan.md`, whose §6 sitting supplied the
-evidence it was waiting on; it now waits on Vince's decision instead. Capture
-tags and the Android device-testing work are merged onto `main` under the
-same open question: still nobody's decision but Vince's on whether either
-becomes an active release. Move completed detail into `roadmap-history.md`
-and keep only the resulting baseline or remaining consequence here. When an
-idea from Later earns work, give it a one-line reason and a focused spec
-before it joins an active track.
+Dunlin shipped and nothing has been promoted to replace it. Capture tags and
+the Android device-testing work are merged onto `main`, not yet deployed, and
+settled as still part of Dunlin rather than a release of their own — see
+"Release practice" above. The nearest thing to an actual next release is
+`ui-second-pass-plan.md`, whose §6 sitting supplied the evidence it was
+waiting on; whether steps 2–4 start it is still Vince's call to make, not
+this list's to assume. Move completed detail into `roadmap-history.md` and
+keep only the resulting baseline or remaining consequence here. When an idea
+from Later earns work, give it a one-line reason and a focused spec before it
+joins an active track.

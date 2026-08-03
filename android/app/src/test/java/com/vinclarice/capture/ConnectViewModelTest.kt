@@ -257,6 +257,28 @@ class ConnectViewModelTest {
 
         assertTrue(ConnectViewModel(Connector(FakeApi(Identified(alice)), store)).isConnected)
     }
+
+    @Test
+    fun `disconnecting forgets the identity this screen was showing`() = runTest {
+        // A regression guard, not new behaviour: this method already existed
+        // and already did the right thing -- what was missing was anyone
+        // calling it. Root wired "Disconnect this phone" to
+        // SettingsViewModel.disconnect() only, which clears the stored
+        // token through a *different* Connector-backed view model and never
+        // touches this one, so returning to Connect kept showing "Connected
+        // as alice." above a login form for someone trying to log in as
+        // somebody else.
+        val store = FakeStore()
+        val model = ConnectViewModel(Connector(FakeApi(Identified(alice)), store))
+        model.onTokenChange("tok_good")
+        model.connect()
+        assertEquals(alice, model.state.value.connectedAs)
+
+        model.disconnect()
+
+        assertNull(model.state.value.connectedAs)
+        assertNull(store.read())
+    }
 }
 
 /** Runs [ConnectViewModel.connect] outside a coroutine, for the handful of

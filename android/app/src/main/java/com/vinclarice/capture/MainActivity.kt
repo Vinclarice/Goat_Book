@@ -130,7 +130,16 @@ private fun Root(
         SettingsScreen(
             model = settingsModel,
             onBack = { showSettings = false },
-            onDisconnected = { connected = false; showSettings = false },
+            onDisconnected = {
+                // Settings' own disconnect() already cleared the stored
+                // token through this same Connector; this clears the
+                // *other* view model's leftover state, so returning to
+                // Connect doesn't show "Connected as ..." for whoever was
+                // just disconnected.
+                connectModel.disconnect()
+                connected = false
+                showSettings = false
+            },
         )
         return
     }

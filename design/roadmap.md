@@ -214,6 +214,32 @@ set up one recurring parent with three children, and two independent
 defects, one in the model and one in the interface, caused it between them.
 Neither should be started as a side effect of something else.
 
+**Four of the nine slices are on `main` and none of them are in production.**
+`6fdb923`, August 2, 2026, carries the parent–child redesign end to end: the
+`ChecklistStep` table, the data migration that converts existing subtasks,
+the services, API and Task Detail UI, and the contract step that retires
+`Item.parent`, `Item.always_recurs` and `Item.archive_group` outright rather
+than leaving them dead. Both suites green — 721 Django tests and 207
+frontend — with the add-step, complete-recurring-task round trip checked in a
+real browser and read back from the API response rather than only from the
+screen. [`release-d-plan.md`](release-d-plan.md) §5 stays the authority on
+what each slice did, including the two places the work ran wider than its own
+brief.
+
+**Three migrations are therefore waiting on a deploy, and one of them deletes
+rows.** `0026` converts each existing subtask into a Checklist Step and
+removes the `Item` it came from, or auto-promotes it to a root task when it
+carries a due date, tags, notes or a recurrence a step cannot hold. Its
+outcome counts have only ever been observed against the two-user SQLite
+development database — the local confidence [`principles.md`](principles.md)
+says not to mistake for production truth. The migration prints
+converted/promoted/skipped, so running it against production is itself the
+evidence for how many of each case really existed.
+
+**Slices 5 to 9 are not started:** the Area vocabulary rename, `List.owner`
+becoming non-null, the `Project` model and its UI, and then the UI overhaul's
+own brief.
+
 **Both open questions in `architecture-trajectory.md` §8 are settled.** A
 subtask is a Checklist Step — its own model, no due date, no tags, cannot
 recur, dies with its parent — with promotion to a full task, which Vince
@@ -230,7 +256,8 @@ parent happens to repeat. Archiving cascades on one path and not another.
 Each rule is defensible alone; together they are not a model anybody could
 predict. Decide what a subtask *is* — a step, a dependent task, a checklist
 item — before adjusting any more of its behaviour. **Decided:** a Checklist
-Step, with promotion to a full task — see `release-d-plan.md` §2.
+Step, with promotion to a full task — see `release-d-plan.md` §2. **Built,
+too**, in slices 1 to 4 — this cycle is what `6fdb923` above carries.
 
 **Web UI overhaul, second pass.** The Tailwind v4 and shadcn work replaced
 how the application looks. What remains wrong is what it says and what it
@@ -243,7 +270,11 @@ targets across the application are well under the ~44px guideline, and the
 height lives on the shared `Button` component, so fixing it restyles every
 page — see [Mobile web experience](#mobile-web-experience). Sketched, not yet
 briefed, in `release-d-plan.md` §4 — it waits for the model work above to
-ship, per that document's own "model decided first" ordering.
+ship, per that document's own "model decided first" ordering. Half of that
+condition is met: §2's model is built and its UI is rebuilt on top of it, so
+the Repeat/Repeats collision is already gone by construction rather than by
+relabelling. Still owed before the brief is written: §3's `Project` work, and
+production actually running the migrations.
 
 **Also waiting here:** the vocabulary half of Crane 0, deferred on August 2,
 2026. Moving `text`, `list`, `cadence`, tags and notes off each occurrence

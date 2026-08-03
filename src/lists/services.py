@@ -5,7 +5,14 @@ from django.db import IntegrityError, transaction
 from django.db.models import Max
 from django.utils import timezone
 
-from lists.models import ChecklistStep, Item, List, RecurringCommitment, Tag
+from lists.models import (
+    ChecklistStep,
+    Item,
+    List,
+    Project,
+    RecurringCommitment,
+    Tag,
+)
 
 
 EMPTY_ITEM_ERROR = "You can't have an empty list item"
@@ -84,12 +91,10 @@ def _anchor_commitment(item):
     existing commitment rather than starting a second series, so a task that
     was paused and resumed stays one commitment with a gap in it.
 
-    Returns None, and links nothing, when the list has no owner. That is only
-    reachable for anonymous-era rows -- `List.owner` is still nullable, though
-    every creation path supplies one -- and a task that can't be anchored is
-    better than a completion that raises. Removing the nullable column is on
-    the infrastructure list in design/architecture-trajectory.md 6, and this
-    guard goes with it.
+    Always returns a commitment. It used to return None when the list had
+    no owner, for anonymous-era rows; release D slice 6 made `List.owner`
+    required and deleted those rows, so that branch became unreachable and
+    went with them, exactly as this docstring used to promise it would.
     """
     if item.commitment_id is not None:
         commitment = item.commitment
@@ -97,10 +102,7 @@ def _anchor_commitment(item):
             commitment.ended_at = None
             commitment.save(update_fields=["ended_at"])
         return commitment
-    owner = item.list.owner
-    if owner is None:
-        return None
-    commitment = RecurringCommitment.objects.create(owner=owner)
+    commitment = RecurringCommitment.objects.create(owner=item.list.owner)
     item.commitment = commitment
     return commitment
 
@@ -133,8 +135,8 @@ def create_item(for_list, text, due_date=None, tags=None, recurrence=None):
     except IntegrityError as error:
         raise TaskConflict(DUPLICATE_ITEM_ERROR) from error
     if item.recurrence != Item.Recurrence.NONE:
-        if _anchor_commitment(item) is not None:
-            item.save(update_fields=["commitment"])
+        _anchor_commitment(item)
+        item.save(update_fields=["commitment"])
     if tags:
         item.tags.set(_resolve_tags(for_list.owner, tags))
     return item
@@ -379,7 +381,7 @@ def _spawn_next_occurrence(completed_item, carry_forward_steps=()):
     # the pair here means no path leaves the series unlinked from now on.
     was_linked = completed_item.commitment_id is not None
     commitment = _anchor_commitment(completed_item)
-    if commitment is not None and not was_linked:
+    if not was_linked:
         completed_item.save(update_fields=["commitment"])
     next_item = Item.objects.create(
         list=completed_item.list,
@@ -513,3 +515,87 @@ def delete_archived_item(item):
 def delete_list(list_):
     list_ = List.objects.select_for_update().get(pk=list_.pk)
     list_.delete()
+
+
+EMPTY_PROJECT_TITLE_ERROR = "Give the project a name"
+FOREIGN_PROJECT_ERROR = "That project isn't yours"
+CROSS_AREA_PROJECT_ERROR = "A task can only join a project in its own area"
+
+
+@transaction.atomic
+def create_project(area, title, due_date=None):
+    """A new project inside an area, owned by whoever owns the area.
+
+    The owner is derived rather than passed: `List.owner` is required as of
+    slice 6, so there is exactly one right answer and asking a caller for it
+    only creates the chance of a wrong one.
+    """
+    normalized = (title or "").strip()
+    if not normalized:
+        raise TaskConflict(EMPTY_PROJECT_TITLE_ERROR)
+    return Project.objects.create(
+        owner=area.owner, area=area, title=normalized, due_date=due_date,
+    )
+
+
+@transaction.atomic
+def complete_project(project):
+    """Mark a project done, without touching a single one of its tasks.
+
+    Charter rule 5 -- a project references its tasks, it does not own their
+    status. Someone finishing a project has said the *grouping* is done; if
+    tasks are still open underneath, that is information worth seeing rather
+    than something to tidy away silently. principles.md: automations propose,
+    people decide.
+
+    Completing an already-completed project keeps the original stamp, so a
+    double-click cannot rewrite when the work actually finished.
+    """
+    project = Project.objects.select_for_update().get(pk=project.pk)
+    if project.is_completed:
+        return project
+    project.is_completed = True
+    project.completed_at = timezone.now()
+    project.save(update_fields=("is_completed", "completed_at"))
+    return project
+
+
+@transaction.atomic
+def reopen_project(project):
+    project = Project.objects.select_for_update().get(pk=project.pk)
+    project.is_completed = False
+    project.completed_at = None
+    project.save(update_fields=("is_completed", "completed_at"))
+    return project
+
+
+@transaction.atomic
+def set_task_project(task, project):
+    """Put a task into a project, or take it out again with None.
+
+    Both guards live here rather than only at the API, because the API is one
+    caller and the invariant belongs to the model. principles.md: guards fail
+    closed.
+    """
+    task = Item.objects.select_for_update().select_related("list").get(pk=task.pk)
+    if project is not None:
+        if project.owner_id != task.list.owner_id:
+            raise TaskConflict(FOREIGN_PROJECT_ERROR)
+        # A project groups work inside one area. Slice 8 renders a project's
+        # tasks from the area page, so a task from elsewhere would appear
+        # under a heading it does not belong to.
+        if project.area_id != task.list_id:
+            raise TaskConflict(CROSS_AREA_PROJECT_ERROR)
+    task.project = project
+    task.save(update_fields=("project", "updated_at"))
+    return task
+
+
+def delete_project(project):
+    """Hard delete -- charter rule 6, stated in the model too.
+
+    Its tasks survive: `Item.project` is SET_NULL, so deleting a project says
+    the grouping was wrong, not that the work is gone. No tombstone, because
+    rule 2 does not apply -- nothing creates or holds a Project offline.
+    """
+    project.delete()

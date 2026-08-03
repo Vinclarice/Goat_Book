@@ -99,6 +99,42 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Projects */
+        get: operations["lists_api_v1_projects"];
+        put?: never;
+        /** Create Project */
+        post: operations["lists_api_v1_create_project"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Project */
+        delete: operations["lists_api_v1_delete_project"];
+        options?: never;
+        head?: never;
+        /** Update Project */
+        patch: operations["lists_api_v1_update_project"];
+        trace?: never;
+    };
     "/api/v1/archive": {
         parameters: {
             query?: never;
@@ -655,6 +691,8 @@ export interface components {
             notes: string;
             /** Area Id */
             area_id: number;
+            /** Project Id */
+            project_id: number | null;
             /** Url */
             url: string;
             /** Edit Url */
@@ -726,6 +764,51 @@ export interface components {
             create_checklist_step_url: string;
             /** Reorder Checklist Steps Url */
             reorder_checklist_steps_url: string;
+        };
+        /** ProjectOut */
+        ProjectOut: {
+            /** Id */
+            id: number;
+            /** Title */
+            title: string;
+            /** Area Id */
+            area_id: number;
+            /** Due Date */
+            due_date: string | null;
+            /** Is Completed */
+            is_completed: boolean;
+            /** Completed At */
+            completed_at: string | null;
+            /** Created At */
+            created_at: string;
+            /** Open Task Count */
+            open_task_count: number;
+        };
+        /** ProjectCreateIn */
+        ProjectCreateIn: {
+            /** Area Id */
+            area_id: number;
+            /** Title */
+            title: string;
+            /** Due Date */
+            due_date?: string | null;
+        };
+        /**
+         * ProjectUpdateIn
+         * @description Every field optional; absent means "leave it alone".
+         *
+         *     `due_date` has to distinguish absent from explicitly null, because
+         *     clearing a due date and not mentioning it are different requests and
+         *     `str | None = None` cannot tell them apart on its own. The handler reads
+         *     `exclude_unset` rather than inventing a sentinel default.
+         */
+        ProjectUpdateIn: {
+            /** Title */
+            title?: string | null;
+            /** Due Date */
+            due_date?: string | null;
+            /** Is Completed */
+            is_completed?: boolean | null;
         };
         /** ArchiveOut */
         ArchiveOut: {
@@ -858,6 +941,8 @@ export interface components {
             notes: string;
             /** Area Id */
             area_id: number;
+            /** Project Id */
+            project_id: number | null;
             /** Url */
             url: string;
             /** Edit Url */
@@ -1454,6 +1539,96 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TaskDetailOut"];
+                };
+            };
+        };
+    };
+    lists_api_v1_projects: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectOut"][];
+                };
+            };
+        };
+    };
+    lists_api_v1_create_project: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectCreateIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectOut"];
+                };
+            };
+        };
+    };
+    lists_api_v1_delete_project: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    lists_api_v1_update_project: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectUpdateIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectOut"];
                 };
             };
         };

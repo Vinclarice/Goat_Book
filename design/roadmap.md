@@ -226,7 +226,7 @@ screen. [`release-d-plan.md`](release-d-plan.md) §5 stays the authority on
 what each slice did, including the two places the work ran wider than its own
 brief.
 
-**Five migrations are therefore waiting on a deploy, and two of them delete
+**Six migrations are therefore waiting on a deploy, and two of them delete
 rows.** `0026` converts each existing subtask into a Checklist Step and
 removes the `Item` it came from, or auto-promotes it to a root task when it
 carries a due date, tags, notes or a recurrence a step cannot hold. `0028`
@@ -254,8 +254,15 @@ ownerless Area is unreachable, since every read is owner-scoped, so removal
 rather than backfill was the branch chosen from
 [`architecture-trajectory.md`](architecture-trajectory.md) §6's two.
 
-**Slices 7 to 9 are not started:** the `Project` model and its UI, and then
-the UI overhaul's own brief.
+**Slice 7 gave `Project` its model and API.** Work that completes, inside an
+Area that never does — the charter's own example of a concept earning a
+model. A task keeps its Area and may *additionally* join a project, which is
+the additive shape that leaves `unique_active_item` and every agenda query
+untouched. `Project.area` is required rather than nullable as the plan first
+proposed, on the evidence slice 6 had just produced.
+
+**Slices 8 and 9 are not started:** the Project interface, and then the UI
+overhaul's own brief. The deploy comes after 8.
 
 **Both open questions in `architecture-trajectory.md` §8 are settled.** A
 subtask is a Checklist Step — its own model, no due date, no tags, cannot

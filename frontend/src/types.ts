@@ -35,6 +35,11 @@ export interface Task {
   // array (see AgendaAreaSummary / ArchiveWorkspaceData.areas) instead of
   // being repeated on every task.
   area_id: number;
+  // Null for most tasks. A task belongs to an Area always and to a Project
+  // optionally -- release-d-plan.md 3's additive shape. Slice 7 carries the
+  // field; the interface that sets it is slice 8's, which is why there is no
+  // Project type here yet.
+  project_id: number | null;
   // Covers both update (PATCH) and delete (DELETE); it's the same
   // endpoint either way.
   url: string;

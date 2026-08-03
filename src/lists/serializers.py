@@ -42,6 +42,9 @@ def serialize_item(item):
         # `item.list_id` is the ORM's column; `area_id` is what the boundary
         # calls it, the same split Item/"task" already lives with.
         "area_id": item.list_id,
+        # Null for most tasks. A task belongs to an Area always and to a
+        # Project optionally -- release-d-plan.md 3's additive shape.
+        "project_id": item.project_id,
         # update and delete hit the same endpoint, just with different
         # HTTP methods, so one url covers both.
         "url": reverse("api_item_detail", args=(item.id,)),

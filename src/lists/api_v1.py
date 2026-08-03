@@ -14,6 +14,7 @@ same split `Item`/"task" already lives with. Python locals below still read
 `our_list`, because renaming them would be churn no client can observe.
 See `lists/tests/test_area_vocabulary.py` for the guard.
 """
+from datetime import date
 from typing import Literal
 
 from django.shortcuts import get_object_or_404
@@ -24,6 +25,7 @@ from ninja.errors import HttpError
 
 from capture.models import Capture
 from lists import agenda as agenda_reader
+from lists import projects as project_reader
 from lists import services
 from lists.forms import ListTitleForm
 from lists.models import Item, List
@@ -70,6 +72,7 @@ class TaskOut(Schema):
     recurrence: TaskRecurrence
     notes: str
     area_id: int
+    project_id: int | None
     url: str
     edit_url: str
 
@@ -217,6 +220,19 @@ def agenda(request):
     )
 
 
+def _parse_date(value):
+    """YYYY-MM-DD or nothing. The server owns date meaning, per
+    principles.md -- a client sends the string it was given and this decides
+    what it means.
+    """
+    if not value:
+        return None
+    try:
+        return date.fromisoformat(value)
+    except ValueError:
+        raise HttpError(400, "Use a valid date (YYYY-MM-DD).")
+
+
 def _owned_area(request, area_id):
     return get_object_or_404(List, id=area_id, owner=request.user)
 
@@ -269,6 +285,108 @@ def task_detail(request, item_id: int):
         status__in=(Item.Status.ACTIVE, Item.Status.COMPLETED),
     )
     return task_detail_data_for(item)
+
+
+class ProjectOut(Schema):
+    id: int
+    title: str
+    area_id: int
+    due_date: str | None
+    is_completed: bool
+    completed_at: str | None
+    created_at: str
+    open_task_count: int
+
+
+class ProjectCreateIn(Schema):
+    area_id: int
+    title: str
+    due_date: str | None = None
+
+
+class ProjectUpdateIn(Schema):
+    """Every field optional; absent means "leave it alone".
+
+    `due_date` has to distinguish absent from explicitly null, because
+    clearing a due date and not mentioning it are different requests and
+    `str | None = None` cannot tell them apart on its own. The handler reads
+    `exclude_unset` rather than inventing a sentinel default.
+    """
+
+    title: str | None = None
+    due_date: str | None = None
+    is_completed: bool | None = None
+
+
+def _project_out(project):
+    return {
+        "id": project.id,
+        "title": project.title,
+        "area_id": project.area_id,
+        "due_date": project.due_date.isoformat() if project.due_date else None,
+        "is_completed": project.is_completed,
+        "completed_at": (
+            project.completed_at.isoformat() if project.completed_at else None
+        ),
+        "created_at": project.created_at.isoformat(),
+        # Annotated by projects_for; a freshly created project has not been
+        # through that read, so it falls back rather than raising.
+        "open_task_count": getattr(project, "open_task_count", 0),
+    }
+
+
+@router.get("/projects", response=list[ProjectOut])
+def projects(request):
+    return [_project_out(each) for each in project_reader.projects_for(request.user)]
+
+
+@router.post("/projects", response=ProjectOut)
+def create_project(request, payload: ProjectCreateIn):
+    area = _owned_area(request, payload.area_id)
+    try:
+        project = services.create_project(
+            area, payload.title, due_date=_parse_date(payload.due_date),
+        )
+    except services.TaskConflict as error:
+        raise HttpError(409, str(error))
+    return _project_out(project)
+
+
+@router.patch("/projects/{project_id}", response=ProjectOut)
+def update_project(request, project_id: int, payload: ProjectUpdateIn):
+    project = project_reader.project_for(request.user, project_id)
+    if project is None:
+        raise HttpError(404, "Project not found.")
+
+    if payload.is_completed is not None:
+        if payload.is_completed:
+            services.complete_project(project)
+        else:
+            services.reopen_project(project)
+
+    fields = []
+    if payload.title is not None:
+        title = payload.title.strip()
+        if not title:
+            raise HttpError(409, services.EMPTY_PROJECT_TITLE_ERROR)
+        project.title = title
+        fields.append("title")
+    if "due_date" in payload.dict(exclude_unset=True):
+        project.due_date = _parse_date(payload.due_date)
+        fields.append("due_date")
+    if fields:
+        project.save(update_fields=fields)
+
+    return _project_out(project_reader.project_for(request.user, project_id))
+
+
+@router.delete("/projects/{project_id}")
+def delete_project(request, project_id: int):
+    project = project_reader.project_for(request.user, project_id)
+    if project is None:
+        raise HttpError(404, "Project not found.")
+    services.delete_project(project)
+    return {"deleted": project_id}
 
 
 @router.get("/archive", response=ArchiveOut)

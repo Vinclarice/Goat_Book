@@ -607,8 +607,58 @@ schema and removes the path it's replacing.
    share a class-level owner. `test_list_owner_is_optional` was deleted rather
    than adjusted — it asserted precisely the contract this slice reverses,
    and its replacement asserts the opposite at the database.
-7. **Project — model and API.** The schema in §3, with `Item.project` as an
-   additive nullable field.
+7. **Project — model and API — done.** The schema in §3, with `Item.project`
+   as an additive nullable field, in migration `0030_project`. Reads in a new
+   `lists/projects.py`, mutations in `services.py` — charter rule 4 from the
+   first slice rather than retrofitted. Ninja endpoints for list/create/
+   update/delete under `/api/v1/projects`, and assignment on the task's own
+   `PATCH /api/items/{id}/` alongside due date, tags, recurrence and notes,
+   because putting it elsewhere would mean two shapes for one kind of change.
+   39 new Django tests (23 model/service/read, 16 API); full required suite
+   green at 770, frontend at 208, `tsc --noEmit` and the build both clean.
+
+   **`Project.area` is required, against this document's own §3
+   recommendation.** §3 argued nullable on reversibility grounds. That
+   reasoning inverts once slice 6 is in view: slice 6 had just spent an
+   entire slice paying the nullable→required cost on `List.owner` — an audit
+   and a destructive migration — while required→nullable is a bare
+   `AlterField` with no data work. The permissive option was the expensive one
+   to undo. Vince decided it; `on_delete=CASCADE` follows, since deleting an
+   Area already deletes the tasks in it.
+
+   **A check constraint the brief did not ask for.** `valid_project_completion`
+   makes `is_completed` and `completed_at` unable to disagree, the same
+   guarantee `Item.valid_item_status_timestamps` already gives. Free on a new
+   table and a data migration later — the charter's asymmetry argument, and
+   the cheap half of the constraint question `architecture-trajectory.md` §6
+   files under "investigate, do not schedule".
+
+   **Two guards live in the service, not only the API:** a task cannot join a
+   project owned by somebody else, nor one in a different Area. The second is
+   not tidiness — slice 8 renders a project's tasks from the Area page, so a
+   task from elsewhere would appear under a heading it does not belong to.
+
+   **Three things found while building, none of them in the brief:**
+
+   - **`Meta.ordering` does not survive an aggregate.** `projects_for`
+     annotates an open-task count, and the generated SQL came back with no
+     `ORDER BY` at all — the completed project sorted first. The read module
+     now states its own order and says why. Found by the test rather than by
+     reading the query.
+   - **A foreign project id answers 404, though the service raises a
+     conflict.** The API test was written expecting 409 to match the service
+     and was corrected while implementing: the API looks projects up
+     owner-scoped, so a foreign id is simply not found, and 409 would confirm
+     that some other account owns it. The two layers know different things.
+   - **A dead guard slice 6 promised to remove.** `_anchor_commitment` still
+     carried an `if owner is None: return None` branch and a docstring saying
+     "removing the nullable column is on the infrastructure list, and this
+     guard goes with it." Slice 6 removed the column and left the guard. It is
+     gone now, along with the `is not None` checks at its three call sites.
+
+   The frontend gets `project_id` on `Task` and in the fixture, because every
+   task payload now carries it. There is deliberately no `Project` type yet —
+   that arrives with the interface that uses it, in slice 8.
 8. **Project — UI.** Creating, completing, and assigning tasks to a
    Project.
 9. **The UI overhaul's remaining brief.** Written once 1–8 are in, per §4.
@@ -643,7 +693,10 @@ tables work.
   is small enough that splitting it out would have bought a separate deploy
   for nothing. Vince made the one decision the plan could not: ownerless rows
   are **deleted** rather than backfilled onto an account.
-- **Does a Project ever need to exist without an Area?** §3 leaves `Project.area`
-  nullable, which already permits this — flagging only because if the answer
-  is "no, every project belongs to an area," the field should be required
-  instead, and that's cheaper to decide now than after the migration ships.
+- ~~**Does a Project ever need to exist without an Area?**~~ **Answered
+  August 3, 2026: no.** `Project.area` is required, with `CASCADE`. The
+  argument that settled it was not in this document: slice 6 had just paid
+  the nullable→required cost in full, and required→nullable is a bare
+  `AlterField`. §3's reversibility reasoning pointed at the more permissive
+  field; the evidence from the slice immediately before pointed the other
+  way.

@@ -49,6 +49,22 @@ class Item(models.Model):
 
     text = models.TextField(default="")
     list = models.ForeignKey('List', default=None, on_delete=models.CASCADE)
+    # Additive, alongside `list` rather than replacing it -- see
+    # release-d-plan.md 3. Letting `list` point at either an Area or a
+    # Project would touch the FK that unique_active_item and every agenda
+    # query already key off. A task belongs to an Area exactly as it always
+    # has, and may *additionally* belong to a Project.
+    #
+    # SET_NULL, not CASCADE: a project groups tasks, it does not own them, so
+    # deleting one says the grouping was wrong rather than that the work is
+    # gone. Same shape as DailyFocus.task.
+    project = models.ForeignKey(
+        "Project",
+        related_name="tasks",
+        blank=True,
+        null=True,
+        on_delete=models.SET_NULL,
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     status = models.CharField(
@@ -225,6 +241,81 @@ class List(models.Model):
 
     def get_absolute_url(self):
         return reverse("view_list", args=[self.id])
+
+
+class Project(models.Model):
+    """Work that completes, inside an Area that never does.
+
+    release-d-plan.md 3, and the charter test in architecture-trajectory.md 4
+    names this exact pair: a Project earns its own model against a List
+    because it has a different life cycle, not a different name.
+
+    Charter compliance, stated once here rather than rediscovered later:
+
+    - **Rule 1, owned at birth.** A direct non-null `owner`, not one reached
+      through `area`. A two-hop owner makes every isolation test a two-hop
+      assertion.
+    - **Rule 2, public identifier.** Not needed. No client creates a Project
+      offline -- this is a web/API-only surface, the same reasoning
+      ChecklistStep and RecurringCommitment already used.
+    - **Rule 3, snapshot.** Does not apply. A Project is a live record of
+      intent, not a record of what happened during a period; there is nothing
+      whose meaning could be rewritten underneath it.
+    - **Rule 5, reference never copy.** Completing a Project does not touch
+      any task's status, and `Item.project` is SET_NULL: a project groups
+      tasks, it does not own them.
+    - **Rule 6, deletion.** Hard delete. Its tasks survive, unparented. No
+      tombstone, since rule 2 does not apply.
+    - **Rule 8, repetition.** Does not apply -- a Project does not recur, and
+      whether it ever should is left open by release-d-plan.md 3.
+    """
+
+    owner = models.ForeignKey(
+        "accounts.User", related_name="projects", on_delete=models.CASCADE,
+    )
+    # Required, against release-d-plan.md 3's own nullable recommendation.
+    # Slice 6 had just spent a whole slice paying the nullable-to-required
+    # cost on List.owner; required-to-nullable is a bare AlterField with no
+    # data work, so the permissive option was the expensive one to undo.
+    #
+    # CASCADE follows from that: deleting an Area already deletes the tasks
+    # inside it, and a project in a deleted area has nowhere left to be.
+    area = models.ForeignKey(
+        "List", related_name="projects", on_delete=models.CASCADE,
+    )
+    title = models.CharField(max_length=100)
+    due_date = models.DateField(blank=True, null=True)
+    is_completed = models.BooleanField(default=False)
+    completed_at = models.DateTimeField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        # Open projects first, then most recently created. The read module
+        # relies on this rather than re-sorting.
+        ordering = ("is_completed", "-created_at", "id")
+        constraints = [
+            # The same guarantee Item's valid_item_status_timestamps gives,
+            # for the same reason: a flag and its timestamp that can disagree
+            # will eventually disagree. Free on a new table, a data migration
+            # later -- the charter's asymmetry argument exactly.
+            models.CheckConstraint(
+                condition=(
+                    Q(is_completed=False, completed_at__isnull=True)
+                    | Q(is_completed=True, completed_at__isnull=False)
+                ),
+                name="valid_project_completion",
+            ),
+        ]
+        indexes = [
+            # Rule 7: backs "this owner's projects, open first", which is the
+            # only query this model runs today.
+            models.Index(
+                fields=("owner", "is_completed"), name="project_owner_state_idx",
+            ),
+        ]
+
+    def __str__(self):
+        return self.title
 
 
 class Tag(models.Model):

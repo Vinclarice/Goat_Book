@@ -217,6 +217,135 @@
         ]
       }
     },
+    "/api/v1/projects": {
+      "get": {
+        "operationId": "lists_api_v1_projects",
+        "summary": "Projects",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ProjectOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "lists_api_v1_create_project",
+        "summary": "Create Project",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectOut"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectCreateIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}": {
+      "patch": {
+        "operationId": "lists_api_v1_update_project",
+        "summary": "Update Project",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectOut"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectUpdateIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "lists_api_v1_delete_project",
+        "summary": "Delete Project",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/archive": {
       "get": {
         "operationId": "lists_api_v1_archive",
@@ -1354,6 +1483,17 @@
             "title": "Area Id",
             "type": "integer"
           },
+          "project_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Id"
+          },
           "url": {
             "title": "Url",
             "type": "string"
@@ -1377,6 +1517,7 @@
           "recurrence",
           "notes",
           "area_id",
+          "project_id",
           "url",
           "edit_url"
         ],
@@ -1569,6 +1710,137 @@
           "reorder_checklist_steps_url"
         ],
         "title": "TaskDetailOut",
+        "type": "object"
+      },
+      "ProjectOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "area_id": {
+            "title": "Area Id",
+            "type": "integer"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "is_completed": {
+            "title": "Is Completed",
+            "type": "boolean"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "open_task_count": {
+            "title": "Open Task Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "area_id",
+          "due_date",
+          "is_completed",
+          "completed_at",
+          "created_at",
+          "open_task_count"
+        ],
+        "title": "ProjectOut",
+        "type": "object"
+      },
+      "ProjectCreateIn": {
+        "properties": {
+          "area_id": {
+            "title": "Area Id",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          }
+        },
+        "required": [
+          "area_id",
+          "title"
+        ],
+        "title": "ProjectCreateIn",
+        "type": "object"
+      },
+      "ProjectUpdateIn": {
+        "description": "Every field optional; absent means \"leave it alone\".\n\n`due_date` has to distinguish absent from explicitly null, because\nclearing a due date and not mentioning it are different requests and\n`str | None = None` cannot tell them apart on its own. The handler reads\n`exclude_unset` rather than inventing a sentinel default.",
+        "properties": {
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "is_completed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Completed"
+          }
+        },
+        "title": "ProjectUpdateIn",
         "type": "object"
       },
       "ArchiveOut": {
@@ -1846,6 +2118,17 @@
             "title": "Area Id",
             "type": "integer"
           },
+          "project_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Id"
+          },
           "url": {
             "title": "Url",
             "type": "string"
@@ -1873,6 +2156,7 @@
           "recurrence",
           "notes",
           "area_id",
+          "project_id",
           "url",
           "edit_url",
           "age_in_days"

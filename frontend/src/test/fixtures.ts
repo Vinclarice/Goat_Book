@@ -20,6 +20,7 @@ export function task(overrides: Partial<Task> = {}): Task {
     recurrence: "none",
     notes: "",
     area_id: 1,
+    project_id: null,
     url: "/api/items/1/",
     edit_url: "/areas/items/1/edit",
     ...overrides,

@@ -133,6 +133,19 @@ class ConnectViewModelTest {
     }
 
     @Test
+    fun `a refused token points at logging in again, not just the web`() = runTest {
+        // Written before login existed in the app at all -- "create a new
+        // one on the web and paste it again" was the only path there was.
+        // It is no longer the easiest one.
+        val model = viewModel(Unauthorised)
+        model.onTokenChange("tok_bad")
+
+        model.connect()
+
+        assertTrue(model.state.value.error!!.contains("Log in again"))
+    }
+
+    @Test
     fun `an unreachable server says so rather than blaming the token`() = runTest {
         val model = viewModel(Unreachable("Could not reach Clarice."))
         model.onTokenChange("tok_good")

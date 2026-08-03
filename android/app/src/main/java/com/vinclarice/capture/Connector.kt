@@ -103,8 +103,8 @@ class Connector(
         when (val result = api.identify(token)) {
             is Identified -> Connected(result.identity)
             Unauthorised -> Refused(
-                "Clarice did not accept that token. Create a new one on the " +
-                    "web and paste it again."
+                "Clarice did not accept that token. Log in again, or " +
+                    "create a new one on the web and paste it."
             )
             is Unreachable -> Failed(result.reason)
         }

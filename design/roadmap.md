@@ -41,8 +41,10 @@ file.
 
 C2's recorded interface failure is fully closed as of Dunlin — see that
 section. What replaced it is narrower and better evidenced: two findings in
-[`ui-second-pass-plan.md`](ui-second-pass-plan.md) that are blocked on
-somebody using a project rather than on anybody building something.
+[`ui-second-pass-plan.md`](ui-second-pass-plan.md), confirmed by observation
+rather than inferred from source in the sitting recorded there on August 3,
+2026 — plus a third, F2a, found in the same sitting. Whether to act on them
+is still open; see Dunlin's carried-forward list.
 
 ## Bittern — shipped August 2, 2026
 
@@ -251,15 +253,22 @@ checkbox and a switch.
   stdout. Fixed in `a6550e4` and exercised on the second deploy while the
   stakes were a no-op. `0028`'s number is unrecoverable; the rows are gone and
   its reverse is a stated no-op by design.
-- **The interface work Dunlin opened rather than finished**, in
-  [`ui-second-pass-plan.md`](ui-second-pass-plan.md). Two findings, both
-  blocked on evidence rather than effort: a project is invisible everywhere a
-  task is actually worked, and Projects have no place in navigation. Both
-  come from reading source, where C2's came from a person failing a real
-  task, and production holds zero projects. **What would unblock them:** one
-  sitting with a real project on a real phone, which either confirms them or
-  replaces them with something better. That opens the next release rather
-  than reopening this one.
+- **The interface work Dunlin opened, now observed rather than inferred**,
+  in [`ui-second-pass-plan.md`](ui-second-pass-plan.md) §6. The sitting §6
+  asked for happened August 3, 2026: one real project with three real tasks,
+  created through the actual UI rather than fixtures, checked at a 375×812
+  viewport. **F2 and F3 are both confirmed**, not merely read from source — a
+  project really is invisible everywhere a task is actually worked, and
+  Projects really have no place in navigation. The sitting also surfaced
+  **F2a**: even the Area page's own task rows carry no project indicator next
+  to the project count sitting right above them. Method noted honestly: this
+  session's Browser pane would not composite frames, so the interaction was
+  DOM-level (real controlled inputs, real change events) rather than literal
+  taps — sufficient for the information-architecture question F2/F3 ask,
+  silent on touch-target size. **What this does and does not settle:** the
+  brief is equally clear that the navigation question — how a project should
+  actually surface — should not be started by guessing. The sitting supplied
+  evidence, not an answer; whether steps 2–4 begin now is Vince's call.
 - ~~**The vocabulary half of Crane 0**, still deferred.~~ **Shipped August 3,
   2026**, after Dunlin — see
   [`recurring-commitment-vocabulary-plan.md`](recurring-commitment-vocabulary-plan.md).
@@ -305,6 +314,22 @@ the build but deliberately left unfinished — attempted the same session and
 blocked by the session's own classifier on writing the generated keystore
 password to disk, so it still needs the keystore made by hand or an explicit
 permission grant.
+
+### Capture tags — built alongside the Android device-testing session
+
+**Not part of any planned release; merged into `main` August 3, 2026, not
+yet deployed.** Optional tags on a capture, typed on the Android compose
+screen and displayed as pills in the web Inbox — see
+[`capture-tags-plan.md`](capture-tags-plan.md) for the trigger and the
+slice. Reuses `lists.Tag` rather than a parallel model (`_resolve_tags`
+became public `resolve_tags` so `capture.services` can call it), an additive
+`Capture.tags` migration, and the Android queue carries tags through
+offline capture the same way it already carries text. Triage still does not
+gain a tags field, and a capture's tags do not yet carry forward onto the
+task or idea it becomes — both named as deliberate non-goals in the brief,
+not oversights. Whether this becomes its own release or lands as ordinary
+work on `main` is Vince's call; see the carried-forward list above for the
+matching call on `ui-second-pass-plan.md`.
 
 
 ## Later — visible, not scheduled
@@ -535,8 +560,11 @@ letter carries; the bird is chosen when the release ships.
 Update this file when an item in the active release begins, changes scope,
 ships, or is explicitly deferred. **There is no active release right now** —
 Dunlin shipped and nothing has been promoted to replace it. The nearest thing
-to a next one is `ui-second-pass-plan.md`, which is deliberately waiting on
-evidence rather than on a decision; see Dunlin's carried-forward list. Move completed detail into `roadmap-history.md` and keep only
-the resulting baseline or remaining consequence here. When an idea from
-Later earns work, give it a one-line reason and a focused spec before it
-joins an active track.
+to a next one is `ui-second-pass-plan.md`, whose §6 sitting supplied the
+evidence it was waiting on; it now waits on Vince's decision instead. Capture
+tags and the Android device-testing work are merged onto `main` under the
+same open question: still nobody's decision but Vince's on whether either
+becomes an active release. Move completed detail into `roadmap-history.md`
+and keep only the resulting baseline or remaining consequence here. When an
+idea from Later earns work, give it a one-line reason and a focused spec
+before it joins an active track.

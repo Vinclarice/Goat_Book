@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 
 import {
   createChecklistStep,
@@ -499,17 +500,25 @@ export function TaskDetailRoute() {
               >
                 {step.text}
               </label>
+              {/* A switch, not a checkbox, and the difference is the point.
+                * ui-second-pass-plan.md F1: this row used to carry two
+                * <input type="checkbox"> elements asking two unrelated
+                * questions -- the exact shape C2 complained about, and the
+                * one thing release-d-plan.md 4 predicted would be
+                * mechanical and was not. A checkbox reads as "tick this
+                * when it is done"; a switch reads as a setting that stays
+                * on. Different question, different control. */}
               {repeats && (
-                <label className="flex items-center gap-1 text-sm text-muted-foreground">
-                  <input
-                    type="checkbox"
+                <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <Switch
+                    size="sm"
                     checked={step.carries_forward}
-                    onChange={() => handleToggleStepCarriesForward(step)}
+                    onCheckedChange={() => handleToggleStepCarriesForward(step)}
                     disabled={busy}
                     aria-label={`Carry ${step.text} forward next time`}
                   />
                   Carries forward
-                </label>
+                </span>
               )}
               <button
                 type="button"
@@ -548,16 +557,20 @@ export function TaskDetailRoute() {
               Add
             </Button>
           </div>
+          {/* The same question the row asks, so the same control. Leaving
+            * this one a checkbox would trade C2's defect for a smaller
+            * version of it. */}
           {repeats && (
-            <label className="flex items-center gap-2 text-sm text-muted-foreground">
-              <input
-                type="checkbox"
+            <span className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Switch
+                size="sm"
                 checked={stepCarriesForward}
-                onChange={(event) => setStepCarriesForward(event.target.checked)}
+                onCheckedChange={setStepCarriesForward}
                 disabled={busy}
+                aria-label="Bring this back on the next occurrence"
               />
               Bring this back on the next occurrence
-            </label>
+            </span>
           )}
         </form>
       </div>

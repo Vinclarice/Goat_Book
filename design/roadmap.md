@@ -271,8 +271,11 @@ deliberate non-action that is not visible reads as a bug later.
 **Slice 9 produced the brief it was supposed to produce**, and it is in
 [`ui-second-pass-plan.md`](ui-second-pass-plan.md). Three things it found by
 checking the shipped interface rather than trusting the plan: the
-two-checkbox step row C2 complained about is **still there** on a repeating
-task, counted in the DOM rather than inferred; a project is invisible
+two-checkbox step row C2 complained about was **still there** on a repeating
+task, counted in the DOM rather than inferred — **now fixed**: the
+carries-forward control is a `Switch`, so the two questions on a step row are
+told apart by control type rather than by their labels alone, and the last
+true clause of C2's original evidence is closed; a project is invisible
 everywhere a task is actually worked, which slice 8 introduced; and where
 Projects belong in navigation has never been answered. It also says plainly
 that only the first is safe to act on, because the other two are inferences

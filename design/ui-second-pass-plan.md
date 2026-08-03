@@ -122,9 +122,30 @@ F2 and F3 are being designed, since they change this page anyway.
 
 Ordered thinnest first, per `principles.md`.
 
-1. **`carries_forward` becomes a `Switch`.** F1. One component swap in
-   `TaskDetailRoute.tsx`, its existing tests updated for the control type.
-   Closes the last clause of C2's original evidence that is still true.
+1. **`carries_forward` becomes a `Switch` — done, August 3, 2026.** F1. Both
+   controls, not one: the step row's *and* the add form's, because they ask
+   the identical question and leaving one a checkbox would trade C2's defect
+   for a smaller copy of it. Guarded by a test that counts controls by role —
+   one `checkbox` and one `switch` per step row — which failed with "expected
+   2 to have a length of 1" before the swap. Frontend green at 225, browser
+   smoke at 25, `tsc --noEmit` and the build clean.
+
+   Every existing behaviour test passed unchanged, including the
+   `toBeChecked()` assertions, because jest-dom reads `role="switch"` with
+   `aria-checked` the same way. That is the evidence the swap changed the
+   control type and nothing else.
+
+   **Not viewed in a browser**, and it did not need to be: `PreferencesRoute`
+   already renders this same component in production, so whether a `Switch`
+   is visible in this application is a settled question rather than an open
+   one. The role-based test is the substantive claim.
+
+   **A touch-target note, named rather than fixed** — the discipline §4 asked
+   for and §5 repeats. At `size="sm"` the switch is 14×24px with an `after`
+   inset extending the hit area to roughly 30×48px. Wider than the checkbox
+   it replaced, still short of the ~44px height WCAG 2.5.8 asks for. It
+   belongs to **Mobile web experience** with the rest of the measurements,
+   not here.
 2. **A task shows its project wherever it shows its area.** F2. The Agenda's
    task row first, since it already has the pill pattern and the payload
    already carries `project_id`. Needs the project's title, which means the
@@ -169,10 +190,11 @@ place the answer was not where it was looked for. That is the same evidence
 C2 has, it takes minutes, and it would either confirm F2 and F3 or replace
 them with something better.
 
-Until then, **step 1 is safe to build and steps 2 to 4 are not.** Step 1 fixes
-a defect with a DOM-level fact behind it. The rest redesign navigation on the
-strength of a hunch, which is precisely what `roadmap.md` tells this cycle not
-to do.
+Until then, **step 1 was safe to build and steps 2 to 4 are not.** Step 1
+fixed a defect with a DOM-level fact behind it, and has shipped. The rest
+redesign navigation on the strength of a hunch, which is precisely what
+`roadmap.md` tells this cycle not to do — they stay blocked on the sitting
+described above.
 
 ## 7. Does this ship inside Release D?
 

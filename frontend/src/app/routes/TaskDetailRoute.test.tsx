@@ -256,6 +256,31 @@ describe("TaskDetailRoute", () => {
     });
   });
 
+  it("tells the two questions on a step row apart by control type", async () => {
+    /* The last clause of C2's original complaint that was still true.
+     * ui-second-pass-plan.md F1: release-d-plan.md 4 predicted this would be
+     * mechanical once is_done was the row's only boolean, and it was not --
+     * carries_forward stayed on the row as a second <input type="checkbox">
+     * beside the completion one, which is the shape C2 objected to. A switch
+     * reads as a persistent setting; a checkbox reads as "tick when done".
+     */
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        taskDetailData({
+          task: task({ recurrence: "weekly" }),
+          checklist_steps: [checklistStep({ id: 2, text: "Book hotel" })],
+        }),
+      ),
+    );
+
+    renderAt("1");
+    await screen.findByText("Book hotel");
+
+    const row = screen.getByRole("listitem");
+    expect(within(row).getAllByRole("checkbox")).toHaveLength(1);
+    expect(within(row).getByRole("switch")).toBeInTheDocument();
+  });
+
   it("toggles whether an existing checklist step comes back", async () => {
     const user = userEvent.setup();
     let patched: Record<string, unknown> | null = null;

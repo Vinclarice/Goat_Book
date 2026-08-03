@@ -177,10 +177,34 @@ Written on the recommendation above; slice 1 is independent of it.
    Full required suite green at 785. Every pre-existing recurrence test passed
    unchanged, which is the evidence the write-through keeps the pair in step
    rather than the behaviour having quietly moved.
-3. **Cadence moves.** `set_recurrence` writes `commitment.cadence`;
-   `Item.recurrence` becomes a snapshot written at spawn, and the API
-   exposes the commitment's cadence as the editable one. This is the slice
-   with a real contract change in it.
+3. **Cadence moves — done, August 3, 2026.** `set_recurrence` writes
+   `commitment.cadence` alongside the occurrence's own value, and
+   `_spawn_next_occurrence` reads the cadence from the template. Five new
+   tests; full required suite green at 790, frontend at 225, browser smoke at
+   25.
+
+   **Cadence is not merely a label, which is why the discriminating test
+   checks a date.** The cadence decides how far `_advance_due_date` moves the
+   next occurrence, so reading a stale one schedules the next task on the
+   wrong day rather than just describing it wrongly.
+   `test_the_due_date_advances_by_the_commitment_s_cadence` sets the template
+   to monthly while the occurrence still says weekly and asserts the next due
+   date lands a month on.
+
+   **This slice was predicted to carry a real contract change. It carries
+   none.** The prediction assumed the API would have to expose the
+   commitment's cadence separately from the occurrence's. It does not,
+   because the write-through keeps an *active* occurrence's `recurrence` in
+   step with its series — so `item.recurrence` already *is* the editable
+   cadence for every task a client can edit, and the two only diverge on
+   completed occurrences, where the snapshot is the correct thing to show.
+   `openapi.json` did not move, no serializer changed, and no `select_related`
+   was needed to avoid an N+1 that never materialised.
+
+   **Setting a repeat to None writes `cadence=none` too**, rather than
+   leaving the stopped commitment advertising a rule it no longer follows.
+   The link and the series stay, as they always did — `_end_commitment`
+   closes it rather than deleting it.
 4. **Contract — retire what is now duplicated.** Only whatever step 4 leaves
    genuinely dead, and only once nothing reads it, per the expand/migrate/
    contract discipline Dunlin used for `Item.parent`.

@@ -258,6 +258,15 @@ def set_recurrence(item, recurrence):
     else:
         _anchor_commitment(item)
     item.save()
+    # The cadence is the commitment's rule; `item.recurrence` above is this
+    # occurrence's snapshot of it. Writing both keeps an *active* occurrence
+    # in step with its series, which is why the API can keep reading the
+    # item's own value -- see the plan file, slice 3.
+    #
+    # Deliberately also written when the cadence is NONE: a commitment that
+    # was stopped should say so rather than keep advertising the rule it no
+    # longer follows.
+    _write_through_to_commitment(item, cadence=recurrence)
     return item
 
 
@@ -434,11 +443,15 @@ def _spawn_next_occurrence(completed_item, carry_forward_steps=()):
     # _advance_due_date rather than seeded. Cadence still comes from the item;
     # it moves to the template in the next slice.
     target_list = commitment.list or completed_item.list
+    # The cadence comes from the template too, and it is not merely a label:
+    # it decides how far the next due date moves. A stale one would schedule
+    # the next occurrence on the wrong day, not just describe it wrongly.
+    cadence = commitment.cadence or completed_item.recurrence
     next_item = Item.objects.create(
         list=target_list,
         text=commitment.text or completed_item.text,
-        due_date=_advance_due_date(completed_item.due_date, completed_item.recurrence),
-        recurrence=completed_item.recurrence,
+        due_date=_advance_due_date(completed_item.due_date, cadence),
+        recurrence=cadence,
         position=_next_position(target_list),
         commitment=commitment,
         notes=commitment.notes,

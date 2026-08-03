@@ -235,6 +235,113 @@ class SpawnReadsTheTemplateTest(TestCase):
         self.assertEqual(spawned.commitment.text, "Legacy")
 
 
+class CadenceBelongsToTheCommitmentTest(TestCase):
+    """The rule lives on the template; the occurrence keeps a snapshot.
+
+    recurring-commitment-vocabulary-plan.md 3: a commitment is weekly; an
+    occurrence is not weekly, it is one instance of a weekly thing. This is
+    what closes crane-plan.md 3's complaint that "change its cadence and
+    nothing records that it was ever weekly".
+    """
+
+    def setUp(self):
+        self.owner = User.objects.create_user(
+            "alice", "alice@example.com", "a secure password"
+        )
+        self.area = List.objects.create(owner=self.owner, title="Home")
+
+    def recurring(self, cadence=Item.Recurrence.WEEKLY):
+        from lists import services
+
+        return services.create_item(self.area, "Pay rent", recurrence=cadence)
+
+    def test_changing_a_task_s_repeat_changes_the_commitment_s_cadence(self):
+        from lists import services
+
+        task = self.recurring(Item.Recurrence.WEEKLY)
+
+        services.set_recurrence(task, Item.Recurrence.MONTHLY)
+
+        task.commitment.refresh_from_db()
+        self.assertEqual(task.commitment.cadence, Item.Recurrence.MONTHLY)
+
+    def test_the_spawn_takes_its_cadence_from_the_commitment(self):
+        """Discriminating, like the text one: the template and the occurrence
+        deliberately disagree, so only a spawn reading the template passes.
+        """
+        from lists import services
+
+        task = self.recurring(Item.Recurrence.WEEKLY)
+        RecurringCommitment.objects.filter(pk=task.commitment_id).update(
+            cadence=Item.Recurrence.MONTHLY,
+        )
+        task.refresh_from_db()
+        self.assertEqual(task.recurrence, Item.Recurrence.WEEKLY)
+
+        spawned = services.complete_item(task)._spawned
+
+        self.assertEqual(spawned.recurrence, Item.Recurrence.MONTHLY)
+
+    def test_the_due_date_advances_by_the_commitment_s_cadence(self):
+        """The cadence decides the next due date, so reading the wrong one is
+        not merely a label being stale.
+        """
+        from datetime import date
+
+        from lists import services
+
+        task = services.create_item(
+            self.area,
+            "Pay rent",
+            recurrence=Item.Recurrence.WEEKLY,
+            due_date=date(2026, 8, 3),
+        )
+        RecurringCommitment.objects.filter(pk=task.commitment_id).update(
+            cadence=Item.Recurrence.MONTHLY,
+        )
+        task.refresh_from_db()
+
+        spawned = services.complete_item(task)._spawned
+
+        # A month on, not a week.
+        self.assertEqual(spawned.due_date, date(2026, 9, 3))
+
+    def test_a_completed_occurrence_keeps_the_cadence_it_ran_under(self):
+        """Charter rule 3. The series changing to monthly must not rewrite
+        the record of a week that actually was weekly.
+        """
+        from lists import services
+
+        task = self.recurring(Item.Recurrence.WEEKLY)
+        completed = services.complete_item(task)
+        follow_on = completed._spawned
+
+        services.set_recurrence(follow_on, Item.Recurrence.MONTHLY)
+
+        completed.refresh_from_db()
+        self.assertEqual(completed.recurrence, Item.Recurrence.WEEKLY)
+        # Re-read rather than trusting follow_on.commitment: set_recurrence
+        # re-fetches the item internally and writes through on that instance,
+        # so the copy held here predates the change.
+        commitment = RecurringCommitment.objects.get(pk=follow_on.commitment_id)
+        self.assertEqual(commitment.cadence, Item.Recurrence.MONTHLY)
+
+    def test_stopping_a_repeat_records_none_on_the_commitment_and_ends_it(self):
+        from lists import services
+
+        task = self.recurring(Item.Recurrence.WEEKLY)
+
+        services.set_recurrence(task, Item.Recurrence.NONE)
+
+        commitment = task.commitment
+        commitment.refresh_from_db()
+        self.assertEqual(commitment.cadence, Item.Recurrence.NONE)
+        # The link stays and the series is closed rather than deleted.
+        self.assertIsNotNone(commitment.ended_at)
+        task.refresh_from_db()
+        self.assertEqual(task.commitment_id, commitment.pk)
+
+
 # capture is named alongside lists for the reason test_ownerless_list_removal
 # discovered the hard way: a target that mentions only one app lets the next
 # migration test ask for a plan that runs lists backwards and capture

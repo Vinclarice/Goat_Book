@@ -151,6 +151,17 @@ fun CaptureScreen(
                 .semantics { contentDescription = "Capture text" },
         )
 
+        OutlinedTextField(
+            value = state.tags,
+            onValueChange = model::onTagsChange,
+            placeholder = { Text("Tags (optional, comma separated)") },
+            enabled = !state.sending,
+            singleLine = true,
+            modifier = Modifier
+                .fillMaxWidth()
+                .semantics { contentDescription = "Capture tags" },
+        )
+
         state.message?.let { message ->
             Text(
                 message,

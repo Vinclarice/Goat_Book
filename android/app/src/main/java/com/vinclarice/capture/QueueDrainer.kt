@@ -37,7 +37,7 @@ class QueueDrainer(
         val token = store.read() ?: return report(delivered)
 
         for (item in queue.waiting()) {
-            when (api.capture(token, item.text, item.key)) {
+            when (api.capture(token, item.text, item.key, item.tags)) {
                 Disposition.DELIVERED -> {
                     queue.delivered(item.key)
                     delivered++

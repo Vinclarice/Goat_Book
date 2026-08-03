@@ -3,6 +3,7 @@ from django.utils import timezone
 
 from accounts.models import User
 from capture.models import Capture
+from lists.models import Tag
 
 
 PASSWORD = "correct horse battery staple 47!"
@@ -49,3 +50,21 @@ class CaptureModelTest(TestCase):
         self.assertEqual(
             Capture.objects.filter(resolved_at__isnull=True).count(), 0,
         )
+
+    def test_a_capture_can_carry_tags_from_the_shared_tag_vocabulary(self):
+        """capture.tags reuses lists.Tag rather than a parallel model --
+        the same owner-scoped tag typed on a task and on a capture should
+        be one row, not two that happen to share a name.
+        """
+        capture = Capture.objects.create(owner=self.user, text="Buy the game")
+        game = Tag.objects.create(owner=self.user, name="game-dev")
+
+        capture.tags.add(game)
+
+        self.assertEqual(list(capture.tags.all()), [game])
+        self.assertEqual(list(game.captures.all()), [capture])
+
+    def test_a_capture_has_no_tags_by_default(self):
+        capture = Capture.objects.create(owner=self.user, text="Ring the vet")
+
+        self.assertEqual(list(capture.tags.all()), [])

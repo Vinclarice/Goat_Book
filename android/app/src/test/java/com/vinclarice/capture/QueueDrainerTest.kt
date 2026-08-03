@@ -40,8 +40,12 @@ class QueueDrainerTest {
 
         override suspend fun identify(token: String) = Identified(Identity("a", "a@b.c"))
 
-        override suspend fun capture(token: String, text: String, idempotencyKey: String):
-            Disposition {
+        override suspend fun capture(
+            token: String,
+            text: String,
+            idempotencyKey: String,
+            tags: List<String>,
+        ): Disposition {
             keys += idempotencyKey
             texts += text
             return byKey[idempotencyKey] ?: fallback

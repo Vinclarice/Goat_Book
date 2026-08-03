@@ -389,7 +389,10 @@ function CaptureBox() {
   const mutation = useMutation({
     mutationFn: async (thought: string) => {
       const { error } = await apiV1.POST("/api/v1/capture", {
-        body: { text: thought },
+        // No tags UI here -- design/capture-tags-plan.md scoped tagging to
+        // the Android compose screen and read-only display in the web
+        // Inbox, not this quick-capture box.
+        body: { text: thought, tags: [] },
       });
       if (error) throw new Error("Couldn't capture that. It's still here.");
     },

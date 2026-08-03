@@ -11,6 +11,9 @@ import kotlinx.coroutines.withContext
 
 data class CaptureUiState(
     val text: String = "",
+    /** Raw field contents, comma-separated -- same convention the web app
+     *  already uses for a task's tags. Parsed only at submit time. */
+    val tags: String = "",
     val sending: Boolean = false,
     val message: String? = null,
     val isError: Boolean = false,
@@ -62,6 +65,10 @@ class CaptureViewModel(
         _state.value = _state.value.copy(text = value, message = null, isError = false)
     }
 
+    fun onTagsChange(value: String) {
+        _state.value = _state.value.copy(tags = value)
+    }
+
     /** Recount what is waiting. Suspending because reading the queue means
      *  decrypting it, and Keystore calls are real IPC. */
     suspend fun refresh() = withContext(io) {
@@ -94,16 +101,18 @@ class CaptureViewModel(
     suspend fun submit() = withContext(io) {
         val text = _state.value.text.trim()
         if (text.isEmpty()) return@withContext
+        val tags = _state.value.tags.split(",").map { it.trim() }.filter { it.isNotEmpty() }
 
         // Durable first. If the process dies during the request, or the radio
         // never answers, the thought is already written down.
-        val item = queue.add(text, newKey(), now())
+        val item = queue.add(text, newKey(), now(), tags)
         // Rebuilt rather than copied, to clear the field and any previous
         // message in one go -- so anything that is a *setting* rather than a
         // result has to be carried across explicitly. A keyboard that
         // changed behaviour halfway through a session would be maddening.
         _state.value = CaptureUiState(
             text = "",
+            tags = "",
             sending = true,
             pending = queue.waiting().size,
             enterSends = _state.value.enterSends,
@@ -121,7 +130,7 @@ class CaptureViewModel(
 
         // The queued item's own key, never a fresh one: a retry has to be
         // recognisably the same write, or it becomes a second note.
-        when (api.capture(token, item.text, item.key)) {
+        when (api.capture(token, item.text, item.key, item.tags)) {
             Disposition.DELIVERED -> {
                 queue.delivered(item.key)
                 report("Captured.", isError = false)
@@ -148,6 +157,7 @@ class CaptureViewModel(
                 // -- but the copy in the field is the one that can be edited.
                 _state.value = _state.value.copy(
                     text = item.text,
+                    tags = item.tags.joinToString(", "),
                     sending = false,
                     message = "Clarice would not accept that. Edit it and try again.",
                     isError = true,

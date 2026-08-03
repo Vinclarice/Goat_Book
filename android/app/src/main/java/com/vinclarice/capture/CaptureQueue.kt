@@ -35,6 +35,10 @@ data class PendingCapture(
     val createdAt: Long,
     val attempts: Int = 0,
     val state: QueueState = QueueState.WAITING,
+    /** Optional, same as at capture time. Carried through the queue so a
+     *  capture typed with tags while offline does not lose them by the
+     *  time it is finally sent. */
+    val tags: List<String> = emptyList(),
 )
 
 /**
@@ -62,8 +66,13 @@ class CaptureQueue(
     private val ceiling: Int = DEFAULT_CEILING,
 ) {
 
-    fun add(text: String, key: String, createdAt: Long): PendingCapture {
-        val item = PendingCapture(key = key, text = text, createdAt = createdAt)
+    fun add(
+        text: String,
+        key: String,
+        createdAt: Long,
+        tags: List<String> = emptyList(),
+    ): PendingCapture {
+        val item = PendingCapture(key = key, text = text, createdAt = createdAt, tags = tags)
         storage.save(all() + item)
         return item
     }

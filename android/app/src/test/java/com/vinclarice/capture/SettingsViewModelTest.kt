@@ -31,7 +31,7 @@ class SettingsViewModelTest {
             return result
         }
 
-        override suspend fun capture(token: String, text: String, idempotencyKey: String) =
+        override suspend fun capture(token: String, text: String, idempotencyKey: String, tags: List<String>) =
             Disposition.DELIVERED
     }
 

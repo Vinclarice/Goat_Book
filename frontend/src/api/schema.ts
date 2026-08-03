@@ -900,11 +900,21 @@ export interface components {
             id: number;
             /** Created At */
             created_at: string;
+            /**
+             * Tags
+             * @default []
+             */
+            tags: string[];
         };
         /** CaptureIn */
         CaptureIn: {
             /** Text */
             text: string;
+            /**
+             * Tags
+             * @default []
+             */
+            tags: string[];
         };
         /**
          * DayActionItemOut

@@ -31,11 +31,14 @@ def normalize_capture_text(text):
     return normalized
 
 
-def create_capture(owner, text):
-    return Capture.objects.create(owner=owner, text=normalize_capture_text(text))
+def create_capture(owner, text, tags=None):
+    capture = Capture.objects.create(owner=owner, text=normalize_capture_text(text))
+    if tags:
+        capture.tags.set(list_services.resolve_tags(owner, tags))
+    return capture
 
 
-def create_capture_idempotent(owner, text, idempotency_key):
+def create_capture_idempotent(owner, text, idempotency_key, tags=None):
     """Bittern M1: a mobile client's retry-safe write.
 
     The browser path above is untouched -- CaptureForm always calls
@@ -46,6 +49,11 @@ def create_capture_idempotent(owner, text, idempotency_key):
 
     Returns (capture, created) so the caller can answer 201 for a genuine
     write and 200 for a replay without a second query to tell them apart.
+
+    tags is only ever applied on the branch that actually creates a row.
+    A replay -- lost-response retry or a genuine race lost below -- returns
+    the existing row exactly as recorded, the same rule this function
+    already applies to text.
     """
     normalized = normalize_capture_text(text)
     try:
@@ -53,6 +61,8 @@ def create_capture_idempotent(owner, text, idempotency_key):
             capture = Capture.objects.create(
                 owner=owner, text=normalized, idempotency_key=idempotency_key
             )
+            if tags:
+                capture.tags.set(list_services.resolve_tags(owner, tags))
         return capture, True
     except IntegrityError:
         # Lost the constraint race, or this genuinely is a retry: a row

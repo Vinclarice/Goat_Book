@@ -8,6 +8,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 
@@ -47,6 +48,7 @@ interface ClariceApi {
         token: String,
         text: String,
         idempotencyKey: String,
+        tags: List<String> = emptyList(),
     ): Disposition
 }
 
@@ -91,11 +93,15 @@ class OkHttpClariceApi(
         token: String,
         text: String,
         idempotencyKey: String,
+        tags: List<String>,
     ): Disposition = withContext(Dispatchers.IO) {
         // Built with JSONObject rather than string concatenation: capture
         // text is prose typed in a hurry, and quotes, newlines and
         // backslashes are ordinary in it.
-        val body = JSONObject().put("text", text).toString()
+        val body = JSONObject()
+            .put("text", text)
+            .put("tags", JSONArray(tags))
+            .toString()
         val request = Request.Builder()
             .url(baseUrl.trimEnd('/') + "/api/v1/capture")
             .header("Authorization", "Bearer $token")

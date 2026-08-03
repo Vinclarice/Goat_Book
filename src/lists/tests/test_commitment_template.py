@@ -342,21 +342,18 @@ class CadenceBelongsToTheCommitmentTest(TestCase):
         self.assertEqual(task.commitment_id, commitment.pk)
 
 
-class TemplateFallbackWindowTest(TestCase):
-    """Pins the compatibility window the contract step will close.
+class TheTemplateIsTheOnlySourceTest(TestCase):
+    """What replaced TemplateFallbackWindowTest when the window closed.
 
-    **A regression guard, and it passed on its first run** -- said plainly,
-    because a new test that goes green immediately is normally a warning. It
-    is not asserting behaviour this commit added; it is pinning behaviour
-    that already exists so that removing it later is a deliberate act with a
-    failing test attached, rather than something that quietly lapses.
+    That test pinned three `or` fallbacks to the completed occurrence, which
+    existed for exactly one deploy so that a row 0031's backfill might have
+    missed could not produce a blank task. The migration reported empty=0
+    against production on August 3, 2026, so there was nothing left to cover
+    and the fallbacks came out.
 
-    The three `or` fallbacks in `_spawn_next_occurrence` are unreachable
-    through the application: every path seeds the template, and 0031
-    backfilled the rest. Stripping all three and running the full suite left
-    it green, which is evidence that nothing exercises them. They stay anyway
-    until 0031 has run against production, because until then "nothing reads
-    the old path" is a claim about a database nobody has looked at.
+    This asserts the invariant that holds now: the spawn reads the template
+    and nothing else, so a defect in the template shows up as a defect rather
+    than being silently papered over by the occurrence it came from.
     """
 
     def setUp(self):
@@ -365,23 +362,28 @@ class TemplateFallbackWindowTest(TestCase):
         )
         self.area = List.objects.create(owner=self.owner, title="Home")
 
-    def test_an_empty_template_still_spawns_a_sane_occurrence(self):
+    def test_every_field_of_the_next_occurrence_comes_from_the_template(self):
         from lists import services
 
+        elsewhere = List.objects.create(owner=self.owner, title="Work")
         task = services.create_item(
-            self.area, "Pay rent", recurrence=Item.Recurrence.MONTHLY,
+            self.area, "Pay rent", recurrence=Item.Recurrence.WEEKLY,
         )
-        # Exactly the shape a missed backfill would leave behind.
+        # The template and the occurrence disagree about every seeded field.
         RecurringCommitment.objects.filter(pk=task.commitment_id).update(
-            text="", list=None, cadence="",
+            text="Pay the new landlord",
+            list=elsewhere,
+            cadence=Item.Recurrence.MONTHLY,
+            notes="Moved and rescheduled",
         )
         task.refresh_from_db()
 
         spawned = services.complete_item(task)._spawned
 
-        self.assertEqual(spawned.text, "Pay rent")
-        self.assertEqual(spawned.list_id, self.area.id)
+        self.assertEqual(spawned.text, "Pay the new landlord")
+        self.assertEqual(spawned.list_id, elsewhere.id)
         self.assertEqual(spawned.recurrence, Item.Recurrence.MONTHLY)
+        self.assertEqual(spawned.notes, "Moved and rescheduled")
 
 
 # capture is named alongside lists for the reason test_ownerless_list_removal

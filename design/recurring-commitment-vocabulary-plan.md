@@ -205,7 +205,7 @@ Written on the recommendation above; slice 1 is independent of it.
    leaving the stopped commitment advertising a rule it no longer follows.
    The link and the series stay, as they always did — `_end_commitment`
    closes it rather than deleting it.
-4. **Contract — audited August 3, 2026, and deliberately not completed.**
+4. **Contract — audited, then closed on production evidence, August 3, 2026.**
    The audit is the deliverable; the removal is not, and the reason is the
    discipline itself.
 
@@ -232,6 +232,23 @@ Written on the recommendation above; slice 1 is independent of it.
    production, and its `seeded=` / `empty=` counts read. If `empty=0`, every
    commitment has a template and the fallbacks come out. If it is not zero,
    the fallbacks stay and the rows get looked at first.
+
+   **Closed August 3, 2026, on that evidence.** `0031` shipped in
+   `DEPLOYED-2026-08-03/0253` and production reported **2 commitments, 2
+   seeded, 0 empty** — read back from the database rather than from
+   scrollback, which is the stronger form of the same answer. The three
+   fallbacks are gone; `_spawn_next_occurrence` reads the template and
+   nothing else, so a defect in a template now surfaces as a defect instead
+   of being papered over by the occurrence it came from.
+   `TemplateFallbackWindowTest` was deleted rather than adjusted — it existed
+   to pin a window, the window closed, and
+   `TheTemplateIsTheOnlySourceTest` asserts the invariant that replaced it:
+   text, area, cadence and notes all come from the template even when the
+   completed occurrence disagrees about every one of them.
+
+   **This is what the discipline is for.** The window lasted exactly one
+   deploy, and its removal was decided by a number production produced rather
+   than by anyone's confidence beforehand.
 
    `TemplateFallbackWindowTest` pins the behaviour so that removal is a
    deliberate act with a failing test attached rather than something that

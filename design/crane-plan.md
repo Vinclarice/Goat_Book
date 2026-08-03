@@ -76,11 +76,20 @@ until somebody checks.
 - [ ] A forwarded contact message arrives in the inbox rather than spam, now
   that DMARC enforces.
 - [x] DMARC aggregate reports begin arriving at `dmarc@vinclarice.com`.
-  **Confirmed August 3, 2026** — the first report arrived that morning,
-  reported by Vince. This is the half of DMARC that needed elapsed time
-  rather than work: the policy was published during Bittern and the
-  reporting address could only be proven by a receiving mail provider
-  choosing to send to it.
+  **Confirmed August 3, 2026, 05:54.** Submitter `google.com`, report ID
+  5829377777720365865, DKIM-signed by google.com. This is the half of DMARC
+  that needed elapsed time rather than work: the policy was published during
+  Bittern, and the reporting address could only ever be proven by a receiving
+  provider choosing to send to it.
+
+  **One detail worth carrying to the next item.** The report was
+  `mailed-by: srs.perfora.net` — it reached the inbox through the forwarder,
+  with SRS rewriting the envelope sender so it survived SPF. That is real
+  evidence the forwarding path delivers rather than landing in spam, but it
+  is **not** the contact-message check below and does not clear it: this
+  message was sent by Google and signed by Google, where a forwarded contact
+  message originates from Resend, so the alignment being tested is different.
+  Encouraging, not sufficient.
 - [ ] A real production 500 reaches Sentry, not only the controlled probe.
 
 ### The New York morning digest

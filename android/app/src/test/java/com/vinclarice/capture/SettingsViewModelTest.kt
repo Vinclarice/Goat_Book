@@ -32,7 +32,7 @@ class SettingsViewModelTest {
         }
 
         override suspend fun login(username: String, password: String, label: String) =
-            InvalidCredentials
+            InvalidCredentials("unused")
 
         override suspend fun capture(token: String, text: String, idempotencyKey: String, tags: List<String>) =
             Disposition.DELIVERED

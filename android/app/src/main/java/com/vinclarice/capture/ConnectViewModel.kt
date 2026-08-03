@@ -17,7 +17,14 @@ data class ConnectUiState(
     val connectedAs: Identity? = null,
 )
 
-class ConnectViewModel(private val connector: Connector) {
+class ConnectViewModel(
+    private val connector: Connector,
+    // Injected rather than read from android.os.Build in here, so this
+    // stays a plain JVM test subject. MainActivity supplies the real
+    // model string; every test gets the same default a device would
+    // fall back to reading a blank one.
+    private val deviceLabel: String = "Android",
+) {
 
     private val _state = MutableStateFlow(ConnectUiState())
     val state: StateFlow<ConnectUiState> = _state.asStateFlow()
@@ -74,7 +81,7 @@ class ConnectViewModel(private val connector: Connector) {
         val username = _state.value.username
         val password = _state.value.password
 
-        when (val outcome = connector.logIn(username, password)) {
+        when (val outcome = connector.logIn(username, password, deviceLabel)) {
             is Connected -> _state.value = ConnectUiState(
                 checking = false,
                 connectedAs = outcome.identity,

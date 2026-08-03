@@ -43,9 +43,15 @@ sealed interface LoginResult
 
 data class LoggedIn(val token: String, val identity: Identity) : LoginResult
 
-/** Wrong username, wrong password, a deactivated account, or a lockout in
- *  progress -- deliberately indistinguishable, the same as the server. */
-data object InvalidCredentials : LoginResult
+/**
+ * Wrong username, wrong password, a deactivated account, or a lockout in
+ * progress -- deliberately indistinguishable in *which* is true, the same
+ * as the server. [message] is the server's own text, which for an ordinary
+ * failure is how many attempts remain before a lock, and for a lockout
+ * already in progress is how long it lasts -- neither is safe to hard-code
+ * on the client since both depend on state only the server has.
+ */
+data class InvalidCredentials(val message: String) : LoginResult
 
 /** Nothing is wrong with the credentials, only with right now. */
 data class LoginUnreachable(val reason: String) : LoginResult
@@ -123,17 +129,30 @@ class OkHttpClariceApi(
             .toString()
         val request = Request.Builder()
             .url(baseUrl.trimEnd('/') + "/api/v1/login")
+            // Asks axes to answer a lockout with its own JSON body instead
+            // of the HTML template the web login gets -- see
+            // design/android-login-plan.md and axes.helpers.get_lockout_response.
+            .header("X-Requested-With", "XMLHttpRequest")
             .post(body.toRequestBody(JSON))
             .build()
         try {
             client.newCall(request).execute().use { response ->
                 when (response.code) {
                     200 -> parseLogin(response.body.string())
-                    // 429 is axes' own lockout response, not this
-                    // endpoint's -- see design/android-login-plan.md. Both
-                    // it and a 401 mean the same thing to the person
-                    // typing: try again, or wait.
-                    401, 429 -> InvalidCredentials
+                    // This endpoint's own 401 -- wrong username, wrong
+                    // password, or deactivated, deliberately
+                    // indistinguishable. The message is the server's,
+                    // which is where the attempts-remaining count lives.
+                    401 -> InvalidCredentials(
+                        parseDetail(response.body.string())
+                            ?: "Incorrect username or password."
+                    )
+                    // axes' own lockout, not this endpoint's -- distinct
+                    // response shape, so parsed separately.
+                    429 -> InvalidCredentials(
+                        parseCooloffMessage(response.body.string())
+                            ?: "Too many attempts. Try again later."
+                    )
                     else -> LoginUnreachable("Clarice answered ${response.code}.")
                 }
             }
@@ -153,6 +172,38 @@ class OkHttpClariceApi(
         )
     } catch (malformed: JSONException) {
         LoginUnreachable("Unexpected response from that address.")
+    }
+
+    /** Ninja's HttpError body shape: `{"detail": "..."}`. */
+    private fun parseDetail(body: String): String? = try {
+        JSONObject(body).getString("detail")
+    } catch (malformed: JSONException) {
+        null
+    }
+
+    private fun parseCooloffMessage(body: String): String? = try {
+        val cooloff = JSONObject(body).getString("cooloff_time")
+        formatCooloff(cooloff)?.let { "Too many attempts. Try again in $it." }
+    } catch (malformed: JSONException) {
+        null
+    }
+
+    /**
+     * A whole-hours-and-minutes reading of an ISO 8601 duration, e.g.
+     * "PT1H" or "PT1H30M" -- axes' own format (axes.helpers.get_cool_off_iso8601),
+     * not a general-purpose parser. `AXES_COOLOFF_TIME` is configured in
+     * whole hours today, so seconds are deliberately not extracted.
+     */
+    private fun formatCooloff(iso: String): String? {
+        val match = Regex("""PT(?:(\d+)H)?(?:(\d+)M)?""").matchEntire(iso) ?: return null
+        val hours = match.groupValues[1].toIntOrNull() ?: 0
+        val minutes = match.groupValues[2].toIntOrNull() ?: 0
+        if (hours == 0 && minutes == 0) return null
+        val parts = buildList {
+            if (hours > 0) add("$hours hour" + if (hours == 1) "" else "s")
+            if (minutes > 0) add("$minutes minute" + if (minutes == 1) "" else "s")
+        }
+        return parts.joinToString(" ")
     }
 
     override suspend fun capture(

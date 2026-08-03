@@ -89,6 +89,63 @@ class LoginEndpointTest(TestCase):
             PersonalAccessToken.objects.get().label, "Vince's phone"
         )
 
+    def test_a_first_wrong_attempt_says_how_many_are_left(self):
+        response = self.post({"username": "alice", "password": "not it"})
+
+        self.assertIn("4 attempts remaining", response.json()["detail"])
+
+    def test_the_count_counts_down_with_each_wrong_attempt(self):
+        self.post({"username": "alice", "password": "not it"})
+        self.post({"username": "alice", "password": "not it"})
+
+        response = self.post({"username": "alice", "password": "not it"})
+
+        self.assertIn("2 attempts remaining", response.json()["detail"])
+
+    def test_the_last_attempt_this_view_ever_answers_says_one_remaining(self):
+        # AXES_FAILURE_LIMIT is 5, but the fifth failure is the one that
+        # trips it -- axes' own middleware computes the lockout the moment
+        # that failure is recorded and swaps in its 429 for that same
+        # request, before this view's response ever leaves. So the fourth
+        # failure is the last one this view gets to answer at all, and "1
+        # attempt remaining" is the strongest warning it can honestly give.
+        for _ in range(3):
+            self.post({"username": "alice", "password": "not it"})
+
+        response = self.post({"username": "alice", "password": "not it"})
+
+        self.assertEqual(response.status_code, 401)
+        self.assertIn("1 attempt remaining", response.json()["detail"])
+
+    def test_the_attempt_that_trips_the_limit_is_answered_by_axes_not_this_view(self):
+        for _ in range(4):
+            self.post({"username": "alice", "password": "not it"})
+
+        response = self.post({"username": "alice", "password": "not it"})
+
+        self.assertEqual(response.status_code, 429)
+
+    def test_a_successful_login_resets_the_count(self):
+        # AXES_RESET_ON_SUCCESS. Otherwise a correct password after a few
+        # mistyped ones would still carry a countdown into the next attempt
+        # nobody needs to make.
+        self.post({"username": "alice", "password": "not it"})
+        self.post({"username": "alice", "password": "not it"})
+        self.post({"username": "alice", "password": PASSWORD})
+
+        response = self.post({"username": "alice", "password": "not it"})
+
+        self.assertIn("4 attempts remaining", response.json()["detail"])
+
+    def test_the_countdown_does_not_reveal_whether_the_account_is_real(self):
+        # The whole point of a generic message: probing with a made-up
+        # username must look identical to probing a real one, including how
+        # the remaining-attempts count behaves.
+        made_up = self.post({"username": "nobody", "password": "whatever"})
+        real = self.post({"username": "alice", "password": "not it"})
+
+        self.assertEqual(made_up.json(), real.json())
+
     def test_five_wrong_attempts_lock_the_account_even_for_the_right_password(self):
         # axes' own middleware intercepts a locked-out request before this
         # view's authenticate() call ever runs, answering 429 directly --

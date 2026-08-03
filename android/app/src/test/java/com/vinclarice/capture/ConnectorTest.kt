@@ -28,13 +28,14 @@ class ConnectorTest {
 
     private class FakeApi(
         private val result: IdentifyResult,
-        private val loginResult: LoginResult = InvalidCredentials,
+        private val loginResult: LoginResult = InvalidCredentials("unused"),
     ) : ClariceApi {
         var calls = 0
         var lastToken: String? = null
         var loginCalls = 0
         var lastUsername: String? = null
         var lastPassword: String? = null
+        var lastLabel: String? = null
 
         override suspend fun identify(token: String): IdentifyResult {
             calls++
@@ -46,6 +47,7 @@ class ConnectorTest {
             loginCalls++
             lastUsername = username
             lastPassword = password
+            lastLabel = label
             return loginResult
         }
 
@@ -165,12 +167,14 @@ class ConnectorTest {
     }
 
     @Test
-    fun `invalid credentials are never saved`() = runTest {
+    fun `invalid credentials are never saved, and the server's own message is kept`() = runTest {
         val store = FakeStore()
-        val outcome = Connector(FakeApi(Unauthorised, InvalidCredentials), store)
-            .logIn("alice", "wrong")
+        val outcome = Connector(
+            FakeApi(Unauthorised, InvalidCredentials("3 attempts remaining before a temporary lock.")),
+            store,
+        ).logIn("alice", "wrong")
 
-        assertTrue(outcome is Refused)
+        assertEquals(Refused("3 attempts remaining before a temporary lock."), outcome)
         assertNull(store.read())
     }
 
@@ -182,6 +186,24 @@ class ConnectorTest {
 
         assertTrue(outcome is Failed)
         assertNull(store.read())
+    }
+
+    @Test
+    fun `the device label travels with the login request`() = runTest {
+        val api = FakeApi(Unauthorised, LoggedIn("tok", alice))
+
+        Connector(api, FakeStore()).logIn("alice", "correct horse", label = "Android (SM-S928U1)")
+
+        assertEquals("Android (SM-S928U1)", api.lastLabel)
+    }
+
+    @Test
+    fun `the label defaults to something reasonable when the caller doesn't say`() = runTest {
+        val api = FakeApi(Unauthorised, LoggedIn("tok", alice))
+
+        Connector(api, FakeStore()).logIn("alice", "correct horse")
+
+        assertEquals("Android", api.lastLabel)
     }
 
     @Test
@@ -209,7 +231,7 @@ class ConnectorTest {
         val outcomes = listOf(
             Connector(FakeApi(Unauthorised, LoggedIn("tok_secret", alice)), FakeStore())
                 .logIn("alice", "password_secret"),
-            Connector(FakeApi(Unauthorised, InvalidCredentials), FakeStore())
+            Connector(FakeApi(Unauthorised, InvalidCredentials("unused")), FakeStore())
                 .logIn("alice", "password_secret"),
         )
 

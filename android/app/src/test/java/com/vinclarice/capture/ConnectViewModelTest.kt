@@ -27,16 +27,18 @@ class ConnectViewModelTest {
 
     private class FakeApi(
         var result: IdentifyResult,
-        var loginResult: LoginResult = InvalidCredentials,
+        var loginResult: LoginResult = InvalidCredentials("unused"),
     ) : ClariceApi {
         var lastLoginUsername: String? = null
         var lastLoginPassword: String? = null
+        var lastLoginLabel: String? = null
 
         override suspend fun identify(token: String) = result
 
         override suspend fun login(username: String, password: String, label: String): LoginResult {
             lastLoginUsername = username
             lastLoginPassword = password
+            lastLoginLabel = label
             return loginResult
         }
 
@@ -52,9 +54,10 @@ class ConnectViewModelTest {
     private fun loginViewModel(
         loginResult: LoginResult,
         store: TokenStore = FakeStore(),
+        deviceLabel: String = "Android",
     ): Pair<ConnectViewModel, FakeApi> {
         val api = FakeApi(Unreachable("unused"), loginResult)
-        return ConnectViewModel(Connector(api, store)) to api
+        return ConnectViewModel(Connector(api, store), deviceLabel = deviceLabel) to api
     }
 
     @Test
@@ -190,7 +193,7 @@ class ConnectViewModelTest {
 
     @Test
     fun `the password never remains on screen, win or lose`() = runTest {
-        val (model, _) = loginViewModel(InvalidCredentials)
+        val (model, _) = loginViewModel(InvalidCredentials("Incorrect username or password."))
         model.onUsernameChange("alice")
         model.onPasswordChange("wrong")
 
@@ -201,7 +204,7 @@ class ConnectViewModelTest {
 
     @Test
     fun `invalid credentials keep the username so it need not be retyped`() = runTest {
-        val (model, _) = loginViewModel(InvalidCredentials)
+        val (model, _) = loginViewModel(InvalidCredentials("Incorrect username or password."))
         model.onUsernameChange("alice")
         model.onPasswordChange("wrong")
 
@@ -233,6 +236,19 @@ class ConnectViewModelTest {
 
         assertNotNull(model.state.value.error)
         assertNull(api.lastLoginUsername)
+    }
+
+    @Test
+    fun `the injected device label is what the request carries, not something typed`() = runTest {
+        val (model, api) = loginViewModel(
+            LoggedIn("tok", alice), deviceLabel = "Android (SM-S928U1)",
+        )
+        model.onUsernameChange("alice")
+        model.onPasswordChange("correct horse")
+
+        model.logIn()
+
+        assertEquals("Android (SM-S928U1)", api.lastLoginLabel)
     }
 
     @Test

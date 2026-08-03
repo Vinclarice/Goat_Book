@@ -68,15 +68,15 @@ class Connector(
      * request this makes and nowhere else. What gets saved is whatever the
      * server minted, the same as a pasted token would be.
      */
-    suspend fun logIn(username: String, password: String): ConnectOutcome {
+    suspend fun logIn(username: String, password: String, label: String = "Android"): ConnectOutcome {
         if (username.isBlank() || password.isBlank()) return Blank
 
-        return when (val result = api.login(username, password)) {
+        return when (val result = api.login(username, password, label)) {
             is LoggedIn -> {
                 store.save(result.token)
                 Connected(result.identity)
             }
-            InvalidCredentials -> Refused("Incorrect username or password.")
+            is InvalidCredentials -> Refused(result.message)
             is LoginUnreachable -> Failed(result.reason)
         }
     }

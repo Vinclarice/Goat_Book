@@ -1,6 +1,7 @@
 package com.vinclarice.capture
 
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -88,7 +89,12 @@ private fun Root(
     preferences: CapturePreferences,
     draft: String? = null,
 ) {
-    val connectModel = remember { ConnectViewModel(connector) }
+    val connectModel = remember {
+        // A login-minted token is labelled by the device it came from, so
+        // the Access tokens page on the web can tell two phones apart --
+        // "Android" alone would leave every login indistinguishable there.
+        ConnectViewModel(connector, deviceLabel = "Android (${Build.MODEL})")
+    }
     // Held here rather than inside the Capture branch, so that a trip to
     // Settings and back does not drop it out of composition along with
     // whatever half-finished thought was in the field. The queue now covers

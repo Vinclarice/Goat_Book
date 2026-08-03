@@ -56,19 +56,72 @@ class LoginApiTest {
     }
 
     @Test
-    fun `wrong credentials are reported as invalid, not as a failure`() = runTest {
-        server.server.enqueue(MockResponse(code = 401))
+    fun `wrong credentials carry the server's own message, attempts remaining and all`() = runTest {
+        server.server.enqueue(
+            MockResponse(
+                code = 401,
+                body = """{"detail":"Incorrect username or password. 4 attempts remaining before a temporary lock."}""",
+            )
+        )
 
-        assertEquals(InvalidCredentials, api().login("alice", "wrong"))
+        val result = api().login("alice", "wrong") as InvalidCredentials
+
+        assertEquals(
+            "Incorrect username or password. 4 attempts remaining before a temporary lock.",
+            result.message,
+        )
     }
 
     @Test
-    fun `a lockout in progress is reported the same way as invalid credentials`() = runTest {
-        // 429 is axes' own lockout response, distinct from this endpoint's
-        // 401 -- but identical to the person typing: try again later.
+    fun `a 401 with no readable body still reads as invalid credentials`() = runTest {
+        server.server.enqueue(MockResponse(code = 401))
+
+        assertEquals(
+            InvalidCredentials("Incorrect username or password."),
+            api().login("alice", "wrong"),
+        )
+    }
+
+    @Test
+    fun `the request asks for JSON on a lockout rather than axes' HTML template`() = runTest {
+        server.server.enqueue(accepted())
+
+        api().login("alice", "correct horse")
+
+        val sent = server.server.takeRequest()
+        assertEquals("XMLHttpRequest", sent.headers["X-Requested-With"])
+    }
+
+    @Test
+    fun `a lockout with no readable body still reads as invalid credentials`() = runTest {
         server.server.enqueue(MockResponse(code = 429))
 
-        assertEquals(InvalidCredentials, api().login("alice", "correct horse"))
+        assertEquals(InvalidCredentials("Too many attempts. Try again later."), api().login("alice", "correct horse"))
+    }
+
+    @Test
+    fun `axes' own lockout JSON becomes a precise wait-time message`() = runTest {
+        server.server.enqueue(
+            MockResponse(
+                code = 429,
+                body = """{"failure_limit":5,"username":"alice","cooloff_time":"PT1H","cooloff_timedelta":"P0DT01H00M00S"}""",
+            )
+        )
+
+        val result = api().login("alice", "correct horse") as InvalidCredentials
+
+        assertEquals("Too many attempts. Try again in 1 hour.", result.message)
+    }
+
+    @Test
+    fun `a shorter cooloff reads in minutes`() = runTest {
+        server.server.enqueue(
+            MockResponse(code = 429, body = """{"cooloff_time":"PT30M"}""")
+        )
+
+        val result = api().login("alice", "correct horse") as InvalidCredentials
+
+        assertEquals("Too many attempts. Try again in 30 minutes.", result.message)
     }
 
     @Test

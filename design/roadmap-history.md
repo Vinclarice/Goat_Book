@@ -9,6 +9,116 @@ This preserves the reasoning, deployment record, and lessons behind completed
 work without making the active roadmap hard to scan. The active plan is
 [`roadmap.md`](roadmap.md).
 
+## Dunlin — shipped August 3, 2026
+
+`dunlin` (`82fd591`) was tagged after production was verified. Two deploys
+carried it: 00:27 EDT (`e76c200`, `DEPLOYED-2026-08-03/0027`), which took
+slices 1 to 8 and all six migrations in one run, and 02:03 EDT
+(`DEPLOYED-2026-08-03/0203`), which took the UI brief, the carries-forward
+switch, and the playbook fix below.
+
+The plan, the settled decisions and every slice's acceptance condition stay
+in [`release-d-plan.md`](release-d-plan.md); the interface work it opened
+rather than finished is in
+[`ui-second-pass-plan.md`](ui-second-pass-plan.md). Both are kept rather than
+archived.
+
+It closed with work outstanding by decision rather than omission, listed at
+the end of this entry.
+
+### What shipped
+
+- **Slices 1–4 — the parent–child redesign, end to end.** A subtask is a
+  **Checklist Step**: its own model, no due date, no tags, cannot recur, dies
+  with its parent, promotable into a real task. `lists/0025` added the table,
+  `0026` converted every existing subtask — deleting the `Item` each came
+  from, or auto-promoting it when it carried a due date, tags, notes or a
+  recurrence the new model could not hold — and `0027` retired `Item.parent`,
+  `always_recurs` and `archive_group` outright rather than leaving them dead.
+- **Slice 5 — the Area vocabulary.** A `List` is an **Area** everywhere a
+  person reads one: copy, `aria-label`s, JSON field and schema names, and URL
+  paths. The `List` model and the `lists` app keep their names, per
+  `architecture-trajectory.md` §7. The old `/lists/` paths redirect rather
+  than 404. No migration.
+- **Slice 6 — `List.owner` non-null.** `0028` deleted the anonymous-era
+  ownerless areas, irreversibly; `0029` made the column required. Charter
+  rule 1 — owned at birth — now holds for every model without an exception.
+- **Slices 7–8 — `Project`.** Work that completes, inside an Area that never
+  does. `Project.area` is required, `Item.project` additive and nullable, so
+  a task keeps its Area and may *additionally* join a project. Projects are
+  created and finished on the Area page; a task joins one from its own detail
+  page.
+- **Slice 9 — the interface brief**, plus the single fix in it that had
+  evidence behind it: a checklist step's carries-forward control is a
+  `Switch`, so the two questions on a step row are told apart by control type
+  rather than by their labels alone.
+
+**What it closed.** C2's recorded failure was one person needing three
+attempts to set up one recurring parent with three children, caused by two
+independent defects. Both are gone. The Repeat/Repeats label collision
+dissolved *by construction* when a Checklist Step lost its recurrence field —
+the interface was never redesigned to fix it. The two identical-looking
+checkboxes on a row are now a checkbox and a switch.
+
+### What it taught
+
+- **A word in a plan document hid a defect for two slices.** `release-d-plan.md`
+  §4 predicted the two-checkbox row would be mechanical "once `is_done` is
+  the only boolean on the row." It was not — `carries_forward` stayed on the
+  row as a second checkbox. Slice 3's own entry called it a "toggle", and
+  because the plan then read as though the problem were solved, nobody
+  checked. It was found by counting `type="checkbox"` occurrences in one
+  `<li>`, which took a minute and should have happened two slices earlier.
+  **Check a plan's predictions against the shipped interface before writing
+  the next plan on top of them.**
+- **A migration that prints its evidence is worthless if the deploy discards
+  it.** `0026` and `0028` both printed counts precisely so that running them
+  against production would be the evidence no local database could supply.
+  The playbook ran migrations through `docker_container_exec`, which captures
+  stdout into an Ansible result — unregistered and unprinted, so it went
+  nowhere, and `docker logs` never had it either. `0026`'s figure was
+  recoverable afterwards by counting rows; `0028`'s is gone permanently.
+  Fixed the same night in `a6550e4`, and exercised on the second deploy while
+  the stakes were a no-op.
+- **The nullable-to-required cost is asymmetric, and one slice's experience
+  reversed the next slice's design.** Slice 6 spent an entire slice paying it
+  on `List.owner`: an audit, a destructive migration, sixteen tests. Slice 7
+  then had to choose for `Project.area`, and `release-d-plan.md` §3 had
+  recommended nullable on reversibility grounds. That reasoning inverts once
+  the direction is named — required→nullable is a bare `AlterField` with no
+  data work. **The permissive default is the expensive one to undo.**
+- **The local database was not evidence, exactly as the plan said.** Local
+  development held three lists and zero ownerless rows; production held nine
+  areas. Both migrations were written to handle the general case rather than
+  the observed one, and that was the right call for reasons only visible
+  afterwards.
+- **A contract rename lands wider than the plan scopes it.** Slice 4 found
+  `daily` and `review` each carrying their own hand-rolled `parent`
+  breadcrumb rather than reusing `lists.serializers.serialize_item`; slice 5
+  found the same split for `area_id`. `daily` reuses the shared serializer
+  and got the rename for free; `review` hand-rolls its own and needed it
+  applied separately. **The difference between the two is the whole argument
+  for the shared serializer.**
+- **A feature can be write-only if you only build the surfaces that create
+  it.** Slice 8 shipped project assignment, and `project` reaches exactly
+  three frontend files. Not the Agenda, which already renders an area pill
+  and has room for a second; not the Daily Page, the review, or the Archive.
+  Someone can put a task in a project and never see that fact again. Found
+  while writing slice 9's brief, and it is the sharpest thing left open.
+
+### Closed with work outstanding
+
+- **Two migration counts are lost**, per the second lesson above.
+- **`ui-second-pass-plan.md` steps 2 to 4 are blocked on evidence, not
+  effort.** A project is invisible everywhere a task is worked, and Projects
+  have no place in navigation — but both findings come from reading source,
+  where C2's came from a person failing a real task. Production holds zero
+  projects. One sitting with a real project on a real phone either confirms
+  them or replaces them with something better.
+- **The vocabulary half of Crane 0** is still deferred. It was blocked on
+  knowing what a subtask is, which Dunlin answered, and was never given a
+  slice.
+
 ## Crane — shipped August 2, 2026
 
 `crane` (`e0acf05`) was deployed at 20:05 EDT and marked by

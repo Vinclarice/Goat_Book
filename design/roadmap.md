@@ -25,7 +25,7 @@ and the reasoning, and does not schedule anything on its own.
 
 ## Current product baseline
 
-Three releases are live. **Albatross** established the API-backed SPA and
+Four releases are live. **Albatross** established the API-backed SPA and
 Postgres foundation, then shipped task notes, subtasks, recurrence, Capture
 triage and Ideas, password recovery, personal access tokens, CI, backups and
 production hardening. **Bittern** added the Android capture client, per-user
@@ -33,14 +33,16 @@ time zones, and the session and failure-state gaps the web application still
 had. **Crane** made the day the product: the Daily Page is the home surface,
 practice is its own domain rather than a kind of task, repeating commitments
 have an identity across their occurrences, and a weekly review reads the
-record back against denominators that mean something. The full record of
-each is in the history file.
+record back against denominators that mean something. **Dunlin** settled the
+commitment vocabulary: a subtask is a Checklist Step with its own life cycle,
+a List is an Area that never completes, a Project is work that does, and
+every model is owned at birth. The full record of each is in the history
+file.
 
-The last known task-UI gap is closed. Completing a recurring task used to
-return the next occurrence without the children created alongside it, so the
-new parent appeared childless until a refresh. The mutation now carries a
-`spawned_subtasks` sibling array and both workspaces place parent and
-children in one update — Bittern B1, August 1, 2026.
+C2's recorded interface failure is fully closed as of Dunlin — see that
+section. What replaced it is narrower and better evidenced: two findings in
+[`ui-second-pass-plan.md`](ui-second-pass-plan.md) that are blocked on
+somebody using a project rather than on anybody building something.
 
 ## Bittern — shipped August 2, 2026
 
@@ -91,6 +93,14 @@ needs a complete overhaul, not adjustment. The Tailwind/shadcn work replaced
 how it looks; what is wrong now is what it *says* and what it lets you
 confuse. That is a design cycle of its own and should not be smuggled into
 Crane as incidental cleanup.
+
+**Answered by Dunlin, August 3, 2026.** Both defects above are gone — the
+first dissolved by the model change without the interface being redesigned at
+all, the second by making the two controls different kinds of control. The
+evidence is left exactly as it was recorded rather than rewritten, because
+what it observed is the reason the release took the shape it did. The verdict
+itself was only half right: the model was the larger problem, and fixing it
+removed a defect no amount of interface work would have.
 
 ### Track D — Postgres-enabled features
 
@@ -200,141 +210,76 @@ Four of the nine were blocked on a deploy and no longer are: B1's opt-out
 rule and the three infrastructure confirmations. The remaining five need a
 phone, which no deploy was ever going to provide.
 
-## Release D — the commitment vocabulary
+## Dunlin — shipped August 3, 2026
 
-**The next release, and the first one Crane does not touch. In progress as
-of August 2, 2026** — the executable brief for all three of its design
-cycles, the settled decisions behind them, and the slice sequence live in
-[`release-d-plan.md`](release-d-plan.md); this section stays the summary. Two
-design cycles were named on August 2, 2026 while verifying B1 in production.
-They should be *designed* separately and, on the argument in
-[`architecture-trajectory.md`](architecture-trajectory.md) §5, **ship
-together** — C2's recorded failure was one person needing three attempts to
-set up one recurring parent with three children, and two independent
-defects, one in the model and one in the interface, caused it between them.
-Neither should be started as a side effect of something else.
+**Deployed and tagged.** Two deploys carried it: 00:27 EDT (`e76c200`,
+`DEPLOYED-2026-08-03/0027`), which took slices 1 to 8 and all six migrations
+in one run, and 02:03 EDT (`DEPLOYED-2026-08-03/0203`), which took the
+interface brief, the carries-forward switch and the deploy fix below. `dunlin`
+went on after production was verified. What shipped and what it taught are in
+[`roadmap-history.md`](roadmap-history.md); the executable detail and every
+slice's acceptance condition stay in
+[`release-d-plan.md`](release-d-plan.md).
 
-**Four of the nine slices are on `main` and none of them are in production.**
-`6fdb923`, August 2, 2026, carries the parent–child redesign end to end: the
-`ChecklistStep` table, the data migration that converts existing subtasks,
-the services, API and Task Detail UI, and the contract step that retires
-`Item.parent`, `Item.always_recurs` and `Item.archive_group` outright rather
-than leaving them dead. Both suites green — 721 Django tests and 207
-frontend — with the add-step, complete-recurring-task round trip checked in a
-real browser and read back from the API response rather than only from the
-screen. [`release-d-plan.md`](release-d-plan.md) §5 stays the authority on
-what each slice did, including the two places the work ran wider than its own
-brief.
+**Verified in production**, with markers each change actually added:
+`/api/v1/projects` and `/api/v1/areas/1` answer 401 while a made-up route
+answers 404, `/api/v1/lists/1` is gone at 404, `/lists/1/` redirects to
+`/areas/1/`, the login page says "areas" and never "lists", and the served
+bundle carries "No projects in this area yet." and "stay open if you complete
+this" with none of the old vocabulary. `app-shell.js` on production is
+byte-identical to the build the tests ran against. All six migrations show
+applied; `0026` converted six subtasks; ownerless areas number zero.
 
-**Six migrations are therefore waiting on a deploy, and two of them delete
-rows.** `0026` converts each existing subtask into a Checklist Step and
-removes the `Item` it came from, or auto-promotes it to a root task when it
-carries a due date, tags, notes or a recurrence a step cannot hold. `0028`
-deletes every ownerless Area and its tasks outright, and is irreversible by
-design — nothing could reconstruct which Area a deleted task belonged to, so
-its reverse is a stated no-op rather than a lie.
+**What it changed for the product.** Clarice says what each thing is. A
+subtask is a Checklist Step with its own life cycle rather than a task
+wearing a parent. A List is an Area — a bucket that never completes — and a
+Project is work that does, with a task keeping its Area and optionally
+joining a project. Every model is owned at birth, without exception.
 
-Neither one's outcome counts have ever been observed anywhere but the
-two-user SQLite development database — the local confidence
-[`principles.md`](principles.md) says not to mistake for production truth.
-Both print what they did, so running them against production is itself the
-evidence for how many of each case really existed. That is the single
-riskiest thing sitting on `main`.
+**C2 is closed.** Its recorded failure was one person needing three attempts
+to set up one recurring parent with three children, caused by two independent
+defects. The Repeat/Repeats label collision dissolved *by construction* when
+a Checklist Step lost its recurrence field — the interface was never
+redesigned to fix it, which is the strongest evidence the thesis behind this
+release was right. The two identical-looking checkboxes on a row are now a
+checkbox and a switch.
 
-**Slice 5 followed**, and with it the vocabulary half of §3: a List is an Area
-everywhere a person reads one — copy, JSON fields, and URL paths — while the
-`List` model and the `lists` app keep their names, exactly the boundary
-`architecture-trajectory.md` §7 prescribes. No migration, and the old
-`/lists/` paths redirect rather than 404 so a saved URL still lands.
+### Carried forward from Dunlin
 
-**Slice 6 closed the last anonymous-era hole:** `List.owner` is required, so
-charter rule 1 — owned at birth — now holds for every model without an
-exception. Two more migrations, and the first of them deletes rows: an
-ownerless Area is unreachable, since every read is owner-scoped, so removal
-rather than backfill was the branch chosen from
-[`architecture-trajectory.md`](architecture-trajectory.md) §6's two.
+- **Two migration counts are lost.** `0026`'s promotions and `0028`'s
+  deletions printed into nothing, because the migrate task discarded its own
+  stdout. Fixed in `a6550e4` and exercised on the second deploy while the
+  stakes were a no-op. `0028`'s number is unrecoverable; the rows are gone and
+  its reverse is a stated no-op by design.
+- **The interface work Dunlin opened rather than finished**, in
+  [`ui-second-pass-plan.md`](ui-second-pass-plan.md). Two findings, both
+  blocked on evidence rather than effort: a project is invisible everywhere a
+  task is actually worked, and Projects have no place in navigation. Both
+  come from reading source, where C2's came from a person failing a real
+  task, and production holds zero projects. **What would unblock them:** one
+  sitting with a real project on a real phone, which either confirms them or
+  replaces them with something better. That opens the next release rather
+  than reopening this one.
+- **The vocabulary half of Crane 0**, still deferred. Moving `text`, `list`,
+  `cadence`, tags and notes off each occurrence and onto a real commitment
+  template was blocked on knowing what a subtask is. Dunlin answered that —
+  a Checklist Step — and never gave the work a slice. See
+  [`crane-plan.md`](crane-plan.md) §3.
 
-**Slice 7 gave `Project` its model and API.** Work that completes, inside an
-Area that never does — the charter's own example of a concept earning a
-model. A task keeps its Area and may *additionally* join a project, which is
-the additive shape that leaves `unique_active_item` and every agenda query
-untouched. `Project.area` is required rather than nullable as the plan first
-proposed, on the evidence slice 6 had just produced.
+### Still carried in from Bittern, through Crane
 
-**Slice 8 gave Projects an interface**, and with it Release D's first
-genuinely new surface rather than a rebuild of an old one. Projects are
-created and finished on the Area page; a task joins one from its own detail
-page, where every other single-field task edit already lives. The panel says
-out loud that completing a project leaves its tasks open, because a
-deliberate non-action that is not visible reads as a bug later.
+All nine remain; `crane-plan.md` §2 stays the authority, and the list above
+that one is the detail. Nothing here was cleared by Dunlin, and saying so
+matters more than the list looking shorter.
 
-**Slice 9 produced the brief it was supposed to produce**, and it is in
-[`ui-second-pass-plan.md`](ui-second-pass-plan.md). Three things it found by
-checking the shipped interface rather than trusting the plan: the
-two-checkbox step row C2 complained about was **still there** on a repeating
-task, counted in the DOM rather than inferred — **now fixed**: the
-carries-forward control is a `Switch`, so the two questions on a step row are
-told apart by control type rather than by their labels alone, and the last
-true clause of C2's original evidence is closed; a project is invisible
-everywhere a task is actually worked, which slice 8 introduced; and where
-Projects belong in navigation has never been answered. It also says plainly
-that only the first is safe to act on, because the other two are inferences
-from source where C2's evidence was a person failing a real task.
+**One changed status, and only that.** B1's opt-out rule in production was
+blocked on the interface C2 documented. That interface is now fixed, so the
+item is **unblocked rather than cleared** — it still wants someone to
+actually exercise the rule against production.
 
-**Deployed and verified** — `DEPLOYED-2026-08-03/0027`, six migrations, with
-the served bundle and live routes checked against markers the changes
-actually added. `LIVE` moved. No bird tag: see the open question below.
+The three infrastructure confirmations still need elapsed time. The five
+Android gaps still need a phone.
 
-**One decision outstanding, and it is the release's own boundary.** The brief
-recommends Release D close at slice 8 and this document's remaining steps
-become Release E's opening, once someone has actually used a project. The
-alternative is holding the release open for a navigation redesign that is
-blocked on evidence nobody has gathered. Recorded in `ui-second-pass-plan.md`
-§7 so whichever happens was chosen rather than defaulted into.
-
-**Both open questions in `architecture-trajectory.md` §8 are settled.** A
-subtask is a Checklist Step — its own model, no due date, no tags, cannot
-recur, dies with its parent — with promotion to a full task, which Vince
-asked for beyond what either design cycle had argued on its own. And `List`
-becomes Area in vocabulary, with `Project` joining it as a genuinely new
-model for work that completes. `release-d-plan.md` §2 and §3 are the briefs.
-
-**Parent–child domain redesign.** The relationship between a task and its
-subtasks is doing too many unrelated jobs, and its rules were arrived at one
-at a time rather than designed. Completing a parent cascades to its children;
-reopening it does not bring them back. Recurrence belongs only to parents,
-`always_recurs` only to children, and a child's flag is invisible unless its
-parent happens to repeat. Archiving cascades on one path and not another.
-Each rule is defensible alone; together they are not a model anybody could
-predict. Decide what a subtask *is* — a step, a dependent task, a checklist
-item — before adjusting any more of its behaviour. **Decided:** a Checklist
-Step, with promotion to a full task — see `release-d-plan.md` §2. **Built,
-too**, in slices 1 to 4 — this cycle is what `6fdb923` above carries.
-
-**Web UI overhaul, second pass.** The Tailwind v4 and shadcn work replaced
-how the application looks. What remains wrong is what it says and what it
-lets you confuse: near-identical labels for opposite concepts, controls that
-vanish as a side effect of an unrelated setting, and rows carrying two
-checkboxes that mean different things. See C2 above for the evidence. This
-is a redesign of language and interaction, not of styling, and it wants its
-own brief. Crane 1 slice 7 added a measurement it should carry: touch
-targets across the application are well under the ~44px guideline, and the
-height lives on the shared `Button` component, so fixing it restyles every
-page — see [Mobile web experience](#mobile-web-experience). Sketched, not yet
-briefed, in `release-d-plan.md` §4 — it waits for the model work above to
-ship, per that document's own "model decided first" ordering. Half of that
-condition is met: §2's model is built and its UI is rebuilt on top of it, so
-the Repeat/Repeats collision is already gone by construction rather than by
-relabelling. Still owed before the brief is written: §3's `Project` work, and
-production actually running the migrations.
-
-**Also waiting here:** the vocabulary half of Crane 0, deferred on August 2,
-2026. Moving `text`, `list`, `cadence`, tags and notes off each occurrence
-and onto a real commitment template needs an answer to what a subtask is
-first, which is why it waits for the redesign above rather than shipping
-with the identity half. See [`crane-plan.md`](crane-plan.md) §3. **Now
-unblocked** — a Checklist Step is decided — but not yet given its own slice
-in `release-d-plan.md`; see that document's open questions.
 
 ## Later — visible, not scheduled
 
@@ -551,7 +496,8 @@ scaling remain out of scope until the public-readiness bar is genuinely met.
 ## Release practice
 
 Production releases use alphabetic bird codenames: `albatross`, then
-`bittern`, then `crane`. Tag only after production is verified.
+`bittern`, `crane`, `dunlin`. Tag only after production is verified. The
+letter carries; the bird is chosen when the release ships.
 
 - `LIVE` is a moving tag for the code currently running.
 - `DEPLOYED-<date>/<HHMM>` is a permanent deployment-event tag.
@@ -561,8 +507,10 @@ Production releases use alphabetic bird codenames: `albatross`, then
 ## Keeping this current
 
 Update this file when an item in the active release begins, changes scope,
-ships, or is explicitly deferred — release D is that release now that Crane
-has shipped. Move completed detail into `roadmap-history.md` and keep only
+ships, or is explicitly deferred. **There is no active release right now** —
+Dunlin shipped and nothing has been promoted to replace it. The nearest thing
+to a next one is `ui-second-pass-plan.md`, which is deliberately waiting on
+evidence rather than on a decision; see Dunlin's carried-forward list. Move completed detail into `roadmap-history.md` and keep only
 the resulting baseline or remaining consequence here. When an idea from
 Later earns work, give it a one-line reason and a focused spec before it
 joins an active track.

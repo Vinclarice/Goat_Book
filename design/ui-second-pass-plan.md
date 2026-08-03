@@ -215,3 +215,64 @@ honest about what it still does not know.
 
 **This is Vince's call, not the plan's.** Both options are recorded here so
 whichever is chosen was chosen rather than defaulted into.
+
+Release D shipped as Dunlin, at slice 8, on August 3, 2026 — see
+`roadmap.md`. This document is Release E's opening brief, as the alternative
+above anticipated.
+
+## 8. The sitting, done — August 3, 2026
+
+§6 asked for one thing before steps 2 to 4 could start: set up one real
+project with real tasks and write down every place the answer was not where
+it was looked for. That sitting happened, and F2 and F3 are now observations
+rather than inferences.
+
+**Method, stated plainly because it is not what §6 pictured.** §6 asked for a
+phone. What ran instead was a local dev instance (fresh migrations, an
+isolated `db.sqlite3`, the built bundle, `previewuser`) driven through a
+browser held at 375×812 — the same viewport Crane 1 slice 7 and Crane 3 slice
+10 used, but this session's Browser pane would not composite frames, so taps
+were not literal taps. Each interaction was driven at the DOM level —
+filling the real controlled inputs and dispatching the real change events
+those controls listen for, then reading back the rendered page — rather than
+clicking through pixel coordinates. That is sufficient for what F2 and F3 ask
+— which page renders which content — and it is not evidence about tap
+ergonomics or touch-target size; **Mobile web experience**'s existing
+measurements are untouched by this sitting and stay exactly what they were.
+
+**What was built**, through the real UI and nothing else: a project named
+"Kitchen remodel" added to the Preview List area, three tasks created
+through the ordinary "What is next?" form (Pick tile, Order cabinets,
+Schedule electrician), and each joined to the project the only way the
+interface offers — its own detail page's Project select, one at a time.
+
+**F2, confirmed on every surface it named.** With "Kitchen remodel" carrying
+three open tasks:
+
+- **Agenda** — both due-date sections render each task with its area pill
+  ("Preview List") and nothing else. Assigning a project produced no visible
+  change here at all.
+- **Daily Page** — Pick tile, given today's due date so it would appear in
+  Action items, rendered with *less* context than the Agenda: no area pill
+  either, only "Today" and "Pin to today".
+- **Archive** — Order cabinets, moved to archive, reads "From Preview List ·
+  Created …". Same omission.
+
+**F2a, a sharper version F2 did not name.** Even the Area page itself, the
+one screen that shows the project section at all, does not connect the two
+halves of its own layout: "Kitchen remodel — 3 open" sits directly above the
+Tasks list, and the three rows belonging to it are visually identical to the
+two that do not. Knowing a task's project requires opening that task's
+detail page — the same page required to set it. The project is not merely
+invisible elsewhere; it is barely visible on the one page that has it.
+
+**F3, confirmed.** The side nav has three groups — Views, Areas, Account —
+across every route visited. "Kitchen remodel" is reachable from exactly one
+place: the Preview List area page. There is no project heading, no listing,
+no indication from anywhere else in the application that it exists.
+
+**What this settles.** Steps 2 to 4 in §4 were blocked on F2 and F3 being
+observations rather than a reading of source. They now are. The navigation
+design question §6 said should not be started by guessing still has not been
+answered — this sitting supplies the evidence the guess would have lacked,
+not the answer itself.

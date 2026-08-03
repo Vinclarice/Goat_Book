@@ -336,8 +336,18 @@ def _project_out(project):
 
 
 @router.get("/projects", response=list[ProjectOut])
-def projects(request):
-    return [_project_out(each) for each in project_reader.projects_for(request.user)]
+def projects(request, area_id: int | None = None):
+    """This caller's projects, optionally narrowed to one Area.
+
+    The filter is applied on top of the owner-scoped queryset rather than
+    beside it, so an area id belonging to somebody else narrows to nothing
+    instead of quietly falling back to everything -- a narrowing parameter
+    that stops narrowing is the kind of bug nobody notices.
+    """
+    found = project_reader.projects_for(request.user)
+    if area_id is not None:
+        found = found.filter(area_id=area_id)
+    return [_project_out(each) for each in found]
 
 
 @router.post("/projects", response=ProjectOut)

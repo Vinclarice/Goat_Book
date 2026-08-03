@@ -83,6 +83,38 @@ class ProjectEndpointTest(TestCase):
         self.assertEqual([each["title"] for each in body], ["Website Relaunch"])
         self.assertEqual(body[0]["open_task_count"], 1)
 
+    def test_narrows_to_one_area_when_asked(self):
+        """The Area page's actual query -- slice 8.
+
+        Filtering client-side would work at three users and stop working
+        quietly; the endpoint answering the question the page asks is the
+        same reasoning charter rule 7 applies to indexes.
+        """
+        here = services.create_project(self.area, "Website Relaunch")
+        elsewhere = List.objects.create(owner=self.user, title="Home")
+        services.create_project(elsewhere, "Repaint the hallway")
+
+        body = self.client.get(
+            f"/api/v1/projects?area_id={self.area.id}"
+        ).json()
+
+        self.assertEqual([each["id"] for each in body], [here.id])
+
+    def test_an_unowned_area_filter_returns_nothing_rather_than_everything(self):
+        """A filter that silently fails open is worse than one that errors.
+
+        Passing somebody else's area id must not fall back to "all my
+        projects" -- that is the shape of bug where a narrowing parameter
+        stops narrowing and nobody notices.
+        """
+        services.create_project(self.area, "Website Relaunch")
+
+        body = self.client.get(
+            f"/api/v1/projects?area_id={self.their_area.id}"
+        ).json()
+
+        self.assertEqual(body, [])
+
     def test_completes_and_reopens_a_project(self):
         project = services.create_project(self.area, "Website Relaunch")
 

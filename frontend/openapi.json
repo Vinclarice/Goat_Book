@@ -221,7 +221,24 @@
       "get": {
         "operationId": "lists_api_v1_projects",
         "summary": "Projects",
-        "parameters": [],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "area_id",
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Area Id"
+            },
+            "required": false
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -238,6 +255,7 @@
             }
           }
         },
+        "description": "This caller's projects, optionally narrowed to one Area.\n\nThe filter is applied on top of the owner-scoped queryset rather than\nbeside it, so an area id belonging to somebody else narrows to nothing\ninstead of quietly falling back to everything -- a narrowing parameter\nthat stops narrowing is the kind of bug nobody notices.",
         "security": [
           {
             "SessionAuth": []

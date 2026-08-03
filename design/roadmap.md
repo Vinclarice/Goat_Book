@@ -261,8 +261,21 @@ the additive shape that leaves `unique_active_item` and every agenda query
 untouched. `Project.area` is required rather than nullable as the plan first
 proposed, on the evidence slice 6 had just produced.
 
-**Slices 8 and 9 are not started:** the Project interface, and then the UI
-overhaul's own brief. The deploy comes after 8.
+**Slice 8 gave Projects an interface**, and with it Release D's first
+genuinely new surface rather than a rebuild of an old one. Projects are
+created and finished on the Area page; a task joins one from its own detail
+page, where every other single-field task edit already lives. The panel says
+out loud that completing a project leaves its tasks open, because a
+deliberate non-action that is not visible reads as a bug later.
+
+**Slice 9 is not started**, and is the one the plan under-describes: §4 is
+explicitly a sketch rather than a brief, and what it sketches — a redesign of
+language and interaction across the application, plus the touch-target work
+that restyles every page through the shared `Button` — is closer to a release
+than a slice. Expect it to end with a written brief and a decision about
+whether it belongs in Release D at all.
+
+**The deploy comes next**, before slice 9.
 
 **Both open questions in `architecture-trajectory.md` §8 are settled.** A
 subtask is a Checklist Step — its own model, no due date, no tags, cannot

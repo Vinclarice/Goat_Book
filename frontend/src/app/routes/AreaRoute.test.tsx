@@ -38,6 +38,18 @@ function listDetailData(overrides: Record<string, unknown> = {}) {
   };
 }
 
+/* The Area page renders ProjectsPanel as of slice 8, which fetches its own
+   projects. Every mock below has to answer that request with an array or the
+   panel throws mid-render and takes the whole route with it -- which is how
+   this was noticed. */
+function areaPageFetch(data: object = listDetailData()) {
+  return (input: RequestInfo | URL) => {
+    const url = typeof input === "string" ? input : (input as Request).url;
+    if (url.includes("/api/v1/projects")) return jsonResponse([]);
+    return jsonResponse(data);
+  };
+}
+
 function renderAt(areaId: string) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -61,9 +73,7 @@ describe("AreaRoute", () => {
   });
 
   it("renders the list's title and items once the query resolves", async () => {
-    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
-      jsonResponse(listDetailData()),
-    );
+    vi.spyOn(globalThis, "fetch").mockImplementation(areaPageFetch());
 
     renderAt("7");
 
@@ -93,6 +103,7 @@ describe("AreaRoute", () => {
       if (request.method === "DELETE") {
         return jsonResponse({ deleted: 7 });
       }
+      if (request.url.includes("/api/v1/projects")) return jsonResponse([]);
       return jsonResponse(listDetailData());
     });
 

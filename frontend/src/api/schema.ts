@@ -106,7 +106,15 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Projects */
+        /**
+         * Projects
+         * @description This caller's projects, optionally narrowed to one Area.
+         *
+         *     The filter is applied on top of the owner-scoped queryset rather than
+         *     beside it, so an area id belonging to somebody else narrows to nothing
+         *     instead of quietly falling back to everything -- a narrowing parameter
+         *     that stops narrowing is the kind of bug nobody notices.
+         */
         get: operations["lists_api_v1_projects"];
         put?: never;
         /** Create Project */
@@ -1545,7 +1553,9 @@ export interface operations {
     };
     lists_api_v1_projects: {
         parameters: {
-            query?: never;
+            query?: {
+                area_id?: number | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;

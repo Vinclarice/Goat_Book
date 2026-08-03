@@ -65,6 +65,23 @@ export interface ChecklistStep {
   promote_url: string;
 }
 
+// release-d-plan.md 3: work that completes, inside an Area that never does.
+// `area_id` is required rather than nullable -- see that document's answered
+// open question for why the plan's original nullable recommendation was
+// reversed.
+export interface Project {
+  id: number;
+  title: string;
+  area_id: number;
+  due_date: string | null;
+  is_completed: boolean;
+  completed_at: string | null;
+  created_at: string;
+  // Annotated by the server's read, not derived here: the panel shows how
+  // much is still open in a project without fetching its tasks.
+  open_task_count: number;
+}
+
 export interface TaskWorkspaceData {
   area: {
     id: number;

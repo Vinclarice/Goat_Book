@@ -118,6 +118,74 @@ class DirectLoadTest(BrowserTest):
         expect(self.page.locator("#task-text")).to_have_value("Deep-linked task")
 
 
+class ProjectJourneyTest(BrowserTest):
+    """Release D slice 8, proved in a browser rather than asserted in jsdom.
+
+    Two things only a real browser answers here. The panel and the task's
+    project select are on different pages talking to the same endpoint
+    through two different HTTP clients -- openapi-fetch for the project CRUD,
+    the hand-rolled one for the task PATCH -- and the component tests mock
+    both, so nothing below the component had ever run end to end. And the
+    invariant that gives this feature its shape (completing a project leaves
+    its tasks alone) is worth seeing rather than trusting.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.user = self.make_user()
+        self.work = List.objects.create(owner=self.user, title="Work")
+        self.task = Item.objects.create(
+            list=self.work, text="Write the brief", position=0
+        )
+        self.log_in(self.user)
+
+    def test_creating_a_project_putting_a_task_in_it_and_finishing_it(self):
+        self.visit(f"/app/areas/{self.work.id}")
+
+        projects = self.page.get_by_role("region", name="Projects")
+        expect(projects.get_by_text("No projects in this area yet.")).to_be_visible()
+
+        projects.get_by_label("New project").fill("Website Relaunch")
+        projects.get_by_role("button", name="Add project").click()
+        expect(projects.get_by_text("Website Relaunch")).to_be_visible()
+
+        # The task joins from its own page, which is where every other
+        # single-field task edit lives.
+        self.visit(f"/app/tasks/{self.task.id}")
+        self.page.get_by_label("Project").select_option(label="Website Relaunch")
+        expect(self.page.get_by_text("Added to the project.")).to_be_visible()
+
+        # Back on the area, the project now knows how much is open in it.
+        self.visit(f"/app/areas/{self.work.id}")
+        projects = self.page.get_by_role("region", name="Projects")
+        expect(projects.get_by_text("1 open", exact=False).first).to_be_visible()
+
+        projects.get_by_role("button", name="Mark complete").click()
+        expect(projects.get_by_role("button", name="Reopen")).to_be_visible()
+
+        # The point of the whole design: the grouping finished, the work did
+        # not. Read from the database rather than the screen, so this cannot
+        # pass on a stale render.
+        self.task.refresh_from_db()
+        self.assertEqual(self.task.status, Item.Status.ACTIVE)
+
+    def test_deleting_a_project_keeps_its_task(self):
+        self.visit(f"/app/areas/{self.work.id}")
+        projects = self.page.get_by_role("region", name="Projects")
+
+        projects.get_by_label("New project").fill("Website Relaunch")
+        projects.get_by_role("button", name="Add project").click()
+        expect(projects.get_by_text("Website Relaunch")).to_be_visible()
+
+        projects.get_by_role("button", name="Delete project").click()
+        self.page.get_by_role("button", name="Delete permanently").click()
+
+        expect(projects.get_by_text("No projects in this area yet.")).to_be_visible()
+        expect(
+            self.page.get_by_text("Write the brief", exact=True)
+        ).to_be_visible()
+
+
 class CaptureTriageTest(BrowserTest):
     """Journey 3. Capture is Django-rendered rather than SPA, so this is
     the one journey covering the other half of the application -- server

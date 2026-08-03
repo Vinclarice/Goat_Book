@@ -659,8 +659,51 @@ schema and removes the path it's replacing.
    The frontend gets `project_id` on `Task` and in the fixture, because every
    task payload now carries it. There is deliberately no `Project` type yet —
    that arrives with the interface that uses it, in slice 8.
-8. **Project — UI.** Creating, completing, and assigning tasks to a
-   Project.
+8. **Project — UI — done.** A `ProjectsPanel` on the Area page creates,
+   completes, reopens and deletes; the task's own detail page assigns.
+   12 component tests, 5 route tests, 2 new browser journeys, and 2 more API
+   tests for the area filter below. Full required suite green at 772,
+   frontend at 224, browser smoke at 25, `tsc --noEmit` and the build clean.
+
+   **Where each half lives, and why they are not together.** Projects render
+   on the Area page because `Project.area` is required and
+   `set_task_project` refuses a task from anywhere else — a grouping shown
+   beside work it cannot contain would be a lie. Assignment sits on the task
+   detail page instead, alongside due date, tags, recurrence and notes,
+   because it is a single-field edit of a task and the alternative is two
+   shapes for one kind of change.
+
+   **One endpoint change this slice needed:** `GET /api/v1/projects` takes an
+   optional `area_id`. Filtering client-side would work at three users and
+   stop working quietly. The filter narrows the already-owner-scoped
+   queryset, so somebody else's area id returns nothing rather than falling
+   back to everything — a narrowing parameter that stops narrowing is the
+   bug nobody notices, and it has its own test.
+
+   **The interface says the thing the model refuses to do.** Completing a
+   project deliberately leaves its tasks alone (charter rule 5), so the panel
+   says "2 open tasks stay open if you complete this" before you do, and the
+   delete confirmation says the tasks stay in the area. `principles.md` asks
+   automations to propose rather than decide; the corollary is that a
+   deliberate non-action has to be visible, or it reads as a bug later.
+
+   **Verified in a real browser, and the verification was itself checked.**
+   Two `ProjectJourneyTest` cases drive create → assign → complete and
+   create → delete, asserting the surviving task's status from the database
+   rather than the screen. They were written after the feature, so both were
+   run again with `ProjectsPanel` removed from the Area page: both failed.
+   A browser journey rather than a manual pass because the two halves talk
+   to the same endpoint through two different HTTP clients, and the component
+   tests mock both.
+
+   **Two things the component tests got wrong first**, worth recording
+   because they will recur: `openapi-fetch` calls `fetch(request)` with a
+   single `Request`, while the hand-rolled `api.ts` calls `fetch(url, init)`
+   — a mock written for one shape silently never matches the other, and the
+   assertions looked like feature failures. And adding the panel to the Area
+   page broke four existing `AreaRoute` tests, because their mocks answered
+   the new projects request with area data and the panel threw mid-render,
+   taking the route with it.
 9. **The UI overhaul's remaining brief.** Written once 1–8 are in, per §4.
 
 ## 6. What this release does not touch

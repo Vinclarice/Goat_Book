@@ -114,6 +114,20 @@ export function updateTaskNotes(task: Task, notes: string): Promise<Task> {
   return request<Task>(task.url, "PATCH", { notes });
 }
 
+/** Put a task into a project, or take it out with null.
+ *
+ * On the task's own endpoint rather than the project's, alongside every
+ * other single-field task edit -- release-d-plan.md 5 slice 7. The server
+ * refuses a project owned by somebody else (404) or one in another area
+ * (409), so this does not re-check either.
+ */
+export function updateTaskProject(
+  task: Task,
+  projectId: number | null,
+): Promise<Task> {
+  return request<Task>(task.url, "PATCH", { project_id: projectId });
+}
+
 export interface StatusUpdateResult {
   task: Task;
   /** Set when completing a recurring task auto-archives it and creates

@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { apiV1 } from "../../api/client";
 import { RequestFailed, statusOf } from "../../api/failure";
 import { RouteFailure } from "./RouteFailure";
+import { ProjectsPanel } from "../../ProjectsPanel";
 import { TaskWorkspace } from "../../TaskWorkspace";
 
 export function AreaRoute() {
@@ -136,6 +137,11 @@ export function AreaRoute() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Above the task list on purpose: a project is the coarser grouping,
+          and slice 8's whole point is that an area now holds two kinds of
+          thing rather than one. */}
+      <ProjectsPanel areaId={id} />
 
       <TaskWorkspace initialData={data} />
     </div>

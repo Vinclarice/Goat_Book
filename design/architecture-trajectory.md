@@ -612,9 +612,15 @@ trigger stated so it can be deferred honestly rather than quietly.
   several server threads, which is not how Postgres behaves, and that gap
   bit for real once already (§3's `IndexError` in `apply_converters`). That
   reason alone still justifies the move.
-- **Rate-limit the landing page's login form.** `nginx-clarice.conf.j2` limits
-  `^/(accounts/login|accounts/signup)/` at 5r/m, and `/` is also a full login
-  view — so the strictest control on the site is bypassed by the front door.
+- ~~**Rate-limit the landing page's login form.**~~ **Done August 3, 2026.**
+  `/` is a `LoginView`, so `POST /` authenticated exactly as
+  `POST /accounts/login/` did while only the latter was throttled. `location
+  = /` now carries a 5r/m limit, keyed on the request method so that only
+  POSTs are counted: the landing page is the public front door, and
+  throttling its GETs would have traded a real availability risk for no
+  security gain, since a GET returns a form rather than attempting a login.
+  A second budget rather than a shared one, on the reasoning recorded in the
+  template.
 - **Set gunicorn's worker and thread count explicitly.** One line in the
   `Dockerfile`, upstream of every other capacity question.
 - ~~**Make `List.owner` non-null:** audit live rows, backfill or remove

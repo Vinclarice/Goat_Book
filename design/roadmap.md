@@ -260,11 +260,20 @@ checkbox and a switch.
   sitting with a real project on a real phone, which either confirms them or
   replaces them with something better. That opens the next release rather
   than reopening this one.
-- **The vocabulary half of Crane 0**, still deferred. Moving `text`, `list`,
-  `cadence`, tags and notes off each occurrence and onto a real commitment
-  template was blocked on knowing what a subtask is. Dunlin answered that —
-  a Checklist Step — and never gave the work a slice. See
-  [`crane-plan.md`](crane-plan.md) §3.
+- ~~**The vocabulary half of Crane 0**, still deferred.~~ **Shipped August 3,
+  2026**, after Dunlin — see
+  [`recurring-commitment-vocabulary-plan.md`](recurring-commitment-vocabulary-plan.md).
+  `RecurringCommitment` is a real template now: it holds what the next
+  occurrence starts as, each occurrence keeps its own snapshot of what it
+  actually ran under, editing writes through as "this and future", and
+  cadence lives on the commitment rather than being repeated down a chain.
+  Deployed across `DEPLOYED-2026-08-03/0253` and `/0313`.
+
+  **`crane-plan.md` §3 contradicted itself and the brief records the
+  correction:** it described the work as *moving* `text` onto the template,
+  while its own acceptance example required the earlier occurrences to keep
+  the old title. It is a template plus a snapshot, not a move — the same pair
+  `Routine`/`RoutineOccurrence` already shipped.
 
 ### Still carried in from Bittern, through Crane
 

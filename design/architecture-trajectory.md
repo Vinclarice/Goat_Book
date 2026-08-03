@@ -617,9 +617,27 @@ trigger stated so it can be deferred honestly rather than quietly.
   view — so the strictest control on the site is bypassed by the front door.
 - **Set gunicorn's worker and thread count explicitly.** One line in the
   `Dockerfile`, upstream of every other capacity question.
-- **Make `List.owner` non-null:** audit live rows, backfill or remove orphans,
-  then a schema migration. Closes the last anonymous-era hole and lets charter
-  rule 1 be stated without an exception.
+- ~~**Make `List.owner` non-null:** audit live rows, backfill or remove
+  orphans, then a schema migration.~~ **Done August 2, 2026**, as release D
+  slice 6 — see [`release-d-plan.md`](release-d-plan.md) §5. Of the two
+  branches this line offered, **remove** was chosen: an ownerless List is
+  unreachable, because every read in the application is owner-scoped, so the
+  rows deleted are ones no user could see. `0028` deletes them and prints its
+  counts, `0029` makes the column required, and the two are separate
+  migrations because a deletion and a schema change that depends on it should
+  be reviewable and revertible apart.
+
+  **The evidence that the exception cost more than the data was worth** is in
+  this repository rather than in an argument: `0023` and `0026` each had to
+  write an explicit ownerless skip-clause, and a third was coming. Charter
+  rule 1 now holds for every model without one.
+
+  **Not yet run against production.** Local development had zero ownerless
+  rows, but that is the two-user SQLite database §3 already warns against
+  trusting; `0028`'s printed counts against production are the first real
+  evidence of how many existed. The deletion is irreversible by design — the
+  reverse is a stated no-op rather than a lie, since nothing can reconstruct
+  which List a deleted Item belonged to.
 - ~~**Copy a recurring task's own `notes` onto its next occurrence.**~~ **Done
   August 2, 2026.** `_spawn_next_occurrence` now passes `notes` for the parent
   as it always did for the children, guarded by

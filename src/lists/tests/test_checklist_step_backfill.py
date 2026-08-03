@@ -204,7 +204,14 @@ class ChecklistStepBackfillTest(TransactionTestCase):
         self.assertEqual(len(positions), 2)
 
     def test_an_ownerless_lists_subtasks_are_left_untouched(self):
-        """List.owner is still nullable, and ChecklistStep.owner is not."""
+        """At 0026, List.owner is still nullable and ChecklistStep.owner is not.
+
+        Reads as history now: 0028 deletes these rows and 0029 makes the
+        column required, so no database reaching 0029 still has one. The
+        skip-clause 0026 had to write for them is exactly what release D
+        slice 6 removed the need for -- but 0026 still has to behave this way
+        when replayed from an old database, which is what this asserts.
+        """
         old_apps = self.migrate(BEFORE)
         List = old_apps.get_model("lists", "List")
         Item = old_apps.get_model("lists", "Item")

@@ -226,15 +226,20 @@ screen. [`release-d-plan.md`](release-d-plan.md) §5 stays the authority on
 what each slice did, including the two places the work ran wider than its own
 brief.
 
-**Three migrations are therefore waiting on a deploy, and one of them deletes
+**Five migrations are therefore waiting on a deploy, and two of them delete
 rows.** `0026` converts each existing subtask into a Checklist Step and
 removes the `Item` it came from, or auto-promotes it to a root task when it
-carries a due date, tags, notes or a recurrence a step cannot hold. Its
-outcome counts have only ever been observed against the two-user SQLite
-development database — the local confidence [`principles.md`](principles.md)
-says not to mistake for production truth. The migration prints
-converted/promoted/skipped, so running it against production is itself the
-evidence for how many of each case really existed.
+carries a due date, tags, notes or a recurrence a step cannot hold. `0028`
+deletes every ownerless Area and its tasks outright, and is irreversible by
+design — nothing could reconstruct which Area a deleted task belonged to, so
+its reverse is a stated no-op rather than a lie.
+
+Neither one's outcome counts have ever been observed anywhere but the
+two-user SQLite development database — the local confidence
+[`principles.md`](principles.md) says not to mistake for production truth.
+Both print what they did, so running them against production is itself the
+evidence for how many of each case really existed. That is the single
+riskiest thing sitting on `main`.
 
 **Slice 5 followed**, and with it the vocabulary half of §3: a List is an Area
 everywhere a person reads one — copy, JSON fields, and URL paths — while the
@@ -242,8 +247,15 @@ everywhere a person reads one — copy, JSON fields, and URL paths — while the
 `architecture-trajectory.md` §7 prescribes. No migration, and the old
 `/lists/` paths redirect rather than 404 so a saved URL still lands.
 
-**Slices 6 to 9 are not started:** `List.owner` becoming non-null, the
-`Project` model and its UI, and then the UI overhaul's own brief.
+**Slice 6 closed the last anonymous-era hole:** `List.owner` is required, so
+charter rule 1 — owned at birth — now holds for every model without an
+exception. Two more migrations, and the first of them deletes rows: an
+ownerless Area is unreachable, since every read is owner-scoped, so removal
+rather than backfill was the branch chosen from
+[`architecture-trajectory.md`](architecture-trajectory.md) §6's two.
+
+**Slices 7 to 9 are not started:** the `Project` model and its UI, and then
+the UI overhaul's own brief.
 
 **Both open questions in `architecture-trajectory.md` §8 are settled.** A
 subtask is a Checklist Step — its own model, no due date, no tags, cannot

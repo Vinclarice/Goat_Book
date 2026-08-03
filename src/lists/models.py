@@ -208,11 +208,16 @@ class ChecklistStep(models.Model):
 
 
 class List(models.Model):
+    # An Area at the boundary; still `List` here, per
+    # architecture-trajectory.md 7's refusal to rename the model.
+    #
+    # Required since release D slice 6. It was nullable for anonymous-era
+    # reasons that outlived the anonymous era by three releases, and the
+    # exception cost two later migrations an explicit skip-clause each. Now
+    # charter rule 1 -- owned at birth -- holds for every model without one.
     owner = models.ForeignKey(
         "accounts.User",
         related_name="lists",
-        blank=True,
-        null=True,
         on_delete=models.CASCADE,
     )
     title = models.CharField(max_length=100, default="Untitled list")

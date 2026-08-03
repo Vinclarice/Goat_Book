@@ -7,39 +7,45 @@ from django.utils import timezone
 
 
 class ItemModelTest(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.owner = User.objects.create(
+            username="itemowner", email="itemowner@example.com",
+        )
+
     def test_default_text(self):
         item = Item()
         self.assertEqual(item.text, "")
 
     def test_item_is_related_to_list(self):
-        mylist = List.objects.create()
+        mylist = List.objects.create(owner=self.owner)
         item = Item()
         item.list = mylist
         item.save()
         self.assertIn(item, mylist.item_set.all())
 
     def test_cannot_save_empty_list_items(self):
-        mylist = List.objects.create()
+        mylist = List.objects.create(owner=self.owner)
         item = Item(list=mylist, text=None)
         with self.assertRaises(IntegrityError):
             item.save()
 
     def test_cannot_save_empty_list_items_validation(self):
-        mylist = List.objects.create()
+        mylist = List.objects.create(owner=self.owner)
         item = Item(list=mylist, text="")
         with self.assertRaises(ValidationError):
             item.full_clean()
 
     def test_duplicate_items_are_invalid(self):
-        mylist = List.objects.create()
+        mylist = List.objects.create(owner=self.owner)
         Item.objects.create(list=mylist, text="bla")
         with self.assertRaises(ValidationError):
             item = Item(list=mylist, text="bla")
             item.full_clean()
 
     def test_CAN_save_same_item_to_different_lists(self):
-        list1 = List.objects.create()
-        list2 = List.objects.create()
+        list1 = List.objects.create(owner=self.owner)
+        list2 = List.objects.create(owner=self.owner)
         Item.objects.create(list=list1, text="bla")
         item = Item(list=list2, text="bla")
         item.full_clean()  # should not raise
@@ -49,7 +55,7 @@ class ItemModelTest(TestCase):
         self.assertEqual(str(item), "some text")
 
     def test_new_items_record_creation_time_and_start_incomplete(self):
-        item = Item.objects.create(list=List.objects.create(), text="New task")
+        item = Item.objects.create(list=List.objects.create(owner=self.owner), text="New task")
 
         self.assertIsNotNone(item.created_at)
         self.assertIsNotNone(item.updated_at)
@@ -58,7 +64,7 @@ class ItemModelTest(TestCase):
         self.assertIsNone(item.archived_at)
 
     def test_archived_item_does_not_block_reusing_its_text(self):
-        mylist = List.objects.create()
+        mylist = List.objects.create(owner=self.owner)
         Item.objects.create(
             list=mylist,
             text="Repeatable task",
@@ -72,12 +78,30 @@ class ItemModelTest(TestCase):
 
 
 class ListModelTest(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.owner = User.objects.create(
+            username="listowner", email="listowner@example.com",
+        )
+
+    def test_an_area_cannot_exist_without_an_owner(self):
+        """Charter rule 1, stated without its last exception.
+
+        architecture-trajectory.md 4 asks every new record to be owned at
+        birth, and List was the one model that pre-dated the rule and never
+        satisfied it. Asserting at the database rather than in a service
+        because that is where the guarantee now lives -- a service check
+        would only cover the write paths that remembered to call it.
+        """
+        with self.assertRaises(IntegrityError):
+            List.objects.create(title="Nobody's area")
+
     def test_get_absolute_url(self):
-        mylist = List.objects.create()
+        mylist = List.objects.create(owner=self.owner)
         self.assertEqual(mylist.get_absolute_url(), f"/areas/{mylist.id}/")
 
     def test_list_items_order(self):
-        list1 = List.objects.create()
+        list1 = List.objects.create(owner=self.owner)
         item1 = Item.objects.create(list=list1, text="i1")
         item2 = Item.objects.create(list=list1, text="item 2")
         item3 = Item.objects.create(list=list1, text="3")
@@ -91,15 +115,12 @@ class ListModelTest(TestCase):
         mylist = List.objects.create(owner=user)
         self.assertIn(mylist, user.lists.all())
 
-    def test_list_owner_is_optional(self):
-        List.objects.create()  # should not raise
-
     def test_list_name_is_its_title(self):
-        list_ = List.objects.create(title="Programming")
+        list_ = List.objects.create(owner=self.owner, title="Programming")
         self.assertEqual(list_.title, "Programming")
 
     def test_empty_list_has_fallback_name(self):
-        self.assertEqual(List.objects.create().title, "Untitled list")
+        self.assertEqual(List.objects.create(owner=self.owner).title, "Untitled list")
 
 
 class UniqueActiveItemConstraintTest(TestCase):
@@ -115,15 +136,21 @@ class UniqueActiveItemConstraintTest(TestCase):
     SQLite create the constraint like any other.
     """
 
+    @classmethod
+    def setUpTestData(cls):
+        cls.owner = User.objects.create(
+            username="constraintowner", email="constraintowner@example.com",
+        )
+
     def test_duplicate_root_tasks_are_still_rejected(self):
-        mylist = List.objects.create()
+        mylist = List.objects.create(owner=self.owner)
         Item.objects.create(list=mylist, text="Book flights")
 
         with self.assertRaises(IntegrityError):
             Item.objects.create(list=mylist, text="Book flights")
 
     def test_archiving_frees_the_text_for_reuse(self):
-        mylist = List.objects.create()
+        mylist = List.objects.create(owner=self.owner)
         first = Item.objects.create(list=mylist, text="Book flights")
         first.status = Item.Status.ARCHIVED
         first.archived_at = timezone.now()

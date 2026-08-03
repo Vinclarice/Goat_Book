@@ -337,12 +337,9 @@ than the more sweeping one.
 Whether `Item.list` (Area) itself becomes optional once `Item.project`
 exists. Whether a Project needs its own recurrence (a recurring project is a
 different question from a recurring task, and nothing in Clarice's use so
-far has asked it). Whether `List.owner`'s existing nullability
-(`architecture-trajectory.md` §6's small outstanding infra item) gets fixed
-in this same migration — it should, since Area is meant to be "owned at
-birth" under charter rule 1 and this release is already touching the model,
-but it's a data audit plus a schema migration and belongs in its own slice
-rather than folded silently into the Project migration.
+far has asked it). `List.owner`'s nullability was the third item here and is
+no longer open — it got the separate slice this paragraph asked for rather
+than being folded into the Project migration, and shipped as slice 6.
 
 ### Acceptance examples
 
@@ -577,9 +574,39 @@ schema and removes the path it's replacing.
    task-shaped schema rather than reusing `lists.serializers.serialize_item`.
    `daily` does reuse it, and picked the rename up for free — the difference
    between the two is the argument for the shared serializer.
-6. **`List.owner` non-null.** The small outstanding infra item from
-   `architecture-trajectory.md` §6, done now because Area is meant to be
-   "owned at birth" and this release is already in the model.
+6. **`List.owner` non-null — done.** The small outstanding infra item from
+   `architecture-trajectory.md` §6, taken now because Area is meant to be
+   "owned at birth" and this release is already in the model. Two migrations:
+   `0028_delete_ownerless_lists` removes the anonymous-era rows and prints
+   `areas=` / `tasks=` counts, `0029_list_owner_required` makes the column
+   required. Covered by `OwnerlessListRemovalTest`'s three cases — an
+   ownerless area and its tasks go, an owned one is untouched, and a real
+   user's Idea survives losing the task it pointed at — driven through the
+   real `MigrationExecutor`, plus a model test asserting the database now
+   rejects an ownerless area. Full required suite green at 731 (728 + 4 new,
+   − 1 retired), frontend at 208 and the browser smoke suite at 23, neither
+   of which had anything to change: `owner` was never in the API contract, so
+   `openapi.json` did not move.
+
+   **`0029` is hand-written**, not generated. `makemigrations` insists on a
+   one-off default for any nullable-to-required change because it cannot know
+   whether NULL rows exist; `0028` has already deleted every one, so a default
+   would stand in for a case that can no longer happen.
+
+   **Removal, not backfill.** §6 offered both. An ownerless List is
+   unreachable — every read is owner-scoped — so nothing a user can see is
+   destroyed, and `0023` and `0026` had each already paid for the exception
+   with a skip-clause. The one way the deletion is visible to somebody who
+   still exists is an Idea that pointed at a promoted task inside an orphan:
+   the FK is `SET_NULL`, so the Idea survives and reads "Became a task, since
+   deleted." That case has its own test rather than a note.
+
+   **The cost landed in the tests, not the code.** One production call site
+   creates a List and it always passed an owner, so `services.py` needed no
+   change; sixteen tests were creating ownerless areas incidentally and now
+   share a class-level owner. `test_list_owner_is_optional` was deleted rather
+   than adjusted — it asserted precisely the contract this slice reverses,
+   and its replacement asserts the opposite at the database.
 7. **Project — model and API.** The schema in §3, with `Item.project` as an
    additive nullable field.
 8. **Project — UI.** Creating, completing, and assigning tasks to a
@@ -609,11 +636,13 @@ tables work.
   are now a different model entirely — and belongs either at the end of §5's
   sequence or as its own follow-up brief once §2 has actually shipped and
   there's a rebuilt subtask model to design the template against.
-- **Should `List.owner` becoming non-null (slice 6) ship inside this
-  release, or land as its own small infra change ahead of it?** Recommended
-  here as slice 6 because Area is meant to be owned at birth and the model is
-  already being touched, but it's independent enough to pull forward or
-  push out without disturbing anything else in this plan.
+- ~~**Should `List.owner` becoming non-null (slice 6) ship inside this
+  release, or land as its own small infra change ahead of it?**~~ **Answered
+  by doing it, August 2, 2026: inside the release, as slice 6.** It cost one
+  model line, two migrations and a class-level owner in sixteen tests, which
+  is small enough that splitting it out would have bought a separate deploy
+  for nothing. Vince made the one decision the plan could not: ownerless rows
+  are **deleted** rather than backfilled onto an account.
 - **Does a Project ever need to exist without an Area?** §3 leaves `Project.area`
   nullable, which already permits this — flagging only because if the answer
   is "no, every project belongs to an area," the field should be required

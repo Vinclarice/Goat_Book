@@ -636,9 +636,27 @@ trigger stated so it can be deferred honestly rather than quietly.
   request is "ask Postgres, wait, render" and a thread costs almost nothing
   where a worker costs ~55MB. `--max-requests` with jitter bounds any leak.
 
-  **The real ceiling is the box, and this does not change it.** 458MB with no
-  swap is small; the follow-up is `docker stats` a few minutes after deploy,
-  and dropping to one worker if the container settles above ~180MB.
+  **Corrected the same day, after it broke a deploy.** Two workers took the
+  container to 154MB and left ~95MB free on the host — fine at rest, and not
+  enough for the host's own maintenance. The next deploy's
+  `apt-mark manual docker.io` thrashed for four minutes and was then
+  OOM-killed (rc 137), failing the play at "Install nginx and certbot". Site
+  stayed up, `dpkg --audit` stayed clean, deploy did not finish. It is one
+  worker and four threads now.
+
+  **The error is worth more than the number.** The container was sized at
+  rest against available memory, when what mattered was the peak the *host*
+  needs while apt and dpkg run. The planned check — "drop to one worker if it
+  settles above 180MB" — measured the wrong thing and would never have fired
+  at 154MB. A container that fits is not the same as a host that can still
+  maintain itself.
+
+  **New item, and the one that actually resolves this: give the droplet
+  swap.** 458MB with no swap has no room for an application and routine
+  package management at the same time, so every future apt run is one
+  memory-hungry step away from the same failure — regardless of gunicorn.
+  A modest swapfile would have absorbed this entirely and costs nothing but
+  disk. A larger droplet is the alternative and is a spending decision.
 - ~~**Make `List.owner` non-null:** audit live rows, backfill or remove
   orphans, then a schema migration.~~ **Done August 2, 2026**, as release D
   slice 6 — see [`release-d-plan.md`](release-d-plan.md) §5. Of the two

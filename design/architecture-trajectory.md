@@ -600,8 +600,18 @@ trigger stated so it can be deferred honestly rather than quietly.
 **Now, because they are small and something depends on them.**
 
 - **Move local development onto Postgres**, and correct `settings.py`'s stale
-  comment. Per §3: `unique_active_item` is silently not created on SQLite, so
-  the local suite currently proves less than it appears to.
+  comment. Per §3, two reasons were named; one is resolved and one still
+  stands. `unique_active_item` being silently uncreated on SQLite is
+  **resolved as of release D's contract step**
+  ([`release-d-plan.md`](release-d-plan.md) §5): dropping `Item.parent` left
+  the constraint's fields all non-nullable, so `nulls_distinct=False` was
+  removed as dead weight and the constraint (and `ChecklistStep`'s own) now
+  creates on SQLite like any other — the local suite went from 7 silently
+  skipped tests to 0 in the same change. What still stands is the
+  concurrency difference: `LiveServerTestCase` hands one SQLite connection to
+  several server threads, which is not how Postgres behaves, and that gap
+  bit for real once already (§3's `IndexError` in `apply_converters`). That
+  reason alone still justifies the move.
 - **Rate-limit the landing page's login form.** `nginx-clarice.conf.j2` limits
   `^/(accounts/login|accounts/signup)/` at 5r/m, and `/` is also a full login
   view — so the strictest control on the site is bypassed by the front door.
@@ -742,17 +752,22 @@ has now happened three times in one week.
   would be applying a recorded rule, not rediscovering it. What actually
   justified acting now is that the unlinkable history accrues fastest exactly
   when Crane turns Clarice into a daily practice.
-- **Does release D pair the two design cycles?** §5 argues the model and the
-  interface are one problem and should ship together. That is a scope
-  judgement and it is yours.
-- **What is a `List`?** Area, Context, or something else — and does `Project`
-  become its own model on the strength of completing? §5 recommends both, but
-  no existing planning document has ever asked the question, so it is genuinely
-  open rather than merely unrecorded.
-- **Does the rest of the `Item` split happen?** §2 and §5 endorse separating a
-  Task from a Checklist Step but the roadmap has not adopted it. Release D's
-  brief is where it gets decided, and "the parent–child redesign was enough" is
-  a legitimate answer.
+- ~~**Does release D pair the two design cycles?**~~ **Answered August 2,
+  2026: yes.** [`release-d-plan.md`](release-d-plan.md) is the brief for all
+  three cycles together — the parent–child redesign, what `List` is, and the
+  UI overhaul's sketch — on the argument §5 already made.
+- ~~**What is a `List`?**~~ **Answered August 2, 2026: Area, and `Project`
+  joins it as its own model.** `List` becomes Area in vocabulary only — no
+  schema change, the same API-boundary rename already used for `Item` — and
+  `Project` is a new model with its own completion state and due date, on the
+  strength of completing being a different life cycle. See
+  [`release-d-plan.md`](release-d-plan.md) §3.
+- ~~**Does the rest of the `Item` split happen?**~~ **Answered August 2,
+  2026: yes, a `ChecklistStep` model**, with the ability to promote a step
+  into a full task — the one addition Vince asked for beyond what §2 and §5
+  argued for. "The parent-child redesign was enough" was the other legitimate
+  answer named here; it wasn't the one chosen. See
+  [`release-d-plan.md`](release-d-plan.md) §2.
 - **Does release G exist?** Everything in it is conditional on deciding that
   Clarice should have users who are not you.
 - **Is rich authored content release E, or earlier?** Named here for the first
@@ -776,7 +791,9 @@ has now happened three times in one week.
   analytics list being answerable without one, plus the fact that a log is
   additive later where the missing foreign key was not.
 
-  §6 is now empty of open questions. The decisions this document still
-  cannot make are the ones above it in this section — release D's pairing,
-  what a `List` is, whether the rest of the `Item` split happens, whether G
-  exists, when rich authored content lands, and where the charter lives.
+  §6 is now empty of open questions. Three of the decisions this section
+  once listed are answered above and carried into
+  [`release-d-plan.md`](release-d-plan.md): release D's pairing, what a
+  `List` is, and whether the rest of the `Item` split happens. What remains
+  genuinely open is whether G exists, when rich authored content lands, and
+  where the charter lives.

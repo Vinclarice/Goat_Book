@@ -202,14 +202,24 @@ phone, which no deploy was ever going to provide.
 
 ## Release D — the commitment vocabulary
 
-**The next release, and the first one Crane does not touch.** Two design
-cycles were named on August 2, 2026 while verifying B1 in production. They
-should be *designed* separately and, on the argument in
+**The next release, and the first one Crane does not touch. In progress as
+of August 2, 2026** — the executable brief for all three of its design
+cycles, the settled decisions behind them, and the slice sequence live in
+[`release-d-plan.md`](release-d-plan.md); this section stays the summary. Two
+design cycles were named on August 2, 2026 while verifying B1 in production.
+They should be *designed* separately and, on the argument in
 [`architecture-trajectory.md`](architecture-trajectory.md) §5, **ship
 together** — C2's recorded failure was one person needing three attempts to
 set up one recurring parent with three children, and two independent
 defects, one in the model and one in the interface, caused it between them.
 Neither should be started as a side effect of something else.
+
+**Both open questions in `architecture-trajectory.md` §8 are settled.** A
+subtask is a Checklist Step — its own model, no due date, no tags, cannot
+recur, dies with its parent — with promotion to a full task, which Vince
+asked for beyond what either design cycle had argued on its own. And `List`
+becomes Area in vocabulary, with `Project` joining it as a genuinely new
+model for work that completes. `release-d-plan.md` §2 and §3 are the briefs.
 
 **Parent–child domain redesign.** The relationship between a task and its
 subtasks is doing too many unrelated jobs, and its rules were arrived at one
@@ -219,7 +229,8 @@ reopening it does not bring them back. Recurrence belongs only to parents,
 parent happens to repeat. Archiving cascades on one path and not another.
 Each rule is defensible alone; together they are not a model anybody could
 predict. Decide what a subtask *is* — a step, a dependent task, a checklist
-item — before adjusting any more of its behaviour.
+item — before adjusting any more of its behaviour. **Decided:** a Checklist
+Step, with promotion to a full task — see `release-d-plan.md` §2.
 
 **Web UI overhaul, second pass.** The Tailwind v4 and shadcn work replaced
 how the application looks. What remains wrong is what it says and what it
@@ -230,13 +241,17 @@ is a redesign of language and interaction, not of styling, and it wants its
 own brief. Crane 1 slice 7 added a measurement it should carry: touch
 targets across the application are well under the ~44px guideline, and the
 height lives on the shared `Button` component, so fixing it restyles every
-page — see [Mobile web experience](#mobile-web-experience).
+page — see [Mobile web experience](#mobile-web-experience). Sketched, not yet
+briefed, in `release-d-plan.md` §4 — it waits for the model work above to
+ship, per that document's own "model decided first" ordering.
 
 **Also waiting here:** the vocabulary half of Crane 0, deferred on August 2,
 2026. Moving `text`, `list`, `cadence`, tags and notes off each occurrence
 and onto a real commitment template needs an answer to what a subtask is
 first, which is why it waits for the redesign above rather than shipping
-with the identity half. See [`crane-plan.md`](crane-plan.md) §3.
+with the identity half. See [`crane-plan.md`](crane-plan.md) §3. **Now
+unblocked** — a Checklist Step is decided — but not yet given its own slice
+in `release-d-plan.md`; see that document's open questions.
 
 ## Later — visible, not scheduled
 

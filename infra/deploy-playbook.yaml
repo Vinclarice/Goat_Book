@@ -27,6 +27,89 @@
 
   tasks:
 
+    # First, and deliberately ahead of the apt tasks below, because those are
+    # what it exists to protect.
+    #
+    # This host has 458MB of RAM, one core and -- until this -- no swap. On
+    # August 3, 2026 the "Install nginx and certbot" task was OOM-killed
+    # outright (rc 137) while `apt-mark manual docker.io` thrashed for four
+    # minutes: the running container had grown by ~60MB and apt no longer had
+    # room to resolve packages. The site kept serving and dpkg stayed
+    # consistent, but the deploy died halfway.
+    #
+    # Reducing the container's footprint addressed that instance. Swap
+    # addresses the class: without it, every apt run on this box is one
+    # memory-hungry step away from the same failure, whatever the application
+    # happens to be doing. 1GB against 4.8GB free disk, roughly twice RAM,
+    # which is the usual shape for a small droplet.
+    #
+    # swappiness 10 rather than the default 60: this is overflow to survive a
+    # spike, not somewhere to routinely page the application out to. Swapping
+    # a live gunicorn worker to disk would trade an OOM for latency nobody
+    # asked for.
+    - name: Check whether the swapfile already exists
+      ansible.builtin.stat:
+        path: /swapfile
+      register: swapfile
+
+    # dd rather than fallocate: a fallocated file can be sparse, and swapon
+    # refuses a swapfile with holes. This runs once, so the extra seconds
+    # cost nothing.
+    - name: Create the swapfile
+      ansible.builtin.command:
+        cmd: dd if=/dev/zero of=/swapfile bs=1M count=1024
+      when: not swapfile.stat.exists
+      become: true
+
+    - name: Restrict the swapfile to root
+      ansible.builtin.file:
+        path: /swapfile
+        owner: root
+        group: root
+        mode: "0600"
+      become: true
+
+    - name: Format the swapfile
+      ansible.builtin.command:
+        cmd: mkswap /swapfile
+      when: not swapfile.stat.exists
+      become: true
+
+    - name: Read the active swap devices
+      ansible.builtin.command:
+        cmd: cat /proc/swaps
+      register: active_swaps
+      changed_when: false
+
+    - name: Enable the swapfile
+      ansible.builtin.command:
+        cmd: swapon /swapfile
+      when: "'/swapfile' not in active_swaps.stdout"
+      become: true
+
+    # Persisted separately from being enabled: a reboot would otherwise come
+    # back with no swap and the failure above would return unannounced.
+    - name: Keep the swapfile across reboots
+      ansible.builtin.lineinfile:
+        path: /etc/fstab
+        line: "/swapfile none swap sw 0 0"
+        state: present
+      become: true
+
+    - name: Prefer RAM, keeping swap for overflow
+      ansible.builtin.copy:
+        dest: /etc/sysctl.d/99-clarice-swappiness.conf
+        content: "vm.swappiness=10\n"
+        mode: "0644"
+      become: true
+      register: swappiness
+
+    - name: Apply the swappiness setting now
+      ansible.builtin.command:
+        cmd: sysctl -p /etc/sysctl.d/99-clarice-swappiness.conf
+      when: swappiness is changed
+      become: true
+
     - name: Install docker
       ansible.builtin.apt:
         name: docker.io

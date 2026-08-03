@@ -268,14 +268,26 @@ page, where every other single-field task edit already lives. The panel says
 out loud that completing a project leaves its tasks open, because a
 deliberate non-action that is not visible reads as a bug later.
 
-**Slice 9 is not started**, and is the one the plan under-describes: §4 is
-explicitly a sketch rather than a brief, and what it sketches — a redesign of
-language and interaction across the application, plus the touch-target work
-that restyles every page through the shared `Button` — is closer to a release
-than a slice. Expect it to end with a written brief and a decision about
-whether it belongs in Release D at all.
+**Slice 9 produced the brief it was supposed to produce**, and it is in
+[`ui-second-pass-plan.md`](ui-second-pass-plan.md). Three things it found by
+checking the shipped interface rather than trusting the plan: the
+two-checkbox step row C2 complained about is **still there** on a repeating
+task, counted in the DOM rather than inferred; a project is invisible
+everywhere a task is actually worked, which slice 8 introduced; and where
+Projects belong in navigation has never been answered. It also says plainly
+that only the first is safe to act on, because the other two are inferences
+from source where C2's evidence was a person failing a real task.
 
-**The deploy comes next**, before slice 9.
+**Deployed and verified** — `DEPLOYED-2026-08-03/0027`, six migrations, with
+the served bundle and live routes checked against markers the changes
+actually added. `LIVE` moved. No bird tag: see the open question below.
+
+**One decision outstanding, and it is the release's own boundary.** The brief
+recommends Release D close at slice 8 and this document's remaining steps
+become Release E's opening, once someone has actually used a project. The
+alternative is holding the release open for a navigation redesign that is
+blocked on evidence nobody has gathered. Recorded in `ui-second-pass-plan.md`
+§7 so whichever happens was chosen rather than defaulted into.
 
 **Both open questions in `architecture-trajectory.md` §8 are settled.** A
 subtask is a Checklist Step — its own model, no due date, no tags, cannot

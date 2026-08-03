@@ -704,7 +704,29 @@ schema and removes the path it's replacing.
    page broke four existing `AreaRoute` tests, because their mocks answered
    the new projects request with area data and the panel threw mid-render,
    taking the route with it.
-9. **The UI overhaul's remaining brief.** Written once 1–8 are in, per §4.
+9. **The UI overhaul's remaining brief — written.** It lives in
+   [`ui-second-pass-plan.md`](ui-second-pass-plan.md) and supersedes §4,
+   which was always a sketch. Writing it against the shipped interface rather
+   than against §4's predictions changed the picture:
+
+   - **§4 predicted the two-checkbox row would be mechanical. It is still
+     there.** A repeating task's step row carries two `<input
+     type="checkbox">` elements — `is_done` and `carries_forward` —
+     confirmed by counting them in the DOM rather than by reading intent.
+     Slice 3's own entry above calls the second one a "toggle"; it is a
+     checkbox, and that wording is how the defect stayed invisible. Two of
+     the three clauses in C2's original complaint still describe the shipped
+     row. The fix is a `Switch`, which the codebase already has.
+   - **Slice 8 introduced a new problem: a project is invisible everywhere a
+     task is worked.** `project` appears in three frontend files. Not the
+     Agenda, the Daily Page, the review or the Archive. Assignment is
+     effectively write-only.
+   - **§4's navigation question is genuinely unanswered**, and it is the part
+     of C2 that has never been addressed.
+
+   The brief also states its own weakness plainly: its findings come from
+   reading source, where C2's came from a person failing a real task. Only
+   the first is safe to build on that basis.
 
 ## 6. What this release does not touch
 

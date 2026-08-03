@@ -114,8 +114,7 @@ def _anchor_commitment(item):
         notes=item.notes,
     )
     item.commitment = commitment
-    if item.pk is not None:
-        commitment.tags.set(item.tags.all())
+    commitment.tags.set(item.tags.all())
     return commitment
 
 
@@ -440,8 +439,17 @@ def _spawn_next_occurrence(completed_item, carry_forward_steps=()):
     # renaming a commitment in September leaves June reading "Pay rent".
     #
     # `due_date` is the exception and always was -- computed per occurrence by
-    # _advance_due_date rather than seeded. Cadence still comes from the item;
-    # it moves to the template in the next slice.
+    # _advance_due_date rather than seeded, because it advances from the one
+    # that just finished rather than being a property of the series.
+    #
+    # The three `or` fallbacks below are a deliberate compatibility window,
+    # not defensive habit. Nothing reaches them today: every path seeds the
+    # template, and 0031 backfilled the existing rows. But 0031 has not run
+    # against production yet, and until it has, "nothing reads the old path"
+    # is a claim about a database nobody has seen. They come out once it has
+    # -- see recurring-commitment-vocabulary-plan.md 5 slice 4 for the
+    # trigger, and TemplateFallbackWindowTest for the test that will fail and
+    # force the decision rather than letting it lapse.
     target_list = commitment.list or completed_item.list
     # The cadence comes from the template too, and it is not merely a label:
     # it decides how far the next due date moves. A stale one would schedule

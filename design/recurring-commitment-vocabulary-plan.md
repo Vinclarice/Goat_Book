@@ -205,9 +205,41 @@ Written on the recommendation above; slice 1 is independent of it.
    leaving the stopped commitment advertising a rule it no longer follows.
    The link and the series stay, as they always did — `_end_commitment`
    closes it rather than deleting it.
-4. **Contract — retire what is now duplicated.** Only whatever step 4 leaves
-   genuinely dead, and only once nothing reads it, per the expand/migrate/
-   contract discipline Dunlin used for `Item.parent`.
+4. **Contract — audited August 3, 2026, and deliberately not completed.**
+   The audit is the deliverable; the removal is not, and the reason is the
+   discipline itself.
+
+   **What was retired:** a dead `if item.pk is not None` guard in
+   `_anchor_commitment` (every call site passes a saved item), and a comment
+   in `_spawn_next_occurrence` still claiming cadence had not moved yet.
+
+   **What stays, and why it is not timidity.** `_spawn_next_occurrence` has
+   three `or` fallbacks to the completed occurrence — for `text`, `list` and
+   `cadence`. They are unreachable through the application: every path seeds
+   the template, and `0031` backfilled the rest. Stripping all three and
+   running the full suite left it green at 790, which is evidence nothing
+   exercises them.
+
+   **But `0031` has not run against production.** Until it has, "nothing
+   reads the old path" is a claim about a database nobody has looked at, and
+   these fallbacks are the only thing standing between a missed backfill row
+   and a blank task appearing in somebody's list. Removing them now would
+   retire the safety net at exactly the moment it might be needed, which is
+   backwards from the expand/migrate/contract sequence Dunlin followed for
+   `Item.parent` — that contract step landed *after* its migration had run.
+
+   **The trigger, stated so it does not lapse:** `0031` applied against
+   production, and its `seeded=` / `empty=` counts read. If `empty=0`, every
+   commitment has a template and the fallbacks come out. If it is not zero,
+   the fallbacks stay and the rows get looked at first.
+
+   `TemplateFallbackWindowTest` pins the behaviour so that removal is a
+   deliberate act with a failing test attached rather than something that
+   quietly lapses — confirmed by stripping the fallbacks and watching it
+   fail. It is a regression guard and passed on its first run, which is said
+   plainly rather than hidden.
+
+   Full required suite green at 791, frontend at 225, browser smoke at 25.
 
 ## 6. What this does not touch
 

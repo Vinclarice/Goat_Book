@@ -342,6 +342,48 @@ class CadenceBelongsToTheCommitmentTest(TestCase):
         self.assertEqual(task.commitment_id, commitment.pk)
 
 
+class TemplateFallbackWindowTest(TestCase):
+    """Pins the compatibility window the contract step will close.
+
+    **A regression guard, and it passed on its first run** -- said plainly,
+    because a new test that goes green immediately is normally a warning. It
+    is not asserting behaviour this commit added; it is pinning behaviour
+    that already exists so that removing it later is a deliberate act with a
+    failing test attached, rather than something that quietly lapses.
+
+    The three `or` fallbacks in `_spawn_next_occurrence` are unreachable
+    through the application: every path seeds the template, and 0031
+    backfilled the rest. Stripping all three and running the full suite left
+    it green, which is evidence that nothing exercises them. They stay anyway
+    until 0031 has run against production, because until then "nothing reads
+    the old path" is a claim about a database nobody has looked at.
+    """
+
+    def setUp(self):
+        self.owner = User.objects.create_user(
+            "alice", "alice@example.com", "a secure password"
+        )
+        self.area = List.objects.create(owner=self.owner, title="Home")
+
+    def test_an_empty_template_still_spawns_a_sane_occurrence(self):
+        from lists import services
+
+        task = services.create_item(
+            self.area, "Pay rent", recurrence=Item.Recurrence.MONTHLY,
+        )
+        # Exactly the shape a missed backfill would leave behind.
+        RecurringCommitment.objects.filter(pk=task.commitment_id).update(
+            text="", list=None, cadence="",
+        )
+        task.refresh_from_db()
+
+        spawned = services.complete_item(task)._spawned
+
+        self.assertEqual(spawned.text, "Pay rent")
+        self.assertEqual(spawned.list_id, self.area.id)
+        self.assertEqual(spawned.recurrence, Item.Recurrence.MONTHLY)
+
+
 # capture is named alongside lists for the reason test_ownerless_list_removal
 # discovered the hard way: a target that mentions only one app lets the next
 # migration test ask for a plan that runs lists backwards and capture

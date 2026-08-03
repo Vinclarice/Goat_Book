@@ -277,8 +277,18 @@ blocked on the interface C2 documented. That interface is now fixed, so the
 item is **unblocked rather than cleared** — it still wants someone to
 actually exercise the rule against production.
 
-The three infrastructure confirmations still need elapsed time. The five
-Android gaps still need a phone.
+The three infrastructure confirmations still need elapsed time.
+
+**Three of the five Android gaps closed — August 3, 2026, on a Samsung
+SM-S928U1.** The forced-retry path, a plain-text share and an offline share
+are all now exercised on a device; `crane-plan.md` §2 has the detail and
+`bittern-plan.md` M4/M5 have the evidence. The remaining two are not phone
+problems: no emulator run, because this SDK install has no AVD and no way to
+build one without a multi-gigabyte download better done through Android
+Studio's own AVD Manager; and release signing, attempted the same session
+and blocked by the session's own classifier on writing the generated
+keystore password to disk — needs the keystore made by hand or an explicit
+permission grant.
 
 
 ## Later — visible, not scheduled

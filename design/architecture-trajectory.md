@@ -621,8 +621,24 @@ trigger stated so it can be deferred honestly rather than quietly.
   security gain, since a GET returns a form rather than attempting a login.
   A second budget rather than a shared one, on the reasoning recorded in the
   template.
-- **Set gunicorn's worker and thread count explicitly.** One line in the
-  `Dockerfile`, upstream of every other capacity question.
+- ~~**Set gunicorn's worker and thread count explicitly.**~~ **Done August 3,
+  2026, and it was not the one line this entry assumed.** Measuring first
+  changed the answer: the droplet has one core, 458MB of RAM and **no swap**,
+  and the container measured 94MB running gunicorn's default — a single sync
+  worker, meaning production served one request at a time and any slow query
+  blocked the site.
+
+  The usual `(2 x cores) + 1` would have been actively harmful here: three
+  workers is roughly 204MB against ~152MB available, with no swap to absorb
+  it, so the OOM killer takes the container rather than the site merely
+  slowing. It is now two workers and four threads — redundancy so one wedged
+  worker is not an outage, threads for the concurrency, since nearly every
+  request is "ask Postgres, wait, render" and a thread costs almost nothing
+  where a worker costs ~55MB. `--max-requests` with jitter bounds any leak.
+
+  **The real ceiling is the box, and this does not change it.** 458MB with no
+  swap is small; the follow-up is `docker stats` a few minutes after deploy,
+  and dropping to one worker if the container settles above ~180MB.
 - ~~**Make `List.owner` non-null:** audit live rows, backfill or remove
   orphans, then a schema migration.~~ **Done August 2, 2026**, as release D
   slice 6 — see [`release-d-plan.md`](release-d-plan.md) §5. Of the two
@@ -676,10 +692,25 @@ trigger stated so it can be deferred honestly rather than quietly.
   first — rather than a guess at what search will want. It deliberately does
   not serve the substring `q` filter; that needs full-text or trigram support
   and is release E's decision.
-- **Add a content security policy.** `X-Frame-Options` and content-type-nosniff
-  are already covered — `XFrameOptionsMiddleware` and `SecurityMiddleware` are
-  both enabled and Django's defaults for them are the safe ones. CSP is the
-  genuine gap.
+- ~~**Add a content security policy.**~~ **Done August 3, 2026, report-only
+  to begin with.** `clarice.middleware.ContentSecurityPolicyMiddleware`
+  attaches a per-request nonce and the policy naming it.
+
+  **Report-only is not a way to defer knowing.** The one inline script this
+  application deliberately has — the theme resolution script, which must run
+  before first paint or the page flashes the wrong theme — is handled with a
+  nonce rather than left to surface as a violation nobody was surprised by.
+  `script-src` therefore has no `'unsafe-inline'`, which is the whole point.
+  `style-src` keeps it, stated as a trade rather than an oversight:
+  `app_shell.html` has an inline `<style>` block and React writes inline
+  style *attributes* for the area colour dots, which a nonce cannot cover.
+
+  **The suite does the looking.** Report-only only helps if somebody reads
+  the console, so `ContentSecurityPolicyTest` loads both shells in a real
+  Chromium and asserts nothing was reported — and separately that the theme
+  script actually *ran*, since a mismatched nonce would leave the page
+  rendering while the script silently did not. Switching to enforcement is a
+  one-line header change once real use has stayed quiet.
 
 **Investigate, do not schedule yet: `Item`'s parent/recurrence rules as check
 constraints.** The appeal is real — `Item.Meta` already carries

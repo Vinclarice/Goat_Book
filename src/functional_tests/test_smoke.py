@@ -186,6 +186,67 @@ class ProjectJourneyTest(BrowserTest):
         ).to_be_visible()
 
 
+class ContentSecurityPolicyTest(BrowserTest):
+    """The report-only policy, checked by the suite instead of by a person.
+
+    Report-only means the browser writes violations to the console and
+    renders the page anyway. That is only useful if somebody looks -- so this
+    looks. A real Chromium loads the two shells and the assertion is that it
+    reported nothing, which is the difference between a policy that is known
+    to fit and one that merely has not broken anything visibly yet.
+
+    This is the check that would catch an inline script added later without a
+    nonce, or a stylesheet moved to a CDN, at the point it is introduced
+    rather than whenever someone next opens devtools.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.violations = []
+        self.page.on(
+            "console",
+            lambda message: (
+                self.violations.append(message.text)
+                if "Content Security Policy" in message.text
+                else None
+            ),
+        )
+
+    def test_the_landing_page_reports_no_violations(self):
+        self.visit("/")
+
+        expect(
+            self.page.get_by_role("button", name="Continue to my areas")
+        ).to_be_visible()
+        self.assertEqual(self.violations, [])
+
+    def test_the_app_shell_reports_no_violations(self):
+        user = self.make_user()
+        self.log_in(user)
+
+        # The shell, its bundle, and the theme script that needs the nonce.
+        expect(self.page.get_by_role("navigation", name="Main")).to_be_visible()
+        self.assertEqual(self.violations, [])
+
+    def test_the_theme_script_actually_ran(self):
+        """The nonce is not merely present -- the browser executed the script.
+
+        A nonce that did not match would leave the page rendering while the
+        script silently never ran, which is precisely the failure report-only
+        is designed not to shout about.
+        """
+        user = self.make_user()
+        self.log_in(user)
+
+        # The script's whole job is to resolve a theme onto the document
+        # before first paint.
+        theme = self.page.evaluate(
+            "document.documentElement.dataset.theme"
+            " || document.documentElement.getAttribute('data-theme')"
+        )
+        self.assertIn(theme, ("light", "dark"))
+
+
 class CaptureTriageTest(BrowserTest):
     """Journey 3. Capture is Django-rendered rather than SPA, so this is
     the one journey covering the other half of the application -- server

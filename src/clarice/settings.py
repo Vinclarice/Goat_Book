@@ -207,6 +207,9 @@ LOGIN_REDIRECT_URL = "/dashboard/"
 LOGOUT_REDIRECT_URL = "/"
 
 MIDDLEWARE = [
+    # First, so the nonce exists on the request before anything can
+    # render a template that needs it.
+    'clarice.middleware.ContentSecurityPolicyMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',

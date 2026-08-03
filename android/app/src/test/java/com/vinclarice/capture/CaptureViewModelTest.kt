@@ -70,6 +70,8 @@ class CaptureViewModelTest {
     private class FakePreferences(private var sends: Boolean = true) : CapturePreferences {
         override fun enterSends() = sends
         override fun setEnterSends(sends: Boolean) { this.sends = sends }
+        override fun requireUnlock() = false
+        override fun setRequireUnlock(require: Boolean) {}
     }
 
     private class FakeScheduler : DeliveryScheduler {

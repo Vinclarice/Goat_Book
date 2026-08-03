@@ -121,6 +121,32 @@ fun SettingsScreen(
             )
         }
 
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Require unlock to open", style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    // The stored token itself never expires either way --
+                    // this is only about what it costs to see what is
+                    // behind it. design/android-unlock-plan.md.
+                    if (state.requireUnlock) {
+                        "Opening the app asks for your phone's own unlock first."
+                    } else {
+                        "Opening the app goes straight to Capture."
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Switch(
+                checked = state.requireUnlock,
+                onCheckedChange = model::setRequireUnlock,
+            )
+        }
+
         QueueSection(state = state, onRetry = onRetry)
 
         if (state.connected) {

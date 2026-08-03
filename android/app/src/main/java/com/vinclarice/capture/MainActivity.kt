@@ -3,7 +3,6 @@ package com.vinclarice.capture
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
@@ -20,14 +19,20 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.fragment.app.FragmentActivity
 
 /**
  * The whole app is one activity. Bittern scopes this client to capture and
  * nothing else -- no triage, no idea management, no task editing -- so
  * there is no navigation graph to justify yet, and adding one now would be
  * scaffolding for screens the plan says not to build.
+ *
+ * FragmentActivity rather than ComponentActivity (its own superclass) since
+ * design/android-unlock-plan.md's BiometricPrompt requires one -- everything
+ * that worked before, setContent included, is still ComponentActivity API
+ * and stays available.
  */
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -40,6 +45,7 @@ class MainActivity : ComponentActivity() {
         val queue = CaptureQueue(EncryptedQueueStorage(applicationContext))
         val scheduler = CaptureWorker.prepare(applicationContext)
         val preferences = AndroidCapturePreferences(applicationContext)
+        val unlockGate = BiometricUnlockGate(this)
 
         // getCharSequenceExtra rather than getStringExtra: apps sharing
         // formatted text send a Spanned, and getStringExtra returns null for
@@ -70,6 +76,7 @@ class MainActivity : ComponentActivity() {
                             queue = queue,
                             scheduler = scheduler,
                             preferences = preferences,
+                            unlockGate = unlockGate,
                             draft = draft,
                         )
                     }
@@ -87,8 +94,24 @@ private fun Root(
     queue: CaptureQueue,
     scheduler: DeliveryScheduler,
     preferences: CapturePreferences,
+    unlockGate: UnlockGate,
     draft: String? = null,
 ) {
+    // Checked once per process, not remembered across recompositions past
+    // that: cold-start only, the same way a half-typed draft survives a
+    // rotation but not a force-stop. Re-locking mid-session on some elapsed
+    // timer is a different, heavier feature -- design/android-unlock-plan.md.
+    var unlocked by remember { mutableStateOf(!preferences.requireUnlock()) }
+
+    // Ahead of every other branch, including the share-intent bypass below:
+    // a lock that only covered the capture box and left a shared draft or
+    // the Connect screen's own state reachable without it would be
+    // guarding the wrong thing.
+    if (!unlocked) {
+        LockScreen(gate = unlockGate, onUnlocked = { unlocked = true })
+        return
+    }
+
     val connectModel = remember {
         // A login-minted token is labelled by the device it came from, so
         // the Access tokens page on the web can tell two phones apart --

@@ -21,6 +21,8 @@ data class SettingsUiState(
     val needsAttention: List<PendingCapture> = emptyList(),
     /** Whether the keyboard's Enter key sends a capture or breaks a line. */
     val enterSends: Boolean = true,
+    /** Whether opening the app costs a device unlock first. */
+    val requireUnlock: Boolean = false,
 )
 
 /**
@@ -51,10 +53,13 @@ class SettingsViewModel(
 
     suspend fun load() {
         readQueue()
-        // Before the network call, and outside it. This is a keyboard
-        // preference, not an account fact; withholding it because a request
-        // failed would be absurd.
-        _state.value = _state.value.copy(enterSends = preferences.enterSends())
+        // Before the network call, and outside it. These are device
+        // preferences, not account facts; withholding either because a
+        // request failed would be absurd.
+        _state.value = _state.value.copy(
+            enterSends = preferences.enterSends(),
+            requireUnlock = preferences.requireUnlock(),
+        )
 
         when (val outcome = connector.whoAmI()) {
             is Connected -> _state.value = _state.value.copy(
@@ -96,6 +101,14 @@ class SettingsViewModel(
     fun setEnterSends(sends: Boolean) {
         preferences.setEnterSends(sends)
         _state.value = _state.value.copy(enterSends = sends)
+    }
+
+    /** Same immediacy as [setEnterSends], and for the same reason: a
+     *  security setting that only takes effect if you leave the screen the
+     *  right way is one people learn not to trust. */
+    fun setRequireUnlock(require: Boolean) {
+        preferences.setRequireUnlock(require)
+        _state.value = _state.value.copy(requireUnlock = require)
     }
 
     fun disconnect() {

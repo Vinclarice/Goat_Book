@@ -1,10 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- The only permission this app needs. Capture talks to one host over
-         HTTPS and does nothing else; anything beyond this is a signal that
-         the app has grown past what Bittern scoped it to do. -->
+    <!-- Capture talks to one host over HTTPS. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- android.permission.USE_BIOMETRIC is merged in automatically by
+         androidx.biometric, not declared here. It gates opening the app
+         behind the phone's own screen lock (design/android-unlock-plan.md)
+         and grants nothing beyond what BiometricPrompt itself needs. Named
+         here so a later reader finds the reason rather than just the
+         merged manifest. -->
 
     <application
         android:label="Clarice Capture"

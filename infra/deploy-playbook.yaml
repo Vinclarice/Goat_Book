@@ -210,6 +210,23 @@
       community.docker.docker_container_exec:
         container: clarice
         command: ./manage.py migrate
+      register: migration_output
+
+    # Registered and printed because a data migration's own output is
+    # sometimes the only record of what it did. docker_container_exec
+    # captures stdout into the result rather than sending it to the
+    # container's logs, so without these two tasks Ansible discards it and
+    # `docker logs clarice` never had it either.
+    #
+    # That cost a real answer on August 3, 2026: release D's deploy ran
+    # 0026 (converts each subtask, deleting the Item it came from) and 0028
+    # (deletes every ownerless area, irreversibly). Both were written to
+    # print their counts precisely so production would be the evidence, and
+    # both printed into nothing. 0026's figure was recoverable by counting
+    # rows afterwards; 0028's is gone for good.
+    - name: Show what the migrations did
+      ansible.builtin.debug:
+        var: migration_output.stdout_lines
 
     # The command has existed and worked for a while but nothing invoked it,
     # so the digest reached nobody. Users with nothing to report are skipped

@@ -77,6 +77,28 @@ class QueueDocumentTest {
     }
 
     @Test
+    fun `tags survive the round trip too`() {
+        val tagged = PendingCapture(
+            key = "key-1", text = "design a boss fight", createdAt = 1,
+            tags = listOf("game-dev", "movies"),
+        )
+
+        val recovered = QueueDocument.decode(QueueDocument.encode(listOf(tagged)))
+
+        assertEquals(tagged, recovered.single())
+    }
+
+    @Test
+    fun `a record written before tags existed reads as having none`() {
+        val fromAnOlderVersion =
+            """[{"key":"key-1","text":"kept","createdAt":1,"attempts":0,"state":"WAITING"}]"""
+
+        val recovered = QueueDocument.decode(fromAnOlderVersion)
+
+        assertEquals(emptyList<String>(), recovered.single().tags)
+    }
+
+    @Test
     fun `an unreadable document reads as an empty queue rather than throwing`() {
         // Nothing can be salvaged here, but crashing on open would make the
         // app unusable rather than merely empty.

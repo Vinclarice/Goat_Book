@@ -18,11 +18,13 @@ router = Router()
 
 class CaptureIn(Schema):
     text: str
+    tags: list[str] = []
 
 
 class CaptureOut(Schema):
     id: int
     created_at: str
+    tags: list[str] = []
 
 
 @router.post(
@@ -56,10 +58,13 @@ def new_capture(request, payload: CaptureIn):
     try:
         if idempotency_key is not None:
             capture, created = create_capture_idempotent(
-                request.user, payload.text, idempotency_key
+                request.user, payload.text, idempotency_key, tags=payload.tags
             )
         else:
-            capture, created = create_capture(request.user, payload.text), True
+            capture, created = (
+                create_capture(request.user, payload.text, tags=payload.tags),
+                True,
+            )
     except CaptureConflict as error:
         # The same rule CaptureForm shows on the Inbox page, from the same
         # function -- there is one definition of "that's not a capture".
@@ -67,4 +72,8 @@ def new_capture(request, payload: CaptureIn):
     return (201 if created else 200), {
         "id": capture.id,
         "created_at": capture.created_at.isoformat(),
+        # The replay branch's tags are already the original row's -- the
+        # service layer, not this view, is what refuses to let a replay's
+        # tags overwrite them.
+        "tags": [tag.name for tag in capture.tags.all()],
     }

@@ -42,18 +42,27 @@ class CaptureViewModelTest {
         val keys = mutableListOf<String>()
         val texts = mutableListOf<String>()
         val tokens = mutableListOf<String>()
+        val tagLists = mutableListOf<List<String>>()
         /** What the queue held at the moment the request went out. */
         var queuedWhenCalled: List<PendingCapture>? = null
         var queue: CaptureQueue? = null
 
         override suspend fun identify(token: String) = Identified(Identity("a", "a@b.c"))
 
-        override suspend fun capture(token: String, text: String, idempotencyKey: String):
-            Disposition {
+        override suspend fun login(username: String, password: String, label: String) =
+            InvalidCredentials("unused")
+
+        override suspend fun capture(
+            token: String,
+            text: String,
+            idempotencyKey: String,
+            tags: List<String>,
+        ): Disposition {
             queuedWhenCalled = queue?.all()
             tokens += token
             texts += text
             keys += idempotencyKey
+            tagLists += tags
             return disposition
         }
     }
@@ -61,6 +70,8 @@ class CaptureViewModelTest {
     private class FakePreferences(private var sends: Boolean = true) : CapturePreferences {
         override fun enterSends() = sends
         override fun setEnterSends(sends: Boolean) { this.sends = sends }
+        override fun requireUnlock() = false
+        override fun setRequireUnlock(require: Boolean) {}
     }
 
     private class FakeScheduler : DeliveryScheduler {
@@ -115,6 +126,60 @@ class CaptureViewModelTest {
         f.model.onTextChange("buy milk")
 
         assertEquals("buy milk", f.model.state.value.text)
+    }
+
+    @Test
+    fun `typing tags updates the field`() {
+        val f = fixture()
+
+        f.model.onTagsChange("game-dev, movies")
+
+        assertEquals("game-dev, movies", f.model.state.value.tags)
+    }
+
+    @Test
+    fun `tags are optional -- submitting with none sends none`() = runTest {
+        val f = fixture(Disposition.DELIVERED)
+        f.model.onTextChange("buy milk")
+
+        f.model.submit()
+
+        assertEquals(emptyList<String>(), f.api.tagLists.single())
+    }
+
+    @Test
+    fun `comma-separated tags are parsed, trimmed, and reach the queue and the request`() = runTest {
+        val f = fixture(Disposition.DELIVERED)
+        f.model.onTextChange("design a boss fight")
+        f.model.onTagsChange(" game-dev ,movies ,, ")
+
+        f.model.submit()
+
+        assertEquals(listOf("game-dev", "movies"), f.api.tagLists.single())
+    }
+
+    @Test
+    fun `submitting clears the tags field the same way it clears the text`() = runTest {
+        val f = fixture(Disposition.DELIVERED)
+        f.model.onTextChange("buy milk")
+        f.model.onTagsChange("errands")
+
+        f.model.submit()
+
+        assertEquals("", f.model.state.value.tags)
+    }
+
+    @Test
+    fun `a queued-then-retried capture keeps the tags it was typed with`() = runTest {
+        // The offline case: tags typed while writing the thought down must
+        // survive in the queue exactly as the text does.
+        val f = fixture(Disposition.RETRY_LATER)
+        f.model.onTextChange("design a boss fight")
+        f.model.onTagsChange("game-dev")
+
+        f.model.submit()
+
+        assertEquals(listOf("game-dev"), f.queue.all().single().tags)
     }
 
     @Test

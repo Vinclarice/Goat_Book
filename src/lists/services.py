@@ -77,7 +77,11 @@ def _clean_tag_names(tag_names):
     return cleaned
 
 
-def _resolve_tags(owner, tag_names):
+def resolve_tags(owner, tag_names):
+    """Public: capture.services reuses this rather than a second
+    definition of what a tag is, per lists.Tag being the one owner-scoped
+    tag vocabulary in the app.
+    """
     return [
         Tag.objects.get_or_create(owner=owner, name=name)[0]
         for name in _clean_tag_names(tag_names)
@@ -175,7 +179,7 @@ def create_item(for_list, text, due_date=None, tags=None, recurrence=None):
         _anchor_commitment(item)
         item.save(update_fields=["commitment"])
     if tags:
-        item.tags.set(_resolve_tags(for_list.owner, tags))
+        item.tags.set(resolve_tags(for_list.owner, tags))
     return item
 
 
@@ -225,7 +229,7 @@ def set_item_tags(item, tag_names):
     item = Item.objects.select_for_update().select_related("list").get(pk=item.pk)
     if item.status == Item.Status.ARCHIVED:
         raise InvalidTaskTransition("Restore this task before editing it")
-    resolved = _resolve_tags(item.list.owner, tag_names)
+    resolved = resolve_tags(item.list.owner, tag_names)
     item.tags.set(resolved)
     _write_through_to_commitment(item, tags=resolved)
     return item

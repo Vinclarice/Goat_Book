@@ -124,6 +124,12 @@ class Capture(models.Model):
     # constraint by default, so any number of keyless captures coexist
     # exactly as before this field existed.
     idempotency_key = models.UUIDField(null=True, blank=True)
+    # lists.Tag, not a parallel model -- see design/capture-tags-plan.md 2.
+    # Optional at capture time by design: writing something down must never
+    # force a categorisation decision.
+    tags = models.ManyToManyField(
+        "lists.Tag", blank=True, related_name="captures"
+    )
 
     class Meta:
         # Newest first: the Inbox reads as a stack of what you just wrote,

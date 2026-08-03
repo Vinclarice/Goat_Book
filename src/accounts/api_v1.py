@@ -5,14 +5,86 @@ Password/security changes stay Django-owned (accounts.views.change_password)
 """
 from typing import Literal
 
-from django.contrib.auth import logout
+from axes.handlers.proxy import AxesProxyHandler
+from axes.helpers import get_credentials, get_failure_limit
+from axes.utils import reset as axes_reset
+from django.contrib.auth import authenticate, logout
 from ninja import Router, Schema
 from ninja.errors import HttpError
 
 from accounts.forms import AccountSettingsForm
-from accounts.models import User, known_time_zones
+from accounts.models import PersonalAccessToken, User, known_time_zones
 
 router = Router()
+
+
+class LoginIn(Schema):
+    username: str
+    password: str
+    label: str = "Android"
+
+
+class LoginOut(Schema):
+    token: str
+    username: str
+    email: str
+
+
+@router.post("/login", response={200: LoginOut}, auth=None)
+def log_in(request, payload: LoginIn):
+    """Trade a password for a token, once. design/android-login-plan.md.
+
+    Unauthenticated on purpose -- this is how the Android app gets its
+    first token instead of requiring someone to paste one created on the
+    web. Routed through authenticate() rather than a hand-rolled check so
+    axes' five-attempts lockout (AUTHENTICATION_BACKENDS, accounts/apps.py)
+    covers this exactly as it already covers the web login form; a
+    hand-rolled check here would be a second place that protection could
+    drift from the first.
+
+    One generic 401 for every failure -- wrong password, no such account,
+    or a deactivated one -- deliberately indistinguishable, the same as the
+    web login form gives away nothing about which part was wrong. The
+    attempts-remaining count in the message is safe alongside that: axes
+    counts by the username string typed, real account or not, so a made-up
+    username counts down exactly the same way a real one does.
+    """
+    user = authenticate(request, username=payload.username, password=payload.password)
+    if user is None:
+        raise HttpError(401, _incorrect_credentials_message(request, payload.username))
+    # AXES_RESET_ON_SUCCESS fires on Django's user_logged_in signal, which
+    # this endpoint never sends -- it mints a token rather than starting a
+    # session, deliberately, so there is nothing to log out of later.
+    # Cleared explicitly instead, the same way
+    # ClearLockoutPasswordResetConfirmView already does after a reset.
+    axes_reset(username=user.username)
+    _, raw = PersonalAccessToken.generate(user, label=payload.label)
+    return {"token": raw, "username": user.username, "email": user.email}
+
+
+def _incorrect_credentials_message(request, username):
+    """How many tries are left, or nothing -- never a false "0 remaining".
+
+    The attempt that actually reaches the limit is never answered by this
+    function: axes' own middleware computes the lockout the moment that
+    failure is recorded and replaces the whole response for that request,
+    before this view's return value ever leaves. So `remaining` here is
+    always for an attempt that is still genuinely possible, and the
+    generic message below exists only as an honest fallback for a
+    "no count available" condition this code path cannot actually reach
+    today, rather than a promise this function can't keep.
+    """
+    credentials = get_credentials(username=username)
+    failures = AxesProxyHandler.get_failures(request, credentials)
+    remaining = get_failure_limit(request, credentials) - failures
+    if remaining <= 0:
+        return "Incorrect username or password."
+    plural = "" if remaining == 1 else "s"
+    return (
+        f"Incorrect username or password. {remaining} attempt{plural} "
+        "remaining before a temporary lock."
+    )
+
 
 ThemeChoice = Literal["system", "light", "dark"]
 LandingChoice = Literal["day", "agenda"]

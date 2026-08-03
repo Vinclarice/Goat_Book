@@ -1,7 +1,24 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
 }
+
+// Absent by default, deliberately: local.properties is per-machine and
+// gitignored already (it holds sdk.dir), and the release signing key is not
+// something this build should ever generate or hold itself -- see
+// design/android-release-signing-plan.md for why, and the exact keytool
+// command that creates it. A debug build never reads this; assembleRelease
+// with nothing configured here still builds, just unsigned, exactly as it
+// always has.
+val releaseSigningProperties = Properties().also { properties ->
+    val file = rootProject.file("local.properties")
+    if (file.exists()) file.inputStream().use(properties::load)
+}
+
+fun releaseSigningProperty(key: String): String? =
+    releaseSigningProperties.getProperty(key)?.takeIf { it.isNotBlank() }
 
 android {
     namespace = "com.vinclarice.capture"
@@ -27,9 +44,34 @@ android {
         )
     }
 
+    signingConfigs {
+        // Only created when local.properties actually has all four keys.
+        // RELEASE_STORE_FILE is an absolute path -- the keystore is free to
+        // live anywhere on this machine, including entirely outside the
+        // repo, and does not have to sit under android/ just because that's
+        // where *.jks is gitignored.
+        val storeFile = releaseSigningProperty("RELEASE_STORE_FILE")
+        val storePassword = releaseSigningProperty("RELEASE_STORE_PASSWORD")
+        val keyAlias = releaseSigningProperty("RELEASE_KEY_ALIAS")
+        val keyPassword = releaseSigningProperty("RELEASE_KEY_PASSWORD")
+        if (storeFile != null && storePassword != null && keyAlias != null && keyPassword != null) {
+            create("release") {
+                this.storeFile = file(storeFile)
+                this.storePassword = storePassword
+                this.keyAlias = keyAlias
+                this.keyPassword = keyPassword
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            // Unsigned when local.properties has nothing configured, the
+            // same as before this existed -- assembleRelease still
+            // succeeds, it just isn't installable anywhere but a machine
+            // willing to trust an unsigned APK.
+            signingConfigs.findByName("release")?.let { signingConfig = it }
         }
     }
 
@@ -62,6 +104,7 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.androidx.work)
+    implementation(libs.androidx.biometric)
 
     testImplementation(libs.junit)
     testImplementation(libs.okhttp.mockwebserver)

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -18,7 +19,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -45,6 +49,7 @@ fun SettingsScreen(
     val scope = rememberCoroutineScope()
     val onRetry: (String) -> Unit = { key -> scope.launch { model.retry(key) } }
     val onEnterSendsChange: (Boolean) -> Unit = model::setEnterSends
+    var confirmingDisconnect by remember { mutableStateOf(false) }
 
     // Asked on open, every open. The question this screen answers is whether
     // the connection still works, and only the server knows that.
@@ -121,11 +126,37 @@ fun SettingsScreen(
             )
         }
 
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Require unlock to open", style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    // The stored token itself never expires either way --
+                    // this is only about what it costs to see what is
+                    // behind it. design/android-unlock-plan.md.
+                    if (state.requireUnlock) {
+                        "Opening the app asks for your phone's own unlock first."
+                    } else {
+                        "Opening the app goes straight to Capture."
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Switch(
+                checked = state.requireUnlock,
+                onCheckedChange = model::setRequireUnlock,
+            )
+        }
+
         QueueSection(state = state, onRetry = onRetry)
 
         if (state.connected) {
             OutlinedButton(
-                onClick = { model.disconnect(); onDisconnected() },
+                onClick = { confirmingDisconnect = true },
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text("Disconnect this phone")
@@ -136,6 +167,29 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+
+            if (confirmingDisconnect) {
+                AlertDialog(
+                    onDismissRequest = { confirmingDisconnect = false },
+                    title = { Text("Disconnect this phone?") },
+                    text = {
+                        Text(
+                            "You'll need to log in again to capture from here. " +
+                                "Anything already waiting to send stays queued.",
+                        )
+                    },
+                    confirmButton = {
+                        TextButton(onClick = { model.disconnect(); onDisconnected() }) {
+                            Text("Disconnect")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { confirmingDisconnect = false }) {
+                            Text("Cancel")
+                        }
+                    },
+                )
+            }
         }
 
         TextButton(onClick = onBack) { Text("Back to capture") }

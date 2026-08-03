@@ -201,4 +201,29 @@ class CaptureQueueTest {
         assertNotNull(queue.find("key-1"))
         assertNull(queue.find("key-absent"))
     }
+
+    @Test
+    fun `tags are optional and default to none`() {
+        val queue = queue()
+
+        val added = queue.add("no tags here", key = "key-1", createdAt = 100)
+
+        assertEquals(emptyList<String>(), added.tags)
+    }
+
+    @Test
+    fun `tags survive a process restart same as the text does`() {
+        // Same reasoning as "what was added outlives the object that added
+        // it" -- a queued-while-offline capture must not lose its tags
+        // between being written down and finally being sent.
+        val storage = FakeStorage()
+        queue(storage).add(
+            "design a boss fight", key = "key-1", createdAt = 100,
+            tags = listOf("game-dev"),
+        )
+
+        val afterRestart = queue(storage)
+
+        assertEquals(listOf("game-dev"), afterRestart.waiting().single().tags)
+    }
 }

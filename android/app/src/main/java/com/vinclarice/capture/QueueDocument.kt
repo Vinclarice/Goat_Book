@@ -29,6 +29,7 @@ object QueueDocument {
                     .put(CREATED_AT, item.createdAt)
                     .put(ATTEMPTS, item.attempts)
                     .put(STATE, item.state.name)
+                    .put(TAGS, JSONArray(item.tags))
             )
         }
         return array.toString()
@@ -56,6 +57,9 @@ object QueueDocument {
                     createdAt = json.getLong(CREATED_AT),
                     attempts = json.optInt(ATTEMPTS, 0),
                     state = stateOf(json.optString(STATE)),
+                    // A record written before tags existed has none, same as
+                    // an unrecognised state is read as ordinary.
+                    tags = tagsOf(json.optJSONArray(TAGS)),
                 )
             } catch (unreadable: JSONException) {
                 null
@@ -69,9 +73,14 @@ object QueueDocument {
     private fun stateOf(name: String): QueueState =
         QueueState.entries.firstOrNull { it.name == name } ?: QueueState.WAITING
 
+    private fun tagsOf(array: JSONArray?): List<String> =
+        array?.let { (0 until it.length()).map { index -> it.getString(index) } }
+            ?: emptyList()
+
     private const val KEY = "key"
     private const val TEXT = "text"
     private const val CREATED_AT = "createdAt"
     private const val ATTEMPTS = "attempts"
     private const val STATE = "state"
+    private const val TAGS = "tags"
 }

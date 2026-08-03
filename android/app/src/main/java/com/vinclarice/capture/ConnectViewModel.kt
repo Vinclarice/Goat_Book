@@ -10,12 +10,21 @@ import kotlinx.coroutines.flow.asStateFlow
  */
 data class ConnectUiState(
     val token: String = "",
+    val username: String = "",
+    val password: String = "",
     val checking: Boolean = false,
     val error: String? = null,
     val connectedAs: Identity? = null,
 )
 
-class ConnectViewModel(private val connector: Connector) {
+class ConnectViewModel(
+    private val connector: Connector,
+    // Injected rather than read from android.os.Build in here, so this
+    // stays a plain JVM test subject. MainActivity supplies the real
+    // model string; every test gets the same default a device would
+    // fall back to reading a blank one.
+    private val deviceLabel: String = "Android",
+) {
 
     private val _state = MutableStateFlow(ConnectUiState())
     val state: StateFlow<ConnectUiState> = _state.asStateFlow()
@@ -27,6 +36,14 @@ class ConnectViewModel(private val connector: Connector) {
         // it under the field makes it ambiguous whether it describes the
         // old attempt or what is being typed now.
         _state.value = _state.value.copy(token = value, error = null)
+    }
+
+    fun onUsernameChange(value: String) {
+        _state.value = _state.value.copy(username = value, error = null)
+    }
+
+    fun onPasswordChange(value: String) {
+        _state.value = _state.value.copy(password = value, error = null)
     }
 
     suspend fun connect() {
@@ -48,6 +65,40 @@ class ConnectViewModel(private val connector: Connector) {
             is Failed -> fail(outcome.message)
             Blank -> fail("Paste the access token from the Clarice web app.")
         }
+    }
+
+    /**
+     * Log in with a username and password instead of pasting a token.
+     *
+     * The password leaves the field the moment this returns, whichever way
+     * it went -- there is no outcome where it is worth having on screen a
+     * moment longer than the request that used it. The username stays on
+     * failure, since retyping it buys nothing a wrong password didn't
+     * already cost.
+     */
+    suspend fun logIn() {
+        _state.value = _state.value.copy(checking = true, error = null)
+        val username = _state.value.username
+        val password = _state.value.password
+
+        when (val outcome = connector.logIn(username, password, deviceLabel)) {
+            is Connected -> _state.value = ConnectUiState(
+                checking = false,
+                connectedAs = outcome.identity,
+            )
+            is Refused -> failLogin(username, outcome.message)
+            is Failed -> failLogin(username, outcome.message)
+            Blank -> failLogin(username, "Enter your username and password.")
+        }
+    }
+
+    private fun failLogin(username: String, message: String) {
+        _state.value = _state.value.copy(
+            username = username,
+            password = "",
+            checking = false,
+            error = message,
+        )
     }
 
     fun disconnect() {

@@ -45,7 +45,9 @@ def _render_inbox(request, form):
     invalid-POST path have to build the same context.
     """
     query = request.GET.get("q", "").strip()
-    captures = Capture.objects.filter(owner=request.user, resolved_at__isnull=True)
+    captures = Capture.objects.filter(
+        owner=request.user, resolved_at__isnull=True
+    ).prefetch_related("tags")
     if query:
         captures = captures.filter(text__icontains=query)
     captures = list(captures)

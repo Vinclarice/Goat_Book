@@ -287,14 +287,24 @@ item is **unblocked rather than cleared** — it still wants someone to
 actually exercise the rule against production.
 
 **Two of the three infrastructure confirmations still need elapsed time.**
-DMARC aggregate reports began arriving at `dmarc@vinclarice.com` on the
-morning of August 3, 2026 — the first of the three to come good, and the one
+DMARC aggregate reports were confirmed arriving at `dmarc@vinclarice.com` at
+05:54 on August 3, 2026 — the first of the three to come good, and the one
 that could only ever be settled by a receiving provider choosing to report.
 Still owed: a forwarded contact message landing in the inbox rather than
 spam, and a real production 500 reaching Sentry rather than only the
 controlled probe.
 
-The five Android gaps still need a phone.
+**Three of the five Android gaps closed — August 3, 2026, on a Samsung
+SM-S928U1.** The forced-retry path, a plain-text share and an offline share
+are all now exercised on a device; `crane-plan.md` §2 has the detail and
+`bittern-plan.md` M4/M5 have the evidence. The remaining two are not phone
+problems: no emulator run, because this SDK install has no AVD and no way to
+build one without a multi-gigabyte download better done through Android
+Studio's own AVD Manager; and release signing, which this branch wired into
+the build but deliberately left unfinished — attempted the same session and
+blocked by the session's own classifier on writing the generated keystore
+password to disk, so it still needs the keystore made by hand or an explicit
+permission grant.
 
 
 ## Later — visible, not scheduled

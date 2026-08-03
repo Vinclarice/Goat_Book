@@ -96,6 +96,23 @@ class CaptureEndpointTest(TestCase):
             PersonalAccessToken.objects.get(owner=self.user).last_used_at
         )
 
+    def test_tags_are_optional_and_absent_by_default(self):
+        response = self.post({"text": "Call the vet"}, token=self.raw)
+
+        self.assertEqual(response.json()["tags"], [])
+        self.assertEqual(list(Capture.objects.get().tags.all()), [])
+
+    def test_posted_tags_land_on_the_capture_and_come_back_in_the_response(self):
+        response = self.post(
+            {"text": "Design a boss fight", "tags": ["game-dev"]}, token=self.raw
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json()["tags"], ["game-dev"])
+        self.assertEqual(
+            [t.name for t in Capture.objects.get().tags.all()], ["game-dev"]
+        )
+
     def test_a_capture_belongs_to_the_token_holder_not_whoever_asks(self):
         other = User.objects.create_user("bob", "bob@example.com", PASSWORD)
         _, other_raw = PersonalAccessToken.generate(other)
@@ -239,3 +256,20 @@ class CaptureIdempotencyKeyTest(CaptureEndpointTest):
 
         self.assertEqual(response.status_code, 201)
         self.assertEqual(Capture.objects.count(), 2)
+
+    def test_a_replay_does_not_change_the_original_captures_tags(self):
+        key = uuid.uuid4()
+        self.post(
+            {"text": "Design a boss fight", "tags": ["game-dev"]},
+            token=self.raw,
+            idempotency_key=key,
+        )
+
+        retry = self.post(
+            {"text": "Design a boss fight", "tags": ["something-else"]},
+            token=self.raw,
+            idempotency_key=key,
+        )
+
+        self.assertEqual(retry.status_code, 200)
+        self.assertEqual(retry.json()["tags"], ["game-dev"])

@@ -388,6 +388,36 @@
         ]
       }
     },
+    "/api/v1/login": {
+      "post": {
+        "operationId": "accounts_api_v1_log_in",
+        "summary": "Log In",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Trade a password for a token, once. design/android-login-plan.md.\n\nUnauthenticated on purpose -- this is how the Android app gets its\nfirst token instead of requiring someone to paste one created on the\nweb. Routed through authenticate() rather than a hand-rolled check so\naxes' five-attempts lockout (AUTHENTICATION_BACKENDS, accounts/apps.py)\ncovers this exactly as it already covers the web login form; a\nhand-rolled check here would be a second place that protection could\ndrift from the first.\n\nOne generic 401 for every failure -- wrong password, no such account,\nor a deactivated one -- deliberately indistinguishable, the same as the\nweb login form gives away nothing about which part was wrong. The\nattempts-remaining count in the message is safe alongside that: axes\ncounts by the username string typed, real account or not, so a made-up\nusername counts down exactly the same way a real one does.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginIn"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
     "/api/v1/me/logout": {
       "post": {
         "operationId": "accounts_api_v1_log_out",
@@ -1885,6 +1915,52 @@
         "title": "ArchiveOut",
         "type": "object"
       },
+      "LoginOut": {
+        "properties": {
+          "token": {
+            "title": "Token",
+            "type": "string"
+          },
+          "username": {
+            "title": "Username",
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "username",
+          "email"
+        ],
+        "title": "LoginOut",
+        "type": "object"
+      },
+      "LoginIn": {
+        "properties": {
+          "username": {
+            "title": "Username",
+            "type": "string"
+          },
+          "password": {
+            "title": "Password",
+            "type": "string"
+          },
+          "label": {
+            "default": "Android",
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "username",
+          "password"
+        ],
+        "title": "LoginIn",
+        "type": "object"
+      },
       "TimeZonesOut": {
         "properties": {
           "time_zones": {
@@ -2024,6 +2100,14 @@
           "created_at": {
             "title": "Created At",
             "type": "string"
+          },
+          "tags": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
           }
         },
         "required": [
@@ -2038,6 +2122,14 @@
           "text": {
             "title": "Text",
             "type": "string"
+          },
+          "tags": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
           }
         },
         "required": [

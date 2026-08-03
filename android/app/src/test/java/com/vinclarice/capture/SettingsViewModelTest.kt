@@ -31,7 +31,10 @@ class SettingsViewModelTest {
             return result
         }
 
-        override suspend fun capture(token: String, text: String, idempotencyKey: String) =
+        override suspend fun login(username: String, password: String, label: String) =
+            InvalidCredentials("unused")
+
+        override suspend fun capture(token: String, text: String, idempotencyKey: String, tags: List<String>) =
             Disposition.DELIVERED
     }
 
@@ -54,9 +57,14 @@ class SettingsViewModelTest {
         return CaptureQueue(storage)
     }
 
-    private class FakePreferences(private var sends: Boolean = true) : CapturePreferences {
+    private class FakePreferences(
+        private var sends: Boolean = true,
+        private var unlock: Boolean = false,
+    ) : CapturePreferences {
         override fun enterSends() = sends
         override fun setEnterSends(sends: Boolean) { this.sends = sends }
+        override fun requireUnlock() = unlock
+        override fun setRequireUnlock(require: Boolean) { unlock = require }
     }
 
     private fun viewModel(
@@ -336,6 +344,51 @@ class SettingsViewModelTest {
         model.load()
 
         assertFalse(model.state.value.enterSends)
+    }
+
+    @Test
+    fun `unlock is not required by default`() = runTest {
+        // The app's behaviour today, and what Vince wants for his own use --
+        // this is opt-in hardening, not a new default everyone is pushed
+        // into.
+        val model = viewModel(Identified(alice), preferences = FakePreferences())
+
+        model.load()
+
+        assertFalse(model.state.value.requireUnlock)
+    }
+
+    @Test
+    fun `turning on require-unlock is remembered`() = runTest {
+        val preferences = FakePreferences()
+        val model = viewModel(Identified(alice), preferences = preferences)
+        model.load()
+
+        model.setRequireUnlock(true)
+
+        assertTrue(model.state.value.requireUnlock)
+        assertTrue(preferences.requireUnlock())
+    }
+
+    @Test
+    fun `a saved require-unlock choice is what the screen opens with`() = runTest {
+        val model = viewModel(Identified(alice), preferences = FakePreferences(unlock = true))
+
+        model.load()
+
+        assertTrue(model.state.value.requireUnlock)
+    }
+
+    @Test
+    fun `the require-unlock choice survives being unable to reach Clarice too`() = runTest {
+        val model = viewModel(
+            Unreachable("Could not reach Clarice."),
+            preferences = FakePreferences(unlock = true),
+        )
+
+        model.load()
+
+        assertTrue(model.state.value.requireUnlock)
     }
 
     @Test

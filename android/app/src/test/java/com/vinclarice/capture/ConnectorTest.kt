@@ -26,17 +26,33 @@ class ConnectorTest {
         override fun clear() { saved = null; clearedTimes++ }
     }
 
-    private class FakeApi(private val result: IdentifyResult) : ClariceApi {
+    private class FakeApi(
+        private val result: IdentifyResult,
+        private val loginResult: LoginResult = InvalidCredentials("unused"),
+    ) : ClariceApi {
         var calls = 0
         var lastToken: String? = null
+        var loginCalls = 0
+        var lastUsername: String? = null
+        var lastPassword: String? = null
+        var lastLabel: String? = null
+
         override suspend fun identify(token: String): IdentifyResult {
             calls++
             lastToken = token
             return result
         }
 
+        override suspend fun login(username: String, password: String, label: String): LoginResult {
+            loginCalls++
+            lastUsername = username
+            lastPassword = password
+            lastLabel = label
+            return loginResult
+        }
+
         // Connecting never sends a capture; CaptureApiTest covers this.
-        override suspend fun capture(token: String, text: String, idempotencyKey: String) =
+        override suspend fun capture(token: String, text: String, idempotencyKey: String, tags: List<String>) =
             Disposition.DELIVERED
     }
 
@@ -137,6 +153,91 @@ class ConnectorTest {
 
         outcomes.forEach { outcome ->
             assertFalse(outcome.toString().contains("tok_secret"))
+        }
+    }
+
+    @Test
+    fun `a successful login saves the returned token, not anything typed`() = runTest {
+        val store = FakeStore()
+        val outcome = Connector(FakeApi(Unauthorised, LoggedIn("tok_fresh", alice)), store)
+            .logIn("alice", "correct horse")
+
+        assertEquals(Connected(alice), outcome)
+        assertEquals("tok_fresh", store.read())
+    }
+
+    @Test
+    fun `invalid credentials are never saved, and the server's own message is kept`() = runTest {
+        val store = FakeStore()
+        val outcome = Connector(
+            FakeApi(Unauthorised, InvalidCredentials("3 attempts remaining before a temporary lock.")),
+            store,
+        ).logIn("alice", "wrong")
+
+        assertEquals(Refused("3 attempts remaining before a temporary lock."), outcome)
+        assertNull(store.read())
+    }
+
+    @Test
+    fun `an unreachable server during login does not save and does not blame the password`() = runTest {
+        val store = FakeStore()
+        val outcome = Connector(FakeApi(Unauthorised, LoginUnreachable("offline")), store)
+            .logIn("alice", "correct horse")
+
+        assertTrue(outcome is Failed)
+        assertNull(store.read())
+    }
+
+    @Test
+    fun `the device label travels with the login request`() = runTest {
+        val api = FakeApi(Unauthorised, LoggedIn("tok", alice))
+
+        Connector(api, FakeStore()).logIn("alice", "correct horse", label = "Android (SM-S928U1)")
+
+        assertEquals("Android (SM-S928U1)", api.lastLabel)
+    }
+
+    @Test
+    fun `the label defaults to something reasonable when the caller doesn't say`() = runTest {
+        val api = FakeApi(Unauthorised, LoggedIn("tok", alice))
+
+        Connector(api, FakeStore()).logIn("alice", "correct horse")
+
+        assertEquals("Android", api.lastLabel)
+    }
+
+    @Test
+    fun `an empty username or password is refused without troubling the server`() = runTest {
+        val api = FakeApi(Unauthorised, LoggedIn("tok", alice))
+
+        val outcome = Connector(api, FakeStore()).logIn("", "correct horse")
+
+        assertEquals(Blank, outcome)
+        assertEquals(0, api.loginCalls)
+    }
+
+    @Test
+    fun `logging in again replaces the stored token`() = runTest {
+        val store = FakeStore().apply { save("tok_old") }
+
+        Connector(FakeApi(Unauthorised, LoggedIn("tok_new", alice)), store)
+            .logIn("alice", "correct horse")
+
+        assertEquals("tok_new", store.read())
+    }
+
+    @Test
+    fun `neither the password nor the returned token appear in the outcome`() = runTest {
+        val outcomes = listOf(
+            Connector(FakeApi(Unauthorised, LoggedIn("tok_secret", alice)), FakeStore())
+                .logIn("alice", "password_secret"),
+            Connector(FakeApi(Unauthorised, InvalidCredentials("unused")), FakeStore())
+                .logIn("alice", "password_secret"),
+        )
+
+        outcomes.forEach { outcome ->
+            assertFalse(outcome.toString().contains("tok_secret"))
+            assertFalse(outcome.toString().contains("password_secret"))
         }
     }
 

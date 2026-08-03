@@ -25,10 +25,24 @@ class ConnectViewModelTest {
         override fun clear() { saved = null }
     }
 
-    private class FakeApi(var result: IdentifyResult) : ClariceApi {
+    private class FakeApi(
+        var result: IdentifyResult,
+        var loginResult: LoginResult = InvalidCredentials("unused"),
+    ) : ClariceApi {
+        var lastLoginUsername: String? = null
+        var lastLoginPassword: String? = null
+        var lastLoginLabel: String? = null
+
         override suspend fun identify(token: String) = result
 
-        override suspend fun capture(token: String, text: String, idempotencyKey: String) =
+        override suspend fun login(username: String, password: String, label: String): LoginResult {
+            lastLoginUsername = username
+            lastLoginPassword = password
+            lastLoginLabel = label
+            return loginResult
+        }
+
+        override suspend fun capture(token: String, text: String, idempotencyKey: String, tags: List<String>) =
             Disposition.DELIVERED
     }
 
@@ -36,6 +50,15 @@ class ConnectViewModelTest {
 
     private fun viewModel(result: IdentifyResult, store: TokenStore = FakeStore()) =
         ConnectViewModel(Connector(FakeApi(result), store))
+
+    private fun loginViewModel(
+        loginResult: LoginResult,
+        store: TokenStore = FakeStore(),
+        deviceLabel: String = "Android",
+    ): Pair<ConnectViewModel, FakeApi> {
+        val api = FakeApi(Unreachable("unused"), loginResult)
+        return ConnectViewModel(Connector(api, store), deviceLabel = deviceLabel) to api
+    }
 
     @Test
     fun `starts empty and idle`() {
@@ -110,6 +133,19 @@ class ConnectViewModelTest {
     }
 
     @Test
+    fun `a refused token points at logging in again, not just the web`() = runTest {
+        // Written before login existed in the app at all -- "create a new
+        // one on the web and paste it again" was the only path there was.
+        // It is no longer the easiest one.
+        val model = viewModel(Unauthorised)
+        model.onTokenChange("tok_bad")
+
+        model.connect()
+
+        assertTrue(model.state.value.error!!.contains("Log in again"))
+    }
+
+    @Test
     fun `an unreachable server says so rather than blaming the token`() = runTest {
         val model = viewModel(Unreachable("Could not reach Clarice."))
         model.onTokenChange("tok_good")
@@ -145,10 +181,116 @@ class ConnectViewModelTest {
     }
 
     @Test
+    fun `typing updates the username and password fields`() {
+        val model = viewModel(Identified(alice))
+
+        model.onUsernameChange("alice")
+        model.onPasswordChange("hunter2")
+
+        assertEquals("alice", model.state.value.username)
+        assertEquals("hunter2", model.state.value.password)
+    }
+
+    @Test
+    fun `a successful login reports the account and stores the returned token`() = runTest {
+        val store = FakeStore()
+        val (model, _) = loginViewModel(LoggedIn("tok_fresh", alice), store)
+        model.onUsernameChange("alice")
+        model.onPasswordChange("correct horse")
+
+        model.logIn()
+
+        assertEquals(alice, model.state.value.connectedAs)
+        assertEquals("tok_fresh", store.read())
+    }
+
+    @Test
+    fun `the password never remains on screen, win or lose`() = runTest {
+        val (model, _) = loginViewModel(InvalidCredentials("Incorrect username or password."))
+        model.onUsernameChange("alice")
+        model.onPasswordChange("wrong")
+
+        model.logIn()
+
+        assertEquals("", model.state.value.password)
+    }
+
+    @Test
+    fun `invalid credentials keep the username so it need not be retyped`() = runTest {
+        val (model, _) = loginViewModel(InvalidCredentials("Incorrect username or password."))
+        model.onUsernameChange("alice")
+        model.onPasswordChange("wrong")
+
+        model.logIn()
+
+        assertEquals("alice", model.state.value.username)
+        assertNotNull(model.state.value.error)
+        assertNull(model.state.value.connectedAs)
+    }
+
+    @Test
+    fun `an unreachable server says so rather than blaming the credentials`() = runTest {
+        val (model, _) = loginViewModel(LoginUnreachable("Could not reach Clarice."))
+        model.onUsernameChange("alice")
+        model.onPasswordChange("correct horse")
+
+        model.logIn()
+
+        assertEquals("Could not reach Clarice.", model.state.value.error)
+    }
+
+    @Test
+    fun `an empty username or password is refused without a request`() = runTest {
+        val (model, api) = loginViewModel(LoggedIn("tok", alice))
+        model.onPasswordChange("correct horse")
+        // Username left blank.
+
+        model.logIn()
+
+        assertNotNull(model.state.value.error)
+        assertNull(api.lastLoginUsername)
+    }
+
+    @Test
+    fun `the injected device label is what the request carries, not something typed`() = runTest {
+        val (model, api) = loginViewModel(
+            LoggedIn("tok", alice), deviceLabel = "Android (SM-S928U1)",
+        )
+        model.onUsernameChange("alice")
+        model.onPasswordChange("correct horse")
+
+        model.logIn()
+
+        assertEquals("Android (SM-S928U1)", api.lastLoginLabel)
+    }
+
+    @Test
     fun `an already stored token shows as connected on open`() {
         val store = FakeStore().apply { save("tok_existing") }
 
         assertTrue(ConnectViewModel(Connector(FakeApi(Identified(alice)), store)).isConnected)
+    }
+
+    @Test
+    fun `disconnecting forgets the identity this screen was showing`() = runTest {
+        // A regression guard, not new behaviour: this method already existed
+        // and already did the right thing -- what was missing was anyone
+        // calling it. Root wired "Disconnect this phone" to
+        // SettingsViewModel.disconnect() only, which clears the stored
+        // token through a *different* Connector-backed view model and never
+        // touches this one, so returning to Connect kept showing "Connected
+        // as alice." above a login form for someone trying to log in as
+        // somebody else.
+        val store = FakeStore()
+        val model = ConnectViewModel(Connector(FakeApi(Identified(alice)), store))
+        model.onTokenChange("tok_good")
+        model.connect()
+        assertEquals(alice, model.state.value.connectedAs)
+
+        model.disconnect()
+
+        assertNull(model.state.value.connectedAs)
+        assertNull(store.read())
     }
 }
 

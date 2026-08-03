@@ -4,6 +4,7 @@ from django.utils import timezone
 from accounts.models import User
 from capture.forms import EMPTY_CAPTURE_ERROR
 from capture.models import Capture
+from lists.models import Tag
 
 
 PASSWORD = "correct horse battery staple 47!"
@@ -32,6 +33,21 @@ class CaptureInboxViewTest(TestCase):
         self.assertTemplateUsed(response, "capture/inbox.html")
         self.assertTemplateUsed(response, "base.html")
         self.assertContains(response, 'name="text"')
+
+    def test_a_tagged_capture_shows_its_tags(self):
+        capture = Capture.objects.create(owner=self.user, text="Design a boss fight")
+        capture.tags.add(Tag.objects.create(owner=self.user, name="game-dev"))
+
+        response = self.client.get("/capture/")
+
+        self.assertContains(response, "game-dev")
+
+    def test_an_untagged_capture_shows_no_tag_pills(self):
+        Capture.objects.create(owner=self.user, text="Ring the vet")
+
+        response = self.client.get("/capture/")
+
+        self.assertNotContains(response, 'class="capture-tag"')
 
     def test_shows_unresolved_captures_newest_first(self):
         Capture.objects.create(owner=self.user, text="Older thought")

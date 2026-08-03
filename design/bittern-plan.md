@@ -656,6 +656,37 @@ production, online/offline captures survive those flows, forced retries create
 no duplicates, token revocation is recoverable without data loss, and the app
 stores only the encrypted credential and explicitly visible pending queue.
 
+**Forced retry, closed on a device — August 3, 2026.** The gap above stood
+because reaching the ceiling needs a build pointed at a URL that will never
+answer, and nobody had put that build on a phone. One did, on the same
+Samsung SM-S928U1 used for the share tests below, against a local instance
+rather than production — `-PclariceBaseUrl=http://127.0.0.1:9/`, a port
+nothing listens on, reached from the device through `adb reverse`. A capture
+queued, failed five times on schedule with the app's own exponential backoff
+(30s, 60s, 120s, 240s — about the eight minutes the plan estimated), and
+Settings read "Stopped after 5 attempts." with a "Try again" link, not a
+silent retry loop. Pointing the build back at a reachable server and tapping
+that link delivered it. The server holds exactly one row for it.
+
+That one row is the finding, not the six attempts it took to get there.
+`CaptureQueue.retry()` resets `attempts` and `state` and nothing else — the
+`key` field is untouched by that function, read directly rather than
+inferred — so the manual retry that finally landed carried the same
+identity as the five that didn't. The same server-side guarantee B0.1 proved
+in isolation and M4 proved for an item that succeeded on its first attempt
+now has both halves on one phone: an item that *failed* its way to the
+ceiling still cannot become two rows.
+
+**No emulator run, still open.** This SDK install has `emulator.exe` and
+platform-tools but no AVD, no `avdmanager`, no `sdkmanager`, and no system
+image to build one from — creating one means a multi-gigabyte download
+that Android Studio's own AVD Manager does far more easily than a
+command-line bootstrap would. Everything else M4 asked a device for is now
+answered twice over — once against production on the SM-F966U, once
+against a local instance on the SM-S928U1 — which makes the emulator the
+one genuinely open item left in this criterion, not a formality alongside
+the rest.
+
 ### M5 — share to capture
 
 **Status: complete, August 2, 2026.** Clarice Capture is registered as a
@@ -691,11 +722,22 @@ Three decisions in `SharedText` worth keeping:
   would discard what they just shared, so a share opens Capture even when no
   token is stored; the queue holds it and says so.
 
-**Not device-tested:** sharing plain text rather than a link, and sharing
-while offline. Both go through exactly the same code as paths that were
-tested — the parsing is one pure function with nine tests, and an offline
-share is an ordinary submit into the queue — but neither has been run on the
-phone.
+**Both closed on a device — August 3, 2026.** Plain text arrived
+seeded and unaltered ("Grocery run: eggs, milk, bread, and the good coffee",
+no URL, no subject) and reached the server as one row with a real
+idempotency key. Offline took more to prove honestly: this device stays
+connected over USB for `adb`, and Android's WorkManager treats that USB
+link as a valid network — `NetworkType.CONNECTED` is satisfied by it
+regardless of Wi-Fi or mobile data state, and neither `svc wifi/data
+disable` nor toggling airplane mode in the real Settings UI changes that,
+because airplane mode silences radios and this is a wire. Genuinely offline
+needed the cable out: staged the share, had the phone's owner unplug,
+tap Capture, wait, and plug back in. The server had nothing for it
+while unplugged and exactly one row, correct text, once reconnected. Both
+were the same pure-function parsing and ordinary queue submit the plan
+predicted — the device added no surprise, which is itself the finding
+worth recording after F2/F3's ui-second-pass-plan.md session found the
+opposite for the web UI.
 
 After the basic Android capture loop is reliable, register Clarice as an
 Android share target for plain text and URLs. A share opens an editable capture

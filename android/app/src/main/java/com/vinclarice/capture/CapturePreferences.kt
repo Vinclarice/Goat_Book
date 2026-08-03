@@ -24,6 +24,18 @@ interface CapturePreferences {
     fun enterSends(): Boolean
 
     fun setEnterSends(sends: Boolean)
+
+    /**
+     * Whether opening the app costs a device unlock first.
+     *
+     * Off by default -- the stored token already never expires on its own
+     * (design/android-login-plan.md), and that permanence is what most
+     * people using this app want. This is opt-in hardening for whoever
+     * doesn't, not a new default anyone is pushed into.
+     */
+    fun requireUnlock(): Boolean
+
+    fun setRequireUnlock(require: Boolean)
 }
 
 class AndroidCapturePreferences(
@@ -43,8 +55,15 @@ class AndroidCapturePreferences(
         prefs.edit().putBoolean(KEY_ENTER_SENDS, sends).apply()
     }
 
+    override fun requireUnlock(): Boolean = prefs.getBoolean(KEY_REQUIRE_UNLOCK, false)
+
+    override fun setRequireUnlock(require: Boolean) {
+        prefs.edit().putBoolean(KEY_REQUIRE_UNLOCK, require).apply()
+    }
+
     private companion object {
         const val DEFAULT_PREFS = "clarice_capture_settings"
         const val KEY_ENTER_SENDS = "enter_sends"
+        const val KEY_REQUIRE_UNLOCK = "require_unlock"
     }
 }

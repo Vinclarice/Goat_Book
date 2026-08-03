@@ -114,6 +114,26 @@ class CaptureApiTest {
     }
 
     @Test
+    fun `tags are optional and absent from the body by default`() = runTest {
+        server.server.enqueue(accepted(201))
+
+        api().capture("tok", "buy milk", key)
+
+        val body = JSONObject(server.server.takeRequest().body!!.utf8())
+        assertEquals(0, body.getJSONArray("tags").length())
+    }
+
+    @Test
+    fun `tags travel in the request body`() = runTest {
+        server.server.enqueue(accepted(201))
+
+        api().capture("tok", "design a boss fight", key, tags = listOf("game-dev"))
+
+        val body = JSONObject(server.server.takeRequest().body!!.utf8())
+        assertEquals("game-dev", body.getJSONArray("tags").getString(0))
+    }
+
+    @Test
     fun `the token never appears in what is sent as the body`() = runTest {
         server.server.enqueue(accepted(201))
 

@@ -83,6 +83,14 @@
               </div>
               <p class="text-xs text-muted-foreground">{{ capture.created_at|date:"j M Y, H:i" }}</p>
 
+              {% if capture.tags.all %}
+                <div class="flex flex-wrap gap-1">
+                  {% for tag in capture.tags.all %}
+                    <span class="capture-tag rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{{ tag.name }}</span>
+                  {% endfor %}
+                </div>
+              {% endif %}
+
               <div class="flex flex-wrap items-center gap-2">
                 {% if lists %}
                   <form method="post" action="{% url 'promote_capture_to_task' capture.id %}" class="flex items-center gap-1">

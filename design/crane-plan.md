@@ -75,7 +75,12 @@ until somebody checks.
 
 - [ ] A forwarded contact message arrives in the inbox rather than spam, now
   that DMARC enforces.
-- [ ] DMARC aggregate reports begin arriving at `dmarc@vinclarice.com`.
+- [x] DMARC aggregate reports begin arriving at `dmarc@vinclarice.com`.
+  **Confirmed August 3, 2026** — the first report arrived that morning,
+  reported by Vince. This is the half of DMARC that needed elapsed time
+  rather than work: the policy was published during Bittern and the
+  reporting address could only be proven by a receiving mail provider
+  choosing to send to it.
 - [ ] A real production 500 reaches Sentry, not only the controlled probe.
 
 ### The New York morning digest

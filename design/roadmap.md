@@ -286,8 +286,15 @@ blocked on the interface C2 documented. That interface is now fixed, so the
 item is **unblocked rather than cleared** — it still wants someone to
 actually exercise the rule against production.
 
-The three infrastructure confirmations still need elapsed time. The five
-Android gaps still need a phone.
+**Two of the three infrastructure confirmations still need elapsed time.**
+DMARC aggregate reports began arriving at `dmarc@vinclarice.com` on the
+morning of August 3, 2026 — the first of the three to come good, and the one
+that could only ever be settled by a receiving provider choosing to report.
+Still owed: a forwarded contact message landing in the inbox rather than
+spam, and a real production 500 reaching Sentry rather than only the
+controlled probe.
+
+The five Android gaps still need a phone.
 
 
 ## Later — visible, not scheduled

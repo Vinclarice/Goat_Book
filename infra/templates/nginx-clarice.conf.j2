@@ -14,6 +14,32 @@ limit_req_zone $binary_remote_addr zone=clarice_auth:10m rate=5r/m;
 # messages and waiting.
 limit_req_zone $binary_remote_addr zone=clarice_contact:10m rate=10r/m;
 
+# The landing page is also a login form: accounts.views.LandingLoginView is a
+# LoginView, so POST / authenticates exactly as POST /accounts/login/ does.
+# The auth zone above therefore had a hole in it -- the strictest control on
+# the site was bypassed by the front door. See design/architecture-trajectory.md
+# 6, which carried this as an outstanding item.
+#
+# Keyed on the request method rather than on the address alone, because / is
+# unlike /accounts/login/ in one way that matters: it is the public front
+# door. Throttling its GETs would trade a real availability risk -- a visitor
+# reloading the homepage, or being shown it -- for no security gain, since a
+# GET returns a form rather than attempting a login. An empty key disables
+# the limit for that request, which is nginx's documented idiom for
+# conditional rate limiting.
+#
+# This is a second budget rather than a shared one, so a single IP can spend
+# 5r/m here and 5r/m at /accounts/login/. Deliberate: django-axes locks the
+# *account* after five failures regardless of source, so the difference
+# between five and ten attempts a minute from one address is not the control
+# that matters, and unifying the budget would mean changing the existing
+# rule's semantics as a side effect of closing a different hole.
+map $request_method $landing_login_key {
+    POST    $binary_remote_addr;
+    default "";
+}
+limit_req_zone $landing_login_key zone=clarice_landing:10m rate=5r/m;
+
 # Reject unknown hostnames before they reach Django. The TLS catch-all rejects
 # the handshake without needing to present a certificate for an unknown name.
 server {
@@ -68,6 +94,19 @@ server {
     # is what makes it trustworthy.
     location = /contact/ {
         limit_req zone=clarice_contact burst=5 nodelay;
+        limit_req_status 429;
+
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Exact match, so only the landing page itself is covered and every other
+    # path still falls through to the catch-all below.
+    location = / {
+        limit_req zone=clarice_landing burst=3 nodelay;
         limit_req_status 429;
 
         proxy_pass http://127.0.0.1:8000;

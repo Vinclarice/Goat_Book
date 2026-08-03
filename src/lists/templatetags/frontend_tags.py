@@ -16,7 +16,7 @@ register = template.Library()
 # and stays in sync with whatever SERVER_THEME says, so a stale value from
 # a previous account/device doesn't linger across a login/logout.
 _THEME_RESOLUTION_SCRIPT_TEMPLATE = """
-<script>
+<script nonce="__NONCE__">
 (function () {
   var STORAGE_KEY = "clarice-theme";
   var COOKIE_NAME = "clarice_theme";
@@ -133,10 +133,22 @@ def token_styles():
     )
 
 
-@register.simple_tag
-def theme_resolution_script(user_theme=""):
+@register.simple_tag(takes_context=True)
+def theme_resolution_script(context, user_theme=""):
+    """The pre-paint theme script, carrying the request's CSP nonce.
+
+    takes_context so the nonce can be read off the request: the policy names
+    this script specifically rather than permitting inline script generally,
+    so the tag and clarice.middleware have to agree on the value.
+
+    Falls back to an empty nonce attribute when there is no request -- a tag
+    rendered outside a request cycle should not raise, and a script with no
+    nonce simply fails the policy rather than breaking the render.
+    """
     server_value = user_theme if user_theme in ("system", "light", "dark") else None
+    request = context.get("request")
+    nonce = getattr(request, "csp_nonce", "") if request is not None else ""
     script = _THEME_RESOLUTION_SCRIPT_TEMPLATE.replace(
         "__SERVER_THEME__", json.dumps(server_value),
-    )
+    ).replace("__NONCE__", nonce)
     return mark_safe(script)

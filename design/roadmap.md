@@ -260,11 +260,20 @@ checkbox and a switch.
   sitting with a real project on a real phone, which either confirms them or
   replaces them with something better. That opens the next release rather
   than reopening this one.
-- **The vocabulary half of Crane 0**, still deferred. Moving `text`, `list`,
-  `cadence`, tags and notes off each occurrence and onto a real commitment
-  template was blocked on knowing what a subtask is. Dunlin answered that —
-  a Checklist Step — and never gave the work a slice. See
-  [`crane-plan.md`](crane-plan.md) §3.
+- ~~**The vocabulary half of Crane 0**, still deferred.~~ **Shipped August 3,
+  2026**, after Dunlin — see
+  [`recurring-commitment-vocabulary-plan.md`](recurring-commitment-vocabulary-plan.md).
+  `RecurringCommitment` is a real template now: it holds what the next
+  occurrence starts as, each occurrence keeps its own snapshot of what it
+  actually ran under, editing writes through as "this and future", and
+  cadence lives on the commitment rather than being repeated down a chain.
+  Deployed across `DEPLOYED-2026-08-03/0253` and `/0313`.
+
+  **`crane-plan.md` §3 contradicted itself and the brief records the
+  correction:** it described the work as *moving* `text` onto the template,
+  while its own acceptance example required the earlier occurrences to keep
+  the old title. It is a template plus a snapshot, not a move — the same pair
+  `Routine`/`RoutineOccurrence` already shipped.
 
 ### Still carried in from Bittern, through Crane
 
@@ -277,7 +286,13 @@ blocked on the interface C2 documented. That interface is now fixed, so the
 item is **unblocked rather than cleared** — it still wants someone to
 actually exercise the rule against production.
 
-The three infrastructure confirmations still need elapsed time.
+**Two of the three infrastructure confirmations still need elapsed time.**
+DMARC aggregate reports were confirmed arriving at `dmarc@vinclarice.com` at
+05:54 on August 3, 2026 — the first of the three to come good, and the one
+that could only ever be settled by a receiving provider choosing to report.
+Still owed: a forwarded contact message landing in the inbox rather than
+spam, and a real production 500 reaching Sentry rather than only the
+controlled probe.
 
 **Three of the five Android gaps closed — August 3, 2026, on a Samsung
 SM-S928U1.** The forced-retry path, a plain-text share and an offline share
@@ -285,9 +300,10 @@ are all now exercised on a device; `crane-plan.md` §2 has the detail and
 `bittern-plan.md` M4/M5 have the evidence. The remaining two are not phone
 problems: no emulator run, because this SDK install has no AVD and no way to
 build one without a multi-gigabyte download better done through Android
-Studio's own AVD Manager; and release signing, attempted the same session
-and blocked by the session's own classifier on writing the generated
-keystore password to disk — needs the keystore made by hand or an explicit
+Studio's own AVD Manager; and release signing, which this branch wired into
+the build but deliberately left unfinished — attempted the same session and
+blocked by the session's own classifier on writing the generated keystore
+password to disk, so it still needs the keystore made by hand or an explicit
 permission grant.
 
 

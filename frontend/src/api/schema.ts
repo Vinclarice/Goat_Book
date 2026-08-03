@@ -182,9 +182,11 @@ export interface paths {
          *     drift from the first.
          *
          *     One generic 401 for every failure -- wrong password, no such account,
-         *     a deactivated one, or a lockout in progress -- deliberately
-         *     indistinguishable, the same as the web login form gives away nothing
-         *     about which part was wrong.
+         *     or a deactivated one -- deliberately indistinguishable, the same as the
+         *     web login form gives away nothing about which part was wrong. The
+         *     attempts-remaining count in the message is safe alongside that: axes
+         *     counts by the username string typed, real account or not, so a made-up
+         *     username counts down exactly the same way a real one does.
          */
         post: operations["accounts_api_v1_log_in"];
         delete?: never;

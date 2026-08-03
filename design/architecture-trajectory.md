@@ -612,11 +612,51 @@ trigger stated so it can be deferred honestly rather than quietly.
   several server threads, which is not how Postgres behaves, and that gap
   bit for real once already (§3's `IndexError` in `apply_converters`). That
   reason alone still justifies the move.
-- **Rate-limit the landing page's login form.** `nginx-clarice.conf.j2` limits
-  `^/(accounts/login|accounts/signup)/` at 5r/m, and `/` is also a full login
-  view — so the strictest control on the site is bypassed by the front door.
-- **Set gunicorn's worker and thread count explicitly.** One line in the
-  `Dockerfile`, upstream of every other capacity question.
+- ~~**Rate-limit the landing page's login form.**~~ **Done August 3, 2026.**
+  `/` is a `LoginView`, so `POST /` authenticated exactly as
+  `POST /accounts/login/` did while only the latter was throttled. `location
+  = /` now carries a 5r/m limit, keyed on the request method so that only
+  POSTs are counted: the landing page is the public front door, and
+  throttling its GETs would have traded a real availability risk for no
+  security gain, since a GET returns a form rather than attempting a login.
+  A second budget rather than a shared one, on the reasoning recorded in the
+  template.
+- ~~**Set gunicorn's worker and thread count explicitly.**~~ **Done August 3,
+  2026, and it was not the one line this entry assumed.** Measuring first
+  changed the answer: the droplet has one core, 458MB of RAM and **no swap**,
+  and the container measured 94MB running gunicorn's default — a single sync
+  worker, meaning production served one request at a time and any slow query
+  blocked the site.
+
+  The usual `(2 x cores) + 1` would have been actively harmful here: three
+  workers is roughly 204MB against ~152MB available, with no swap to absorb
+  it, so the OOM killer takes the container rather than the site merely
+  slowing. It is now two workers and four threads — redundancy so one wedged
+  worker is not an outage, threads for the concurrency, since nearly every
+  request is "ask Postgres, wait, render" and a thread costs almost nothing
+  where a worker costs ~55MB. `--max-requests` with jitter bounds any leak.
+
+  **Corrected the same day, after it broke a deploy.** Two workers took the
+  container to 154MB and left ~95MB free on the host — fine at rest, and not
+  enough for the host's own maintenance. The next deploy's
+  `apt-mark manual docker.io` thrashed for four minutes and was then
+  OOM-killed (rc 137), failing the play at "Install nginx and certbot". Site
+  stayed up, `dpkg --audit` stayed clean, deploy did not finish. It is one
+  worker and four threads now.
+
+  **The error is worth more than the number.** The container was sized at
+  rest against available memory, when what mattered was the peak the *host*
+  needs while apt and dpkg run. The planned check — "drop to one worker if it
+  settles above 180MB" — measured the wrong thing and would never have fired
+  at 154MB. A container that fits is not the same as a host that can still
+  maintain itself.
+
+  **New item, and the one that actually resolves this: give the droplet
+  swap.** 458MB with no swap has no room for an application and routine
+  package management at the same time, so every future apt run is one
+  memory-hungry step away from the same failure — regardless of gunicorn.
+  A modest swapfile would have absorbed this entirely and costs nothing but
+  disk. A larger droplet is the alternative and is a spending decision.
 - ~~**Make `List.owner` non-null:** audit live rows, backfill or remove
   orphans, then a schema migration.~~ **Done August 2, 2026**, as release D
   slice 6 — see [`release-d-plan.md`](release-d-plan.md) §5. Of the two
@@ -670,10 +710,25 @@ trigger stated so it can be deferred honestly rather than quietly.
   first — rather than a guess at what search will want. It deliberately does
   not serve the substring `q` filter; that needs full-text or trigram support
   and is release E's decision.
-- **Add a content security policy.** `X-Frame-Options` and content-type-nosniff
-  are already covered — `XFrameOptionsMiddleware` and `SecurityMiddleware` are
-  both enabled and Django's defaults for them are the safe ones. CSP is the
-  genuine gap.
+- ~~**Add a content security policy.**~~ **Done August 3, 2026, report-only
+  to begin with.** `clarice.middleware.ContentSecurityPolicyMiddleware`
+  attaches a per-request nonce and the policy naming it.
+
+  **Report-only is not a way to defer knowing.** The one inline script this
+  application deliberately has — the theme resolution script, which must run
+  before first paint or the page flashes the wrong theme — is handled with a
+  nonce rather than left to surface as a violation nobody was surprised by.
+  `script-src` therefore has no `'unsafe-inline'`, which is the whole point.
+  `style-src` keeps it, stated as a trade rather than an oversight:
+  `app_shell.html` has an inline `<style>` block and React writes inline
+  style *attributes* for the area colour dots, which a nonce cannot cover.
+
+  **The suite does the looking.** Report-only only helps if somebody reads
+  the console, so `ContentSecurityPolicyTest` loads both shells in a real
+  Chromium and asserts nothing was reported — and separately that the theme
+  script actually *ran*, since a mismatched nonce would leave the page
+  rendering while the script silently did not. Switching to enforcement is a
+  one-line header change once real use has stayed quiet.
 
 **Investigate, do not schedule yet: `Item`'s parent/recurrence rules as check
 constraints.** The appeal is real — `Item.Meta` already carries

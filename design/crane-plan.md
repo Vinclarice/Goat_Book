@@ -50,11 +50,23 @@ this checklist's.
   (B2.1) — August 2, 2026.
 - [x] Send an Android capture after the redeploy and confirm the client still
   reaches production. — August 2, 2026.
-- [ ] Confirm B1's opt-out rule in production: a subtask with `always_recurs`
-  false does not clone onto the parent's next occurrence. Three attempts
-  to set this up by hand failed on the interface, not the rule — expect
-  the same friction and route around it rather than reopening C2's
-  finding here.
+- [ ] Confirm B1's opt-out rule in production: a **Checklist Step** with
+  `carries_forward` switched off does not clone onto the task's next
+  occurrence.
+
+  **Restated August 3, 2026, because the original wording had gone stale
+  and would have failed at the moment somebody went to run it.** It said "a
+  subtask with `always_recurs` false" — but Dunlin made a subtask a Checklist
+  Step and `0027_retire_subtask_fields` dropped `always_recurs` outright, so
+  the check named a field that no longer exists. The *rule* is unchanged and
+  still owed; only its vocabulary moved.
+
+  **The friction warning is void too.** This entry told the next person to
+  expect the same three failed attempts and route around them. That interface
+  is fixed: the Repeat/Repeats collision dissolved when a Checklist Step lost
+  its recurrence field, and the two identical checkboxes are now a checkbox
+  and a switch. Setting this up by hand should be unremarkable, and if it is
+  not, that is a new finding rather than the old one.
 
 ### Infrastructure confirmations owed
 
@@ -63,7 +75,21 @@ until somebody checks.
 
 - [ ] A forwarded contact message arrives in the inbox rather than spam, now
   that DMARC enforces.
-- [ ] DMARC aggregate reports begin arriving at `dmarc@vinclarice.com`.
+- [x] DMARC aggregate reports begin arriving at `dmarc@vinclarice.com`.
+  **Confirmed August 3, 2026, 05:54.** Submitter `google.com`, report ID
+  5829377777720365865, DKIM-signed by google.com. This is the half of DMARC
+  that needed elapsed time rather than work: the policy was published during
+  Bittern, and the reporting address could only ever be proven by a receiving
+  provider choosing to send to it.
+
+  **One detail worth carrying to the next item.** The report was
+  `mailed-by: srs.perfora.net` — it reached the inbox through the forwarder,
+  with SRS rewriting the envelope sender so it survived SPF. That is real
+  evidence the forwarding path delivers rather than landing in spam, but it
+  is **not** the contact-message check below and does not clear it: this
+  message was sent by Google and signed by Google, where a forwarded contact
+  message originates from Resend, so the alignment being tested is different.
+  Encouraging, not sufficient.
 - [ ] A real production 500 reaches Sentry, not only the controlled probe.
 
 ### The New York morning digest

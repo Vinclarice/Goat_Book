@@ -2,16 +2,42 @@ from django.db import models
 from django.db.models import Q
 from django.urls import reverse
 
+
+class Recurrence(models.TextChoices):
+    """How often a commitment repeats.
+
+    Module level rather than nested in `Item` because RecurringCommitment is
+    declared above `Item` and needs the same choices -- the cadence is the
+    commitment's rule, and an occurrence's copy is a snapshot of what it ran
+    under. `Item.Recurrence` remains an alias below, so nothing that already
+    says `Item.Recurrence.WEEKLY` has to change.
+    """
+
+    NONE = "none", "Doesn't repeat"
+    DAILY = "daily", "Daily"
+    WEEKLY = "weekly", "Weekly"
+    MONTHLY = "monthly", "Monthly"
+
 class RecurringCommitment(models.Model):
     """The durable identity of a repeating commitment, across its occurrences.
 
-    Deliberately thin: an owner and a lifespan, and nothing else. It is an
-    identity anchor rather than a template -- `text`, `list`, `recurrence`,
-    tags and notes stay on `Item`, where each occurrence is already its own
-    snapshot of what it ran under. Copying them here while `Item` still
-    carries them would create exactly the two-sources-of-truth drift the
-    design is meant to prevent; the whole vocabulary moves at once at release
-    D, or not at all. See design/crane-plan.md 3.
+    A template, as of the vocabulary half -- see
+    design/recurring-commitment-vocabulary-plan.md. It was deliberately thin
+    until then, holding only identity, because copying `text` and `cadence`
+    here while `Item` was the sole authority would have been drift.
+
+    It is not drift now, because the two answer different questions. The
+    template says what the *next* occurrence starts as; each `Item` keeps its
+    own copy as the record of what *that* occurrence actually ran under, so
+    renaming a commitment does not rewrite what June was called. Routine and
+    RoutineOccurrence already ship this exact pair for `target_quantity`, and
+    charter rules 3 and 8 in architecture-trajectory.md are the convention it
+    follows.
+
+    crane-plan.md 3 described this as moving the fields off the occurrence.
+    Its own acceptance example contradicts that -- it requires the earlier
+    occurrences to keep the old title -- and the example is the better
+    statement of intent. The plan file records that correction.
 
     Owner is direct rather than reached through `List`, whose own owner is
     still nullable for anonymous-era reasons. Nothing here inherits that.
@@ -30,6 +56,27 @@ class RecurringCommitment(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     ended_at = models.DateTimeField(null=True, blank=True)
 
+    # The template half. Every field below seeds the next occurrence and is
+    # deliberately optional: slice 1 adds them inert, and a commitment
+    # created before the backfill ran carries empty values rather than
+    # blocking on them.
+    text = models.TextField(blank=True, default="")
+    # Nullable where Item.list is not: an Item must live somewhere, but a
+    # commitment whose area was deleted should end rather than vanish, and
+    # SET_NULL keeps the series and its history intact.
+    list = models.ForeignKey(
+        "List",
+        related_name="commitments",
+        blank=True,
+        null=True,
+        on_delete=models.SET_NULL,
+    )
+    cadence = models.CharField(
+        max_length=12, choices=Recurrence.choices, default=Recurrence.NONE,
+    )
+    notes = models.TextField(blank=True, default="")
+    tags = models.ManyToManyField("Tag", related_name="commitments", blank=True)
+
     def __str__(self):
         return f"commitment {self.pk}"
 
@@ -41,11 +88,7 @@ class Item(models.Model):
         COMPLETED = "completed", "Completed"
         ARCHIVED = "archived", "Archived"
 
-    class Recurrence(models.TextChoices):
-        NONE = "none", "Doesn't repeat"
-        DAILY = "daily", "Daily"
-        WEEKLY = "weekly", "Weekly"
-        MONTHLY = "monthly", "Monthly"
+    Recurrence = Recurrence
 
     text = models.TextField(default="")
     list = models.ForeignKey('List', default=None, on_delete=models.CASCADE)

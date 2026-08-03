@@ -1,6 +1,6 @@
 # Clarice — Roadmap
 
-Vince · active planning document · refreshed August 1, 2026
+Vince · active planning document · refreshed August 2, 2026
 
 ## Purpose
 
@@ -8,7 +8,8 @@ This is the forward-looking plan: what is active now, what is next, and
 what has deliberately been deferred. It is not the implementation spec for
 an item; write a focused file in `design/` once work is ready to start.
 
-The completed Albatross work, deployment notes, and lessons learned live in
+The completed Albatross, Bittern and Crane work, deployment notes, and
+lessons learned live in
 [`roadmap-history.md`](roadmap-history.md). Keeping that record separate
 makes this document useful when deciding what to work on next.
 
@@ -24,10 +25,16 @@ and the reasoning, and does not schedule anything on its own.
 
 ## Current product baseline
 
-Albatross is live. It established the API-backed SPA and Postgres foundation,
-then shipped task notes, subtasks, recurrence, Capture triage and Ideas,
-password recovery, personal access tokens, CI, backups, and production
-hardening. The full record is in the history file.
+Three releases are live. **Albatross** established the API-backed SPA and
+Postgres foundation, then shipped task notes, subtasks, recurrence, Capture
+triage and Ideas, password recovery, personal access tokens, CI, backups and
+production hardening. **Bittern** added the Android capture client, per-user
+time zones, and the session and failure-state gaps the web application still
+had. **Crane** made the day the product: the Daily Page is the home surface,
+practice is its own domain rather than a kind of task, repeating commitments
+have an identity across their occurrences, and a weekly review reads the
+record back against denominators that mean something. The full record of
+each is in the history file.
 
 The last known task-UI gap is closed. Completing a recurring task used to
 return the next occurrence without the children created alongside it, so the
@@ -135,97 +142,74 @@ Its only purpose is getting a thought into the inbox quickly; triage remains
 in the web app. The shared idempotent-write contract (M1) is verified against
 production and will serve a future iOS client as a sibling under `ios/`.
 
-## Crane — daily-page foundation
+## Crane — shipped August 2, 2026
 
-### Carried in from Bittern
+**Deployed and tagged.** Two deploys carried it: 17:54 EDT (`c3c57fb`,
+`DEPLOYED-2026-08-02/1754`), which took Crane 0a, 1 and 2 in one run of ten
+migrations, and 20:05 EDT (`e0acf05`, `DEPLOYED-2026-08-02/2005`), which
+took Crane 3's four. `crane` went on after production was verified rather
+than alongside the deploy — the correction Bittern's record asks for. What
+shipped and what it taught are in
+[`roadmap-history.md`](roadmap-history.md); the executable detail, the
+settled design decisions and every slice's acceptance condition stay in
+[`crane-plan.md`](crane-plan.md).
 
-Bittern closed with these unfinished rather than pretending otherwise. None
-of them blocks Crane's design work, and none should be allowed to disappear
-quietly either. Deliberate decision on August 2, 2026: close the release,
-carry the remainder.
+**Verified in production**, with markers each change actually added: the
+review routes answer 401 while a made-up route answers 404, the POST-only
+`/review/{day}/complete` and `/routines/{id}/enough` answer 405 to a GET,
+the served bundle carries "Recent weeks", "Save the review" and "Call it
+enough", and `/app/review` renders on the real account. The earlier deploy
+was verified the same way, and `lists/0023` linked both existing repeating
+tasks there.
 
-**Verifications never run.** Each was written into Bittern's after-deploy
-checklist and left undone; the code is deployed and the behaviour is covered
-by tests, but nobody has watched it in production.
+**What it changed for the product.** The Daily Page is the home surface,
+with a preference to land on the Agenda instead. Practice is a domain of its
+own — routines and their occurrences are peers of tasks, never a kind of
+them. Repeating commitments have a durable identity across occurrences. And
+the weekly review reads all of it back against denominators that mean
+something: completed planned commitments over planned commitments, and met
+periods over the periods a week actually asked for.
 
-- Logout at desktop and narrow widths, then confirm protected API calls
-  fail afterwards. (B2)
-- A hard-refreshed `/app/agenda` showing navigation content and counts. (B0)
-- A deliberately broken route — `/app/task/999999` — saying what went wrong
-  and offering a way out rather than rendering blank. (B2.1, the slice the
-  final deploy carried)
-- An Android capture after the redeploy, confirming the client still reaches
-  production.
-- B1's opt-out rule: a subtask with `always_recurs` false must *not* clone
-  onto the next occurrence. Three attempts to set this up failed on the
-  interface rather than the rule; the service tests cover it and the
-  production check does not.
+### Still carried in from Bittern
 
-**Confirmations owed on tonight's infrastructure.** All three share the
-failure mode this release kept meeting — they look like success until
-somebody checks.
+Nine of the fourteen items remain, and [`crane-plan.md`](crane-plan.md) §2
+is the authority on them rather than this list — two copies of a checklist
+is how one of them goes stale. Kept visible here because they are owed, not
+because they are scheduled.
 
-- A forwarded contact message arriving in the inbox rather than spam, now
-  that DMARC enforces.
-- DMARC aggregate reports beginning to arrive at `dmarc@vinclarice.com`.
-- A real production 500 reaching Sentry, not only the controlled probe.
+Cleared: four of the five production verifications and the New York digest,
+on August 2, 2026, in the session that deployed Crane 0a, 1 and 2.
 
-**The New York morning digest**, 07:00–12:00 EDT on August 2. The Makassar
-account's digest fired at its own 07:00 while both `America/New_York`
-accounts stayed on the previous day, which proves the job discriminates.
-What has not been seen is the other side of the same day.
+Outstanding:
 
-**Android gaps**, all recorded in [`bittern-plan.md`](bittern-plan.md):
-no emulator run; the forced-retry path never exercised on a device; a
-plain-text share and an offline share never tested on hardware; no release
-signing, so the APK cannot be given to anybody else; and no way to discard a
-rejected capture, deferred deliberately while the app is a prototype.
+- **B1's opt-out rule in production** — blocked on the interface C2
+  documented rather than on the rule, which its service tests cover. Route
+  around it rather than reopening C2's finding here.
+- **Three infrastructure confirmations**: a forwarded contact message
+  arriving in the inbox rather than spam now that DMARC enforces, DMARC
+  aggregate reports beginning to arrive at `dmarc@vinclarice.com`, and a
+  real production 500 reaching Sentry rather than only the controlled probe.
+  All three need elapsed time rather than work.
+- **Five Android gaps**, recorded in [`bittern-plan.md`](bittern-plan.md):
+  no emulator run; the forced-retry path never exercised on a device; a
+  plain-text share and an offline share never tested on hardware; and no
+  release signing, so the APK cannot be given to anybody else. These need a
+  phone, which is why the deploy did not clear them.
 
-Two design cycles were also named — the parent–child domain redesign and the
-web UI overhaul — and are described under Bittern's C2 and in
-[Named for the next design cycle](#named-for-the-next-design-cycle). Neither
-is Crane's foundation work and neither should be started as a side effect
-of it.
+Four of the nine were blocked on a deploy and no longer are: B1's opt-out
+rule and the three infrastructure confirmations. The remaining five need a
+phone, which no deploy was ever going to provide.
 
-### The foundation itself
+## Release D — the commitment vocabulary
 
-**Direction only.** Clarice's central
-job is not maintaining task lists. It is removing the clerical work from a
-daily practice: capture without categorising, see the right commitments today,
-carry unfinished work forward automatically, and leave a useful record of the
-day.
-
-Crane should establish that daily page as the product's home. It must keep
-tasks, captures, reflections, and ideas as distinct records with clear sources
-of truth — never duplicate a task into a day page merely to make it visible.
-Weekly review and its trustworthy completion/routine trends are the first
-planning feature after that foundation. Routines and habits will be a separate
-domain from recurring tasks. Crane also preserves the old template's persistent
-purpose/guiding-question block as a user-level Personal Compass, separate from
-daily intentions, and adds a durable “pin this to today” focus layer above the
-broader agenda. Routine and target domain design begins as Crane 0, before
-Daily Page implementation; its implementation follows the foundation. A wider
-brief was proposed on August 2, 2026, covering repetition generally rather than
-routines alone, because a recurring task had no durable identity across its
-occurrences — `_spawn_next_occurrence` wrote no link back to the item it
-spawned from — so no trend, streak or completion rate could be assembled from a
-recurring commitment's history the way it will be for a routine. That widening
-was accepted the same day in narrowed form, and the accepted half **shipped
-that day as Crane 0a**: a thin commitment record and the missing foreign key,
-ahead of Crane 1 because the unlinkable history accrues fastest once the Daily
-Page makes this a daily practice. Moving text and cadence onto a real template
-waits for release D and the parent–child redesign it depends on. Both halves
-are described in [`crane-plan.md`](crane-plan.md) §3; the code is on `main` and
-awaiting a deploy. The product
-direction, data boundaries, review metrics, second-brain questions, and
-eventual AI guardrails are in
-[`daily-operating-system-vision.md`](daily-operating-system-vision.md).
-
-### Named for the next design cycle
-
-Two pieces of work were identified on August 2, 2026, while verifying B1 in
-production. Both are design cycles rather than tasks, and neither should be
-started as a side effect of something else.
+**The next release, and the first one Crane does not touch.** Two design
+cycles were named on August 2, 2026 while verifying B1 in production. They
+should be *designed* separately and, on the argument in
+[`architecture-trajectory.md`](architecture-trajectory.md) §5, **ship
+together** — C2's recorded failure was one person needing three attempts to
+set up one recurring parent with three children, and two independent
+defects, one in the model and one in the interface, caused it between them.
+Neither should be started as a side effect of something else.
 
 **Parent–child domain redesign.** The relationship between a task and its
 subtasks is doing too many unrelated jobs, and its rules were arrived at one
@@ -243,7 +227,16 @@ lets you confuse: near-identical labels for opposite concepts, controls that
 vanish as a side effect of an unrelated setting, and rows carrying two
 checkboxes that mean different things. See C2 above for the evidence. This
 is a redesign of language and interaction, not of styling, and it wants its
-own brief.
+own brief. Crane 1 slice 7 added a measurement it should carry: touch
+targets across the application are well under the ~44px guideline, and the
+height lives on the shared `Button` component, so fixing it restyles every
+page — see [Mobile web experience](#mobile-web-experience).
+
+**Also waiting here:** the vocabulary half of Crane 0, deferred on August 2,
+2026. Moving `text`, `list`, `cadence`, tags and notes off each occurrence
+and onto a real commitment template needs an answer to what a subtask is
+first, which is why it waits for the redesign above rather than shipping
+with the identity half. See [`crane-plan.md`](crane-plan.md) §3.
 
 ## Later — visible, not scheduled
 
@@ -367,13 +360,13 @@ Considerations to settle before this becomes a spec:
   installable web app can approximate the share target and an offline queue,
   less reliably. If mobile web lands well, M5 and parts of M3 deserve a fresh
   look rather than being finished out of momentum.
-- **Sequencing against Crane.** Crane makes the Daily Page the home surface.
-  A mobile pass done first would be redone for a surface that does not exist
-  yet; done as part of Crane, the Daily Page is designed mobile-aware from its
-  first day — which is what the vision document already implies when it calls
-  the Daily Page the shared center of the website "and, later, the mobile
-  experience." Fix concrete breakpoint defects as they are found; save the
-  layout work for Crane.
+- **Sequencing against Crane — settled by events.** The argument was that a
+  mobile pass done first would be redone for a surface that did not exist
+  yet, and that done inside Crane the new surfaces would be mobile-aware
+  from their first day. That is what happened: the Daily Page and the weekly
+  review were each measured at a phone width as they landed. What was
+  deferred rather than done is everything Crane did not build — the older
+  surfaces, and the two breakpoints that disagree.
 
 **What would promote it:** M4's device pilot. The moment captures arrive from
 a phone daily, triaging from that same phone will be attempted, and the
@@ -399,11 +392,13 @@ measurements, so it is a finding rather than a feeling when that work starts.
 **Note on scope, August 2, 2026.** The pilot has run, but the stated condition
 is daily phone use producing observable triage friction, and one session is
 not that — so this stays here rather than being promoted on a technicality.
-What Crane does carry is narrower than this item: `crane-plan.md` slice 7 is a
-phone-viewport pass over the assembled Daily Page, one new surface. Triaging
-the Inbox, completing a task and reading an Idea from a phone, and reconciling
-the 760px and 768px breakpoints, are all still here. Crane makes the new
-surface mobile-aware; it does not close this entry.
+What Crane carried is narrower than this item: a phone-viewport pass over
+each new surface — the assembled Daily Page at slice 7, and the weekly review
+at Crane 3 slice 10, both measured at 375x812 against the built bundle and
+both clean. Triaging the Inbox, completing a task and reading an Idea from a
+phone, and reconciling the 760px and 768px breakpoints, are all still here.
+Crane made its own surfaces mobile-aware; it did not close this entry, and
+the touch-target finding above is still the largest thing in it.
 
 ### Recorded candidates with no trigger yet
 
@@ -468,7 +463,7 @@ Production releases use alphabetic bird codenames: `albatross`, then
 ## Keeping this current
 
 Update this file when an item in the active release begins, changes scope,
-ships, or is explicitly deferred — Crane is that release now that Bittern
+ships, or is explicitly deferred — release D is that release now that Crane
 has shipped. Move completed detail into `roadmap-history.md` and keep only
 the resulting baseline or remaining consequence here. When an idea from
 Later earns work, give it a one-line reason and a focused spec before it

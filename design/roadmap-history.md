@@ -9,6 +9,96 @@ This preserves the reasoning, deployment record, and lessons behind completed
 work without making the active roadmap hard to scan. The active plan is
 [`roadmap.md`](roadmap.md).
 
+## Crane — shipped August 2, 2026
+
+`crane` (`e0acf05`) was deployed at 20:05 EDT and marked by
+`DEPLOYED-2026-08-02/2005`. Two deploys carried it: 17:54 EDT, which took
+Crane 0a, 1 and 2 in one run of ten migrations, and the last one, which took
+Crane 3's four. The tag went on after production was verified rather than
+alongside the deploy, which is the correction Bittern's own record asks for.
+
+The plan, the settled design decisions and the slice-by-slice acceptance
+conditions are in [`crane-plan.md`](crane-plan.md), which is kept rather
+than archived; the product direction behind it is in
+[`daily-operating-system-vision.md`](daily-operating-system-vision.md).
+
+It closed with work outstanding by decision rather than omission: the
+remainder of Bittern's carried-in checklist, most of which this deploy
+finally unblocked. That list stays in `crane-plan.md` §2 and in the active
+roadmap until it is cleared.
+
+### What shipped
+
+- **Crane 0 and 0a — the repetition domain.** A design brief settling
+  routines, targets and occurrences, plus the one half built immediately:
+  `RecurringCommitment` and `Item.commitment`, so a recurring task's
+  occurrences form a series rather than a chain of rows whose only
+  connection was a matching text string. Its backfill linked both repeating
+  tasks in production. The vocabulary half — moving `text` and `recurrence`
+  onto a real template — went to release D with the parent–child redesign it
+  depends on.
+- **Crane 1 — the Daily Page**, in seven slices: a written day, the agenda
+  embedded rather than copied, capture, a durable Daily Focus whose
+  `released_at` distinguishes a decommitment from an unfinished commitment,
+  the Personal Compass, the home surface with a preference to opt back out,
+  and a phone-viewport pass over the assembled page.
+- **Crane 2 — routines and task age**, in five slices: `Routine` and
+  `RoutineOccurrence` with lazily created periods and snapshotted targets,
+  correction and skip as distinct statements, routines on the day, pausing
+  that keeps what already happened, and how long a task has been waiting
+  said without reproach.
+- **Crane 3 — the weekly review**, in ten slices: what a week finished, what
+  it planned and what came of it, its own words and what is still waiting, a
+  dated review record that stamps the figure it concluded from, one explicit
+  decision at a time with no bulk reschedule anywhere on the surface, how
+  habits performed over the periods a week actually asked of them, a paused
+  week that says it was paused, a satisfied-but-partial close that is not a
+  skip, four weeks of context, and a phone pass.
+
+### What it taught
+
+- **A slice list hides a missing surface unless you look for one.** It had
+  happened twice — the Daily Page reachable only by typing its URL until
+  slice 6, routine creation with no surface at all until Crane 2 slice 3 —
+  so Crane 3's list was read back for that specific failure before any code
+  was written. It found three: the navigation entry, the way to reach the
+  week *before* this one, and a control for the new partial close. Reading
+  the list for a known failure mode is cheaper than a slice discovering it.
+- **A test can be wrong about the world rather than about the code.** Four
+  times in this release: an assertion that the week of July 27 was not the
+  current one, made on a Sunday inside it; a British date order asserted
+  against a locale-following formatter; an unanchored `/all/` matching "Call
+  the bank"; and a straight apostrophe asserted against the typographic one
+  the application renders. Each looked like a defect for as long as it took
+  to read it. `principles.md` already says to diagnose before editing either
+  side; the corollary is that the test is a suspect too.
+- **The schema could not answer a question the plan asked.** Slice 9 needed
+  "before the account existed" and `accounts.User` carries no creation
+  timestamp at all — no `date_joined`, no `created_at` — which a test found
+  by asserting against one that was not there. Adding the field would have
+  meant defaulting three real accounts to today and marking their whole
+  history prehistoric, so the line was drawn at the owner's first trace
+  instead: earliest day written, task made, routine kept, thought captured.
+  The better question, arrived at by being unable to ask the worse one.
+- **A rule emerged that no single slice set out to make.** Released pins,
+  skipped periods and periods closed as enough all leave a denominator —
+  three decisions taken a slice apart that turned out to be one: *a
+  deliberate decision leaves the denominator; only what merely elapsed stays
+  in it.* It is written that way in the code rather than as three
+  subtractions, so the next decision-shaped outcome inherits it.
+- **A guard that has never been seen red is a claim, not a check.** Three
+  passed on their first run this release — that nothing in the review
+  mutates a task, that the pause backfill seeds what it should, and that the
+  page does not scroll sideways at 375px. Each was made to fail on purpose
+  before being left alone.
+- **Running the tests does not migrate the development database.** The first
+  browser check of the review record failed with `no such table` on a suite
+  that had been green for an hour, because tests build their own database
+  and `migrate` had never been run against the dev one. The page said
+  "Couldn't reach Clarice" with a retry rather than rendering blank, which
+  was B2.1's fix doing precisely what it was built for — an unplanned
+  confirmation of an earlier release from a mistake in this one.
+
 ## Bittern — shipped August 2, 2026
 
 `bittern` (`359a7e3`) was deployed at 00:35 EDT and marked by

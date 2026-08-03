@@ -85,7 +85,7 @@ this step come back", and `_spawn_next_occurrence` already clones the flagged
 ones onto the next occurrence. A step template would be a second mechanism
 for a question the model answers.
 
-## 4. The question this brief cannot answer
+## 4. The question this brief could not answer — answered
 
 **When someone edits a recurring task's title, what did they mean?**
 
@@ -107,7 +107,7 @@ choice at the point of editing, and whether the migration can be additive.
 Every calendar application that has faced this question answers it with a
 prompt, which is a real interface addition rather than a field.
 
-**Recommendation: "this and future", with no prompt, for now.** It matches
+**Decided by Vince, August 3, 2026: "this and future", no prompt.** It matches
 §3's example, it is what renaming a commitment almost always means, and it is
 the reversible choice — adding a prompt later is additive, while teaching
 people that edits are per-occurrence and then changing it is not. State it in
@@ -141,20 +141,47 @@ Written on the recommendation above; slice 1 is independent of it.
    ask for a plan running `lists` backwards and `capture` forwards, which
    Django refuses outright. Every migration test in this app now names both
    apps, and the reason is in a comment rather than in someone's memory.
-2. **`_spawn_next_occurrence` reads the template.** The next occurrence is
-   built from the commitment rather than copied from the completed item.
-   Observable acceptance: rename a commitment's template row directly in the
-   shell, complete the current occurrence, and the new one carries the new
-   name while the completed one keeps the old — §3's acceptance example,
-   executed.
-3. **Editing a linked task writes through to the template.** `edit_item`,
-   `set_item_notes`, `set_item_tags` and the list move update both the
-   occurrence and its commitment when one exists. The interface says so.
-4. **Cadence moves.** `set_recurrence` writes `commitment.cadence`;
+2. **Write-through, then the template read — done, August 3, 2026, and
+   deliberately in that order.** These were listed as slices 3 then 2 and were
+   swapped, because the stated order has a real gap in it: a spawn that reads
+   the template before anything writes to it produces an occurrence carrying
+   the *stale* template name the moment somebody renames a task. That is the
+   same shape of between-slices gap `release-d-plan.md` §5 slice 2 recorded as
+   "acceptable once, but not a promise to repeat", and it was avoidable here
+   by reversing two slices. They landed together.
+
+   **Write-through** — "this and future". `edit_item`, `set_item_notes` and
+   `set_item_tags` update the commitment alongside the occurrence when one
+   exists, through a single `_write_through_to_commitment` helper that is a
+   no-op for an unlinked task. That no-op is the load-bearing part: inventing
+   a commitment there would turn every edited one-off into a series.
+   `_anchor_commitment` now seeds the template at birth rather than leaving it
+   empty, which also covers the legacy path where a pre-Crane-0a row is
+   adopted at completion.
+
+   **The read** — `_spawn_next_occurrence` builds the next occurrence from the
+   commitment rather than copying the completed item. `due_date` stays the
+   exception it always was, computed per occurrence by `_advance_due_date`;
+   cadence still comes from the item until slice 3.
+
+   **A test that passed for the wrong reason, and the one that fixed it.**
+   §3's acceptance example — rename in September, earlier occurrences keep the
+   old title — passes under plain copy-forward too, because the completed item
+   already carries the new text. On its own it proves nothing about where the
+   spawn read from.
+   `test_the_template_wins_when_it_disagrees_with_the_occurrence` sets the
+   template directly, bypassing the write-through so the two deliberately
+   disagree, and only a spawn that reads the template can pass it. Worth
+   remembering the next time an acceptance example looks satisfied.
+
+   Full required suite green at 785. Every pre-existing recurrence test passed
+   unchanged, which is the evidence the write-through keeps the pair in step
+   rather than the behaviour having quietly moved.
+3. **Cadence moves.** `set_recurrence` writes `commitment.cadence`;
    `Item.recurrence` becomes a snapshot written at spawn, and the API
    exposes the commitment's cadence as the editable one. This is the slice
    with a real contract change in it.
-5. **Contract — retire what is now duplicated.** Only whatever step 4 leaves
+4. **Contract — retire what is now duplicated.** Only whatever step 4 leaves
    genuinely dead, and only once nothing reads it, per the expand/migrate/
    contract discipline Dunlin used for `Item.parent`.
 

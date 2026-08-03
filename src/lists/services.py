@@ -102,8 +102,20 @@ def _anchor_commitment(item):
             commitment.ended_at = None
             commitment.save(update_fields=["ended_at"])
         return commitment
-    commitment = RecurringCommitment.objects.create(owner=item.list.owner)
+    # Seeded from the item at birth, not left empty. A commitment adopted at
+    # completion (the legacy path, for rows predating this key) would
+    # otherwise reach its first spawn with a blank template and produce a
+    # blank task.
+    commitment = RecurringCommitment.objects.create(
+        owner=item.list.owner,
+        text=item.text,
+        list=item.list,
+        cadence=item.recurrence,
+        notes=item.notes,
+    )
     item.commitment = commitment
+    if item.pk is not None:
+        commitment.tags.set(item.tags.all())
     return commitment
 
 
@@ -115,6 +127,32 @@ def _end_commitment(item):
     if commitment.ended_at is None:
         commitment.ended_at = timezone.now()
         commitment.save(update_fields=["ended_at"])
+
+
+
+def _write_through_to_commitment(item, **fields):
+    """Editing an occurrence edits its commitment -- "this and future".
+
+    Decided August 3, 2026; see recurring-commitment-vocabulary-plan.md 4.
+    Renaming a recurring task means renaming the commitment, so the next
+    occurrence carries the new name. Occurrences already completed keep their
+    own text, notes and tags -- they are the snapshot of what actually ran,
+    and nothing here touches them.
+
+    A no-op for the ordinary one-off task, which has no commitment. That is
+    the load-bearing part: inventing one here would turn every edited task
+    into a series.
+    """
+    if item.commitment_id is None:
+        return
+    commitment = item.commitment
+    tags = fields.pop("tags", None)
+    if fields:
+        for name, value in fields.items():
+            setattr(commitment, name, value)
+        commitment.save(update_fields=tuple(fields))
+    if tags is not None:
+        commitment.tags.set(tags)
 
 
 @transaction.atomic
@@ -157,6 +195,7 @@ def edit_item(item, text):
         item.save()
     except IntegrityError as error:
         raise TaskConflict(DUPLICATE_ITEM_ERROR) from error
+    _write_through_to_commitment(item, text=normalized)
     return item
 
 
@@ -187,7 +226,9 @@ def set_item_tags(item, tag_names):
     item = Item.objects.select_for_update().select_related("list").get(pk=item.pk)
     if item.status == Item.Status.ARCHIVED:
         raise InvalidTaskTransition("Restore this task before editing it")
-    item.tags.set(_resolve_tags(item.list.owner, tag_names))
+    resolved = _resolve_tags(item.list.owner, tag_names)
+    item.tags.set(resolved)
+    _write_through_to_commitment(item, tags=resolved)
     return item
 
 
@@ -229,6 +270,7 @@ def set_item_notes(item, notes):
     # clearing notes and never having written any are the same state.
     item.notes = (notes or "").strip()
     item.save()
+    _write_through_to_commitment(item, notes=item.notes)
     return item
 
 
@@ -383,16 +425,25 @@ def _spawn_next_occurrence(completed_item, carry_forward_steps=()):
     commitment = _anchor_commitment(completed_item)
     if not was_linked:
         completed_item.save(update_fields=["commitment"])
+    # Built from the template, not copied from the occurrence that just
+    # finished. That is the whole point of the pair: the commitment says what
+    # the next one starts as, and the completed row keeps what *it* was, so
+    # renaming a commitment in September leaves June reading "Pay rent".
+    #
+    # `due_date` is the exception and always was -- computed per occurrence by
+    # _advance_due_date rather than seeded. Cadence still comes from the item;
+    # it moves to the template in the next slice.
+    target_list = commitment.list or completed_item.list
     next_item = Item.objects.create(
-        list=completed_item.list,
-        text=completed_item.text,
+        list=target_list,
+        text=commitment.text or completed_item.text,
         due_date=_advance_due_date(completed_item.due_date, completed_item.recurrence),
         recurrence=completed_item.recurrence,
-        position=_next_position(completed_item.list),
+        position=_next_position(target_list),
         commitment=commitment,
-        notes=completed_item.notes,
+        notes=commitment.notes,
     )
-    next_item.tags.set(completed_item.tags.all())
+    next_item.tags.set(commitment.tags.all())
 
     # Fresh copies, not carried state: a step that was already ticked off
     # this cycle starts the next one unchecked, the same way the parent

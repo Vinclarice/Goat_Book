@@ -54,26 +54,185 @@ class CommitmentTemplateFieldsTest(TestCase):
         self.assertEqual(commitment.cadence, Item.Recurrence.MONTHLY)
         self.assertEqual(commitment.notes, "Bank transfer, not cash")
 
-    def test_spawning_still_copies_from_the_completed_item(self):
-        """The expand step changes nothing about behaviour, stated as a test
-        rather than as a claim. Slice 2 is what makes the spawn read the
-        template; until then an empty template must not empty a task.
+
+
+class CommitmentWriteThroughTest(TestCase):
+    """Editing a linked occurrence edits the commitment: this and future.
+
+    Decided by Vince on August 3, 2026 from the two options in
+    recurring-commitment-vocabulary-plan.md 4. Renaming a recurring task means
+    renaming the commitment; the occurrences already completed keep what they
+    were called, because they hold their own snapshot.
+
+    Deliberately no prompt. Adding one later is additive; teaching people that
+    edits are per-occurrence and then reversing it is not.
+    """
+
+    def setUp(self):
+        self.owner = User.objects.create_user(
+            "alice", "alice@example.com", "a secure password"
+        )
+        self.area = List.objects.create(owner=self.owner, title="Home")
+
+    def recurring(self, text="Pay rent"):
+        from lists import services
+
+        return services.create_item(
+            self.area, text, recurrence=Item.Recurrence.MONTHLY,
+        )
+
+    def test_creating_a_recurring_task_seeds_its_template(self):
+        task = self.recurring()
+
+        commitment = task.commitment
+        self.assertEqual(commitment.text, "Pay rent")
+        self.assertEqual(commitment.list_id, self.area.id)
+        self.assertEqual(commitment.cadence, Item.Recurrence.MONTHLY)
+
+    def test_renaming_a_linked_task_renames_the_commitment(self):
+        from lists import services
+
+        task = self.recurring()
+
+        services.edit_item(task, "Pay rent - new landlord")
+
+        task.commitment.refresh_from_db()
+        self.assertEqual(task.commitment.text, "Pay rent - new landlord")
+
+    def test_notes_and_tags_write_through_too(self):
+        from lists import services
+
+        task = self.recurring()
+
+        services.set_item_notes(task, "Bank transfer, not cash")
+        services.set_item_tags(task, ["money"])
+
+        commitment = task.commitment
+        commitment.refresh_from_db()
+        self.assertEqual(commitment.notes, "Bank transfer, not cash")
+        self.assertEqual([t.name for t in commitment.tags.all()], ["money"])
+
+    def test_an_unlinked_task_has_nothing_to_write_through_to(self):
+        """Most tasks. The write-through must not invent a commitment for a
+        one-off, which would turn every edited task into a series.
+        """
+        from lists import services
+
+        task = services.create_item(self.area, "One-off")
+
+        services.edit_item(task, "Renamed")
+        services.set_item_notes(task, "A note")
+
+        task.refresh_from_db()
+        self.assertIsNone(task.commitment_id)
+        self.assertEqual(RecurringCommitment.objects.count(), 0)
+
+
+class SpawnReadsTheTemplateTest(TestCase):
+    """The next occurrence is built from the commitment, not copied forward."""
+
+    def setUp(self):
+        self.owner = User.objects.create_user(
+            "alice", "alice@example.com", "a secure password"
+        )
+        self.area = List.objects.create(owner=self.owner, title="Home")
+
+    def test_the_crane_plan_acceptance_example(self):
+        """crane-plan.md 3, executed rather than described.
+
+        Completed twice under one name, renamed, completed again. The series
+        returns four occurrences, the later ones carrying the new text and the
+        earlier ones the old.
+
+        **This passes under plain copy-forward too**, because the completed
+        item already carries the new text, so on its own it proves nothing
+        about where the spawn read from. The next test is the one that does.
         """
         from lists import services
 
         task = services.create_item(
             self.area, "Pay rent", recurrence=Item.Recurrence.MONTHLY,
         )
-        services.set_item_notes(task, "Bank transfer, not cash")
+        commitment = task.commitment
 
-        completed = services.complete_item(task)
-        spawned = completed._spawned
+        task = services.complete_item(task)._spawned
+        task = services.complete_item(task)._spawned
 
-        self.assertEqual(spawned.text, "Pay rent")
-        self.assertEqual(spawned.notes, "Bank transfer, not cash")
-        self.assertEqual(spawned.recurrence, Item.Recurrence.MONTHLY)
-        # And the commitment it points at is still the empty template.
-        self.assertEqual(spawned.commitment.text, "")
+        services.edit_item(task, "Pay rent - new landlord")
+        task.refresh_from_db()
+        spawned = services.complete_item(task)._spawned
+
+        series = list(Item.objects.filter(commitment=commitment).order_by("id"))
+        self.assertEqual(
+            [each.text for each in series],
+            [
+                "Pay rent",
+                "Pay rent",
+                "Pay rent - new landlord",
+                "Pay rent - new landlord",
+            ],
+        )
+        self.assertEqual(spawned.text, "Pay rent - new landlord")
+
+    def test_the_template_wins_when_it_disagrees_with_the_occurrence(self):
+        """The test that actually distinguishes reading from copying.
+
+        The template and the completed occurrence deliberately disagree, so
+        only a spawn that reads the template can pass.
+        """
+        from lists import services
+
+        task = services.create_item(
+            self.area, "Pay rent", recurrence=Item.Recurrence.MONTHLY,
+        )
+        commitment = task.commitment
+        # Straight to the template, bypassing the write-through, so the
+        # occurrence still says "Pay rent".
+        RecurringCommitment.objects.filter(pk=commitment.pk).update(
+            text="Pay the new landlord",
+        )
+        task.refresh_from_db()
+        self.assertEqual(task.text, "Pay rent")
+
+        spawned = services.complete_item(task)._spawned
+
+        self.assertEqual(spawned.text, "Pay the new landlord")
+
+    def test_the_spawn_takes_notes_and_tags_from_the_template(self):
+        from lists import services
+
+        task = services.create_item(
+            self.area, "Pay rent", recurrence=Item.Recurrence.MONTHLY,
+        )
+        services.set_item_notes(task, "Bank transfer")
+        services.set_item_tags(task, ["money"])
+        task.refresh_from_db()
+
+        spawned = services.complete_item(task)._spawned
+
+        self.assertEqual(spawned.notes, "Bank transfer")
+        self.assertEqual([t.name for t in spawned.tags.all()], ["money"])
+
+    def test_a_legacy_commitment_created_at_completion_is_seeded_first(self):
+        """Rows predating the key reach completion without a commitment.
+
+        `_anchor_commitment` adopts them there and must seed the template at
+        the same moment, or the first spawn after adoption reads an empty
+        template and produces a blank task.
+        """
+        from lists import services
+
+        task = services.create_item(
+            self.area, "Legacy", recurrence=Item.Recurrence.WEEKLY,
+        )
+        Item.objects.filter(pk=task.pk).update(commitment=None)
+        RecurringCommitment.objects.all().delete()
+        task.refresh_from_db()
+
+        spawned = services.complete_item(task)._spawned
+
+        self.assertEqual(spawned.text, "Legacy")
+        self.assertEqual(spawned.commitment.text, "Legacy")
 
 
 # capture is named alongside lists for the reason test_ownerless_list_removal

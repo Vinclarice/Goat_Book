@@ -1,6 +1,6 @@
 from django.urls import reverse
 
-from lists.models import List
+from lists.models import List, Project
 
 
 def serialize_checklist_step(step):
@@ -131,5 +131,12 @@ def archive_workspace_data_for(user, archived_items):
                 "url": each.get_absolute_url(),
             }
             for each in List.objects.filter(owner=user)
+        ],
+        # ui-second-pass-plan.md F2's third and last surface the sitting
+        # observed: an archived task carries project_id same as any other,
+        # so it gets the same join the Agenda and Daily Page already have.
+        "projects": [
+            project_ref_for(each)
+            for each in Project.objects.filter(owner=user).select_related("area")
         ],
     }

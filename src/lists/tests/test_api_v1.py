@@ -220,6 +220,22 @@ class ArchiveEndpointTest(TestCase):
         self.assertEqual(len(payload["areas"]), 1)
         self.assertEqual(payload["areas"][0]["title"], "Programming")
 
+    def test_carries_the_caller_s_projects_so_a_row_can_show_its_own(self):
+        """ui-second-pass-plan.md F2's sitting found the Archive silent
+        about a project the same way the Agenda and Daily Page were --
+        the last of the three surfaces the sitting actually observed.
+        """
+        Project.objects.create(owner=self.user, area=self.list_, title="Kitchen remodel")
+        Project.objects.create(owner=self.other_user, area=self.other_user.lists.first(), title="Not mine")
+        self.client.force_login(self.user)
+
+        payload = self.client.get("/api/v1/archive").json()
+
+        self.assertEqual(len(payload["projects"]), 1)
+        self.assertEqual(payload["projects"][0]["title"], "Kitchen remodel")
+        self.assertEqual(payload["projects"][0]["url"], self.list_.get_absolute_url())
+
+
 class TaskDetailEndpointTest(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(

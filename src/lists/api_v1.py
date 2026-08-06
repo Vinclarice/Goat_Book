@@ -143,6 +143,7 @@ class TaskAreaSummaryOut(Schema):
 class ArchiveOut(Schema):
     items: list[TaskOut]
     areas: list[TaskAreaSummaryOut]
+    projects: list[AgendaProjectSummaryOut]
 
 
 class TaskDetailOut(Schema):

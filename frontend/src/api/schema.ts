@@ -870,6 +870,8 @@ export interface components {
             items: components["schemas"]["TaskOut"][];
             /** Areas */
             areas: components["schemas"]["TaskAreaSummaryOut"][];
+            /** Projects */
+            projects: components["schemas"]["AgendaProjectSummaryOut"][];
         };
         /** LoginOut */
         LoginOut: {

@@ -197,12 +197,24 @@ Ordered thinnest first, per `principles.md`.
    Items, showed both "Preview List" and "Kitchen remodel" — where the
    sitting had found neither.
 
-   **What this does not yet touch**, named rather than silently deferred:
-   the Archive row F2's sitting also found silent (§8), and the Area page's
-   own F2a — a project heading with no visual tie to the task rows under it.
-   Each is the same join repeated on a different component, not a new
-   design question, but repeating it here would make this entry the whole
-   rest of step 2 rather than its next slice.
+   **The Archive done too, August 6, 2026 — the third and last surface the
+   sitting actually observed.** Same shape again: `ArchiveOut` gains
+   `projects`, `archive_workspace_data_for` shapes it with the same
+   `project_ref_for` the Agenda and Daily Page now share, and the row reads
+   "From Preview List · Kitchen remodel · Created …" where it used to stop
+   after the area. Guarded by a `lists` payload test and an `ArchiveManager`
+   test on the rendered row; the three existing tests needed `projects: []`
+   added to their fixed `initialData`, which is the whole reason a required
+   field earns the broader-suite run rather than just its own file passing.
+   Django green at 831, frontend at 228, `tsc --noEmit` and the build clean,
+   browser smoke at 28. Viewed in the running app: temporarily archived one
+   of the Kitchen remodel tasks and watched the row pick up the project
+   segment, then put it back.
+
+   **F2 is now done everywhere the sitting looked.** What remains is F2a —
+   the Area page's own project heading with no visual tie to the task rows
+   under it, the one place *closer* to a fix than a new join, since both
+   halves already share that page.
 3. **Projects in the navigation.** F3, and the one that needs real design
    rather than transcription. At minimum the side nav gains projects; whether
    they nest under their Area, sit in their own group, or appear only when

@@ -95,6 +95,7 @@ export interface TaskWorkspaceData {
 export interface ArchiveWorkspaceData {
   items: Task[];
   areas: TaskAreaSummary[];
+  projects: AgendaProjectSummary[];
 }
 
 export type AgendaBucketKey =

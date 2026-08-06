@@ -114,6 +114,7 @@ export function archiveData(
   return {
     items: [],
     areas: [archiveArea(), archiveArea({ id: 2, title: "Home", url: "/areas/2/" })],
+    projects: [],
     ...overrides,
   };
 }

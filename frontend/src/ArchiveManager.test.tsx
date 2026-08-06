@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { ArchiveManager } from "./ArchiveManager";
@@ -36,6 +36,7 @@ describe("ArchiveManager", () => {
             }),
           ],
           areas: [{ id: 1, title: "Programming", url: "/areas/1/" }],
+          projects: [],
         }}
       />,
     );
@@ -67,6 +68,7 @@ describe("ArchiveManager", () => {
             { id: 1, title: "Programming", url: "/areas/1/" },
             { id: 2, title: "Home", url: "/areas/2/" },
           ],
+          projects: [],
         }}
       />,
     );
@@ -75,6 +77,41 @@ describe("ArchiveManager", () => {
 
     expect(screen.getByText("Buy paint")).toBeInTheDocument();
     expect(screen.queryByText("Write tests")).not.toBeInTheDocument();
+  });
+
+  it("shows an archived task's project, the same way it shows its area", () => {
+    render(
+      <ArchiveManager
+        initialData={{
+          items: [
+            task({
+              id: 1,
+              text: "Order cabinets",
+              status: "archived",
+              archived_at: "2026-07-24T12:30:00-04:00",
+              project_id: 7,
+            }),
+            task({
+              id: 2,
+              text: "Pay rent",
+              status: "archived",
+              archived_at: "2026-07-24T12:30:00-04:00",
+            }),
+          ],
+          areas: [{ id: 1, title: "Programming", url: "/areas/1/" }],
+          projects: [{ id: 7, title: "Kitchen remodel", url: "/areas/1/" }],
+        }}
+      />,
+    );
+
+    const withProject = screen.getByText("Order cabinets").closest("article")!;
+    const withoutProject = screen.getByText("Pay rent").closest("article")!;
+    expect(
+      within(withProject).getByRole("link", { name: "Kitchen remodel" }),
+    ).toHaveAttribute("href", "/areas/1/");
+    expect(
+      within(withoutProject).queryByText("Kitchen remodel"),
+    ).not.toBeInTheDocument();
   });
 
   it("requires confirmation before permanent deletion", async () => {
@@ -93,6 +130,7 @@ describe("ArchiveManager", () => {
             }),
           ],
           areas: [{ id: 1, title: "Programming", url: "/areas/1/" }],
+          projects: [],
         }}
       />,
     );

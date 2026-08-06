@@ -16,6 +16,11 @@ export function ArchiveManager({ initialData }: Props) {
     () => new Map(initialData.areas.map((each) => [each.id, each])),
     [initialData.areas],
   );
+  // Same join, for project_id -- ui-second-pass-plan.md F2's third surface.
+  const projectById = useMemo(
+    () => new Map(initialData.projects.map((each) => [each.id, each])),
+    [initialData.projects],
+  );
   const [query, setQuery] = useState("");
   const [busyId, setBusyId] = useState<number | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Task | null>(null);
@@ -132,6 +137,7 @@ export function ArchiveManager({ initialData }: Props) {
         <div className="list-panel archived-list-panel">
           {visibleItems.map((item) => {
             const itemArea = areaById.get(item.area_id);
+            const itemProject = item.project_id ? projectById.get(item.project_id) : undefined;
             return (
             <article className="archived-task-row" key={item.id}>
               <span className="list-icon archive-icon" aria-hidden="true">✓</span>
@@ -140,6 +146,9 @@ export function ArchiveManager({ initialData }: Props) {
                 <small>
                   {itemArea && (
                     <>From <a href={itemArea.url}>{itemArea.title}</a> · </>
+                  )}
+                  {itemProject && (
+                    <><a href={itemProject.url}>{itemProject.title}</a> · </>
                   )}
                   Created{" "}
                   <time dateTime={item.created_at}>{formatDate(item.created_at)}</time>

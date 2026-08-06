@@ -1937,11 +1937,19 @@
             },
             "title": "Areas",
             "type": "array"
+          },
+          "projects": {
+            "items": {
+              "$ref": "#/components/schemas/AgendaProjectSummaryOut"
+            },
+            "title": "Projects",
+            "type": "array"
           }
         },
         "required": [
           "items",
-          "areas"
+          "areas",
+          "projects"
         ],
         "title": "ArchiveOut",
         "type": "object"

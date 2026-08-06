@@ -271,9 +271,39 @@ Ordered thinnest first, per `principles.md`.
    its own Projects group with "2 open," and clicking it landed on its area
    page without a reload.
 
-4. **The Area page's action density.** F5, still open — the reason it
-   waited on step 3 no longer applies now that step 3 has an answer, but
-   nothing has looked at it yet.
+4. **The Area page's action density — done, August 6, 2026.** F5. Two
+   independent, low-risk fixes rather than a redesign of the page, since
+   neither named complaint needed one.
+
+   **"A rename that looks like an edit field until you notice the
+   button."** `Save name` is now disabled until the title actually differs
+   from the loaded one. A disabled button says there is nothing to save
+   yet; an always-enabled one beside a plain-looking input reads as either
+   a live field or dead weight, which is the confusion named.
+
+   **"Two destructive actions with different scopes on one screen."**
+   `Delete area` (destroys the area and every task in it) used to sit
+   directly above `ProjectsPanel`'s own per-row `Delete project` (removes
+   only the grouping, tasks survive) — two differently-scoped deletes a
+   glance apart. Moved `Delete area` to its own "Danger zone" section after
+   the task list, so reaching it takes a deliberate scroll past the area's
+   whole content rather than a stray click beside a much narrower delete.
+   The confirmation dialogs already explained the scope difference in
+   words; this fixes the layout that put them next to each other in the
+   first place.
+
+   Guarded by two `AreaRoute` tests: `Save name` disabled on load and
+   enabled once the field changes, and a DOM-order assertion that `Delete
+   area` renders after the Tasks heading rather than beside Projects'
+   deletes. Frontend green at 234, `tsc --noEmit` and the build clean,
+   browser smoke at 28 — no backend contract changed, so the broader Django
+   run wasn't the mandatory one this time. Viewed in the running app:
+   `Save name` starts disabled, a "Danger zone" heading sits directly above
+   `Delete area`, and that heading's previous sibling in the DOM is the
+   task list itself.
+
+   **F1 through F5 are all closed.** Nothing named in this brief's findings
+   is still open.
 
 ## 5. What this cycle will not do
 

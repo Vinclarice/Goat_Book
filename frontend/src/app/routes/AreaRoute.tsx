@@ -78,6 +78,12 @@ export function AreaRoute() {
   if (isPending) return <p className="p-6">Loading…</p>;
   if (loadError || !data) return <RouteFailure status={statusOf(loadError)} onRetry={() => refetch()} />;
 
+  // ui-second-pass-plan.md F5: "a rename that looks like an edit field
+  // until you notice the button." Disabled until the title actually
+  // differs says there's nothing to save yet, rather than reading as a
+  // live field with an inert button sitting beside it.
+  const titleChanged = title.trim() !== data.area.title;
+
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
       <Link to="/agenda" className="text-sm text-muted-foreground hover:text-foreground">
@@ -98,7 +104,7 @@ export function AreaRoute() {
               required
               className="flex-1 rounded-lg border border-border bg-input px-3 py-1.5 text-lg font-bold text-foreground"
             />
-            <Button type="submit" disabled={renameMutation.isPending}>
+            <Button type="submit" disabled={renameMutation.isPending || !titleChanged}>
               Save name
             </Button>
           </div>
@@ -115,35 +121,47 @@ export function AreaRoute() {
         )}
       </div>
 
-      <AlertDialog>
-        <AlertDialogTrigger asChild>
-          <Button variant="destructive" size="sm">
-            Delete area
-          </Button>
-        </AlertDialogTrigger>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete this area?</AlertDialogTitle>
-            <AlertDialogDescription>
-              <strong>{data.area.title}</strong> and all of its tasks will be permanently
-              removed. This cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Keep area</AlertDialogCancel>
-            <AlertDialogAction onClick={() => deleteMutation.mutate()}>
-              Delete area permanently
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
       {/* Above the task list on purpose: a project is the coarser grouping,
           and slice 8's whole point is that an area now holds two kinds of
           thing rather than one. */}
       <ProjectsPanel areaId={id} />
 
       <TaskWorkspace initialData={data} />
+
+      {/* ui-second-pass-plan.md F5: "two destructive actions with different
+          scopes on one screen." Deleting the area used to sit directly
+          above Projects' own per-row Delete project buttons -- two
+          differently-scoped destructive actions a glance apart. Moved to
+          its own section after everything else on the page, so reaching it
+          takes a deliberate scroll past the area's own content rather than
+          a stray click beside a much narrower delete. */}
+      <div className="border-t border-border pt-6 space-y-2">
+        <h2 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+          Danger zone
+        </h2>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="destructive" size="sm">
+              Delete area
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete this area?</AlertDialogTitle>
+              <AlertDialogDescription>
+                <strong>{data.area.title}</strong> and all of its tasks will be permanently
+                removed. This cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Keep area</AlertDialogCancel>
+              <AlertDialogAction onClick={() => deleteMutation.mutate()}>
+                Delete area permanently
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
     </div>
   );
 }

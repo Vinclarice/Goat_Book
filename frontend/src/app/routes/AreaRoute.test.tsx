@@ -95,6 +95,45 @@ describe("AreaRoute", () => {
     expect(screen.getByRole("button", { name: /try again/i })).toBeInTheDocument();
   });
 
+  it("only offers to save the area name once it's actually changed", async () => {
+    // ui-second-pass-plan.md F5: "a rename that looks like an edit field
+    // until you notice the button." A disabled Save says there is nothing
+    // to save yet, rather than looking like a live field with an inert
+    // button sitting beside it.
+    const user = userEvent.setup();
+    vi.spyOn(globalThis, "fetch").mockImplementation(areaPageFetch());
+
+    renderAt("7");
+    await screen.findByText("Write tests");
+
+    const save = screen.getByRole("button", { name: "Save name" });
+    expect(save).toBeDisabled();
+
+    await user.clear(screen.getByLabelText("Area name"));
+    await user.type(screen.getByLabelText("Area name"), "Home projects");
+
+    expect(save).toBeEnabled();
+  });
+
+  it("keeps the area-destroying action away from the project-scoped ones", async () => {
+    // ui-second-pass-plan.md F5: "two destructive actions with different
+    // scopes on one screen." Deleting the area takes every task with it;
+    // deleting a project leaves its tasks in place. Asserting DOM order
+    // rather than a screenshot: Delete area should read after the task
+    // list, not sit beside Projects' own per-row Delete project buttons.
+    vi.spyOn(globalThis, "fetch").mockImplementation(areaPageFetch());
+
+    renderAt("7");
+    await screen.findByText("Write tests");
+
+    const tasksHeading = screen.getByRole("heading", { name: "Tasks" });
+    const deleteArea = screen.getByRole("button", { name: "Delete area" });
+    expect(
+      tasksHeading.compareDocumentPosition(deleteArea) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
   it("deletes the list and returns to the agenda after confirming", async () => {
     const user = userEvent.setup();
     // openapi-fetch calls fetch(request) with a single Request object,

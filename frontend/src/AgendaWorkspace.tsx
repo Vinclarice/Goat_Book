@@ -108,7 +108,7 @@ function SnoozeMenu({ taskText, presets, disabled, onSelect }: SnoozeMenuProps) 
 }
 
 export function AgendaWorkspace({ initialData }: Props) {
-  const { today, areas, buckets } = initialData;
+  const { today, areas, projects, buckets } = initialData;
 
   const [tasks, setTasks] = useState(() =>
     sortAgendaTasks(initialData.items),
@@ -166,6 +166,14 @@ export function AgendaWorkspace({ initialData }: Props) {
   const areaById = useMemo(
     () => new Map(areas.map((each) => [each.id, each])),
     [areas],
+  );
+
+  // Same join as areaById, for the same reason: ui-second-pass-plan.md F2 --
+  // a task only carries project_id, and the title/url live once here rather
+  // than repeated on every task.
+  const projectById = useMemo(
+    () => new Map(projects.map((each) => [each.id, each])),
+    [projects],
   );
 
   function notify(message: string, undo?: () => void) {
@@ -336,6 +344,7 @@ export function AgendaWorkspace({ initialData }: Props) {
   function renderRow(task: Task, done = false) {
     const bucket = bucketFor(task.due_date, today);
     const taskArea = areaById.get(task.area_id);
+    const taskProject = task.project_id ? projectById.get(task.project_id) : undefined;
     const rowClass = [
       "agenda-row",
       done ? "is-done" : bucket === "overdue" ? "is-overdue" : "",
@@ -370,6 +379,12 @@ export function AgendaWorkspace({ initialData }: Props) {
                   style={{ background: colorForKey(taskArea.color_key) }}
                 />
                 {taskArea.title}
+              </a>
+            )}
+
+            {taskProject && (
+              <a className="pill pill-project" href={taskProject.url}>
+                {taskProject.title}
               </a>
             )}
 

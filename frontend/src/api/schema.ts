@@ -699,6 +699,17 @@ export interface components {
             completed_today: components["schemas"]["TaskOut"][];
             /** Areas */
             areas: components["schemas"]["AgendaAreaSummaryOut"][];
+            /** Projects */
+            projects: components["schemas"]["AgendaProjectSummaryOut"][];
+        };
+        /** AgendaProjectSummaryOut */
+        AgendaProjectSummaryOut: {
+            /** Id */
+            id: number;
+            /** Title */
+            title: string;
+            /** Url */
+            url: string;
         };
         /** TaskOut */
         TaskOut: {

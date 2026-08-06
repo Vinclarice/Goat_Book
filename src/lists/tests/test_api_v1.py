@@ -7,7 +7,7 @@ from django.utils import timezone
 from accounts.models import User
 from capture.models import Capture
 from lists import agenda as agenda_reader
-from lists.models import Item, List
+from lists.models import Item, List, Project
 
 
 class AgendaEndpointTest(TestCase):
@@ -57,6 +57,22 @@ class AgendaEndpointTest(TestCase):
             payload["areas"][0]["color_key"],
             agenda_reader.color_key_for_list(self.list_.id),
         )
+
+    def test_carries_the_caller_s_projects_so_a_task_row_can_show_its_own(self):
+        """ui-second-pass-plan.md F2: a task's project is invisible on the
+        Agenda because the payload never carried one. This is the fix's
+        server half -- each project, with its area's url since a project has
+        no page of its own yet.
+        """
+        Project.objects.create(owner=self.user, area=self.list_, title="Kitchen remodel")
+        Project.objects.create(owner=self.other_user, area=self.other_user.lists.first(), title="Not mine")
+        self.client.force_login(self.user)
+
+        payload = self.client.get("/api/v1/agenda").json()
+
+        self.assertEqual(len(payload["projects"]), 1)
+        self.assertEqual(payload["projects"][0]["title"], "Kitchen remodel")
+        self.assertEqual(payload["projects"][0]["url"], self.list_.get_absolute_url())
 
 
 class AreaDetailEndpointTest(TestCase):

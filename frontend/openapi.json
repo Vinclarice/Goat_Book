@@ -1424,6 +1424,13 @@
             },
             "title": "Areas",
             "type": "array"
+          },
+          "projects": {
+            "items": {
+              "$ref": "#/components/schemas/AgendaProjectSummaryOut"
+            },
+            "title": "Projects",
+            "type": "array"
           }
         },
         "required": [
@@ -1437,9 +1444,33 @@
           "buckets",
           "items",
           "completed_today",
-          "areas"
+          "areas",
+          "projects"
         ],
         "title": "AgendaOut",
+        "type": "object"
+      },
+      "AgendaProjectSummaryOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "url"
+        ],
+        "title": "AgendaProjectSummaryOut",
         "type": "object"
       },
       "TaskOut": {

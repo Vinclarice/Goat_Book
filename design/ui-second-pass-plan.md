@@ -151,6 +151,32 @@ Ordered thinnest first, per `principles.md`.
    already carries `project_id`. Needs the project's title, which means the
    agenda payload grows a `projects` array beside its `areas` one — the same
    join `area_id` already relies on.
+
+   **The Agenda half done, August 6, 2026.** `AgendaOut.projects` carries
+   each of the caller's projects with an `id`, `title` and `url` — the url is
+   the project's *area's*, since a project still has no page of its own
+   (F3's absence, not fixed here). `AgendaWorkspace` joins it the same way it
+   already joins `area_id` against `areas`, and renders a `pill-project` next
+   to the area pill when a task carries one. Guarded by a test on each side:
+   `test_carries_the_caller_s_projects_so_a_task_row_can_show_its_own` for the
+   payload (and that it's owner-scoped, the same isolation shape every
+   agenda field gets), and an `AgendaWorkspace` test asserting the pill
+   renders with the right link on a task that has a project and not on one
+   that doesn't. Frontend green at 226, browser smoke at 28, `tsc --noEmit`
+   and the build clean, plus the Django suite at 829.
+
+   **Viewed in the running app**, not just asserted in a test: logged into
+   the same dev instance the §6 sitting used, against the same "Kitchen
+   remodel" project and its tasks left over from that sitting. The Agenda's
+   "Pick tile" row now shows both pills, "Preview List" and "Kitchen
+   remodel", the second linking to `/areas/30/`.
+
+   **What this does not yet touch**, named rather than silently deferred:
+   the Daily Page and Archive rows F2's sitting also found silent (§8), and
+   the Area page's own F2a — a project heading with no visual tie to the
+   task rows under it. Each is the same join repeated on a different
+   component, not a new design question, but repeating it here would make
+   this entry the whole rest of step 2 rather than its first slice.
 3. **Projects in the navigation.** F3, and the one that needs real design
    rather than transcription. At minimum the side nav gains projects; whether
    they nest under their Area, sit in their own group, or appear only when

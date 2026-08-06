@@ -120,6 +120,15 @@ export interface AgendaAreaSummary {
   color_key: AreaColorKey;
 }
 
+// ui-second-pass-plan.md F2: a task's project_id had nothing to join
+// against, so its row could never show a project. A project has no page of
+// its own yet -- url points at its area's, the only place it is visible.
+export interface AgendaProjectSummary {
+  id: number;
+  title: string;
+  url: string;
+}
+
 export interface AgendaWorkspaceData {
   /** The server's idea of today, as YYYY-MM-DD. Bucketing compares due
    * dates against this as plain strings, which keeps the client and the
@@ -135,4 +144,5 @@ export interface AgendaWorkspaceData {
   items: Task[];
   completed_today: Task[];
   areas: AgendaAreaSummary[];
+  projects: AgendaProjectSummary[];
 }

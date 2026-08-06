@@ -60,6 +60,17 @@ export function agendaArea(
   };
 }
 
+export function agendaProject(
+  overrides: Partial<AgendaWorkspaceData["projects"][number]> = {},
+): AgendaWorkspaceData["projects"][number] {
+  return {
+    id: 1,
+    title: "Kitchen remodel",
+    url: "/areas/1/",
+    ...overrides,
+  };
+}
+
 export function agendaData(
   overrides: Partial<AgendaWorkspaceData> = {},
 ): AgendaWorkspaceData {
@@ -81,6 +92,7 @@ export function agendaData(
     items: [],
     completed_today: [],
     areas: [agendaArea()],
+    projects: [],
     ...overrides,
   };
 }

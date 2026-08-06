@@ -910,6 +910,7 @@ button.pill { cursor: pointer; }
 }
 
 .pill-recur { border-color: rgba(244, 201, 138, 0.35); color: #f4c98a; }
+.pill-project { border-color: rgba(157, 178, 247, 0.4); color: #9db2f7; }
 
 .agenda-actions {
   flex: none;

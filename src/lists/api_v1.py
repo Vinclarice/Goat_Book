@@ -93,6 +93,14 @@ class AgendaAreaSummaryOut(Schema):
     color_key: AreaColorKey
 
 
+class AgendaProjectSummaryOut(Schema):
+    id: int
+    title: str
+    # A project has no page of its own yet, so this is its area's --
+    # ui-second-pass-plan.md F2/F3, the second half still open.
+    url: str
+
+
 class AgendaOut(Schema):
     today: str
     username: str
@@ -105,6 +113,7 @@ class AgendaOut(Schema):
     items: list[TaskOut]
     completed_today: list[TaskOut]
     areas: list[AgendaAreaSummaryOut]
+    projects: list[AgendaProjectSummaryOut]
 
 
 class AreaRefOut(Schema):
@@ -209,6 +218,10 @@ def agenda(request):
         list__owner=user,
         status=Item.Status.ARCHIVED,
     ).count()
+    # select_related("area") because each project's url comes from its
+    # area -- a project has no page of its own -- and the plain loop in
+    # workspace_data_for would otherwise be one query per project.
+    projects = project_reader.projects_for(user).select_related("area")
 
     return agenda_reader.workspace_data_for(
         user,
@@ -217,6 +230,7 @@ def agenda(request):
         completed_today=completed_today,
         lists=lists,
         archived_count=archived_count,
+        projects=projects,
     )
 
 

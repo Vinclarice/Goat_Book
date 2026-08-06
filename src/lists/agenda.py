@@ -256,7 +256,9 @@ def tag_summaries(items):
     ]
 
 
-def workspace_data_for(user, *, today, all_open, completed_today, lists, archived_count):
+def workspace_data_for(
+    user, *, today, all_open, completed_today, lists, archived_count, projects,
+):
     """Shapes the agenda JSON payload served by /api/v1/agenda.
 
     Callers supply already-queried data rather than this function
@@ -292,6 +294,18 @@ def workspace_data_for(user, *, today, all_open, completed_today, lists, archive
                 "color_key": each.color_key,
             }
             for each in lists
+        ],
+        # ui-second-pass-plan.md F2: a task carries a project_id but nothing
+        # in the payload said what that project was, so the Agenda row had
+        # no title to show. A project has no page of its own yet, so this
+        # links to its area's -- the only place it is actually visible.
+        "projects": [
+            {
+                "id": each.id,
+                "title": each.title,
+                "url": each.area.get_absolute_url(),
+            }
+            for each in projects
         ],
     }
 

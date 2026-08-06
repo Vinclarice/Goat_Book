@@ -2,7 +2,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { AgendaWorkspace } from "./AgendaWorkspace";
-import { agendaData, agendaArea, task, TODAY } from "./test/fixtures";
+import { agendaData, agendaArea, agendaProject, task, TODAY } from "./test/fixtures";
 
 function jsonResponse(data: object, ok = true) {
   return Promise.resolve({
@@ -83,6 +83,22 @@ describe("AgendaWorkspace", () => {
     renderAgenda();
 
     expect(screen.getByText("6 days overdue")).toBeInTheDocument();
+  });
+
+  it("shows a task's project, the same way it shows its area", () => {
+    renderAgenda({
+      items: [
+        task({ id: 1, text: "Order cabinets", due_date: TODAY, project_id: 1 }),
+        task({ id: 2, text: "Ship the fix", due_date: TODAY }),
+      ],
+      projects: [agendaProject({ id: 1, title: "Kitchen remodel", url: "/areas/1/" })],
+    });
+
+    const withProject = screen.getByText("Order cabinets").closest<HTMLElement>(".agenda-row")!;
+    const withoutProject = screen.getByText("Ship the fix").closest<HTMLElement>(".agenda-row")!;
+    const projectPill = within(withProject).getByRole("link", { name: "Kitchen remodel" });
+    expect(projectPill).toHaveAttribute("href", "/areas/1/");
+    expect(within(withoutProject).queryByText("Kitchen remodel")).not.toBeInTheDocument();
   });
 
   it("marks rows that have notes, and only those", () => {

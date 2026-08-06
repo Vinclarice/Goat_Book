@@ -72,6 +72,13 @@ interface Props {
 
 export function TaskWorkspace({ initialData }: Props) {
   const [items, setItems] = useState(initialData.items);
+  // ui-second-pass-plan.md F2a: the same join Agenda/Daily/Archive use, but
+  // scoped to this area's own projects -- the only ones a row here could
+  // ever belong to.
+  const projectById = useMemo(
+    () => new Map(initialData.projects.map((each) => [each.id, each])),
+    [initialData.projects],
+  );
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
   const [newText, setNewText] = useState("");
@@ -428,7 +435,9 @@ export function TaskWorkspace({ initialData }: Props) {
       </div>
 
       <div className="list-items" id="id_list_table">
-        {visibleItems.map((item, index) => (
+        {visibleItems.map((item, index) => {
+          const itemProject = item.project_id ? projectById.get(item.project_id) : undefined;
+          return (
           <article
             key={item.id}
             className={`list-item ${
@@ -522,6 +531,14 @@ export function TaskWorkspace({ initialData }: Props) {
                     />
                   </label>
                   <div className={styles.tagRow}>
+                    {/* ui-second-pass-plan.md F2a: the one screen that shows
+                        a project heading at all still didn't tie it to the
+                        rows under it. A plain marker rather than a link --
+                        the project section is already on this same page,
+                        right above. */}
+                    {itemProject && (
+                      <span className="pill pill-project">{itemProject.title}</span>
+                    )}
                     {item.tags.map((tag) => (
                       <span
                         key={tag}
@@ -610,7 +627,8 @@ export function TaskWorkspace({ initialData }: Props) {
               </div>
             )}
           </article>
-        ))}
+          );
+        })}
         {visibleItems.length === 0 && (
           <div className={styles.empty}>
             {items.length === 0

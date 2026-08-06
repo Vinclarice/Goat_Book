@@ -126,6 +126,7 @@ class AreaRefOut(Schema):
 class AreaDetailOut(Schema):
     area: AreaRefOut
     items: list[TaskOut]
+    projects: list[AgendaProjectSummaryOut]
     archived_count: int
     archive_url: str
 

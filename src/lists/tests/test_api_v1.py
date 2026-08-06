@@ -114,6 +114,24 @@ class AreaDetailEndpointTest(TestCase):
         self.assertEqual(len(payload["items"]), 1)
         self.assertEqual(payload["items"][0]["text"], "Write tests")
 
+    def test_carries_this_area_s_own_projects_so_a_row_can_show_its_own(self):
+        """ui-second-pass-plan.md F2a: the Area page is the one screen that
+        shows a project section at all, and it still didn't connect a task
+        row to the project heading sitting above it. Scoped to this area
+        only, unlike the Agenda/Daily/Archive join -- a project belongs to
+        exactly one area, and this page only ever shows one area's rows.
+        """
+        Project.objects.create(owner=self.user, area=self.list_, title="Kitchen remodel")
+        other_area = List.objects.create(owner=self.user, title="Home")
+        Project.objects.create(owner=self.user, area=other_area, title="Not this area")
+        self.client.force_login(self.user)
+
+        payload = self.client.get(f"/api/v1/areas/{self.list_.id}").json()
+
+        self.assertEqual(len(payload["projects"]), 1)
+        self.assertEqual(payload["projects"][0]["title"], "Kitchen remodel")
+        self.assertEqual(payload["projects"][0]["url"], self.list_.get_absolute_url())
+
     def test_renames_the_area(self):
         self.client.force_login(self.user)
 

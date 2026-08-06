@@ -211,10 +211,32 @@ Ordered thinnest first, per `principles.md`.
    of the Kitchen remodel tasks and watched the row pick up the project
    segment, then put it back.
 
-   **F2 is now done everywhere the sitting looked.** What remains is F2a —
-   the Area page's own project heading with no visual tie to the task rows
-   under it, the one place *closer* to a fix than a new join, since both
-   halves already share that page.
+   **F2 is now done everywhere the sitting looked.** F2a, the Area page's
+   own project heading with no visual tie to the task rows under it, is
+   next — closer to a fix than a new join, since both halves already share
+   that page.
+
+   **F2a done, August 6, 2026.** `AreaDetailOut`/`area_workspace_data_for`
+   gain `projects`, scoped to *this area only* rather than every owned
+   project — the one place that scoping differs from the other three, since
+   a project belongs to exactly one area and this page only ever renders
+   one area's rows. `TaskWorkspace` joins `project_id` the same way and
+   marks the row with `pill pill-project`, plain text rather than a link:
+   unlike the Agenda/Daily/Archive pill, there's nowhere else on this page
+   to send it — the project section it names is already sitting right
+   above. Guarded by a `lists` payload test and a `TaskWorkspace` test
+   asserting the marker appears on a project's own rows and not on the
+   other two; the 11 existing `TaskWorkspace` fixtures each needed
+   `projects: []` added; a script did the mechanical part, by hand would
+   have been the same edit repeated blind. Django green at 832, frontend at
+   229, `tsc --noEmit` and the build clean, browser smoke at 28. Viewed in
+   the running app: "Kitchen remodel — 2 open" now sits above two rows each
+   carrying "Kitchen remodel," and the other two rows carry nothing.
+
+   **F2 and F2a are both closed.** What ui-second-pass-plan.md §4 has left
+   is step 3 (F3, projects in navigation) and step 4 (F5, the Area page's
+   action density) — the former is the one this cycle has said from the
+   start should not be started by guessing.
 3. **Projects in the navigation.** F3, and the one that needs real design
    rather than transcription. At minimum the side nav gains projects; whether
    they nest under their Area, sit in their own group, or appear only when

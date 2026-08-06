@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { TaskWorkspace } from "./TaskWorkspace";
@@ -30,6 +30,7 @@ describe("TaskWorkspace", () => {
             create_item_url: "/api/areas/1/items/",
             reorder_url: "/api/areas/1/items/reorder/",
           },
+          projects: [],
           items: [
             task(),
             task({ id: 2, text: "Finished", status: "completed" }),
@@ -45,6 +46,31 @@ describe("TaskWorkspace", () => {
     expect(screen.queryByText("Write tests")).not.toBeInTheDocument();
   });
 
+  it("shows a task's project, tying the project heading above to its own rows", () => {
+    render(
+      <TaskWorkspace
+        initialData={{
+          area: {
+            id: 1,
+            title: "Programming",
+            create_item_url: "/api/areas/1/items/",
+            reorder_url: "/api/areas/1/items/reorder/",
+          },
+          projects: [{ id: 7, title: "Kitchen remodel", url: "/areas/1/" }],
+          items: [
+            task({ id: 1, text: "Order cabinets", project_id: 7 }),
+            task({ id: 2, text: "Unrelated task" }),
+          ],
+        }}
+      />,
+    );
+
+    const withProject = screen.getByText("Order cabinets").closest("article")!;
+    const withoutProject = screen.getByText("Unrelated task").closest("article")!;
+    expect(within(withProject).getByText("Kitchen remodel")).toBeInTheDocument();
+    expect(within(withoutProject).queryByText("Kitchen remodel")).not.toBeInTheDocument();
+  });
+
   it("searches task text without changing the live counts", async () => {
     const user = userEvent.setup();
     render(
@@ -56,6 +82,7 @@ describe("TaskWorkspace", () => {
             create_item_url: "/api/areas/1/items/",
             reorder_url: "/api/areas/1/items/reorder/",
           },
+          projects: [],
           items: [task(), task({ id: 2, text: "Review migrations" })],
         }}
       />,
@@ -86,6 +113,7 @@ describe("TaskWorkspace", () => {
             create_item_url: "/api/areas/1/items/",
             reorder_url: "/api/areas/1/items/reorder/",
           },
+          projects: [],
           items: [task()],
         }}
       />,
@@ -119,6 +147,7 @@ describe("TaskWorkspace", () => {
             create_item_url: "/api/areas/1/items/",
             reorder_url: "/api/areas/1/items/reorder/",
           },
+          projects: [],
           items: [task()],
         }}
       />,
@@ -155,6 +184,7 @@ describe("TaskWorkspace", () => {
             create_item_url: "/api/areas/1/items/",
             reorder_url: "/api/areas/1/items/reorder/",
           },
+          projects: [],
           items: [task()],
         }}
       />,
@@ -180,6 +210,7 @@ describe("TaskWorkspace", () => {
             create_item_url: "/api/areas/1/items/",
             reorder_url: "/api/areas/1/items/reorder/",
           },
+          projects: [],
           items: [task({ due_date: "2000-01-01" })],
         }}
       />,
@@ -202,6 +233,7 @@ describe("TaskWorkspace", () => {
             create_item_url: "/api/areas/1/items/",
             reorder_url: "/api/areas/1/items/reorder/",
           },
+          projects: [],
           items: [task()],
         }}
       />,
@@ -236,6 +268,7 @@ describe("TaskWorkspace", () => {
             create_item_url: "/api/areas/1/items/",
             reorder_url: "/api/areas/1/items/reorder/",
           },
+          projects: [],
           items: [first, second],
         }}
       />,
@@ -266,6 +299,7 @@ describe("TaskWorkspace", () => {
             create_item_url: "/api/areas/1/items/",
             reorder_url: "/api/areas/1/items/reorder/",
           },
+          projects: [],
           items: [
             task({ id: 1, text: "Buy milk", tags: ["groceries"] }),
             task({ id: 2, text: "Write tests", tags: ["work"] }),
@@ -307,6 +341,7 @@ describe("TaskWorkspace", () => {
             create_item_url: "/api/areas/1/items/",
             reorder_url: "/api/areas/1/items/reorder/",
           },
+          projects: [],
           items: [original],
         }}
       />,
@@ -333,6 +368,7 @@ describe("TaskWorkspace", () => {
             create_item_url: "/api/areas/1/items/",
             reorder_url: "/api/areas/1/items/reorder/",
           },
+          projects: [],
           items: [],
         }}
       />,

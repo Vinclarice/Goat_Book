@@ -32,6 +32,7 @@ function listDetailData(overrides: Record<string, unknown> = {}) {
       reorder_url: "/api/areas/7/items/reorder/",
     },
     items: [task({ text: "Write tests" })],
+    projects: [],
     archived_count: 0,
     archive_url: "/archive/",
     ...overrides,

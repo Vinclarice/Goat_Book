@@ -757,6 +757,8 @@ export interface components {
             area: components["schemas"]["AreaRefOut"];
             /** Items */
             items: components["schemas"]["TaskOut"][];
+            /** Projects */
+            projects: components["schemas"]["AgendaProjectSummaryOut"][];
             /** Archived Count */
             archived_count: number;
             /** Archive Url */

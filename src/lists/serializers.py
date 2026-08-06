@@ -87,6 +87,14 @@ def area_workspace_data_for(our_list, items):
     return {
         "area": area_ref_for(our_list),
         "items": [serialize_item(item) for item in items],
+        # ui-second-pass-plan.md F2a: scoped to this area only, unlike the
+        # Agenda/Daily/Archive join -- a project belongs to exactly one
+        # area, and this is the one page that only ever shows one area's
+        # rows. our_list is already owner-scoped by the caller.
+        "projects": [
+            project_ref_for(each)
+            for each in our_list.projects.select_related("area")
+        ],
     }
 
 

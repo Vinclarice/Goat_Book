@@ -90,6 +90,9 @@ export interface TaskWorkspaceData {
     reorder_url: string;
   };
   items: Task[];
+  // ui-second-pass-plan.md F2a: scoped to this area, since a project
+  // belongs to exactly one and this page only ever shows one area's rows.
+  projects: AgendaProjectSummary[];
 }
 
 export interface ArchiveWorkspaceData {

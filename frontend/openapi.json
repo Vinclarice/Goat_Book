@@ -1615,6 +1615,13 @@
             "title": "Items",
             "type": "array"
           },
+          "projects": {
+            "items": {
+              "$ref": "#/components/schemas/AgendaProjectSummaryOut"
+            },
+            "title": "Projects",
+            "type": "array"
+          },
           "archived_count": {
             "title": "Archived Count",
             "type": "integer"
@@ -1627,6 +1634,7 @@
         "required": [
           "area",
           "items",
+          "projects",
           "archived_count",
           "archive_url"
         ],

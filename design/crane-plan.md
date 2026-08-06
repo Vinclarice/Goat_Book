@@ -81,8 +81,18 @@ it on August 6, 2026 — unremarkable to set up, exactly as predicted.
 All three share Bittern's recurring failure mode: they look like success
 until somebody checks.
 
-- [ ] A forwarded contact message arrives in the inbox rather than spam, now
-  that DMARC enforces.
+- [x] A forwarded contact message arrives in the inbox rather than spam, now
+  that DMARC enforces. **Confirmed August 6, 2026.** Submitted the public
+  `/contact/` form on `vinclarice.com` (name "DMARC forwarding check", a
+  message identifying itself as this verification) and read the result at
+  the receiving end: `From: Clarice <accounts@vinclarice.com>`,
+  `mailed-by: srs.perfora.net`, `signed-by: vinclarice.com`, landed in the
+  regular Gmail inbox rather than spam. The prior entry's caveat is answered
+  — this is the Resend-originated alignment that report didn't cover, and it
+  held. Two of the connection attempts hit `net::ERR_CONNECTION_TIMED_OUT`
+  before one went through; noted here in case it recurs, but a single
+  gunicorn worker under an ordinary request is a plausible enough cause that
+  it didn't get its own investigation.
 - [x] DMARC aggregate reports begin arriving at `dmarc@vinclarice.com`.
   **Confirmed August 3, 2026, 05:54.** Submitter `google.com`, report ID
   5829377777720365865, DKIM-signed by google.com. This is the half of DMARC

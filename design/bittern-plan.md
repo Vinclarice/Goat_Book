@@ -485,6 +485,16 @@ captures typed in airplane mode, the app force-stopped and reopened with the
 queue intact, and the queue draining itself when the network returned. Every
 capture reached the web Inbox exactly once.
 
+**Reconfirmed August 6, 2026, on a Samsung SM-S928U1.** All 16
+instrumentation tests (`EncryptedQueueStorageTest`, `KeystoreTokenStoreTest`)
+still pass against real Keystore hardware — not tied to either open Android
+gap below, just a fresh check that the encrypted-at-rest guarantees still
+hold on different hardware than they were first proven on. Getting there needed clearing a stale, mismatched-signature install (`adb
+uninstall` failed with `DELETE_FAILED_INTERNAL_ERROR` on both packages; the
+device's own package manager showed no trace of either afterward, and a
+plain retry then installed clean) and a daemon restart that didn't bring the
+device back on its own — checking the phone directly did.
+
 The slices, and the decision in each worth remembering:
 
 1. **The queue and its ceiling** (`CaptureQueue`). Attempts are counted and

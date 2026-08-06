@@ -33,13 +33,13 @@ independent of it. Reasoning in §6.
 Each is already deployed and covered by a test; nobody has watched it happen
 in production.
 
-**Four of the five were cleared on August 2, 2026**, in the session that
+**All five are cleared.** Four on August 2, 2026, in the session that
 deployed Crane 0a, 1 and 2 — which is the sequencing §6 predicted, since a
-deploy is the only thing that makes them possible. The fifth is still open
-and is still blocked on the same thing it was always blocked on: setting up
-a recurring parent with an opted-out subtask takes three attempts through
-the interface C2 found, and that is the UI overhaul's problem rather than
-this checklist's.
+deploy is the only thing that makes them possible. The fifth waited on the
+UI overhaul rather than the deploy: setting up a recurring parent with an
+opted-out subtask used to take three attempts through the interface C2
+found. That interface is fixed as of Dunlin, and the check itself confirmed
+it on August 6, 2026 — unremarkable to set up, exactly as predicted.
 
 - [x] Log out at desktop and narrow widths, then confirm protected API calls
   fail afterwards. (B2) — August 2, 2026.
@@ -50,9 +50,9 @@ this checklist's.
   (B2.1) — August 2, 2026.
 - [x] Send an Android capture after the redeploy and confirm the client still
   reaches production. — August 2, 2026.
-- [ ] Confirm B1's opt-out rule in production: a **Checklist Step** with
+- [x] Confirm B1's opt-out rule in production: a **Checklist Step** with
   `carries_forward` switched off does not clone onto the task's next
-  occurrence.
+  occurrence. **Confirmed August 6, 2026.**
 
   **Restated August 3, 2026, because the original wording had gone stale
   and would have failed at the moment somebody went to run it.** It said "a
@@ -61,12 +61,20 @@ this checklist's.
   the check named a field that no longer exists. The *rule* is unchanged and
   still owed; only its vocabulary moved.
 
-  **The friction warning is void too.** This entry told the next person to
-  expect the same three failed attempts and route around them. That interface
-  is fixed: the Repeat/Repeats collision dissolved when a Checklist Step lost
-  its recurrence field, and the two identical checkboxes are now a checkbox
-  and a switch. Setting this up by hand should be unremarkable, and if it is
-  not, that is a new finding rather than the old one.
+  **The friction warning is void too, and this run is the evidence.**
+  Setting the task up by hand was in fact unremarkable — a daily-recurring
+  task named "B1 check" with two Checklist Steps, one left alone and one
+  switched off, no wrong control reached for. Completed the parent on
+  `vinclarice.com` (Vince logged in, the rest driven from there) and read
+  the spawned occurrence back two ways: `GET /api/v1/tasks/{id}` returned
+  exactly one `checklist_steps` entry, "carries over" with
+  `carries_forward: true`; the rendered task page agreed, "Checklist 0/1"
+  with the opted-out step gone rather than merely unchecked. One wrinkle
+  worth naming rather than smoothing over: a same-named task already existed
+  from an earlier, incomplete attempt, and its "opted out" step still had
+  `carries_forward: true` — the switch had never actually been turned off.
+  Turned it off, confirmed it persisted through a reload, then completed the
+  parent. The rule held.
 
 ### Infrastructure confirmations owed
 

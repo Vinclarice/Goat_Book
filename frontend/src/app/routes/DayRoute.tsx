@@ -4,9 +4,10 @@ import { useParams } from "react-router";
 
 import { Button } from "@/components/ui/button";
 
-import { ageLabel, dueLabel } from "../../agenda";
+import { ageLabel, colorForKey, dueLabel } from "../../agenda";
 import { apiV1 } from "../../api/client";
 import { RequestFailed, statusOf } from "../../api/failure";
+import type { AreaColorKey } from "../../types";
 import { RouteFailure } from "./RouteFailure";
 
 const SECTIONS = [
@@ -32,11 +33,16 @@ type Draft = Record<Field, string>;
 
 const EMPTY: Draft = { intentions: "", gratitude: "", happenings: "" };
 
+type AreaSummary = { id: number; title: string; url: string; color_key: AreaColorKey };
+type ProjectSummary = { id: number; title: string; url: string };
+
 type ActionItem = {
   id: number;
   text: string;
   due_date: string | null;
   age_in_days: number;
+  area_id: number;
+  project_id: number | null;
 };
 
 type Focus = {
@@ -120,6 +126,8 @@ function FocusList({
 function ActionItems({
   items,
   today,
+  areas,
+  projects,
   pinnedIds,
   onPin,
   onUnpin,
@@ -127,6 +135,8 @@ function ActionItems({
 }: {
   items: ActionItem[];
   today: string;
+  areas: AreaSummary[];
+  projects: ProjectSummary[];
   pinnedIds: Set<number>;
   onPin: (taskId: number) => void;
   onUnpin: (taskId: number) => void;
@@ -139,24 +149,60 @@ function ActionItems({
       </p>
     );
   }
+  // Same join the Agenda makes: an item only carries area_id/project_id,
+  // and the title/url live once here rather than repeated on every item.
+  const areaById = new Map(areas.map((each) => [each.id, each]));
+  const projectById = new Map(projects.map((each) => [each.id, each]));
   return (
     <ul className="space-y-1">
       {items.map((item) => {
         const pinned = pinnedIds.has(item.id);
+        const itemArea = areaById.get(item.area_id);
+        const itemProject = item.project_id ? projectById.get(item.project_id) : undefined;
         return (
           <li
             key={item.id}
             className="flex items-baseline justify-between gap-3 rounded-lg border border-border px-3 py-2"
           >
-            <span className="min-w-0">
-              <a href={`/app/tasks/${item.id}`} className="hover:underline">
-                {item.text}
-              </a>
-              {/* A pinned task stays in the agenda below -- the focus list is
-                  above it, not carved out of it -- so the row says which it
-                  is rather than leaving two identical-looking entries. */}
-              {pinned && (
-                <span className="ml-2 text-sm text-accent">Pinned</span>
+            <span className="min-w-0 space-y-1">
+              <span className="block">
+                <a href={`/app/tasks/${item.id}`} className="hover:underline">
+                  {item.text}
+                </a>
+                {/* A pinned task stays in the agenda below -- the focus list is
+                    above it, not carved out of it -- so the row says which it
+                    is rather than leaving two identical-looking entries. */}
+                {pinned && (
+                  <span className="ml-2 text-sm text-accent">Pinned</span>
+                )}
+              </span>
+              {/* ui-second-pass-plan.md F2: this row used to show neither --
+                  less than the Agenda, even though the join was one field
+                  away on each side. */}
+              {(itemArea || itemProject) && (
+                <span className="flex flex-wrap items-center gap-1.5">
+                  {itemArea && (
+                    <a
+                      href={itemArea.url}
+                      className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground"
+                    >
+                      <span
+                        className="h-1.5 w-1.5 rounded-full"
+                        aria-hidden="true"
+                        style={{ background: colorForKey(itemArea.color_key) }}
+                      />
+                      {itemArea.title}
+                    </a>
+                  )}
+                  {itemProject && (
+                    <a
+                      href={itemProject.url}
+                      className="inline-flex items-center rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground"
+                    >
+                      {itemProject.title}
+                    </a>
+                  )}
+                </span>
               )}
             </span>
             <span className="flex shrink-0 items-baseline gap-3">
@@ -862,6 +908,8 @@ export function DayRoute() {
           <ActionItems
             items={data.action_items}
             today={data.today}
+            areas={data.areas}
+            projects={data.projects}
             pinnedIds={pinnedIds}
             onPin={(taskId) => focusMutation.mutate({ taskId, pin: true })}
             onUnpin={(taskId) => focusMutation.mutate({ taskId, pin: false })}

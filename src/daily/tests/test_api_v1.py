@@ -21,7 +21,7 @@ from daily import services
 from daily import services as daily_services
 from daily.models import DailyFocus
 from lists import services as list_services
-from lists.models import List
+from lists.models import List, Project
 
 
 PASSWORD = "correct horse battery staple 47!"
@@ -298,3 +298,22 @@ class DayActionItemsTest(TestCase):
 
         for field in ("id", "text", "status", "due_date", "area_id", "url"):
             self.assertIn(field, item)
+
+    def test_carries_the_caller_s_areas_and_projects_so_a_row_can_show_them(self):
+        """ui-second-pass-plan.md F2/the sitting's Daily Page finding: an
+        action item already carried area_id and project_id (TaskOut), but
+        the day had nothing for a row to join them against -- unlike the
+        Agenda, which has always carried `areas`. This is that join, plus
+        the same one for `projects` the Agenda just gained.
+        """
+        Project.objects.create(owner=self.alice, area=self.list_, title="Kitchen remodel")
+        Project.objects.create(owner=self.bob, area=self.bob.lists.create(title="Bob's home"), title="Not mine")
+
+        body = self.client.get("/api/v1/day").json()
+
+        self.assertEqual(len(body["areas"]), 1)
+        self.assertEqual(body["areas"][0]["title"], "Home")
+        self.assertEqual(body["areas"][0]["url"], self.list_.get_absolute_url())
+        self.assertEqual(len(body["projects"]), 1)
+        self.assertEqual(body["projects"][0]["title"], "Kitchen remodel")
+        self.assertEqual(body["projects"][0]["url"], self.list_.get_absolute_url())

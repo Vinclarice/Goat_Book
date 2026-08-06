@@ -2305,6 +2305,45 @@
         "title": "DayActionItemOut",
         "type": "object"
       },
+      "DayAreaSummaryOut": {
+        "description": "An action item's area, joined the way the Agenda's `areas` already\nis -- minus the fields only a create-task form needs, which the Daily\nPage doesn't have.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          },
+          "color_key": {
+            "enum": [
+              "sky",
+              "sage",
+              "amber",
+              "lilac",
+              "coral",
+              "azure",
+              "blush",
+              "straw"
+            ],
+            "title": "Color Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "url",
+          "color_key"
+        ],
+        "title": "DayAreaSummaryOut",
+        "type": "object"
+      },
       "DayOut": {
         "properties": {
           "date": {
@@ -2332,6 +2371,20 @@
               "$ref": "#/components/schemas/DayActionItemOut"
             },
             "title": "Action Items",
+            "type": "array"
+          },
+          "areas": {
+            "items": {
+              "$ref": "#/components/schemas/DayAreaSummaryOut"
+            },
+            "title": "Areas",
+            "type": "array"
+          },
+          "projects": {
+            "items": {
+              "$ref": "#/components/schemas/AgendaProjectSummaryOut"
+            },
+            "title": "Projects",
             "type": "array"
           },
           "shows_action_items": {
@@ -2379,6 +2432,8 @@
           "happenings",
           "today",
           "action_items",
+          "areas",
+          "projects",
           "shows_action_items",
           "focus",
           "compass_purpose",

@@ -12,7 +12,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from lists.models import Item, List
-from lists.serializers import serialize_item
+from lists.serializers import project_ref_for, serialize_item
 
 
 OVERDUE = "overdue"
@@ -297,16 +297,8 @@ def workspace_data_for(
         ],
         # ui-second-pass-plan.md F2: a task carries a project_id but nothing
         # in the payload said what that project was, so the Agenda row had
-        # no title to show. A project has no page of its own yet, so this
-        # links to its area's -- the only place it is actually visible.
-        "projects": [
-            {
-                "id": each.id,
-                "title": each.title,
-                "url": each.area.get_absolute_url(),
-            }
-            for each in projects
-        ],
+        # no title to show.
+        "projects": [project_ref_for(each) for each in projects],
     }
 
 

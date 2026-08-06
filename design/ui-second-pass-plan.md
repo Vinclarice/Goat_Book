@@ -171,12 +171,38 @@ Ordered thinnest first, per `principles.md`.
    "Pick tile" row now shows both pills, "Preview List" and "Kitchen
    remodel", the second linking to `/areas/30/`.
 
+   **The Daily Page half done, August 6, 2026.** Its Action Items already
+   carried `area_id` and `project_id` on every item — `DayActionItemOut`
+   subclasses the Agenda's own `TaskOut` — but `DayOut` had nothing to join
+   them against, unlike the Agenda, which has always had `areas`. Fixed the
+   same way: `DayOut` gains `areas` (a page-local `DayAreaSummaryOut`, since
+   the Agenda's own carries `create_item_url` and counts the day doesn't
+   need) and `projects` (the Agenda's `AgendaProjectSummaryOut`, reused
+   outright since the shape is identical). The dict-shaping for a project
+   reference was pulled out to `serializers.project_ref_for` in the same
+   commit, so the Agenda and the Daily Page share the one definition instead
+   of two copies drifting.
+
+   The Daily Page is Tailwind-native rather than site.css like the Agenda,
+   so the pills are a small rounded-border span rather than `pill-project` —
+   same information, page-appropriate styling, not a shared component
+   because none existed to share.
+
+   Guarded the same two-sided way: a `daily` test asserting `areas` and
+   `projects` are owner-scoped and shaped right, and a `DayRoute` test
+   asserting the pills render on an item that has a project and not on one
+   that doesn't. Django green at 830, frontend at 227, `tsc --noEmit` and the
+   build clean, browser smoke at 28. Viewed in the running app: the same
+   "Pick tile" task, given today's due date so it would appear in Action
+   Items, showed both "Preview List" and "Kitchen remodel" — where the
+   sitting had found neither.
+
    **What this does not yet touch**, named rather than silently deferred:
-   the Daily Page and Archive rows F2's sitting also found silent (§8), and
-   the Area page's own F2a — a project heading with no visual tie to the
-   task rows under it. Each is the same join repeated on a different
-   component, not a new design question, but repeating it here would make
-   this entry the whole rest of step 2 rather than its first slice.
+   the Archive row F2's sitting also found silent (§8), and the Area page's
+   own F2a — a project heading with no visual tie to the task rows under it.
+   Each is the same join repeated on a different component, not a new
+   design question, but repeating it here would make this entry the whole
+   rest of step 2 rather than its next slice.
 3. **Projects in the navigation.** F3, and the one that needs real design
    rather than transcription. At minimum the side nav gains projects; whether
    they nest under their Area, sit in their own group, or appear only when

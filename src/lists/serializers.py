@@ -52,6 +52,21 @@ def serialize_item(item):
     }
 
 
+def project_ref_for(project):
+    """A project's minimal read shape: id, title, and its area's url.
+
+    A project has no page of its own yet -- ui-second-pass-plan.md F2/F3,
+    the second half still open -- so this borrows its area's, the only place
+    it is actually visible. Shared by the Agenda and Daily Page reads, the
+    two surfaces that join a task's project_id against this so far.
+    """
+    return {
+        "id": project.id,
+        "title": project.title,
+        "url": project.area.get_absolute_url(),
+    }
+
+
 def area_ref_for(our_list):
     return {
         "id": our_list.id,

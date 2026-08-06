@@ -1035,6 +1035,25 @@ export interface components {
             /** Age In Days */
             age_in_days: number;
         };
+        /**
+         * DayAreaSummaryOut
+         * @description An action item's area, joined the way the Agenda's `areas` already
+         *     is -- minus the fields only a create-task form needs, which the Daily
+         *     Page doesn't have.
+         */
+        DayAreaSummaryOut: {
+            /** Id */
+            id: number;
+            /** Title */
+            title: string;
+            /** Url */
+            url: string;
+            /**
+             * Color Key
+             * @enum {string}
+             */
+            color_key: "sky" | "sage" | "amber" | "lilac" | "coral" | "azure" | "blush" | "straw";
+        };
         /** DayOut */
         DayOut: {
             /** Date */
@@ -1049,6 +1068,10 @@ export interface components {
             today: string;
             /** Action Items */
             action_items: components["schemas"]["DayActionItemOut"][];
+            /** Areas */
+            areas: components["schemas"]["DayAreaSummaryOut"][];
+            /** Projects */
+            projects: components["schemas"]["AgendaProjectSummaryOut"][];
             /** Shows Action Items */
             shows_action_items: boolean;
             /** Focus */

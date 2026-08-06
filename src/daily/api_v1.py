@@ -14,14 +14,27 @@ from ninja.errors import HttpError
 
 from daily import reads, services
 from lists import agenda
-from lists.api_v1 import TaskOut
+from lists import projects as project_reader
+from lists.api_v1 import AgendaProjectSummaryOut, AreaColorKey, TaskOut
 from lists.models import Item
-from lists.serializers import serialize_item
+from lists.serializers import project_ref_for, serialize_item
 from routines import reads as routine_reads
 from routines.api_v1 import PausedRoutineOut, StandingOut
 
 
 router = Router()
+
+
+class DayAreaSummaryOut(Schema):
+    """An action item's area, joined the way the Agenda's `areas` already
+    is -- minus the fields only a create-task form needs, which the Daily
+    Page doesn't have.
+    """
+
+    id: int
+    title: str
+    url: str
+    color_key: AreaColorKey
 
 
 class DayOut(Schema):
@@ -41,6 +54,13 @@ class DayOut(Schema):
     # records the agenda serves and a second schema would be free to drift
     # from the first.
     action_items: list["DayActionItemOut"]
+    # Every action item already carried area_id and project_id (TaskOut),
+    # but nothing here said what either was -- ui-second-pass-plan.md F2's
+    # Daily Page finding: the row showed less than the Agenda even though
+    # the Agenda's own join was one field away. Sent regardless of
+    # shows_action_items, since a past day's own areas/projects don't change.
+    areas: list[DayAreaSummaryOut]
+    projects: list[AgendaProjectSummaryOut]
     # Whether this day is showing them at all, decided by the server so the
     # client is not left inferring it from an empty list. Empty-because-done
     # and empty-because-not-today are different, and only one of them
@@ -194,6 +214,19 @@ def _day_out(owner, day):
             if shows_action_items
             else []
         ),
+        "areas": [
+            {
+                "id": each.id,
+                "title": each.title,
+                "url": each.get_absolute_url(),
+                "color_key": each.color_key,
+            }
+            for each in agenda.list_summaries(owner)
+        ],
+        "projects": [
+            project_ref_for(each)
+            for each in project_reader.projects_for(owner).select_related("area")
+        ],
         "shows_action_items": shows_action_items,
         "focus": [_focus_out(focus) for focus in reads.focus_for(owner, day)],
         "compass_purpose": owner.compass_purpose,

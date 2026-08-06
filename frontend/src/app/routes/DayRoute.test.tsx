@@ -30,6 +30,8 @@ function dayData(overrides: Record<string, unknown> = {}) {
     happenings: "",
     today: "2026-08-03",
     action_items: [],
+    areas: [],
+    projects: [],
     shows_action_items: true,
     focus: [],
     compass_purpose: "",
@@ -73,6 +75,27 @@ function actionItem(overrides: Record<string, unknown> = {}) {
     text: "Pay rent",
     due_date: "2026-08-03",
     age_in_days: 0,
+    area_id: 1,
+    project_id: null,
+    ...overrides,
+  };
+}
+
+function dayArea(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 1,
+    title: "Home",
+    url: "/areas/1/",
+    color_key: "sky",
+    ...overrides,
+  };
+}
+
+function dayProject(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 1,
+    title: "Kitchen remodel",
+    url: "/areas/1/",
     ...overrides,
   };
 }
@@ -353,6 +376,36 @@ describe("DayRoute", () => {
     expect(
       screen.getByRole("button", { name: "Pin to today" }),
     ).toBeInTheDocument();
+  });
+
+  it("shows an action item's area and project, the same way the Agenda does", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        dayData({
+          action_items: [
+            actionItem({ id: 1, text: "Order cabinets", project_id: 7 }),
+            actionItem({ id: 2, text: "Pay rent" }),
+          ],
+          areas: [dayArea()],
+          projects: [dayProject({ id: 7, title: "Kitchen remodel", url: "/areas/1/" })],
+        }),
+      ),
+    );
+
+    renderAt("/day/2026-08-03");
+    await screen.findByText("Order cabinets");
+
+    const withProject = screen.getByText("Order cabinets").closest("li")!;
+    const withoutProject = screen.getByText("Pay rent").closest("li")!;
+    expect(within(withProject).getByRole("link", { name: "Home" })).toHaveAttribute(
+      "href",
+      "/areas/1/",
+    );
+    expect(
+      within(withProject).getByRole("link", { name: "Kitchen remodel" }),
+    ).toHaveAttribute("href", "/areas/1/");
+    expect(within(withoutProject).getByRole("link", { name: "Home" })).toBeInTheDocument();
+    expect(within(withoutProject).queryByText("Kitchen remodel")).not.toBeInTheDocument();
   });
 
   it("pins a task through the day's own focus endpoint", async () => {

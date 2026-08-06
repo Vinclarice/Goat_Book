@@ -163,8 +163,25 @@ class NavAreaOut(Schema):
     color_key: AreaColorKey
 
 
+class NavProjectOut(Schema):
+    id: int
+    title: str
+    # area_id rather than a url: the nav is the one place a project link
+    # should route client-side through the SPA router, like every other row
+    # in it -- everywhere else project_ref_for's full Django url is right,
+    # because those are one-off pills leaving the page anyway.
+    area_id: int
+    open_task_count: int
+
+
 class NavOut(Schema):
     areas: list[NavAreaOut]
+    # ui-second-pass-plan.md F3, Vince's call: a top-level group, flat
+    # across areas, the same weight as `areas` rather than nested under it.
+    # Completed projects are left out -- this group is ongoing work, the
+    # same reason the Agenda excludes completed tasks, and unlike an Area a
+    # project actually has a completion state to filter on.
+    projects: list[NavProjectOut]
     archived_count: int
     inbox_count: int
     settings_url: str
@@ -188,6 +205,15 @@ def navigation(request):
     user = request.user
     return {
         "areas": agenda_reader.list_summaries(user),
+        "projects": [
+            {
+                "id": each.id,
+                "title": each.title,
+                "area_id": each.area_id,
+                "open_task_count": each.open_task_count,
+            }
+            for each in project_reader.projects_for(user).filter(is_completed=False)
+        ],
         "archived_count": Item.objects.filter(
             list__owner=user, status=Item.Status.ARCHIVED
         ).count(),

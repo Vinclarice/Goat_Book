@@ -1247,6 +1247,13 @@
             "title": "Areas",
             "type": "array"
           },
+          "projects": {
+            "items": {
+              "$ref": "#/components/schemas/NavProjectOut"
+            },
+            "title": "Projects",
+            "type": "array"
+          },
           "archived_count": {
             "title": "Archived Count",
             "type": "integer"
@@ -1274,6 +1281,7 @@
         },
         "required": [
           "areas",
+          "projects",
           "archived_count",
           "inbox_count",
           "settings_url",
@@ -1282,6 +1290,34 @@
           "landing_surface"
         ],
         "title": "NavOut",
+        "type": "object"
+      },
+      "NavProjectOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "area_id": {
+            "title": "Area Id",
+            "type": "integer"
+          },
+          "open_task_count": {
+            "title": "Open Task Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "area_id",
+          "open_task_count"
+        ],
+        "title": "NavProjectOut",
         "type": "object"
       },
       "AgendaAreaSummaryOut": {

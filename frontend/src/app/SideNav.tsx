@@ -33,6 +33,7 @@ export function SideNav() {
   // appears a beat after the page does makes every navigation feel like a
   // layout shift.
   const areas = data?.areas ?? [];
+  const projects = data?.projects ?? [];
 
   const logout = useMutation({
     mutationFn: async () => {
@@ -120,6 +121,26 @@ export function SideNav() {
               )}
               {each.open_count}
             </span>
+          </NavLink>
+        ))}
+      </div>
+
+      {/* Its own group rather than nested under Areas -- ui-second-pass-plan.md
+          F3, Vince's call. Flat across areas, same weight as the group above
+          it. Completed projects never appear here: this group is ongoing
+          work, the same reason the Agenda doesn't list completed tasks. */}
+      <div className={styles.group}>
+        <h3>Projects</h3>
+        {projects.length === 0 && <p className={styles.empty}>No projects yet.</p>}
+        {projects.map((each) => (
+          <NavLink
+            key={each.id}
+            to={`/areas/${each.area_id}`}
+            className={navLinkClass}
+            title={each.title}
+          >
+            <span className={styles.name}>{each.title}</span>
+            <span className={styles.count}>{each.open_task_count}</span>
           </NavLink>
         ))}
       </div>

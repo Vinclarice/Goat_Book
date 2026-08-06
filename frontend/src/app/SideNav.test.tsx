@@ -39,6 +39,7 @@ const NAV = {
       color_key: "sage",
     },
   ],
+  projects: [],
   archived_count: 4,
   inbox_count: 3,
   settings_url: "/accounts/settings/",
@@ -78,6 +79,49 @@ describe("SideNav", () => {
     expect(await screen.findByText("Programming")).toBeInTheDocument();
     expect(screen.getByText("Home")).toBeInTheDocument();
     expect(screen.getByLabelText("2 overdue")).toBeInTheDocument();
+  });
+
+  it("lists open projects in their own group, flat across areas", async () => {
+    // ui-second-pass-plan.md F3, Vince's call: a top-level Projects group,
+    // not nested under Areas.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse({
+        ...NAV,
+        projects: [
+          { id: 9, title: "Kitchen remodel", area_id: 1, open_task_count: 3 },
+        ],
+      }),
+    );
+    renderNav();
+
+    expect(await screen.findByText("Kitchen remodel")).toBeInTheDocument();
+    const heading = screen.getByRole("heading", { name: "Projects" });
+    expect(
+      heading.closest("div")?.textContent,
+    ).toContain("Kitchen remodel");
+  });
+
+  it("routes a project through the SPA router, to its own area", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse({
+        ...NAV,
+        projects: [
+          { id: 9, title: "Kitchen remodel", area_id: 1, open_task_count: 3 },
+        ],
+      }),
+    );
+    const user = userEvent.setup();
+    renderNav();
+
+    await user.click(await screen.findByText("Kitchen remodel"));
+
+    expect(await screen.findByText("Area page")).toBeInTheDocument();
+  });
+
+  it("says so when there are no open projects", async () => {
+    renderNav();
+
+    expect(await screen.findByText("No projects yet.")).toBeInTheDocument();
   });
 
   it("navigates to a list rather than filtering the agenda", async () => {

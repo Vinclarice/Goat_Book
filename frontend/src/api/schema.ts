@@ -630,6 +630,8 @@ export interface components {
         NavOut: {
             /** Areas */
             areas: components["schemas"]["NavAreaOut"][];
+            /** Projects */
+            projects: components["schemas"]["NavProjectOut"][];
             /** Archived Count */
             archived_count: number;
             /** Inbox Count */
@@ -642,6 +644,17 @@ export interface components {
             ideas_url: string;
             /** Landing Surface */
             landing_surface: string;
+        };
+        /** NavProjectOut */
+        NavProjectOut: {
+            /** Id */
+            id: number;
+            /** Title */
+            title: string;
+            /** Area Id */
+            area_id: number;
+            /** Open Task Count */
+            open_task_count: number;
         };
         /** AgendaAreaSummaryOut */
         AgendaAreaSummaryOut: {

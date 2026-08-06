@@ -7,6 +7,7 @@ from django.utils import timezone
 from accounts.models import User
 from capture.models import Capture
 from lists import agenda as agenda_reader
+from lists import services as list_services
 from lists.models import Item, List, Project
 
 
@@ -355,6 +356,30 @@ class NavEndpointTest(TestCase):
         self.assertEqual([each["title"] for each in body["areas"]], ["Programming"])
         self.assertEqual(body["areas"][0]["open_count"], 2)
         self.assertEqual(body["areas"][0]["overdue_count"], 1)
+
+    def test_carries_the_caller_s_open_projects_for_f3s_own_nav_group(self):
+        """ui-second-pass-plan.md F3: Vince's call was a top-level Projects
+        group, flat across areas. Completed projects are left out -- this
+        group is about ongoing work, the same reason the Agenda doesn't
+        list completed tasks, and a project has a completion state an Area
+        never does.
+        """
+        Project.objects.create(owner=self.user, area=self.list_, title="Kitchen remodel")
+        done = Project.objects.create(
+            owner=self.user, area=self.list_, title="Finished already",
+        )
+        list_services.complete_project(done)
+        Project.objects.create(
+            owner=self.other, area=self.other.lists.first(), title="Not mine",
+        )
+        self.client.force_login(self.user)
+
+        body = self.client.get("/api/v1/nav").json()
+
+        self.assertEqual(len(body["projects"]), 1)
+        self.assertEqual(body["projects"][0]["title"], "Kitchen remodel")
+        self.assertEqual(body["projects"][0]["area_id"], self.list_.id)
+        self.assertIn("open_task_count", body["projects"][0])
 
     def test_counts_the_archive_and_the_unresolved_inbox(self):
         self.client.force_login(self.user)

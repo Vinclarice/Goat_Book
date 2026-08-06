@@ -237,14 +237,43 @@ Ordered thinnest first, per `principles.md`.
    is step 3 (F3, projects in navigation) and step 4 (F5, the Area page's
    action density) — the former is the one this cycle has said from the
    start should not be started by guessing.
-3. **Projects in the navigation.** F3, and the one that needs real design
-   rather than transcription. At minimum the side nav gains projects; whether
-   they nest under their Area, sit in their own group, or appear only when
-   open is exactly the information-architecture question C2 raised and
-   nothing has yet answered. **This should not be started by guessing** — see
-   §6.
-4. **The Area page's action density.** F5, once 3 has decided what that page
-   is for.
+
+3. **Projects in the navigation — done, August 6, 2026.** F3. **Vince's
+   call, asked rather than assumed:** a new top-level Projects group, flat
+   across areas, the same weight as the Areas group rather than nested
+   under it. `NavOut` gains `projects` (id, title, `area_id`, open task
+   count), scoped to this owner's *open* projects only — a completed
+   project doesn't hold primary nav space, the same reason the Agenda
+   excludes completed tasks, and unlike an Area a project actually has a
+   completion state to filter on. `SideNav` renders it between Areas and
+   Account.
+
+   **One shape decision beyond the group placement itself:** every other
+   surface's project join carries a Django `url` (`project_ref_for`,
+   pointing at the area's classic page, because those pills are one-off
+   annotations leaving the page anyway). The nav is different — it's the
+   primary in-app navigation, where every other row routes client-side
+   through the SPA router via `NavLink`. Sending a project a `url` would
+   have meant either a jarring full-page reload just for this one row, or
+   parsing a Django path back out of it. Sent `area_id` instead, so the nav
+   builds `to={`/areas/${area_id}`}` the same way the Areas group already
+   does.
+
+   Guarded by a `lists` payload test (open only, owner-scoped, carries
+   `area_id`) and three `SideNav` tests: the group renders flat with a
+   count, clicking a project actually lands on its area through the router
+   rather than a reload, and an empty state ("No projects yet.") when there
+   are none — mirroring "No areas yet." rather than hiding the group
+   outright, since a user who has never used projects shouldn't see a
+   different nav shape than one who has and finished them all. Django green
+   at 833, frontend at 232, `tsc --noEmit` and the build clean, browser
+   smoke at 28. Viewed in the running app: "Kitchen remodel" now sits in
+   its own Projects group with "2 open," and clicking it landed on its area
+   page without a reload.
+
+4. **The Area page's action density.** F5, still open — the reason it
+   waited on step 3 no longer applies now that step 3 has an answer, but
+   nothing has looked at it yet.
 
 ## 5. What this cycle will not do
 
@@ -281,6 +310,12 @@ fixed a defect with a DOM-level fact behind it, and has shipped. The rest
 redesign navigation on the strength of a hunch, which is precisely what
 `roadmap.md` tells this cycle not to do — they stay blocked on the sitting
 described above.
+
+**The sitting happened, §8 below, and the block it names is gone.** Steps 2
+and 3 are both done as of August 6, 2026 — see §4. Step 3 in particular is
+the one this section worried would mean guessing at navigation; it shipped
+only after asking Vince directly which shape to build, rather than reading
+the sitting's evidence as license to decide it here.
 
 ## 7. Does this ship inside Release D?
 

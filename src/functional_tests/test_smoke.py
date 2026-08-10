@@ -3,6 +3,8 @@
 Each of these crosses at least one boundary no other suite can reach. See
 design/bittern-plan.md, B2.2.
 """
+import re
+
 from playwright.sync_api import expect
 
 from functional_tests.base import BrowserTest
@@ -119,15 +121,17 @@ class DirectLoadTest(BrowserTest):
 
 
 class ProjectJourneyTest(BrowserTest):
-    """Release D slice 8, proved in a browser rather than asserted in jsdom.
+    """project-workspace-plan.md, proved in a browser rather than asserted
+    in jsdom.
 
-    Two things only a real browser answers here. The panel and the task's
-    project select are on different pages talking to the same endpoint
-    through two different HTTP clients -- openapi-fetch for the project CRUD,
-    the hand-rolled one for the task PATCH -- and the component tests mock
-    both, so nothing below the component had ever run end to end. And the
-    invariant that gives this feature its shape (completing a project leaves
-    its tasks alone) is worth seeing rather than trusting.
+    Two things only a real browser answers here. Creating a project (the
+    Agenda sidebar), assigning an area to it (the project's own page) and
+    reading the result back (the area's own page) are three different
+    pages talking to the same API through openapi-fetch, and the component
+    tests mock all three independently, so nothing below the component had
+    ever run end to end. And the invariant that gives this feature its
+    shape (completing a project leaves its areas, and their tasks, alone)
+    is worth seeing rather than trusting.
     """
 
     def setUp(self):
@@ -139,48 +143,63 @@ class ProjectJourneyTest(BrowserTest):
         )
         self.log_in(self.user)
 
-    def test_creating_a_project_putting_a_task_in_it_and_finishing_it(self):
+    def test_creating_a_project_adding_an_area_and_finishing_it(self):
+        self.visit("/app/agenda")
+
+        self.page.get_by_text("+ New project").click()
+        self.page.get_by_label("Project name").fill("Website Relaunch")
+        self.page.get_by_role("button", name="Create project").click()
+
+        # Creating a project navigates straight to its own page -- the
+        # gap this whole redesign closes.
+        expect(self.page).to_have_url(re.compile(r"/app/projects/\d+$"))
+        expect(self.page.get_by_role("heading", name="Website Relaunch")).to_be_visible()
+        project_url = self.page.url
+
+        self.page.get_by_label("Add an area").select_option(label="Work")
+        self.page.get_by_role("button", name="Add area").click()
+        expect(self.page.get_by_role("link", name="Work")).to_be_visible()
+        # The project already knows how much is open in the area it just
+        # gained -- both its own header count and the area row agree.
+        expect(self.page.get_by_text("1 open", exact=False).first).to_be_visible()
+
+        # The area's own page agrees about which project it belongs to --
+        # shown three times over: the side nav, the "part of" indicator,
+        # and the task's own project pill.
         self.visit(f"/app/areas/{self.work.id}")
+        expect(self.page.get_by_text("Website Relaunch").first).to_be_visible()
 
-        projects = self.page.get_by_role("region", name="Projects")
-        expect(projects.get_by_text("No projects in this area yet.")).to_be_visible()
+        # visit() prepends live_server_url; project_url already has it.
+        self.page.goto(project_url)
+        self.page.get_by_role("button", name="Mark complete").click()
+        expect(self.page.get_by_role("button", name="Reopen")).to_be_visible()
 
-        projects.get_by_label("New project").fill("Website Relaunch")
-        projects.get_by_role("button", name="Add project").click()
-        expect(projects.get_by_text("Website Relaunch")).to_be_visible()
-
-        # The task joins from its own page, which is where every other
-        # single-field task edit lives.
-        self.visit(f"/app/tasks/{self.task.id}")
-        self.page.get_by_label("Project").select_option(label="Website Relaunch")
-        expect(self.page.get_by_text("Added to the project.")).to_be_visible()
-
-        # Back on the area, the project now knows how much is open in it.
-        self.visit(f"/app/areas/{self.work.id}")
-        projects = self.page.get_by_role("region", name="Projects")
-        expect(projects.get_by_text("1 open", exact=False).first).to_be_visible()
-
-        projects.get_by_role("button", name="Mark complete").click()
-        expect(projects.get_by_role("button", name="Reopen")).to_be_visible()
-
-        # The point of the whole design: the grouping finished, the work did
-        # not. Read from the database rather than the screen, so this cannot
-        # pass on a stale render.
+        # The point of the whole design: the grouping finished, the work
+        # did not. Read from the database rather than the screen, so this
+        # cannot pass on a stale render.
         self.task.refresh_from_db()
         self.assertEqual(self.task.status, Item.Status.ACTIVE)
 
-    def test_deleting_a_project_keeps_its_task(self):
-        self.visit(f"/app/areas/{self.work.id}")
-        projects = self.page.get_by_role("region", name="Projects")
+    def test_deleting_a_project_keeps_its_area_and_task(self):
+        self.visit("/app/agenda")
+        self.page.get_by_text("+ New project").click()
+        self.page.get_by_label("Project name").fill("Website Relaunch")
+        self.page.get_by_role("button", name="Create project").click()
+        expect(self.page).to_have_url(re.compile(r"/app/projects/\d+$"))
 
-        projects.get_by_label("New project").fill("Website Relaunch")
-        projects.get_by_role("button", name="Add project").click()
-        expect(projects.get_by_text("Website Relaunch")).to_be_visible()
+        self.page.get_by_label("Add an area").select_option(label="Work")
+        self.page.get_by_role("button", name="Add area").click()
+        expect(self.page.get_by_role("link", name="Work")).to_be_visible()
 
-        projects.get_by_role("button", name="Delete project").click()
+        self.page.get_by_role("button", name="Delete project").click()
         self.page.get_by_role("button", name="Delete permanently").click()
 
-        expect(projects.get_by_text("No projects in this area yet.")).to_be_visible()
+        # Deleting a project ends on the Agenda -- ProjectRoute's own
+        # navigate("/agenda") on success.
+        expect(self.page).to_have_url(f"{self.live_server_url}/app/agenda")
+
+        self.visit(f"/app/areas/{self.work.id}")
+        expect(self.page.get_by_text("Website Relaunch")).not_to_be_visible()
         expect(
             self.page.get_by_text("Write the brief", exact=True)
         ).to_be_visible()

@@ -585,13 +585,14 @@ release, so there is no Release E. The next release to actually start is
 ## Keeping this current
 
 Update this file when an item in the active release begins, changes scope,
-ships, or is explicitly deferred. **There is no active release right now.**
-Dunlin shipped August 3 and nothing has been promoted to replace it;
-`ui-second-pass-plan.md`, the last piece of work still folded into it,
-shipped its remaining steps August 6, 2026 (`DEPLOYED-2026-08-06/2248`) and
-has nothing left open. The Bittern/Crane carried-forward checklist is down
-to three items, none of them schedulable work — see "Carried in from
-Bittern, through Crane and Dunlin" above.
+ships, or is explicitly deferred. **Release F is the active release**,
+opened August 7, 2026 — see below. Dunlin shipped August 3 and nothing was
+promoted to replace it until then; `ui-second-pass-plan.md`, the last piece
+of work still folded into Dunlin, shipped its remaining steps August 6,
+2026 (`DEPLOYED-2026-08-06/2248`) and has nothing left open. The
+Bittern/Crane carried-forward checklist is down to three items, none of
+them schedulable work — see "Carried in from Bittern, through Crane and
+Dunlin" above.
 
 **Release F opens with the second-mind discovery pass — Vince's call,
 August 7, 2026, ahead of the pain that would otherwise force it.**

@@ -38,6 +38,9 @@ class Idea(models.Model):
         on_delete=models.SET_NULL,
         related_name="+",
     )
+    # lists.Tag, not a parallel model -- same field Capture.tags already is,
+    # same shared vocabulary. design/second-mind-discovery-plan.md 4.1.
+    tags = models.ManyToManyField("lists.Tag", blank=True, related_name="ideas")
 
     class Meta:
         ordering = ("-created_at", "-id")

@@ -186,7 +186,7 @@ def ideas(request):
     """
     status = request.GET.get("status", "")
     query = request.GET.get("q", "").strip()
-    found = Idea.objects.filter(owner=request.user)
+    found = Idea.objects.filter(owner=request.user).prefetch_related("tags")
     if status in Idea.Status.values:
         found = found.filter(status=status)
     else:

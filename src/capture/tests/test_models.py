@@ -2,7 +2,7 @@ from django.test import TestCase
 from django.utils import timezone
 
 from accounts.models import User
-from capture.models import Capture
+from capture.models import Capture, Idea
 from lists.models import Tag
 
 
@@ -68,3 +68,28 @@ class CaptureModelTest(TestCase):
         capture = Capture.objects.create(owner=self.user, text="Ring the vet")
 
         self.assertEqual(list(capture.tags.all()), [])
+
+
+class IdeaModelTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            "alice",
+            "alice@example.com",
+            PASSWORD,
+        )
+
+    def test_an_idea_can_carry_tags_from_the_shared_tag_vocabulary(self):
+        # design/second-mind-discovery-plan.md 4.1 -- the same field
+        # Capture.tags already is, same shared lists.Tag vocabulary.
+        idea = Idea.objects.create(owner=self.user, text="Write a roguelike")
+        game = Tag.objects.create(owner=self.user, name="game-dev")
+
+        idea.tags.add(game)
+
+        self.assertEqual(list(idea.tags.all()), [game])
+        self.assertEqual(list(game.ideas.all()), [idea])
+
+    def test_an_idea_has_no_tags_by_default(self):
+        idea = Idea.objects.create(owner=self.user, text="Write a roguelike")
+
+        self.assertEqual(list(idea.tags.all()), [])

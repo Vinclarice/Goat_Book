@@ -12,6 +12,7 @@ from django.utils import timezone
 from accounts.models import User
 from capture.models import Capture, Idea
 from capture.services import ALREADY_RESOLVED_ERROR
+from lists import services as list_services
 from lists.models import Item, List
 
 
@@ -101,6 +102,28 @@ class PromoteToTaskTest(TriageTest):
         theirs.refresh_from_db()
         self.assertIsNone(theirs.resolved_at)
 
+    def test_carries_the_captures_tags_onto_the_task(self):
+        # design/second-mind-discovery-plan.md 4.2 -- a capture's tags used
+        # to end at the Inbox. Item.tags already exists; this is a copy, not
+        # a schema change.
+        self.capture.tags.set(
+            list_services.resolve_tags(self.user, ["game-dev"])
+        )
+
+        self.promote_to_task()
+
+        task = Item.objects.get()
+        self.assertEqual([t.name for t in task.tags.all()], ["game-dev"])
+
+    def test_an_untagged_capture_produces_an_untagged_task(self):
+        # The regression that keeps the test above honest: a bug that
+        # always attached some default tag would still pass a test that
+        # only ever checked the tagged case.
+        self.promote_to_task()
+
+        task = Item.objects.get()
+        self.assertEqual(list(task.tags.all()), [])
+
 
 class PromoteToIdeaTest(TriageTest):
     def test_creates_an_exploring_idea(self):
@@ -140,6 +163,24 @@ class PromoteToIdeaTest(TriageTest):
 
         self.assertEqual(response.status_code, 404)
         self.assertFalse(Idea.objects.exists())
+
+    def test_carries_the_captures_tags_onto_the_idea(self):
+        # design/second-mind-discovery-plan.md 4.2 -- the Idea-side half of
+        # the same carry promote_to_task already does.
+        self.capture.tags.set(
+            list_services.resolve_tags(self.user, ["game-dev"])
+        )
+
+        self.promote_to_idea()
+
+        idea = Idea.objects.get()
+        self.assertEqual([t.name for t in idea.tags.all()], ["game-dev"])
+
+    def test_an_untagged_capture_produces_an_untagged_idea(self):
+        self.promote_to_idea()
+
+        idea = Idea.objects.get()
+        self.assertEqual(list(idea.tags.all()), [])
 
 
 class DiscardTest(TriageTest):

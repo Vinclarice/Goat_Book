@@ -58,6 +58,14 @@
           <p class="text-xs text-muted-foreground">{{ idea.created_at|date:"j M Y" }}</p>
         </div>
 
+        {% if idea.tags.all %}
+          <div class="flex flex-wrap gap-1">
+            {% for tag in idea.tags.all %}
+              <span class="idea-tag rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{{ tag.name }}</span>
+            {% endfor %}
+          </div>
+        {% endif %}
+
         {% if idea.status == "promoted" %}
           {% comment %}
             Locked on purpose: the task is the live record now, so further

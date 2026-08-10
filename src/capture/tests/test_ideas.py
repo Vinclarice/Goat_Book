@@ -9,7 +9,7 @@ from django.test import TestCase
 from accounts.models import User
 from capture.models import Capture, Idea
 from capture.services import PROMOTED_IDEA_LOCKED_ERROR
-from lists.models import Item, List
+from lists.models import Item, List, Tag
 
 
 PASSWORD = "correct horse battery staple 47!"
@@ -82,6 +82,20 @@ class IdeasPageTest(IdeasTest):
 
         self.assertEqual(self.shown(response), ["Read a book on product design"])
         self.assertNotContains(response, "Bob&#x27;s private idea")
+
+    def test_a_tagged_idea_shows_its_tags(self):
+        # design/second-mind-discovery-plan.md 4.1 -- same render pattern as
+        # capture.tests.test_views.test_a_tagged_capture_shows_its_tags.
+        self.idea.tags.add(Tag.objects.create(owner=self.user, name="game-dev"))
+
+        response = self.client.get("/capture/ideas/")
+
+        self.assertContains(response, "game-dev")
+
+    def test_an_untagged_idea_shows_no_tag_pills(self):
+        response = self.client.get("/capture/ideas/")
+
+        self.assertNotContains(response, 'class="idea-tag')
 
 
 class IdeaSearchTest(IdeasTest):

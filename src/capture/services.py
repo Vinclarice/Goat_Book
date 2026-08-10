@@ -117,24 +117,34 @@ def _require_unresolved(capture):
 
 @transaction.atomic
 def promote_to_task(capture, for_list):
-    """Capture -> Item, with the text carried across verbatim.
+    """Capture -> Item, with the text and tags carried across.
 
-    Due date, tags and the rest get set afterwards through the normal task
-    UI. Triage is about deciding *what a thing is*, and making it also be
-    the moment you schedule it would put the friction back that capture
-    exists to remove.
+    Tags are the one thing carried forward rather than set afterwards --
+    design/second-mind-discovery-plan.md 4.2: a capture's tags used to end
+    at the Inbox, which is the only way they outlived it. Due date and the
+    rest still get set afterwards through the normal task UI. Triage is
+    about deciding *what a thing is*, and making it also be the moment you
+    schedule it would put the friction back that capture exists to remove.
     """
     _require_unresolved(capture)
     # Deliberately not caught: a duplicate title raises TaskConflict, the
     # view reports it, and the capture stays in the inbox. Silently
     # resolving it against a task that already existed would lose the
     # thought.
-    task = list_services.create_item(for_list, capture.text)
+    task = list_services.create_item(
+        for_list, capture.text, tags=[tag.name for tag in capture.tags.all()]
+    )
     return _resolve(capture, Capture.Resolution.TASK, task=task)
 
 
 @transaction.atomic
 def promote_to_idea(capture, status):
+    """Capture -> Idea, with the text and tags carried across.
+
+    Tags: design/second-mind-discovery-plan.md 4.2, the Idea-side half of
+    the same carry promote_to_task already does for tasks -- a copy, not a
+    move, since the capture row keeps its own tags as history.
+    """
     _require_unresolved(capture)
     if status not in (Idea.Status.EXPLORING, Idea.Status.REFERENCE):
         # Not PROMOTED: that status is something an idea reaches later, by
@@ -143,6 +153,7 @@ def promote_to_idea(capture, status):
     idea = Idea.objects.create(
         owner=capture.owner, text=capture.text, status=status
     )
+    idea.tags.set(capture.tags.all())
     return _resolve(capture, Capture.Resolution.IDEA, idea=idea)
 
 

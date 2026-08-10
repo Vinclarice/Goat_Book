@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { colorForKey } from "../../agenda";
 import { apiV1 } from "../../api/client";
 import { RequestFailed, statusOf } from "../../api/failure";
-import { formatDateOnly } from "../../format";
+import { ProjectComposition } from "./ProjectComposition";
 import { RouteFailure } from "./RouteFailure";
 
 /**
@@ -34,6 +34,8 @@ export function ProjectRoute() {
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const [draftArea, setDraftArea] = useState("");
+  const [title, setTitle] = useState("");
+  const [dueDate, setDueDate] = useState("");
 
   const queryKey = ["project", id];
 
@@ -44,6 +46,8 @@ export function ProjectRoute() {
         params: { path: { project_id: id } },
       });
       if (!response.ok || !data) throw new RequestFailed(response.status);
+      setTitle(data.title);
+      setDueDate(data.due_date ?? "");
       return data;
     },
   });
@@ -62,6 +66,52 @@ export function ProjectRoute() {
     setError(null);
     return queryClient.invalidateQueries({ queryKey });
   }
+
+  // Neither field had an editable home anywhere before this: the create
+  // form only ever set a title (due_date always null), and this page only
+  // ever offered complete/reopen/delete. The API already supported both
+  // (ProjectUpdateIn), so this is a frontend-only gap.
+  const renameProject = useMutation({
+    mutationFn: async (newTitle: string) => {
+      const { data, error } = await apiV1.PATCH("/api/v1/projects/{project_id}", {
+        params: { path: { project_id: id } },
+        body: { title: newTitle },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (updated) => {
+      setError(null);
+      if (updated) setTitle(updated.title);
+      queryClient.setQueryData(queryKey, (current: typeof data) =>
+        current && updated ? { ...current, title: updated.title } : current,
+      );
+      // The sidebar's own Projects group shows each project's title.
+      queryClient.invalidateQueries({ queryKey: ["nav"] });
+    },
+    onError: () => setError("Couldn't rename that project."),
+  });
+
+  const updateDueDate = useMutation({
+    mutationFn: async (newDueDate: string) => {
+      const { data, error } = await apiV1.PATCH("/api/v1/projects/{project_id}", {
+        params: { path: { project_id: id } },
+        body: { due_date: newDueDate || null },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (updated) => {
+      setError(null);
+      if (updated) setDueDate(updated.due_date ?? "");
+      queryClient.setQueryData(queryKey, (current: typeof data) =>
+        current && updated
+          ? { ...current, due_date: updated.due_date, is_overdue: updated.is_overdue }
+          : current,
+      );
+    },
+    onError: () => setError("Couldn't update that due date."),
+  });
 
   const setCompleted = useMutation({
     mutationFn: async (isCompleted: boolean) => {
@@ -155,11 +205,28 @@ export function ProjectRoute() {
     createArea.mutate(title);
   }
 
+  function handleRename(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const trimmed = title.trim();
+    if (trimmed) renameProject.mutate(trimmed);
+  }
+
+  function handleSaveDueDate(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    updateDueDate.mutate(dueDate);
+  }
+
   if (isPending) return <p className="p-6">Loading…</p>;
   if (loadError || !data) return <RouteFailure status={statusOf(loadError)} onRetry={() => refetch()} />;
 
   const areaIds = new Set(data.areas.map((each) => each.id));
   const availableAreas = (nav?.areas ?? []).filter((each) => !areaIds.has(each.id));
+  // ui-second-pass-plan.md F5's pattern, applied to both fields here: a
+  // Save button that stays disabled until its own field actually differs
+  // reads as "nothing to save yet" rather than a live control sitting next
+  // to an inert button.
+  const titleChanged = title.trim() !== data.title;
+  const dueDateChanged = dueDate !== (data.due_date ?? "");
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
@@ -168,23 +235,58 @@ export function ProjectRoute() {
       </Link>
 
       <div className="flex items-start justify-between gap-4">
-        <div>
+        <div className="flex-1 min-w-0">
           <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
             Project
           </p>
-          <h1
-            className={
-              data.is_completed
-                ? "text-2xl font-bold text-muted-foreground line-through"
-                : "text-2xl font-bold"
-            }
-          >
-            {data.title}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {data.open_task_count} open
-            {data.due_date && ` · due ${formatDateOnly(data.due_date)}`}
-          </p>
+
+          <form onSubmit={handleRename} className="flex items-center gap-2 mt-1">
+            <label htmlFor="project-title" className="sr-only">
+              Project name
+            </label>
+            <input
+              id="project-title"
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+              maxLength={100}
+              required
+              className={
+                data.is_completed
+                  ? "flex-1 min-w-0 -ml-1 rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-2xl font-bold text-muted-foreground line-through hover:border-border focus:border-border focus:outline-none"
+                  : "flex-1 min-w-0 -ml-1 rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-2xl font-bold hover:border-border focus:border-border focus:outline-none"
+              }
+            />
+            <Button type="submit" size="sm" variant="secondary" disabled={renameProject.isPending || !titleChanged}>
+              Save name
+            </Button>
+          </form>
+
+          <form onSubmit={handleSaveDueDate} className="flex flex-wrap items-center gap-2 mt-2">
+            <label htmlFor="project-due" className="text-sm text-muted-foreground">
+              Due date
+            </label>
+            <input
+              id="project-due"
+              type="date"
+              value={dueDate}
+              onChange={(event) => setDueDate(event.target.value)}
+              className="rounded-lg border border-border bg-input px-2 py-1 text-sm"
+            />
+            <Button type="submit" size="sm" variant="secondary" disabled={updateDueDate.isPending || !dueDateChanged}>
+              Save date
+            </Button>
+            {data.is_overdue && (
+              <span className="rounded-full border border-destructive/30 bg-destructive/10 px-2 py-0.5 text-xs font-bold text-destructive">
+                ⚠ Overdue
+              </span>
+            )}
+          </form>
+
+          <p className="text-sm text-muted-foreground mt-2">{data.open_task_count} open</p>
+
+          <div className="mt-3 max-w-xs">
+            <ProjectComposition areas={data.areas} dimmed={data.is_completed} />
+          </div>
         </div>
         <Button
           size="sm"

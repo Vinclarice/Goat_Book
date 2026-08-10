@@ -360,3 +360,59 @@ the same verification discipline still runs.
 
 Full backend suite green (865 tests), frontend green (239 tests), all 30
 browser journeys green.
+
+## 7. Visual redesign and two more editable fields, August 10, 2026
+
+A separate, same-day request: "examine the Projects screen" per
+`frontend-design`'s process (brainstorm, mockup, critique, then build) —
+`design/projects-mockup.html` is that mockup, reviewed and approved before
+any real component changed. Signature element: a **composition bar**, a
+thin strip under a project's title segmented by its own areas' existing
+`color_key`s, segment width following each area's `open_count` share. It
+makes the containment inversion §2 shipped actually visible instead of a
+bare "N areas" count — the same color identity every area dot already
+carries, no new palette. Empty (no areas yet) renders as a dashed track.
+`ProjectComposition.tsx`, shared by `ProjectsIndexRoute` (card grid,
+replacing the old flat list) and `ProjectRoute` (under its own header).
+
+Reviewing the mockup surfaced a real, code-verified gap of its own, not
+speculation: creating a project only ever lived in the Agenda sidebar
+(§5's own fix), a step removed from the page actually about projects.
+`ProjectsIndexRoute` now has its own inline create form (title + optional
+due date).
+
+Asked directly afterward, "what am I missing" turned up two more, both
+confirmed against the actual code before promising them: **a project's
+title and due date were both already writable via `ProjectUpdateIn`, but
+nothing in the UI ever offered to write them** — the create form hardcoded
+`due_date: null` and `ProjectRoute` only ever exposed complete/reopen/
+delete. Both are now editable inline on `ProjectRoute` (disabled-until-
+changed Save buttons, `AreaRoute`'s own rename pattern extended to a
+second field). Backend already supported both; no API change needed.
+
+The third ask, an overdue indicator, did need one: `ProjectOut` gained
+`is_overdue` (`lists/api_v1.py`, computed server-side from
+`timezone.localdate()`), rather than the client inventing its own idea of
+"today" — the exact thing `principles.md`'s "the server owns business
+meaning" exists to prevent, and Agenda's own `today`-from-server precedent
+this file's earlier sections never had to touch. A completed project is
+never overdue regardless of `due_date`, mirrored in both the field's own
+definition and its test. Additive: schema regenerated
+(`dump_openapi_schema` + `generate:api`), one field added to
+`ProjectOut`, no migration.
+
+Verified live against a real local session (`previewuser`, driven at the
+DOM level the same way `ui-second-pass-plan.md`'s own sitting was, since
+the Browser pane would not composite frames here either): create with a
+due date, rename, set a due date and watch the overdue flag and card-grid
+warning both appear, add an area and watch the composition bar pick up
+its color, sidebar staying in sync throughout. Caught one thing belonging
+to neither this slice nor the last: the local dev `db.sqlite3` had never
+had §3's own migrations applied, 500ing every list-touching endpoint until
+`manage.py migrate` caught it up — unrelated to this change, fixed in
+passing rather than left blocking verification.
+
+867 backend tests (2 new: `is_overdue` true only for an open, past-due
+project), 244 frontend tests (5 new: create-from-index, rename, due-date
+edit, overdue flag on both surfaces), full suite green, build and
+`tsc --noEmit` clean.

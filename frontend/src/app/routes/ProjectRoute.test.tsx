@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router";
@@ -32,6 +32,7 @@ function projectDetailData(overrides: Record<string, unknown> = {}) {
     created_at: "2026-08-10T09:00:00-04:00",
     open_task_count: 0,
     areas: [],
+    is_overdue: false,
     ...overrides,
   };
 }
@@ -84,18 +85,18 @@ describe("ProjectRoute", () => {
 
     renderAt("3");
 
-    expect(await screen.findByText("Website Relaunch")).toBeInTheDocument();
+    expect(await screen.findByDisplayValue("Website Relaunch")).toBeInTheDocument();
     expect(screen.getByText(/0 open/)).toBeInTheDocument();
   });
 
-  it("shows a due date as a plain calendar date, not a shifted instant", async () => {
+  it("shows a due date as a plain calendar value, not a shifted instant", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(
       projectPageFetch(projectDetailData({ due_date: "2026-09-30" })),
     );
 
     renderAt("3");
 
-    expect(await screen.findByText(/Sep 30, 2026/)).toBeInTheDocument();
+    expect(await screen.findByLabelText("Due date")).toHaveValue("2026-09-30");
   });
 
   it("shows an error state when the request fails", async () => {
@@ -215,7 +216,7 @@ describe("ProjectRoute", () => {
     });
 
     renderAt("3");
-    await screen.findByText("Website Relaunch");
+    await screen.findByDisplayValue("Website Relaunch");
 
     await user.type(screen.getByLabelText("New area name"), "Legal");
     await user.click(screen.getByRole("button", { name: "Create area" }));
@@ -242,7 +243,7 @@ describe("ProjectRoute", () => {
     });
 
     renderAt("3");
-    await screen.findByText("Website Relaunch");
+    await screen.findByDisplayValue("Website Relaunch");
 
     await user.click(screen.getByRole("button", { name: "Mark complete" }));
 
@@ -267,7 +268,7 @@ describe("ProjectRoute", () => {
     });
 
     renderAt("3");
-    await screen.findByText("Website Relaunch");
+    await screen.findByDisplayValue("Website Relaunch");
     const fetchesBeforeClick = navFetches;
 
     await user.click(screen.getByRole("button", { name: "Mark complete" }));
@@ -286,7 +287,7 @@ describe("ProjectRoute", () => {
     });
 
     renderAt("3");
-    await screen.findByText("Website Relaunch");
+    await screen.findByDisplayValue("Website Relaunch");
 
     await user.click(screen.getByRole("button", { name: "Delete project" }));
     await user.click(screen.getByRole("button", { name: "Delete permanently" }));
@@ -300,5 +301,85 @@ describe("ProjectRoute", () => {
     expect(deleteCall?.[0]).toEqual(
       expect.objectContaining({ url: expect.stringContaining("/api/v1/projects/3") }),
     );
+  });
+
+  it("renames the project once the title actually changes", async () => {
+    // The create form only ever set a title, and this page used to offer
+    // no way to change it afterward -- unlike AreaRoute's own rename field,
+    // which this mirrors: Save stays disabled until the text differs.
+    const user = userEvent.setup();
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const request = input as Request;
+      const url = typeof input === "string" ? input : request.url;
+      if (url.includes("/api/v1/nav")) return jsonResponse(NAV);
+      if (request.method === "PATCH") {
+        return jsonResponse(projectDetailData({ title: "Website Relaunch v2" }));
+      }
+      return jsonResponse(projectDetailData());
+    });
+
+    renderAt("3");
+    const titleField = await screen.findByDisplayValue("Website Relaunch");
+    const saveName = screen.getByRole("button", { name: "Save name" });
+    expect(saveName).toBeDisabled();
+
+    await user.clear(titleField);
+    await user.type(titleField, "Website Relaunch v2");
+    expect(saveName).toBeEnabled();
+    await user.click(saveName);
+
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.some(([request]) => {
+          const req = request as Request;
+          return req.method === "PATCH" && req.url.includes("/api/v1/projects/3");
+        }),
+      ).toBe(true);
+    });
+  });
+
+  it("sets the project's due date once it actually changes", async () => {
+    // Same gap on the other field: due_date was API-writable all along
+    // (ProjectUpdateIn) but nothing on this page ever offered to write it.
+    const user = userEvent.setup();
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const request = input as Request;
+      const url = typeof input === "string" ? input : request.url;
+      if (url.includes("/api/v1/nav")) return jsonResponse(NAV);
+      if (request.method === "PATCH") {
+        return jsonResponse(projectDetailData({ due_date: "2026-11-12" }));
+      }
+      return jsonResponse(projectDetailData());
+    });
+
+    renderAt("3");
+    await screen.findByDisplayValue("Website Relaunch");
+    const dueField = screen.getByLabelText("Due date");
+    const saveDate = screen.getByRole("button", { name: "Save date" });
+    expect(saveDate).toBeDisabled();
+
+    fireEvent.change(dueField, { target: { value: "2026-11-12" } });
+    await user.click(saveDate);
+
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.some(([request]) => {
+          const req = request as Request;
+          return req.method === "PATCH" && req.url.includes("/api/v1/projects/3");
+        }),
+      ).toBe(true);
+    });
+  });
+
+  it("flags a past-due project as overdue", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      projectPageFetch(
+        projectDetailData({ due_date: "2026-01-01", is_overdue: true }),
+      ),
+    );
+
+    renderAt("3");
+
+    expect(await screen.findByText("⚠ Overdue")).toBeInTheDocument();
   });
 });

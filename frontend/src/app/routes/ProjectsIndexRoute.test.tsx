@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router";
@@ -32,6 +32,7 @@ function project(overrides: Record<string, unknown> = {}) {
     created_at: "2026-08-10T09:00:00-04:00",
     open_task_count: 0,
     areas: [],
+    is_overdue: false,
     ...overrides,
   };
 }
@@ -99,5 +100,43 @@ describe("ProjectsIndexRoute", () => {
     render_();
 
     expect(await screen.findByText(/Couldn't reach Clarice/i)).toBeInTheDocument();
+  });
+
+  it("creates a project from the index page and lands on its own page", async () => {
+    // Vince's own gap: creating a project used to live only in the Agenda
+    // sidebar, a step removed from the page actually about projects.
+    const user = userEvent.setup();
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const request = input as Request;
+      const url = typeof input === "string" ? input : request.url;
+      if (request.method === "POST" && url.includes("/api/v1/projects")) {
+        return jsonResponse(project({ id: 9, title: "Launch the business" }));
+      }
+      return jsonResponse([]);
+    });
+
+    render_();
+    await user.type(await screen.findByLabelText("Project name"), "Launch the business");
+    await user.click(screen.getByRole("button", { name: "Create project" }));
+
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.some(([request]) => {
+          const req = request as Request;
+          return req.method === "POST" && req.url.includes("/api/v1/projects");
+        }),
+      ).toBe(true);
+    });
+    expect(await screen.findByText("Project page")).toBeInTheDocument();
+  });
+
+  it("shows an overdue project with a warning", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse([project({ due_date: "2026-01-01", is_overdue: true })]),
+    );
+
+    render_();
+
+    expect(await screen.findByText(/overdue/i)).toBeInTheDocument();
   });
 });

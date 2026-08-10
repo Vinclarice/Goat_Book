@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clarice · Projects redesign mockup</title>
+<style>
+:root {
+  --sl-bg: #08111f;
+  --sl-surface: rgba(18, 31, 49, 0.82);
+  --sl-surface-strong: #132237;
+  --sl-border: rgba(255, 255, 255, 0.1);
+  --sl-text: #f5f7fb;
+  --sl-muted: #a6b2c3;
+  --sl-accent: #7be0b8;
+  --sl-danger: #f08a8a;
+  --sl-warn: #f4c98a;
+
+  /* The List-Color Contract -- same eight values as tailwind.css's
+     --list-color-* tokens, unchanged. */
+  --c-sky: #8fc7d6;
+  --c-sage: #a8dba8;
+  --c-amber: #f4c98a;
+  --c-lilac: #c9a8dc;
+  --c-coral: #f4a3a3;
+  --c-azure: #9ab6e0;
+  --c-blush: #e5a8c4;
+  --c-straw: #f1e394;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  color: var(--sl-text);
+  background: var(--sl-bg);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.site-backdrop {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 15% 5%, rgba(67, 116, 155, 0.2), transparent 32rem),
+    radial-gradient(circle at 85% 25%, rgba(39, 132, 102, 0.16), transparent 28rem);
+}
+
+.container { width: 100%; max-width: 1180px; margin: 0 auto; padding: 0 1.25rem; }
+
+.mock-banner {
+  background: rgba(244, 201, 138, 0.1);
+  border-bottom: 1px solid rgba(244, 201, 138, 0.28);
+  color: var(--sl-warn);
+  font-size: 0.8rem;
+  text-align: center;
+  padding: 0.5rem 1rem;
+}
+.mock-banner strong { color: var(--sl-text); }
+
+.mock-nav {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  gap: 1.25rem;
+  padding: 0.9rem 1.25rem;
+  border-bottom: 1px solid var(--sl-border);
+  background: rgba(8, 17, 31, 0.86);
+  backdrop-filter: blur(14px);
+  font-size: 0.85rem;
+}
+.mock-nav a { color: var(--sl-muted); text-decoration: none; }
+.mock-nav a:hover { color: var(--sl-text); }
+.mock-nav .brand { color: var(--sl-text); font-weight: 700; margin-right: auto; }
+
+.section-shell { padding: 3rem 0; }
+.section-shell + .section-shell { border-top: 1px solid var(--sl-border); }
+.section-kicker {
+  color: var(--sl-accent);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin: 0 0 0.4rem;
+}
+.section-note {
+  color: var(--sl-muted);
+  font-size: 0.88rem;
+  max-width: 46rem;
+  margin: 0.4rem 0 1.75rem;
+  line-height: 1.5;
+}
+
+.back-link {
+  display: inline-block;
+  color: var(--sl-muted);
+  text-decoration: none;
+  font-size: 0.85rem;
+  margin-bottom: 1.25rem;
+}
+.back-link:hover { color: var(--sl-text); }
+
+h1 { margin: 0; font-size: 1.5rem; font-weight: 700; letter-spacing: -0.01em; }
+
+.eyebrow-label {
+  margin: 0 0 0.15rem;
+  color: var(--sl-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* ---------- composition bar: the signature element ---------- */
+.composition {
+  display: flex;
+  height: 6px;
+  width: 100%;
+  gap: 1px;
+  border-radius: 999px;
+  overflow: hidden;
+}
+.composition span { height: 100%; }
+.composition span:first-child { border-top-left-radius: 999px; border-bottom-left-radius: 999px; }
+.composition span:last-child { border-top-right-radius: 999px; border-bottom-right-radius: 999px; }
+.composition.dimmed { opacity: 0.42; }
+.composition.empty {
+  border: 1px dashed var(--sl-border);
+  background: none;
+}
+.composition-wide { height: 8px; max-width: 20rem; }
+
+/* ---------- projects index ---------- */
+.group-label {
+  color: var(--sl-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin: 0 0 0.8rem;
+}
+.projects-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 0.9rem;
+  margin-bottom: 2rem;
+}
+.projects-grid:last-child { margin-bottom: 0; }
+.project-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  border: 1px solid var(--sl-border);
+  background: var(--sl-surface);
+  border-radius: 0.9rem;
+  padding: 1.05rem;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s;
+}
+.project-card:hover { border-color: rgba(255, 255, 255, 0.26); }
+.project-card .title { font-weight: 700; font-size: 0.98rem; }
+.project-card.is-completed .title { color: var(--sl-muted); text-decoration: line-through; }
+.project-card .meta { color: var(--sl-muted); font-size: 0.8rem; margin-top: auto; }
+
+.create-project-row { display: flex; gap: 0.55rem; margin: 0 0 0.9rem; flex-wrap: wrap; max-width: 34rem; }
+.create-project-row input[type="text"] { flex: 1 1 14rem; }
+.create-project-row input {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--sl-border);
+  color: var(--sl-text);
+  border-radius: 0.55rem;
+  padding: 0.4rem 0.7rem;
+  font: inherit;
+  font-size: 0.88rem;
+}
+.visually-hidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* due-date urgency -- the same convention tasks and areas already use
+   (warning glyph + status-overdue color), extended to a project's own
+   due date so it stops reading identically whether it's next year or
+   three months gone. */
+.due-overdue { color: var(--sl-danger); font-weight: 600; }
+.due-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--sl-danger);
+  background: rgba(240, 138, 138, 0.1);
+  border: 1px solid rgba(240, 138, 138, 0.28);
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+}
+
+/* ---------- project workspace (detail) ---------- */
+.workspace-hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+  margin-bottom: 1.75rem;
+}
+.workspace-hero .meta-line { color: var(--sl-muted); font-size: 0.88rem; margin: 0.3rem 0 0.85rem; }
+
+.field-row { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.4rem; }
+.field-row.title-row { margin-top: 0.1rem; }
+.title-input {
+  font: inherit;
+  font-weight: 700;
+  font-size: 1.4rem;
+  letter-spacing: -0.01em;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 0.5rem;
+  padding: 0.15rem 0.45rem;
+  margin-left: -0.45rem;
+  color: var(--sl-text);
+  min-width: 16rem;
+}
+.title-input:hover, .title-input:focus { border-color: var(--sl-border); outline: none; }
+.field-row.due-row input[type="date"] {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--sl-border);
+  color: var(--sl-text);
+  border-radius: 0.5rem;
+  padding: 0.3rem 0.55rem;
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+.btn {
+  font: inherit;
+  border-radius: 0.55rem;
+  border: 1px solid var(--sl-border);
+  padding: 0.35rem 0.75rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: transparent;
+  color: var(--sl-text);
+  white-space: nowrap;
+}
+.btn:hover { border-color: rgba(255, 255, 255, 0.28); }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn:disabled:hover { border-color: var(--sl-border); }
+.btn-ghost { color: var(--sl-muted); border-color: transparent; }
+.btn-ghost:hover { color: var(--sl-text); }
+.btn-danger { color: var(--sl-danger); background: rgba(240, 138, 138, 0.1); border-color: rgba(240, 138, 138, 0.25); }
+.btn-primary { color: var(--sl-bg); background: var(--sl-accent); border-color: var(--sl-accent); }
+
+.areas-section h2 { font-size: 0.8rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--sl-muted); margin: 0 0 0.85rem; }
+.area-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border: 1px solid var(--sl-border);
+  background: var(--sl-surface);
+  border-radius: 0.75rem;
+  padding: 0.7rem 0.9rem;
+  margin-bottom: 0.5rem;
+}
+.area-row .left { display: flex; align-items: center; gap: 0.55rem; font-weight: 600; font-size: 0.92rem; }
+.area-row .dot { width: 0.6rem; height: 0.6rem; border-radius: 50%; flex: none; }
+.area-row .count { color: var(--sl-muted); font-size: 0.82rem; font-weight: 400; }
+.area-row .warn { color: var(--sl-danger); }
+
+.add-area-row { display: flex; gap: 0.55rem; margin-top: 0.9rem; flex-wrap: wrap; }
+.add-area-row input, .add-area-row select {
+  flex: 1 1 12rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--sl-border);
+  color: var(--sl-text);
+  border-radius: 0.55rem;
+  padding: 0.4rem 0.65rem;
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+.danger-zone { border-top: 1px solid var(--sl-border); margin-top: 1.75rem; padding-top: 1.4rem; }
+.danger-zone h2 { font-size: 0.72rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--sl-muted); margin: 0 0 0.7rem; }
+
+.annot {
+  font-size: 0.76rem;
+  color: var(--sl-warn);
+  background: rgba(244, 201, 138, 0.08);
+  border: 1px dashed rgba(244, 201, 138, 0.3);
+  border-radius: 0.6rem;
+  padding: 0.5rem 0.75rem;
+  margin: 0 0 1.25rem;
+  max-width: 40rem;
+  line-height: 1.45;
+}
+.annot strong { color: var(--sl-warn); }
+
+@media (max-width: 640px) {
+  .workspace-hero { flex-direction: column; }
+}
+</style>
+</head>
+<body>
+<div class="mock-banner">Mockup — <strong>fake data, nothing is saved</strong>. For review before touching real components.</div>
+
+<div class="site-backdrop">
+  <nav class="mock-nav">
+    <span class="brand">Clarice</span>
+    <a href="#index">1. Projects index</a>
+    <a href="#workspace">2. Project workspace</a>
+  </nav>
+
+  <main class="container">
+
+    <!-- ============================================================ -->
+    <section class="section-shell" id="index">
+      <p class="section-kicker">View 1 · /projects</p>
+      <h1>Projects</h1>
+      <p class="section-note">
+        Signature element: a thin <strong style="color:var(--sl-text)">composition bar</strong>
+        under each title, segmented by that project's own areas using the same
+        color a person already knows from the side nav and area pages.
+        Segment width follows each area's open-task share, so "Launch the
+        business" (three areas, uneven load) reads differently at a glance
+        than "Website Relaunch" (two areas, close to even) — without opening
+        either one. A project with no areas yet gets an empty dashed track,
+        read as an invitation rather than a broken chart.
+      </p>
+
+      <form class="create-project-row" onsubmit="return false">
+        <label class="visually-hidden" for="new-project-name">Project name</label>
+        <input id="new-project-name" type="text" placeholder="New project name…">
+        <label class="visually-hidden" for="new-project-due">Due date (optional)</label>
+        <input id="new-project-due" type="date" aria-label="Due date (optional)">
+        <button class="btn btn-primary" type="submit">Create project</button>
+      </form>
+      <p class="annot">
+        <strong>New:</strong> creating a project used to live only in the
+        Agenda sidebar, a step removed from the page actually about
+        projects — title (and now, optionally, a due date) in, land
+        straight on the new project's own page. Two more additions below:
+        both the name and due date become editable on a project's own
+        page (today there's no way to set either after creation), and a
+        due date in the past now reads as overdue the same way an
+        overdue task or area already does.
+      </p>
+
+      <p class="group-label">Open</p>
+      <div class="projects-grid">
+
+        <a class="project-card" href="#workspace">
+          <span class="title">Launch the business</span>
+          <div class="composition">
+            <span style="background:var(--c-sky); width:18%" title="Legal · 2 open"></span>
+            <span style="background:var(--c-coral); width:33%" title="Marketing · 5 open"></span>
+            <span style="background:var(--c-sage); width:49%" title="Product · 8 open"></span>
+          </div>
+          <span class="meta">3 areas · 15 open · <span class="due-overdue">⚠ overdue · 20 Jul 2026</span></span>
+        </a>
+
+        <a class="project-card" href="#">
+          <span class="title">Website Relaunch</span>
+          <div class="composition">
+            <span style="background:var(--c-sky); width:29%" title="Design · 2 open"></span>
+            <span style="background:var(--c-sage); width:71%" title="Dev · 5 open"></span>
+          </div>
+          <span class="meta">2 areas · 7 open · due 30 Sep 2026</span>
+        </a>
+
+        <a class="project-card" href="#">
+          <span class="title">Home renovation</span>
+          <div class="composition">
+            <span style="background:var(--c-amber); width:100%" title="Contractors · 3 open"></span>
+          </div>
+          <span class="meta">1 area · 3 open</span>
+        </a>
+
+        <a class="project-card" href="#">
+          <span class="title">Side project — FTS search</span>
+          <div class="composition empty"></div>
+          <span class="meta">0 areas · 0 open</span>
+        </a>
+
+      </div>
+
+      <p class="group-label">Completed</p>
+      <div class="projects-grid">
+        <a class="project-card is-completed" href="#">
+          <span class="title">Q2 roadmap</span>
+          <div class="composition dimmed">
+            <span style="background:var(--c-lilac); width:100%" title="Planning · 0 open"></span>
+          </div>
+          <span class="meta">1 area · 0 open</span>
+        </a>
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <section class="section-shell" id="workspace">
+      <p class="section-kicker">View 2 · /projects/:id</p>
+      <h1 style="margin-bottom:1rem;">Project workspace</h1>
+      <p class="section-note">
+        Same page structure as today's shipped <code>ProjectRoute</code> —
+        header, Areas list, add-area forms, danger zone — with the wider
+        composition bar dropped directly under the meta line, so the
+        project's own shape is the first thing under its name, not a
+        separate chart section someone has to scroll to. Everything below
+        the bar (forms, buttons, danger zone) is unchanged behaviour.
+      </p>
+      <p class="annot">
+        <strong>New:</strong> the title and due date are both editable now
+        (same "disabled until it actually differs" pattern
+        <code>AreaRoute</code> already uses for its own rename field —
+        <em>Save name</em> below is greyed out until the text changes), and
+        a due date in the past gets the same overdue treatment as the card
+        grid.
+      </p>
+
+      <a class="back-link" href="#">← Back to today</a>
+
+      <div class="workspace-hero">
+        <div>
+          <p class="eyebrow-label">Project</p>
+
+          <form class="field-row title-row" onsubmit="return false">
+            <label class="visually-hidden" for="project-title-input">Project name</label>
+            <input id="project-title-input" class="title-input" type="text" value="Launch the business">
+            <button class="btn" type="submit" disabled>Save name</button>
+          </form>
+
+          <form class="field-row due-row" onsubmit="return false">
+            <label class="visually-hidden" for="project-due-input">Due date</label>
+            <input id="project-due-input" type="date" value="2026-07-20">
+            <button class="btn" type="submit" disabled>Save date</button>
+            <span class="due-flag">⚠ Overdue</span>
+          </form>
+
+          <p class="meta-line">15 open</p>
+          <div class="composition composition-wide">
+            <span style="background:var(--c-sky); width:18%" title="Legal · 2 open"></span>
+            <span style="background:var(--c-coral); width:33%" title="Marketing · 5 open"></span>
+            <span style="background:var(--c-sage); width:49%" title="Product · 8 open"></span>
+          </div>
+        </div>
+        <button class="btn">Mark complete</button>
+      </div>
+
+      <div class="areas-section">
+        <h2>Areas</h2>
+
+        <div class="area-row">
+          <span class="left"><span class="dot" style="background:var(--c-sky)"></span>Legal <span class="count">2 open</span></span>
+          <button class="btn btn-ghost">Remove</button>
+        </div>
+        <div class="area-row">
+          <span class="left"><span class="dot" style="background:var(--c-coral)"></span>Marketing <span class="count warn">⚠ 1 · 5 open</span></span>
+          <button class="btn btn-ghost">Remove</button>
+        </div>
+        <div class="area-row">
+          <span class="left"><span class="dot" style="background:var(--c-sage)"></span>Product <span class="count">8 open</span></span>
+          <button class="btn btn-ghost">Remove</button>
+        </div>
+
+        <form class="add-area-row" onsubmit="return false">
+          <input type="text" placeholder="New area name…" aria-label="New area name">
+          <button class="btn btn-primary" type="submit">Create area</button>
+        </form>
+        <form class="add-area-row" onsubmit="return false">
+          <select aria-label="Add an existing area">
+            <option>Reading</option>
+          </select>
+          <button class="btn" type="submit">Add existing area</button>
+        </form>
+      </div>
+
+      <div class="danger-zone">
+        <h2>Danger zone</h2>
+        <button class="btn btn-danger">Delete project</button>
+      </div>
+    </section>
+
+  </main>
+</div>
+</body>
+</html>

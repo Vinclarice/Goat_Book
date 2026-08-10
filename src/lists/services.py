@@ -58,6 +58,21 @@ def create_list_with_item(owner, title, text):
     return new_list
 
 
+def create_area(owner, title, project=None):
+    """An Area with no task in it -- Vince's call, August 10, 2026.
+
+    create_list_with_item's first-task requirement was never a domain rule;
+    it was the only creation path that existed before a Project needed its
+    own way to grow an Area from nothing. The Agenda sidebar's "+ New area"
+    form is unchanged and still asks for a first task -- this is a second,
+    additive path, not a replacement.
+    """
+    normalized_title = (title or "").strip() or "Untitled list"
+    if project is not None and project.owner_id != owner.id:
+        raise TaskConflict(FOREIGN_PROJECT_ERROR)
+    return List.objects.create(owner=owner, title=normalized_title, project=project)
+
+
 def _next_position(for_list):
     highest = for_list.item_set.exclude(
         status=Item.Status.ARCHIVED,

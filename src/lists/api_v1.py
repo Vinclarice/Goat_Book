@@ -496,6 +496,25 @@ def assign_area_project(request, area_id: int, payload: AreaProjectIn):
     return area_ref_for(our_list)
 
 
+class AreaCreateIn(Schema):
+    title: str
+
+
+@router.post("/projects/{project_id}/areas", response=AreaRefOut)
+def create_area_in_project(request, project_id: int, payload: AreaCreateIn):
+    """A new, empty Area, already inside this Project.
+
+    No first task required, unlike the Agenda sidebar's own "+ New area" --
+    Vince's call, August 10, 2026: the predominant use case for a project
+    is areas that don't exist yet, not reassigning ones that do.
+    """
+    project = project_reader.project_for(request.user, project_id)
+    if project is None:
+        raise HttpError(404, "Project not found.")
+    area = services.create_area(request.user, payload.title, project=project)
+    return area_ref_for(area)
+
+
 @router.get("/archive", response=ArchiveOut)
 def archive(request):
     user = request.user

@@ -168,6 +168,38 @@ class ProjectServiceTest(TestCase):
         area.refresh_from_db()
         self.assertIsNone(area.project)
 
+    def test_creates_an_empty_area_with_no_project(self):
+        # Vince's call, August 10, 2026: a user can create an area with no
+        # task in it -- create_list_with_item's first-task requirement was
+        # never a rule this needed to inherit, just the only path that
+        # existed before a project needed one of its own.
+        area = services.create_area(self.owner, "Legal")
+
+        self.assertEqual(area.owner, self.owner)
+        self.assertEqual(area.title, "Legal")
+        self.assertEqual(list(area.item_set.all()), [])
+        self.assertIsNone(area.project)
+
+    def test_creates_an_area_already_inside_a_project(self):
+        project = services.create_project(self.owner, "Website Relaunch")
+
+        area = services.create_area(self.owner, "Design", project=project)
+
+        self.assertEqual(area.project, project)
+
+    def test_a_blank_area_title_falls_back_to_untitled(self):
+        area = services.create_area(self.owner, "   ")
+
+        self.assertEqual(area.title, "Untitled list")
+
+    def test_cannot_create_an_area_directly_inside_somebody_elses_project(self):
+        theirs = services.create_project(self.other, "Not yours")
+
+        with self.assertRaises(TaskConflict):
+            services.create_area(self.owner, "Legal", project=theirs)
+
+        self.assertEqual(List.objects.filter(title="Legal").count(), 0)
+
     def test_deleting_a_project_is_a_hard_delete(self):
         project = services.create_project(self.owner, "Website Relaunch")
 

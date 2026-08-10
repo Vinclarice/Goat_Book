@@ -32,6 +32,7 @@ export function ProjectRoute() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
+  const [draftArea, setDraftArea] = useState("");
 
   const queryKey = ["project", id];
 
@@ -117,6 +118,28 @@ export function ProjectRoute() {
     if (areaId) addArea.mutate(areaId);
   }
 
+  const createArea = useMutation({
+    mutationFn: async (title: string) => {
+      const { error } = await apiV1.POST("/api/v1/projects/{project_id}/areas", {
+        params: { path: { project_id: id } },
+        body: { title },
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setDraftArea("");
+      refresh();
+    },
+    onError: () => setError("Couldn't create that area."),
+  });
+
+  function handleCreateArea(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const title = draftArea.trim();
+    if (!title) return;
+    createArea.mutate(title);
+  }
+
   if (isPending) return <p className="p-6">Loading…</p>;
   if (loadError || !data) return <RouteFailure status={statusOf(loadError)} onRetry={() => refetch()} />;
 
@@ -199,10 +222,31 @@ export function ProjectRoute() {
           </ul>
         )}
 
+        {/* Two ways in: an existing Area to reassign, or a brand new one --
+            Vince's call, August 10, 2026, that a new area is the
+            predominant case for a project, not reassigning one that
+            already exists elsewhere. */}
+        <form onSubmit={handleCreateArea} className="flex items-center gap-2">
+          <label htmlFor="project-new-area" className="sr-only">
+            New area name
+          </label>
+          <input
+            id="project-new-area"
+            value={draftArea}
+            onChange={(event) => setDraftArea(event.target.value)}
+            maxLength={100}
+            placeholder="New area name…"
+            className="flex-1 rounded-lg border border-border bg-input px-3 py-1.5 text-sm"
+          />
+          <Button type="submit" size="sm" disabled={createArea.isPending}>
+            Create area
+          </Button>
+        </form>
+
         {availableAreas.length > 0 && (
           <form onSubmit={handleAddArea} className="flex items-center gap-2">
             <label htmlFor="project-area" className="sr-only">
-              Add an area
+              Add an existing area
             </label>
             <select
               id="project-area"
@@ -215,8 +259,8 @@ export function ProjectRoute() {
                 </option>
               ))}
             </select>
-            <Button type="submit" size="sm" disabled={addArea.isPending}>
-              Add area
+            <Button type="submit" size="sm" variant="secondary" disabled={addArea.isPending}>
+              Add existing area
             </Button>
           </form>
         )}

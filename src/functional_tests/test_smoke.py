@@ -156,8 +156,8 @@ class ProjectJourneyTest(BrowserTest):
         expect(self.page.get_by_role("heading", name="Website Relaunch")).to_be_visible()
         project_url = self.page.url
 
-        self.page.get_by_label("Add an area").select_option(label="Work")
-        self.page.get_by_role("button", name="Add area").click()
+        self.page.get_by_label("Add an existing area").select_option(label="Work")
+        self.page.get_by_role("button", name="Add existing area").click()
         expect(self.page.get_by_role("link", name="Work")).to_be_visible()
         # The project already knows how much is open in the area it just
         # gained -- both its own header count and the area row agree.
@@ -180,6 +180,25 @@ class ProjectJourneyTest(BrowserTest):
         self.task.refresh_from_db()
         self.assertEqual(self.task.status, Item.Status.ACTIVE)
 
+    def test_creating_a_brand_new_area_directly_in_a_project(self):
+        # Vince's call, August 10, 2026: the predominant use case for a
+        # project is areas that don't exist yet, not reassigning ones that
+        # do -- so this needs no first task, unlike the Agenda sidebar's
+        # own "+ New area".
+        self.visit("/app/agenda")
+        self.page.get_by_text("+ New project").click()
+        self.page.get_by_label("Project name").fill("Launch the business")
+        self.page.get_by_role("button", name="Create project").click()
+        expect(self.page).to_have_url(re.compile(r"/app/projects/\d+$"))
+
+        self.page.get_by_label("New area name").fill("Legal")
+        self.page.get_by_role("button", name="Create area").click()
+
+        expect(self.page.get_by_role("link", name="Legal")).to_be_visible()
+        legal = List.objects.get(title="Legal")
+        self.assertEqual(legal.owner, self.user)
+        self.assertEqual(list(legal.item_set.all()), [])
+
     def test_deleting_a_project_keeps_its_area_and_task(self):
         self.visit("/app/agenda")
         self.page.get_by_text("+ New project").click()
@@ -187,8 +206,8 @@ class ProjectJourneyTest(BrowserTest):
         self.page.get_by_role("button", name="Create project").click()
         expect(self.page).to_have_url(re.compile(r"/app/projects/\d+$"))
 
-        self.page.get_by_label("Add an area").select_option(label="Work")
-        self.page.get_by_role("button", name="Add area").click()
+        self.page.get_by_label("Add an existing area").select_option(label="Work")
+        self.page.get_by_role("button", name="Add existing area").click()
         expect(self.page.get_by_role("link", name="Work")).to_be_visible()
 
         self.page.get_by_role("button", name="Delete project").click()

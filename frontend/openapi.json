@@ -423,6 +423,51 @@
         ]
       }
     },
+    "/api/v1/projects/{project_id}/areas": {
+      "post": {
+        "operationId": "lists_api_v1_create_area_in_project",
+        "summary": "Create Area In Project",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AreaRefOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "A new, empty Area, already inside this Project.\n\nNo first task required, unlike the Agenda sidebar's own \"+ New area\" --\nVince's call, August 10, 2026: the predominant use case for a project\nis areas that don't exist yet, not reassigning ones that do.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AreaCreateIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/archive": {
       "get": {
         "operationId": "lists_api_v1_archive",
@@ -2082,6 +2127,19 @@
           "project_id"
         ],
         "title": "AreaProjectIn",
+        "type": "object"
+      },
+      "AreaCreateIn": {
+        "properties": {
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "title": "AreaCreateIn",
         "type": "object"
       },
       "ArchiveOut": {

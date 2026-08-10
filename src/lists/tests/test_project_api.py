@@ -220,6 +220,54 @@ class AreaProjectAssignmentApiTest(TestCase):
         self.assertEqual(response.status_code, 404)
 
 
+class CreateAreaInProjectApiTest(TestCase):
+    """A new, empty Area, created already inside a Project.
+
+    Vince's call, August 10, 2026: the predominant use case for a project
+    is areas that don't exist yet, not reassigning ones that do -- so this
+    needs no first task, unlike the Agenda sidebar's own "+ New area".
+    """
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            "alice", "alice@example.com", "a secure password"
+        )
+        self.other = User.objects.create_user(
+            "bob", "bob@example.com", "another secure password"
+        )
+        self.project = services.create_project(self.user, "Website Relaunch")
+        self.client.force_login(self.user)
+
+    def post(self, project_id, body):
+        return self.client.post(
+            f"/api/v1/projects/{project_id}/areas",
+            data=json.dumps(body),
+            content_type="application/json",
+        )
+
+    def test_creates_an_empty_area_already_in_the_project(self):
+        response = self.post(self.project.id, {"title": "Legal"})
+
+        self.assertEqual(response.status_code, 200)
+        area = List.objects.get(title="Legal")
+        self.assertEqual(area.owner, self.user)
+        self.assertEqual(area.project, self.project)
+        self.assertEqual(list(area.item_set.all()), [])
+
+    def test_404s_someone_elses_project(self):
+        theirs = services.create_project(self.other, "Not yours")
+
+        response = self.post(theirs.id, {"title": "Legal"})
+
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(List.objects.filter(title="Legal").count(), 0)
+
+    def test_404s_a_project_that_does_not_exist(self):
+        response = self.post(9999, {"title": "Legal"})
+
+        self.assertEqual(response.status_code, 404)
+
+
 class TaskProjectDisplayApiTest(TestCase):
     """A task's project is derived through its Area now, read-only.
 

@@ -161,6 +161,30 @@ export interface paths {
         patch: operations["lists_api_v1_assign_area_project"];
         trace?: never;
     };
+    "/api/v1/projects/{project_id}/areas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Area In Project
+         * @description A new, empty Area, already inside this Project.
+         *
+         *     No first task required, unlike the Agenda sidebar's own "+ New area" --
+         *     Vince's call, August 10, 2026: the predominant use case for a project
+         *     is areas that don't exist yet, not reassigning ones that do.
+         */
+        post: operations["lists_api_v1_create_area_in_project"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/archive": {
         parameters: {
             query?: never;
@@ -912,6 +936,11 @@ export interface components {
         AreaProjectIn: {
             /** Project Id */
             project_id: number | null;
+        };
+        /** AreaCreateIn */
+        AreaCreateIn: {
+            /** Title */
+            title: string;
         };
         /** ArchiveOut */
         ArchiveOut: {
@@ -1826,6 +1855,32 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["AreaProjectIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AreaRefOut"];
+                };
+            };
+        };
+    };
+    lists_api_v1_create_area_in_project: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AreaCreateIn"];
             };
         };
         responses: {

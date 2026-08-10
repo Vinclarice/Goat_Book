@@ -184,9 +184,40 @@ describe("ProjectRoute", () => {
     renderAt("3");
     await screen.findByText("Design");
 
-    const picker = await screen.findByLabelText("Add an area");
+    const picker = await screen.findByLabelText("Add an existing area");
     expect(screen.queryByRole("option", { name: "Design" })).not.toBeInTheDocument();
     expect(within(picker).getByRole("option", { name: "Marketing" })).toBeInTheDocument();
+  });
+
+  it("creates a brand new area directly in the project", async () => {
+    // Vince's call: no first task required, unlike the Agenda sidebar's
+    // own "+ New area" -- the predominant case for a project is areas
+    // that don't exist yet.
+    const user = userEvent.setup();
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const request = input as Request;
+      const url = typeof input === "string" ? input : request.url;
+      if (url.includes("/api/v1/nav")) return jsonResponse(NAV);
+      if (request.method === "POST" && url.includes("/areas")) {
+        return jsonResponse({ id: 9, title: "Legal" });
+      }
+      return jsonResponse(projectDetailData());
+    });
+
+    renderAt("3");
+    await screen.findByText("Website Relaunch");
+
+    await user.type(screen.getByLabelText("New area name"), "Legal");
+    await user.click(screen.getByRole("button", { name: "Create area" }));
+
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.some(([request]) => {
+          const req = request as Request;
+          return req.method === "POST" && req.url.includes("/api/v1/projects/3/areas");
+        }),
+      ).toBe(true);
+    });
   });
 
   it("marks the project complete and reopens it", async () => {

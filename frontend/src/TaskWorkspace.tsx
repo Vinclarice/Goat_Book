@@ -1,5 +1,7 @@
 import { FormEvent, useMemo, useState } from "react";
 
+import { Button } from "@/components/ui/button";
+
 import {
   createTask,
   reorderTasks,
@@ -9,8 +11,7 @@ import {
   updateTaskTags,
   updateTaskText,
 } from "./api";
-import { formatDate } from "./format";
-import styles from "./workspace.module.css";
+import { ageLabel, daysBetween } from "./agenda";
 import type { Task, TaskRecurrence, TaskStatus, TaskWorkspaceData } from "./types";
 
 const RECURRENCE_LABELS: Record<TaskRecurrence, string> = {
@@ -40,6 +41,20 @@ function formatDueDate(value: string): string {
   }).format(new Date(`${value}T00:00:00`));
 }
 
+function formatCompletedDate(value: string): string {
+  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(
+    new Date(value),
+  );
+}
+
+// TaskWorkspaceData carries no server "today" (unlike AgendaWorkspaceData) --
+// reuses the same browser-clock read todayIsoDate() already does, and
+// agenda.ts's own ageLabel so this reads exactly like the Agenda and the
+// weekly review rather than inventing a second phrasing for the same fact.
+function createdAgeLabel(task: Task): string | null {
+  return ageLabel(daysBetween(task.created_at.slice(0, 10), todayIsoDate()));
+}
+
 const TAG_COLORS = [
   "#f4a3a3", "#f4c98a", "#f1e394", "#a8dba8",
   "#8fc7d6", "#9ab6e0", "#c9a8dc", "#e5a8c4",
@@ -51,6 +66,38 @@ function tagColor(name: string): string {
     hash = (hash * 31 + name.charCodeAt(index)) >>> 0;
   }
   return TAG_COLORS[hash % TAG_COLORS.length];
+}
+
+function filterPillClass(active: boolean): string {
+  const base =
+    "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs whitespace-nowrap";
+  return active
+    ? `${base} border-primary bg-primary text-primary-foreground font-medium`
+    : `${base} border-border text-muted-foreground hover:text-foreground`;
+}
+
+// The due-date pill IS the real <input type="date">, styled down to pill
+// size, rather than a second block of text duplicating what it says --
+// task-list-redesign-plan.md 2.
+function dueDatePillClass(item: Task): string {
+  const base =
+    "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs cursor-pointer";
+  if (isOverdue(item)) return `${base} border-destructive/40 bg-destructive/10 text-destructive`;
+  if (item.due_date) return `${base} border-border text-foreground`;
+  return `${base} border-dashed border-border text-muted-foreground`;
+}
+
+// Quiet until the row is hovered or focused -- most tasks never repeat --
+// except an already-active recurrence, which stays visible without a
+// hover so it isn't hidden state.
+function recurrencePillClass(item: Task): string {
+  const base =
+    "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-opacity";
+  if (item.recurrence !== "none") return `${base} border-transparent`;
+  return (
+    `${base} border-border text-muted-foreground opacity-0 ` +
+    "group-hover:opacity-100 group-focus-within:opacity-100 [@media(hover:none)]:opacity-100"
+  );
 }
 
 function parseTagInput(value: string): string[] {
@@ -65,6 +112,7 @@ function parseTagInput(value: string): string[] {
 }
 
 type Filter = "all" | "active" | "completed";
+type Sort = "manual" | "due_date";
 
 interface Props {
   initialData: TaskWorkspaceData;
@@ -78,7 +126,11 @@ export function TaskWorkspace({ initialData }: Props) {
   const [newDueDate, setNewDueDate] = useState("");
   const [newTags, setNewTags] = useState("");
   const [newRecurrence, setNewRecurrence] = useState<TaskRecurrence>("none");
+  const [sort, setSort] = useState<Sort>("manual");
   const [tagFilter, setTagFilter] = useState<string | null>(null);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [bulkBusy, setBulkBusy] = useState(false);
   const [tagDrafts, setTagDrafts] = useState<Record<number, string>>({});
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingText, setEditingText] = useState("");
@@ -87,7 +139,8 @@ export function TaskWorkspace({ initialData }: Props) {
   const [error, setError] = useState("");
   const [draggedId, setDraggedId] = useState<number | null>(null);
 
-  const canReorder = filter === "all" && query.trim() === "" && tagFilter === null;
+  const canReorder =
+    sort === "manual" && filter === "all" && query.trim() === "" && tagFilter === null;
 
   const counts = useMemo(
     () => ({
@@ -100,14 +153,23 @@ export function TaskWorkspace({ initialData }: Props) {
 
   const visibleItems = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase();
-    return items.filter((item) => {
+    const filtered = items.filter((item) => {
       const matchesFilter = filter === "all" || item.status === filter;
       const matchesQuery =
         !normalizedQuery || item.text.toLocaleLowerCase().includes(normalizedQuery);
       const matchesTag = !tagFilter || item.tags.includes(tagFilter);
       return matchesFilter && matchesQuery && matchesTag;
     });
-  }, [filter, items, query, tagFilter]);
+    if (sort !== "due_date") return filtered;
+    // Ascending, no-due-date last -- the same rule bucketFor's own bucket
+    // order already implies (dated buckets before "someday").
+    return [...filtered].sort((a, b) => {
+      if (a.due_date === b.due_date) return 0;
+      if (a.due_date === null) return 1;
+      if (b.due_date === null) return -1;
+      return a.due_date < b.due_date ? -1 : 1;
+    });
+  }, [filter, items, query, sort, tagFilter]);
 
   const allTags = useMemo(() => {
     const names = new Set<string>();
@@ -147,32 +209,80 @@ export function TaskWorkspace({ initialData }: Props) {
     }
   }
 
+  // Shared by the single-task and bulk paths so a recurring task's
+  // complete-and-spawn behaves identically either way.
+  function applyStatusResult(updated: Task, spawned: Task | undefined) {
+    if (updated.status === "archived") {
+      setItems((current) => {
+        const withoutArchived = current.filter((item) => item.id !== updated.id);
+        return spawned ? [...withoutArchived, spawned] : withoutArchived;
+      });
+    } else {
+      setItems((current) =>
+        current.map((item) => (item.id === updated.id ? updated : item)),
+      );
+    }
+  }
+
   async function changeStatus(task: Task, status: TaskStatus) {
     setError("");
     setNotice("");
     setBusyId(task.id);
     try {
       const { task: updated, spawned } = await updateTaskStatus(task, status);
+      applyStatusResult(updated, spawned);
       if (updated.status === "archived") {
-        setItems((current) => {
-          const withoutArchived = current.filter((item) => item.id !== updated.id);
-          return spawned ? [...withoutArchived, spawned] : withoutArchived;
-        });
         setNotice(
           spawned
             ? "Task completed — next occurrence added."
             : "Task moved to Done & archived.",
         );
       } else {
-        setItems((current) =>
-          current.map((item) => (item.id === updated.id ? updated : item)),
-        );
         setNotice(status === "active" ? "Task reopened." : "Task completed.");
       }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to update task.");
     } finally {
       setBusyId(null);
+    }
+  }
+
+  function toggleSelectMode() {
+    setSelectMode((current) => !current);
+    setSelectedIds([]);
+  }
+
+  function toggleSelected(id: number) {
+    setSelectedIds((current) =>
+      current.includes(id) ? current.filter((each) => each !== id) : [...current, id],
+    );
+  }
+
+  // Mark complete / Archive bulk because they're already single, safe
+  // per-task calls (updateTaskStatus) run in a loop -- editing due date,
+  // tags, or repeat stays per-task since "set every selected task's due
+  // date to the same day" isn't a real request anyone's made.
+  async function bulkChangeStatus(status: "completed" | "archived") {
+    const targets = items.filter((item) => selectedIds.includes(item.id));
+    if (targets.length === 0) return;
+    setError("");
+    setNotice("");
+    setBulkBusy(true);
+    try {
+      const results = await Promise.all(
+        targets.map((target) => updateTaskStatus(target, status)),
+      );
+      results.forEach(({ task: updated, spawned }) => applyStatusResult(updated, spawned));
+      setNotice(
+        status === "completed"
+          ? `${targets.length} task${targets.length === 1 ? "" : "s"} completed.`
+          : `${targets.length} task${targets.length === 1 ? "" : "s"} archived.`,
+      );
+      setSelectedIds([]);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to update tasks.");
+    } finally {
+      setBulkBusy(false);
     }
   }
 
@@ -206,30 +316,13 @@ export function TaskWorkspace({ initialData }: Props) {
     }
   }
 
-  async function commitTags(task: Task, rawValue: string) {
-    const tags = parseTagInput(rawValue);
-    const unchanged =
-      tags.length === task.tags.length &&
-      tags.every((tag, index) => tag === task.tags[index]);
-    if (unchanged) {
-      setTagDrafts((current) => {
-        const next = { ...current };
-        delete next[task.id];
-        return next;
-      });
-      return;
-    }
+  async function saveTags(task: Task, tags: string[]) {
     setError("");
     setNotice("");
     setBusyId(task.id);
     try {
       const updated = await updateTaskTags(task, tags);
       replaceItem(updated);
-      setTagDrafts((current) => {
-        const next = { ...current };
-        delete next[task.id];
-        return next;
-      });
       setNotice("Tags updated.");
       if (tagFilter && !updated.tags.includes(tagFilter)) {
         setTagFilter(null);
@@ -239,6 +332,21 @@ export function TaskWorkspace({ initialData }: Props) {
     } finally {
       setBusyId(null);
     }
+  }
+
+  function removeTag(task: Task, tag: string) {
+    saveTags(task, task.tags.filter((each) => each !== tag));
+  }
+
+  async function addTags(task: Task, rawValue: string) {
+    const additions = parseTagInput(rawValue);
+    if (additions.length === 0) return;
+    setTagDrafts((current) => {
+      const next = { ...current };
+      delete next[task.id];
+      return next;
+    });
+    await saveTags(task, Array.from(new Set([...task.tags, ...additions])));
   }
 
   async function handleReorder(nextItems: Task[]) {
@@ -259,7 +367,7 @@ export function TaskWorkspace({ initialData }: Props) {
   }
 
   function handleDrop(targetId: number) {
-    if (draggedId === null || draggedId === targetId) {
+    if (!canReorder || draggedId === null || draggedId === targetId) {
       setDraggedId(null);
       return;
     }
@@ -306,108 +414,133 @@ export function TaskWorkspace({ initialData }: Props) {
         Tasks
       </h2>
 
-      <form className={styles.addForm} onSubmit={handleCreate}>
-        <label htmlFor="react-new-task">Add another item</label>
-        <div className={styles.inputRow}>
+      <form
+        className="mb-6 flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-card px-3 py-2.5"
+        onSubmit={handleCreate}
+      >
+        <label htmlFor="react-new-task" className="visually-hidden">
+          Add another item
+        </label>
+        <input
+          id="react-new-task"
+          className="min-w-[10rem] flex-1 border-0 bg-transparent px-1 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground"
+          value={newText}
+          onChange={(event) => {
+            setNewText(event.target.value);
+            setError("");
+          }}
+          onFocus={() => setError("")}
+          placeholder="What's next?"
+          required
+          disabled={busyId === "new"}
+        />
+        <span className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-foreground/[0.03] px-2.5 py-1.5 text-xs text-muted-foreground">
           <input
-            id="react-new-task"
-            className="form-control"
-            value={newText}
-            onChange={(event) => {
-              setNewText(event.target.value);
-              setError("");
-            }}
-            onFocus={() => setError("")}
-            placeholder="What is next?"
-            required
+            id="react-new-task-due"
+            type="date"
+            aria-label="Due date (optional)"
+            className="w-[6.5rem] border-0 bg-transparent text-inherit outline-none"
+            value={newDueDate}
+            onChange={(event) => setNewDueDate(event.target.value)}
             disabled={busyId === "new"}
           />
-          <button className="btn btn-primary" disabled={busyId === "new"}>
-            {busyId === "new" ? "Adding…" : "Add item"}
-          </button>
-        </div>
-        <div className={styles.addExtras}>
-          <label className={styles.dueDateField} htmlFor="react-new-task-due">
-            Due date <span className="visually-hidden">(optional)</span>
-            <input
-              id="react-new-task-due"
-              type="date"
-              className="form-control"
-              value={newDueDate}
-              onChange={(event) => setNewDueDate(event.target.value)}
-              disabled={busyId === "new"}
-            />
-          </label>
-          <label className={styles.dueDateField} htmlFor="react-new-task-tags">
-            Tags <span className="visually-hidden">(optional, comma separated)</span>
-            <input
-              id="react-new-task-tags"
-              type="text"
-              className="form-control"
-              value={newTags}
-              onChange={(event) => setNewTags(event.target.value)}
-              placeholder="groceries, chores"
-              disabled={busyId === "new"}
-            />
-          </label>
-          <label className={styles.dueDateField} htmlFor="react-new-task-recurrence">
-            Repeats
-            <select
-              id="react-new-task-recurrence"
-              className="form-control"
-              value={newRecurrence}
-              onChange={(event) =>
-                setNewRecurrence(event.target.value as TaskRecurrence)
-              }
-              disabled={busyId === "new"}
-            >
-              {(Object.keys(RECURRENCE_LABELS) as TaskRecurrence[]).map((value) => (
-                <option key={value} value={value}>
-                  {RECURRENCE_LABELS[value]}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
+        </span>
+        <span className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-foreground/[0.03] px-2.5 py-1.5 text-xs text-muted-foreground">
+          <span aria-hidden="true">🏷</span>
+          <input
+            id="react-new-task-tags"
+            type="text"
+            aria-label="Tags (optional, comma separated)"
+            className="w-24 border-0 bg-transparent text-foreground outline-none placeholder:text-muted-foreground"
+            value={newTags}
+            onChange={(event) => setNewTags(event.target.value)}
+            placeholder="Tags"
+            disabled={busyId === "new"}
+          />
+        </span>
+        <span className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-foreground/[0.03] px-2.5 py-1.5 text-xs text-muted-foreground">
+          <span aria-hidden="true">↻</span>
+          <select
+            id="react-new-task-recurrence"
+            aria-label="Repeats"
+            className="border-0 bg-transparent text-inherit outline-none"
+            value={newRecurrence}
+            onChange={(event) => setNewRecurrence(event.target.value as TaskRecurrence)}
+            disabled={busyId === "new"}
+          >
+            {(Object.keys(RECURRENCE_LABELS) as TaskRecurrence[]).map((value) => (
+              <option key={value} value={value}>
+                {RECURRENCE_LABELS[value]}
+              </option>
+            ))}
+          </select>
+        </span>
+        <Button type="submit" size="sm" disabled={busyId === "new"}>
+          {busyId === "new" ? "Adding…" : "Add item"}
+        </Button>
       </form>
 
-      <div className={styles.toolbar}>
-        <div className={styles.filters} aria-label="Filter tasks">
+      <div className="mb-3.5 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap gap-1.5" aria-label="Filter tasks">
           {(["all", "active", "completed"] as Filter[]).map((value) => (
             <button
               key={value}
               type="button"
-              className={filter === value ? styles.filterActive : styles.filter}
+              className={filterPillClass(filter === value)}
               aria-pressed={filter === value}
               onClick={() => setFilter(value)}
             >
               {value === "active" ? "Open" : value[0].toUpperCase() + value.slice(1)}
-              <span>{counts[value]}</span>
+              <span className="text-[0.7rem] tabular-nums">{counts[value]}</span>
             </button>
           ))}
         </div>
-        <label className={styles.search}>
-          <span className="visually-hidden">Search tasks</span>
-          <input
-            className="form-control"
-            type="search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search this area"
-          />
-        </label>
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="inline-flex items-center rounded-full border border-border px-3 py-1.5 text-xs text-muted-foreground">
+            <span className="visually-hidden">Sort tasks</span>
+            <select
+              className="border-0 bg-transparent text-inherit outline-none"
+              value={sort}
+              onChange={(event) => setSort(event.target.value as Sort)}
+            >
+              <option value="manual">Manual order</option>
+              <option value="due_date">Due date</option>
+            </select>
+          </label>
+          <button
+            type="button"
+            className={filterPillClass(selectMode)}
+            aria-pressed={selectMode}
+            onClick={toggleSelectMode}
+          >
+            Select
+          </button>
+          <label className="inline-flex w-full items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs text-muted-foreground sm:w-56">
+            <span className="visually-hidden">Search tasks</span>
+            <span aria-hidden="true">⌕</span>
+            <input
+              className="w-full border-0 bg-transparent text-foreground outline-none placeholder:text-muted-foreground"
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search this area"
+            />
+          </label>
+        </div>
       </div>
 
       {allTags.length > 0 && (
-        <div className={styles.tagFilters} aria-label="Filter by tag">
+        <div className="mb-4 flex flex-wrap gap-1.5" aria-label="Filter by tag">
           {allTags.map((tag) => (
             <button
               key={tag}
               type="button"
-              className={styles.tagChip}
+              className="rounded-full border border-dashed px-2.5 py-0.5 text-xs"
               style={{
                 backgroundColor: tagFilter === tag ? tagColor(tag) : "transparent",
                 borderColor: tagColor(tag),
+                borderStyle: tagFilter === tag ? "solid" : "dashed",
+                color: tagFilter === tag ? "#14181f" : tagColor(tag),
               }}
               aria-pressed={tagFilter === tag}
               onClick={() => setTagFilter((current) => (current === tag ? null : tag))}
@@ -418,29 +551,59 @@ export function TaskWorkspace({ initialData }: Props) {
         </div>
       )}
 
-      <div className={styles.feedback} aria-live="polite">
-        {error && (
-          <p className={`${styles.error} invalid-feedback d-block`} data-task-error>
-            {error}
-          </p>
-        )}
-        {!error && notice && <p>{notice}</p>}
+      {selectMode && (
+        <div className="mb-3 flex flex-wrap items-center gap-2.5 rounded-lg border border-primary/30 bg-primary/[0.08] px-3.5 py-2 text-sm">
+          <span className="font-bold">{selectedIds.length} selected</span>
+          <button
+            type="button"
+            className="rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground disabled:opacity-40"
+            disabled={bulkBusy || selectedIds.length === 0}
+            onClick={() => bulkChangeStatus("completed")}
+          >
+            Mark complete
+          </button>
+          <button
+            type="button"
+            className="rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground disabled:opacity-40"
+            disabled={bulkBusy || selectedIds.length === 0}
+            onClick={() => bulkChangeStatus("archived")}
+          >
+            Archive
+          </button>
+          <button
+            type="button"
+            className="ml-auto rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground disabled:opacity-40"
+            disabled={selectedIds.length === 0}
+            onClick={() => setSelectedIds([])}
+          >
+            Clear
+          </button>
+        </div>
+      )}
+
+      <div className="min-h-6 text-sm" aria-live="polite">
+        {error && <p className="text-destructive">{error}</p>}
+        {!error && notice && <p className="text-muted-foreground">{notice}</p>}
       </div>
 
-      <div className="list-items" id="id_list_table">
+      <div className="border-t border-border">
         {visibleItems.map((item, index) => {
           // project-workspace-plan.md 2: every task on this page shares the
           // same Area, so it either carries this Area's one project or none
           // -- no per-task join left to make, unlike Agenda/Archive.
           const itemProject = item.project_id !== null ? initialData.project : undefined;
+          const age = createdAgeLabel(item);
           return (
           <article
             key={item.id}
-            className={`list-item ${
-              item.status === "completed" ? "is-completed" : ""
-            } ${isOverdue(item) ? styles.overdue : ""} ${
-              draggedId === item.id ? styles.dragging : ""
-            }`}
+            className={[
+              "group relative flex items-start gap-3 border-b border-l-4 border-border py-3 pr-1 pl-3",
+              item.status === "completed" ? "is-completed" : "",
+              isOverdue(item) ? "is-overdue border-l-destructive" : "border-l-transparent",
+              draggedId === item.id ? "opacity-50" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
             draggable={canReorder}
             onDragStart={() => setDraggedId(item.id)}
             onDragOver={(event) => {
@@ -452,119 +615,152 @@ export function TaskWorkspace({ initialData }: Props) {
             }}
             onDragEnd={() => setDraggedId(null)}
           >
-            <span className={styles.itemLead}>
-              {canReorder && (
-                <span
-                  className={styles.dragHandle}
-                  aria-hidden="true"
-                  title="Drag to reorder"
-                >
-                  ⠿
-                </span>
+            <span className="flex flex-none items-center gap-2 pt-0.5">
+              {selectMode ? (
+                <input
+                  type="checkbox"
+                  aria-label={`Select ${item.text}`}
+                  checked={selectedIds.includes(item.id)}
+                  onChange={() => toggleSelected(item.id)}
+                  disabled={bulkBusy}
+                />
+              ) : (
+                <>
+                  {canReorder && (
+                    <span
+                      className="cursor-grab text-muted-foreground select-none"
+                      aria-hidden="true"
+                      title="Drag to reorder"
+                    >
+                      ⠿
+                    </span>
+                  )}
+                  <span className="text-xs tabular-nums text-muted-foreground">
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+                </>
               )}
-              <span className="item-number">
-                {String(index + 1).padStart(2, "0")}
-              </span>
             </span>
-            <div className="task-copy">
+            <div className="min-w-0 flex-1">
               {editingId === item.id ? (
-                <form
-                  className={styles.editForm}
-                  onSubmit={(event) => saveEdit(event, item)}
-                >
+                <form className="grid gap-2" onSubmit={(event) => saveEdit(event, item)}>
                   <label className="visually-hidden" htmlFor={`edit-task-${item.id}`}>
                     Edit task
                   </label>
                   <input
                     id={`edit-task-${item.id}`}
-                    className="form-control"
+                    className="rounded-lg border border-border bg-input px-2 py-1 text-sm text-foreground outline-none"
                     value={editingText}
                     onChange={(event) => setEditingText(event.target.value)}
                     autoFocus
                     required
                   />
-                  <div className={styles.inlineActions}>
-                    <button
-                      className="btn btn-primary btn-sm"
-                      disabled={busyId === item.id}
-                    >
+                  <div className="flex gap-2">
+                    <Button type="submit" size="sm" disabled={busyId === item.id}>
                       Save
-                    </button>
-                    <button
-                      className="btn btn-outline-light btn-sm"
+                    </Button>
+                    <Button
                       type="button"
+                      size="sm"
+                      variant="outline"
                       onClick={() => setEditingId(null)}
                       disabled={busyId === item.id}
                     >
                       Cancel
-                    </button>
+                    </Button>
                   </div>
                 </form>
               ) : (
                 <>
-                  <span className="task-text">{item.text}</span>
-                  <small>
-                    Created <time dateTime={item.created_at}>{formatDate(item.created_at)}</time>
-                    {item.status === "completed" && " · Completed"}
-                    {item.due_date && (
-                      <>
-                        {" · "}
-                        {isOverdue(item) ? "Overdue: " : "Due "}
-                        <time dateTime={item.due_date}>{formatDueDate(item.due_date)}</time>
-                      </>
-                    )}
-                  </small>
-                  <label className={styles.dueDateInline}>
-                    <span className="visually-hidden">Change due date for {item.text}</span>
-                    <input
-                      type="date"
-                      className="form-control form-control-sm"
-                      value={item.due_date ?? ""}
-                      onChange={(event) =>
-                        changeDueDate(item, event.target.value || null)
-                      }
-                      disabled={busyId === item.id}
-                    />
-                  </label>
-                  <div className={styles.tagRow}>
+                  <span
+                    className={`task-text block text-sm leading-snug break-words ${
+                      item.status === "completed"
+                        ? "text-muted-foreground line-through decoration-accent"
+                        : "text-foreground"
+                    }`}
+                  >
+                    {item.text}
+                  </span>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
                     {/* ui-second-pass-plan.md F2a: the one screen that shows
                         a project heading at all still didn't tie it to the
                         rows under it. A plain marker rather than a link --
                         the project section is already on this same page,
                         right above. */}
                     {itemProject && (
-                      <span className="pill pill-project">{itemProject.title}</span>
+                      <span className="rounded-full border border-border px-2.5 py-0.5">
+                        {itemProject.title}
+                      </span>
                     )}
+                    {item.status === "completed" && item.completed_at ? (
+                      <span>Completed {formatCompletedDate(item.completed_at)}</span>
+                    ) : (
+                      age && <span>{age}</span>
+                    )}
+                    <label className={dueDatePillClass(item)}>
+                      <input
+                        type="date"
+                        aria-label={`Change due date for ${item.text}`}
+                        className="w-[6.4rem] border-0 bg-transparent text-inherit outline-none"
+                        value={item.due_date ?? ""}
+                        onChange={(event) =>
+                          changeDueDate(item, event.target.value || null)
+                        }
+                        disabled={busyId === item.id}
+                      />
+                    </label>
                     {item.tags.map((tag) => (
                       <span
                         key={tag}
-                        className={styles.tagPill}
-                        style={{ backgroundColor: tagColor(tag) }}
+                        className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5"
+                        style={{ borderColor: tagColor(tag), color: tagColor(tag) }}
                       >
                         {tag}
+                        <button
+                          type="button"
+                          aria-label={`Remove tag ${tag}`}
+                          className="opacity-70 hover:opacity-100"
+                          onClick={() => removeTag(item, tag)}
+                          disabled={busyId === item.id}
+                        >
+                          ×
+                        </button>
                       </span>
                     ))}
-                    <label className={styles.tagEdit}>
-                      <span className="visually-hidden">Edit tags for {item.text}</span>
+                    <label
+                      className={
+                        "inline-flex cursor-text items-center gap-1 rounded-full border border-dashed border-border px-2 py-0.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 [@media(hover:none)]:opacity-100"
+                      }
+                    >
+                      <span aria-hidden="true">🏷</span>
                       <input
                         type="text"
-                        className="form-control form-control-sm"
-                        placeholder="Add tags…"
-                        value={tagDrafts[item.id] ?? item.tags.join(", ")}
+                        aria-label={`Add tags to ${item.text}`}
+                        className="w-16 border-0 bg-transparent text-foreground outline-none placeholder:text-muted-foreground"
+                        placeholder="+ tag"
+                        value={tagDrafts[item.id] ?? ""}
                         onChange={(event) =>
                           setTagDrafts((current) => ({
                             ...current,
                             [item.id]: event.target.value,
                           }))
                         }
-                        onBlur={(event) => commitTags(item, event.target.value)}
+                        onBlur={(event) => addTags(item, event.target.value)}
                         disabled={busyId === item.id}
                       />
                     </label>
-                    <label className={styles.recurrenceInline}>
-                      <span className="visually-hidden">Repeat {item.text}</span>
+                    <label
+                      className={recurrencePillClass(item)}
+                      style={
+                        item.recurrence !== "none"
+                          ? { color: "var(--color-status-today)" }
+                          : undefined
+                      }
+                    >
+                      <span aria-hidden="true">↻</span>
                       <select
-                        className="form-control form-control-sm"
+                        aria-label={`Repeat ${item.text}`}
+                        className="border-0 bg-transparent text-inherit outline-none"
                         value={item.recurrence}
                         onChange={(event) =>
                           changeRecurrence(item, event.target.value as TaskRecurrence)
@@ -580,28 +776,23 @@ export function TaskWorkspace({ initialData }: Props) {
                         )}
                       </select>
                     </label>
-                    {item.recurrence !== "none" && (
-                      <span className={styles.recurrenceBadge}>
-                        ↻ {RECURRENCE_LABELS[item.recurrence]}
-                      </span>
-                    )}
                   </div>
                 </>
               )}
             </div>
-            {editingId !== item.id && (
-              <div className="task-actions">
+            {editingId !== item.id && !selectMode && (
+              <div className="flex flex-none items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 [@media(hover:none)]:opacity-100">
                 <button
-                  className="btn btn-outline-light btn-sm"
                   type="button"
+                  className="rounded-md border border-border px-2 py-1 text-xs whitespace-nowrap text-muted-foreground hover:border-foreground/30 hover:text-foreground"
                   onClick={() => startEditing(item)}
                   disabled={busyId === item.id}
                 >
                   Edit
                 </button>
                 <button
-                  className="btn btn-primary btn-sm"
                   type="button"
+                  className="rounded-md border border-border px-2 py-1 text-xs whitespace-nowrap text-muted-foreground hover:border-foreground/30 hover:text-foreground"
                   onClick={() =>
                     changeStatus(
                       item,
@@ -613,12 +804,12 @@ export function TaskWorkspace({ initialData }: Props) {
                   {item.status === "completed" ? "Reopen" : "Mark complete"}
                 </button>
                 <button
-                  className="btn btn-outline-light btn-sm"
                   type="button"
+                  className="rounded-md border border-border px-2 py-1 text-xs whitespace-nowrap text-muted-foreground hover:border-foreground/30 hover:text-foreground"
                   onClick={() => changeStatus(item, "archived")}
                   disabled={busyId === item.id}
                 >
-                  Move to archive
+                  Archive
                 </button>
               </div>
             )}
@@ -626,7 +817,7 @@ export function TaskWorkspace({ initialData }: Props) {
           );
         })}
         {visibleItems.length === 0 && (
-          <div className={styles.empty}>
+          <div className="rounded-lg border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
             {items.length === 0
               ? "This area is ready for its first item."
               : "No tasks match this view."}

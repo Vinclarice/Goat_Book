@@ -655,6 +655,19 @@ same day, recorded in the plan's own §6, which also names a real bug
 second follow-up's browser journey caught that neither plan anticipated.
 865 backend tests, 239 frontend tests, 30 browser journeys, all green.
 
+**A third, separate line of work — not folded into Release F, shipped
+August 10, 2026 (uncommitted, awaiting review).** Trigger: Vince flagged
+`TaskWorkspace.tsx`'s Area task list as "simply a mess" mid-review of the
+Projects redesign — the last Bootstrap-era screen (with `AgendaWorkspace`,
+still deferred) not yet on Tailwind.
+[`task-list-redesign-plan.md`](task-list-redesign-plan.md) carried the
+Tailwind migration plus real additions approved against a reviewed mockup:
+a due-date sort, select-mode bulk complete/archive, removable tag pills,
+and due-date/recurrence pill dedup. 254 frontend tests, 867 backend tests,
+and a browser smoke pass all green; see that plan's §5 for the full
+accounting, including the pre-existing `ProjectJourneyTest` failures ruled
+out by bisecting against `main` before this work touched anything.
+
 Move completed detail into `roadmap-history.md` and keep only the resulting
 baseline or remaining consequence here. When an idea from Later earns work,
 give it a one-line reason and a focused spec before it joins an active

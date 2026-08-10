@@ -194,7 +194,25 @@ not replace it.
 
 ## 5. Status
 
-Nothing implemented yet. `design/tasks-mockup.html` is the only artifact
-that exists so far, already reviewed and approved. This document and the
-mockup are everything a fresh session needs to start straight at
-implementation slice 1 without re-deriving any of the above.
+**Shipped, August 10, 2026 (uncommitted — awaiting Vince's review before
+committing).** All ten approved-scope items landed in the suggested order:
+sort control, select mode + bulk actions, removable tag pills, the full
+Tailwind/markup pass (composer, filter pills, overdue left-border, pill
+dedup, progressive disclosure, age-label swap, completed-date line), and
+the `workspace.module.css` cleanup (only `ArchiveManager`'s six classes
+remain). 254 frontend tests, 867 backend tests, `tsc --noEmit` and
+`pnpm build` all green. `manage.py test functional_tests` shows the same
+two pre-existing `ProjectJourneyTest` failures confirmed present on `main`
+before this work started (a `git stash` bisect) — nothing in this change
+caused or fixed them, and no `TaskWorkspace`/`AreaRoute` journey regressed.
+
+Verified live against the real backend (`previewuser`, DOM-level driving
+per the local-browser-verification memory): due-date sort, select mode +
+bulk complete (confirmed the archived/spawned branch actually fires for a
+recurring task, not just in the mocked test), and adding/removing tag
+pills all round-tripped through the real API.
+
+One deviation from the brief worth naming: the per-row archive button's
+label changed from "Move to archive" to "Archive" to match the mockup and
+the bulk bar's own wording — no test had locked in the old string, and the
+functional-test suite doesn't reference it either.

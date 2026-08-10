@@ -238,7 +238,11 @@ describe("TaskWorkspace", () => {
       />,
     );
 
-    expect(screen.getByText(/Overdue:/)).toBeInTheDocument();
+    // task-list-redesign-plan.md 2: the separate "Overdue: <date>" text is
+    // gone -- the due-date pill (the real input, styled) shows it in red on
+    // its own, so this checks the marker that drives that styling instead.
+    const article = screen.getByText("Write tests").closest("article")!;
+    expect(article.className).toMatch(/is-overdue/);
   });
 
   it("sends a due date update when the due date field changes", async () => {
@@ -308,6 +312,286 @@ describe("TaskWorkspace", () => {
         }),
       ),
     );
+  });
+
+  it("sorts tasks by due date ascending with undated tasks last, then restores manual order", async () => {
+    const user = userEvent.setup();
+    const dated = task({ id: 1, text: "Later task", due_date: "2026-08-20" });
+    const undated = task({ id: 2, text: "No due date" });
+    const soon = task({ id: 3, text: "Sooner task", due_date: "2026-08-01" });
+    render(
+      <TaskWorkspace
+        initialData={{
+          area: {
+            id: 1,
+            title: "Programming",
+            create_item_url: "/api/areas/1/items/",
+            reorder_url: "/api/areas/1/items/reorder/",
+          },
+          project: null,
+          items: [dated, undated, soon],
+        }}
+      />,
+    );
+
+    const taskTexts = () =>
+      Array.from(document.querySelectorAll(".task-text")).map(
+        (el) => el.textContent,
+      );
+
+    expect(taskTexts()).toEqual(["Later task", "No due date", "Sooner task"]);
+
+    await user.selectOptions(screen.getByLabelText("Sort tasks"), "due_date");
+
+    expect(taskTexts()).toEqual(["Sooner task", "Later task", "No due date"]);
+
+    await user.selectOptions(screen.getByLabelText("Sort tasks"), "manual");
+
+    expect(taskTexts()).toEqual(["Later task", "No due date", "Sooner task"]);
+  });
+
+  it("disables dragging while sorted by due date", async () => {
+    const user = userEvent.setup();
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    const first = task({ id: 1, text: "First", due_date: "2026-08-01" });
+    const second = task({ id: 2, text: "Second", due_date: "2026-08-10" });
+    render(
+      <TaskWorkspace
+        initialData={{
+          area: {
+            id: 1,
+            title: "Programming",
+            create_item_url: "/api/areas/1/items/",
+            reorder_url: "/api/areas/1/items/reorder/",
+          },
+          project: null,
+          items: [first, second],
+        }}
+      />,
+    );
+
+    await user.selectOptions(screen.getByLabelText("Sort tasks"), "due_date");
+
+    fireEvent.dragStart(screen.getByText("First").closest("article")!);
+    fireEvent.drop(screen.getByText("Second").closest("article")!);
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("reveals a checkbox per row and a bulk bar when Select is toggled on", async () => {
+    const user = userEvent.setup();
+    render(
+      <TaskWorkspace
+        initialData={{
+          area: {
+            id: 1,
+            title: "Programming",
+            create_item_url: "/api/areas/1/items/",
+            reorder_url: "/api/areas/1/items/reorder/",
+          },
+          project: null,
+          items: [task({ id: 1, text: "First" }), task({ id: 2, text: "Second" })],
+        }}
+      />,
+    );
+
+    expect(screen.queryByLabelText("Select First")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Select" }));
+
+    expect(screen.getByLabelText("Select First")).toBeInTheDocument();
+    expect(screen.getByLabelText("Select Second")).toBeInTheDocument();
+    expect(screen.getByText("0 selected")).toBeInTheDocument();
+
+    await user.click(screen.getByLabelText("Select First"));
+    expect(screen.getByText("1 selected")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Clear" }));
+    expect(screen.getByText("0 selected")).toBeInTheDocument();
+  });
+
+  it("bulk-completes selected tasks, replicating the archived/spawned branch for a recurring one", async () => {
+    const user = userEvent.setup();
+    const plain = task({ id: 1, url: "/api/items/1/", text: "Plain task" });
+    const recurring = task({
+      id: 2,
+      url: "/api/items/2/",
+      text: "Recurring task",
+      recurrence: "weekly",
+    });
+    const plainCompleted = task({
+      id: 1,
+      url: "/api/items/1/",
+      text: "Plain task",
+      status: "completed",
+      completed_at: "2026-07-24T12:30:00-04:00",
+    });
+    const recurringArchived = task({
+      id: 2,
+      url: "/api/items/2/",
+      text: "Recurring task",
+      recurrence: "weekly",
+      status: "archived",
+    });
+    const spawned = task({
+      id: 3,
+      url: "/api/items/3/",
+      text: "Recurring task",
+      recurrence: "weekly",
+      status: "active",
+    });
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      if (input === "/api/items/1/") return jsonResponse({ data: plainCompleted });
+      if (input === "/api/items/2/")
+        return jsonResponse({ data: recurringArchived, spawned });
+      throw new Error(`unexpected fetch: ${input}`);
+    });
+    render(
+      <TaskWorkspace
+        initialData={{
+          area: {
+            id: 1,
+            title: "Programming",
+            create_item_url: "/api/areas/1/items/",
+            reorder_url: "/api/areas/1/items/reorder/",
+          },
+          project: null,
+          items: [plain, recurring],
+        }}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Select" }));
+    await user.click(screen.getByLabelText("Select Plain task"));
+    await user.click(screen.getByLabelText("Select Recurring task"));
+    await user.click(screen.getByRole("button", { name: "Mark complete" }));
+
+    await waitFor(() => {
+      const article = screen.getByText("Plain task").closest("article")!;
+      expect(article.className).toMatch(/is-completed/);
+    });
+    expect(screen.getAllByText("Recurring task")).toHaveLength(1);
+  });
+
+  it("bulk-archives selected tasks as a plain status flip, no spawning", async () => {
+    const user = userEvent.setup();
+    const first = task({ id: 1, url: "/api/items/1/", text: "First" });
+    const second = task({ id: 2, url: "/api/items/2/", text: "Second" });
+    const firstArchived = task({
+      id: 1,
+      url: "/api/items/1/",
+      text: "First",
+      status: "archived",
+    });
+    const secondArchived = task({
+      id: 2,
+      url: "/api/items/2/",
+      text: "Second",
+      status: "archived",
+    });
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      if (input === "/api/items/1/") return jsonResponse({ data: firstArchived });
+      if (input === "/api/items/2/") return jsonResponse({ data: secondArchived });
+      throw new Error(`unexpected fetch: ${input}`);
+    });
+    render(
+      <TaskWorkspace
+        initialData={{
+          area: {
+            id: 1,
+            title: "Programming",
+            create_item_url: "/api/areas/1/items/",
+            reorder_url: "/api/areas/1/items/reorder/",
+          },
+          project: null,
+          items: [first, second],
+        }}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Select" }));
+    await user.click(screen.getByLabelText("Select First"));
+    await user.click(screen.getByLabelText("Select Second"));
+    await user.click(screen.getByRole("button", { name: "Archive" }));
+
+    await waitFor(() =>
+      expect(screen.queryByText("First")).not.toBeInTheDocument(),
+    );
+    expect(screen.queryByText("Second")).not.toBeInTheDocument();
+  });
+
+  it("removes a single tag by clicking its × without touching the others", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(globalThis, "fetch").mockReturnValue(
+      jsonResponse({ data: task({ tags: ["home"] }) }),
+    );
+    render(
+      <TaskWorkspace
+        initialData={{
+          area: {
+            id: 1,
+            title: "Programming",
+            create_item_url: "/api/areas/1/items/",
+            reorder_url: "/api/areas/1/items/reorder/",
+          },
+          project: null,
+          items: [task({ tags: ["groceries", "home"] })],
+        }}
+      />,
+    );
+
+    const article = screen.getByText("Write tests").closest("article")!;
+    await user.click(within(article).getByRole("button", { name: "Remove tag groceries" }));
+
+    await waitFor(() =>
+      expect(fetch).toHaveBeenCalledWith(
+        "/api/items/1/",
+        expect.objectContaining({
+          method: "PATCH",
+          body: JSON.stringify({ tags: ["home"] }),
+        }),
+      ),
+    );
+    await waitFor(() => expect(within(article).getByText("home")).toBeInTheDocument());
+    expect(within(article).queryByText("groceries")).not.toBeInTheDocument();
+  });
+
+  it("adds one or more tags via the + tag input without disturbing the existing set", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(globalThis, "fetch").mockReturnValue(
+      jsonResponse({ data: task({ tags: ["home", "work", "urgent"] }) }),
+    );
+    render(
+      <TaskWorkspace
+        initialData={{
+          area: {
+            id: 1,
+            title: "Programming",
+            create_item_url: "/api/areas/1/items/",
+            reorder_url: "/api/areas/1/items/reorder/",
+          },
+          project: null,
+          items: [task({ tags: ["home"] })],
+        }}
+      />,
+    );
+
+    const article = screen.getByText("Write tests").closest("article")!;
+    const addInput = within(article).getByPlaceholderText("+ tag");
+    await user.type(addInput, "work, urgent");
+    fireEvent.blur(addInput);
+
+    await waitFor(() =>
+      expect(fetch).toHaveBeenCalledWith(
+        "/api/items/1/",
+        expect.objectContaining({
+          method: "PATCH",
+          body: JSON.stringify({ tags: ["home", "work", "urgent"] }),
+        }),
+      ),
+    );
+    await waitFor(() => expect(within(article).getByText("work")).toBeInTheDocument());
+    expect(within(article).getByPlaceholderText("+ tag")).toHaveValue("");
   });
 
   it("filters tasks by tag", async () => {

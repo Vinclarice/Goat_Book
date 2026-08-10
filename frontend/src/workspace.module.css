@@ -1,178 +1,7 @@
-.addForm {
-  margin-bottom: 2rem;
-}
-
-.addForm label {
-  display: block;
-  margin-bottom: 0.45rem;
-  font-weight: 700;
-}
-
-.inputRow {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-}
-
-.inputRow input {
-  border-radius: 0.5rem 0 0 0.5rem;
-}
-
-.inputRow button {
-  border-radius: 0 0.5rem 0.5rem 0;
-}
-
-.addExtras {
-  display: flex;
-  gap: 1.5rem;
-  flex-wrap: wrap;
-}
-
-.dueDateField {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-top: 0.65rem;
-  font-size: 0.85rem;
-  color: var(--sl-muted);
-}
-
-.dueDateField input {
-  width: auto;
-}
-
-.dueDateInline {
-  display: inline-block;
-  margin-top: 0.35rem;
-}
-
-.dueDateInline input {
-  width: auto;
-  font-size: 0.8rem;
-  padding: 0.15rem 0.4rem;
-}
-
-.tagFilters {
-  display: flex;
-  gap: 0.4rem;
-  flex-wrap: wrap;
-  margin-bottom: 1rem;
-}
-
-.tagChip {
-  border: 1px solid;
-  border-radius: 999px;
-  padding: 0.2rem 0.7rem;
-  font-size: 0.75rem;
-  color: #14181f;
-  background: transparent;
-}
-
-.tagRow {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  flex-wrap: wrap;
-  margin-top: 0.4rem;
-}
-
-.tagPill {
-  border-radius: 999px;
-  padding: 0.1rem 0.6rem;
-  font-size: 0.72rem;
-  color: #14181f;
-}
-
-.tagEdit {
-  display: inline-block;
-}
-
-.tagEdit input {
-  width: 10rem;
-  font-size: 0.8rem;
-  padding: 0.15rem 0.4rem;
-}
-
-.recurrenceInline {
-  display: inline-block;
-}
-
-.recurrenceInline select {
-  width: auto;
-  font-size: 0.8rem;
-  padding: 0.15rem 0.4rem;
-}
-
-.recurrenceBadge {
-  font-size: 0.72rem;
-  color: var(--sl-accent);
-}
-
-.overdue {
-  border-color: #ffb8b8;
-}
-
-.itemLead {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.dragHandle {
-  cursor: grab;
-  color: var(--sl-muted);
-  user-select: none;
-}
-
-.dragging {
-  opacity: 0.5;
-}
-
-.toolbar {
-  display: flex;
-  gap: 1rem;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
-}
-
-.filters {
-  display: flex;
-  gap: 0.45rem;
-  flex-wrap: wrap;
-}
-
-.filter,
-.filterActive {
-  display: inline-flex;
-  gap: 0.45rem;
-  align-items: center;
-  padding: 0.45rem 0.7rem;
-  color: var(--sl-muted);
-  border: 1px solid var(--sl-border);
-  border-radius: 999px;
-  background: transparent;
-}
-
-.filterActive {
-  color: var(--sl-bg);
-  border-color: var(--sl-accent);
-  background: var(--sl-accent);
-}
-
-.filter span,
-.filterActive span {
-  font-size: 0.75rem;
-  font-variant-numeric: tabular-nums;
-}
-
-.search,
-.archiveSearch {
-  width: min(100%, 18rem);
-}
-
 .archiveSearch {
   display: block;
   margin: 0 0 1rem auto;
+  width: min(100%, 18rem);
 }
 
 .feedback {
@@ -187,16 +16,6 @@
 
 .error {
   color: #ffb8b8;
-}
-
-.editForm {
-  display: grid;
-  gap: 0.5rem;
-}
-
-.inlineActions {
-  display: flex;
-  gap: 0.5rem;
 }
 
 .empty {
@@ -230,22 +49,6 @@
 }
 
 @media (max-width: 768px) {
-  .inputRow {
-    grid-template-columns: 1fr;
-    gap: 0.65rem;
-  }
-
-  .inputRow input,
-  .inputRow button {
-    width: 100%;
-    border-radius: 0.75rem;
-  }
-
-  .toolbar {
-    display: grid;
-  }
-
-  .search,
   .archiveSearch {
     width: 100%;
   }

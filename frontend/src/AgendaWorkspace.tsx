@@ -1,4 +1,6 @@
 import { FormEvent, useMemo, useState } from "react";
+import { useNavigate } from "react-router";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import {
   applyFilters,
@@ -20,6 +22,7 @@ import {
   updateTaskDueDate,
   updateTaskStatus,
 } from "./api";
+import { apiV1 } from "./api/client";
 import type {
   AgendaBucketKey,
   AgendaWorkspaceData,
@@ -130,6 +133,36 @@ export function AgendaWorkspace({ initialData }: Props) {
   );
   const [draftDue, setDraftDue] = useState("");
   const [adding, setAdding] = useState(false);
+
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [draftProject, setDraftProject] = useState("");
+  const [projectError, setProjectError] = useState("");
+  // project-workspace-plan.md: a Project is API-only (no Django-rendered
+  // form to post to, unlike "New area" beside it), so this goes through a
+  // mutation and the SPA router rather than a plain POST + reload.
+  const createProject = useMutation({
+    mutationFn: async (title: string) => {
+      const { data, error } = await apiV1.POST("/api/v1/projects", {
+        body: { title, due_date: null },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (project) => {
+      queryClient.invalidateQueries({ queryKey: ["nav"] });
+      navigate(`/projects/${project.id}`);
+    },
+    onError: () => setProjectError("Couldn't create that project."),
+  });
+
+  function handleCreateProject(event: FormEvent) {
+    event.preventDefault();
+    const title = draftProject.trim();
+    if (!title) return;
+    setProjectError("");
+    createProject.mutate(title);
+  }
 
   const counts = useMemo(() => summaryCounts(tasks, today), [tasks, today]);
   const presets = useMemo(() => snoozePresets(today), [today]);
@@ -753,6 +786,39 @@ export function AgendaWorkspace({ initialData }: Props) {
                   Create area
                 </button>
               </form>
+            </details>
+          </div>
+
+          {/* project-workspace-plan.md: a Project's own creation entry
+              point, the sibling of "New area" above -- a standalone
+              workspace now rather than something built from inside an
+              Area. */}
+          <div className="side-card">
+            <h3>New project</h3>
+            <details className="new-list-details">
+              <summary>+ New project</summary>
+              <form className="new-list-form" onSubmit={handleCreateProject}>
+                <label className="visually-hidden" htmlFor="agenda-new-project">
+                  Project name
+                </label>
+                <input
+                  id="agenda-new-project"
+                  className="form-control"
+                  value={draftProject}
+                  onChange={(event) => setDraftProject(event.target.value)}
+                  placeholder="Project name"
+                  maxLength={100}
+                  required
+                />
+                <button
+                  className="btn btn-primary btn-sm"
+                  type="submit"
+                  disabled={createProject.isPending}
+                >
+                  Create project
+                </button>
+              </form>
+              {projectError && <p className="text-sm text-destructive">{projectError}</p>}
             </details>
           </div>
 

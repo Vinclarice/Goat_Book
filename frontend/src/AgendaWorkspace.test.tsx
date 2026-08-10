@@ -1,5 +1,7 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MemoryRouter } from "react-router";
 
 import { AgendaWorkspace } from "./AgendaWorkspace";
 import { agendaData, agendaArea, agendaProject, task, TODAY } from "./test/fixtures";
@@ -31,14 +33,21 @@ function sampleItems() {
 }
 
 function renderAgenda(overrides = {}) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
   return render(
-    <AgendaWorkspace
-      initialData={agendaData({
-        items: sampleItems(),
-        areas: [agendaArea(), agendaArea({ id: 2, title: "Home" })],
-        ...overrides,
-      })}
-    />,
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter>
+        <AgendaWorkspace
+          initialData={agendaData({
+            items: sampleItems(),
+            areas: [agendaArea(), agendaArea({ id: 2, title: "Home" })],
+            ...overrides,
+          })}
+        />
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
 }
 
@@ -187,13 +196,9 @@ describe("AgendaWorkspace", () => {
 
   it("explains when a filter matches nothing", async () => {
     const user = userEvent.setup();
-    render(
-      <AgendaWorkspace
-        initialData={agendaData({
-          items: [task({ id: 1, text: "Ship the fix", due_date: TODAY })],
-        })}
-      />,
-    );
+    renderAgenda({
+      items: [task({ id: 1, text: "Ship the fix", due_date: TODAY })],
+    });
 
     await user.click(screen.getByRole("button", { name: "Show only overdue tasks" }));
 
@@ -388,9 +393,7 @@ describe("AgendaWorkspace", () => {
   });
 
   it("invites a first area when the account is empty", () => {
-    render(
-      <AgendaWorkspace initialData={agendaData({ items: [], areas: [] })} />,
-    );
+    renderAgenda({ items: [], areas: [] });
 
     expect(screen.getByText("Start your first area.")).toBeInTheDocument();
   });
@@ -405,5 +408,50 @@ describe("AgendaWorkspace", () => {
     renderAgenda({ archived_count: 23 });
 
     expect(screen.getByText("23 tasks")).toBeInTheDocument();
+  });
+
+  it("creates a project and navigates to its own page", async () => {
+    // project-workspace-plan.md: unlike "New area", a Project is API-only,
+    // so creating one goes through a mutation and the SPA router rather
+    // than a plain form POST. apiV1 (openapi-fetch) needs a fuller Response
+    // shape than this file's own plain jsonResponse gives api.ts's calls.
+    function openapiResponse(data: object) {
+      const body = JSON.stringify(data);
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        headers: new Headers({
+          "content-type": "application/json",
+          "content-length": String(body.length),
+        }),
+        json: () => Promise.resolve(data),
+        text: () => Promise.resolve(body),
+        clone() {
+          return this;
+        },
+      } as unknown as Response);
+    }
+    const user = userEvent.setup();
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const request = input as Request;
+      if (request.method === "POST" && request.url.includes("/api/v1/projects")) {
+        return openapiResponse({ id: 9, title: "Website Relaunch" });
+      }
+      return jsonResponse({});
+    });
+    renderAgenda();
+
+    await user.click(screen.getByText("+ New project"));
+    await user.type(screen.getByLabelText("Project name"), "Website Relaunch");
+    await user.click(screen.getByRole("button", { name: "Create project" }));
+
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.some(([request]) => {
+          const req = request as Request;
+          return req.method === "POST" && req.url.includes("/api/v1/projects");
+        }),
+      ).toBe(true);
+    });
   });
 });

@@ -628,16 +628,20 @@ and Idea has no per-page detail view for chips to live on, so they render
 inline on the shared Ideas list instead. Nothing from the brief is still
 open — see its §7 for the full accounting.
 
-**A second, separate line of work — not folded into Release F.** Trigger:
-Vince hit a real navigation dead end, August 10, 2026, trying to open a
-project from the side nav and finding it only ever routes to the project's
-parent Area — Project has never had a page of its own. The brief,
-[`project-workspace-plan.md`](project-workspace-plan.md), inverts Project's
-containment: a Project becomes a standalone workspace that can hold one or
-more Areas, rather than living inside exactly one. Reviewed and approved;
-not yet started. This is release-sized (two migrations, a service and API
-rewrite, a frontend rewrite across five-plus components) and lands as its
-own tracked slice sequence — see the brief's §3 for the full ordering.
+**A second, separate line of work — not folded into Release F, shipped in
+full August 10, 2026.** Trigger: Vince hit a real navigation dead end
+trying to open a project from the side nav and finding it only ever
+routed to the project's parent Area — Project had never had a page of its
+own. [`project-workspace-plan.md`](project-workspace-plan.md) inverted
+Project's containment: a Project is a standalone workspace that can hold
+one or more Areas now, rather than living inside exactly one. Eight
+slices, each its own commit — model, expand migration, service and read
+layer, API layer, contract migration, regenerated client, frontend
+rewrite, browser smoke pass — landed exactly in that order. 858 backend
+tests, 231 frontend tests, 28 browser journeys, all green. One real gap
+the plan itself missed (nowhere to create a *new* project once
+`ProjectsPanel.tsx` was gone) surfaced only while writing the browser
+journey and is recorded, fixed, in the plan's own §5.
 
 Move completed detail into `roadmap-history.md` and keep only the resulting
 baseline or remaining consequence here. When an idea from Later earns work,

@@ -279,3 +279,43 @@ give them a reason to start. The Android app's capture-only API is
 unaffected; this is entirely a web/API surface change on an
 already-web/API-only model (Project's own charter-compliance note: "No
 client creates a Project offline").
+
+## 5. Shipped — August 10, 2026
+
+All eight slices landed, each its own commit, in order: the design doc
+(this file), the expand migration, the service and read layer, the API
+layer, the contract migration, the regenerated OpenAPI client, the
+frontend rewrite, and the browser smoke pass. Full backend suite green
+throughout except a deliberate, contained red window inside the service-
+layer slice that never reached `main` alone (§3's own sequencing note,
+confirmed exactly as planned). Final state: 858 backend tests, 231
+frontend tests, 28 browser journeys, all green.
+
+**One gap found only by writing the browser journey, not by the plan
+itself: nothing created a *new* Project anywhere in the redesigned UI.**
+`ProjectsPanel.tsx`'s deletion took its create form with it, and the
+replacement (`ProjectRoute.tsx`) only ever manages a project that already
+exists — this plan never named where creation would live once it left the
+Area page. Fixed with a "New project" card in the Agenda sidebar, sibling
+to "New area," driven by a mutation and the SPA router rather than a
+plain form POST (a Project is API-only, unlike an Area, which has a
+Django view to post to). Recorded here rather than left implicit, because
+it's exactly the kind of gap this project's practice asks to be named
+instead of quietly patched.
+
+**One refinement against §"API layer" above, found by tracing actual call
+sites rather than assumed from the brief:** `TaskOut.project_id` was not
+dropped. It survives, now derived via `item.list.project_id` instead of
+stored on the task — every caller already `select_related("list")`, so
+this cost nothing — and it meant the Agenda/Area/Archive "project pill" on
+every task row needed zero frontend changes. Only the *editable* per-task
+override actually went away, which is what §"the settled decision" and
+Vince's own answer to the task-project question actually asked for; the
+plan's original "TaskOut loses project_id" line said more than the design
+decision required.
+
+The plan's other calls held exactly as written: `List.project` nullable
+and multi-area-capable, no data-preservation migration, the task-level
+override fully retired, `AreaDetailOut.projects` → `.project` (singular),
+`project_ref_for`'s hand-built `/app/projects/{id}` URL, and the
+service-layer owner guard modeled on `capture.services.link_ideas`.

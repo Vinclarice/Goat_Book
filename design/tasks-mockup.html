@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clarice · Task list redesign mockup</title>
+<style>
+:root {
+  --sl-bg: #08111f;
+  --sl-surface: rgba(18, 31, 49, 0.82);
+  --sl-surface-strong: #132237;
+  --sl-border: rgba(255, 255, 255, 0.1);
+  --sl-text: #f5f7fb;
+  --sl-muted: #a6b2c3;
+  --sl-accent: #7be0b8;
+  --sl-danger: #f08a8a;
+  --sl-warn: #f4c98a;
+
+  /* The List-Color Contract -- same eight values as tailwind.css's
+     --list-color-* tokens, unchanged. Used here for tag pills, the same
+     way area dots and composition-bar segments already use it. */
+  --c-sky: #8fc7d6;
+  --c-sage: #a8dba8;
+  --c-amber: #f4c98a;
+  --c-lilac: #c9a8dc;
+  --c-coral: #f4a3a3;
+  --c-azure: #9ab6e0;
+  --c-blush: #e5a8c4;
+  --c-straw: #f1e394;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  color: var(--sl-text);
+  background: var(--sl-bg);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.site-backdrop {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 15% 5%, rgba(67, 116, 155, 0.2), transparent 32rem),
+    radial-gradient(circle at 85% 25%, rgba(39, 132, 102, 0.16), transparent 28rem);
+}
+
+.container { width: 100%; max-width: 860px; margin: 0 auto; padding: 0 1.25rem; }
+
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap;
+}
+
+.mock-banner {
+  background: rgba(244, 201, 138, 0.1);
+  border-bottom: 1px solid rgba(244, 201, 138, 0.28);
+  color: var(--sl-warn);
+  font-size: 0.8rem;
+  text-align: center;
+  padding: 0.5rem 1rem;
+}
+.mock-banner strong { color: var(--sl-text); }
+
+.page-shell { padding: 2.5rem 0 4rem; }
+
+.diagnosis {
+  border: 1px solid rgba(244, 201, 138, 0.3);
+  background: rgba(244, 201, 138, 0.06);
+  border-radius: 0.9rem;
+  padding: 1rem 1.25rem;
+  margin-bottom: 2rem;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: var(--sl-muted);
+}
+.diagnosis strong { color: var(--sl-warn); }
+.diagnosis code {
+  background: rgba(255,255,255,0.06);
+  padding: 0.05rem 0.35rem;
+  border-radius: 0.3rem;
+  font-size: 0.82em;
+}
+
+.back-link {
+  display: inline-block;
+  color: var(--sl-muted);
+  text-decoration: none;
+  font-size: 0.85rem;
+  margin-bottom: 1.25rem;
+}
+.back-link:hover { color: var(--sl-text); }
+
+.existing-note {
+  font-size: 0.76rem;
+  color: var(--sl-muted);
+  margin: 0 0 1.75rem;
+}
+
+/* ---------- existing header, unchanged -- shown only for continuity ---------- */
+.area-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
+.area-title-input {
+  font: inherit; font-weight: 700; font-size: 1.5rem;
+  background: transparent; border: 1px solid var(--sl-border);
+  border-radius: 0.6rem; padding: 0.3rem 0.6rem; color: var(--sl-text);
+  min-width: 16rem;
+}
+.pill-btn {
+  font: inherit; font-size: 0.82rem; font-weight: 600;
+  border-radius: 0.55rem; border: 1px solid var(--sl-border);
+  padding: 0.4rem 0.8rem; background: transparent; color: var(--sl-text); cursor: pointer;
+}
+.pill-btn.primary { color: var(--sl-bg); background: var(--sl-accent); border-color: var(--sl-accent); }
+.project-banner {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+  border: 1px solid var(--sl-border); border-radius: 0.75rem; padding: 0.6rem 0.9rem;
+  font-size: 0.85rem; color: var(--sl-muted); margin-bottom: 2rem;
+}
+
+/* ---------- section headings ---------- */
+.section-kicker {
+  color: var(--sl-accent); font-size: 0.72rem; font-weight: 800;
+  letter-spacing: 0.14em; text-transform: uppercase; margin: 0 0 1rem;
+}
+
+/* ---------- composer ---------- */
+.composer {
+  display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
+  background: var(--sl-surface); border: 1px solid var(--sl-border);
+  border-radius: 1rem; padding: 0.6rem 0.7rem 0.6rem 1rem; margin-bottom: 1.5rem;
+}
+.composer input[type="text"] {
+  flex: 1 1 12rem; min-width: 0; background: transparent; border: 0;
+  color: var(--sl-text); font: inherit; padding: 0.45rem 0; outline: none;
+}
+.composer input::placeholder { color: var(--sl-muted); }
+.field-chip {
+  display: inline-flex; align-items: center; gap: 0.35rem;
+  background: rgba(255,255,255,0.04); border: 1px solid var(--sl-border);
+  border-radius: 0.6rem; padding: 0.3rem 0.55rem; font-size: 0.82rem; color: var(--sl-muted);
+}
+.field-chip input, .field-chip select {
+  background: transparent; border: 0; color: inherit; font: inherit; outline: none;
+  padding: 0; max-width: 8rem;
+}
+.field-chip.has-value { color: var(--sl-text); border-color: rgba(255,255,255,0.22); }
+
+/* ---------- toolbar: filters + search ---------- */
+.toolbar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.9rem; }
+.filters { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+.filter-pill {
+  display: inline-flex; align-items: center; gap: 0.4rem; font: inherit; font-size: 0.82rem;
+  padding: 0.4rem 0.75rem; border-radius: 999px; border: 1px solid var(--sl-border);
+  background: transparent; color: var(--sl-muted); cursor: pointer;
+}
+.filter-pill .n { font-variant-numeric: tabular-nums; font-size: 0.76rem; }
+.filter-pill[aria-pressed="true"] { color: var(--sl-bg); background: var(--sl-accent); border-color: var(--sl-accent); }
+.search-field {
+  display: flex; align-items: center; gap: 0.4rem; width: min(100%, 16rem);
+  border: 1px solid var(--sl-border); border-radius: 999px; padding: 0.4rem 0.85rem;
+  color: var(--sl-muted); font-size: 0.85rem;
+}
+.search-field input { background: transparent; border: 0; color: var(--sl-text); font: inherit; outline: none; width: 100%; }
+
+.sort-field {
+  display: flex; align-items: center; gap: 0.4rem;
+  border: 1px solid var(--sl-border); border-radius: 999px; padding: 0.4rem 0.85rem;
+  color: var(--sl-muted); font-size: 0.82rem;
+}
+.sort-field select { background: transparent; border: 0; color: var(--sl-text); font: inherit; outline: none; }
+.select-toggle {
+  font: inherit; font-size: 0.82rem; border-radius: 999px; border: 1px solid var(--sl-border);
+  padding: 0.4rem 0.75rem; background: transparent; color: var(--sl-muted); cursor: pointer;
+}
+.select-toggle[aria-pressed="true"] { color: var(--sl-text); border-color: rgba(255,255,255,0.28); }
+
+.bulk-bar {
+  display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;
+  background: rgba(123, 224, 184, 0.08); border: 1px solid rgba(123, 224, 184, 0.3);
+  border-radius: 0.75rem; padding: 0.55rem 0.9rem; margin-bottom: 0.75rem; font-size: 0.85rem;
+}
+.bulk-bar .count { font-weight: 700; }
+.bulk-bar .spacer { margin-left: auto; }
+
+.select-checkbox {
+  appearance: none; width: 1.1rem; height: 1.1rem; margin-top: 0.2rem;
+  border: 1.5px solid rgba(255,255,255,0.32); border-radius: 0.35rem; cursor: pointer; position: relative;
+}
+.select-checkbox:checked { background: var(--sl-accent); border-color: var(--sl-accent); }
+.select-checkbox:checked::after {
+  content: "✓"; position: absolute; inset: 0; display: grid; place-items: center;
+  color: var(--sl-bg); font-size: 0.7rem; font-weight: 900;
+}
+
+/* Progressive disclosure: repeat and "+ tag" are the two fields most
+   tasks never touch (per the screenshot, every example was "Doesn't
+   repeat"). Quiet by default, same hover/focus reveal as the actions
+   column -- due date and existing tags stay visible always, since those
+   are the ones actually worth a glance at rest. */
+.pill-recur, .pill-tag-add {
+  opacity: 0; transition: opacity .15s;
+}
+.task-row:hover .pill-recur, .task-row:focus-within .pill-recur,
+.task-row:hover .pill-tag-add, .task-row:focus-within .pill-tag-add,
+.pill-recur.is-active {
+  opacity: 1;
+}
+@media (hover: none) { .pill-recur, .pill-tag-add { opacity: 1; } }
+
+/* ---------- tag filter row ---------- */
+.tag-filters { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
+.tag-chip {
+  font: inherit; font-size: 0.78rem; border-radius: 999px; border: 1px dashed var(--sl-border);
+  background: rgba(255,255,255,0.03); color: var(--sl-muted); padding: 0.2rem 0.65rem; cursor: pointer;
+}
+.tag-chip[aria-pressed="true"] { border-style: solid; border-color: var(--sl-accent); color: var(--sl-accent); background: rgba(123,224,184,0.08); }
+
+/* ---------- task rows ---------- */
+.task-list { border-top: 1px solid var(--sl-border); }
+.task-row {
+  display: grid; grid-template-columns: auto auto minmax(0,1fr) auto;
+  align-items: start; gap: 0.85rem; padding: 0.95rem 0.25rem 0.95rem 0.65rem;
+  border-bottom: 1px solid var(--sl-border);
+  border-left: 3px solid transparent;
+}
+.task-row.is-overdue { border-left-color: var(--sl-danger); }
+/* The two illustrative states below (Sort, Select) only ever show two
+   cells -- a lead icon and the body -- so they get their own simpler
+   track list rather than leaving two of the real row's four columns
+   collapsed to zero width. */
+.task-row.is-compact { grid-template-columns: auto minmax(0,1fr); }
+.drag-handle { color: var(--sl-muted); cursor: grab; padding-top: 0.2rem; user-select: none; }
+.item-number { color: var(--sl-muted); font-variant-numeric: tabular-nums; font-size: 0.78rem; padding-top: 0.25rem; }
+
+.task-body { min-width: 0; }
+.task-text { display: block; font-size: 0.98rem; line-height: 1.4; word-break: break-word; }
+.task-row.is-completed .task-text { color: var(--sl-muted); text-decoration: line-through; text-decoration-color: var(--sl-accent); }
+.task-meta {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem;
+  margin-top: 0.5rem; font-size: 0.8rem; color: var(--sl-muted);
+}
+
+.pill {
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  border: 1px solid var(--sl-border); border-radius: 999px; padding: 0.12rem 0.6rem;
+  background: rgba(255,255,255,0.03); color: var(--sl-muted); font-size: 0.78rem;
+}
+.pill-created { border-style: none; background: none; padding: 0.12rem 0; }
+
+/* Due date pill IS the real <input type="date">, styled down to pill
+   size rather than a second block of text duplicating what it says. */
+.pill-due { cursor: pointer; }
+.pill-due input {
+  background: transparent; border: 0; color: inherit; font: inherit; font-size: 0.78rem;
+  outline: none; width: 6.4rem;
+}
+.pill-due.is-set { color: var(--sl-text); border-color: rgba(255,255,255,0.22); }
+.pill-due.is-overdue { color: var(--sl-danger); border-color: rgba(240,138,138,0.4); background: rgba(240,138,138,0.08); }
+.pill-due.is-empty { border-style: dashed; }
+
+.pill-tag { padding-right: 0.4rem; }
+.pill-tag .x { cursor: pointer; opacity: 0.7; font-size: 0.7rem; }
+.pill-tag .x:hover { opacity: 1; }
+.pill-tag-add {
+  border-style: dashed; background: none; cursor: text; color: var(--sl-muted);
+}
+.pill-tag-add input {
+  background: transparent; border: 0; color: var(--sl-text); font: inherit; font-size: 0.78rem;
+  outline: none; width: 5.5rem;
+}
+
+/* Recurrence pill IS the real <select>, same idea as the due-date pill --
+   one control that both shows and sets the state, not a control plus a
+   separate read-only badge repeating it. */
+.pill-recur select {
+  background: transparent; border: 0; color: inherit; font: inherit; font-size: 0.78rem; outline: none;
+}
+.pill-recur.is-active { color: var(--sl-warn); border-color: rgba(244,201,138,0.35); }
+
+.task-actions {
+  display: flex; gap: 0.35rem; align-items: center; flex: none;
+  opacity: 0; transition: opacity .15s;
+}
+.task-row:hover .task-actions, .task-row:focus-within .task-actions { opacity: 1; }
+@media (hover: none) { .task-actions { opacity: 1; } }
+.action-btn {
+  font: inherit; font-size: 0.78rem; border-radius: 0.5rem; border: 1px solid var(--sl-border);
+  padding: 0.3rem 0.6rem; background: transparent; color: var(--sl-muted); cursor: pointer; white-space: nowrap;
+}
+.action-btn:hover { color: var(--sl-text); border-color: rgba(255,255,255,0.28); }
+
+.empty-note {
+  color: var(--sl-muted); font-size: 0.88rem; padding: 2rem 1rem; text-align: center;
+  border: 1px dashed var(--sl-border); border-radius: 0.85rem; margin-top: 0.5rem;
+}
+
+.annot {
+  font-size: 0.78rem; color: var(--sl-warn);
+  background: rgba(244, 201, 138, 0.08); border: 1px dashed rgba(244, 201, 138, 0.3);
+  border-radius: 0.6rem; padding: 0.55rem 0.8rem; margin: 0.9rem 0 0; line-height: 1.5;
+}
+.annot strong { color: var(--sl-warn); }
+
+@media (max-width: 560px) {
+  .task-row { grid-template-columns: auto minmax(0,1fr); }
+  .drag-handle, .item-number { display: none; }
+  .task-actions { grid-column: 2; opacity: 1; margin-top: 0.5rem; }
+}
+</style>
+</head>
+<body>
+<div class="mock-banner">Mockup — <strong>fake data, nothing is saved</strong>. For review before touching real components.</div>
+
+<div class="site-backdrop">
+  <main class="container page-shell">
+
+    <a class="back-link" href="#">← Back to today</a>
+
+    <div class="diagnosis">
+      <strong>Why it renders like that today:</strong> <code>TaskWorkspace.tsx</code>
+      is one of the last two components (with <code>AgendaWorkspace</code>)
+      still styled through the old <code>site.css</code> — <code>.form-control</code>,
+      <code>.btn</code>, <code>.list-item</code> — rather than the Tailwind
+      system <code>ProjectRoute</code> and <code>AreaRoute</code> already use.
+      Tailwind's own reset strips default browser chrome from every input,
+      select, and button so utility classes can restyle them from scratch —
+      and <code>site.css</code>'s Bootstrap-era rules don't fully win that
+      fight, which is why due dates, tags, and repeat controls render with
+      no visible border or spacing at all. This isn't a polish pass, it's
+      the same Tailwind migration the Projects pages already got, just for
+      the one screen that carries the most fields per row.
+    </div>
+
+    <div class="diagnosis">
+      <strong>On sorting:</strong> checked <code>Item.Meta.ordering</code> in
+      <code>models.py</code> — it's <code>("position", "id")</code>, a single
+      stored integer set only by drag-and-drop
+      (<code>services.reorder_items</code>). There's no due-date, alphabetical,
+      or created-date sort anywhere in the API or UI today — manual order is
+      the only order. Below folds in a real <strong>Sort</strong> control
+      rather than just a passive "Overdue" section header, since that
+      answers the actual gap directly: manual stays the default (today's
+      behavior, untouched), and switching to "Due date" reorders the list
+      and turns off dragging while it's active — the same on/off precedent
+      <code>canReorder</code> already sets when a filter or search is
+      active.
+    </div>
+
+    <!-- ============================================================ -->
+    <p class="section-kicker">Existing header — unchanged, shown for continuity</p>
+    <div class="area-header">
+      <input class="area-title-input" value="House hold" readonly>
+      <button class="pill-btn">Save name</button>
+    </div>
+    <div class="project-banner">
+      <span>Add to a project</span>
+      <span style="margin-left:auto">Vinclarice website</span>
+      <button class="pill-btn primary">Add</button>
+    </div>
+    <p class="existing-note">
+      This part of the page already went through the Tailwind pass
+      (`AreaRoute.tsx`) and reads fine in the screenshot — the redesign
+      below starts at "Tasks."
+    </p>
+
+    <!-- ============================================================ -->
+    <p class="section-kicker">Add a task</p>
+    <form class="composer" onsubmit="return false">
+      <label class="visually-hidden" for="new-task">What's next?</label>
+      <input id="new-task" type="text" placeholder="What's next?">
+      <span class="field-chip">
+        <input type="date" aria-label="Due date (optional)">
+      </span>
+      <span class="field-chip"><span aria-hidden="true">🏷</span>
+        <input type="text" placeholder="Tags" aria-label="Tags (optional, comma separated)">
+      </span>
+      <span class="field-chip"><span aria-hidden="true">↻</span>
+        <select aria-label="Repeats">
+          <option>Doesn't repeat</option>
+          <option>Weekly</option>
+        </select>
+      </span>
+      <button class="pill-btn primary" type="submit">Add item</button>
+    </form>
+
+    <!-- ============================================================ -->
+    <div class="toolbar">
+      <div class="filters" aria-label="Filter tasks">
+        <button class="filter-pill" type="button" aria-pressed="true">All <span class="n">4</span></button>
+        <button class="filter-pill" type="button" aria-pressed="false">Open <span class="n">3</span></button>
+        <button class="filter-pill" type="button" aria-pressed="false">Completed <span class="n">1</span></button>
+      </div>
+      <div style="display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap;">
+        <label class="sort-field">
+          Sort
+          <select aria-label="Sort tasks">
+            <option>Manual order</option>
+            <option>Due date</option>
+          </select>
+        </label>
+        <button class="select-toggle" type="button" aria-pressed="false">Select</button>
+        <label class="search-field">
+          <span aria-hidden="true">⌕</span>
+          <input type="search" placeholder="Search this area">
+        </label>
+      </div>
+    </div>
+
+    <div class="tag-filters" aria-label="Filter by tag">
+      <button class="tag-chip" type="button" aria-pressed="false">finance</button>
+      <button class="tag-chip" type="button" aria-pressed="true">groceries</button>
+      <button class="tag-chip" type="button" aria-pressed="false">outdoor</button>
+    </div>
+
+    <!-- ============================================================ -->
+    <div class="task-list">
+
+      <div class="task-row is-overdue">
+        <span class="drag-handle" aria-hidden="true" title="Drag to reorder">⠿</span>
+        <span class="item-number">01</span>
+        <div class="task-body">
+          <span class="task-text">Pay T-Mobile bill</span>
+          <div class="task-meta">
+            <span class="pill pill-created">Added 12 days ago</span>
+            <span class="pill pill-due is-overdue">
+              <input type="date" value="2026-07-31">
+            </span>
+            <span class="pill pill-tag" style="border-color:var(--c-coral);color:var(--c-coral)">finance <span class="x">×</span></span>
+            <span class="pill pill-tag-add">🏷 <input type="text" placeholder="+ tag"></span>
+            <span class="pill pill-recur">
+              ↻ <select><option>Doesn't repeat</option><option>Weekly</option></select>
+            </span>
+          </div>
+        </div>
+        <div class="task-actions">
+          <button class="action-btn">Edit</button>
+          <button class="action-btn">Mark complete</button>
+          <button class="action-btn">Archive</button>
+        </div>
+      </div>
+
+      <div class="task-row">
+        <span class="drag-handle" aria-hidden="true" title="Drag to reorder">⠿</span>
+        <span class="item-number">02</span>
+        <div class="task-body">
+          <span class="task-text">Change PayPal payment account to Truist</span>
+          <div class="task-meta">
+            <span class="pill pill-created">Added today</span>
+            <span class="pill pill-due is-empty">
+              <input type="date" placeholder="Add due date">
+            </span>
+            <span class="pill pill-tag" style="border-color:var(--c-coral);color:var(--c-coral)">finance <span class="x">×</span></span>
+            <span class="pill pill-tag-add">🏷 <input type="text" placeholder="+ tag"></span>
+            <span class="pill pill-recur">
+              ↻ <select><option selected>Doesn't repeat</option><option>Weekly</option></select>
+            </span>
+          </div>
+        </div>
+        <div class="task-actions">
+          <button class="action-btn">Edit</button>
+          <button class="action-btn">Mark complete</button>
+          <button class="action-btn">Archive</button>
+        </div>
+      </div>
+
+      <div class="task-row">
+        <span class="drag-handle" aria-hidden="true" title="Drag to reorder">⠿</span>
+        <span class="item-number">03</span>
+        <div class="task-body">
+          <span class="task-text">Water the outdoor plants</span>
+          <div class="task-meta">
+            <span class="pill pill-created">Added today</span>
+            <span class="pill pill-due is-set">
+              <input type="date" value="2026-08-12">
+            </span>
+            <span class="pill pill-tag" style="border-color:var(--c-sage);color:var(--c-sage)">outdoor <span class="x">×</span></span>
+            <span class="pill pill-tag-add">🏷 <input type="text" placeholder="+ tag"></span>
+            <span class="pill pill-recur is-active">
+              ↻ <select><option>Doesn't repeat</option><option selected>Weekly</option></select>
+            </span>
+          </div>
+        </div>
+        <div class="task-actions">
+          <button class="action-btn">Edit</button>
+          <button class="action-btn">Mark complete</button>
+          <button class="action-btn">Archive</button>
+        </div>
+      </div>
+
+      <div class="task-row is-completed">
+        <span class="drag-handle" aria-hidden="true" title="Drag to reorder">⠿</span>
+        <span class="item-number">04</span>
+        <div class="task-body">
+          <span class="task-text">Order more dish soap</span>
+          <div class="task-meta">
+            <span class="pill pill-created">Completed Aug 9</span>
+            <span class="pill pill-tag" style="border-color:var(--c-sky);color:var(--c-sky)">groceries <span class="x">×</span></span>
+          </div>
+        </div>
+        <div class="task-actions">
+          <button class="action-btn">Edit</button>
+          <button class="action-btn">Reopen</button>
+          <button class="action-btn">Archive</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ============================================================ -->
+    <p class="section-kicker" style="margin-top:2.5rem;">Sort: Due date — dragging off while it's active</p>
+    <div class="task-list">
+      <div class="task-row is-overdue is-compact">
+        <span class="drag-handle" aria-hidden="true" style="opacity:0.25" title="Turn off Sort to reorder">⠿</span>
+        <div class="task-body">
+          <span class="task-text">Pay T-Mobile bill</span>
+          <div class="task-meta">
+            <span class="pill pill-due is-overdue"><input type="date" value="2026-07-31"></span>
+          </div>
+        </div>
+      </div>
+      <div class="task-row is-compact">
+        <span class="drag-handle" aria-hidden="true" style="opacity:0.25" title="Turn off Sort to reorder">⠿</span>
+        <div class="task-body">
+          <span class="task-text">Water the outdoor plants</span>
+          <div class="task-meta">
+            <span class="pill pill-due is-set"><input type="date" value="2026-08-12"></span>
+          </div>
+        </div>
+      </div>
+      <div class="task-row is-compact">
+        <span class="drag-handle" aria-hidden="true" style="opacity:0.25" title="Turn off Sort to reorder">⠿</span>
+        <div class="task-body">
+          <span class="task-text">Change PayPal payment account to Truist</span>
+          <div class="task-meta">
+            <span class="pill pill-due is-empty"><input type="date" placeholder="Add due date"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="annot">
+      Ascending, no-due-date last — the same rule <code>bucketFor</code>'s
+      own bucket order already implies (dated buckets before "someday").
+      Manual order is remembered underneath and comes right back once
+      Sort is switched back to "Manual order."
+    </p>
+
+    <!-- ============================================================ -->
+    <p class="section-kicker" style="margin-top:2.5rem;">Select — bulk actions</p>
+    <div class="bulk-bar">
+      <span class="count">2 selected</span>
+      <button class="action-btn">Mark complete</button>
+      <button class="action-btn">Archive</button>
+      <button class="action-btn spacer">Clear</button>
+    </div>
+    <div class="task-list">
+      <div class="task-row is-overdue is-compact">
+        <input class="select-checkbox" type="checkbox" checked aria-label="Select Pay T-Mobile bill">
+        <div class="task-body">
+          <span class="task-text">Pay T-Mobile bill</span>
+          <div class="task-meta">
+            <span class="pill pill-due is-overdue"><input type="date" value="2026-07-31" disabled></span>
+          </div>
+        </div>
+      </div>
+      <div class="task-row is-compact">
+        <input class="select-checkbox" type="checkbox" aria-label="Select Change PayPal payment account to Truist">
+        <div class="task-body">
+          <span class="task-text">Change PayPal payment account to Truist</span>
+          <div class="task-meta">
+            <span class="pill pill-due is-empty"><input type="date" placeholder="Add due date" disabled></span>
+          </div>
+        </div>
+      </div>
+      <div class="task-row is-compact">
+        <input class="select-checkbox" type="checkbox" checked aria-label="Select Water the outdoor plants">
+        <div class="task-body">
+          <span class="task-text">Water the outdoor plants</span>
+          <div class="task-meta">
+            <span class="pill pill-due is-set"><input type="date" value="2026-08-12" disabled></span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="annot">
+      Drag handles and per-row actions step aside for a checkbox while
+      selecting — same trade as Sort, one mode at a time rather than
+      three interaction styles live on the same row. "Mark complete" and
+      "Archive" bulk because they're already single, safe calls per task
+      (<code>changeStatus</code>) run in a loop; editing due date, tags,
+      or repeat stays per-task since "set every selected task's due date
+      to the same day" isn't a real request anyone's made.
+    </p>
+
+    <p class="annot">
+      <strong>Considered simplifications, called out separately:</strong>
+      (1) The due date pill <em>is</em> the input — no more separate
+      "Overdue: Jul 31, 2026" line duplicating what the pill itself now
+      shows in red. (2) Same for repeat: the pill select shows its own
+      state, so the extra read-only "↻ Weekly" badge next to it goes
+      away. (3) "Created Jul 29, 2026, 12:46&nbsp;AM" becomes "Added 12
+      days ago" — Agenda's own age language (<code>ageLabel</code>), not
+      a new rule — and a fresh task just says "Added today" rather than
+      a timestamp nobody asked the minute of. (4) Each existing tag is
+      now its own removable pill (click ×) instead of one text field
+      pre-filled with "tag1, tag2" that you'd otherwise have to
+      text-edit to remove one from — small, and it's the same
+      <code>updateTaskTags</code> call either way. (5) Repeat and "+ tag"
+      go quiet until a row is hovered or focused (same reveal the actions
+      already used) — every task in the actual screenshot said "Doesn't
+      repeat," so showing that control at rest on every row was mostly
+      blank space with a label on it. Due date and any tags a task
+      already has stay visible always; only the two rarely-touched
+      controls hide. Any of these five can be left as-is if you'd rather
+      keep the current behavior.
+    </p>
+
+  </main>
+</div>
+</body>
+</html>

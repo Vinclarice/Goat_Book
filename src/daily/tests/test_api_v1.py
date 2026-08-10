@@ -306,8 +306,8 @@ class DayActionItemsTest(TestCase):
         Agenda, which has always carried `areas`. This is that join, plus
         the same one for `projects` the Agenda just gained.
         """
-        Project.objects.create(owner=self.alice, area=self.list_, title="Kitchen remodel")
-        Project.objects.create(owner=self.bob, area=self.bob.lists.create(title="Bob's home"), title="Not mine")
+        project = Project.objects.create(owner=self.alice, title="Kitchen remodel")
+        Project.objects.create(owner=self.bob, title="Not mine")
 
         body = self.client.get("/api/v1/day").json()
 
@@ -316,4 +316,4 @@ class DayActionItemsTest(TestCase):
         self.assertEqual(body["areas"][0]["url"], self.list_.get_absolute_url())
         self.assertEqual(len(body["projects"]), 1)
         self.assertEqual(body["projects"][0]["title"], "Kitchen remodel")
-        self.assertEqual(body["projects"][0]["url"], self.list_.get_absolute_url())
+        self.assertEqual(body["projects"][0]["url"], f"/app/projects/{project.id}")

@@ -5,7 +5,6 @@ from functools import wraps
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 
-from lists import projects as project_reader
 from lists import services
 from lists.models import ChecklistStep, Item, List
 from lists.serializers import serialize_checklist_step, serialize_item
@@ -182,7 +181,6 @@ def item_detail(request, item_id):
         return error_response
     changed_fields = {
         "text", "status", "due_date", "tags", "recurrence", "notes",
-        "project_id",
     }.intersection(payload)
     if len(changed_fields) != 1:
         return JsonResponse(
@@ -190,7 +188,7 @@ def item_detail(request, item_id):
                 "errors": {
                     "body": [
                         "Change exactly one of text, status, due_date, tags, "
-                        "recurrence, notes, or project_id per request."
+                        "recurrence, or notes per request."
                     ]
                 }
             },
@@ -230,21 +228,6 @@ def item_detail(request, item_id):
                     status=400,
                 )
             item = services.set_item_notes(item, notes)
-        elif "project_id" in changed_fields:
-            project_id = payload["project_id"]
-            project = None
-            if project_id is not None:
-                project = project_reader.project_for(request.user, project_id)
-                if project is None:
-                    # 404 rather than 409: the caller named something that,
-                    # as far as this session is concerned, does not exist.
-                    # Whether it exists for somebody else is not theirs to
-                    # learn -- guards fail closed.
-                    return JsonResponse(
-                        {"errors": {"project": ["Project not found."]}},
-                        status=404,
-                    )
-            item = services.set_task_project(item, project)
         else:
             requested_status = payload["status"]
             if requested_status == Item.Status.ACTIVE:

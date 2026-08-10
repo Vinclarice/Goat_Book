@@ -62,18 +62,18 @@ class AgendaEndpointTest(TestCase):
     def test_carries_the_caller_s_projects_so_a_task_row_can_show_its_own(self):
         """ui-second-pass-plan.md F2: a task's project is invisible on the
         Agenda because the payload never carried one. This is the fix's
-        server half -- each project, with its area's url since a project has
-        no page of its own yet.
+        server half -- each project, now with its own url --
+        project-workspace-plan.md closes the "no page of its own yet" gap.
         """
-        Project.objects.create(owner=self.user, area=self.list_, title="Kitchen remodel")
-        Project.objects.create(owner=self.other_user, area=self.other_user.lists.first(), title="Not mine")
+        project = Project.objects.create(owner=self.user, title="Kitchen remodel")
+        Project.objects.create(owner=self.other_user, title="Not mine")
         self.client.force_login(self.user)
 
         payload = self.client.get("/api/v1/agenda").json()
 
         self.assertEqual(len(payload["projects"]), 1)
         self.assertEqual(payload["projects"][0]["title"], "Kitchen remodel")
-        self.assertEqual(payload["projects"][0]["url"], self.list_.get_absolute_url())
+        self.assertEqual(payload["projects"][0]["url"], f"/app/projects/{project.id}")
 
 
 class AreaDetailEndpointTest(TestCase):
@@ -115,23 +115,26 @@ class AreaDetailEndpointTest(TestCase):
         self.assertEqual(len(payload["items"]), 1)
         self.assertEqual(payload["items"][0]["text"], "Write tests")
 
-    def test_carries_this_area_s_own_projects_so_a_row_can_show_its_own(self):
-        """ui-second-pass-plan.md F2a: the Area page is the one screen that
-        shows a project section at all, and it still didn't connect a task
-        row to the project heading sitting above it. Scoped to this area
-        only, unlike the Agenda/Daily/Archive join -- a project belongs to
-        exactly one area, and this page only ever shows one area's rows.
+    def test_carries_this_area_s_own_project_so_a_row_can_show_it(self):
+        """project-workspace-plan.md 2: singular now, not a list -- an Area
+        belongs to at most one Project. Scoped to this area only, unlike the
+        Agenda/Daily/Archive join.
         """
-        Project.objects.create(owner=self.user, area=self.list_, title="Kitchen remodel")
-        other_area = List.objects.create(owner=self.user, title="Home")
-        Project.objects.create(owner=self.user, area=other_area, title="Not this area")
+        project = Project.objects.create(owner=self.user, title="Kitchen remodel")
+        list_services.add_area_to_project(self.list_, project)
         self.client.force_login(self.user)
 
         payload = self.client.get(f"/api/v1/areas/{self.list_.id}").json()
 
-        self.assertEqual(len(payload["projects"]), 1)
-        self.assertEqual(payload["projects"][0]["title"], "Kitchen remodel")
-        self.assertEqual(payload["projects"][0]["url"], self.list_.get_absolute_url())
+        self.assertEqual(payload["project"]["title"], "Kitchen remodel")
+        self.assertEqual(payload["project"]["url"], f"/app/projects/{project.id}")
+
+    def test_no_project_section_when_the_area_is_not_in_one(self):
+        self.client.force_login(self.user)
+
+        payload = self.client.get(f"/api/v1/areas/{self.list_.id}").json()
+
+        self.assertIsNone(payload["project"])
 
     def test_renames_the_area(self):
         self.client.force_login(self.user)
@@ -244,15 +247,15 @@ class ArchiveEndpointTest(TestCase):
         about a project the same way the Agenda and Daily Page were --
         the last of the three surfaces the sitting actually observed.
         """
-        Project.objects.create(owner=self.user, area=self.list_, title="Kitchen remodel")
-        Project.objects.create(owner=self.other_user, area=self.other_user.lists.first(), title="Not mine")
+        project = Project.objects.create(owner=self.user, title="Kitchen remodel")
+        Project.objects.create(owner=self.other_user, title="Not mine")
         self.client.force_login(self.user)
 
         payload = self.client.get("/api/v1/archive").json()
 
         self.assertEqual(len(payload["projects"]), 1)
         self.assertEqual(payload["projects"][0]["title"], "Kitchen remodel")
-        self.assertEqual(payload["projects"][0]["url"], self.list_.get_absolute_url())
+        self.assertEqual(payload["projects"][0]["url"], f"/app/projects/{project.id}")
 
 
 class TaskDetailEndpointTest(TestCase):
@@ -364,21 +367,16 @@ class NavEndpointTest(TestCase):
         list completed tasks, and a project has a completion state an Area
         never does.
         """
-        Project.objects.create(owner=self.user, area=self.list_, title="Kitchen remodel")
-        done = Project.objects.create(
-            owner=self.user, area=self.list_, title="Finished already",
-        )
+        Project.objects.create(owner=self.user, title="Kitchen remodel")
+        done = Project.objects.create(owner=self.user, title="Finished already")
         list_services.complete_project(done)
-        Project.objects.create(
-            owner=self.other, area=self.other.lists.first(), title="Not mine",
-        )
+        Project.objects.create(owner=self.other, title="Not mine")
         self.client.force_login(self.user)
 
         body = self.client.get("/api/v1/nav").json()
 
         self.assertEqual(len(body["projects"]), 1)
         self.assertEqual(body["projects"][0]["title"], "Kitchen remodel")
-        self.assertEqual(body["projects"][0]["area_id"], self.list_.id)
         self.assertIn("open_task_count", body["projects"][0])
 
     def test_counts_the_archive_and_the_unresolved_inbox(self):

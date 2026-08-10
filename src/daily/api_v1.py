@@ -224,8 +224,7 @@ def _day_out(owner, day):
             for each in agenda.list_summaries(owner)
         ],
         "projects": [
-            project_ref_for(each)
-            for each in project_reader.projects_for(owner).select_related("area")
+            project_ref_for(each) for each in project_reader.projects_for(owner)
         ],
         "shows_action_items": shows_action_items,
         "focus": [_focus_out(focus) for focus in reads.focus_for(owner, day)],

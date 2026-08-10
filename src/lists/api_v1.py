@@ -126,7 +126,8 @@ class AreaRefOut(Schema):
 class AreaDetailOut(Schema):
     area: AreaRefOut
     items: list[TaskOut]
-    projects: list[AgendaProjectSummaryOut]
+    # Singular and optional -- an Area belongs to at most one Project.
+    project: AgendaProjectSummaryOut | None
     archived_count: int
     archive_url: str
 
@@ -166,11 +167,6 @@ class NavAreaOut(Schema):
 class NavProjectOut(Schema):
     id: int
     title: str
-    # area_id rather than a url: the nav is the one place a project link
-    # should route client-side through the SPA router, like every other row
-    # in it -- everywhere else project_ref_for's full Django url is right,
-    # because those are one-off pills leaving the page anyway.
-    area_id: int
     open_task_count: int
 
 
@@ -209,7 +205,6 @@ def navigation(request):
             {
                 "id": each.id,
                 "title": each.title,
-                "area_id": each.area_id,
                 "open_task_count": each.open_task_count,
             }
             for each in project_reader.projects_for(user).filter(is_completed=False)
@@ -246,10 +241,7 @@ def agenda(request):
         list__owner=user,
         status=Item.Status.ARCHIVED,
     ).count()
-    # select_related("area") because each project's url comes from its
-    # area -- a project has no page of its own -- and the plain loop in
-    # workspace_data_for would otherwise be one query per project.
-    projects = project_reader.projects_for(user).select_related("area")
+    projects = project_reader.projects_for(user)
 
     return agenda_reader.workspace_data_for(
         user,
@@ -332,16 +324,23 @@ def task_detail(request, item_id: int):
 class ProjectOut(Schema):
     id: int
     title: str
-    area_id: int
     due_date: str | None
     is_completed: bool
     completed_at: str | None
     created_at: str
     open_task_count: int
+    areas: list["ProjectAreaOut"]
+
+
+class ProjectAreaOut(Schema):
+    id: int
+    title: str
+    open_count: int
+    overdue_count: int
+    color_key: AreaColorKey
 
 
 class ProjectCreateIn(Schema):
-    area_id: int
     title: str
     due_date: str | None = None
 
@@ -360,11 +359,33 @@ class ProjectUpdateIn(Schema):
     is_completed: bool | None = None
 
 
-def _project_out(project):
+class AreaProjectIn(Schema):
+    # null clears it -- explicit rather than a separate DELETE route, since
+    # "move to another project" and "remove from any project" are the same
+    # write from the Area's point of view.
+    project_id: int | None
+
+
+def _areas_by_project(user):
+    """This owner's areas, grouped by which project (if any) they're in.
+
+    Computed once per request rather than once per project inside
+    _project_out -- reuses list_summaries's own open/overdue annotation, one
+    authoritative definition of "an area's open count," not two.
+    """
+    grouped = {}
+    for each in agenda_reader.list_summaries(user):
+        if each.project_id is not None:
+            grouped.setdefault(each.project_id, []).append(each)
+    return grouped
+
+
+def _project_out(project, areas=None):
+    if areas is None:
+        areas = _areas_by_project(project.owner).get(project.id, [])
     return {
         "id": project.id,
         "title": project.title,
-        "area_id": project.area_id,
         "due_date": project.due_date.isoformat() if project.due_date else None,
         "is_completed": project.is_completed,
         "completed_at": (
@@ -374,30 +395,41 @@ def _project_out(project):
         # Annotated by projects_for; a freshly created project has not been
         # through that read, so it falls back rather than raising.
         "open_task_count": getattr(project, "open_task_count", 0),
+        "areas": [
+            {
+                "id": each.id,
+                "title": each.title,
+                "open_count": each.open_count,
+                "overdue_count": each.overdue_count,
+                "color_key": each.color_key,
+            }
+            for each in areas
+        ],
     }
 
 
 @router.get("/projects", response=list[ProjectOut])
-def projects(request, area_id: int | None = None):
-    """This caller's projects, optionally narrowed to one Area.
+def projects(request):
+    by_project = _areas_by_project(request.user)
+    return [
+        _project_out(each, areas=by_project.get(each.id, []))
+        for each in project_reader.projects_for(request.user)
+    ]
 
-    The filter is applied on top of the owner-scoped queryset rather than
-    beside it, so an area id belonging to somebody else narrows to nothing
-    instead of quietly falling back to everything -- a narrowing parameter
-    that stops narrowing is the kind of bug nobody notices.
-    """
-    found = project_reader.projects_for(request.user)
-    if area_id is not None:
-        found = found.filter(area_id=area_id)
-    return [_project_out(each) for each in found]
+
+@router.get("/projects/{project_id}", response=ProjectOut)
+def project_detail(request, project_id: int):
+    project = project_reader.project_for(request.user, project_id)
+    if project is None:
+        raise HttpError(404, "Project not found.")
+    return _project_out(project)
 
 
 @router.post("/projects", response=ProjectOut)
 def create_project(request, payload: ProjectCreateIn):
-    area = _owned_area(request, payload.area_id)
     try:
         project = services.create_project(
-            area, payload.title, due_date=_parse_date(payload.due_date),
+            request.user, payload.title, due_date=_parse_date(payload.due_date),
         )
     except services.TaskConflict as error:
         raise HttpError(409, str(error))
@@ -439,6 +471,29 @@ def delete_project(request, project_id: int):
         raise HttpError(404, "Project not found.")
     services.delete_project(project)
     return {"deleted": project_id}
+
+
+@router.patch("/areas/{area_id}/project", response=AreaRefOut)
+def assign_area_project(request, area_id: int, payload: AreaProjectIn):
+    """Put an Area into a Project, move it, or take it out again.
+
+    A dedicated route rather than folding into AreaRenameIn: that schema's
+    one field is always required, and project_id is optional/tri-state --
+    bolting the two together would mean the always-required half inheriting
+    exclude_unset semantics it doesn't need.
+    """
+    our_list = _owned_area(request, area_id)
+    if payload.project_id is None:
+        services.remove_area_from_project(our_list)
+    else:
+        project = project_reader.project_for(request.user, payload.project_id)
+        if project is None:
+            raise HttpError(404, "Project not found.")
+        try:
+            services.add_area_to_project(our_list, project)
+        except services.TaskConflict as error:
+            raise HttpError(409, str(error))
+    return area_ref_for(our_list)
 
 
 @router.get("/archive", response=ArchiveOut)

@@ -42,9 +42,12 @@ def serialize_item(item):
         # `item.list_id` is the ORM's column; `area_id` is what the boundary
         # calls it, the same split Item/"task" already lives with.
         "area_id": item.list_id,
-        # Null for most tasks. A task belongs to an Area always and to a
-        # Project optionally -- release-d-plan.md 3's additive shape.
-        "project_id": item.project_id,
+        # Null for most tasks. Derived through the task's own Area now
+        # rather than stored on the task itself -- project-workspace-plan.md
+        # 2: a task belongs to a project only by belonging to an Area that
+        # is inside it. Every caller already select_related("list"), so this
+        # is free.
+        "project_id": item.list.project_id,
         # update and delete hit the same endpoint, just with different
         # HTTP methods, so one url covers both.
         "url": reverse("api_item_detail", args=(item.id,)),
@@ -53,17 +56,19 @@ def serialize_item(item):
 
 
 def project_ref_for(project):
-    """A project's minimal read shape: id, title, and its area's url.
+    """A project's minimal read shape: id, title, and its own url.
 
-    A project has no page of its own yet -- ui-second-pass-plan.md F2/F3,
-    the second half still open -- so this borrows its area's, the only place
-    it is actually visible. Shared by the Agenda and Daily Page reads, the
-    two surfaces that join a task's project_id against this so far.
+    project-workspace-plan.md closes ui-second-pass-plan.md F2/F3's second
+    half: a Project has its own SPA page now. Hand-built rather than
+    reverse()'d -- Project has no Django-rendered view to reverse against,
+    the same "web/API-only surface" reasoning its model docstring already
+    gives for skipping a public identifier. Shared by the Agenda and Daily
+    Page reads, the two surfaces that join a task's project_id against this.
     """
     return {
         "id": project.id,
         "title": project.title,
-        "url": project.area.get_absolute_url(),
+        "url": f"/app/projects/{project.id}",
     }
 
 
@@ -87,14 +92,12 @@ def area_workspace_data_for(our_list, items):
     return {
         "area": area_ref_for(our_list),
         "items": [serialize_item(item) for item in items],
-        # ui-second-pass-plan.md F2a: scoped to this area only, unlike the
-        # Agenda/Daily/Archive join -- a project belongs to exactly one
-        # area, and this is the one page that only ever shows one area's
-        # rows. our_list is already owner-scoped by the caller.
-        "projects": [
-            project_ref_for(each)
-            for each in our_list.projects.select_related("area")
-        ],
+        # Singular and optional now -- project-workspace-plan.md 2 inverted
+        # this: an Area belongs to at most one Project, not the other way
+        # around.
+        "project": (
+            project_ref_for(our_list.project) if our_list.project_id else None
+        ),
     }
 
 
@@ -144,7 +147,6 @@ def archive_workspace_data_for(user, archived_items):
         # observed: an archived task carries project_id same as any other,
         # so it gets the same join the Agenda and Daily Page already have.
         "projects": [
-            project_ref_for(each)
-            for each in Project.objects.filter(owner=user).select_related("area")
+            project_ref_for(each) for each in Project.objects.filter(owner=user)
         ],
     }

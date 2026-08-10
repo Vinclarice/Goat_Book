@@ -907,6 +907,8 @@ export interface components {
             open_task_count: number;
             /** Areas */
             areas: components["schemas"]["ProjectAreaOut"][];
+            /** Is Overdue */
+            is_overdue: boolean;
         };
         /** ProjectCreateIn */
         ProjectCreateIn: {

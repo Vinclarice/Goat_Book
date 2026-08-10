@@ -330,6 +330,7 @@ class ProjectOut(Schema):
     created_at: str
     open_task_count: int
     areas: list["ProjectAreaOut"]
+    is_overdue: bool
 
 
 class ProjectAreaOut(Schema):
@@ -387,6 +388,14 @@ def _project_out(project, areas=None):
         "id": project.id,
         "title": project.title,
         "due_date": project.due_date.isoformat() if project.due_date else None,
+        # A finished project is never overdue regardless of due_date -- the
+        # same rule tasks and areas already apply, extended here rather than
+        # left for the client to reinvent with its own idea of "today".
+        "is_overdue": (
+            not project.is_completed
+            and project.due_date is not None
+            and project.due_date < timezone.localdate()
+        ),
         "is_completed": project.is_completed,
         "completed_at": (
             project.completed_at.isoformat() if project.completed_at else None

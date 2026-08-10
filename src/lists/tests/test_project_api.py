@@ -5,8 +5,10 @@ what a client can see and do. Every owner-scoped, ID-taking route below gets
 a direct isolation case, per principles.md.
 """
 import json
+from datetime import timedelta
 
 from django.test import TestCase
+from django.utils import timezone
 
 from accounts.models import User
 from lists.models import Item, List, Project
@@ -89,6 +91,36 @@ class ProjectEndpointTest(TestCase):
         response = self.client.get(f"/api/v1/projects/{theirs.id}")
 
         self.assertEqual(response.status_code, 404)
+
+    def test_flags_a_past_due_project_as_overdue(self):
+        # projects-mockup.html's signature addition: a due date in the past
+        # should read differently than one still ahead, the same
+        # ⚠-and-status-overdue-color treatment tasks and areas already get.
+        services.create_project(
+            self.user, "Late", due_date=timezone.localdate() - timedelta(days=1),
+        )
+        services.create_project(
+            self.user, "On track", due_date=timezone.localdate() + timedelta(days=1),
+        )
+        services.create_project(self.user, "No deadline")
+
+        body = self.client.get("/api/v1/projects").json()
+
+        self.assertEqual(
+            {each["title"]: each["is_overdue"] for each in body},
+            {"Late": True, "On track": False, "No deadline": False},
+        )
+
+    def test_a_completed_project_is_never_overdue(self):
+        project = services.create_project(
+            self.user, "Late but done",
+            due_date=timezone.localdate() - timedelta(days=1),
+        )
+        services.complete_project(project)
+
+        body = self.client.get(f"/api/v1/projects/{project.id}").json()
+
+        self.assertFalse(body["is_overdue"])
 
     def test_completes_and_reopens_a_project(self):
         project = services.create_project(self.user, "Website Relaunch")

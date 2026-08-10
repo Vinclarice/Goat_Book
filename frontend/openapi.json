@@ -2030,6 +2030,10 @@
             },
             "title": "Areas",
             "type": "array"
+          },
+          "is_overdue": {
+            "title": "Is Overdue",
+            "type": "boolean"
           }
         },
         "required": [
@@ -2040,7 +2044,8 @@
           "completed_at",
           "created_at",
           "open_task_count",
-          "areas"
+          "areas",
+          "is_overdue"
         ],
         "title": "ProjectOut",
         "type": "object"

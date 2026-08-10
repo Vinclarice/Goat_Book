@@ -87,6 +87,10 @@ export interface Project {
   // much is still open in a project without fetching its tasks.
   open_task_count: number;
   areas: ProjectArea[];
+  // The server's own "today", never the browser's -- principles.md's
+  // "the server owns business meaning" applied to the same overdue rule
+  // tasks and areas already carry.
+  is_overdue: boolean;
 }
 
 export interface TaskWorkspaceData {

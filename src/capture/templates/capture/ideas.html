@@ -66,6 +66,23 @@
           </div>
         {% endif %}
 
+        {% if idea.related_ideas.all %}
+          <div class="flex flex-wrap gap-1">
+            {% for other in idea.related_ideas.all %}
+              <form method="post" action="{% url 'unlink_idea' idea.id other.id %}" class="inline-flex">
+                {% csrf_token %}
+                <button
+                  class="related-idea rounded-full bg-accent/10 px-2 py-0.5 text-xs text-accent hover:bg-accent/20"
+                  type="submit"
+                  aria-label="Unlink {{ other.text|truncatechars:30 }}"
+                >
+                  {{ other.text|truncatechars:30 }} &times;
+                </button>
+              </form>
+            {% endfor %}
+          </div>
+        {% endif %}
+
         {% if idea.status == "promoted" %}
           {% comment %}
             Locked on purpose: the task is the live record now, so further
@@ -107,6 +124,24 @@
                   {% endfor %}
                 </select>
                 <button class="rounded-lg border border-border px-3 py-1 text-sm" type="submit">Make it a task</button>
+              </form>
+            {% endif %}
+
+            {% if all_ideas|length > 1 %}
+              <form method="post" action="{% url 'link_idea' idea.id %}" class="flex items-center gap-1">
+                {% csrf_token %}
+                <select
+                  name="related"
+                  aria-label="Relate {{ idea.text|truncatechars:30 }} to"
+                  class="rounded-lg border border-border bg-input px-2 py-1 text-sm"
+                >
+                  {% for other in all_ideas %}
+                    {% if other.id != idea.id %}
+                      <option value="{{ other.id }}">{{ other.text|truncatechars:40 }}</option>
+                    {% endif %}
+                  {% endfor %}
+                </select>
+                <button class="rounded-lg border border-border px-3 py-1 text-sm" type="submit">Relate</button>
               </form>
             {% endif %}
 

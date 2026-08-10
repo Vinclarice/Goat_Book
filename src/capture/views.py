@@ -186,7 +186,9 @@ def ideas(request):
     """
     status = request.GET.get("status", "")
     query = request.GET.get("q", "").strip()
-    found = Idea.objects.filter(owner=request.user).prefetch_related("tags")
+    found = Idea.objects.filter(owner=request.user).prefetch_related(
+        "tags", "related_ideas"
+    )
     if status in Idea.Status.values:
         found = found.filter(status=status)
     else:
@@ -218,6 +220,10 @@ def ideas(request):
             "query": query,
             "statuses": Idea.Status.choices,
             "lists": List.objects.filter(owner=request.user),
+            # Every idea's own candidate list, not just the current filter's
+            # -- relating to something the status filter is currently
+            # hiding is still a valid link.
+            "all_ideas": Idea.objects.filter(owner=request.user),
         },
     )
 
@@ -261,4 +267,31 @@ def delete_idea(request, idea_id):
     # No undo, unlike discarding a capture -- see services.delete_idea for
     # why that asymmetry is deliberate.
     messages.success(request, "Idea deleted.")
+    return redirect("ideas")
+
+
+@login_required
+@require_POST
+def link_idea(request, idea_id):
+    """Both ideas are looked up owner-scoped, so a cross-owner pair 404s
+    here rather than ever reaching services.link_ideas's own guard -- see
+    that function's docstring for why the guard exists anyway.
+    """
+    idea = _owned_idea(request, idea_id)
+    other = get_object_or_404(
+        Idea, id=request.POST.get("related") or 0, owner=request.user
+    )
+    try:
+        services.link_ideas(idea, other)
+    except services.CaptureConflict as error:
+        messages.error(request, str(error))
+    return redirect("ideas")
+
+
+@login_required
+@require_POST
+def unlink_idea(request, idea_id, other_id):
+    idea = _owned_idea(request, idea_id)
+    other = get_object_or_404(Idea, id=other_id, owner=request.user)
+    services.unlink_ideas(idea, other)
     return redirect("ideas")

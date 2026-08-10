@@ -41,6 +41,12 @@ class Idea(models.Model):
     # lists.Tag, not a parallel model -- same field Capture.tags already is,
     # same shared vocabulary. design/second-mind-discovery-plan.md 4.1.
     tags = models.ManyToManyField("lists.Tag", blank=True, related_name="ideas")
+    # A plain link, not its own model -- design/second-mind-discovery-plan.md
+    # 4.3's charter test: no due date, no completion, no status, nothing
+    # worth a snapshot. Symmetrical because "related to" has no direction:
+    # one add() from either side links both, so there's no second write path
+    # that could drift out of sync.
+    related_ideas = models.ManyToManyField("self", blank=True, symmetrical=True)
 
     class Meta:
         ordering = ("-created_at", "-id")

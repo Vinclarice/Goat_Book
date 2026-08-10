@@ -18,6 +18,8 @@ ALREADY_RESOLVED_ERROR = "That capture has already been triaged"
 NOT_RESOLVED_ERROR = "That capture is still in the inbox"
 PROMOTED_IDEA_LOCKED_ERROR = "This idea is a task now -- edit the task instead"
 ALREADY_PROMOTED_ERROR = "That idea has already become a task"
+SELF_LINK_ERROR = "An idea can't be related to itself"
+UNRELATED_OWNERS_ERROR = "Ideas must share an owner to be related"
 
 
 class CaptureConflict(Exception):
@@ -234,6 +236,26 @@ def promote_idea_to_task(idea, for_list):
     idea.promoted_task = task
     idea.save(update_fields=["status", "promoted_task"])
     return idea
+
+
+def link_ideas(idea, other):
+    """A manually chosen, undirected relation -- design/second-mind-discovery-plan.md 4.3.
+
+    The guard below is the one rule a plain ManyToManyField("self") can't
+    enforce on its own: it's a cross-row check, not expressible as a
+    CheckConstraint. Both callers into this function scope their lookups to
+    request.user already, so a cross-owner pair can't reach here through the
+    view -- this is the invariant holding regardless of how it's called.
+    """
+    if idea.id == other.id:
+        raise CaptureConflict(SELF_LINK_ERROR)
+    if idea.owner_id != other.owner_id:
+        raise CaptureConflict(UNRELATED_OWNERS_ERROR)
+    idea.related_ideas.add(other)
+
+
+def unlink_ideas(idea, other):
+    idea.related_ideas.remove(other)
 
 
 def delete_idea(idea):

@@ -25,4 +25,10 @@ urlpatterns = [
     path("ideas/<int:idea_id>/edit/", views.edit_idea, name="edit_idea"),
     path("ideas/<int:idea_id>/task/", views.promote_idea, name="promote_idea"),
     path("ideas/<int:idea_id>/delete/", views.delete_idea, name="delete_idea"),
+    path("ideas/<int:idea_id>/related/", views.link_idea, name="link_idea"),
+    path(
+        "ideas/<int:idea_id>/related/<int:other_id>/unlink/",
+        views.unlink_idea,
+        name="unlink_idea",
+    ),
 ]

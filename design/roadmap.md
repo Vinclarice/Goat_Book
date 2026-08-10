@@ -1,6 +1,6 @@
 # Clarice — Roadmap
 
-Vince · active planning document · refreshed August 2, 2026
+Vince · active planning document · refreshed August 10, 2026
 
 ## Purpose
 
@@ -40,11 +40,12 @@ every model is owned at birth. The full record of each is in the history
 file.
 
 C2's recorded interface failure is fully closed as of Dunlin — see that
-section. What replaced it is narrower and better evidenced: two findings in
-[`ui-second-pass-plan.md`](ui-second-pass-plan.md), confirmed by observation
-rather than inferred from source in the sitting recorded there on August 3,
-2026 — plus a third, F2a, found in the same sitting. Whether to act on them
-is still open; see Dunlin's carried-forward list.
+section. What replaced it, five findings in
+[`ui-second-pass-plan.md`](ui-second-pass-plan.md) (F1 through F5), is now
+closed too. F1 shipped inside Dunlin itself; F2, F2a, F3 and F5 shipped
+August 6, 2026, following the observational sitting recorded there on
+August 3 that confirmed F2 and F3 rather than inferring them. Nothing named
+in that brief is still open.
 
 ## Bittern — shipped August 2, 2026
 
@@ -126,7 +127,9 @@ discriminating between users in production at 07:00 WITA — see
   log and Time blocking still need theirs. The discovery pass on what an Idea,
   reference and relationship actually are should precede the search work
   either way — see the second-brain direction in
-  [`daily-operating-system-vision.md`](daily-operating-system-vision.md).
+  [`daily-operating-system-vision.md`](daily-operating-system-vision.md), now
+  underway as Release F's opening work — see
+  [`second-mind-discovery-plan.md`](second-mind-discovery-plan.md).
 - **Audit log and general undo.** Use structured change records to make more
   than task completion safely reversible.
 - **Time blocking.** Model calendar ranges and prevent a user’s blocks from
@@ -184,33 +187,13 @@ periods over the periods a week actually asked for.
 
 ### Still carried in from Bittern
 
-Nine of the fourteen items remain, and [`crane-plan.md`](crane-plan.md) §2
-is the authority on them rather than this list — two copies of a checklist
-is how one of them goes stale. Kept visible here because they are owed, not
-because they are scheduled.
-
-Cleared: four of the five production verifications and the New York digest,
-on August 2, 2026, in the session that deployed Crane 0a, 1 and 2.
-
-Outstanding:
-
-- **B1's opt-out rule in production** — blocked on the interface C2
-  documented rather than on the rule, which its service tests cover. Route
-  around it rather than reopening C2's finding here.
-- **Three infrastructure confirmations**: a forwarded contact message
-  arriving in the inbox rather than spam now that DMARC enforces, DMARC
-  aggregate reports beginning to arrive at `dmarc@vinclarice.com`, and a
-  real production 500 reaching Sentry rather than only the controlled probe.
-  All three need elapsed time rather than work.
-- **Five Android gaps**, recorded in [`bittern-plan.md`](bittern-plan.md):
-  no emulator run; the forced-retry path never exercised on a device; a
-  plain-text share and an offline share never tested on hardware; and no
-  release signing, so the APK cannot be given to anybody else. These need a
-  phone, which is why the deploy did not clear them.
-
-Four of the nine were blocked on a deploy and no longer are: B1's opt-out
-rule and the three infrastructure confirmations. The remaining five need a
-phone, which no deploy was ever going to provide.
+Nine of the fourteen items remained at this point, and
+[`crane-plan.md`](crane-plan.md) §2 was, and stays, the authority on them.
+Cleared here: four of the five production verifications and the New York
+digest, on August 2, 2026, in the session that deployed Crane 0a, 1 and 2.
+The rest closed later — see "Carried in from Bittern, through Crane and
+Dunlin" under Dunlin below for the current baseline, so this snapshot is not
+duplicated stale.
 
 ## Dunlin — shipped August 3, 2026
 
@@ -269,6 +252,16 @@ checkbox and a switch.
   brief is equally clear that the navigation question — how a project should
   actually surface — should not be started by guessing. The sitting supplied
   evidence, not an answer; whether steps 2–4 begin now is Vince's call.
+
+  **Steps 2–4 began and finished, August 6, 2026.** F2 landed on the Agenda,
+  the Daily Page and the Archive; F2a fixed the Area page's own disconnect
+  between its project heading and the rows under it; F3 gave projects a
+  flat, top-level group in the side nav, the shape decided by asking Vince
+  directly rather than reading the sitting's evidence as license to guess;
+  F5 split the Area page's two differently-scoped deletes apart and made
+  `Save name` disabled until there is something to save. `ui-second-pass-plan.md`
+  §4 has nothing left open — see that file for the full acceptance detail on
+  each step.
 - ~~**The vocabulary half of Crane 0**, still deferred.~~ **Shipped August 3,
   2026**, after Dunlin — see
   [`recurring-commitment-vocabulary-plan.md`](recurring-commitment-vocabulary-plan.md).
@@ -284,41 +277,50 @@ checkbox and a switch.
   the old title. It is a template plus a snapshot, not a move — the same pair
   `Routine`/`RoutineOccurrence` already shipped.
 
-### Still carried in from Bittern, through Crane
+### Carried in from Bittern, through Crane and Dunlin — eleven of fourteen closed
 
-All nine remain; `crane-plan.md` §2 stays the authority, and the list above
-that one is the detail. Nothing here was cleared by Dunlin, and saying so
-matters more than the list looking shorter.
+`crane-plan.md` §2 stays the authority on the full checklist; this is the
+baseline. Cleared since Dunlin shipped: **B1's opt-out rule**, confirmed
+against production on August 6, 2026 rather than merely unblocked — setting
+up a daily-recurring task with an opted-out Checklist Step was, as
+predicted, unremarkable through the fixed interface. **The forwarded
+contact message**, confirmed the same day landing in the inbox rather than
+spam, DKIM-aligned through Resend rather than through the Google-signed
+report that had only encouraged, not proven, it. Both join **DMARC
+aggregate reports**, confirmed August 3.
 
-**One changed status, and only that.** B1's opt-out rule in production was
-blocked on the interface C2 documented. That interface is now fixed, so the
-item is **unblocked rather than cleared** — it still wants someone to
-actually exercise the rule against production.
+Three items remain, and none of them are work still to schedule:
 
-**Two of the three infrastructure confirmations still need elapsed time.**
-DMARC aggregate reports were confirmed arriving at `dmarc@vinclarice.com` at
-05:54 on August 3, 2026 — the first of the three to come good, and the one
-that could only ever be settled by a receiving provider choosing to report.
-Still owed: a forwarded contact message landing in the inbox rather than
-spam, and a real production 500 reaching Sentry rather than only the
-controlled probe.
+- **A real production 500 reaching Sentry**, rather than only the
+  controlled probe. Needs an actual incident, not a task — the same
+  reasoning that rejected a permanent `/sentry-debug/`-style route as a
+  verification method.
+- **No Android emulator run.** This SDK install has no AVD and no way to
+  build one without a multi-gigabyte download better done through Android
+  Studio's own AVD Manager. Judged low-priority: everything M4 asked a
+  device for is now answered twice over on real hardware — the SM-F966U
+  pilot against production, the SM-S928U1 session that closed three more
+  gaps, and M3's encrypted-storage guarantees reconfirmed on the SM-S928U1
+  again on August 6.
+- **Release signing.** `app/build.gradle.kts` is wired for it; the keystore
+  itself is deliberately left for Vince to generate by hand — a
+  non-rotatable credential is the wrong thing for an agent to generate and
+  momentarily hold. See
+  [`android-release-signing-plan.md`](android-release-signing-plan.md) for
+  the exact command.
 
-**Three of the five Android gaps closed — August 3, 2026, on a Samsung
-SM-S928U1.** The forced-retry path, a plain-text share and an offline share
-are all now exercised on a device; `crane-plan.md` §2 has the detail and
-`bittern-plan.md` M4/M5 have the evidence. The remaining two are not phone
-problems: no emulator run, because this SDK install has no AVD and no way to
-build one without a multi-gigabyte download better done through Android
-Studio's own AVD Manager; and release signing, which this branch wired into
-the build but deliberately left unfinished — attempted the same session and
-blocked by the session's own classifier on writing the generated keystore
-password to disk, so it still needs the keystore made by hand or an explicit
-permission grant.
+**Verified live:** `DEPLOYED-2026-08-06/2248` carries all of the above;
+`LIVE` matches `main` at `d7133fe` with nothing ahead on either side. The
+same deploy also carries the rest of what the Android device-testing branch
+merged in on August 3 — in-app login, the optional unlock gate, release
+signing wired into the build, and capture tags — which had merged onto
+`main` but sat undeployed when this file last said so.
 
 ### Capture tags — built alongside the Android device-testing session
 
 **Decided August 3, 2026: stays folded into Dunlin, not promoted to its own
-release.** Merged onto `main` the same day, not yet deployed. Optional tags
+release.** Merged onto `main` the same day; deployed August 6, 2026 in
+`DEPLOYED-2026-08-06/2248`. Optional tags
 on a capture, typed on the Android compose screen and displayed as pills in
 the web Inbox — see [`capture-tags-plan.md`](capture-tags-plan.md) for the
 trigger and the slice. Reuses `lists.Tag` rather than a parallel model
@@ -334,6 +336,9 @@ carried in — in-app login, the optional unlock gate, release signing wired
 into the build, and the three Android gaps closed above. None of it earns
 Release E; the next lettered release, whenever one actually starts, is
 **Release F** — see "Release practice" below for why the letter jumps.
+
+All of it is deployed now, along with the rest of Dunlin's carried-forward
+work — see "Carried in from Bittern, through Crane and Dunlin" above.
 
 
 ## Later — visible, not scheduled
@@ -568,14 +573,49 @@ release, so there is no Release E. The next release to actually start is
 ## Keeping this current
 
 Update this file when an item in the active release begins, changes scope,
-ships, or is explicitly deferred. **There is no active release right now** —
-Dunlin shipped and nothing has been promoted to replace it. Capture tags and
-the Android device-testing work are merged onto `main`, not yet deployed, and
-settled as still part of Dunlin rather than a release of their own — see
-"Release practice" above. The nearest thing to an actual next release is
-`ui-second-pass-plan.md`, whose §6 sitting supplied the evidence it was
-waiting on; whether steps 2–4 start it is still Vince's call to make, not
-this list's to assume. Move completed detail into `roadmap-history.md` and
-keep only the resulting baseline or remaining consequence here. When an idea
-from Later earns work, give it a one-line reason and a focused spec before it
-joins an active track.
+ships, or is explicitly deferred. **There is no active release right now.**
+Dunlin shipped August 3 and nothing has been promoted to replace it;
+`ui-second-pass-plan.md`, the last piece of work still folded into it,
+shipped its remaining steps August 6, 2026 (`DEPLOYED-2026-08-06/2248`) and
+has nothing left open. The Bittern/Crane carried-forward checklist is down
+to three items, none of them schedulable work — see "Carried in from
+Bittern, through Crane and Dunlin" above.
+
+**Release F opens with the second-mind discovery pass — Vince's call,
+August 7, 2026, ahead of the pain that would otherwise force it.**
+`architecture-trajectory.md` §5 named two candidates: this one, and the
+infrastructure track's staging environment, which §6 says gates most of
+what follows it. Neither had fired its stated trigger; the discovery pass
+was chosen anyway, recorded as a deliberate exception rather than a trigger
+pretended to have fired. The staging environment stays next in line on the
+infrastructure track, not dropped.
+
+**Discovery done, first slice shipped in full, August 10, 2026:**
+[`second-mind-discovery-plan.md`](second-mind-discovery-plan.md). Reading
+the current models against `architecture-trajectory.md` §4's charter found
+most of the idea/reference/project/task/routine boundary already settled by
+releases that weren't about this at all — Idea's own `status` field already
+makes idea/reference one model, and Dunlin and Crane 0 already settled
+task/project/area and routine/task. What's genuinely still open is narrower:
+whether an idea-to-idea relationship earns its own model (charter says no —
+it's a plain link), and whether links/sources should be structured data
+(no evidence yet either way, stays plain text).
+
+The first slice — tags on `Idea` reusing `lists.Tag` the way `Capture`
+already does (4.1), a capture's tags carrying forward onto the Idea or task
+it becomes (4.2), and a plain manually-added `related_ideas` link with no
+`kind` field (4.3) — is done: additive migrations, `capture` and `lists`
+suites plus the full backend run (856 tests) green throughout. Two of the
+brief's own assumptions didn't survive contact with the actual code and are
+corrected in the plan doc rather than silently built around: `capture.Idea`
+has no Ninja API at all (the `IdeaOut` the brief pictured belongs to an
+unrelated `review`-app summary), so tags and related-idea links gained no
+new API surface, only read/write paths through the existing Django views;
+and Idea has no per-page detail view for chips to live on, so they render
+inline on the shared Ideas list instead. Nothing from the brief is still
+open — see its §7 for the full accounting.
+
+Move completed detail into `roadmap-history.md` and keep only the resulting
+baseline or remaining consequence here. When an idea from Later earns work,
+give it a one-line reason and a focused spec before it joins an active
+track.

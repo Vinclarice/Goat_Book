@@ -97,6 +97,27 @@ class IdeasPageTest(IdeasTest):
 
         self.assertNotContains(response, 'class="idea-tag')
 
+    def test_a_linked_idea_shows_a_related_chip(self):
+        # design/second-mind-discovery-plan.md 4.3 -- chips on the idea's
+        # own card, the same render pattern tags already established. Both
+        # ideas are in the same list, so a plain assertContains on the
+        # other idea's text would pass whether or not the chip renders --
+        # it's already on the page as its own card (and again in its own
+        # aria-label). Assert the chip's marker class instead.
+        from capture.services import link_ideas
+
+        other = Idea.objects.create(owner=self.user, text="Learn procgen")
+        link_ideas(self.idea, other)
+
+        response = self.client.get("/capture/ideas/")
+
+        self.assertContains(response, 'class="related-idea')
+
+    def test_an_unlinked_idea_shows_no_related_chips(self):
+        response = self.client.get("/capture/ideas/")
+
+        self.assertNotContains(response, 'class="related-idea')
+
 
 class IdeaSearchTest(IdeasTest):
     def test_searches_the_text(self):

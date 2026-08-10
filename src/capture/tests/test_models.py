@@ -93,3 +93,19 @@ class IdeaModelTest(TestCase):
         idea = Idea.objects.create(owner=self.user, text="Write a roguelike")
 
         self.assertEqual(list(idea.tags.all()), [])
+
+    def test_related_ideas_are_visible_from_either_side_after_one_write(self):
+        # design/second-mind-discovery-plan.md 4.3 -- symmetrical, so a
+        # single add() is a two-way link, not two writes that could drift.
+        a = Idea.objects.create(owner=self.user, text="Write a roguelike")
+        b = Idea.objects.create(owner=self.user, text="Learn procgen")
+
+        a.related_ideas.add(b)
+
+        self.assertEqual(list(a.related_ideas.all()), [b])
+        self.assertEqual(list(b.related_ideas.all()), [a])
+
+    def test_an_idea_has_no_related_ideas_by_default(self):
+        idea = Idea.objects.create(owner=self.user, text="Write a roguelike")
+
+        self.assertEqual(list(idea.related_ideas.all()), [])

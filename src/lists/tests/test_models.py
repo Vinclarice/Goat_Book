@@ -1,6 +1,6 @@
 from accounts.models import User
 from django.test import TestCase
-from lists.models import ChecklistStep, Item, List
+from lists.models import ChecklistStep, Item, List, Project
 from django.db import IntegrityError
 from django.core.exceptions import ValidationError
 from django.utils import timezone
@@ -121,6 +121,44 @@ class ListModelTest(TestCase):
 
     def test_empty_list_has_fallback_name(self):
         self.assertEqual(List.objects.create(owner=self.owner).title, "Untitled list")
+
+    def test_an_area_belongs_to_no_project_by_default(self):
+        # project-workspace-plan.md 2 -- the inverse of the old
+        # Project.area: an Area optionally belongs to a Project now.
+        mylist = List.objects.create(owner=self.owner)
+
+        self.assertIsNone(mylist.project)
+
+    def test_an_area_can_join_a_project(self):
+        project = Project.objects.create(
+            owner=self.owner,
+            area=List.objects.create(owner=self.owner, title="Home"),
+            title="Launch the business",
+        )
+        mylist = List.objects.create(owner=self.owner, title="Legal")
+
+        mylist.project = project
+        mylist.save()
+
+        self.assertIn(mylist, project.areas.all())
+
+    def test_deleting_a_project_leaves_its_areas_in_place(self):
+        # SET_NULL, not CASCADE: a Project groups Areas, it does not own
+        # them -- deleting one says the grouping was wrong, not that the
+        # work is gone.
+        project = Project.objects.create(
+            owner=self.owner,
+            area=List.objects.create(owner=self.owner, title="Home"),
+            title="Launch the business",
+        )
+        mylist = List.objects.create(
+            owner=self.owner, title="Legal", project=project,
+        )
+
+        project.delete()
+
+        mylist.refresh_from_db()
+        self.assertIsNone(mylist.project)
 
 
 class UniqueActiveItemConstraintTest(TestCase):

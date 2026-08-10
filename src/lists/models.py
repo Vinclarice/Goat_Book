@@ -281,6 +281,14 @@ class List(models.Model):
     )
     title = models.CharField(max_length=100, default="Untitled list")
     updated_at = models.DateTimeField(auto_now=True)
+    # The inverse of Project.area -- project-workspace-plan.md 2. Optional:
+    # most Areas aren't part of a dedicated project workspace. SET_NULL, not
+    # CASCADE: a Project groups Areas, it does not own them, the same
+    # reasoning Item.project already carried one level down.
+    project = models.ForeignKey(
+        "Project", related_name="areas", null=True, blank=True,
+        on_delete=models.SET_NULL,
+    )
 
     def get_absolute_url(self):
         return reverse("view_list", args=[self.id])

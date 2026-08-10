@@ -131,9 +131,7 @@ class ListModelTest(TestCase):
 
     def test_an_area_can_join_a_project(self):
         project = Project.objects.create(
-            owner=self.owner,
-            area=List.objects.create(owner=self.owner, title="Home"),
-            title="Launch the business",
+            owner=self.owner, title="Launch the business",
         )
         mylist = List.objects.create(owner=self.owner, title="Legal")
 
@@ -147,9 +145,7 @@ class ListModelTest(TestCase):
         # them -- deleting one says the grouping was wrong, not that the
         # work is gone.
         project = Project.objects.create(
-            owner=self.owner,
-            area=List.objects.create(owner=self.owner, title="Home"),
-            title="Launch the business",
+            owner=self.owner, title="Launch the business",
         )
         mylist = List.objects.create(
             owner=self.owner, title="Legal", project=project,

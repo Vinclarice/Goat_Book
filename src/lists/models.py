@@ -92,22 +92,9 @@ class Item(models.Model):
 
     text = models.TextField(default="")
     list = models.ForeignKey('List', default=None, on_delete=models.CASCADE)
-    # Additive, alongside `list` rather than replacing it -- see
-    # release-d-plan.md 3. Letting `list` point at either an Area or a
-    # Project would touch the FK that unique_active_item and every agenda
-    # query already key off. A task belongs to an Area exactly as it always
-    # has, and may *additionally* belong to a Project.
-    #
-    # SET_NULL, not CASCADE: a project groups tasks, it does not own them, so
-    # deleting one says the grouping was wrong rather than that the work is
-    # gone. Same shape as DailyFocus.task.
-    project = models.ForeignKey(
-        "Project",
-        related_name="tasks",
-        blank=True,
-        null=True,
-        on_delete=models.SET_NULL,
-    )
+    # `project` retired -- project-workspace-plan.md 2. A task's project is
+    # derived through its Area (item.list.project) rather than stored here;
+    # it belongs to a project only by belonging to an Area that's inside it.
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     status = models.CharField(
@@ -295,17 +282,20 @@ class List(models.Model):
 
 
 class Project(models.Model):
-    """Work that completes, inside an Area that never does.
+    """A standalone workspace that can hold one or more Areas.
 
-    release-d-plan.md 3, and the charter test in architecture-trajectory.md 4
-    names this exact pair: a Project earns its own model against a List
-    because it has a different life cycle, not a different name.
+    project-workspace-plan.md inverts the original release-d-plan.md 3
+    shape (a Project living inside one Area) into this one. The charter
+    test in architecture-trajectory.md 4 -- a concept earns its own model
+    when it has a different life cycle, not a different name -- still
+    settles Project's existence against List/Area exactly as it did before;
+    what changed is which one contains the other.
 
     Charter compliance, stated once here rather than rediscovered later:
 
-    - **Rule 1, owned at birth.** A direct non-null `owner`, not one reached
-      through `area`. A two-hop owner makes every isolation test a two-hop
-      assertion.
+    - **Rule 1, owned at birth.** A direct non-null `owner` -- the only
+      ownership path now that Project has no parent record to borrow one
+      from at all.
     - **Rule 2, public identifier.** Not needed. No client creates a Project
       offline -- this is a web/API-only surface, the same reasoning
       ChecklistStep and RecurringCommitment already used.
@@ -313,26 +303,18 @@ class Project(models.Model):
       intent, not a record of what happened during a period; there is nothing
       whose meaning could be rewritten underneath it.
     - **Rule 5, reference never copy.** Completing a Project does not touch
-      any task's status, and `Item.project` is SET_NULL: a project groups
-      tasks, it does not own them.
-    - **Rule 6, deletion.** Hard delete. Its tasks survive, unparented. No
-      tombstone, since rule 2 does not apply.
+      any task's status. Stronger than before: a task's project is now pure
+      computation (`item.list.project`), nothing stored to keep in sync.
+    - **Rule 6, deletion.** Hard delete. Its Areas survive, unparented
+      (`List.project` is `SET_NULL`) -- deleting a project says the grouping
+      was wrong, not that the work is gone. No tombstone, since rule 2 does
+      not apply.
     - **Rule 8, repetition.** Does not apply -- a Project does not recur, and
       whether it ever should is left open by release-d-plan.md 3.
     """
 
     owner = models.ForeignKey(
         "accounts.User", related_name="projects", on_delete=models.CASCADE,
-    )
-    # Retired -- project-workspace-plan.md inverts this relationship;
-    # List.project (below, on the other model) replaces it. Nullable rather
-    # than removed outright as an intermediate step, so create_project can
-    # stop populating it before the column itself is dropped -- see that
-    # plan's migration section. No code reads this field any more; it is
-    # kept only until the contract migration removes it.
-    area = models.ForeignKey(
-        "List", related_name="projects", null=True, blank=True,
-        on_delete=models.CASCADE,
     )
     title = models.CharField(max_length=100)
     due_date = models.DateField(blank=True, null=True)

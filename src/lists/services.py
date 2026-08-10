@@ -591,23 +591,20 @@ def delete_list(list_):
 
 EMPTY_PROJECT_TITLE_ERROR = "Give the project a name"
 FOREIGN_PROJECT_ERROR = "That project isn't yours"
-CROSS_AREA_PROJECT_ERROR = "A task can only join a project in its own area"
 
 
 @transaction.atomic
-def create_project(area, title, due_date=None):
-    """A new project inside an area, owned by whoever owns the area.
+def create_project(owner, title, due_date=None):
+    """A new, standalone project -- project-workspace-plan.md 2.
 
-    The owner is derived rather than passed: `List.owner` is required as of
-    slice 6, so there is exactly one right answer and asking a caller for it
-    only creates the chance of a wrong one.
+    Owner is passed directly rather than derived: a Project has no parent
+    record left to borrow it from, the same shape create_list_with_item
+    already uses.
     """
     normalized = (title or "").strip()
     if not normalized:
         raise TaskConflict(EMPTY_PROJECT_TITLE_ERROR)
-    return Project.objects.create(
-        owner=area.owner, area=area, title=normalized, due_date=due_date,
-    )
+    return Project.objects.create(owner=owner, title=normalized, due_date=due_date)
 
 
 @transaction.atomic
@@ -642,32 +639,38 @@ def reopen_project(project):
 
 
 @transaction.atomic
-def set_task_project(task, project):
-    """Put a task into a project, or take it out again with None.
+def add_area_to_project(area, project):
+    """Put an Area into a Project, or move it from one Project to another.
 
-    Both guards live here rather than only at the API, because the API is one
-    caller and the invariant belongs to the model. principles.md: guards fail
-    closed.
+    project-workspace-plan.md 2. The guard below is a cross-row check a
+    plain ForeignKey can't express on its own -- same "two owned records,
+    guard they share an owner" shape as capture.services.link_ideas.
+    Checked here rather than only at the API, so the invariant holds
+    regardless of caller. principles.md: guards fail closed.
     """
-    task = Item.objects.select_for_update().select_related("list").get(pk=task.pk)
-    if project is not None:
-        if project.owner_id != task.list.owner_id:
-            raise TaskConflict(FOREIGN_PROJECT_ERROR)
-        # A project groups work inside one area. Slice 8 renders a project's
-        # tasks from the area page, so a task from elsewhere would appear
-        # under a heading it does not belong to.
-        if project.area_id != task.list_id:
-            raise TaskConflict(CROSS_AREA_PROJECT_ERROR)
-    task.project = project
-    task.save(update_fields=("project", "updated_at"))
-    return task
+    area = List.objects.select_for_update().get(pk=area.pk)
+    if project.owner_id != area.owner_id:
+        raise TaskConflict(FOREIGN_PROJECT_ERROR)
+    area.project = project
+    area.save(update_fields=("project",))
+    return area
+
+
+@transaction.atomic
+def remove_area_from_project(area):
+    """Take an Area out of its Project. A no-op if it has none."""
+    area = List.objects.select_for_update().get(pk=area.pk)
+    area.project = None
+    area.save(update_fields=("project",))
+    return area
 
 
 def delete_project(project):
     """Hard delete -- charter rule 6, stated in the model too.
 
-    Its tasks survive: `Item.project` is SET_NULL, so deleting a project says
-    the grouping was wrong, not that the work is gone. No tombstone, because
-    rule 2 does not apply -- nothing creates or holds a Project offline.
+    Its areas survive: `List.project` is SET_NULL, so deleting a project
+    says the grouping was wrong, not that the work is gone. No tombstone,
+    because rule 2 does not apply -- nothing creates or holds a Project
+    offline.
     """
     project.delete()

@@ -1,8 +1,9 @@
-"""A Project is work that completes; an Area never does.
+"""A Project is a standalone workspace that can hold one or more Areas.
 
-release-d-plan.md 3. The charter test in architecture-trajectory.md 4 names
-this exact pair as the example of a concept earning its own model -- a
-different life cycle, not a different name.
+project-workspace-plan.md. The charter test in architecture-trajectory.md 4
+names this pair as the example of a concept earning its own model -- a
+different life cycle, not a different name -- and that hasn't changed;
+what changed is which one contains the other.
 
 Model and service behaviour live here; the HTTP contract is in
 test_project_api.py, same split as ChecklistStep's two files.
@@ -25,65 +26,33 @@ class ProjectModelTest(TestCase):
         cls.owner = User.objects.create_user(
             "alice", "alice@example.com", "a secure password"
         )
-        cls.area = List.objects.create(owner=cls.owner, title="Work")
 
     def test_starts_open_with_no_completion_stamp(self):
-        project = Project.objects.create(
-            owner=self.owner, area=self.area, title="Website Relaunch",
-        )
+        project = Project.objects.create(owner=self.owner, title="Website Relaunch")
 
         self.assertFalse(project.is_completed)
         self.assertIsNone(project.completed_at)
         self.assertIsNone(project.due_date)
         self.assertIsNotNone(project.created_at)
 
-    def test_belongs_to_its_owner_and_its_area(self):
-        project = Project.objects.create(
-            owner=self.owner, area=self.area, title="Website Relaunch",
-        )
+    def test_belongs_to_its_owner_only(self):
+        # project-workspace-plan.md 2 -- owner is the only ownership path
+        # now; there is no parent record left to borrow one from.
+        project = Project.objects.create(owner=self.owner, title="Website Relaunch")
 
         self.assertIn(project, self.owner.projects.all())
-        self.assertIn(project, self.area.projects.all())
 
-    def test_cannot_exist_without_an_area(self):
-        """Decided against release-d-plan.md 3's own recommendation.
+    def test_can_exist_with_no_areas(self):
+        # The inverse of the old test_cannot_exist_without_an_area -- a
+        # Project is the top-level record now.
+        project = Project.objects.create(owner=self.owner, title="Just started")
 
-        3 proposed a nullable `area` on reversibility grounds; slice 6 had
-        just finished paying the nullable-to-required cost on List.owner --
-        an audit and a destructive migration -- while required-to-nullable is
-        a bare AlterField with no data work. The permissive choice was the
-        expensive one to undo.
-        """
-        with self.assertRaises(IntegrityError):
-            Project.objects.create(owner=self.owner, title="Homeless")
-
-    def test_dies_with_its_area(self):
-        """CASCADE, the consequence of `area` being required.
-
-        Deleting an Area already deletes the tasks in it; a project inside it
-        has no meaning once the area is gone either.
-        """
-        doomed = List.objects.create(owner=self.owner, title="Temporary")
-        project = Project.objects.create(
-            owner=self.owner, area=doomed, title="Short-lived",
-        )
-
-        doomed.delete()
-
-        self.assertFalse(Project.objects.filter(pk=project.pk).exists())
+        self.assertEqual(list(project.areas.all()), [])
 
     def test_a_completion_stamp_and_the_flag_cannot_disagree(self):
-        """Rule 6's spirit at the database, the way Item already does it.
-
-        Item carries valid_item_status_timestamps for the same reason. This
-        table is new and has no legacy rows, so the constraint is free here
-        and would be a data migration later -- which is the charter's whole
-        asymmetry argument.
-        """
         with self.assertRaises(IntegrityError):
             Project.objects.create(
                 owner=self.owner,
-                area=self.area,
                 title="Claims to be done",
                 is_completed=True,
                 completed_at=None,
@@ -93,61 +62,10 @@ class ProjectModelTest(TestCase):
         with self.assertRaises(IntegrityError):
             Project.objects.create(
                 owner=self.owner,
-                area=self.area,
                 title="Claims to be open",
                 is_completed=False,
                 completed_at=timezone.now(),
             )
-
-
-class TaskJoinsAProjectTest(TestCase):
-    @classmethod
-    def setUpTestData(cls):
-        cls.owner = User.objects.create_user(
-            "alice", "alice@example.com", "a secure password"
-        )
-        cls.area = List.objects.create(owner=cls.owner, title="Work")
-
-    def test_a_task_has_no_project_by_default(self):
-        task = Item.objects.create(list=self.area, text="Write the brief")
-
-        self.assertIsNone(task.project_id)
-
-    def test_a_task_keeps_its_area_and_additionally_joins_a_project(self):
-        """release-d-plan.md 3: additive, not a replacement for Item.list.
-
-        Letting Item.list point at either an Area or a Project would touch
-        the FK that unique_active_item and every agenda query key off.
-        """
-        project = Project.objects.create(
-            owner=self.owner, area=self.area, title="Website Relaunch",
-        )
-        task = Item.objects.create(
-            list=self.area, text="Write the brief", project=project,
-        )
-
-        self.assertEqual(task.list, self.area)
-        self.assertIn(task, project.tasks.all())
-
-    def test_deleting_a_project_leaves_its_tasks_alone(self):
-        """SET_NULL: a project references its tasks, it does not own them.
-
-        The same reasoning DailyFocus.task already follows -- charter rule 5,
-        reference never copy. Someone deleting a project has said the
-        grouping was wrong, not that the work is gone.
-        """
-        project = Project.objects.create(
-            owner=self.owner, area=self.area, title="Website Relaunch",
-        )
-        task = Item.objects.create(
-            list=self.area, text="Write the brief", project=project,
-        )
-
-        project.delete()
-
-        task.refresh_from_db()
-        self.assertIsNone(task.project_id)
-        self.assertEqual(task.text, "Write the brief")
 
 
 class ProjectServiceTest(TestCase):
@@ -158,33 +76,31 @@ class ProjectServiceTest(TestCase):
         self.other = User.objects.create_user(
             "bob", "bob@example.com", "another secure password"
         )
-        self.area = List.objects.create(owner=self.owner, title="Work")
 
-    def test_create_project_stamps_the_owner_from_the_area(self):
-        project = services.create_project(self.area, "Website Relaunch")
+    def test_create_project_stamps_the_owner_passed_in(self):
+        project = services.create_project(self.owner, "Website Relaunch")
 
         self.assertEqual(project.owner, self.owner)
-        self.assertEqual(project.area, self.area)
         self.assertEqual(project.title, "Website Relaunch")
 
     def test_create_project_rejects_a_blank_title(self):
         with self.assertRaises(TaskConflict):
-            services.create_project(self.area, "   ")
+            services.create_project(self.owner, "   ")
 
     def test_create_project_strips_the_title(self):
-        project = services.create_project(self.area, "  Website Relaunch  ")
+        project = services.create_project(self.owner, "  Website Relaunch  ")
 
         self.assertEqual(project.title, "Website Relaunch")
 
     def test_create_project_takes_an_optional_due_date(self):
         project = services.create_project(
-            self.area, "Website Relaunch", due_date=date(2026, 9, 30),
+            self.owner, "Website Relaunch", due_date=date(2026, 9, 30),
         )
 
         self.assertEqual(project.due_date, date(2026, 9, 30))
 
     def test_completing_a_project_stamps_when(self):
-        project = services.create_project(self.area, "Website Relaunch")
+        project = services.create_project(self.owner, "Website Relaunch")
 
         services.complete_project(project)
 
@@ -192,16 +108,10 @@ class ProjectServiceTest(TestCase):
         self.assertTrue(project.is_completed)
         self.assertIsNotNone(project.completed_at)
 
-    def test_completing_a_project_does_not_touch_its_tasks(self):
-        """release-d-plan.md 3's acceptance example, and charter rule 5.
-
-        The Daily Focus join already works this way: a surface references a
-        task, it does not own its status.
-        """
-        project = services.create_project(self.area, "Website Relaunch")
-        task = Item.objects.create(
-            list=self.area, text="Write the brief", project=project,
-        )
+    def test_completing_a_project_does_not_touch_its_areas_tasks(self):
+        project = services.create_project(self.owner, "Website Relaunch")
+        area = List.objects.create(owner=self.owner, title="Work", project=project)
+        task = Item.objects.create(list=area, text="Write the brief")
 
         services.complete_project(project)
 
@@ -210,7 +120,7 @@ class ProjectServiceTest(TestCase):
         self.assertIsNone(task.completed_at)
 
     def test_completing_an_already_completed_project_keeps_the_first_stamp(self):
-        project = services.create_project(self.area, "Website Relaunch")
+        project = services.create_project(self.owner, "Website Relaunch")
         services.complete_project(project)
         project.refresh_from_db()
         first = project.completed_at
@@ -221,7 +131,7 @@ class ProjectServiceTest(TestCase):
         self.assertEqual(project.completed_at, first)
 
     def test_reopening_a_project_clears_the_stamp(self):
-        project = services.create_project(self.area, "Website Relaunch")
+        project = services.create_project(self.owner, "Website Relaunch")
         services.complete_project(project)
 
         services.reopen_project(project)
@@ -230,58 +140,60 @@ class ProjectServiceTest(TestCase):
         self.assertFalse(project.is_completed)
         self.assertIsNone(project.completed_at)
 
-    def test_a_task_can_be_put_into_a_project_and_taken_out_again(self):
-        project = services.create_project(self.area, "Website Relaunch")
-        task = Item.objects.create(list=self.area, text="Write the brief")
+    def test_an_area_can_be_added_to_a_project_and_removed_again(self):
+        project = services.create_project(self.owner, "Website Relaunch")
+        area = List.objects.create(owner=self.owner, title="Work")
 
-        services.set_task_project(task, project)
-        task.refresh_from_db()
-        self.assertEqual(task.project, project)
+        services.add_area_to_project(area, project)
+        area.refresh_from_db()
+        self.assertEqual(area.project, project)
 
-        services.set_task_project(task, None)
-        task.refresh_from_db()
-        self.assertIsNone(task.project_id)
+        services.remove_area_from_project(area)
+        area.refresh_from_db()
+        self.assertIsNone(area.project)
 
-    def test_a_task_cannot_join_a_project_belonging_to_somebody_else(self):
+    def test_an_area_cannot_join_a_project_belonging_to_somebody_else(self):
         """The guard fails closed, per principles.md.
 
-        Ownership is checked in the service rather than only at the API,
-        because the API is one caller and the invariant is the model's.
+        Checked in the service rather than only at the API, because the API
+        is one caller and the invariant is the model's -- same shape
+        capture.services.link_ideas already established.
         """
-        theirs = services.create_project(
-            List.objects.create(owner=self.other, title="Theirs"), "Not yours",
-        )
-        task = Item.objects.create(list=self.area, text="Write the brief")
+        theirs = services.create_project(self.other, "Not yours")
+        area = List.objects.create(owner=self.owner, title="Work")
 
         with self.assertRaises(TaskConflict):
-            services.set_task_project(task, theirs)
+            services.add_area_to_project(area, theirs)
 
-        task.refresh_from_db()
-        self.assertIsNone(task.project_id)
-
-    def test_a_task_cannot_join_a_project_in_a_different_area(self):
-        """A project groups work inside one area, so this would be a lie.
-
-        Not merely tidiness: slice 8 renders a project's tasks from the area
-        page, and a task in another area would appear under a heading it does
-        not belong to.
-        """
-        elsewhere = List.objects.create(owner=self.owner, title="Home")
-        project = services.create_project(elsewhere, "Repaint the hallway")
-        task = Item.objects.create(list=self.area, text="Write the brief")
-
-        with self.assertRaises(TaskConflict):
-            services.set_task_project(task, project)
+        area.refresh_from_db()
+        self.assertIsNone(area.project)
 
     def test_deleting_a_project_is_a_hard_delete(self):
-        """Charter rule 6, stated. No tombstone: rule 2 does not apply here,
-        because no client creates or holds a Project offline.
-        """
-        project = services.create_project(self.area, "Website Relaunch")
+        project = services.create_project(self.owner, "Website Relaunch")
 
         services.delete_project(project)
 
         self.assertFalse(Project.objects.filter(pk=project.pk).exists())
+
+    def test_deleting_a_project_leaves_its_areas_in_place(self):
+        project = services.create_project(self.owner, "Website Relaunch")
+        area = List.objects.create(owner=self.owner, title="Work", project=project)
+
+        services.delete_project(project)
+
+        area.refresh_from_db()
+        self.assertIsNone(area.project)
+
+    def test_deleting_an_area_leaves_its_project_alone(self):
+        # project-workspace-plan.md's charter check: the old CASCADE ran the
+        # other way (Project.area). Once the FK direction inverts, there is
+        # no FK left for a delete on the Area to cascade through.
+        project = services.create_project(self.owner, "Website Relaunch")
+        area = List.objects.create(owner=self.owner, title="Work", project=project)
+
+        area.delete()
+
+        self.assertTrue(Project.objects.filter(pk=project.pk).exists())
 
 
 class ProjectReadTest(TestCase):
@@ -294,36 +206,49 @@ class ProjectReadTest(TestCase):
         self.other = User.objects.create_user(
             "bob", "bob@example.com", "another secure password"
         )
-        self.area = List.objects.create(owner=self.owner, title="Work")
 
     def test_lists_only_this_owners_projects_open_first(self):
         from lists import projects as project_reader
 
-        done = services.create_project(self.area, "Shipped last month")
+        done = services.create_project(self.owner, "Shipped last month")
         services.complete_project(done)
-        open_one = services.create_project(self.area, "Website Relaunch")
-        services.create_project(
-            List.objects.create(owner=self.other, title="Theirs"), "Not mine",
-        )
+        open_one = services.create_project(self.owner, "Website Relaunch")
+        services.create_project(self.other, "Not mine")
 
         found = list(project_reader.projects_for(self.owner))
 
-        self.assertEqual([each.title for each in found],
-                         [open_one.title, done.title])
+        self.assertEqual(
+            [each.title for each in found], [open_one.title, done.title],
+        )
 
-    def test_counts_the_open_tasks_in_each_project(self):
+    def test_counts_the_open_tasks_across_every_area_in_the_project(self):
+        # Two-hop now: project -> areas -> items. A fixture spanning two
+        # areas is the regression this test exists to catch.
         from lists import projects as project_reader
 
-        project = services.create_project(self.area, "Website Relaunch")
-        Item.objects.create(list=self.area, text="Open one", project=project)
+        project = services.create_project(self.owner, "Website Relaunch")
+        design = List.objects.create(
+            owner=self.owner, title="Design", project=project,
+        )
+        dev = List.objects.create(owner=self.owner, title="Dev", project=project)
+        Item.objects.create(list=design, text="Open one")
         Item.objects.create(
-            list=self.area,
+            list=dev,
             text="Finished one",
-            project=project,
             status=Item.Status.COMPLETED,
             completed_at=timezone.now(),
         )
+        Item.objects.create(list=dev, text="Another open one")
 
         found = list(project_reader.projects_for(self.owner))
 
-        self.assertEqual(found[0].open_task_count, 1)
+        self.assertEqual(found[0].open_task_count, 2)
+
+    def test_a_project_with_no_areas_has_no_open_tasks(self):
+        from lists import projects as project_reader
+
+        services.create_project(self.owner, "Just started")
+
+        found = list(project_reader.projects_for(self.owner))
+
+        self.assertEqual(found[0].open_task_count, 0)

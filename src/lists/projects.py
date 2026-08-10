@@ -21,12 +21,19 @@ def projects_for(owner):
     of projects with their sizes is the one thing every caller so far wants,
     and doing it per row is the N+1 that `list_summaries` already avoids for
     areas.
+
+    Two hops now -- project-workspace-plan.md 2: a project has no tasks of
+    its own, only areas, which have tasks. `distinct=True` because the join
+    fans out through two tables (areas, then their items) and would
+    otherwise double-count a project with more than one area.
     """
     return (
         Project.objects.filter(owner=owner)
         .annotate(
             open_task_count=Count(
-                "tasks", filter=Q(tasks__status=Item.Status.ACTIVE),
+                "areas__item",
+                filter=Q(areas__item__status=Item.Status.ACTIVE),
+                distinct=True,
             ),
         )
         # Repeats Project.Meta.ordering rather than inheriting it, because

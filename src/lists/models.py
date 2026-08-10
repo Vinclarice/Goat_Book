@@ -324,15 +324,15 @@ class Project(models.Model):
     owner = models.ForeignKey(
         "accounts.User", related_name="projects", on_delete=models.CASCADE,
     )
-    # Required, against release-d-plan.md 3's own nullable recommendation.
-    # Slice 6 had just spent a whole slice paying the nullable-to-required
-    # cost on List.owner; required-to-nullable is a bare AlterField with no
-    # data work, so the permissive option was the expensive one to undo.
-    #
-    # CASCADE follows from that: deleting an Area already deletes the tasks
-    # inside it, and a project in a deleted area has nowhere left to be.
+    # Retired -- project-workspace-plan.md inverts this relationship;
+    # List.project (below, on the other model) replaces it. Nullable rather
+    # than removed outright as an intermediate step, so create_project can
+    # stop populating it before the column itself is dropped -- see that
+    # plan's migration section. No code reads this field any more; it is
+    # kept only until the contract migration removes it.
     area = models.ForeignKey(
-        "List", related_name="projects", on_delete=models.CASCADE,
+        "List", related_name="projects", null=True, blank=True,
+        on_delete=models.CASCADE,
     )
     title = models.CharField(max_length=100)
     due_date = models.DateField(blank=True, null=True)

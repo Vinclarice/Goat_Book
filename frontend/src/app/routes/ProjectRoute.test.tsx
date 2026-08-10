@@ -88,6 +88,16 @@ describe("ProjectRoute", () => {
     expect(screen.getByText(/0 open/)).toBeInTheDocument();
   });
 
+  it("shows a due date as a plain calendar date, not a shifted instant", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      projectPageFetch(projectDetailData({ due_date: "2026-09-30" })),
+    );
+
+    renderAt("3");
+
+    expect(await screen.findByText(/Sep 30, 2026/)).toBeInTheDocument();
+  });
+
   it("shows an error state when the request fails", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(() =>
       jsonResponse({ detail: "nope" }, false),
@@ -239,6 +249,30 @@ describe("ProjectRoute", () => {
     await waitFor(() => {
       expect(screen.getByRole("button", { name: "Reopen" })).toBeInTheDocument();
     });
+  });
+
+  it("refreshes the sidebar when completion changes, since its Projects group only lists open ones", async () => {
+    const user = userEvent.setup();
+    let navFetches = 0;
+    let completed = false;
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const request = input as Request;
+      const url = typeof input === "string" ? input : request.url;
+      if (url.includes("/api/v1/nav")) {
+        navFetches += 1;
+        return jsonResponse(NAV);
+      }
+      if (request.method === "PATCH") completed = true;
+      return jsonResponse(projectDetailData({ is_completed: completed }));
+    });
+
+    renderAt("3");
+    await screen.findByText("Website Relaunch");
+    const fetchesBeforeClick = navFetches;
+
+    await user.click(screen.getByRole("button", { name: "Mark complete" }));
+
+    await waitFor(() => expect(navFetches).toBeGreaterThan(fetchesBeforeClick));
   });
 
   it("deletes the project and returns to the agenda after confirming", async () => {

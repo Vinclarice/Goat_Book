@@ -11,6 +11,7 @@ import { AreaRoute } from "./routes/AreaRoute";
 import { NotFoundRoute } from "./routes/NotFoundRoute";
 import { PreferencesRoute } from "./routes/PreferencesRoute";
 import { ProjectRoute } from "./routes/ProjectRoute";
+import { ProjectsIndexRoute } from "./routes/ProjectsIndexRoute";
 import { ReviewRoute } from "./routes/ReviewRoute";
 import { TaskDetailRoute } from "./routes/TaskDetailRoute";
 
@@ -102,7 +103,11 @@ export function AppRoutes() {
         />
         {/* project-workspace-plan.md: a project's own page, the gap the
             side nav's Projects group used to route around by sending every
-            click to a parent Area instead. */}
+            click to a parent Area instead. The index, a step further, is
+            where a *completed* project stays reachable -- the nav's own
+            group only shows open ones, same reason the Agenda excludes
+            completed tasks. */}
+        <Route path="/projects" element={<ProjectsIndexRoute />} />
         <Route path="/projects/:projectId" element={<ProjectRoute />} />
         <Route path="/tasks/:taskId" element={<TaskDetailRoute />} />
         <Route path="/archive" element={<ArchiveRoute />} />

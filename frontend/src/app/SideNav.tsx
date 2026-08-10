@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { NavLink, useLocation } from "react-router";
+import { Link, NavLink, useLocation } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { colorForKey } from "../agenda";
@@ -133,7 +133,11 @@ export function SideNav() {
           project-workspace-plan.md gave it one, closing the gap that used
           to send every click here back to a parent Area instead. */}
       <div className={styles.group}>
-        <h3>Projects</h3>
+        <h3>
+          <Link to="/projects" className={styles.headingLink}>
+            Projects
+          </Link>
+        </h3>
         {projects.length === 0 && <p className={styles.empty}>No projects yet.</p>}
         {projects.map((each) => (
           <NavLink

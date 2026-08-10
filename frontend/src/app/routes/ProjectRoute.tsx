@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { colorForKey } from "../../agenda";
 import { apiV1 } from "../../api/client";
 import { RequestFailed, statusOf } from "../../api/failure";
+import { formatDateOnly } from "../../format";
 import { RouteFailure } from "./RouteFailure";
 
 /**
@@ -71,7 +72,13 @@ export function ProjectRoute() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => refresh(),
+    onSuccess: () => {
+      refresh();
+      // The nav's own Projects group only lists open projects -- see
+      // SideNav.tsx -- so completing or reopening one changes whether it
+      // belongs there at all, not just its own page.
+      queryClient.invalidateQueries({ queryKey: ["nav"] });
+    },
     onError: () => setError("Couldn't update that project."),
   });
 
@@ -82,7 +89,10 @@ export function ProjectRoute() {
       });
       if (error) throw error;
     },
-    onSuccess: () => navigate("/agenda"),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["nav"] });
+      navigate("/agenda");
+    },
   });
 
   const removeArea = useMutation({
@@ -93,7 +103,12 @@ export function ProjectRoute() {
       });
       if (error) throw error;
     },
-    onSuccess: () => refresh(),
+    onSuccess: () => {
+      refresh();
+      // The area it just left may have been carrying open tasks, which
+      // changes this project's own open_task_count in the sidebar.
+      queryClient.invalidateQueries({ queryKey: ["nav"] });
+    },
     onError: () => setError("Couldn't remove that area."),
   });
 
@@ -168,7 +183,7 @@ export function ProjectRoute() {
           </h1>
           <p className="text-sm text-muted-foreground">
             {data.open_task_count} open
-            {data.due_date && ` · due ${data.due_date}`}
+            {data.due_date && ` · due ${formatDateOnly(data.due_date)}`}
           </p>
         </div>
         <Button

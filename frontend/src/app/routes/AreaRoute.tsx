@@ -90,7 +90,13 @@ export function AreaRoute() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => refetch(),
+    onSuccess: () => {
+      refetch();
+      // This area's tasks change whichever project's open_task_count the
+      // sidebar shows -- the one it just left, the one it just joined, or
+      // both.
+      queryClient.invalidateQueries({ queryKey: ["nav"] });
+    },
   });
 
   function handleRename(event: FormEvent) {

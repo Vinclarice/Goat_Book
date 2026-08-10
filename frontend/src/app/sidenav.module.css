@@ -25,6 +25,19 @@
   margin: 0 0 0.4rem;
 }
 
+/* Only the Projects heading links anywhere -- to the index that keeps a
+   completed project reachable, since the group below only lists open
+   ones. Inherits the heading's own look; only the hover state says it's
+   a link at all. */
+.headingLink {
+  color: inherit;
+  text-decoration: none;
+}
+
+.headingLink:hover {
+  text-decoration: underline;
+}
+
 .link {
   display: flex;
   align-items: center;

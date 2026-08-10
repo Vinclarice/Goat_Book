@@ -59,6 +59,7 @@ function renderNav(initialPath = "/agenda") {
             <Route path="/agenda" element={<p>Agenda page</p>} />
             <Route path="/review" element={<p>Review page</p>} />
             <Route path="/areas/:areaId" element={<p>Area page</p>} />
+            <Route path="/projects" element={<p>Projects index page</p>} />
             <Route path="/projects/:projectId" element={<p>Project page</p>} />
             <Route path="/archive" element={<p>Archive page</p>} />
           </Route>
@@ -119,6 +120,18 @@ describe("SideNav", () => {
     await user.click(await screen.findByText("Kitchen remodel"));
 
     expect(await screen.findByText("Project page")).toBeInTheDocument();
+  });
+
+  it("routes the Projects heading to the index of every project", async () => {
+    // Vince's call: a central landing page, reachable from the sidebar,
+    // where a completed project stays visible -- the group below only
+    // ever lists open ones.
+    const user = userEvent.setup();
+    renderNav();
+
+    await user.click(await screen.findByRole("link", { name: "Projects" }));
+
+    expect(await screen.findByText("Projects index page")).toBeInTheDocument();
   });
 
   it("says so when there are no open projects", async () => {

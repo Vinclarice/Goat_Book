@@ -217,6 +217,34 @@ class ProjectJourneyTest(BrowserTest):
         # navigate("/agenda") on success.
         expect(self.page).to_have_url(f"{self.live_server_url}/app/agenda")
 
+    def test_the_projects_index_keeps_a_completed_project_reachable(self):
+        # Vince's call: a central landing page reachable from the sidebar.
+        # The nav's own Projects group only lists open projects, so a
+        # completed one needs somewhere else to stay reachable from.
+        self.visit("/app/agenda")
+        self.page.get_by_text("+ New project").click()
+        self.page.get_by_label("Project name").fill("Website Relaunch")
+        self.page.get_by_role("button", name="Create project").click()
+        expect(self.page).to_have_url(re.compile(r"/app/projects/\d+$"))
+
+        self.page.get_by_role("button", name="Mark complete").click()
+        expect(self.page.get_by_role("button", name="Reopen")).to_be_visible()
+
+        # The nav's own Projects group re-reads once completion changes --
+        # it only lists open projects, so a stale cache here would still
+        # show this one, and the index page underneath would then carry a
+        # duplicate "Website Relaunch" link that makes every locator below
+        # ambiguous. Caught exactly this way once already.
+        self.page.get_by_role("link", name="Projects").click()
+        expect(self.page).to_have_url(f"{self.live_server_url}/app/projects")
+        expect(
+            self.page.get_by_role("link", name="Website Relaunch")
+        ).to_be_visible()
+
+        self.page.get_by_role("link", name="Website Relaunch").click()
+        expect(self.page).to_have_url(re.compile(r"/app/projects/\d+$"))
+        expect(self.page.get_by_role("heading", name="Website Relaunch")).to_be_visible()
+
         self.visit(f"/app/areas/{self.work.id}")
         expect(self.page.get_by_text("Website Relaunch")).not_to_be_visible()
         expect(

@@ -59,6 +59,7 @@ function renderNav(initialPath = "/agenda") {
             <Route path="/agenda" element={<p>Agenda page</p>} />
             <Route path="/review" element={<p>Review page</p>} />
             <Route path="/areas/:areaId" element={<p>Area page</p>} />
+            <Route path="/projects/:projectId" element={<p>Project page</p>} />
             <Route path="/archive" element={<p>Archive page</p>} />
           </Route>
         </Routes>
@@ -88,7 +89,7 @@ describe("SideNav", () => {
       jsonResponse({
         ...NAV,
         projects: [
-          { id: 9, title: "Kitchen remodel", area_id: 1, open_task_count: 3 },
+          { id: 9, title: "Kitchen remodel", open_task_count: 3 },
         ],
       }),
     );
@@ -101,12 +102,14 @@ describe("SideNav", () => {
     ).toContain("Kitchen remodel");
   });
 
-  it("routes a project through the SPA router, to its own area", async () => {
+  it("routes a project through the SPA router, to its own page", async () => {
+    // project-workspace-plan.md: a project has its own page now, closing
+    // the gap that used to send every click back to a parent Area instead.
     vi.spyOn(globalThis, "fetch").mockImplementation(() =>
       jsonResponse({
         ...NAV,
         projects: [
-          { id: 9, title: "Kitchen remodel", area_id: 1, open_task_count: 3 },
+          { id: 9, title: "Kitchen remodel", open_task_count: 3 },
         ],
       }),
     );
@@ -115,7 +118,7 @@ describe("SideNav", () => {
 
     await user.click(await screen.findByText("Kitchen remodel"));
 
-    expect(await screen.findByText("Area page")).toBeInTheDocument();
+    expect(await screen.findByText("Project page")).toBeInTheDocument();
   });
 
   it("says so when there are no open projects", async () => {

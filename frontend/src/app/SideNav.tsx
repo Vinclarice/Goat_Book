@@ -128,14 +128,17 @@ export function SideNav() {
       {/* Its own group rather than nested under Areas -- ui-second-pass-plan.md
           F3, Vince's call. Flat across areas, same weight as the group above
           it. Completed projects never appear here: this group is ongoing
-          work, the same reason the Agenda doesn't list completed tasks. */}
+          work, the same reason the Agenda doesn't list completed tasks.
+          Routes straight to the project's own page now --
+          project-workspace-plan.md gave it one, closing the gap that used
+          to send every click here back to a parent Area instead. */}
       <div className={styles.group}>
         <h3>Projects</h3>
         {projects.length === 0 && <p className={styles.empty}>No projects yet.</p>}
         {projects.map((each) => (
           <NavLink
             key={each.id}
-            to={`/areas/${each.area_id}`}
+            to={`/projects/${each.id}`}
             className={navLinkClass}
             title={each.title}
           >

@@ -480,122 +480,18 @@ describe("TaskDetailRoute", () => {
     });
   });
 
-  describe("its project", () => {
-    /* Assignment lives here rather than on the Area page's project panel,
-       for the same reason due date, tags, recurrence and notes do: it is a
-       single-field edit of a task, and the task's own page is where those
-       already are. */
-    function withProjects(projects: object[]) {
-      return vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
-        if (typeof input === "string") return jsonResponse({ data: task() });
-        if ((input as Request).url.includes("/api/v1/projects")) {
-          return jsonResponse(projects);
-        }
-        return jsonResponse(taskDetailData());
-      });
-    }
-
-    const websiteRelaunch = {
-      id: 4,
-      title: "Website Relaunch",
-      area_id: 1,
-      due_date: null,
-      is_completed: false,
-      completed_at: null,
-      created_at: "2026-08-03T09:00:00-04:00",
-      open_task_count: 0,
-    };
-
-    it("offers the projects in this task's own area", async () => {
-      withProjects([websiteRelaunch]);
-
-      renderAt("1");
-
-      const select = await screen.findByLabelText("Project");
-      expect(
-        within(select).getByRole("option", { name: "Website Relaunch" }),
-      ).toBeInTheDocument();
-      // Always available, because taking a task out of a project has to be
-      // as reachable as putting it in.
-      expect(
-        within(select).getByRole("option", { name: "No project" }),
-      ).toBeInTheDocument();
+  it("has no per-task project control", async () => {
+    // project-workspace-plan.md 2 dropped the task-level override -- a
+    // task's project now comes from its Area, changed on the Area's own
+    // page, not repeated here.
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      if (typeof input === "string") return jsonResponse({ data: task() });
+      return jsonResponse(taskDetailData());
     });
 
-    it("asks only for projects in the area the task belongs to", async () => {
-      const fetchMock = withProjects([websiteRelaunch]);
+    renderAt("1");
+    await screen.findByDisplayValue("Write tests");
 
-      renderAt("1");
-      await screen.findByLabelText("Project");
-
-      const asked = fetchMock.mock.calls
-        .map(([input]) => (input as Request).url ?? String(input))
-        .filter((url) => url.includes("/api/v1/projects"));
-      expect(asked[0]).toContain("area_id=1");
-    });
-
-    it("puts the task into the project that was chosen", async () => {
-      const user = userEvent.setup();
-      let patchedBody: unknown;
-      vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
-        // api.ts calls fetch(url, init) with a string; openapi-fetch calls
-        // fetch(request). The task PATCH goes through the first, the project
-        // list through the second, so this has to read both.
-        if (typeof input === "string") {
-          if ((init as RequestInit)?.method === "PATCH") {
-            patchedBody = JSON.parse(String((init as RequestInit).body));
-            return jsonResponse({ data: task({ project_id: 4 }) });
-          }
-          return jsonResponse({ data: task() });
-        }
-        if ((input as Request).url.includes("/api/v1/projects")) {
-          return jsonResponse([websiteRelaunch]);
-        }
-        return jsonResponse(taskDetailData());
-      });
-
-      renderAt("1");
-      const select = await screen.findByLabelText("Project");
-
-      await user.selectOptions(select, "4");
-
-      await waitFor(() => expect(patchedBody).toBeDefined());
-      expect(patchedBody).toEqual({ project_id: 4 });
-    });
-
-    it("takes the task back out again", async () => {
-      const user = userEvent.setup();
-      let patchedBody: unknown;
-      vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
-        if (typeof input === "string") {
-          if ((init as RequestInit)?.method === "PATCH") {
-            patchedBody = JSON.parse(String((init as RequestInit).body));
-            return jsonResponse({ data: task({ project_id: null }) });
-          }
-          return jsonResponse({ data: task() });
-        }
-        if ((input as Request).url.includes("/api/v1/projects")) {
-          return jsonResponse([websiteRelaunch]);
-        }
-        return jsonResponse(taskDetailData({ task: task({ project_id: 4 }) }));
-      });
-
-      renderAt("1");
-      const select = await screen.findByLabelText("Project");
-
-      await user.selectOptions(select, "");
-
-      await waitFor(() => expect(patchedBody).toBeDefined());
-      expect(patchedBody).toEqual({ project_id: null });
-    });
-
-    it("says nothing about projects when the area has none", async () => {
-      withProjects([]);
-
-      renderAt("1");
-      await screen.findByDisplayValue("Write tests");
-
-      expect(screen.queryByLabelText("Project")).toBeNull();
-    });
+    expect(screen.queryByLabelText("Project")).toBeNull();
   });
 });

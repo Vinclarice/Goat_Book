@@ -35,10 +35,10 @@ export interface Task {
   // array (see AgendaAreaSummary / ArchiveWorkspaceData.areas) instead of
   // being repeated on every task.
   area_id: number;
-  // Null for most tasks. A task belongs to an Area always and to a Project
-  // optionally -- release-d-plan.md 3's additive shape. Slice 7 carries the
-  // field; the interface that sets it is slice 8's, which is why there is no
-  // Project type here yet.
+  // Null for most tasks. Derived through the task's own Area now --
+  // project-workspace-plan.md 2 -- rather than settable on the task
+  // directly: a task belongs to a project only by belonging to an Area
+  // that's inside it.
   project_id: number | null;
   // Covers both update (PATCH) and delete (DELETE); it's the same
   // endpoint either way.
@@ -65,14 +65,20 @@ export interface ChecklistStep {
   promote_url: string;
 }
 
-// release-d-plan.md 3: work that completes, inside an Area that never does.
-// `area_id` is required rather than nullable -- see that document's answered
-// open question for why the plan's original nullable recommendation was
-// reversed.
+// project-workspace-plan.md: a standalone workspace that can hold one or
+// more Areas, inverted from release-d-plan.md 3's original "lives inside
+// one Area" shape.
+export interface ProjectArea {
+  id: number;
+  title: string;
+  open_count: number;
+  overdue_count: number;
+  color_key: AreaColorKey;
+}
+
 export interface Project {
   id: number;
   title: string;
-  area_id: number;
   due_date: string | null;
   is_completed: boolean;
   completed_at: string | null;
@@ -80,6 +86,7 @@ export interface Project {
   // Annotated by the server's read, not derived here: the panel shows how
   // much is still open in a project without fetching its tasks.
   open_task_count: number;
+  areas: ProjectArea[];
 }
 
 export interface TaskWorkspaceData {
@@ -90,9 +97,9 @@ export interface TaskWorkspaceData {
     reorder_url: string;
   };
   items: Task[];
-  // ui-second-pass-plan.md F2a: scoped to this area, since a project
-  // belongs to exactly one and this page only ever shows one area's rows.
-  projects: AgendaProjectSummary[];
+  // Singular and optional -- project-workspace-plan.md 2 inverted this: an
+  // Area belongs to at most one Project, not the other way around.
+  project: AgendaProjectSummary | null;
 }
 
 export interface ArchiveWorkspaceData {
@@ -125,8 +132,8 @@ export interface AgendaAreaSummary {
 }
 
 // ui-second-pass-plan.md F2: a task's project_id had nothing to join
-// against, so its row could never show a project. A project has no page of
-// its own yet -- url points at its area's, the only place it is visible.
+// against, so its row could never show a project. url points at the
+// project's own page -- project-workspace-plan.md gave it one.
 export interface AgendaProjectSummary {
   id: number;
   title: string;

@@ -121,13 +121,6 @@ export function updateTaskNotes(task: Task, notes: string): Promise<Task> {
  * refuses a project owned by somebody else (404) or one in another area
  * (409), so this does not re-check either.
  */
-export function updateTaskProject(
-  task: Task,
-  projectId: number | null,
-): Promise<Task> {
-  return request<Task>(task.url, "PATCH", { project_id: projectId });
-}
-
 export interface StatusUpdateResult {
   task: Task;
   /** Set when completing a recurring task auto-archives it and creates

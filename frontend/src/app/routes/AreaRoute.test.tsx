@@ -32,17 +32,17 @@ function listDetailData(overrides: Record<string, unknown> = {}) {
       reorder_url: "/api/areas/7/items/reorder/",
     },
     items: [task({ text: "Write tests" })],
-    projects: [],
+    project: null,
     archived_count: 0,
     archive_url: "/archive/",
     ...overrides,
   };
 }
 
-/* The Area page renders ProjectsPanel as of slice 8, which fetches its own
-   projects. Every mock below has to answer that request with an array or the
-   panel throws mid-render and takes the whole route with it -- which is how
-   this was noticed. */
+/* The Area page fetches the caller's projects for its "add to a project"
+   picker whenever the area has none of its own yet -- project-workspace-plan.md.
+   Every mock below has to answer that request with an array or the picker
+   throws mid-render and takes the whole route with it. */
 function areaPageFetch(data: object = listDetailData()) {
   return (input: RequestInfo | URL) => {
     const url = typeof input === "string" ? input : (input as Request).url;
@@ -113,6 +113,53 @@ describe("AreaRoute", () => {
     await user.type(screen.getByLabelText("Area name"), "Home projects");
 
     expect(save).toBeEnabled();
+  });
+
+  it("shows which project the area belongs to", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      areaPageFetch(
+        listDetailData({
+          project: { id: 3, title: "Website Relaunch", url: "/app/projects/3" },
+        }),
+      ),
+    );
+
+    renderAt("7");
+
+    expect(await screen.findByText("Website Relaunch")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Remove from project" }),
+    ).toBeInTheDocument();
+  });
+
+  it("offers to add the area to a project when it has none", async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const request = input as Request;
+      if (request.method === "PATCH" && request.url.includes("/project")) {
+        return jsonResponse({ id: 7, title: "Programming" });
+      }
+      if (request.url.includes("/api/v1/projects")) {
+        return jsonResponse([
+          { id: 3, title: "Website Relaunch", areas: [], open_task_count: 0 },
+        ]);
+      }
+      return jsonResponse(listDetailData());
+    });
+
+    renderAt("7");
+    await screen.findByText("Write tests");
+
+    await user.selectOptions(screen.getByLabelText("Add to a project"), "3");
+    await user.click(screen.getByRole("button", { name: "Add" }));
+
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.some(([request]) =>
+          (request as Request).url.includes("/api/v1/areas/7/project"),
+        ),
+      ).toBe(true);
+    });
   });
 
   it("keeps the area-destroying action away from the project-scoped ones", async () => {

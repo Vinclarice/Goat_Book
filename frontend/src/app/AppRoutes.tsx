@@ -10,6 +10,7 @@ import { DevUiGallery } from "./routes/DevUiGallery";
 import { AreaRoute } from "./routes/AreaRoute";
 import { NotFoundRoute } from "./routes/NotFoundRoute";
 import { PreferencesRoute } from "./routes/PreferencesRoute";
+import { ProjectRoute } from "./routes/ProjectRoute";
 import { ReviewRoute } from "./routes/ReviewRoute";
 import { TaskDetailRoute } from "./routes/TaskDetailRoute";
 
@@ -99,6 +100,10 @@ export function AppRoutes() {
           path="/lists/:areaId"
           element={<LegacyListRedirect />}
         />
+        {/* project-workspace-plan.md: a project's own page, the gap the
+            side nav's Projects group used to route around by sending every
+            click to a parent Area instead. */}
+        <Route path="/projects/:projectId" element={<ProjectRoute />} />
         <Route path="/tasks/:taskId" element={<TaskDetailRoute />} />
         <Route path="/archive" element={<ArchiveRoute />} />
         <Route path="/preferences" element={<PreferencesRoute />} />

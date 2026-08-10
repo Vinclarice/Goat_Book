@@ -18,7 +18,6 @@ import { Button } from "@/components/ui/button";
 import { apiV1 } from "../../api/client";
 import { RequestFailed, statusOf } from "../../api/failure";
 import { RouteFailure } from "./RouteFailure";
-import { ProjectsPanel } from "../../ProjectsPanel";
 import { TaskWorkspace } from "../../TaskWorkspace";
 
 export function AreaRoute() {
@@ -70,9 +69,39 @@ export function AreaRoute() {
     onSuccess: () => navigate("/agenda"),
   });
 
+  // Only fetched for the "join a project" picker -- an area with no
+  // project shown yet doesn't need the full list until someone opens it.
+  const { data: projects } = useQuery({
+    queryKey: ["projects"],
+    queryFn: async () => {
+      const { data, response } = await apiV1.GET("/api/v1/projects");
+      if (!response.ok || !data) throw new RequestFailed(response.status);
+      return data;
+    },
+    enabled: !data?.project,
+  });
+
+  const projectMutation = useMutation({
+    mutationFn: async (projectId: number | null) => {
+      const { data, error } = await apiV1.PATCH("/api/v1/areas/{area_id}/project", {
+        params: { path: { area_id: id } },
+        body: { project_id: projectId },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => refetch(),
+  });
+
   function handleRename(event: FormEvent) {
     event.preventDefault();
     renameMutation.mutate(title);
+  }
+
+  function handleJoinProject(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const projectId = Number(new FormData(event.currentTarget).get("project_id"));
+    if (projectId) projectMutation.mutate(projectId);
   }
 
   if (isPending) return <p className="p-6">Loading…</p>;
@@ -121,10 +150,53 @@ export function AreaRoute() {
         )}
       </div>
 
-      {/* Above the task list on purpose: a project is the coarser grouping,
-          and slice 8's whole point is that an area now holds two kinds of
-          thing rather than one. */}
-      <ProjectsPanel areaId={id} />
+      {/* Above the task list on purpose: a project is the coarser grouping.
+          project-workspace-plan.md inverted the old containment (an Area
+          held many Projects); an Area now optionally belongs to at most
+          one. */}
+      {data.project ? (
+        <div className="flex items-center justify-between gap-2 rounded-lg border border-border px-4 py-2 text-sm">
+          <span>
+            Part of{" "}
+            <Link to={`/projects/${data.project.id}`} className="font-bold hover:underline">
+              {data.project.title}
+            </Link>
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={projectMutation.isPending}
+            onClick={() => projectMutation.mutate(null)}
+          >
+            Remove from project
+          </Button>
+        </div>
+      ) : (
+        projects && projects.length > 0 && (
+          <form
+            onSubmit={handleJoinProject}
+            className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm"
+          >
+            <label htmlFor="area-project" className="text-muted-foreground">
+              Add to a project
+            </label>
+            <select
+              id="area-project"
+              name="project_id"
+              className="rounded-lg border border-border bg-input px-2 py-1"
+            >
+              {projects.map((each) => (
+                <option key={each.id} value={each.id}>
+                  {each.title}
+                </option>
+              ))}
+            </select>
+            <Button type="submit" size="sm" disabled={projectMutation.isPending}>
+              Add
+            </Button>
+          </form>
+        )
+      )}
 
       <TaskWorkspace initialData={data} />
 

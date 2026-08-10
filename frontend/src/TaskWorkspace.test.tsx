@@ -30,7 +30,7 @@ describe("TaskWorkspace", () => {
             create_item_url: "/api/areas/1/items/",
             reorder_url: "/api/areas/1/items/reorder/",
           },
-          projects: [],
+          project: null,
           items: [
             task(),
             task({ id: 2, text: "Finished", status: "completed" }),
@@ -46,7 +46,10 @@ describe("TaskWorkspace", () => {
     expect(screen.queryByText("Write tests")).not.toBeInTheDocument();
   });
 
-  it("shows a task's project, tying the project heading above to its own rows", () => {
+  it("shows every task's project when its area belongs to one", () => {
+    // project-workspace-plan.md 2: a task's project is derived through its
+    // Area now, so every task on one Area's page shares the same answer --
+    // there's no more per-task variation within a single render.
     render(
       <TaskWorkspace
         initialData={{
@@ -56,19 +59,38 @@ describe("TaskWorkspace", () => {
             create_item_url: "/api/areas/1/items/",
             reorder_url: "/api/areas/1/items/reorder/",
           },
-          projects: [{ id: 7, title: "Kitchen remodel", url: "/areas/1/" }],
+          project: { id: 7, title: "Kitchen remodel", url: "/app/projects/7" },
           items: [
             task({ id: 1, text: "Order cabinets", project_id: 7 }),
-            task({ id: 2, text: "Unrelated task" }),
+            task({ id: 2, text: "Order tile", project_id: 7 }),
           ],
         }}
       />,
     );
 
-    const withProject = screen.getByText("Order cabinets").closest("article")!;
-    const withoutProject = screen.getByText("Unrelated task").closest("article")!;
-    expect(within(withProject).getByText("Kitchen remodel")).toBeInTheDocument();
-    expect(within(withoutProject).queryByText("Kitchen remodel")).not.toBeInTheDocument();
+    const first = screen.getByText("Order cabinets").closest("article")!;
+    const second = screen.getByText("Order tile").closest("article")!;
+    expect(within(first).getByText("Kitchen remodel")).toBeInTheDocument();
+    expect(within(second).getByText("Kitchen remodel")).toBeInTheDocument();
+  });
+
+  it("shows no project pill when the area belongs to none", () => {
+    render(
+      <TaskWorkspace
+        initialData={{
+          area: {
+            id: 1,
+            title: "Programming",
+            create_item_url: "/api/areas/1/items/",
+            reorder_url: "/api/areas/1/items/reorder/",
+          },
+          project: null,
+          items: [task({ id: 1, text: "Unrelated task" })],
+        }}
+      />,
+    );
+
+    expect(screen.queryByText("Kitchen remodel")).not.toBeInTheDocument();
   });
 
   it("searches task text without changing the live counts", async () => {
@@ -82,7 +104,7 @@ describe("TaskWorkspace", () => {
             create_item_url: "/api/areas/1/items/",
             reorder_url: "/api/areas/1/items/reorder/",
           },
-          projects: [],
+          project: null,
           items: [task(), task({ id: 2, text: "Review migrations" })],
         }}
       />,
@@ -113,7 +135,7 @@ describe("TaskWorkspace", () => {
             create_item_url: "/api/areas/1/items/",
             reorder_url: "/api/areas/1/items/reorder/",
           },
-          projects: [],
+          project: null,
           items: [task()],
         }}
       />,
@@ -147,7 +169,7 @@ describe("TaskWorkspace", () => {
             create_item_url: "/api/areas/1/items/",
             reorder_url: "/api/areas/1/items/reorder/",
           },
-          projects: [],
+          project: null,
           items: [task()],
         }}
       />,
@@ -184,7 +206,7 @@ describe("TaskWorkspace", () => {
             create_item_url: "/api/areas/1/items/",
             reorder_url: "/api/areas/1/items/reorder/",
           },
-          projects: [],
+          project: null,
           items: [task()],
         }}
       />,
@@ -210,7 +232,7 @@ describe("TaskWorkspace", () => {
             create_item_url: "/api/areas/1/items/",
             reorder_url: "/api/areas/1/items/reorder/",
           },
-          projects: [],
+          project: null,
           items: [task({ due_date: "2000-01-01" })],
         }}
       />,
@@ -233,7 +255,7 @@ describe("TaskWorkspace", () => {
             create_item_url: "/api/areas/1/items/",
             reorder_url: "/api/areas/1/items/reorder/",
           },
-          projects: [],
+          project: null,
           items: [task()],
         }}
       />,
@@ -268,7 +290,7 @@ describe("TaskWorkspace", () => {
             create_item_url: "/api/areas/1/items/",
             reorder_url: "/api/areas/1/items/reorder/",
           },
-          projects: [],
+          project: null,
           items: [first, second],
         }}
       />,
@@ -299,7 +321,7 @@ describe("TaskWorkspace", () => {
             create_item_url: "/api/areas/1/items/",
             reorder_url: "/api/areas/1/items/reorder/",
           },
-          projects: [],
+          project: null,
           items: [
             task({ id: 1, text: "Buy milk", tags: ["groceries"] }),
             task({ id: 2, text: "Write tests", tags: ["work"] }),
@@ -341,7 +363,7 @@ describe("TaskWorkspace", () => {
             create_item_url: "/api/areas/1/items/",
             reorder_url: "/api/areas/1/items/reorder/",
           },
-          projects: [],
+          project: null,
           items: [original],
         }}
       />,
@@ -368,7 +390,7 @@ describe("TaskWorkspace", () => {
             create_item_url: "/api/areas/1/items/",
             reorder_url: "/api/areas/1/items/reorder/",
           },
-          projects: [],
+          project: null,
           items: [],
         }}
       />,

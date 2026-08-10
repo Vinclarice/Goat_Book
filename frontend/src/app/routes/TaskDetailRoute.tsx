@@ -13,7 +13,6 @@ import {
   updateChecklistStepDone,
   updateTaskDueDate,
   updateTaskNotes,
-  updateTaskProject,
   updateTaskRecurrence,
   updateTaskStatus,
   updateTaskTags,
@@ -22,7 +21,7 @@ import {
 import { apiV1 } from "../../api/client";
 import { RequestFailed, statusOf } from "../../api/failure";
 import { RouteFailure } from "./RouteFailure";
-import type { ChecklistStep, Project, Task, TaskRecurrence } from "../../types";
+import type { ChecklistStep, Task, TaskRecurrence } from "../../types";
 
 const RECURRENCE_LABELS: Record<TaskRecurrence, string> = {
   none: "Doesn't repeat",
@@ -255,22 +254,6 @@ export function TaskDetailRoute() {
     }
   }
 
-  async function handleProject(projectId: number | null) {
-    if (!task) return;
-    setError(null);
-    setNotice(null);
-    setBusy(true);
-    try {
-      const updated = await updateTaskProject(task, projectId);
-      setTask(updated);
-      setNotice(projectId === null ? "Removed from its project." : "Added to the project.");
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unable to update the project.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
   async function handleRecurrence(recurrence: TaskRecurrence) {
     if (!task) return;
     setError(null);
@@ -325,22 +308,6 @@ export function TaskDetailRoute() {
       setBusy(false);
     }
   }
-
-  // Fetched from the area the task is in, not from every project the
-  // account has: set_task_project refuses a project in another area, so
-  // offering one would be offering a choice the server will reject.
-  const { data: projectData } = useQuery({
-    queryKey: ["projects", areaRef?.id],
-    enabled: areaRef !== null,
-    queryFn: async () => {
-      const { data, response } = await apiV1.GET("/api/v1/projects", {
-        params: { query: { area_id: areaRef!.id } },
-      });
-      if (!response.ok || !data) throw new RequestFailed(response.status);
-      return data as Project[];
-    },
-  });
-  const projects = projectData ?? [];
 
   if (isPending) return <p className="p-6">Loading…</p>;
   if (isError || !task || !areaRef) return <RouteFailure status={statusOf(loadError)} onRetry={() => refetch()} />;
@@ -433,32 +400,10 @@ export function TaskDetailRoute() {
         </select>
       </div>
 
-      {/* Only rendered when the area actually has projects. A select with
-          nothing but "No project" in it is a control that can never do
-          anything, and slice 8 would rather show nothing than that. */}
-      {projects.length > 0 && (
-        <div className="space-y-1">
-          <label htmlFor="task-project" className="text-sm font-bold">
-            Project
-          </label>
-          <select
-            id="task-project"
-            value={task.project_id ?? ""}
-            onChange={(event) =>
-              handleProject(event.target.value ? Number(event.target.value) : null)
-            }
-            disabled={busy}
-            className="w-full rounded-lg border border-border bg-input px-3 py-1.5"
-          >
-            <option value="">No project</option>
-            {projects.map((project) => (
-              <option key={project.id} value={project.id}>
-                {project.title}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
+      {/* The per-task Project select used to live here --
+          project-workspace-plan.md 2 dropped the task-level override. A
+          task's project comes from its Area now, so it's shown (and
+          changed) on the Area's own page instead, not repeated here. */}
 
       <div className="space-y-2">
         <h2 className="text-sm font-bold">

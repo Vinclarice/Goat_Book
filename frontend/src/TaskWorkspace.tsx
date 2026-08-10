@@ -72,13 +72,6 @@ interface Props {
 
 export function TaskWorkspace({ initialData }: Props) {
   const [items, setItems] = useState(initialData.items);
-  // ui-second-pass-plan.md F2a: the same join Agenda/Daily/Archive use, but
-  // scoped to this area's own projects -- the only ones a row here could
-  // ever belong to.
-  const projectById = useMemo(
-    () => new Map(initialData.projects.map((each) => [each.id, each])),
-    [initialData.projects],
-  );
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
   const [newText, setNewText] = useState("");
@@ -436,7 +429,10 @@ export function TaskWorkspace({ initialData }: Props) {
 
       <div className="list-items" id="id_list_table">
         {visibleItems.map((item, index) => {
-          const itemProject = item.project_id ? projectById.get(item.project_id) : undefined;
+          // project-workspace-plan.md 2: every task on this page shares the
+          // same Area, so it either carries this Area's one project or none
+          // -- no per-task join left to make, unlike Agenda/Archive.
+          const itemProject = item.project_id !== null ? initialData.project : undefined;
           return (
           <article
             key={item.id}

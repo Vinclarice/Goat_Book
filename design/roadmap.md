@@ -643,6 +643,18 @@ the plan itself missed (nowhere to create a *new* project once
 `ProjectsPanel.tsx` was gone) surfaced only while writing the browser
 journey and is recorded, fixed, in the plan's own §5.
 
+**Two more follow-ups the same day, both from Vince using the shipped
+feature rather than from planning ahead:** a `/projects` index page
+(§"what this cycle does not decide" had flagged it deferrable; asked for
+directly once the gap was actually felt), and letting a Project create a
+brand-new Area rather than only reassign an existing one — the
+predominant use case, per Vince, and the occasion for a standing-rule
+change: an Area no longer needs a first task to exist. Both closed the
+same day, recorded in the plan's own §6, which also names a real bug
+(the sidebar going stale after completing or deleting a project) the
+second follow-up's browser journey caught that neither plan anticipated.
+865 backend tests, 239 frontend tests, 30 browser journeys, all green.
+
 Move completed detail into `roadmap-history.md` and keep only the resulting
 baseline or remaining consequence here. When an idea from Later earns work,
 give it a one-line reason and a focused spec before it joins an active

@@ -319,3 +319,44 @@ and multi-area-capable, no data-preservation migration, the task-level
 override fully retired, `AreaDetailOut.projects` → `.project` (singular),
 `project_ref_for`'s hand-built `/app/projects/{id}` URL, and the
 service-layer owner guard modeled on `capture.services.link_ideas`.
+
+## 6. Two follow-ups, same day, from Vince using the shipped feature
+
+Both raised directly after the redeploy, both real gaps rather than
+polish — recorded here rather than folded silently into §5 above, since
+they arrived after this plan was first called done.
+
+**A `/projects` index page.** §"What this cycle does not decide" flagged
+this as deferrable; Vince asked for it directly ("a central project
+landing page... click projects from the sidebar and it takes me there"),
+so it shipped: `ProjectsIndexRoute.tsx` at `/projects`, listing every
+project open and completed, and the sidebar's "Projects" heading links to
+it. `GET /api/v1/projects` already returned everything unfiltered — no
+backend change needed.
+
+**A Project can create a new Area, not just reassign one.** The shipped
+`ProjectRoute.tsx` only ever let you add an *existing* Area to a project —
+Vince named the gap directly: "the predominant use case" is areas that
+don't exist yet ("Legal", "Marketing" inside "Launch the business"), not
+reassigning ones that do. Mid-conversation he also changed a standing
+rule: an Area no longer needs a first task to exist. New
+`services.create_area(owner, title, project=None)`, additive alongside
+`create_list_with_item` rather than replacing it — the Agenda sidebar's
+own "+ New area" form is unchanged and still asks for a first task. New
+`POST /api/v1/projects/{id}/areas`.
+
+**A real bug found only by writing the second follow-up's browser
+journey, not by either plan:** `ProjectRoute.tsx`'s complete/reopen and
+delete mutations, and `AreaRoute.tsx`'s project-assignment mutation, only
+ever invalidated their own page's query, never `["nav"]`. The sidebar's
+Projects group — filtered to open projects only — kept showing a
+completed or deleted project, or a stale open-task count, until something
+unrelated happened to invalidate nav. First surfaced as a Playwright
+strict-mode violation (two "Website Relaunch" elements, one the stale
+sidebar link) — exactly the class of defect `CLAUDE.md` names the browser
+smoke suite for, and a second confirmation that shipping ahead of a
+written-out plan for a small, clearly-scoped follow-up is fine as long as
+the same verification discipline still runs.
+
+Full backend suite green (865 tests), frontend green (239 tests), all 30
+browser journeys green.

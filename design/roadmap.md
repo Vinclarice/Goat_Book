@@ -540,6 +540,18 @@ the distinction is exactly what keeps a Later list from becoming a backlog.
   a mind-map-style view and an append-only idea log.
 - Add AI only as a transparent, confirm-before-write planning assistant after
   the daily and review records have earned enough real use.
+- **Turn the Android app into a fully functional client, not just capture.**
+  Vince's stated direction, August 10, 2026, raised while reviewing whether
+  4.1–4.3 needed a Ninja API: they didn't, because Track F's Android client
+  is deliberately create-only today ("triage remains in the web app," per
+  that section) and nothing yet asks it to be more. That boundary is
+  intended to move, not fixed — browsing, tagging, editing and relating
+  Ideas from the phone would need capture's create-only API
+  (`capture/api_v1.py`) to grow into a real read/write surface for Idea (and
+  likely Item), the same shape 4.1 and 4.3's design notes already flagged as
+  absent. No trigger has fired and nothing here is scheduled; recorded so
+  the next time an Idea-adjacent slice asks "do we need an API for this,"
+  the answer's history is visible instead of re-derived from scratch.
 
 ### Only if Clarice becomes a business
 

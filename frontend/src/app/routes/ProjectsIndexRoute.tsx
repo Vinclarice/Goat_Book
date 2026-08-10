@@ -112,6 +112,14 @@ export function ProjectsIndexRoute() {
         </p>
       ) : (
         <div className="space-y-8">
+          {/* Said once above the whole grid rather than repeated per card --
+              the composition bar's per-segment name and count only surface
+              on hover, which a touch device can't do at all. */}
+          <p className="text-sm text-muted-foreground max-w-xl">
+            Each project's colored strip shows how its open work is split
+            across areas.
+          </p>
+
           <ProjectGrid projects={open} />
 
           {completed.length > 0 && (

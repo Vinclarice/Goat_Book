@@ -99,6 +99,30 @@ describe("ProjectRoute", () => {
     expect(await screen.findByLabelText("Due date")).toHaveValue("2026-09-30");
   });
 
+  it("says so when no due date is set, and stops once one is", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(projectPageFetch());
+
+    renderAt("3");
+    await screen.findByDisplayValue("Website Relaunch");
+    expect(screen.getByText("No due date set")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Due date"), {
+      target: { value: "2026-09-30" },
+    });
+
+    expect(screen.queryByText("No due date set")).not.toBeInTheDocument();
+  });
+
+  it("explains what the composition bar shows", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(projectPageFetch());
+
+    renderAt("3");
+
+    expect(
+      await screen.findByText(/wider segment means more open work there/i),
+    ).toBeInTheDocument();
+  });
+
   it("shows an error state when the request fails", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(() =>
       jsonResponse({ detail: "nope" }, false),

@@ -130,6 +130,25 @@ h1 { margin: 0; font-size: 1.5rem; font-weight: 700; letter-spacing: -0.01em; }
   background: none;
 }
 .composition-wide { height: 8px; max-width: 20rem; }
+.composition-caption {
+  margin: 0.4rem 0 0;
+  color: var(--sl-muted);
+  font-size: 0.78rem;
+  line-height: 1.4;
+  max-width: 26rem;
+}
+.legend-line {
+  color: var(--sl-muted);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  max-width: 34rem;
+  margin: 0 0 1rem;
+}
+.hint-line {
+  color: var(--sl-muted);
+  font-size: 0.78rem;
+  margin: 0.3rem 0 0;
+}
 
 /* ---------- projects index ---------- */
 .group-label {
@@ -352,6 +371,18 @@ h1 { margin: 0; font-size: 1.5rem; font-weight: 700; letter-spacing: -0.01em; }
         overdue task or area already does.
       </p>
 
+      <p class="legend-line">
+        Each project's colored strip shows how its open work is split
+        across areas.
+      </p>
+      <p class="annot">
+        <strong>New:</strong> the composition bar has no built-in
+        explanation otherwise — the per-segment name and count only show
+        up on hover (or, on the workspace page, in the area list right
+        below it), which a touch device can't do at all. One line, once,
+        above the whole grid rather than repeated on every card.
+      </p>
+
       <p class="group-label">Open</p>
       <div class="projects-grid">
 
@@ -420,7 +451,10 @@ h1 { margin: 0; font-size: 1.5rem; font-weight: 700; letter-spacing: -0.01em; }
         <code>AreaRoute</code> already uses for its own rename field —
         <em>Save name</em> below is greyed out until the text changes), and
         a due date in the past gets the same overdue treatment as the card
-        grid.
+        grid. Two more additions below, both guidance copy: a caption under
+        this page's own composition bar, and a quiet hint on an empty due
+        date so a blank field reads as "none set" rather than "forgot to
+        fill this in."
       </p>
 
       <a class="back-link" href="#">← Back to today</a>
@@ -448,8 +482,24 @@ h1 { margin: 0; font-size: 1.5rem; font-weight: 700; letter-spacing: -0.01em; }
             <span style="background:var(--c-coral); width:33%" title="Marketing · 5 open"></span>
             <span style="background:var(--c-sage); width:49%" title="Product · 8 open"></span>
           </div>
+          <p class="composition-caption">
+            Each color is one of this project's areas — a wider segment
+            means more open work there.
+          </p>
         </div>
         <button class="btn">Mark complete</button>
+      </div>
+
+      <div class="annot" style="max-width:26rem;">
+        <strong>Optional, separate call:</strong> the due-date field below
+        reads as empty either way (nothing set vs. forgot to set it). A
+        small hint only when it's blank —
+        <span class="field-row" style="display:inline-flex;vertical-align:middle;margin:0 0 0 0.4rem;">
+          <input type="date" value="" disabled style="opacity:.6;pointer-events:none;">
+          <span class="hint-line" style="margin:0;">No due date set</span>
+        </span>
+        — makes that distinction plain without adding a required field.
+        Happy to leave this one out if it feels like one hint too many.
       </div>
 
       <div class="areas-section">

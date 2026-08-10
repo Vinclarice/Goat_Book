@@ -139,4 +139,14 @@ describe("ProjectsIndexRoute", () => {
 
     expect(await screen.findByText(/overdue/i)).toBeInTheDocument();
   });
+
+  it("explains what the composition bar shows once there's a project to show it on", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() => jsonResponse([project()]));
+
+    render_();
+
+    expect(
+      await screen.findByText(/colored strip shows how its open work is split/i),
+    ).toBeInTheDocument();
+  });
 });

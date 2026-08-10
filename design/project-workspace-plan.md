@@ -416,3 +416,16 @@ passing rather than left blocking verification.
 project), 244 frontend tests (5 new: create-from-index, rename, due-date
 edit, overdue flag on both surfaces), full suite green, build and
 `tsc --noEmit` clean.
+
+**Same-day addition: guidance copy.** Asked directly whether the two
+Projects pages needed help text, mockup-updated-first as before. The
+composition bar has no built-in explanation otherwise -- the per-segment
+name and count only surface on hover, which a touch device can't do at
+all -- so it gets one line, once, on each page (`ProjectsIndexRoute`
+above the whole grid rather than repeated per card; `ProjectRoute` under
+its own bigger bar). A second, separate call: the due-date field reads as
+empty whether nothing was ever set or someone meant to fill it in and
+didn't, so an empty field now says "No due date set" rather than leaving
+that ambiguous. Frontend-only, no schema change. 247 frontend tests (3
+new), build and `tsc --noEmit` clean, verified live the same way as
+above.

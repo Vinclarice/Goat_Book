@@ -280,12 +280,20 @@ export function ProjectRoute() {
                 ⚠ Overdue
               </span>
             )}
+            {/* A blank date input reads the same whether nothing was ever
+                set or someone meant to fill it in and didn't -- this says
+                which one it is. */}
+            {!dueDate && <span className="text-sm text-muted-foreground">No due date set</span>}
           </form>
 
           <p className="text-sm text-muted-foreground mt-2">{data.open_task_count} open</p>
 
           <div className="mt-3 max-w-xs">
             <ProjectComposition areas={data.areas} dimmed={data.is_completed} />
+            <p className="text-sm text-muted-foreground mt-2">
+              Each color is one of this project's areas — a wider segment
+              means more open work there.
+            </p>
           </div>
         </div>
         <Button

@@ -106,15 +106,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Projects
-         * @description This caller's projects, optionally narrowed to one Area.
-         *
-         *     The filter is applied on top of the owner-scoped queryset rather than
-         *     beside it, so an area id belonging to somebody else narrows to nothing
-         *     instead of quietly falling back to everything -- a narrowing parameter
-         *     that stops narrowing is the kind of bug nobody notices.
-         */
+        /** Projects */
         get: operations["lists_api_v1_projects"];
         put?: never;
         /** Create Project */
@@ -132,7 +124,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** Project Detail */
+        get: operations["lists_api_v1_project_detail"];
         put?: never;
         post?: never;
         /** Delete Project */
@@ -141,6 +134,31 @@ export interface paths {
         head?: never;
         /** Update Project */
         patch: operations["lists_api_v1_update_project"];
+        trace?: never;
+    };
+    "/api/v1/areas/{area_id}/project": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Assign Area Project
+         * @description Put an Area into a Project, move it, or take it out again.
+         *
+         *     A dedicated route rather than folding into AreaRenameIn: that schema's
+         *     one field is always required, and project_id is optional/tri-state --
+         *     bolting the two together would mean the always-required half inheriting
+         *     exclude_unset semantics it doesn't need.
+         */
+        patch: operations["lists_api_v1_assign_area_project"];
         trace?: never;
     };
     "/api/v1/archive": {
@@ -651,8 +669,6 @@ export interface components {
             id: number;
             /** Title */
             title: string;
-            /** Area Id */
-            area_id: number;
             /** Open Task Count */
             open_task_count: number;
         };
@@ -770,8 +786,7 @@ export interface components {
             area: components["schemas"]["AreaRefOut"];
             /** Items */
             items: components["schemas"]["TaskOut"][];
-            /** Projects */
-            projects: components["schemas"]["AgendaProjectSummaryOut"][];
+            project: components["schemas"]["AgendaProjectSummaryOut"] | null;
             /** Archived Count */
             archived_count: number;
             /** Archive Url */
@@ -834,14 +849,28 @@ export interface components {
             /** Reorder Checklist Steps Url */
             reorder_checklist_steps_url: string;
         };
+        /** ProjectAreaOut */
+        ProjectAreaOut: {
+            /** Id */
+            id: number;
+            /** Title */
+            title: string;
+            /** Open Count */
+            open_count: number;
+            /** Overdue Count */
+            overdue_count: number;
+            /**
+             * Color Key
+             * @enum {string}
+             */
+            color_key: "sky" | "sage" | "amber" | "lilac" | "coral" | "azure" | "blush" | "straw";
+        };
         /** ProjectOut */
         ProjectOut: {
             /** Id */
             id: number;
             /** Title */
             title: string;
-            /** Area Id */
-            area_id: number;
             /** Due Date */
             due_date: string | null;
             /** Is Completed */
@@ -852,11 +881,11 @@ export interface components {
             created_at: string;
             /** Open Task Count */
             open_task_count: number;
+            /** Areas */
+            areas: components["schemas"]["ProjectAreaOut"][];
         };
         /** ProjectCreateIn */
         ProjectCreateIn: {
-            /** Area Id */
-            area_id: number;
             /** Title */
             title: string;
             /** Due Date */
@@ -878,6 +907,11 @@ export interface components {
             due_date?: string | null;
             /** Is Completed */
             is_completed?: boolean | null;
+        };
+        /** AreaProjectIn */
+        AreaProjectIn: {
+            /** Project Id */
+            project_id: number | null;
         };
         /** ArchiveOut */
         ArchiveOut: {
@@ -1670,9 +1704,7 @@ export interface operations {
     };
     lists_api_v1_projects: {
         parameters: {
-            query?: {
-                area_id?: number | null;
-            };
+            query?: never;
             header?: never;
             path?: never;
             cookie?: never;
@@ -1702,6 +1734,28 @@ export interface operations {
                 "application/json": components["schemas"]["ProjectCreateIn"];
             };
         };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectOut"];
+                };
+            };
+        };
+    };
+    lists_api_v1_project_detail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description OK */
             200: {
@@ -1756,6 +1810,32 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProjectOut"];
+                };
+            };
+        };
+    };
+    lists_api_v1_assign_area_project: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                area_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AreaProjectIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AreaRefOut"];
                 };
             };
         };

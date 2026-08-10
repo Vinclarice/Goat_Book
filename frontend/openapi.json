@@ -221,24 +221,7 @@
       "get": {
         "operationId": "lists_api_v1_projects",
         "summary": "Projects",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "area_id",
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "integer"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Area Id"
-            },
-            "required": false
-          }
-        ],
+        "parameters": [],
         "responses": {
           "200": {
             "description": "OK",
@@ -255,7 +238,6 @@
             }
           }
         },
-        "description": "This caller's projects, optionally narrowed to one Area.\n\nThe filter is applied on top of the owner-scoped queryset rather than\nbeside it, so an area id belonging to somebody else narrows to nothing\ninstead of quietly falling back to everything -- a narrowing parameter\nthat stops narrowing is the kind of bug nobody notices.",
         "security": [
           {
             "SessionAuth": []
@@ -296,6 +278,38 @@
       }
     },
     "/api/v1/projects/{project_id}": {
+      "get": {
+        "operationId": "lists_api_v1_project_detail",
+        "summary": "Project Detail",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      },
       "patch": {
         "operationId": "lists_api_v1_update_project",
         "summary": "Update Project",
@@ -356,6 +370,51 @@
           "200": {
             "description": "OK"
           }
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/areas/{area_id}/project": {
+      "patch": {
+        "operationId": "lists_api_v1_assign_area_project",
+        "summary": "Assign Area Project",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "area_id",
+            "schema": {
+              "title": "Area Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AreaRefOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Put an Area into a Project, move it, or take it out again.\n\nA dedicated route rather than folding into AreaRenameIn: that schema's\none field is always required, and project_id is optional/tri-state --\nbolting the two together would mean the always-required half inheriting\nexclude_unset semantics it doesn't need.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AreaProjectIn"
+              }
+            }
+          },
+          "required": true
         },
         "security": [
           {
@@ -1302,10 +1361,6 @@
             "title": "Title",
             "type": "string"
           },
-          "area_id": {
-            "title": "Area Id",
-            "type": "integer"
-          },
           "open_task_count": {
             "title": "Open Task Count",
             "type": "integer"
@@ -1314,7 +1369,6 @@
         "required": [
           "id",
           "title",
-          "area_id",
           "open_task_count"
         ],
         "title": "NavProjectOut",
@@ -1651,12 +1705,15 @@
             "title": "Items",
             "type": "array"
           },
-          "projects": {
-            "items": {
-              "$ref": "#/components/schemas/AgendaProjectSummaryOut"
-            },
-            "title": "Projects",
-            "type": "array"
+          "project": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AgendaProjectSummaryOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "archived_count": {
             "title": "Archived Count",
@@ -1670,7 +1727,7 @@
         "required": [
           "area",
           "items",
-          "projects",
+          "project",
           "archived_count",
           "archive_url"
         ],
@@ -1835,7 +1892,7 @@
         "title": "TaskDetailOut",
         "type": "object"
       },
-      "ProjectOut": {
+      "ProjectAreaOut": {
         "properties": {
           "id": {
             "title": "Id",
@@ -1845,9 +1902,48 @@
             "title": "Title",
             "type": "string"
           },
-          "area_id": {
-            "title": "Area Id",
+          "open_count": {
+            "title": "Open Count",
             "type": "integer"
+          },
+          "overdue_count": {
+            "title": "Overdue Count",
+            "type": "integer"
+          },
+          "color_key": {
+            "enum": [
+              "sky",
+              "sage",
+              "amber",
+              "lilac",
+              "coral",
+              "azure",
+              "blush",
+              "straw"
+            ],
+            "title": "Color Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "open_count",
+          "overdue_count",
+          "color_key"
+        ],
+        "title": "ProjectAreaOut",
+        "type": "object"
+      },
+      "ProjectOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
           },
           "due_date": {
             "anyOf": [
@@ -1882,27 +1978,30 @@
           "open_task_count": {
             "title": "Open Task Count",
             "type": "integer"
+          },
+          "areas": {
+            "items": {
+              "$ref": "#/components/schemas/ProjectAreaOut"
+            },
+            "title": "Areas",
+            "type": "array"
           }
         },
         "required": [
           "id",
           "title",
-          "area_id",
           "due_date",
           "is_completed",
           "completed_at",
           "created_at",
-          "open_task_count"
+          "open_task_count",
+          "areas"
         ],
         "title": "ProjectOut",
         "type": "object"
       },
       "ProjectCreateIn": {
         "properties": {
-          "area_id": {
-            "title": "Area Id",
-            "type": "integer"
-          },
           "title": {
             "title": "Title",
             "type": "string"
@@ -1920,7 +2019,6 @@
           }
         },
         "required": [
-          "area_id",
           "title"
         ],
         "title": "ProjectCreateIn",
@@ -1964,6 +2062,26 @@
           }
         },
         "title": "ProjectUpdateIn",
+        "type": "object"
+      },
+      "AreaProjectIn": {
+        "properties": {
+          "project_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Id"
+          }
+        },
+        "required": [
+          "project_id"
+        ],
+        "title": "AreaProjectIn",
         "type": "object"
       },
       "ArchiveOut": {

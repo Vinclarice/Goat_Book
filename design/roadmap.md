@@ -655,8 +655,9 @@ same day, recorded in the plan's own §6, which also names a real bug
 second follow-up's browser journey caught that neither plan anticipated.
 865 backend tests, 239 frontend tests, 30 browser journeys, all green.
 
-**A third, separate line of work — not folded into Release F, shipped
-August 10, 2026 (uncommitted, awaiting review).** Trigger: Vince flagged
+**A third, separate line of work — not folded into Release F, shipped and
+deployed August 10, 2026** (`a12a310`, `DEPLOYED-2026-08-10/1928`, verified
+live on the real Area page). Trigger: Vince flagged
 `TaskWorkspace.tsx`'s Area task list as "simply a mess" mid-review of the
 Projects redesign — the last Bootstrap-era screen (with `AgendaWorkspace`,
 still deferred) not yet on Tailwind.

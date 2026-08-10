@@ -194,8 +194,14 @@ not replace it.
 
 ## 5. Status
 
-**Shipped, August 10, 2026 (uncommitted — awaiting Vince's review before
-committing).** All ten approved-scope items landed in the suggested order:
+**Shipped and deployed, August 10, 2026.** Committed as `a12a310`, pushed
+to `main`, and deployed to production the same day — `LIVE` and
+`DEPLOYED-2026-08-10/1928` both tag that commit, moved only after Vince
+confirmed the redesign live on the real Area page (no automated marker
+check was possible from here: the redesign only renders on an
+authenticated route, and this session had no production credentials to
+check it directly). All ten approved-scope items landed in the suggested
+order:
 sort control, select mode + bulk actions, removable tag pills, the full
 Tailwind/markup pass (composer, filter pills, overdue left-border, pill
 dedup, progressive disclosure, age-label swap, completed-date line), and

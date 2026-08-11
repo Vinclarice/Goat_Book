@@ -12,6 +12,8 @@ from django.utils import timezone
 from ninja import Router, Schema
 from ninja.errors import HttpError
 
+from accounts.auth import SessionAuthIfLoggedIn, TokenAuth
+from accounts.models import SCOPE_DAY_READ
 from daily import reads, services
 from lists import agenda
 from lists import projects as project_reader
@@ -268,12 +270,22 @@ def _own_task_or_404(owner, task_id):
     return get_object_or_404(Item, pk=task_id, list__owner=owner)
 
 
-@router.get("/day", response=DayOut)
+_TOKEN_OR_SESSION_READ = [TokenAuth(SCOPE_DAY_READ), SessionAuthIfLoggedIn()]
+
+
+# Token auth as well as session -- android-full-client-plan.md's slice 1,
+# found blocked on a real device because this router used to be session-only
+# by design ("a day is written from the browser," per clarice/api.py's own
+# comment). day:read is read-only on purpose: the write endpoints below
+# (focus, the day's own text) stay session-only, since nothing has asked
+# Android to write here yet -- see token-scopes-plan.md for why scopes are
+# added one at a time rather than all at once.
+@router.get("/day", response=DayOut, auth=_TOKEN_OR_SESSION_READ)
 def get_today(request):
     return _day_out(request.user, _today_for_request())
 
 
-@router.get("/day/{day}", response=DayOut)
+@router.get("/day/{day}", response=DayOut, auth=_TOKEN_OR_SESSION_READ)
 def get_day(request, day: date):
     return _day_out(request.user, day)
 

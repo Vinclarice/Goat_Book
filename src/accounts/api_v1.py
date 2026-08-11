@@ -9,11 +9,18 @@ from axes.handlers.proxy import AxesProxyHandler
 from axes.helpers import get_credentials, get_failure_limit
 from axes.utils import reset as axes_reset
 from django.contrib.auth import authenticate, logout
+from django.utils import timezone
 from ninja import Router, Schema
 from ninja.errors import HttpError
 
 from accounts.forms import AccountSettingsForm
-from accounts.models import PersonalAccessToken, User, known_time_zones
+from accounts.models import (
+    ANDROID_DEFAULT_SCOPES,
+    ANDROID_TOKEN_LIFETIME,
+    PersonalAccessToken,
+    User,
+    known_time_zones,
+)
 
 router = Router()
 
@@ -58,7 +65,16 @@ def log_in(request, payload: LoginIn):
     # Cleared explicitly instead, the same way
     # ClearLockoutPasswordResetConfirmView already does after a reset.
     axes_reset(username=user.username)
-    _, raw = PersonalAccessToken.generate(user, label=payload.label)
+    # The Android client's own fixed default -- token-scopes-plan.md: nobody
+    # should have to understand scopes to log into the app they're holding,
+    # and a bounded expiry means a lost phone isn't a standing, unbounded
+    # risk the way an unscoped, never-expiring token always was.
+    _, raw = PersonalAccessToken.generate(
+        user,
+        label=payload.label,
+        scopes=ANDROID_DEFAULT_SCOPES,
+        expires_at=timezone.now() + ANDROID_TOKEN_LIFETIME,
+    )
     return {"token": raw, "username": user.username, "email": user.email}
 
 

@@ -14,6 +14,7 @@ from ninja.security import django_auth
 
 from accounts.api_v1 import router as accounts_router
 from accounts.auth import SessionAuthIfLoggedIn, TokenAuth
+from accounts.models import SCOPE_IDENTITY_READ
 from capture.api_v1 import router as capture_router
 from daily.api_v1 import router as daily_router
 from lists.api_v1 import router as lists_router
@@ -51,8 +52,11 @@ class MeOut(Schema):
 # safely, which is what M2's Connect screen needs -- without it the sole
 # way to check a token was to POST a capture, putting a junk row in the
 # owner's Inbox every time somebody mistyped one. It also answers Settings'
-# "which account is this phone connected to". No escalation: the token
-# already authorises writing captures to this account.
-@api.get("/me", response=MeOut, auth=[TokenAuth(), SessionAuthIfLoggedIn()])
+# "which account is this phone connected to". identity:read is required
+# like every other scope now -- token-scopes-plan.md deliberately keeps
+# this endpoint uniform rather than special-casing it as always-open, with
+# every Android-minted token carrying the scope by default so nothing
+# observable changes for an existing connection.
+@api.get("/me", response=MeOut, auth=[TokenAuth(SCOPE_IDENTITY_READ), SessionAuthIfLoggedIn()])
 def me(request):
     return {"username": request.user.username, "email": request.user.email}

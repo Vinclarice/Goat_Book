@@ -11,7 +11,7 @@ import uuid
 
 from django.test import Client, TestCase
 
-from accounts.models import PersonalAccessToken, User
+from accounts.models import SCOPE_CAPTURE_WRITE, PersonalAccessToken, User
 from capture.models import Capture
 from capture.services import EMPTY_CAPTURE_ERROR, create_capture_idempotent
 
@@ -25,7 +25,9 @@ class CaptureEndpointTest(TestCase):
         self.user = User.objects.create_user(
             "alice", "alice@example.com", PASSWORD
         )
-        _, self.raw = PersonalAccessToken.generate(self.user, label="Phone")
+        _, self.raw = PersonalAccessToken.generate(
+            self.user, label="Phone", scopes=[SCOPE_CAPTURE_WRITE]
+        )
         # enforce_csrf_checks, because the default client silently disables
         # CSRF and that is precisely what hid a real bug here: a bad token
         # used to fall through to session auth and answer "403 CSRF check
@@ -115,11 +117,24 @@ class CaptureEndpointTest(TestCase):
 
     def test_a_capture_belongs_to_the_token_holder_not_whoever_asks(self):
         other = User.objects.create_user("bob", "bob@example.com", PASSWORD)
-        _, other_raw = PersonalAccessToken.generate(other)
+        _, other_raw = PersonalAccessToken.generate(
+            other, scopes=[SCOPE_CAPTURE_WRITE]
+        )
 
         self.post({"text": "Bob's thought"}, token=other_raw)
 
         self.assertEqual(Capture.objects.get().owner, other)
+
+    def test_a_token_without_capture_write_is_401(self):
+        # Valid, unexpired, wrong capability.
+        _, read_only = PersonalAccessToken.generate(
+            self.user, scopes=["identity:read"]
+        )
+
+        response = self.post({"text": "Call the vet"}, token=read_only)
+
+        self.assertEqual(response.status_code, 401)
+        self.assertFalse(Capture.objects.exists())
 
     def test_empty_text_is_rejected_with_the_same_message_the_form_shows(self):
         response = self.post({"text": "   "}, token=self.raw)
@@ -223,7 +238,9 @@ class CaptureIdempotencyKeyTest(CaptureEndpointTest):
 
     def test_different_owners_may_reuse_the_same_key(self):
         other = User.objects.create_user("bob", "bob@example.com", PASSWORD)
-        _, other_raw = PersonalAccessToken.generate(other)
+        _, other_raw = PersonalAccessToken.generate(
+            other, scopes=[SCOPE_CAPTURE_WRITE]
+        )
         key = uuid.uuid4()
 
         self.post({"text": "Mine"}, token=self.raw, idempotency_key=key)

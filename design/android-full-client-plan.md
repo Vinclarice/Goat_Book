@@ -16,15 +16,23 @@ the website since Bittern shipped — Daily Page, Agenda, Areas, Projects,
 Review, Routines all now have real, Tailwind-redesigned surfaces — and wants
 the phone to be able to do more than write into the Inbox and leave.
 
-**What "mirror the website" actually requires, checked rather than assumed:**
-most of the backend is already there. `lists/api_v1.py`, `daily/api_v1.py`,
-`review/api_v1.py`, and `routines/api_v1.py` are the same token-authenticated
-Ninja API the SPA itself consumes — nav, agenda, areas, projects, task
-detail, archive, the day, the week, routines. Android already speaks Bearer
-auth to this host (`ClariceApi.identify`/`capture`). The one real gap is
-`capture.Idea`, which has no Ninja API at all (noted in
-`second-mind-discovery-plan.md` and `roadmap.md`'s own direction note) — that
-stays out of scope until its own slice.
+**What "mirror the website" actually requires — checked, and corrected once
+by a real device.** `lists/api_v1.py`, `daily/api_v1.py`, `review/api_v1.py`,
+and `routines/api_v1.py` are the same *routes* the SPA consumes — nav,
+agenda, areas, projects, task detail, archive, the day, the week, routines.
+What this section originally claimed, wrongly, is that they're the same
+*auth* as `/api/v1/me`/`/api/v1/capture`. They are not: `clarice/api.py`
+sets `NinjaAPI(auth=django_auth, ...)` as the default for every router, and
+only `/me` and `/capture` explicitly opt into
+`auth=[TokenAuth(), SessionAuthIfLoggedIn()]`. Every other router, daily
+included, is session-cookie-only by deliberate design ("a day is written
+from the browser", per that file's own comment) — a phone carries no
+session, so a personal access token that authenticates `/me` perfectly is
+simply refused by `/day`. This was invisible to every unit test, which mocks
+the server response, and only surfaced installing slice 1 on a real device
+— see §6. `capture.Idea` remains the other real gap: it has no Ninja API at
+all (noted in `second-mind-discovery-plan.md` and `roadmap.md`'s own
+direction note) — that stays out of scope until its own slice.
 
 So this is mostly an Android build-out — a navigation shell plus a screen per
 domain, wired to APIs that already exist — not a backend rebuild. It is still
@@ -124,11 +132,11 @@ Read-only parity with what `DayOut` actually returns, verified by:
   handling) — written first, per `principles.md`.
 - `:app:compileDebugKotlin` and the full `:app:testDebugUnitTest` suite
   green.
-- What this environment cannot do: no Android emulator or attached device
-  (the same gap `roadmap.md`'s carried-forward Bittern checklist already
-  names as low-priority and unresolved), so this is not visually verified
-  on a running app. Say so rather than claim otherwise; Vince's own device
-  pass is the real check before this ships.
+- Device pass, August 10, 2026: installed and launched clean on both the
+  SM-S928U1 and the SM-F966U, no crashes, theme and tab switching correct.
+  **Today itself does not load** — see §6. The build/test evidence above is
+  real; "works end to end on a phone" is not yet true, and this doc says so
+  rather than the weaker claim standing uncorrected.
 
 ## 5. What this doesn't decide yet
 
@@ -137,3 +145,27 @@ per surface or bundled once the read side of everything exists, and whether
 `capture.Idea` gets a Ninja API before or after the rest of the read-only
 surfaces are mirrored. Recorded here as open rather than answered by
 momentum.
+
+## 6. Blocked: session-only auth, found by the device pass
+
+`GET /api/v1/day` answers 401 to the same Bearer token that authenticates
+`/api/v1/me` cleanly (confirmed on-device: Settings shows "Connected as
+Vrbeall01" while Today shows "Reconnect in Settings to see today.," same
+stored token, same request). Root cause is §1's correction above — `daily`
+is session-only by design, not a bug in `DailyApi.kt`.
+
+**Not a quick patch.** Copying `capture/api_v1.py`'s
+`auth=[TokenAuth(), SessionAuthIfLoggedIn()]` onto `daily` (and later
+`lists`/`routines`/`review`) would work, but it silently widens what a
+personal access token can do. Today a token can write a capture and read a
+username/email — a narrow, deliberately-scoped surface
+(`bittern-plan.md`'s M1). Opting a router into `TokenAuth` as-is would let
+that same token read the whole Daily Page, including the Compass and
+journal text, with no way to grant read access without also trusting the
+token for account identity. Vince's call, asked directly rather than
+patched around: **design a scoped/read-only token tier before widening any
+more endpoints**, rather than opting each one into today's all-or-nothing
+`TokenAuth`. That design is its own piece of work, not sized or started
+here — this section exists so slice 1's real status (compiles, tests green,
+does not load real data on a phone) isn't lost between sessions, and so the
+next session doesn't re-diagnose what this one already found.

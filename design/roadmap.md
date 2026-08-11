@@ -717,21 +717,27 @@ height override once found; see `archive-redesign-plan.md`'s own §5 for
 the full accounting.
 
 **A sixth, separate line of work — not folded into Release F, started
-August 10, 2026, slice 1 in progress.** Trigger: Vince asked for a "more
-comprehensive overhaul" of the Android app after a frontend-design pass on
-its (previously nonexistent) visual theme, wanting it to become a real
-mirror of the website rather than stay capture-only — firing the direction
-already recorded above the same day.
+August 10, 2026, slice 1 built but blocked on a real device.** Trigger:
+Vince asked for a "more comprehensive overhaul" of the Android app after a
+frontend-design pass on its (previously nonexistent) visual theme, wanting
+it to become a real mirror of the website rather than stay capture-only —
+firing the direction already recorded above the same day.
 [`android-full-client-plan.md`](android-full-client-plan.md) checked the
-actual gap first: most of the domain already has a token-authenticated
-Ninja API (`lists`, `daily`, `review`, `routines` `api_v1.py`), the same one
-the SPA consumes, so this is mostly an Android build-out rather than a
-backend rebuild — except `capture.Idea`, which still has none. Slice 1,
-Vince's own choice of surface and scope: the Daily Page, read-only — a new
-`DailyApi`, a `DailyScreen`, and a lightweight tab switcher beside the
-existing Capture screen, with pin/unpin, routine logging and day-editing
-deliberately deferred to a later slice. See that plan's §3 for the exact
-scope line and §5 for what's still undecided after this slice.
+actual gap first, and got half of it wrong: `lists`, `daily`, `review`, and
+`routines` `api_v1.py` are the same *routes* the SPA consumes, but not the
+same *auth* — only `/api/v1/me` and `/api/v1/capture` accept the Bearer
+token Android carries, everything else is session-cookie-only by design.
+Slice 1, Vince's own choice of surface and scope — the Daily Page,
+read-only: a new `DailyApi`, a `DailyScreen`, and a lightweight tab switcher
+beside the existing Capture screen, pin/unpin and routine logging and
+day-editing deliberately deferred — built clean, 212 tests green, and
+installed without a crash on both the SM-S928U1 and the SM-F966U. Today
+itself doesn't load: the stored token authenticates Settings fine and gets
+401 from `/api/v1/day`. Asked directly rather than patched around, Vince's
+call is to design a scoped/read-only personal-access-token tier before
+opting any more routers into today's all-or-nothing `TokenAuth` — see that
+plan's §6 for the finding and §5 for what else is still undecided. Not
+scheduled as its own piece of work yet.
 
 Move completed detail into `roadmap-history.md` and keep only the resulting
 baseline or remaining consequence here. When an idea from Later earns work,

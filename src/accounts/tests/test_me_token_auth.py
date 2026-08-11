@@ -15,7 +15,7 @@ already infer.
 """
 from django.test import Client, TestCase
 
-from accounts.models import PersonalAccessToken, User
+from accounts.models import SCOPE_IDENTITY_READ, PersonalAccessToken, User
 
 
 PASSWORD = "correct horse battery staple 47!"
@@ -27,7 +27,7 @@ class MeWithBearerTokenTest(TestCase):
             "alice", "alice@example.com", PASSWORD
         )
         self.token_row, self.raw = PersonalAccessToken.generate(
-            self.user, label="Phone"
+            self.user, label="Phone", scopes=[SCOPE_IDENTITY_READ]
         )
         self.client = Client(enforce_csrf_checks=True)
 
@@ -73,11 +73,24 @@ class MeWithBearerTokenTest(TestCase):
 
     def test_one_users_token_never_answers_as_another(self):
         bob = User.objects.create_user("bob", "bob@example.com", PASSWORD)
-        _, bobs_raw = PersonalAccessToken.generate(bob)
+        _, bobs_raw = PersonalAccessToken.generate(
+            bob, scopes=[SCOPE_IDENTITY_READ]
+        )
 
         response = self.get_me(bobs_raw)
 
         self.assertEqual(response.json()["username"], "bob")
+
+    def test_a_token_without_identity_read_is_refused(self):
+        # Valid, unexpired, wrong capability -- a capture-only token must
+        # not also be able to read who it belongs to.
+        _, capture_only = PersonalAccessToken.generate(
+            self.user, scopes=["capture:write"]
+        )
+
+        response = self.get_me(capture_only)
+
+        self.assertEqual(response.status_code, 401)
 
     def test_using_a_token_records_that_it_was_used(self):
         # Connect is the first thing to touch a fresh token, so this is

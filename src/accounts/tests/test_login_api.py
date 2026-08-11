@@ -10,8 +10,9 @@ does to the web login form -- see accounts/tests/test_lockout.py.
 import json
 
 from django.test import Client, TestCase
+from django.utils import timezone
 
-from accounts.models import PersonalAccessToken, User
+from accounts.models import ANDROID_DEFAULT_SCOPES, PersonalAccessToken, User
 
 
 PASSWORD = "correct horse battery staple 47!"
@@ -50,6 +51,25 @@ class LoginEndpointTest(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
+
+    def test_a_fresh_login_grants_the_android_default_scopes(self):
+        # token-scopes-plan.md: logging in from the app is a different path
+        # from the web's manual scope picker -- nobody should have to
+        # understand scopes to sign in, so the server applies a fixed,
+        # versioned default rather than asking.
+        self.post({"username": "alice", "password": PASSWORD})
+
+        token = PersonalAccessToken.objects.get()
+        self.assertEqual(token.scope_set, set(ANDROID_DEFAULT_SCOPES))
+
+    def test_a_fresh_login_sets_an_expiry_rather_than_none(self):
+        # A lost phone must not be a standing, unbounded risk -- see
+        # token-scopes-plan.md's "no expiry" gap.
+        self.post({"username": "alice", "password": PASSWORD})
+
+        token = PersonalAccessToken.objects.get()
+        self.assertIsNotNone(token.expires_at)
+        self.assertGreater(token.expires_at, timezone.now())
 
     def test_wrong_password_is_401_and_creates_nothing(self):
         response = self.post({"username": "alice", "password": "not it"})

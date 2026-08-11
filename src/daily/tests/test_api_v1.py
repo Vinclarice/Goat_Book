@@ -16,7 +16,7 @@ from datetime import date, timedelta
 from django.test import Client, TestCase
 from django.utils import timezone
 
-from accounts.models import User
+from accounts.models import SCOPE_DAY_READ, PersonalAccessToken, User
 from daily import services
 from daily import services as daily_services
 from daily.models import DailyFocus
@@ -317,3 +317,84 @@ class DayActionItemsTest(TestCase):
         self.assertEqual(len(body["projects"]), 1)
         self.assertEqual(body["projects"][0]["title"], "Kitchen remodel")
         self.assertEqual(body["projects"][0]["url"], f"/app/projects/{project.id}")
+
+
+class DayEndpointTokenAuthTest(TestCase):
+    """GET /api/v1/day and /api/v1/day/{day} accepting a Bearer token --
+    android-full-client-plan.md slice 1, found blocked on a real device
+    because this router used to be session-only by design. See
+    token-scopes-plan.md for the scope this adds and why.
+
+    Read-only: the router's write endpoints (focus, the day's own text)
+    are untouched by this and stay session-only, covered by
+    DayEndpointTest above.
+    """
+
+    def setUp(self):
+        self.alice = User.objects.create_user(
+            "alice", "alice@example.com", PASSWORD
+        )
+        self.client = Client(enforce_csrf_checks=True)
+
+    def get(self, url, token=None):
+        extra = {}
+        if token is not None:
+            extra["HTTP_AUTHORIZATION"] = f"Bearer {token}"
+        return self.client.get(url, **extra)
+
+    def test_a_token_with_day_read_reads_today(self):
+        _, raw = PersonalAccessToken.generate(
+            self.alice, scopes=[SCOPE_DAY_READ]
+        )
+
+        response = self.get("/api/v1/day", token=raw)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["date"], response.json()["today"])
+
+    def test_a_token_with_day_read_reads_a_named_day(self):
+        _, raw = PersonalAccessToken.generate(
+            self.alice, scopes=[SCOPE_DAY_READ]
+        )
+
+        response = self.get(URL, token=raw)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["date"], "2026-08-03")
+
+    def test_a_token_without_day_read_is_refused(self):
+        # Valid, unexpired, wrong capability -- a capture-only token must
+        # not also be able to read the Compass and journal text.
+        _, capture_only = PersonalAccessToken.generate(
+            self.alice, scopes=["capture:write"]
+        )
+
+        response = self.get("/api/v1/day", token=capture_only)
+
+        self.assertEqual(response.status_code, 401)
+
+    def test_no_credential_at_all_is_401(self):
+        # Confirms the router no longer silently falls back to something
+        # more permissive than session-or-scoped-token.
+        response = self.get("/api/v1/day")
+
+        self.assertEqual(response.status_code, 401)
+
+    def test_one_users_token_never_reads_another_users_day(self):
+        bob = User.objects.create_user("bob", "bob@example.com", PASSWORD)
+        services.write_entry(bob, AUGUST_3, intentions="Bob's own plan")
+        _, alices_raw = PersonalAccessToken.generate(
+            self.alice, scopes=[SCOPE_DAY_READ]
+        )
+
+        response = self.get(URL, token=alices_raw)
+
+        self.assertNotEqual(response.json()["intentions"], "Bob's own plan")
+
+    def test_a_logged_in_session_still_works_unchanged(self):
+        # Token auth is additive -- the SPA's own path must not have moved.
+        self.client.force_login(self.alice)
+
+        response = self.client.get("/api/v1/day")
+
+        self.assertEqual(response.status_code, 200)

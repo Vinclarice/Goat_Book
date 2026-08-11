@@ -11,6 +11,7 @@ from ninja import Router, Schema
 from ninja.errors import HttpError
 
 from accounts.auth import SessionAuthIfLoggedIn, TokenAuth
+from accounts.models import SCOPE_CAPTURE_WRITE
 from capture.services import CaptureConflict, create_capture, create_capture_idempotent
 
 router = Router()
@@ -38,8 +39,9 @@ class CaptureOut(Schema):
     # browser request (no bearer header) falls through to it unchanged.
     # The session auth is the subclass rather than plain django_auth so a
     # *failed* token doesn't come back as "CSRF check Failed" -- see
-    # accounts.auth.SessionAuthIfLoggedIn.
-    auth=[TokenAuth(), SessionAuthIfLoggedIn()],
+    # accounts.auth.SessionAuthIfLoggedIn. capture:write is the one scope
+    # every Android token has always needed -- see token-scopes-plan.md.
+    auth=[TokenAuth(SCOPE_CAPTURE_WRITE), SessionAuthIfLoggedIn()],
 )
 def new_capture(request, payload: CaptureIn):
     # Bittern M1: optional, mobile-only. A browser POST from CaptureForm's

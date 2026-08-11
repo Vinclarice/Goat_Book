@@ -23,6 +23,8 @@ from django.utils import timezone
 from ninja import Router, Schema
 from ninja.errors import HttpError
 
+from accounts.auth import SessionAuthIfLoggedIn, TokenAuth
+from accounts.models import SCOPE_AGENDA_READ
 from capture.models import Capture
 from lists import agenda as agenda_reader
 from lists import projects as project_reader
@@ -226,7 +228,16 @@ def navigation(request):
     }
 
 
-@router.get("/agenda", response=AgendaOut)
+@router.get(
+    "/agenda",
+    response=AgendaOut,
+    # Token auth as well as session -- android-full-client-plan.md's slice
+    # 2. Read-only: the write actions the Agenda page performs live on the
+    # hand-rolled lists.api views, which get their own token support via
+    # token_or_session_required (see accounts/auth.py and
+    # token-scopes-plan.md §7) since they were never on this Ninja router.
+    auth=[TokenAuth(SCOPE_AGENDA_READ), SessionAuthIfLoggedIn()],
+)
 def agenda(request):
     user = request.user
     today = timezone.localdate()

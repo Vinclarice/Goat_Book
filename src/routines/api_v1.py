@@ -13,11 +13,20 @@ from django.utils import timezone
 from ninja import Router, Schema
 from ninja.errors import HttpError
 
+from accounts.auth import SessionAuthIfLoggedIn, TokenAuth
+from accounts.models import SCOPE_ROUTINES_WRITE
 from routines import reads, services
 from routines.models import Routine
 
 
 router = Router()
+
+# Every mutation below -- keeping a routine, logging, skipping, calling it
+# enough, pausing, resuming -- shares one scope. The read side
+# (GET /routines) is untouched: nothing has asked Android to call it
+# directly yet, since the Daily Page's own day:read already carries
+# standings embedded in DayOut -- see token-scopes-plan.md.
+_TOKEN_OR_SESSION_WRITE = [TokenAuth(SCOPE_ROUTINES_WRITE), SessionAuthIfLoggedIn()]
 
 
 class StandingOut(Schema):
@@ -111,7 +120,7 @@ def routine_standings(request):
     return _standings_out(request.user)
 
 
-@router.post("/routines", response=StandingsOut)
+@router.post("/routines", response=StandingsOut, auth=_TOKEN_OR_SESSION_WRITE)
 def new_routine(request, payload: RoutineIn):
     if payload.cadence not in Routine.Cadence.values:
         raise HttpError(400, "Choose a valid cadence.")
@@ -129,7 +138,7 @@ def new_routine(request, payload: RoutineIn):
     return _standings_out(request.user)
 
 
-@router.post("/routines/{routine_id}/log", response=StandingsOut)
+@router.post("/routines/{routine_id}/log", response=StandingsOut, auth=_TOKEN_OR_SESSION_WRITE)
 def log_routine(request, routine_id: int, payload: LogIn):
     """Add to the current period, returning every standing rather than one.
 
@@ -159,7 +168,7 @@ def log_routine(request, routine_id: int, payload: LogIn):
     return _standings_out(request.user)
 
 
-@router.post("/routines/{routine_id}/enough", response=StandingsOut)
+@router.post("/routines/{routine_id}/enough", response=StandingsOut, auth=_TOKEN_OR_SESSION_WRITE)
 def call_it_enough(request, routine_id: int):
     """Close this period at what was done, content with it.
 
@@ -179,7 +188,7 @@ def call_it_enough(request, routine_id: int):
     return _standings_out(request.user)
 
 
-@router.post("/routines/{routine_id}/pause", response=StandingsOut)
+@router.post("/routines/{routine_id}/pause", response=StandingsOut, auth=_TOKEN_OR_SESSION_WRITE)
 def pause(request, routine_id: int):
     """Put a routine down, keeping everything it has already done."""
     routine = _own_routine_or_404(request.user, routine_id)
@@ -187,7 +196,7 @@ def pause(request, routine_id: int):
     return _standings_out(request.user)
 
 
-@router.post("/routines/{routine_id}/resume", response=StandingsOut)
+@router.post("/routines/{routine_id}/resume", response=StandingsOut, auth=_TOKEN_OR_SESSION_WRITE)
 def resume(request, routine_id: int):
     """Pick it back up. Nothing is written for the time it was down."""
     routine = _own_routine_or_404(request.user, routine_id)
@@ -195,7 +204,7 @@ def resume(request, routine_id: int):
     return _standings_out(request.user)
 
 
-@router.post("/routines/{routine_id}/skip", response=StandingsOut)
+@router.post("/routines/{routine_id}/skip", response=StandingsOut, auth=_TOKEN_OR_SESSION_WRITE)
 def skip_routine(request, routine_id: int):
     """Record that this period was deliberately not done.
 

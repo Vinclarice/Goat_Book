@@ -179,13 +179,45 @@ def hash_token(raw):
 SCOPE_CAPTURE_WRITE = "capture:write"
 SCOPE_IDENTITY_READ = "identity:read"
 SCOPE_DAY_READ = "day:read"
+# agenda:write covers exactly create_item and item_detail's status/due_date
+# fields -- not text/tags/recurrence/notes, and never DELETE. See
+# token-scopes-plan.md §7 for the endpoint-level guard that enforces the
+# narrower boundary; the scope name itself is deliberately no more precise
+# than that, matching this file's existing per-surface granularity.
+SCOPE_AGENDA_READ = "agenda:read"
+SCOPE_AGENDA_WRITE = "agenda:write"
+# day:write covers pin_to_day, unpin_from_day and write_day (daily/api_v1.py)
+# -- choosing today's focus and writing the day's own Intentions/Grateful
+# for/Happenings text. routines:write is the sibling scope for the whole of
+# routines/api_v1.py's six mutations (create/log/skip/enough/pause/resume) --
+# a separate scope because it's a structurally separate Ninja router, the
+# same reasoning that kept agenda:write scoped to lists.api rather than
+# folded into day:write.
+SCOPE_DAY_WRITE = "day:write"
+SCOPE_ROUTINES_WRITE = "routines:write"
 
-ALL_SCOPES = (SCOPE_CAPTURE_WRITE, SCOPE_IDENTITY_READ, SCOPE_DAY_READ)
+ALL_SCOPES = (
+    SCOPE_CAPTURE_WRITE,
+    SCOPE_IDENTITY_READ,
+    SCOPE_DAY_READ,
+    SCOPE_AGENDA_READ,
+    SCOPE_AGENDA_WRITE,
+    SCOPE_DAY_WRITE,
+    SCOPE_ROUTINES_WRITE,
+)
 
 # What POST /api/v1/login mints for the Android client without asking
 # anyone to pick scopes to log in -- picking scopes belongs to the web's
 # manual token-creation form, not to signing into the app you're holding.
-ANDROID_DEFAULT_SCOPES = (SCOPE_CAPTURE_WRITE, SCOPE_IDENTITY_READ, SCOPE_DAY_READ)
+ANDROID_DEFAULT_SCOPES = (
+    SCOPE_CAPTURE_WRITE,
+    SCOPE_IDENTITY_READ,
+    SCOPE_DAY_READ,
+    SCOPE_AGENDA_READ,
+    SCOPE_AGENDA_WRITE,
+    SCOPE_DAY_WRITE,
+    SCOPE_ROUTINES_WRITE,
+)
 
 # How long a login-minted Android token lasts before its holder has to sign
 # in again -- bounding a lost phone's exposure the way an unscoped, never-

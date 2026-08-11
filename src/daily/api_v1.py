@@ -13,7 +13,7 @@ from ninja import Router, Schema
 from ninja.errors import HttpError
 
 from accounts.auth import SessionAuthIfLoggedIn, TokenAuth
-from accounts.models import SCOPE_DAY_READ
+from accounts.models import SCOPE_DAY_READ, SCOPE_DAY_WRITE
 from daily import reads, services
 from lists import agenda
 from lists import projects as project_reader
@@ -271,15 +271,14 @@ def _own_task_or_404(owner, task_id):
 
 
 _TOKEN_OR_SESSION_READ = [TokenAuth(SCOPE_DAY_READ), SessionAuthIfLoggedIn()]
+_TOKEN_OR_SESSION_WRITE = [TokenAuth(SCOPE_DAY_WRITE), SessionAuthIfLoggedIn()]
 
 
 # Token auth as well as session -- android-full-client-plan.md's slice 1,
 # found blocked on a real device because this router used to be session-only
 # by design ("a day is written from the browser," per clarice/api.py's own
-# comment). day:read is read-only on purpose: the write endpoints below
-# (focus, the day's own text) stay session-only, since nothing has asked
-# Android to write here yet -- see token-scopes-plan.md for why scopes are
-# added one at a time rather than all at once.
+# comment). day:read and day:write are separate scopes, added one at a time
+# as Android actually needed each -- see token-scopes-plan.md.
 @router.get("/day", response=DayOut, auth=_TOKEN_OR_SESSION_READ)
 def get_today(request):
     return _day_out(request.user, _today_for_request())
@@ -290,7 +289,7 @@ def get_day(request, day: date):
     return _day_out(request.user, day)
 
 
-@router.post("/day/{day}/focus", response=DayOut)
+@router.post("/day/{day}/focus", response=DayOut, auth=_TOKEN_OR_SESSION_WRITE)
 def pin_to_day(request, day: date, payload: FocusIn):
     """Choose a task as work for this day.
 
@@ -306,7 +305,7 @@ def pin_to_day(request, day: date, payload: FocusIn):
     return _day_out(request.user, day)
 
 
-@router.delete("/day/{day}/focus/{task_id}", response=DayOut)
+@router.delete("/day/{day}/focus/{task_id}", response=DayOut, auth=_TOKEN_OR_SESSION_WRITE)
 def unpin_from_day(request, day: date, task_id: int):
     """Take a task off this day, keeping the record that it was chosen."""
     task = _own_task_or_404(request.user, task_id)
@@ -314,7 +313,7 @@ def unpin_from_day(request, day: date, task_id: int):
     return _day_out(request.user, day)
 
 
-@router.patch("/day/{day}", response=DayOut)
+@router.patch("/day/{day}", response=DayOut, auth=_TOKEN_OR_SESSION_WRITE)
 def write_day(request, day: date, payload: DayIn):
     """Write into the requesting user's day.
 

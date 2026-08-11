@@ -5,9 +5,19 @@ from functools import wraps
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 
+from accounts.auth import token_or_session_required
+from accounts.models import SCOPE_AGENDA_WRITE
 from lists import services
 from lists.models import ChecklistStep, Item, List
 from lists.serializers import serialize_checklist_step, serialize_item
+
+# What a token-authenticated request may change through item_detail --
+# android-full-client-plan.md slice 2 only ever sends status (complete/
+# reopen) or due_date (snooze), never text/tags/recurrence/notes and never
+# DELETE. See token-scopes-plan.md §7: this endpoint's own auth check can't
+# express that boundary (it wraps the whole view), so the guard lives here,
+# where the field-level knowledge already does.
+_TOKEN_ALLOWED_FIELDS = {"status", "due_date"}
 
 
 class _InvalidDueDate(Exception):
@@ -69,7 +79,7 @@ def _owned_checklist_step(request, step_id):
     ).first()
 
 
-@api_login_required
+@token_or_session_required(SCOPE_AGENDA_WRITE)
 @require_http_methods(["POST"])
 def create_item(request, list_id):
     our_list = List.objects.filter(id=list_id, owner=request.user).first()
@@ -156,7 +166,7 @@ def reorder_items(request, list_id):
     )
 
 
-@api_login_required
+@token_or_session_required(SCOPE_AGENDA_WRITE)
 @require_http_methods(["PATCH", "DELETE"])
 def item_detail(request, item_id):
     item = _owned_item(request, item_id)
@@ -167,6 +177,11 @@ def item_detail(request, item_id):
         )
 
     if request.method == "DELETE":
+        if getattr(request, "token_authenticated", False):
+            return JsonResponse(
+                {"errors": {"authentication": ["Not available to a connected phone yet."]}},
+                status=403,
+            )
         try:
             services.delete_archived_item(item)
         except services.InvalidTaskTransition as error:
@@ -193,6 +208,11 @@ def item_detail(request, item_id):
                 }
             },
             status=400,
+        )
+    if getattr(request, "token_authenticated", False) and not changed_fields <= _TOKEN_ALLOWED_FIELDS:
+        return JsonResponse(
+            {"errors": {"authentication": ["Not available to a connected phone yet."]}},
+            status=403,
         )
 
     spawned = None

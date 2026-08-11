@@ -10,7 +10,7 @@ import json
 from django.test import Client, TestCase
 from django.utils import timezone
 
-from accounts.models import User
+from accounts.models import SCOPE_DAY_READ, SCOPE_ROUTINES_WRITE, PersonalAccessToken, User
 from routines import services
 from routines.models import Routine, RoutineOccurrence
 
@@ -275,5 +275,108 @@ class RoutineEndpointTest(TestCase):
         bobs = services.create_routine(self.bob, title="Bob's practice")
 
         response = self.post(f"/api/v1/routines/{bobs.id}/enough", {})
-
         self.assertIn(response.status_code, (403, 404))
+
+
+class RoutineWriteTokenAuthTest(TestCase):
+    """All six routine mutations accepting a Bearer token --
+    android-full-client-plan.md's Daily-edit slice, routines:write half.
+    """
+
+    def setUp(self):
+        self.alice = User.objects.create_user(
+            "alice", "alice@example.com", PASSWORD
+        )
+        self.client = Client(enforce_csrf_checks=True)
+
+    def post(self, url, payload, token=None):
+        extra = {}
+        if token is not None:
+            extra["HTTP_AUTHORIZATION"] = f"Bearer {token}"
+        return self.client.post(
+            url, data=json.dumps(payload), content_type="application/json", **extra
+        )
+
+    def test_a_token_with_routines_write_keeps_a_new_routine(self):
+        _, raw = PersonalAccessToken.generate(self.alice, scopes=[SCOPE_ROUTINES_WRITE])
+
+        response = self.post(
+            "/api/v1/routines",
+            {"title": "Practice Spanish", "cadence": "daily", "target_quantity": 5, "unit": "lessons"},
+            token=raw,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["standings"][0]["title"], "Practice Spanish")
+
+    def test_a_token_with_routines_write_logs_progress_with_no_csrf_token_sent(self):
+        routine = services.create_routine(self.alice, title="Practice Spanish", target_quantity=5)
+        _, raw = PersonalAccessToken.generate(self.alice, scopes=[SCOPE_ROUTINES_WRITE])
+
+        response = self.post(f"/api/v1/routines/{routine.id}/log", {"amount": 1}, token=raw)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["standings"][0]["progress"], 1)
+
+    def test_a_token_with_routines_write_calls_it_enough(self):
+        routine = services.create_routine(self.alice, title="Practice Spanish", target_quantity=5)
+        services.log_progress(self.alice, routine, timezone.localdate(), amount=1)
+        _, raw = PersonalAccessToken.generate(self.alice, scopes=[SCOPE_ROUTINES_WRITE])
+
+        response = self.post(f"/api/v1/routines/{routine.id}/enough", {}, token=raw)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["standings"][0]["outcome"], "partial")
+
+    def test_a_token_with_routines_write_pauses_and_resumes(self):
+        routine = services.create_routine(self.alice, title="Practice Spanish")
+        _, raw = PersonalAccessToken.generate(self.alice, scopes=[SCOPE_ROUTINES_WRITE])
+
+        paused = self.post(f"/api/v1/routines/{routine.id}/pause", {}, token=raw)
+        self.assertEqual(paused.status_code, 200)
+        self.assertEqual(len(paused.json()["standings"]), 0)
+        self.assertEqual(len(paused.json()["paused"]), 1)
+
+        resumed = self.post(f"/api/v1/routines/{routine.id}/resume", {}, token=raw)
+        self.assertEqual(resumed.status_code, 200)
+        self.assertEqual(len(resumed.json()["standings"]), 1)
+
+    def test_a_token_with_routines_write_skips_a_period(self):
+        routine = services.create_routine(self.alice, title="Practice Spanish")
+        _, raw = PersonalAccessToken.generate(self.alice, scopes=[SCOPE_ROUTINES_WRITE])
+
+        response = self.post(f"/api/v1/routines/{routine.id}/skip", {}, token=raw)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["standings"][0]["outcome"], "skipped")
+
+    def test_a_token_without_routines_write_cannot_log(self):
+        routine = services.create_routine(self.alice, title="Practice Spanish", target_quantity=5)
+        _, raw = PersonalAccessToken.generate(self.alice, scopes=[SCOPE_DAY_READ])
+
+        response = self.post(f"/api/v1/routines/{routine.id}/log", {"amount": 1}, token=raw)
+
+        self.assertEqual(response.status_code, 401)
+
+    def test_a_token_cannot_log_someone_elses_routine(self):
+        bob = User.objects.create_user("bob", "bob@example.com", PASSWORD)
+        bobs_routine = services.create_routine(bob, title="Bob's practice")
+        _, raw = PersonalAccessToken.generate(self.alice, scopes=[SCOPE_ROUTINES_WRITE])
+
+        response = self.post(f"/api/v1/routines/{bobs_routine.id}/log", {"amount": 1}, token=raw)
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_a_logged_in_session_can_still_log_without_a_token(self):
+        routine = services.create_routine(self.alice, title="Practice Spanish", target_quantity=5)
+        self.client.force_login(self.alice)
+        csrf = self.client.get("/accounts/password/change/").cookies["csrftoken"].value
+
+        response = self.client.post(
+            f"/api/v1/routines/{routine.id}/log",
+            data=json.dumps({"amount": 1}),
+            content_type="application/json",
+            HTTP_X_CSRFTOKEN=csrf,
+        )
+
+        self.assertEqual(response.status_code, 200)

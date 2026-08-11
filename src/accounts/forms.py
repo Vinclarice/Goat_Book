@@ -10,9 +10,13 @@ from django import forms
 from django.utils import timezone
 
 from accounts.models import (
+    SCOPE_AGENDA_READ,
+    SCOPE_AGENDA_WRITE,
     SCOPE_CAPTURE_WRITE,
     SCOPE_DAY_READ,
+    SCOPE_DAY_WRITE,
     SCOPE_IDENTITY_READ,
+    SCOPE_ROUTINES_WRITE,
     User,
 )
 
@@ -115,6 +119,22 @@ class TokenForm(forms.Form):
         (
             SCOPE_DAY_READ,
             "Read your Daily Page — today's focus, action items, routines and Compass",
+        ),
+        (SCOPE_AGENDA_READ, "Read your Agenda — every open task across every area"),
+        (
+            SCOPE_AGENDA_WRITE,
+            "Complete, reopen or reschedule a task, and add new ones — nothing else "
+            "about a task (its text, tags, notes or recurrence) can be changed this way",
+        ),
+        (
+            SCOPE_DAY_WRITE,
+            "Choose today's focus and write the day's own Intentions, Grateful for "
+            "and Happenings",
+        ),
+        (
+            SCOPE_ROUTINES_WRITE,
+            "Log, skip, pause, resume or call a routine's period enough, and keep new "
+            "routines",
         ),
     ]
 

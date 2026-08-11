@@ -4,7 +4,7 @@ from datetime import timedelta
 from django.test import TestCase
 from django.utils import timezone
 
-from accounts.models import User
+from accounts.models import SCOPE_AGENDA_READ, PersonalAccessToken, User
 from capture.models import Capture
 from lists import agenda as agenda_reader
 from lists import services as list_services
@@ -74,6 +74,65 @@ class AgendaEndpointTest(TestCase):
         self.assertEqual(len(payload["projects"]), 1)
         self.assertEqual(payload["projects"][0]["title"], "Kitchen remodel")
         self.assertEqual(payload["projects"][0]["url"], f"/app/projects/{project.id}")
+
+
+class AgendaTokenAuthTest(TestCase):
+    """GET /api/v1/agenda accepting a Bearer token -- slice 2 of
+    android-full-client-plan.md. Same shape as daily's own token-auth test:
+    agenda:read is required, session auth is untouched, and one user's
+    token never reads another's agenda.
+    """
+
+    def setUp(self):
+        self.alice = User.objects.create_user(
+            "alice", "alice@example.com", "a secure password"
+        )
+        List.objects.create(owner=self.alice, title="Programming")
+
+    def get(self, token=None):
+        extra = {}
+        if token is not None:
+            extra["HTTP_AUTHORIZATION"] = f"Bearer {token}"
+        return self.client.get("/api/v1/agenda", **extra)
+
+    def test_a_token_with_agenda_read_reads_the_agenda(self):
+        _, raw = PersonalAccessToken.generate(
+            self.alice, scopes=[SCOPE_AGENDA_READ]
+        )
+
+        response = self.get(token=raw)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["username"], "alice")
+
+    def test_a_token_without_agenda_read_is_refused(self):
+        _, raw = PersonalAccessToken.generate(
+            self.alice, scopes=["capture:write"]
+        )
+
+        response = self.get(token=raw)
+
+        self.assertEqual(response.status_code, 401)
+
+    def test_one_users_token_never_reads_another_users_agenda(self):
+        bob = User.objects.create_user(
+            "bob", "bob@example.com", "another secure password"
+        )
+        List.objects.create(owner=bob, title="Bob's list")
+        _, alices_raw = PersonalAccessToken.generate(
+            self.alice, scopes=[SCOPE_AGENDA_READ]
+        )
+
+        response = self.get(token=alices_raw)
+
+        self.assertEqual(response.json()["username"], "alice")
+
+    def test_a_logged_in_session_still_works_unchanged(self):
+        self.client.force_login(self.alice)
+
+        response = self.client.get("/api/v1/agenda")
+
+        self.assertEqual(response.status_code, 200)
 
 
 class AreaDetailEndpointTest(TestCase):

@@ -16,7 +16,12 @@ from datetime import date, timedelta
 from django.test import Client, TestCase
 from django.utils import timezone
 
-from accounts.models import SCOPE_DAY_READ, PersonalAccessToken, User
+from accounts.models import (
+    SCOPE_DAY_READ,
+    SCOPE_DAY_WRITE,
+    PersonalAccessToken,
+    User,
+)
 from daily import services
 from daily import services as daily_services
 from daily.models import DailyFocus
@@ -396,5 +401,104 @@ class DayEndpointTokenAuthTest(TestCase):
         self.client.force_login(self.alice)
 
         response = self.client.get("/api/v1/day")
+
+        self.assertEqual(response.status_code, 200)
+
+
+class DayWriteTokenAuthTest(TestCase):
+    """POST/DELETE .../focus and PATCH /api/v1/day/{day} accepting a Bearer
+    token -- android-full-client-plan.md's Daily-edit slice, day:write half.
+    Same shape as DayEndpointTokenAuthTest's read-only tests.
+    """
+
+    def setUp(self):
+        self.alice = User.objects.create_user(
+            "alice", "alice@example.com", PASSWORD
+        )
+        self.list_ = List.objects.create(owner=self.alice, title="Home")
+        self.task = list_services.create_item(self.list_, "Pay rent")
+        self.client = Client(enforce_csrf_checks=True)
+
+    def day_url(self):
+        return f"/api/v1/day/{timezone.localdate().isoformat()}"
+
+    def post(self, url, payload, token=None):
+        extra = {}
+        if token is not None:
+            extra["HTTP_AUTHORIZATION"] = f"Bearer {token}"
+        return self.client.post(
+            url, data=json.dumps(payload), content_type="application/json", **extra
+        )
+
+    def test_a_token_with_day_write_pins_a_task_with_no_csrf_token_sent(self):
+        _, raw = PersonalAccessToken.generate(self.alice, scopes=[SCOPE_DAY_WRITE])
+
+        response = self.post(f"{self.day_url()}/focus", {"task_id": self.task.id}, token=raw)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["focus"][0]["text"], "Pay rent")
+
+    def test_a_token_with_day_write_unpins_a_task(self):
+        _, raw = PersonalAccessToken.generate(self.alice, scopes=[SCOPE_DAY_WRITE])
+        self.post(f"{self.day_url()}/focus", {"task_id": self.task.id}, token=raw)
+
+        response = self.client.delete(
+            f"{self.day_url()}/focus/{self.task.id}",
+            HTTP_AUTHORIZATION=f"Bearer {raw}",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["focus"], [])
+
+    def test_a_token_with_day_write_saves_the_days_own_text(self):
+        _, raw = PersonalAccessToken.generate(self.alice, scopes=[SCOPE_DAY_WRITE])
+
+        response = self.client.patch(
+            self.day_url(),
+            data=json.dumps({"intentions": "Ship the slice"}),
+            content_type="application/json",
+            HTTP_AUTHORIZATION=f"Bearer {raw}",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["intentions"], "Ship the slice")
+
+    def test_a_token_without_day_write_cannot_pin(self):
+        _, raw = PersonalAccessToken.generate(self.alice, scopes=[SCOPE_DAY_READ])
+
+        response = self.post(f"{self.day_url()}/focus", {"task_id": self.task.id}, token=raw)
+
+        self.assertEqual(response.status_code, 401)
+
+    def test_a_token_without_day_write_cannot_edit_the_days_text(self):
+        _, raw = PersonalAccessToken.generate(self.alice, scopes=[SCOPE_DAY_READ])
+
+        response = self.client.patch(
+            self.day_url(),
+            data=json.dumps({"intentions": "Forged"}),
+            content_type="application/json",
+            HTTP_AUTHORIZATION=f"Bearer {raw}",
+        )
+
+        self.assertEqual(response.status_code, 401)
+
+    def test_a_token_cannot_pin_someone_elses_task(self):
+        bob = User.objects.create_user("bob", "bob@example.com", PASSWORD)
+        _, raw = PersonalAccessToken.generate(bob, scopes=[SCOPE_DAY_WRITE])
+
+        response = self.post(f"{self.day_url()}/focus", {"task_id": self.task.id}, token=raw)
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_a_logged_in_session_can_still_pin_without_a_token(self):
+        self.client.force_login(self.alice)
+        csrf = self.client.get("/accounts/password/change/").cookies["csrftoken"].value
+
+        response = self.client.post(
+            f"{self.day_url()}/focus",
+            data=json.dumps({"task_id": self.task.id}),
+            content_type="application/json",
+            HTTP_X_CSRFTOKEN=csrf,
+        )
 
         self.assertEqual(response.status_code, 200)

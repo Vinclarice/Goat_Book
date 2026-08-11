@@ -5,12 +5,21 @@ import android.os.Build
 import android.os.Bundle
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -18,14 +27,20 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
 import com.vinclarice.capture.ui.theme.ClariceTheme
 
 /**
- * The whole app is one activity. Bittern scopes this client to capture and
- * nothing else -- no triage, no idea management, no task editing -- so
- * there is no navigation graph to justify yet, and adding one now would be
- * scaffolding for screens the plan says not to build.
+ * The whole app is one activity. Bittern scoped this client to capture and
+ * nothing else; android-full-client-plan.md's slice 1 is the first crack in
+ * that boundary, adding a second, read-only Today destination beside it.
+ * Two destinations is still not enough to justify a real navigation graph --
+ * [RootTabBar] is a hand-rolled two-button switcher rather than Jetpack
+ * Navigation Compose or a Material `NavigationBar` (which would need an
+ * icon library this app has never depended on), trivially replaceable with
+ * either once there are enough tabs to need one.
  *
  * FragmentActivity rather than ComponentActivity (its own superclass) since
  * design/android-unlock-plan.md's BiometricPrompt requires one -- everything
@@ -40,6 +55,7 @@ class MainActivity : FragmentActivity() {
         // and a dependency-injection framework would be more machinery than
         // the whole app currently contains.
         val api = OkHttpClariceApi(baseUrl = BuildConfig.CLARICE_BASE_URL)
+        val dailyApi = OkHttpDailyApi(baseUrl = BuildConfig.CLARICE_BASE_URL)
         val store = KeystoreTokenStore(applicationContext)
         val connector = Connector(api = api, store = store)
         val queue = CaptureQueue(EncryptedQueueStorage(applicationContext))
@@ -72,6 +88,7 @@ class MainActivity : FragmentActivity() {
                         Root(
                             connector = connector,
                             api = api,
+                            dailyApi = dailyApi,
                             store = store,
                             queue = queue,
                             scheduler = scheduler,
@@ -86,10 +103,19 @@ class MainActivity : FragmentActivity() {
     }
 }
 
+/** The two places someone can be once connected. Settings sits outside this
+ *  set on purpose -- see the class doc on why it stays a per-tab link
+ *  rather than a third entry here. */
+private enum class RootTab(val label: String) {
+    Capture("Capture"),
+    Today("Today"),
+}
+
 @Composable
 private fun Root(
     connector: Connector,
     api: ClariceApi,
+    dailyApi: DailyApi,
     store: TokenStore,
     queue: CaptureQueue,
     scheduler: DeliveryScheduler,
@@ -123,9 +149,13 @@ private fun Root(
     // whatever half-finished thought was in the field. The queue now covers
     // everything already submitted; this covers what is still being typed.
     val captureModel = remember { CaptureViewModel(api, store, queue, scheduler, preferences) }
+    // Same reasoning as captureModel: held above the tab switch so opening
+    // Settings and coming back doesn't drop today's already-loaded state.
+    val dailyModel = remember { DailyViewModel(dailyApi, store) }
 
     var connected by remember { mutableStateOf(connectModel.isConnected) }
     var showSettings by remember { mutableStateOf(false) }
+    var selectedTab by remember { mutableStateOf(RootTab.Capture) }
 
     // Seeded, never sent. Another app's content is put in front of a person
     // to edit or abandon; posting it on their behalf would make every share
@@ -167,6 +197,47 @@ private fun Root(
         return
     }
 
-    // Capture is the destination; Connect exists only to get here once.
-    CaptureScreen(model = captureModel, onOpenSettings = { showSettings = true })
+    // Connect exists only to get here once; from here it's a choice between
+    // the two tabs, weighted so whichever screen is active fills the space
+    // above the bar rather than the bar floating mid-screen.
+    Column(modifier = Modifier.fillMaxSize()) {
+        Box(modifier = Modifier.weight(1f)) {
+            when (selectedTab) {
+                RootTab.Capture -> CaptureScreen(
+                    model = captureModel,
+                    onOpenSettings = { showSettings = true },
+                )
+                RootTab.Today -> DailyScreen(
+                    model = dailyModel,
+                    onOpenSettings = { showSettings = true },
+                )
+            }
+        }
+        RootTabBar(selected = selectedTab, onSelect = { selectedTab = it })
+    }
+}
+
+@Composable
+private fun RootTabBar(selected: RootTab, onSelect: (RootTab) -> Unit) {
+    HorizontalDivider()
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+    ) {
+        RootTab.entries.forEach { tab ->
+            TextButton(onClick = { onSelect(tab) }) {
+                Text(
+                    tab.label,
+                    color = if (tab == selected) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                    fontWeight = if (tab == selected) FontWeight.SemiBold else FontWeight.Normal,
+                )
+            }
+        }
+    }
 }

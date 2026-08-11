@@ -540,18 +540,17 @@ the distinction is exactly what keeps a Later list from becoming a backlog.
   a mind-map-style view and an append-only idea log.
 - Add AI only as a transparent, confirm-before-write planning assistant after
   the daily and review records have earned enough real use.
-- **Turn the Android app into a fully functional client, not just capture.**
-  Vince's stated direction, August 10, 2026, raised while reviewing whether
-  4.1–4.3 needed a Ninja API: they didn't, because Track F's Android client
-  is deliberately create-only today ("triage remains in the web app," per
-  that section) and nothing yet asks it to be more. That boundary is
-  intended to move, not fixed — browsing, tagging, editing and relating
-  Ideas from the phone would need capture's create-only API
-  (`capture/api_v1.py`) to grow into a real read/write surface for Idea (and
-  likely Item), the same shape 4.1 and 4.3's design notes already flagged as
-  absent. No trigger has fired and nothing here is scheduled; recorded so
-  the next time an Idea-adjacent slice asks "do we need an API for this,"
-  the answer's history is visible instead of re-derived from scratch.
+- ~~**Turn the Android app into a fully functional client, not just
+  capture.**~~ **Trigger fired August 10, 2026 (the same day this was first
+  recorded)** — see below. Vince's stated direction, raised while reviewing
+  whether 4.1–4.3 needed a Ninja API: they didn't, because Track F's Android
+  client is deliberately create-only today ("triage remains in the web app,"
+  per that section) and nothing yet asked it to be more. Browsing, tagging,
+  editing and relating Ideas from the phone still needs capture's
+  create-only API (`capture/api_v1.py`) to grow into a real read/write
+  surface for Idea (and likely Item), the same gap 4.1 and 4.3's design
+  notes already flagged — that piece is explicitly not part of slice 1,
+  named as open in the new plan's §5.
 
 ### Only if Clarice becomes a business
 
@@ -716,6 +715,23 @@ actually 28–36px despite each brief's own ≥44px claim and each live
 verification reporting it confirmed. Fixed in all three with an explicit
 height override once found; see `archive-redesign-plan.md`'s own §5 for
 the full accounting.
+
+**A sixth, separate line of work — not folded into Release F, started
+August 10, 2026, slice 1 in progress.** Trigger: Vince asked for a "more
+comprehensive overhaul" of the Android app after a frontend-design pass on
+its (previously nonexistent) visual theme, wanting it to become a real
+mirror of the website rather than stay capture-only — firing the direction
+already recorded above the same day.
+[`android-full-client-plan.md`](android-full-client-plan.md) checked the
+actual gap first: most of the domain already has a token-authenticated
+Ninja API (`lists`, `daily`, `review`, `routines` `api_v1.py`), the same one
+the SPA consumes, so this is mostly an Android build-out rather than a
+backend rebuild — except `capture.Idea`, which still has none. Slice 1,
+Vince's own choice of surface and scope: the Daily Page, read-only — a new
+`DailyApi`, a `DailyScreen`, and a lightweight tab switcher beside the
+existing Capture screen, with pin/unpin, routine logging and day-editing
+deliberately deferred to a later slice. See that plan's §3 for the exact
+scope line and §5 for what's still undecided after this slice.
 
 Move completed detail into `roadmap-history.md` and keep only the resulting
 baseline or remaining consequence here. When an idea from Later earns work,

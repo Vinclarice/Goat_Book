@@ -31,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -316,7 +317,17 @@ private fun ActionItemRow(
     DailyRow {
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(item.text, style = MaterialTheme.typography.bodyMedium)
+                // Weighted and truncating rather than both Texts sizing to
+                // their own content: an unweighted long title left "Pinned"
+                // as little as a few px of a narrow row, wrapping it letter
+                // by letter instead of ever shrinking the title beside it.
+                Text(
+                    item.text,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
                 // Stays in the list below rather than being carved out of it --
                 // this row says which it is rather than leaving two
                 // identical-looking entries between here and Focus.
@@ -325,6 +336,8 @@ private fun ActionItemRow(
                         "  Pinned",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary,
+                        maxLines = 1,
+                        softWrap = false,
                     )
                 }
             }

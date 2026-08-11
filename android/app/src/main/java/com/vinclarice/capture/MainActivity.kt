@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -20,6 +19,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.fragment.app.FragmentActivity
+import com.vinclarice.capture.ui.theme.ClariceTheme
 
 /**
  * The whole app is one activity. Bittern scopes this client to capture and
@@ -59,7 +59,7 @@ class MainActivity : FragmentActivity() {
         )
 
         setContent {
-            MaterialTheme {
+            ClariceTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     // The Surface fills the screen so its background paints
                     // behind the system bars; the content is inset so it

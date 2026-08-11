@@ -66,7 +66,7 @@ fun SettingsScreen(
 
         val identity = state.identity
         when {
-            state.loading -> CircularProgressIndicator()
+            state.loading -> CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
 
             identity != null -> {
                 Text(

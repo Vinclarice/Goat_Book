@@ -110,7 +110,10 @@ fun ConnectScreen(
             modifier = Modifier.fillMaxWidth(),
         ) {
             if (state.checking) {
-                CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp))
+                CircularProgressIndicator(
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(end = 8.dp),
+                )
             }
             Text(if (state.checking) "Checking…" else "Log in")
         }
@@ -155,7 +158,10 @@ fun ConnectScreen(
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 if (state.checking) {
-                    CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp))
+                    CircularProgressIndicator(
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(end = 8.dp),
+                    )
                 }
                 Text(if (state.checking) "Checking…" else "Connect")
             }

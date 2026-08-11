@@ -111,16 +111,22 @@ export interface AgendaFilters {
   scope: string | null;
   area: number | null;
   tag: string | null;
+  // Free text, matched against a task's own text -- empty means inactive,
+  // same convention a controlled <input> already defaults to.
+  query: string;
 }
 
 export const NO_FILTERS: AgendaFilters = {
   scope: null,
   area: null,
   tag: null,
+  query: "",
 };
 
 export function hasFilters(filters: AgendaFilters): boolean {
-  return Boolean(filters.scope || filters.area !== null || filters.tag);
+  return Boolean(
+    filters.scope || filters.area !== null || filters.tag || filters.query.trim(),
+  );
 }
 
 export function applyFilters(
@@ -128,6 +134,7 @@ export function applyFilters(
   today: string,
   filters: AgendaFilters,
 ): Task[] {
+  const query = filters.query.trim().toLocaleLowerCase();
   return tasks.filter((task) => {
     if (filters.scope && SCOPES[filters.scope]) {
       if (!SCOPES[filters.scope].includes(bucketFor(task.due_date, today))) {
@@ -136,6 +143,7 @@ export function applyFilters(
     }
     if (filters.area !== null && task.area_id !== filters.area) return false;
     if (filters.tag && !task.tags.includes(filters.tag)) return false;
+    if (query && !task.text.toLocaleLowerCase().includes(query)) return false;
     return true;
   });
 }

@@ -6,14 +6,17 @@
   <title>Clarice</title>
   {% theme_resolution_script user.theme %}
   {% token_styles %}
-  <!-- Migrated components (AgendaWorkspace, TaskWorkspace) still use
-       site.css's classes for now, so it has to load here too. Its plain
-       `body { background: var(--sl-bg) }` rule (dark-only, no theme
-       support) would otherwise win over token_styles' theme-driven one --
-       tried scoping it into a lower-priority @layer first, but that
-       didn't hold across the two separate stylesheets in practice, so
-       this pins body's own background/text explicitly instead. Both
-       drop once every component needing site.css has moved to Tailwind. -->
+  <!-- AgendaWorkspace and TaskWorkspace both finished their Tailwind
+       migrations (task-list-redesign-plan.md, agenda-redesign-plan.md),
+       but this still has to load: ArchiveManager.tsx's workspace.module.css
+       references --sl-accent/--sl-muted/--sl-border/--sl-bg, defined only
+       in site.css's :root. Its plain `body { background: var(--sl-bg) }`
+       rule (dark-only, no theme support) would otherwise win over
+       token_styles' theme-driven one -- tried scoping it into a
+       lower-priority @layer first, but that didn't hold across the two
+       separate stylesheets in practice, so this pins body's own
+       background/text explicitly instead. Both drop once ArchiveManager
+       moves to Tailwind too. -->
   <link rel="stylesheet" href="{% static 'site.css' %}">
   <style>
     body#app-body { background: var(--color-bg) !important; color: var(--color-text) !important; }

@@ -5,6 +5,8 @@ import {
   applyFilters,
   bucketFor,
   dueLabel,
+  hasFilters,
+  NO_FILTERS,
   snoozePresets,
   sortAgendaTasks,
   summaryCounts,
@@ -146,19 +148,19 @@ describe("applyFilters", () => {
   ];
 
   it("returns everything when nothing is selected", () => {
-    const filters = { scope: null, area: null, tag: null };
+    const filters = { scope: null, area: null, tag: null, query: "" };
     expect(applyFilters(tasks, TODAY, filters)).toHaveLength(3);
   });
 
   it("narrows by scope", () => {
-    const filters = { scope: "overdue", area: null, tag: null };
+    const filters = { scope: "overdue", area: null, tag: null, query: "" };
     expect(applyFilters(tasks, TODAY, filters).map((t) => t.text)).toEqual([
       "Late",
     ]);
   });
 
   it("includes overdue tasks in the week scope", () => {
-    const filters = { scope: "week", area: null, tag: null };
+    const filters = { scope: "week", area: null, tag: null, query: "" };
     expect(applyFilters(tasks, TODAY, filters).map((t) => t.text)).toEqual([
       "Late",
       "Now",
@@ -166,17 +168,50 @@ describe("applyFilters", () => {
   });
 
   it("narrows by area", () => {
-    const filters = { scope: null, area: 2, tag: null };
+    const filters = { scope: null, area: 2, tag: null, query: "" };
     expect(applyFilters(tasks, TODAY, filters).map((t) => t.text)).toEqual([
       "Chores",
     ]);
   });
 
   it("narrows by tag", () => {
-    const filters = { scope: null, area: null, tag: "urgent" };
+    const filters = { scope: null, area: null, tag: "urgent", query: "" };
     expect(applyFilters(tasks, TODAY, filters).map((t) => t.text)).toEqual([
       "Late",
     ]);
+  });
+
+  it("narrows by search text", () => {
+    const filters = { scope: null, area: null, tag: null, query: "cho" };
+    expect(applyFilters(tasks, TODAY, filters).map((t) => t.text)).toEqual([
+      "Chores",
+    ]);
+  });
+
+  it("searches case-insensitively", () => {
+    const filters = { scope: null, area: null, tag: null, query: "LATE" };
+    expect(applyFilters(tasks, TODAY, filters).map((t) => t.text)).toEqual([
+      "Late",
+    ]);
+  });
+
+  it("combines search with the other filter dimensions", () => {
+    const filters = { scope: "overdue", area: null, tag: null, query: "now" };
+    expect(applyFilters(tasks, TODAY, filters)).toHaveLength(0);
+  });
+});
+
+describe("hasFilters", () => {
+  it("is false with nothing set", () => {
+    expect(hasFilters(NO_FILTERS)).toBe(false);
+  });
+
+  it("is true once a search query is set", () => {
+    expect(hasFilters({ ...NO_FILTERS, query: "milk" })).toBe(true);
+  });
+
+  it("ignores a query that's just whitespace", () => {
+    expect(hasFilters({ ...NO_FILTERS, query: "   " })).toBe(false);
   });
 });
 

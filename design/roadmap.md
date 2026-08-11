@@ -669,6 +669,28 @@ and a browser smoke pass all green; see that plan's §5 for the full
 accounting, including the pre-existing `ProjectJourneyTest` failures ruled
 out by bisecting against `main` before this work touched anything.
 
+**A fourth, separate line of work — not folded into Release F, shipped
+August 10, 2026 (uncommitted, awaiting review).** Direct follow-on to the
+above: with `TaskWorkspace.tsx` migrated, `AgendaWorkspace.tsx` became the
+last Bootstrap-era component, and it's the app's actual highest-traffic
+page (the preferred landing surface). Asked how the page could be improved
+beyond the visual pass, two real functional gaps surfaced by reading the
+code rather than guessing — no text search anywhere on the page, and no
+staleness signal, since `age_in_days` lives on Daily's and the weekly
+review's own item types rather than the shared `Task` type Agenda's own
+items are.
+[`agenda-redesign-plan.md`](agenda-redesign-plan.md) carried the Tailwind
+migration, the touch-target fix (measured 19–31px against the ~44px
+guideline, the same finding Crane 1 slice 7 recorded for this exact page),
+a unified area/tag filter row replacing three previously separate filter
+surfaces, search, and the staleness label. Bulk actions and manual
+reordering were considered and deliberately left out as editing-shaped work
+that already belongs to the Area page. 263 frontend tests, 867 backend
+tests, and a browser smoke pass all green; see that plan's §5 for the full
+accounting, including a real layout bug (a search field collapsing to 30px
+for lack of a `flex-shrink:0` guard) that only live verification against
+the actual built bundle caught.
+
 Move completed detail into `roadmap-history.md` and keep only the resulting
 baseline or remaining consequence here. When an idea from Later earns work,
 give it a one-line reason and a focused spec before it joins an active

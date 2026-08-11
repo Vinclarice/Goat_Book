@@ -59,7 +59,7 @@ async function openSnoozeMenu(
   user: ReturnType<typeof userEvent.setup>,
   text: string,
 ) {
-  const row = screen.getByText(text).closest<HTMLElement>(".agenda-row")!;
+  const row = screen.getByText(text).closest<HTMLElement>("article")!;
   await user.click(within(row).getByRole("button", { name: `Schedule “${text}”` }));
 }
 
@@ -103,8 +103,8 @@ describe("AgendaWorkspace", () => {
       projects: [agendaProject({ id: 1, title: "Kitchen remodel", url: "/areas/1/" })],
     });
 
-    const withProject = screen.getByText("Order cabinets").closest<HTMLElement>(".agenda-row")!;
-    const withoutProject = screen.getByText("Ship the fix").closest<HTMLElement>(".agenda-row")!;
+    const withProject = screen.getByText("Order cabinets").closest<HTMLElement>("article")!;
+    const withoutProject = screen.getByText("Ship the fix").closest<HTMLElement>("article")!;
     const projectPill = within(withProject).getByRole("link", { name: "Kitchen remodel" });
     expect(projectPill).toHaveAttribute("href", "/areas/1/");
     expect(within(withoutProject).queryByText("Kitchen remodel")).not.toBeInTheDocument();
@@ -119,6 +119,24 @@ describe("AgendaWorkspace", () => {
     });
 
     expect(screen.getAllByLabelText("Has notes")).toHaveLength(1);
+  });
+
+  it("says how long a task has been waiting, but only once it's worth mentioning", () => {
+    renderAgenda({
+      items: [
+        task({
+          id: 1,
+          text: "Look into a standing desk",
+          due_date: null,
+          created_at: "2026-07-10T12:00:00-04:00",
+        }),
+        task({ id: 2, text: "Ship the fix", due_date: TODAY }),
+      ],
+    });
+
+    expect(screen.getByText("Added 18 days ago")).toBeInTheDocument();
+    const recent = screen.getByText("Ship the fix").closest<HTMLElement>("article")!;
+    expect(within(recent).queryByText(/Added/)).not.toBeInTheDocument();
   });
 
   it("starts the far-off buckets collapsed", () => {
@@ -172,6 +190,28 @@ describe("AgendaWorkspace", () => {
 
     expect(screen.getByText("Buy milk")).toBeInTheDocument();
     expect(screen.queryByText("Ship the fix")).not.toBeInTheDocument();
+  });
+
+  it("searches task text and updates the filter banner", async () => {
+    const user = userEvent.setup();
+    renderAgenda();
+
+    await user.type(screen.getByRole("searchbox"), "milk");
+
+    expect(screen.getByText("Buy milk")).toBeInTheDocument();
+    expect(screen.queryByText("Ship the fix")).not.toBeInTheDocument();
+    expect(screen.getByText(/“milk”/)).toBeInTheDocument();
+  });
+
+  it("clears the search box along with every other filter", async () => {
+    const user = userEvent.setup();
+    renderAgenda();
+
+    await user.type(screen.getByRole("searchbox"), "milk");
+    await user.click(screen.getByRole("button", { name: "Clear" }));
+
+    expect(screen.getByRole("searchbox")).toHaveValue("");
+    expect(screen.getByText("Ship the fix")).toBeInTheDocument();
   });
 
   it("filters by list from the sidebar", async () => {

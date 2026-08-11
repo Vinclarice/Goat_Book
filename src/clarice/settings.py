@@ -17,6 +17,7 @@ import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
 import sys
 
+from clarice.deployment import is_debug
 from clarice.monitoring import initialise as initialise_error_monitoring
 
 
@@ -28,7 +29,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 DEPLOYMENT_ENVIRONMENT = os.environ.get("DJANGO_ENVIRONMENT", "development")
-DEBUG = DEPLOYMENT_ENVIRONMENT != "production"
+# "staging" gets everything below this that "production" does -- a
+# required SECRET_KEY, secure cookies, HSTS, no debug tracebacks -- since
+# the whole point of a staging host is to rehearse production's real
+# posture. It differs only in clarice/monitoring.py, which reports
+# exclusively for the literal string "production" so staging's own noise
+# never buries a real incident. See clarice/deployment.py.
+DEBUG = is_debug(DEPLOYMENT_ENVIRONMENT)
 
 # SECURITY WARNING: keep the secret key used in production secret.
 if not DEBUG:

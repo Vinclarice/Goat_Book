@@ -34,13 +34,14 @@ import com.vinclarice.capture.ui.theme.ClariceTheme
 
 /**
  * The whole app is one activity. Bittern scoped this client to capture and
- * nothing else; android-full-client-plan.md's slice 1 is the first crack in
- * that boundary, adding a second, read-only Today destination beside it.
- * Two destinations is still not enough to justify a real navigation graph --
- * [RootTabBar] is a hand-rolled two-button switcher rather than Jetpack
- * Navigation Compose or a Material `NavigationBar` (which would need an
- * icon library this app has never depended on), trivially replaceable with
- * either once there are enough tabs to need one.
+ * nothing else; android-full-client-plan.md's slices have been cracking that
+ * boundary open one surface at a time -- Today (read-only), then Agenda
+ * (read and act: complete, reschedule, quick-add). Three destinations is
+ * still not enough to justify a real navigation graph -- [RootTabBar] is a
+ * hand-rolled tab switcher rather than Jetpack Navigation Compose or a
+ * Material `NavigationBar` (which would need an icon library this app has
+ * never depended on), trivially replaceable with either once there are
+ * enough tabs to need one.
  *
  * FragmentActivity rather than ComponentActivity (its own superclass) since
  * design/android-unlock-plan.md's BiometricPrompt requires one -- everything
@@ -56,6 +57,7 @@ class MainActivity : FragmentActivity() {
         // the whole app currently contains.
         val api = OkHttpClariceApi(baseUrl = BuildConfig.CLARICE_BASE_URL)
         val dailyApi = OkHttpDailyApi(baseUrl = BuildConfig.CLARICE_BASE_URL)
+        val agendaApi = OkHttpAgendaApi(baseUrl = BuildConfig.CLARICE_BASE_URL)
         val store = KeystoreTokenStore(applicationContext)
         val connector = Connector(api = api, store = store)
         val queue = CaptureQueue(EncryptedQueueStorage(applicationContext))
@@ -89,6 +91,7 @@ class MainActivity : FragmentActivity() {
                             connector = connector,
                             api = api,
                             dailyApi = dailyApi,
+                            agendaApi = agendaApi,
                             store = store,
                             queue = queue,
                             scheduler = scheduler,
@@ -103,12 +106,13 @@ class MainActivity : FragmentActivity() {
     }
 }
 
-/** The two places someone can be once connected. Settings sits outside this
+/** The places someone can be once connected. Settings sits outside this
  *  set on purpose -- see the class doc on why it stays a per-tab link
- *  rather than a third entry here. */
+ *  rather than an entry here. */
 private enum class RootTab(val label: String) {
     Capture("Capture"),
     Today("Today"),
+    Agenda("Agenda"),
 }
 
 @Composable
@@ -116,6 +120,7 @@ private fun Root(
     connector: Connector,
     api: ClariceApi,
     dailyApi: DailyApi,
+    agendaApi: AgendaApi,
     store: TokenStore,
     queue: CaptureQueue,
     scheduler: DeliveryScheduler,
@@ -152,6 +157,10 @@ private fun Root(
     // Same reasoning as captureModel: held above the tab switch so opening
     // Settings and coming back doesn't drop today's already-loaded state.
     val dailyModel = remember { DailyViewModel(dailyApi, store) }
+    // Same again, and doubly so here: the Agenda's own filter selections
+    // (area, tag, scope, search) live in this model too, and losing them
+    // on every trip to Settings would be worse than losing loaded data.
+    val agendaModel = remember { AgendaViewModel(agendaApi, store) }
 
     var connected by remember { mutableStateOf(connectModel.isConnected) }
     var showSettings by remember { mutableStateOf(false) }
@@ -209,6 +218,10 @@ private fun Root(
                 )
                 RootTab.Today -> DailyScreen(
                     model = dailyModel,
+                    onOpenSettings = { showSettings = true },
+                )
+                RootTab.Agenda -> AgendaScreen(
+                    model = agendaModel,
                     onOpenSettings = { showSettings = true },
                 )
             }

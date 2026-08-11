@@ -114,6 +114,27 @@ Generalise it: `state: latest` on an infrastructure package means a routine
 application deploy is willing to upgrade and restart the thing running the
 application. Prefer `present` and make upgrades deliberate.
 
+**A "Build container image locally" failure with a DNS timeout is WSL's
+network stack, not the deploy.** That step's `docker build` failed against
+`auth.docker.io` with `dial tcp: lookup auth.docker.io on
+10.255.255.254:53: ... i/o timeout` on 2026-08-10 — nothing to do with the
+commit being deployed or the playbook itself. `10.255.255.254` is WSL2's
+internal DNS relay (`/etc/resolv.conf`'s `nameserver` line), and it had
+gone unreachable: `ping 8.8.8.8` (a raw IP) worked fine while `ping
+auth.docker.io` and `getent hosts auth.docker.io` both timed out,
+confirming resolution specifically, not general connectivity, was broken.
+Fixed from a **Windows PowerShell prompt, not WSL**:
+
+```powershell
+wsl --shutdown
+```
+
+This forces a full WSL network-stack restart and regenerates the DNS
+relay; reopen WSL and Docker Desktop afterward and retry the build. Since
+this step runs `delegate_to: 127.0.0.1` before anything touches the remote
+host, a failure here never reaches production — there is nothing to undo
+before retrying.
+
 **The container is recreated and migrated before the nginx and certbot
 tasks.** New assets therefore start being served while the run still has
 work to do — a rotated bundle hash proves the container step succeeded, not

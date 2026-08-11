@@ -669,8 +669,9 @@ and a browser smoke pass all green; see that plan's §5 for the full
 accounting, including the pre-existing `ProjectJourneyTest` failures ruled
 out by bisecting against `main` before this work touched anything.
 
-**A fourth, separate line of work — not folded into Release F, shipped
-August 10, 2026 (uncommitted, awaiting review).** Direct follow-on to the
+**A fourth, separate line of work — not folded into Release F, shipped and
+deployed August 10–11, 2026** (`94a6c4f`, `DEPLOYED-2026-08-10/2100`,
+verified live on the real Agenda page). Direct follow-on to the
 above: with `TaskWorkspace.tsx` migrated, `AgendaWorkspace.tsx` became the
 last Bootstrap-era component, and it's the app's actual highest-traffic
 page (the preferred landing surface). Asked how the page could be improved

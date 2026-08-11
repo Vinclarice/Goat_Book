@@ -210,8 +210,17 @@ first — every slice below should extend those files, not replace them.
 
 ## 5. Status
 
-**Shipped, August 10, 2026 (uncommitted — awaiting Vince's review).** All
-nine steps landed in order: search (`agenda.ts` + `AgendaWorkspace.tsx`),
+**Shipped and deployed, August 10–11, 2026.** Committed as `0725516`
+(plan/mockup) and `94a6c4f` (implementation), pushed to `main`, and
+deployed to production — `LIVE` and `DEPLOYED-2026-08-10/2100` both tag
+`94a6c4f`, moved only after Vince confirmed the redesign live on the real
+Agenda page. The deploy itself hit a real WSL2 DNS-resolution failure in
+the local Docker build step (`auth.docker.io` unreachable through the
+`10.255.255.254` relay) — unrelated to this change, resolved with
+`wsl --shutdown` to reset the network stack, and worth remembering if a
+future deploy fails at the same "Build container image locally" step with
+a similar `dial tcp: lookup ... i/o timeout` error. All nine steps landed
+in order: search (`agenda.ts` + `AgendaWorkspace.tsx`),
 the staleness label, the unified filter row, the full Tailwind pass,
 updating the `.agenda-row` test selectors to `article`, full suites,
 browser smoke, live verification, and the `app_shell.html` comment

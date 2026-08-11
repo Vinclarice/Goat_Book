@@ -1,7 +1,7 @@
 # Personal access token scopes and expiry
 
-Vince · brief · written August 10, 2026 · **built and tested locally August
-11, 2026, not yet deployed** — see §6.
+Vince · brief · written August 10, 2026 · **deployed and verified in
+production August 11, 2026** — see §6.
 
 ## 1. Trigger and diagnosis
 
@@ -167,7 +167,7 @@ audit logging of scope usage, and anything resembling delegated
 third-party access stay explicitly out of scope per §2 unless a real
 client that isn't Vince's own shows up to justify them.
 
-## 6. Built, verified locally, not deployed
+## 6. Built, verified locally, deployed and verified in production
 
 Implemented in full August 11, 2026: `PersonalAccessToken.scopes`/
 `expires_at` (migration `0013`, grandfathering existing rows to
@@ -184,12 +184,27 @@ change, not a relaxed assertion — plus new tests for each refusal case
 (wrong scope, expired, no scope at all). Full backend suite: 899 tests,
 0 failures. `makemigrations --check` clean.
 
-**Not yet true:** this only exists on the local dev database. Production
-still runs pre-scope `TokenAuth()`, so `/api/v1/day` is still session-only
-there and Android's Today tab is still blocked exactly as
-`android-full-client-plan.md` §6 found it. Deploying is Vince's own step
-(`CLAUDE.md`'s "Deploying" section) — this migration is additive and safe
-to run ahead of the code that depends on it, same as any other migration
-this project ships separately from its feature. After deploying, every
-already-connected phone's existing token keeps working at its grandfathered
-scope; only a fresh login (reconnect) picks up `day:read`.
+**Deployed and verified in production, August 11, 2026.** Verified with
+markers the change actually added, not just a green playbook run:
+
+- `GET /api/v1/day` answers 401 to no credentials and to a garbage bearer
+  token on the live server (baseline sanity the deploy landed and the
+  route is still guarded).
+- The SM-S928U1's existing session was gone (never connected on this
+  device before), so logging in fresh minted a token under the new
+  Android default scopes automatically — no manual scope picking, per
+  §3's design. Opening Today then rendered real production data: the
+  actual date, a real overdue task ("Pay tmobile bill," correctly labelled
+  "Added 13 days ago" / "11 days overdue"), its real area, and the correct
+  empty states for Focus and Routines. That is the full chain — deploy,
+  migration, `TokenAuth` scope check, and the Android client — working
+  together against the live server, not a mock.
+- The SM-F966U's pre-existing, grandfathered token still shows "Connected
+  as Vrbeall01" in Settings after the deploy, confirming the migration's
+  grandfathering preserved every already-connected phone's capture and
+  identity access rather than silently narrowing it.
+
+Every already-connected phone keeps working at its grandfathered scope
+(`capture:write`, `identity:read`) until its owner reconnects; only a
+fresh login picks up `day:read`. Both test phones now also have "Require
+unlock to open" enabled.

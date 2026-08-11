@@ -717,27 +717,32 @@ height override once found; see `archive-redesign-plan.md`'s own §5 for
 the full accounting.
 
 **A sixth, separate line of work — not folded into Release F, started
-August 10, 2026, slice 1 built but blocked on a real device.** Trigger:
-Vince asked for a "more comprehensive overhaul" of the Android app after a
-frontend-design pass on its (previously nonexistent) visual theme, wanting
-it to become a real mirror of the website rather than stay capture-only —
-firing the direction already recorded above the same day.
-[`android-full-client-plan.md`](android-full-client-plan.md) checked the
-actual gap first, and got half of it wrong: `lists`, `daily`, `review`, and
-`routines` `api_v1.py` are the same *routes* the SPA consumes, but not the
-same *auth* — only `/api/v1/me` and `/api/v1/capture` accept the Bearer
-token Android carries, everything else is session-cookie-only by design.
-Slice 1, Vince's own choice of surface and scope — the Daily Page,
-read-only: a new `DailyApi`, a `DailyScreen`, and a lightweight tab switcher
-beside the existing Capture screen, pin/unpin and routine logging and
-day-editing deliberately deferred — built clean, 212 tests green, and
-installed without a crash on both the SM-S928U1 and the SM-F966U. Today
-itself doesn't load: the stored token authenticates Settings fine and gets
+August 10, 2026, slice 1 shipped and verified in production August 11,
+2026.** Trigger: Vince asked for a "more comprehensive overhaul" of the
+Android app after a frontend-design pass on its (previously nonexistent)
+visual theme, wanting it to become a real mirror of the website rather
+than stay capture-only — firing the direction already recorded above the
+same day. [`android-full-client-plan.md`](android-full-client-plan.md)
+checked the actual gap first, and got half of it wrong: `lists`, `daily`,
+`review`, and `routines` `api_v1.py` are the same *routes* the SPA
+consumes, but not the same *auth* — only `/api/v1/me` and
+`/api/v1/capture` accepted the Bearer token Android carries, everything
+else was session-cookie-only by design. Slice 1, Vince's own choice of
+surface and scope — the Daily Page, read-only: a new `DailyApi`, a
+`DailyScreen`, and a lightweight tab switcher beside the existing Capture
+screen, pin/unpin and routine logging and day-editing deliberately
+deferred. Installed clean on both the SM-S928U1 and the SM-F966U, but
+Today didn't load: the stored token authenticated Settings fine and got
 401 from `/api/v1/day`. Asked directly rather than patched around, Vince's
-call is to design a scoped/read-only personal-access-token tier before
-opting any more routers into today's all-or-nothing `TokenAuth` — see that
-plan's §6 for the finding and §5 for what else is still undecided. Not
-scheduled as its own piece of work yet.
+call was to design a scoped/read-only personal-access-token tier before
+opting any more routers into `TokenAuth` — see
+[`token-scopes-plan.md`](token-scopes-plan.md), built, tested (899 backend
+tests), and deployed the same day. Verified live: a fresh login on the
+SM-S928U1 minted a scoped token automatically and Today rendered real
+production data end to end, while the SM-F966U's pre-existing token kept
+authenticating Settings, confirming the migration's grandfathering didn't
+strand it. See `android-full-client-plan.md`'s own §6 for the full
+before/after and its §5 for what's still undecided about later slices.
 
 Move completed detail into `roadmap-history.md` and keep only the resulting
 baseline or remaining consequence here. When an idea from Later earns work,

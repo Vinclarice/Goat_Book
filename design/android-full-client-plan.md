@@ -1,6 +1,7 @@
 # Android full client — from capture-only to a real mirror of the website
 
-Vince · brief · written August 10, 2026 · **slice 1 in progress**
+Vince · brief · written August 10, 2026 · **slice 1 shipped and verified
+in production August 11, 2026**
 
 ## 1. Trigger and diagnosis
 
@@ -134,9 +135,17 @@ Read-only parity with what `DayOut` actually returns, verified by:
   green.
 - Device pass, August 10, 2026: installed and launched clean on both the
   SM-S928U1 and the SM-F966U, no crashes, theme and tab switching correct.
-  **Today itself does not load** — see §6. The build/test evidence above is
-  real; "works end to end on a phone" is not yet true, and this doc says so
-  rather than the weaker claim standing uncorrected.
+  **Today itself did not load** — see §6 for the finding and
+  `token-scopes-plan.md` for the fix.
+- **Device pass, August 11, 2026, after `token-scopes-plan.md` deployed:**
+  a fresh login on the SM-S928U1 minted a token under the new scopes with
+  no manual step, and Today rendered real production data end to end — the
+  actual date, a real overdue task with correct age/due labels and area,
+  and the correct empty states for Focus and Routines. "Works end to end
+  on a phone" is now true, against the live server, not a mock. The
+  SM-F966U's pre-existing token also kept working (Settings still showed
+  "Connected as Vrbeall01"), confirming the fix didn't strand an
+  already-connected phone.
 
 ## 5. What this doesn't decide yet
 

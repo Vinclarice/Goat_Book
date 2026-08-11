@@ -1,4 +1,4 @@
-{% load static frontend_tags %}<!DOCTYPE html>
+{% load frontend_tags %}<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -6,21 +6,6 @@
   <title>Clarice</title>
   {% theme_resolution_script user.theme %}
   {% token_styles %}
-  <!-- AgendaWorkspace and TaskWorkspace both finished their Tailwind
-       migrations (task-list-redesign-plan.md, agenda-redesign-plan.md),
-       but this still has to load: ArchiveManager.tsx's workspace.module.css
-       references --sl-accent/--sl-muted/--sl-border/--sl-bg, defined only
-       in site.css's :root. Its plain `body { background: var(--sl-bg) }`
-       rule (dark-only, no theme support) would otherwise win over
-       token_styles' theme-driven one -- tried scoping it into a
-       lower-priority @layer first, but that didn't hold across the two
-       separate stylesheets in practice, so this pins body's own
-       background/text explicitly instead. Both drop once ArchiveManager
-       moves to Tailwind too. -->
-  <link rel="stylesheet" href="{% static 'site.css' %}">
-  <style>
-    body#app-body { background: var(--color-bg) !important; color: var(--color-text) !important; }
-  </style>
 </head>
 <body id="app-body" class="bg-bg text-text min-h-screen">
   <div id="app-root"></div>

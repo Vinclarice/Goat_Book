@@ -668,7 +668,15 @@ export function AgendaWorkspace({ initialData }: Props) {
             onChange={(event) => setDraftDue(event.target.value)}
           />
         </span>
-        <Button type="submit" size="sm" disabled={adding || !draftText.trim() || areas.length === 0}>
+        {/* Button's own size variants top out at h-9 (36px), short of the
+            ~44px guideline this redesign otherwise enforces via plain
+            Tailwind classes -- needs an explicit override. */}
+        <Button
+          type="submit"
+          size="sm"
+          className="h-11"
+          disabled={adding || !draftText.trim() || areas.length === 0}
+        >
           {adding ? "Adding…" : "Add"}
         </Button>
       </form>
@@ -916,7 +924,7 @@ export function AgendaWorkspace({ initialData }: Props) {
                   placeholder="First task"
                   required
                 />
-                <Button type="submit" size="sm">
+                <Button type="submit" size="sm" className="h-11">
                   Create area
                 </Button>
               </form>
@@ -948,7 +956,12 @@ export function AgendaWorkspace({ initialData }: Props) {
                   maxLength={100}
                   required
                 />
-                <Button type="submit" size="sm" disabled={createProject.isPending}>
+                <Button
+                  type="submit"
+                  size="sm"
+                  className="h-11"
+                  disabled={createProject.isPending}
+                >
                   Create project
                 </Button>
               </form>

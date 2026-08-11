@@ -12,6 +12,7 @@ import {
   updateTaskText,
 } from "./api";
 import { ageLabel, daysBetween } from "./agenda";
+import { formatShortDate } from "./format";
 import type { Task, TaskRecurrence, TaskStatus, TaskWorkspaceData } from "./types";
 
 const RECURRENCE_LABELS: Record<TaskRecurrence, string> = {
@@ -39,12 +40,6 @@ function formatDueDate(value: string): string {
   return new Intl.DateTimeFormat(undefined, {
     dateStyle: "medium",
   }).format(new Date(`${value}T00:00:00`));
-}
-
-function formatCompletedDate(value: string): string {
-  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(
-    new Date(value),
-  );
 }
 
 // TaskWorkspaceData carries no server "today" (unlike AgendaWorkspaceData) --
@@ -475,7 +470,10 @@ export function TaskWorkspace({ initialData }: Props) {
             ))}
           </select>
         </span>
-        <Button type="submit" size="sm" disabled={busyId === "new"}>
+        {/* Button's own size variants top out at h-9 (36px), short of the
+            ~44px guideline this redesign otherwise enforces via plain
+            Tailwind classes -- needs an explicit override. */}
+        <Button type="submit" size="sm" className="h-11" disabled={busyId === "new"}>
           {busyId === "new" ? "Adding…" : "Add item"}
         </Button>
       </form>
@@ -656,12 +654,18 @@ export function TaskWorkspace({ initialData }: Props) {
                     required
                   />
                   <div className="flex gap-2">
-                    <Button type="submit" size="sm" disabled={busyId === item.id}>
+                    <Button
+                      type="submit"
+                      size="sm"
+                      className="h-11"
+                      disabled={busyId === item.id}
+                    >
                       Save
                     </Button>
                     <Button
                       type="button"
                       size="sm"
+                      className="h-11"
                       variant="outline"
                       onClick={() => setEditingId(null)}
                       disabled={busyId === item.id}
@@ -693,7 +697,7 @@ export function TaskWorkspace({ initialData }: Props) {
                       </span>
                     )}
                     {item.status === "completed" && item.completed_at ? (
-                      <span>Completed {formatCompletedDate(item.completed_at)}</span>
+                      <span>Completed {formatShortDate(item.completed_at)}</span>
                     ) : (
                       age && <span>{age}</span>
                     )}

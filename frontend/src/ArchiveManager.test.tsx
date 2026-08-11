@@ -49,6 +49,30 @@ describe("ArchiveManager", () => {
     expect(screen.getByText(/restored to Programming/)).toBeInTheDocument();
   });
 
+  it("shows when a task was archived, not when it was created", () => {
+    render(
+      <ArchiveManager
+        initialData={{
+          items: [
+            task({
+              status: "archived",
+              created_at: "2026-01-01T00:00:00-04:00",
+              completed_at: null,
+              archived_at: "2026-07-24T12:30:00-04:00",
+            }),
+          ],
+          areas: [{ id: 1, title: "Programming", url: "/areas/1/" }],
+          projects: [],
+        }}
+      />,
+    );
+
+    const row = screen.getByText("Write tests").closest("article")!;
+    expect(row.textContent).toContain("Archived");
+    expect(row.textContent).toContain("Jul 24, 2026");
+    expect(row.textContent).not.toContain("Created");
+  });
+
   it("searches archived task text and list names", async () => {
     const user = userEvent.setup();
     render(

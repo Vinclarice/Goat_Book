@@ -692,6 +692,31 @@ accounting, including a real layout bug (a search field collapsing to 30px
 for lack of a `flex-shrink:0` guard) that only live verification against
 the actual built bundle caught.
 
+**A fifth, separate line of work — not folded into Release F, shipped
+August 11, 2026 (uncommitted, awaiting review).** The last piece of the
+Bootstrap→Tailwind arc: with `TaskWorkspace.tsx` and `AgendaWorkspace.tsx`
+both migrated, `ArchiveManager.tsx` was the only component left on
+`site.css`, and with no Tailwind-migrated wrapper above it either.
+[`archive-redesign-plan.md`](archive-redesign-plan.md) carried the
+migration, the same touch-target fix, and switched the row date from
+`created_at` to `archived_at` (confirmed against the model's own
+`CheckConstraint`, not assumed) — and, because this was the last dependent,
+**retired `site.css` and `workspace.module.css` from the app entirely**,
+deleting the stylesheet's source file rather than leaving it unreferenced.
+264 frontend tests, 867 backend tests, and a browser smoke pass all green.
+
+**Caught only by live verification, not by any test, and worth naming
+because it wasn't confined to this page:** the delete dialog's buttons
+measured 32px against the ≥44px claim — `Button`'s own size variants top
+out at 36px, and no component test measures rendered layout. Checking
+`TaskWorkspace.tsx` and `AgendaWorkspace.tsx` for the same pattern found
+the identical gap in both already-deployed redesigns — every
+`<Button size="sm">` composer/dialog button in all three components was
+actually 28–36px despite each brief's own ≥44px claim and each live
+verification reporting it confirmed. Fixed in all three with an explicit
+height override once found; see `archive-redesign-plan.md`'s own §5 for
+the full accounting.
+
 Move completed detail into `roadmap-history.md` and keep only the resulting
 baseline or remaining consequence here. When an idea from Later earns work,
 give it a one-line reason and a focused spec before it joins an active

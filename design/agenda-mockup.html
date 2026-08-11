@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clarice · Agenda redesign mockup</title>
+<style>
+:root {
+  --sl-bg: #08111f;
+  --sl-surface: rgba(18, 31, 49, 0.82);
+  --sl-surface-strong: #132237;
+  --sl-border: rgba(255, 255, 255, 0.1);
+  --sl-text: #f5f7fb;
+  --sl-muted: #a6b2c3;
+  --sl-accent: #7be0b8;
+  --sl-danger: #f08a8a;
+  --sl-warn: #f4c98a;
+
+  /* The List-Color Contract -- same values as tailwind.css's --list-color-*
+     tokens and tasks-mockup.html, unchanged. */
+  --c-sky: #8fc7d6;
+  --c-sage: #a8dba8;
+  --c-amber: #f4c98a;
+  --c-lilac: #c9a8dc;
+  --c-coral: #f4a3a3;
+  --c-azure: #9ab6e0;
+  --c-blush: #e5a8c4;
+  --c-straw: #f1e394;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  color: var(--sl-text);
+  background: var(--sl-bg);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.site-backdrop {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 15% 5%, rgba(67, 116, 155, 0.2), transparent 32rem),
+    radial-gradient(circle at 85% 25%, rgba(39, 132, 102, 0.16), transparent 28rem);
+}
+
+.container { width: 100%; max-width: 1040px; margin: 0 auto; padding: 0 1.25rem; }
+
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap;
+}
+
+.mock-banner {
+  background: rgba(244, 201, 138, 0.1);
+  border-bottom: 1px solid rgba(244, 201, 138, 0.28);
+  color: var(--sl-warn);
+  font-size: 0.8rem;
+  text-align: center;
+  padding: 0.5rem 1rem;
+}
+.mock-banner strong { color: var(--sl-text); }
+
+.page-shell { padding: 2.5rem 0 4rem; }
+
+.diagnosis {
+  border: 1px solid rgba(244, 201, 138, 0.3);
+  background: rgba(244, 201, 138, 0.06);
+  border-radius: 0.9rem;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.25rem;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: var(--sl-muted);
+}
+.diagnosis strong { color: var(--sl-warn); }
+.diagnosis code {
+  background: rgba(255,255,255,0.06);
+  padding: 0.05rem 0.35rem;
+  border-radius: 0.3rem;
+  font-size: 0.82em;
+}
+.diagnosis:last-of-type { margin-bottom: 2.25rem; }
+
+.back-link {
+  display: inline-block;
+  color: var(--sl-muted);
+  text-decoration: none;
+  font-size: 0.85rem;
+  margin-bottom: 1.25rem;
+}
+.back-link:hover { color: var(--sl-text); }
+
+/* ---------- masthead: the one hero moment on a to-do app's own home
+   page is "what day is it, what does it ask of me" -- so the date and
+   greeting get real typographic room, and the four scope counts read as
+   one continuous status line rather than a row of dashboard KPI cards. ---------- */
+.masthead { margin-bottom: 1.75rem; }
+.eyebrow {
+  margin: 0 0 0.5rem;
+  color: var(--sl-accent);
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.masthead h1 {
+  margin: 0 0 1.15rem;
+  font-size: clamp(2.1rem, 4.6vw, 3.2rem);
+  line-height: 1.03;
+  letter-spacing: -0.045em;
+}
+
+/* Signature move: these were boxy stat-cards, the one place on this
+   screen not speaking the pill vocabulary every filter/tag/due-date
+   already uses everywhere else in the app (including the task rows a
+   few lines down). Same shape, generously padded -- reading the day
+   becomes reading it in the same language as the tasks in it, and the
+   larger pill hit area is most of the touch-target fix for free. */
+.scope-row { display: flex; flex-wrap: wrap; gap: 0.55rem; }
+.scope-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--sl-border);
+  border-radius: 999px;
+  background: var(--sl-surface);
+  color: var(--sl-muted);
+  font: inherit;
+  cursor: pointer;
+  transition: border-color .15s, background .15s, color .15s;
+}
+.scope-pill:hover { border-color: rgba(255,255,255,0.26); }
+.scope-pill[aria-pressed="true"] {
+  border-color: var(--sl-accent);
+  background: rgba(123, 224, 184, 0.1);
+  color: var(--sl-text);
+}
+.scope-pill .num {
+  font-size: 1.05rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--sl-text);
+}
+.scope-pill.is-danger .num { color: var(--sl-danger); }
+.scope-pill.is-accent .num { color: var(--sl-accent); }
+.scope-pill .lbl { font-size: 0.82rem; }
+.scope-pill .div { width: 1px; height: 1rem; background: var(--sl-border); }
+
+/* ---------- composer: the same field-chip grammar task-list-redesign
+   already shipped for TaskWorkspace, so moving from the Agenda to an
+   Area page is one continuous visual language, not two. ---------- */
+.composer {
+  display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
+  background: var(--sl-surface); border: 1px solid var(--sl-border);
+  border-radius: 1rem; padding: 0.6rem 0.7rem 0.6rem 1rem; margin-bottom: 1rem;
+}
+.composer input[type="text"] {
+  flex: 1 1 14rem; min-width: 0; background: transparent; border: 0;
+  color: var(--sl-text); font: inherit; padding: 0.5rem 0; outline: none;
+}
+.composer input::placeholder { color: var(--sl-muted); }
+.field-chip {
+  display: inline-flex; align-items: center; gap: 0.35rem;
+  background: rgba(255,255,255,0.04); border: 1px solid var(--sl-border);
+  border-radius: 0.6rem; padding: 0.4rem 0.6rem; font-size: 0.85rem; color: var(--sl-muted);
+  min-height: 2.75rem;
+}
+.field-chip select, .field-chip input {
+  background: transparent; border: 0; color: inherit; font: inherit; outline: none;
+  padding: 0; max-width: 9rem;
+}
+.field-chip.has-value { color: var(--sl-text); border-color: rgba(255,255,255,0.22); }
+.composer-add {
+  font: inherit; font-weight: 700; font-size: 0.88rem;
+  min-height: 2.75rem; padding: 0 1.1rem;
+  border-radius: 0.65rem; border: 1px solid var(--sl-accent);
+  background: var(--sl-accent); color: var(--sl-bg); cursor: pointer;
+}
+.composer-add:hover { background: #98e9c9; border-color: #98e9c9; }
+.composer-add:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ---------- unified filter row: area + tag chips were split across the
+   main column and a sidebar card before -- same job (narrow what's
+   showing), so now the same row, directly under the composer the way
+   TaskWorkspace's own toolbar sits under its composer. ---------- */
+.filter-bar {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: 0.75rem; margin-bottom: 1.5rem;
+}
+.filter-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+.filter-row .sep {
+  width: 1px; align-self: stretch; min-height: 1.6rem;
+  background: var(--sl-border); margin: 0 0.15rem;
+}
+/* Same chip grammar as everything else on this row -- a search field is
+   still "narrow what's showing," it just takes typed text instead of a
+   click. */
+.search-field {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  min-height: 2.75rem; width: min(100%, 15rem);
+  border: 1px solid var(--sl-border); border-radius: 999px; padding: 0.35rem 0.9rem;
+  color: var(--sl-muted); font-size: 0.85rem;
+}
+.search-field input {
+  background: transparent; border: 0; color: var(--sl-text); font: inherit; outline: none; width: 100%;
+}
+.search-field input::placeholder { color: var(--sl-muted); }
+.search-field:focus-within { border-color: var(--sl-accent); }
+.chip {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  min-height: 2.75rem;
+  font: inherit; font-size: 0.82rem;
+  padding: 0.35rem 0.85rem; border-radius: 999px; border: 1px solid var(--sl-border);
+  background: rgba(255,255,255,0.03); color: var(--sl-muted); cursor: pointer;
+}
+.chip .dot { width: 0.5rem; height: 0.5rem; border-radius: 50%; flex: none; }
+.chip .n { font-size: 0.75rem; font-variant-numeric: tabular-nums; opacity: 0.75; }
+.chip .n.warn { color: var(--sl-danger); opacity: 1; }
+.chip[aria-pressed="true"] { border-color: var(--sl-accent); background: rgba(123,224,184,0.08); color: var(--sl-text); }
+.chip.tag-chip { border-style: dashed; }
+.chip.tag-chip[aria-pressed="true"] { border-style: solid; color: var(--sl-accent); }
+
+.filter-banner {
+  display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap;
+  font-size: 0.85rem; color: var(--sl-muted);
+  border: 1px solid var(--sl-border); background: rgba(123,224,184,0.06);
+  border-radius: 0.7rem; padding: 0.55rem 0.9rem; margin-bottom: 1rem;
+}
+.filter-banner button { margin-left: auto; }
+
+/* ---------- layout ---------- */
+.agenda-grid { display: grid; grid-template-columns: minmax(0, 1fr) 18.5rem; gap: 2rem; align-items: start; }
+
+/* ---------- bucket sections: overdue/today/week/later/someday is real
+   temporal order the app already earns through color + label + position
+   -- no numbering added, it would repeat what the order already says. ---------- */
+.section { margin-bottom: 1.5rem; }
+.section-head {
+  display: flex; align-items: center; gap: 0.7rem; width: 100%;
+  min-height: 2.75rem;
+  background: none; border: 0; color: inherit; font: inherit;
+  padding: 0.5rem 0; cursor: pointer;
+  border-bottom: 1px solid var(--sl-border); margin-bottom: 0.75rem; text-align: left;
+}
+.section-head h2 {
+  margin: 0; font-size: 0.8rem; font-weight: 800; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--sl-muted);
+}
+.section-head .count { color: var(--sl-muted); font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+.section-head .chev { margin-left: auto; color: var(--sl-muted); font-size: 0.7rem; transition: transform .2s; }
+.section.is-collapsed .chev { transform: rotate(-90deg); }
+.section.is-collapsed .section-body { display: none; }
+.section.overdue .section-head h2 { color: var(--sl-danger); }
+.section.today .section-head h2 { color: var(--sl-accent); }
+
+/* ---------- task rows ---------- */
+.row {
+  display: flex; align-items: flex-start; gap: 0.85rem;
+  padding: 0.85rem; border: 1px solid var(--sl-border); border-radius: 0.9rem;
+  background: var(--sl-surface); margin-bottom: 0.5rem;
+  border-left: 3px solid transparent;
+  transition: border-color .15s, opacity .2s, transform .2s;
+}
+.row:hover { border-color: rgba(255,255,255,0.24); }
+.row.is-overdue { border-left-color: var(--sl-danger); }
+.row.is-today { border-left-color: var(--sl-accent); }
+.row.leaving { opacity: 0; transform: translateX(0.9rem); }
+
+/* Same real hit area as the scope pills, same reasoning: this was the
+   most-cited defect (measured 19.2px against a ~44px guideline) and the
+   fix is a bigger target, not a bigger checkmark -- the visual glyph
+   stays modest, the tappable box around it does not. */
+.check {
+  appearance: none; flex: none; width: 2.75rem; height: 2.75rem;
+  margin: -0.4rem; display: grid; place-items: center; cursor: pointer;
+  border-radius: 0.7rem; border: 0; background: transparent; position: relative;
+}
+.check::before {
+  content: ""; width: 1.15rem; height: 1.15rem; border-radius: 0.4rem;
+  border: 1.5px solid rgba(255,255,255,0.32); transition: background .15s, border-color .15s;
+}
+.check:hover::before { border-color: var(--sl-accent); }
+.check.is-checked::before { background: var(--sl-accent); border-color: var(--sl-accent); }
+.check.is-checked::after {
+  content: "✓"; position: absolute; color: var(--sl-bg); font-size: 0.78rem; font-weight: 900;
+}
+
+.body { flex: 1; min-width: 0; padding-top: 0.15rem; }
+.text { display: block; font-size: 0.98rem; line-height: 1.4; word-break: break-word; }
+.row.done .text { color: var(--sl-muted); text-decoration: line-through; text-decoration-color: var(--sl-accent); }
+.meta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; margin-top: 0.5rem; font-size: 0.78rem; color: var(--sl-muted); }
+
+.pill {
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  border: 1px solid var(--sl-border); border-radius: 999px; padding: 0.12rem 0.6rem;
+  background: rgba(255,255,255,0.03); color: var(--sl-muted); font-size: 0.78rem; text-decoration: none;
+}
+.pill-area { color: var(--sl-text); }
+.pill-area .dot { width: 0.45rem; height: 0.45rem; border-radius: 50%; }
+.pill-project { color: var(--sl-text); }
+/* No border, no background -- a plain fact stated in the same muted grey
+   as everything else on the row, same as agenda.ts's own ageLabel doc
+   comment asks for ("draws no conclusion"). Not a warning pill; the
+   overdue/today pills already carry the urgency this one shouldn't. */
+.pill-age { border: 0; background: none; padding: 0.12rem 0; }
+.pill-due.overdue { color: var(--sl-danger); border-color: rgba(240,138,138,0.4); background: rgba(240,138,138,0.08); }
+.pill-due.today { color: var(--sl-accent); border-color: rgba(123,224,184,0.4); background: rgba(123,224,184,0.08); }
+.pill-recur { color: var(--sl-warn); border-color: rgba(244,201,138,0.35); }
+.pill-tag { border-style: dashed; cursor: pointer; }
+.pill-tag[aria-pressed="true"] { border-style: solid; border-color: var(--sl-accent); color: var(--sl-accent); }
+
+.actions {
+  display: flex; align-items: center; gap: 0.35rem; flex: none;
+  opacity: 0; transition: opacity .15s;
+}
+.row:hover .actions, .row:focus-within .actions { opacity: 1; }
+@media (hover: none) { .actions { opacity: 1; } }
+.action-btn {
+  font: inherit; font-size: 0.8rem; min-height: 2.75rem;
+  border-radius: 0.55rem; border: 1px solid var(--sl-border);
+  padding: 0.4rem 0.75rem; background: transparent; color: var(--sl-muted); cursor: pointer; white-space: nowrap;
+  text-decoration: none; display: inline-flex; align-items: center;
+}
+.action-btn:hover { color: var(--sl-text); border-color: rgba(255,255,255,0.28); }
+
+.schedule-wrap { position: relative; }
+.schedule-menu {
+  position: absolute; top: 100%; right: 0; margin-top: 0.3rem; z-index: 10;
+  display: flex; flex-direction: column; min-width: 9rem;
+  background: var(--sl-surface-strong); border: 1px solid var(--sl-border);
+  border-radius: 0.75rem; padding: 0.3rem; box-shadow: 0 1rem 3rem rgba(0,0,0,0.4);
+}
+.schedule-menu button {
+  font: inherit; font-size: 0.85rem; text-align: left; min-height: 2.75rem;
+  padding: 0.4rem 0.7rem; border-radius: 0.5rem; border: 0; background: none; color: var(--sl-text); cursor: pointer;
+}
+.schedule-menu button:hover { background: rgba(255,255,255,0.06); }
+
+.empty-note {
+  color: var(--sl-muted); font-size: 0.88rem; padding: 2.25rem 1.25rem; text-align: center;
+  border: 1px dashed var(--sl-border); border-radius: 0.9rem;
+}
+
+/* ---------- sidebar ---------- */
+.sidebar { display: flex; flex-direction: column; gap: 1.1rem; }
+.card { border: 1px solid var(--sl-border); background: var(--sl-surface); border-radius: 1rem; padding: 1.05rem; }
+.card h3 {
+  margin: 0 0 0.85rem; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--sl-muted);
+}
+.side-link {
+  display: flex; align-items: center; min-height: 2.75rem;
+  color: var(--sl-text); text-decoration: none; font-size: 0.92rem;
+}
+.side-link:hover { color: var(--sl-accent); }
+.side-note { font-size: 0.82rem; color: var(--sl-muted); line-height: 1.5; margin: 0 0 0.6rem; }
+.disclosure summary {
+  cursor: pointer; color: var(--sl-accent); font-size: 0.88rem; font-weight: 600;
+  min-height: 2.75rem; display: flex; align-items: center;
+  list-style: none;
+}
+.disclosure summary::-webkit-details-marker { display: none; }
+.disclosure-form { display: grid; gap: 0.55rem; margin-top: 0.5rem; }
+.disclosure-form input {
+  min-height: 2.75rem; padding: 0 0.7rem; border-radius: 0.55rem;
+  border: 1px solid var(--sl-border); background: rgba(255,255,255,0.03); color: var(--sl-text); font: inherit;
+}
+.disclosure-form button {
+  font: inherit; font-weight: 700; font-size: 0.85rem; min-height: 2.75rem;
+  border-radius: 0.55rem; border: 1px solid var(--sl-accent); background: var(--sl-accent);
+  color: var(--sl-bg); cursor: pointer;
+}
+.archive-link { display: flex; align-items: center; gap: 0.6rem; min-height: 2.75rem; color: var(--sl-text); text-decoration: none; font-size: 0.92rem; }
+.archive-link .n { margin-left: auto; color: var(--sl-muted); font-size: 0.8rem; }
+
+/* ---------- toasts ---------- */
+.toast-stack { position: fixed; left: 50%; bottom: 1.5rem; transform: translateX(-50%); z-index: 60; display: flex; flex-direction: column; gap: 0.5rem; align-items: center; pointer-events: none; }
+.toast {
+  pointer-events: auto; display: flex; align-items: center; gap: 0.9rem;
+  background: var(--sl-surface-strong); border: 1px solid var(--sl-border);
+  border-radius: 0.8rem; padding: 0.55rem 0.7rem 0.55rem 1rem; font-size: 0.88rem;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.45); animation: rise .18s ease-out;
+}
+@keyframes rise { from { opacity: 0; transform: translateY(0.6rem); } }
+
+.annot {
+  font-size: 0.78rem; color: var(--sl-warn);
+  background: rgba(244, 201, 138, 0.08); border: 1px dashed rgba(244, 201, 138, 0.3);
+  border-radius: 0.6rem; padding: 0.6rem 0.85rem; margin: 1.75rem 0 0; line-height: 1.55;
+}
+.annot strong { color: var(--sl-warn); }
+
+/* ---------- responsive: same breakpoint the workspace input row
+   already stacks at, so this doesn't add a third disagreeing number to
+   the two (760/768) the roadmap already flags as needing reconciling. ---------- */
+@media (max-width: 768px) {
+  .agenda-grid { grid-template-columns: minmax(0, 1fr); }
+  .sidebar { order: 2; }
+  .composer { flex-direction: column; align-items: stretch; }
+  .composer input[type="text"] { padding: 0.6rem 0.2rem; }
+  .field-chip, .composer-add { width: 100%; justify-content: center; }
+  .masthead h1 { margin-bottom: 1rem; }
+  /* Grid, not flex-basis: a wrapping flex row lets a longer label ("This
+     week") win extra width from its row and throws the pairing off --
+     a real 2x2 needs an explicit two-column track. */
+  .scope-row { display: grid; grid-template-columns: 1fr 1fr; }
+  .scope-pill { justify-content: center; }
+  .scope-pill .div { display: none; }
+}
+</style>
+</head>
+<body>
+<div class="mock-banner">Mockup — <strong>fake data, nothing is saved</strong>. Everything here is clickable; try resizing the window.</div>
+
+<div class="site-backdrop">
+  <main class="container page-shell">
+
+    <a class="back-link" href="#">← Back to Clarice</a>
+
+    <div class="diagnosis">
+      <strong>Why it renders like that today:</strong> <code>AgendaWorkspace.tsx</code>
+      is the last component still styled through <code>site.css</code>'s Bootstrap-era
+      classes now that <code>TaskWorkspace</code> has moved to Tailwind — same root
+      cause, same fix. It's also the page a signed-in visit actually prefers to land
+      on, so it's the highest-traffic screen still carrying that debt.
+    </div>
+
+    <div class="diagnosis">
+      <strong>On touch targets:</strong> measured directly against
+      <code>site.css</code> — <code>.agenda-checkbox</code> is <code>1.2rem</code>
+      (19.2px), <code>.tag-chip</code>/<code>.pill</code> padding produces roughly
+      24–28px, Bootstrap's own <code>.btn-sm</code> is ~28–31px. All of it is under
+      the ~44px both platform guidelines and WCAG 2.5.8 ask for — the same finding
+      Crane 1 slice 7 recorded for this exact page ("the Agenda, which nothing in
+      Crane touched, is worse at 19–31px"). Below, every checkbox, pill, and button
+      keeps its current visual size but gets a real ≥44px hit area around it.
+    </div>
+
+    <div class="diagnosis">
+      <strong>On filtering:</strong> today it's split three ways — scope
+      (Overdue/Today/This week) lives in the header as boxed stat cards, area
+      lives as inline chips in the main column, tags live in a separate sidebar
+      card. Three surfaces, two different shapes, for what's the same job:
+      narrow what's showing. Below, area and tag collapse into one filter row
+      under the composer — the same move <code>TaskWorkspace</code>'s toolbar
+      already made — and the header's scope counts become pills instead of
+      cards, so the one page that reads "the whole day" speaks the same pill
+      language the tasks in it already do.
+    </div>
+
+    <div class="diagnosis">
+      <strong>On search and staleness:</strong> two gaps, not a styling
+      problem. There's no text search anywhere on this page — scope, area,
+      and tag chips all narrow by category, but there's no way to just type
+      and find one task. And <code>age_in_days</code> lives on Daily's and
+      the weekly review's own item types, not on the shared <code>Task</code>
+      type this page's items are — so a task in "No due date" can sit for
+      months with genuinely nothing on it: no due date, no age, no signal at
+      all. Below, a search field sits beside the filter row, and a computed
+      "Added N days ago" reuses <code>agenda.ts</code>'s own
+      <code>ageLabel</code> and its 7-day threshold exactly, the same
+      wording Daily and the review already use, rather than a second phrasing
+      for the same fact.
+    </div>
+
+    <!-- ============================================================ -->
+    <header class="masthead">
+      <p class="eyebrow" id="date-line">Monday, 10 August</p>
+      <h1 id="greeting">Good evening, Vince.</h1>
+      <div class="scope-row" role="group" aria-label="Filter by when a task is due">
+        <button class="scope-pill is-danger" type="button" data-scope="overdue" aria-pressed="false">
+          <span class="num" id="n-overdue">0</span><span class="lbl">Overdue</span>
+        </button>
+        <button class="scope-pill is-accent" type="button" data-scope="today" aria-pressed="false">
+          <span class="num" id="n-today">0</span><span class="lbl">Today</span>
+        </button>
+        <button class="scope-pill" type="button" data-scope="week" aria-pressed="false">
+          <span class="num" id="n-week">0</span><span class="lbl">This week</span>
+        </button>
+        <span class="div" aria-hidden="true"></span>
+        <button class="scope-pill" type="button" data-scope="all" aria-pressed="false">
+          <span class="num" id="n-open">0</span><span class="lbl">Open</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- ============================================================ -->
+    <form class="composer" id="composer">
+      <label class="visually-hidden" for="qa-text">Add a task</label>
+      <input id="qa-text" type="text" placeholder="Add a task…" autocomplete="off">
+      <span class="field-chip">
+        <select id="qa-area" aria-label="Area"></select>
+      </span>
+      <span class="field-chip">
+        <input type="date" id="qa-due" aria-label="Due date (optional)">
+      </span>
+      <button class="composer-add" type="submit">Add</button>
+    </form>
+
+    <div class="filter-bar">
+      <div class="filter-row" id="filter-row" aria-label="Filter by area or tag"></div>
+      <label class="search-field">
+        <span class="visually-hidden">Search your agenda</span>
+        <span aria-hidden="true">⌕</span>
+        <input type="search" id="qa-search" placeholder="Search your agenda…" autocomplete="off">
+      </label>
+    </div>
+
+    <div class="filter-banner" id="filter-banner" style="display:none">
+      <span id="filter-text"></span>
+      <button class="action-btn" id="clear-filter" type="button">Clear</button>
+    </div>
+
+    <!-- ============================================================ -->
+    <div class="agenda-grid">
+      <div id="agenda"></div>
+
+      <aside class="sidebar">
+        <div class="card">
+          <h3>New area</h3>
+          <details class="disclosure">
+            <summary>+ New area</summary>
+            <div class="disclosure-form">
+              <label class="visually-hidden" for="new-area-title">Area name</label>
+              <input id="new-area-title" placeholder="Area name" maxlength="100">
+              <label class="visually-hidden" for="new-area-task">First task</label>
+              <input id="new-area-task" placeholder="First task">
+              <button type="button" id="new-area-submit">Create area</button>
+            </div>
+          </details>
+        </div>
+
+        <div class="card">
+          <h3>New project</h3>
+          <details class="disclosure">
+            <summary>+ New project</summary>
+            <div class="disclosure-form">
+              <label class="visually-hidden" for="new-project-title">Project name</label>
+              <input id="new-project-title" placeholder="Project name" maxlength="100">
+              <button type="button" id="new-project-submit">Create project</button>
+            </div>
+          </details>
+        </div>
+
+        <div class="card">
+          <h3>Capture</h3>
+          <a class="side-link" href="#">Inbox →</a>
+          <a class="side-link" href="#">Ideas →</a>
+        </div>
+
+        <div class="card">
+          <h3>Daily reminder</h3>
+          <p class="side-note" id="reminder-note">A summary of what's overdue and due today is emailed to you each morning.</p>
+          <a class="side-link" href="#">Change this in settings →</a>
+        </div>
+
+        <div class="card">
+          <a class="archive-link" href="#">
+            <span>Archive</span>
+            <span class="n" id="n-archive">6 tasks</span>
+          </a>
+        </div>
+      </aside>
+    </div>
+
+    <p class="annot">
+      <strong>Considered, not automatic:</strong> the masthead's greeting and
+      date stay exactly as worded today — no motivational copy, no streaks.
+      <code>agenda.ts</code>'s own <code>ageLabel</code> already commits to
+      "reports a fact and draws no conclusion" for how it talks about waiting
+      tasks; a redesign of the page it lives on shouldn't start speaking in a
+      different voice just because the header got quieter.
+    </p>
+
+  </main>
+</div>
+
+<div class="toast-stack" id="toasts"></div>
+
+<script>
+// ---------------------------------------------------------------- fake data
+const AREAS = [
+  { id: 1, title: "Home",     color: "var(--c-sage)",  url: "#" },
+  { id: 2, title: "Admin",    color: "var(--c-amber)", url: "#" },
+  { id: 3, title: "Work",     color: "var(--c-sky)",   url: "#" },
+  { id: 4, title: "Errands",  color: "var(--c-coral)", url: "#" },
+];
+const PROJECTS = [
+  { id: 1, title: "Kitchen remodel", url: "#" },
+];
+
+const today = new Date();
+today.setHours(0, 0, 0, 0);
+function iso(offsetDays) {
+  const d = new Date(today);
+  d.setDate(d.getDate() + offsetDays);
+  return d.toISOString().slice(0, 10);
+}
+const todayIso = iso(0);
+
+let nextId = 200;
+let TASKS = [
+  { id: 1,  text: "Renew the car insurance before it lapses",   area: 2, project: null, due: iso(-6), created: iso(-20), tags: ["urgent"], recur: "none",    notes: false },
+  { id: 2,  text: "Call the plumber back about the upstairs leak", area: 1, project: 1, due: iso(-2), created: iso(-5), tags: [],         recur: "none",    notes: false },
+  { id: 3,  text: "Reply to the tenant about the porch light",  area: 2, project: null, due: iso(-1), created: iso(-9), tags: [],         recur: "none",    notes: true },
+
+  { id: 4,  text: "Take Biscuit to the vet for his booster",    area: 1, project: null, due: iso(0),  created: iso(-2), tags: [],         recur: "none",    notes: false },
+  { id: 5,  text: "Ship the Friday deploy checklist",           area: 3, project: null, due: iso(0),  created: iso(-1), tags: ["deploy"], recur: "none",    notes: false },
+  { id: 6,  text: "Pick up prescription refill",                area: 4, project: null, due: iso(0),  created: iso(-3), tags: [],         recur: "monthly", notes: false },
+  { id: 7,  text: "Water the tomatoes",                         area: 1, project: null, due: iso(0),  created: iso(-14), tags: ["outdoor"],recur: "weekly",  notes: false },
+
+  { id: 8,  text: "Order the tile for the kitchen backsplash",  area: 1, project: 1, due: iso(2), created: iso(-4), tags: [],            recur: "none",    notes: false },
+  { id: 9,  text: "Finish the quarterly budget review",         area: 2, project: null, due: iso(3), created: iso(-10), tags: ["urgent"], recur: "none",    notes: false },
+  { id: 10, text: "Review the PR for the auth refactor",        area: 3, project: null, due: iso(4), created: iso(-1), tags: [],         recur: "none",    notes: false },
+  { id: 11, text: "Book the dentist cleaning",                  area: 4, project: null, due: iso(5), created: iso(-6), tags: [],         recur: "none",    notes: false },
+
+  { id: 12, text: "Renew the passport before the trip",         area: 2, project: null, due: iso(18), created: iso(-30), tags: [],        recur: "none",    notes: false },
+  { id: 13, text: "Get the gutters cleaned before autumn",      area: 1, project: null, due: iso(25), created: iso(-15), tags: [],        recur: "none",    notes: false },
+
+  { id: 14, text: "Reorganize the garage shelving",             area: 1, project: null, due: null, created: iso(-45), tags: [],           recur: "none",    notes: false },
+  { id: 15, text: "Look into a standing desk",                  area: 3, project: null, due: null, created: iso(-60), tags: [],           recur: "none",    notes: false },
+  { id: 16, text: "Read ‘Four Thousand Weeks’",       area: 1, project: null, due: null, created: iso(-8), tags: ["reading"],   recur: "none",    notes: false },
+];
+let COMPLETED_TODAY = [
+  { id: 101, text: "Pack Biscuit's vet paperwork", area: 1, project: null, tags: [] },
+  { id: 102, text: "Send the invoice to Dan", area: 2, project: null, tags: [] },
+];
+
+let filters = { scope: null, area: null, tag: null, query: "" };
+const collapsed = new Set(["later", "someday"]);
+
+// Mirrors agenda.ts's AGE_WORTH_MENTIONING/ageLabel exactly -- same
+// threshold, same wording, so this doesn't become a second phrasing for
+// the same fact Daily and the weekly review already state.
+const AGE_WORTH_MENTIONING = 7;
+function daysBetween(from, to) {
+  return Math.round((Date.parse(to + "T00:00:00Z") - Date.parse(from + "T00:00:00Z")) / 86400000);
+}
+function ageLabel(task) {
+  const days = daysBetween(task.created, todayIso);
+  if (days < AGE_WORTH_MENTIONING) return null;
+  return `Added ${days} days ago`;
+}
+
+// ---------------------------------------------------------------- helpers
+const areaById = id => AREAS.find(a => a.id === id);
+const projectById = id => PROJECTS.find(p => p.id === id);
+
+function bucketOf(task) {
+  if (!task.due) return "someday";
+  if (task.due < todayIso) return "overdue";
+  if (task.due === todayIso) return "today";
+  if (task.due <= iso(7)) return "week";
+  return "later";
+}
+
+function dueLabel(task) {
+  if (!task.due) return null;
+  const b = bucketOf(task);
+  const d = new Date(task.due + "T00:00:00");
+  const days = Math.round((d - today) / 86400000);
+  if (b === "overdue") { const n = Math.abs(days); return n === 1 ? "Yesterday" : n + " days overdue"; }
+  if (b === "today") return "Today";
+  if (days === 1) return "Tomorrow";
+  if (days <= 7) return d.toLocaleDateString(undefined, { weekday: "long" });
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+const BUCKETS = [
+  { key: "overdue", label: "Overdue",     cls: "overdue" },
+  { key: "today",   label: "Today",       cls: "today" },
+  { key: "week",    label: "This week",   cls: "" },
+  { key: "later",   label: "Later",       cls: "" },
+  { key: "someday", label: "No due date", cls: "" },
+];
+
+function matches(task) {
+  if (filters.area && task.area !== filters.area) return false;
+  if (filters.tag && !task.tags.includes(filters.tag)) return false;
+  if (filters.query && !task.text.toLowerCase().includes(filters.query.toLowerCase())) return false;
+  const b = bucketOf(task);
+  if (filters.scope === "overdue" && b !== "overdue") return false;
+  if (filters.scope === "today" && b !== "today") return false;
+  if (filters.scope === "week" && !["overdue", "today", "week"].includes(b)) return false;
+  return true;
+}
+
+// ---------------------------------------------------------------- rendering
+function render() {
+  renderHeader();
+  renderFilterRow();
+  renderFilterBanner();
+  renderAgenda();
+  document.getElementById("n-archive").textContent = "6 tasks";
+  const searchInput = document.getElementById("qa-search");
+  if (searchInput.value !== filters.query) searchInput.value = filters.query;
+}
+
+function renderHeader() {
+  const count = k => TASKS.filter(t => bucketOf(t) === k).length;
+  document.getElementById("n-overdue").textContent = count("overdue");
+  document.getElementById("n-today").textContent = count("today");
+  document.getElementById("n-week").textContent = count("overdue") + count("today") + count("week");
+  document.getElementById("n-open").textContent = TASKS.length;
+
+  const h = new Date().getHours();
+  const part = h < 12 ? "morning" : h < 18 ? "afternoon" : "evening";
+  document.getElementById("greeting").textContent = `Good ${part}, Vince.`;
+  document.getElementById("date-line").textContent =
+    new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
+
+  document.querySelectorAll(".scope-pill").forEach(el => {
+    const active = filters.scope === el.dataset.scope || (el.dataset.scope === "all" && !filters.scope);
+    el.setAttribute("aria-pressed", String(active && el.dataset.scope !== "all" ? active : filters.scope === el.dataset.scope));
+  });
+}
+
+function renderFilterRow() {
+  const root = document.getElementById("filter-row");
+  root.innerHTML = "";
+
+  AREAS.forEach(a => {
+    const open = TASKS.filter(t => t.area === a.id).length;
+    const overdue = TASKS.filter(t => t.area === a.id && bucketOf(t) === "overdue").length;
+    if (!open) return;
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "chip";
+    b.setAttribute("aria-pressed", String(filters.area === a.id));
+    b.innerHTML = `<span class="dot" style="background:${a.color}"></span>${a.title}
+      <span class="n${overdue ? " warn" : ""}">${overdue ? "⚠ " + overdue + " · " : ""}${open}</span>`;
+    b.addEventListener("click", () => { filters.area = filters.area === a.id ? null : a.id; render(); });
+    root.appendChild(b);
+  });
+
+  const tags = [...new Set(TASKS.flatMap(t => t.tags))].sort();
+  if (tags.length) {
+    const sep = document.createElement("span");
+    sep.className = "sep";
+    sep.setAttribute("aria-hidden", "true");
+    root.appendChild(sep);
+    tags.forEach(tag => {
+      const count = TASKS.filter(t => t.tags.includes(tag)).length;
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "chip tag-chip";
+      b.setAttribute("aria-pressed", String(filters.tag === tag));
+      b.innerHTML = `#${tag} <span class="n">${count}</span>`;
+      b.addEventListener("click", () => { filters.tag = filters.tag === tag ? null : tag; render(); });
+      root.appendChild(b);
+    });
+  }
+}
+
+function renderFilterBanner() {
+  const banner = document.getElementById("filter-banner");
+  const parts = [];
+  if (filters.scope) parts.push(BUCKETS.find(b => b.key === filters.scope)?.label || "This week");
+  if (filters.area) parts.push(areaById(filters.area).title);
+  if (filters.tag) parts.push("#" + filters.tag);
+  if (filters.query) parts.push(`“${filters.query}”`);
+  if (!parts.length) { banner.style.display = "none"; return; }
+  banner.style.display = "flex";
+  const shown = TASKS.filter(matches).length;
+  document.getElementById("filter-text").textContent =
+    `Showing ${parts.join(" · ")} — ${shown} task${shown === 1 ? "" : "s"}`;
+}
+
+function taskRow(task, done) {
+  const b = bucketOf(task);
+  const area = areaById(task.area);
+  const project = task.project ? projectById(task.project) : null;
+  const row = document.createElement("div");
+  row.className = "row" + (done ? " done" : b === "overdue" ? " is-overdue" : b === "today" ? " is-today" : "");
+  row.dataset.id = task.id;
+
+  const meta = [];
+  meta.push(`<a class="pill pill-area" href="${area.url}"><span class="dot" style="background:${area.color}"></span>${area.title}</a>`);
+  if (project) meta.push(`<a class="pill pill-project" href="${project.url}">${project.title}</a>`);
+  if (task.created) {
+    const age = ageLabel(task);
+    if (age) meta.push(`<span class="pill pill-age">${age}</span>`);
+  }
+  if (task.due) {
+    const cls = b === "overdue" ? " overdue" : b === "today" ? " today" : "";
+    meta.push(`<span class="pill pill-due${cls}">${dueLabel(task)}</span>`);
+  }
+  if (task.recur && task.recur !== "none") meta.push(`<span class="pill pill-recur">⟳ ${task.recur[0].toUpperCase()}${task.recur.slice(1)}</span>`);
+  if (task.notes) meta.push(`<span class="pill" title="Has notes" aria-label="Has notes">✎</span>`);
+  task.tags.forEach(t => meta.push(`<button type="button" class="pill pill-tag" data-tag="${t}" aria-pressed="${filters.tag === t}">#${t}</button>`));
+
+  row.innerHTML = `
+    <button type="button" class="check${done ? " is-checked" : ""}" aria-label="${done ? "Reopen" : "Complete"} “${task.text.replace(/"/g, "&quot;")}”"></button>
+    <div class="body">
+      <span class="text">${task.text}</span>
+      <div class="meta">${meta.join("")}</div>
+    </div>
+    ${done ? "" : `<div class="actions">
+      <div class="schedule-wrap">
+        <button type="button" class="action-btn" data-act="schedule" aria-haspopup="menu" aria-expanded="false">Schedule</button>
+      </div>
+      <a class="action-btn" href="#">Edit</a>
+    </div>`}
+  `;
+
+  row.querySelector(".check").addEventListener("click", () => done ? reopenTask(task.id) : completeTask(task.id, row));
+  row.querySelectorAll("[data-tag]").forEach(el =>
+    el.addEventListener("click", () => { filters.tag = filters.tag === el.dataset.tag ? null : el.dataset.tag; render(); }));
+
+  const scheduleBtn = row.querySelector('[data-act="schedule"]');
+  if (scheduleBtn) {
+    scheduleBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      closeAllMenus();
+      const wrap = scheduleBtn.closest(".schedule-wrap");
+      const menu = document.createElement("div");
+      menu.className = "schedule-menu";
+      menu.setAttribute("role", "menu");
+      const presets = [
+        { label: "Today", due: todayIso },
+        { label: "Tomorrow", due: iso(1) },
+        { label: "Next week", due: iso(7) },
+      ];
+      if (task.due) presets.push({ label: "No due date", due: null });
+      presets.forEach(p => {
+        const item = document.createElement("button");
+        item.type = "button";
+        item.setAttribute("role", "menuitem");
+        item.textContent = p.label;
+        item.addEventListener("click", () => { closeAllMenus(); rescheduleTask(task.id, p.due, p.label); });
+        menu.appendChild(item);
+      });
+      wrap.appendChild(menu);
+      scheduleBtn.setAttribute("aria-expanded", "true");
+    });
+  }
+
+  return row;
+}
+
+function closeAllMenus() {
+  document.querySelectorAll(".schedule-menu").forEach(m => m.remove());
+  document.querySelectorAll('[data-act="schedule"]').forEach(b => b.setAttribute("aria-expanded", "false"));
+}
+document.addEventListener("click", closeAllMenus);
+
+function renderAgenda() {
+  const root = document.getElementById("agenda");
+  root.innerHTML = "";
+  const shown = TASKS.filter(matches);
+
+  if (!shown.length && !(!filters.scope && !filters.area && !filters.tag && !filters.query && COMPLETED_TODAY.length)) {
+    root.innerHTML = `<div class="empty-note" style="padding:2.5rem 1.25rem">
+      <strong style="color:var(--sl-text)">Nothing matches that filter.</strong>
+      <div style="margin-top:0.6rem"><button class="action-btn" id="show-all" type="button">Show the whole agenda</button></div>
+    </div>`;
+    document.getElementById("show-all")?.addEventListener("click", () => { filters = { scope: null, area: null, tag: null, query: "" }; render(); });
+    return;
+  }
+
+  BUCKETS.forEach(bucket => {
+    const items = shown.filter(t => bucketOf(t) === bucket.key);
+    if (!items.length) return;
+    const section = document.createElement("section");
+    section.className = "section " + bucket.cls + (collapsed.has(bucket.key) ? " is-collapsed" : "");
+    const head = document.createElement("button");
+    head.type = "button";
+    head.className = "section-head";
+    head.setAttribute("aria-expanded", String(!collapsed.has(bucket.key)));
+    head.innerHTML = `<h2>${bucket.label}</h2><span class="count">${items.length}</span><span class="chev" aria-hidden="true">▼</span>`;
+    head.addEventListener("click", () => { collapsed.has(bucket.key) ? collapsed.delete(bucket.key) : collapsed.add(bucket.key); render(); });
+    const body = document.createElement("div");
+    body.className = "section-body";
+    items.forEach(t => body.appendChild(taskRow(t, false)));
+    section.append(head, body);
+    root.appendChild(section);
+  });
+
+  if (!filters.scope && !filters.area && !filters.tag && !filters.query && COMPLETED_TODAY.length) {
+    const section = document.createElement("section");
+    section.className = "section" + (collapsed.has("completed") ? " is-collapsed" : "");
+    const head = document.createElement("button");
+    head.type = "button";
+    head.className = "section-head";
+    head.setAttribute("aria-expanded", String(!collapsed.has("completed")));
+    head.innerHTML = `<h2>Completed today</h2><span class="count">${COMPLETED_TODAY.length}</span><span class="chev" aria-hidden="true">▼</span>`;
+    head.addEventListener("click", () => { collapsed.has("completed") ? collapsed.delete("completed") : collapsed.add("completed"); render(); });
+    const body = document.createElement("div");
+    body.className = "section-body";
+    COMPLETED_TODAY.forEach(t => body.appendChild(taskRow(t, true)));
+    section.append(head, body);
+    root.appendChild(section);
+  }
+}
+
+// ---------------------------------------------------------------- actions
+function completeTask(id, row) {
+  const task = TASKS.find(t => t.id === id);
+  if (!task) return;
+  row.classList.add("done");
+  setTimeout(() => {
+    row.classList.add("leaving");
+    setTimeout(() => {
+      TASKS = TASKS.filter(t => t.id !== id);
+      if (task.recur !== "none") {
+        const nextDue = advance(task.due, task.recur);
+        const next = { ...task, id: nextId++, due: nextDue };
+        TASKS.push(next);
+        toast(`Done. Next one due ${dueLabel(next)}.`);
+      } else {
+        COMPLETED_TODAY = [{ ...task }, ...COMPLETED_TODAY];
+        toast(`Completed “${task.text}”`, () => {
+          COMPLETED_TODAY = COMPLETED_TODAY.filter(t => t.id !== id);
+          TASKS.push(task);
+          render();
+        });
+      }
+      render();
+    }, 200);
+  }, 260);
+}
+
+function reopenTask(id) {
+  const task = COMPLETED_TODAY.find(t => t.id === id);
+  if (!task) return;
+  COMPLETED_TODAY = COMPLETED_TODAY.filter(t => t.id !== id);
+  TASKS.push(task);
+  render();
+  toast(`Reopened “${task.text}”`);
+}
+
+function advance(due, recur) {
+  const base = new Date((due || todayIso) + "T00:00:00");
+  if (recur === "daily") base.setDate(base.getDate() + 1);
+  if (recur === "weekly") base.setDate(base.getDate() + 7);
+  if (recur === "monthly") base.setMonth(base.getMonth() + 1);
+  return base.toISOString().slice(0, 10);
+}
+
+function rescheduleTask(id, due, label) {
+  const task = TASKS.find(t => t.id === id);
+  if (!task) return;
+  const was = task.due;
+  task.due = due;
+  render();
+  toast(
+    due ? `Moved “${task.text}” to ${label.toLowerCase()}` : `Cleared the due date on “${task.text}”`,
+    () => { task.due = was; render(); },
+  );
+}
+
+function toast(message, undo) {
+  const el = document.createElement("div");
+  el.className = "toast";
+  el.innerHTML = `<span>${message}</span>`;
+  if (undo) {
+    const b = document.createElement("button");
+    b.className = "action-btn";
+    b.textContent = "Undo";
+    b.addEventListener("click", () => { undo(); el.remove(); });
+    el.appendChild(b);
+  }
+  document.getElementById("toasts").appendChild(el);
+  setTimeout(() => el.remove(), undo ? 6000 : 3500);
+}
+
+// ---------------------------------------------------------------- composer + header wiring
+const qaArea = document.getElementById("qa-area");
+AREAS.forEach(a => {
+  const o = document.createElement("option");
+  o.value = a.id;
+  o.textContent = a.title;
+  qaArea.appendChild(o);
+});
+
+document.getElementById("composer").addEventListener("submit", e => {
+  e.preventDefault();
+  const input = document.getElementById("qa-text");
+  const text = input.value.trim();
+  if (!text) return;
+  const due = document.getElementById("qa-due").value || null;
+  const areaId = Number(qaArea.value);
+  TASKS.push({ id: nextId++, text, area: areaId, project: null, due, tags: [], recur: "none", notes: false });
+  input.value = "";
+  document.getElementById("qa-due").value = "";
+  render();
+  toast(`Added “${text}” to ${areaById(areaId).title}`);
+});
+
+document.querySelectorAll(".scope-pill").forEach(el =>
+  el.addEventListener("click", () => {
+    const scope = el.dataset.scope === "all" ? null : el.dataset.scope;
+    filters.scope = filters.scope === scope ? null : scope;
+    render();
+  }));
+
+document.getElementById("qa-search").addEventListener("input", e => {
+  filters.query = e.target.value;
+  render();
+});
+
+document.getElementById("clear-filter").addEventListener("click", () => {
+  filters = { scope: null, area: null, tag: null, query: "" };
+  render();
+});
+
+document.getElementById("new-area-submit").addEventListener("click", () => {
+  const title = document.getElementById("new-area-title").value.trim();
+  if (!title) return;
+  toast(`Would create the area “${title}”`);
+});
+document.getElementById("new-project-submit").addEventListener("click", () => {
+  const title = document.getElementById("new-project-title").value.trim();
+  if (!title) return;
+  toast(`Would create the project “${title}”`);
+});
+
+render();
+</script>
+</body>
+</html>

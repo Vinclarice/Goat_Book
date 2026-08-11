@@ -100,7 +100,9 @@ class TokenPageTest(TestCase):
 
     def test_creating_a_token_shows_the_raw_value_exactly_once(self):
         created = self.client.post(
-            reverse("new_token"), data={"label": "Phone"}, follow=True
+            reverse("new_token"),
+            data={"label": "Phone", "scopes": ["capture:write"], "expiry": "90"},
+            follow=True,
         )
         raw = created.context["raw_token"]
 
@@ -117,13 +119,82 @@ class TokenPageTest(TestCase):
         # Belt and braces on the above: the value shown has to be the one
         # that authenticates, not merely some random string.
         created = self.client.post(
-            reverse("new_token"), data={"label": "Phone"}, follow=True
+            reverse("new_token"),
+            data={"label": "Phone", "scopes": ["capture:write"], "expiry": "90"},
+            follow=True,
         )
 
         self.assertEqual(
             PersonalAccessToken.objects.get(owner=self.user).token_hash,
             hash_token(created.context["raw_token"]),
         )
+
+    def test_a_created_token_carries_the_scopes_that_were_selected(self):
+        self.client.post(
+            reverse("new_token"),
+            data={
+                "label": "Phone",
+                "scopes": ["capture:write", "day:read"],
+                "expiry": "90",
+            },
+        )
+
+        token = PersonalAccessToken.objects.get(owner=self.user)
+        self.assertEqual(token.scope_set, {"capture:write", "day:read"})
+
+    def test_a_created_token_expires_when_the_chosen_period_says_so(self):
+        self.client.post(
+            reverse("new_token"),
+            data={"label": "Phone", "scopes": ["capture:write"], "expiry": "90"},
+        )
+
+        token = PersonalAccessToken.objects.get(owner=self.user)
+        self.assertIsNotNone(token.expires_at)
+        self.assertGreater(token.expires_at, timezone.now() + timedelta(days=89))
+        self.assertLess(token.expires_at, timezone.now() + timedelta(days=91))
+
+    def test_choosing_never_expire_leaves_expires_at_unset(self):
+        self.client.post(
+            reverse("new_token"),
+            data={"label": "Phone", "scopes": ["capture:write"], "expiry": "never"},
+        )
+
+        token = PersonalAccessToken.objects.get(owner=self.user)
+        self.assertIsNone(token.expires_at)
+
+    def test_creating_a_token_with_no_scope_selected_is_rejected(self):
+        # Least privilege by default: nothing is pre-checked, and skipping
+        # the choice must not silently grant every scope -- it must create
+        # nothing at all.
+        response = self.client.post(
+            reverse("new_token"), data={"label": "Phone", "expiry": "90"}
+        )
+
+        self.assertFalse(PersonalAccessToken.objects.exists())
+        self.assertContains(response, "field is required")
+
+    def test_the_page_shows_each_tokens_scopes_and_expiry(self):
+        PersonalAccessToken.generate(
+            self.user,
+            label="Phone",
+            scopes=["capture:write", "day:read"],
+            expires_at=timezone.now() + timedelta(days=30),
+        )
+
+        response = self.client.get(reverse("tokens"))
+
+        self.assertContains(response, "capture:write")
+        self.assertContains(response, "day:read")
+        self.assertContains(response, "expires")
+
+    def test_a_never_expiring_token_says_so_on_the_page(self):
+        PersonalAccessToken.generate(
+            self.user, label="Phone", scopes=["capture:write"]
+        )
+
+        response = self.client.get(reverse("tokens"))
+
+        self.assertContains(response, "never expires")
 
     def test_lists_only_your_own_tokens(self):
         intruder = User.objects.create_user(

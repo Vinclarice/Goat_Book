@@ -57,6 +57,15 @@
                     {% else %}
                       never used
                     {% endif %}
+                    ·
+                    {% if token.expires_at %}
+                      expires {{ token.expires_at|date:"M j, Y" }}
+                    {% else %}
+                      never expires
+                    {% endif %}
+                  </p>
+                  <p class="text-xs text-muted-foreground">
+                    {{ token.scope_set|join:", "|default:"No scopes — can't do anything" }}
                   </p>
                 </div>
                 <form method="post" action="{% url 'delete_token' token.id %}">

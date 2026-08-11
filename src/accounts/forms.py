@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from django.contrib.auth import authenticate
 from django.contrib.auth.forms import (
     AuthenticationForm,
@@ -5,8 +7,14 @@ from django.contrib.auth.forms import (
     UserCreationForm,
 )
 from django import forms
+from django.utils import timezone
 
-from accounts.models import User
+from accounts.models import (
+    SCOPE_CAPTURE_WRITE,
+    SCOPE_DAY_READ,
+    SCOPE_IDENTITY_READ,
+    User,
+)
 
 
 class LoginForm(AuthenticationForm):
@@ -88,9 +96,35 @@ class AdminUserChangeForm(UserChangeForm):
 
 
 class TokenForm(forms.Form):
-    """Just a label. The token itself is generated server-side and never
-    submitted by anyone, so there's nothing else to collect.
+    """A label, what it's allowed to do, and how long it lasts. The token
+    value itself is generated server-side and never submitted by anyone.
+
+    Scope is required with nothing pre-checked -- token-scopes-plan.md's
+    least-privilege default: an explicit choice every time, not a sensible-
+    looking default somebody could rubber-stamp without reading. Expiry
+    defaults to the shortest real option rather than "never", the same
+    reasoning in reverse.
     """
+
+    SCOPE_CHOICES = [
+        (SCOPE_CAPTURE_WRITE, "Write captures — post a new thought to the Inbox"),
+        (
+            SCOPE_IDENTITY_READ,
+            "Read your identity — confirm which account this token belongs to",
+        ),
+        (
+            SCOPE_DAY_READ,
+            "Read your Daily Page — today's focus, action items, routines and Compass",
+        ),
+    ]
+
+    # Values are the field's own vocabulary, checked in expires_at() below
+    # rather than trusted as literal day counts from anywhere else.
+    EXPIRY_CHOICES = [
+        ("90", "In 90 days"),
+        ("365", "In 1 year"),
+        ("never", "Never — not recommended"),
+    ]
 
     label = forms.CharField(
         label="What's it for?",
@@ -98,6 +132,26 @@ class TokenForm(forms.Form):
         required=False,
         widget=forms.TextInput(attrs={"placeholder": "Phone"}),
     )
+    scopes = forms.MultipleChoiceField(
+        label="What can it do?",
+        choices=SCOPE_CHOICES,
+        widget=forms.CheckboxSelectMultiple,
+    )
+    expiry = forms.ChoiceField(
+        label="Expires",
+        choices=EXPIRY_CHOICES,
+        initial="90",
+    )
+
+    def expires_at(self):
+        """None for "never expires"; a real datetime otherwise. Computed
+        here, the one place that knows what each choice means, rather than
+        left for the view to reinterpret.
+        """
+        choice = self.cleaned_data["expiry"]
+        if choice == "never":
+            return None
+        return timezone.now() + timedelta(days=int(choice))
 
 
 class ContactForm(forms.Form):

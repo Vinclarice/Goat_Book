@@ -90,11 +90,28 @@ def tokens(request):
 @require_POST
 def new_token(request):
     form = TokenForm(data=request.POST)
-    if form.is_valid():
-        _, raw = PersonalAccessToken.generate(
-            request.user, label=form.cleaned_data["label"]
+    if not form.is_valid():
+        # Re-rendered rather than redirected: scopes is required now
+        # (token-scopes-plan.md), and a redirect to `tokens`'s own always-
+        # fresh TokenForm() would silently drop every validation error,
+        # which used to be harmless when the only field was an optional
+        # label and stops being harmless the moment a required one exists.
+        return render(
+            request,
+            "accounts/tokens.html",
+            {
+                "form": form,
+                "tokens": request.user.tokens.all(),
+                "raw_token": None,
+            },
         )
-        request.session["raw_token"] = raw
+    _, raw = PersonalAccessToken.generate(
+        request.user,
+        label=form.cleaned_data["label"],
+        scopes=form.cleaned_data["scopes"],
+        expires_at=form.expires_at(),
+    )
+    request.session["raw_token"] = raw
     return redirect("tokens")
 
 

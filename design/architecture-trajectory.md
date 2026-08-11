@@ -777,6 +777,21 @@ its own small brief rather than a line on this list.
 must precede any redeploy that would overwrite evidence, and every remaining
 item here is safer to rehearse than to attempt live.
 
+**Decisions made and a real code gap closed, August 11, 2026 — see
+[`staging-environment-plan.md`](staging-environment-plan.md).** A second
+DigitalOcean droplet, not a second process on production's own (already
+tight on memory); its own database on production's existing Postgres
+cluster via `provision-postgres.sh`/`restrict-database-user.sh`'s existing
+per-database restriction, not a second managed cluster. Designing it
+surfaced a real gap before it could bite in production: `settings.py`'s
+`DEBUG` had only two states, neither of which fit a `"staging"` value
+safely — pulled into a tested `clarice/deployment.py::is_debug()`, the
+same "function with a test, not a branch in a config file" pattern
+`monitoring.py` already used. **Not yet provisioned** — the droplet, DNS,
+and database creation are Vince's own steps (`doctl`, the SSH key and a
+real spending decision, the same category deploying already is), detailed
+in that plan's §5.
+
 **Then, in this order, each only once staging exists.**
 
 - **An asynchronous task queue.** Contact mail, password reset and the axes

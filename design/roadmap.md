@@ -759,7 +759,12 @@ auth-class-scoped CSRF re-check) and ports it by hand via a new
 touch its text/tags/notes/recurrence — capabilities the Agenda page itself
 doesn't use either. 918 backend tests, 260 Android tests, both green;
 installed clean on the SM-S928U1 with no crash, correctly showing
-"Reconnect" since the new scopes exist only locally. Not yet deployed.
+"Reconnect" since the new scopes exist only locally.
+
+**Deployed and verified live, August 11, 2026.** A fresh login on the
+SM-S928U1 minted a token under the deployed `agenda:read`/`agenda:write`
+scopes; quick-adding a throwaway task and marking it done both round-tripped
+against production with no crash, `Open` count moving 10→11→10 to prove it.
 
 **Slice 1 extended to writable the same day, built before Agenda's own
 device pass:** Vince asked to bring the Daily Page up to the same
@@ -774,8 +779,36 @@ the SM-S928U1 with no crash, the new UI (pin/unpin, routine cards,
 editable Intentions/Grateful for/Happenings) rendering correctly, and
 tapping "Pin to today" correctly showing "Reconnect in Settings to change
 today" — the same "exists only locally" state Agenda's own device pass
-hit, not a bug. Not yet deployed. See `android-full-client-plan.md`'s own
-§8 and `token-scopes-plan.md`'s own §8.
+hit, not a bug. See `android-full-client-plan.md`'s own §8 and
+`token-scopes-plan.md`'s own §8.
+
+**Deployed and verified live, August 11, 2026, alongside Agenda's own
+redeploy.** Pinning and unpinning "Pay tmobile bill" on the SM-S928U1 both
+round-tripped against production with no crash, after reconnecting to pick
+up a token minted under the new `day:write`/`routines:write` scopes — the
+existing connection predated the deploy and needed a fresh login, worth
+remembering for the next scope-adding deploy. Found and fixed the same
+day: a long action-item title left the "Pinned" badge as little as a few
+px of a narrow row, wrapping it letter by letter — the title now
+truncates with an ellipsis instead.
+
+**A seventh, separate line of work, started August 11, 2026: the
+infrastructure track's staging environment**, next in line per
+`architecture-trajectory.md` §6 and named above under Release F's own
+opening. A second DigitalOcean droplet with its own database on
+production's existing Postgres cluster, both decided directly rather than
+guessed — see [`staging-environment-plan.md`](staging-environment-plan.md).
+Designing it found a real gap before it could reach production: settings.py's
+`DEBUG` had no state that fit `"staging"` safely, fixed by pulling the
+decision into a tested `clarice/deployment.py::is_debug()`, the same
+pattern `monitoring.py` already used. 937 backend tests green (up from
+933). The droplet, DNS and database themselves are not yet provisioned —
+that's Vince's own step, same category as a deploy, detailed in that
+plan's §5. Alongside this, `architecture-trajectory.md` §6's other two
+"now" items closed: local development moved onto Postgres (closing the
+gap where SQLite silently omitted a constraint production enforces), and
+the droplet-swap item, done back on August 3, was found to have never
+been marked complete.
 
 Move completed detail into `roadmap-history.md` and keep only the resulting
 baseline or remaining consequence here. When an idea from Later earns work,

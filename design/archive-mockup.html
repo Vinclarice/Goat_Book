@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clarice · Archive redesign mockup</title>
+<style>
+:root {
+  --sl-bg: #08111f;
+  --sl-surface: rgba(18, 31, 49, 0.82);
+  --sl-surface-strong: #132237;
+  --sl-border: rgba(255, 255, 255, 0.1);
+  --sl-text: #f5f7fb;
+  --sl-muted: #a6b2c3;
+  --sl-accent: #7be0b8;
+  --sl-danger: #f08a8a;
+  --sl-warn: #f4c98a;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  color: var(--sl-text);
+  background: var(--sl-bg);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.site-backdrop {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 15% 5%, rgba(67, 116, 155, 0.2), transparent 32rem),
+    radial-gradient(circle at 85% 25%, rgba(39, 132, 102, 0.16), transparent 28rem);
+}
+
+.container { width: 100%; max-width: 760px; margin: 0 auto; padding: 0 1.25rem; }
+
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap;
+}
+
+.mock-banner {
+  background: rgba(244, 201, 138, 0.1);
+  border-bottom: 1px solid rgba(244, 201, 138, 0.28);
+  color: var(--sl-warn);
+  font-size: 0.8rem;
+  text-align: center;
+  padding: 0.5rem 1rem;
+}
+.mock-banner strong { color: var(--sl-text); }
+
+.page-shell { padding: 2.5rem 0 4rem; }
+
+.diagnosis {
+  border: 1px solid rgba(244, 201, 138, 0.3);
+  background: rgba(244, 201, 138, 0.06);
+  border-radius: 0.9rem;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.25rem;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: var(--sl-muted);
+}
+.diagnosis strong { color: var(--sl-warn); }
+.diagnosis code {
+  background: rgba(255,255,255,0.06);
+  padding: 0.05rem 0.35rem;
+  border-radius: 0.3rem;
+  font-size: 0.82em;
+}
+.diagnosis:last-of-type { margin-bottom: 2.25rem; }
+
+.back-link {
+  display: inline-block;
+  color: var(--sl-muted);
+  text-decoration: none;
+  font-size: 0.85rem;
+  margin-bottom: 1.25rem;
+}
+.back-link:hover { color: var(--sl-text); }
+
+/* ---------- header: matches AreaRoute/ProjectRoute's own heading scale
+   now (text-3xl font-bold), not the old dashboard-era giant clamp()
+   heading this page alone still used. ---------- */
+.page-header {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 1rem; margin-bottom: 1.5rem;
+}
+.eyebrow {
+  margin: 0 0 0.4rem;
+  color: var(--sl-accent);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.page-header h1 { margin: 0; font-size: 1.9rem; font-weight: 700; letter-spacing: -0.02em; }
+.count-pill {
+  display: inline-flex; align-items: center; min-height: 2.75rem;
+  border: 1px solid var(--sl-border); border-radius: 999px;
+  padding: 0.4rem 1rem; color: var(--sl-muted); font-size: 0.85rem; white-space: nowrap;
+}
+
+/* ---------- search ---------- */
+.search-field {
+  display: flex; align-items: center; gap: 0.5rem;
+  min-height: 2.75rem; width: min(100%, 20rem);
+  border: 1px solid var(--sl-border); border-radius: 999px; padding: 0.4rem 1rem;
+  color: var(--sl-muted); font-size: 0.9rem; margin-bottom: 1.25rem;
+}
+.search-field:focus-within { border-color: var(--sl-accent); }
+.search-field input {
+  background: transparent; border: 0; color: var(--sl-text); font: inherit; outline: none; width: 100%;
+}
+.search-field input::placeholder { color: var(--sl-muted); }
+
+.feedback { min-height: 1.4rem; color: var(--sl-accent); font-size: 0.88rem; margin-bottom: 0.5rem; }
+.feedback.error { color: var(--sl-danger); }
+
+/* ---------- rows: bordered cards with a gap between them, the same
+   language TaskWorkspace's and Agenda's own redesigns already settled
+   on -- not the old single list-panel with internal dividers. ---------- */
+.task-list { display: flex; flex-direction: column; gap: 0.5rem; }
+.row {
+  display: flex; align-items: flex-start; gap: 0.9rem;
+  border: 1px solid var(--sl-border); border-radius: 0.9rem;
+  background: var(--sl-surface); padding: 0.9rem 1rem;
+  transition: opacity .2s, transform .2s;
+}
+.row.leaving { opacity: 0; transform: translateX(0.8rem); }
+.row-icon {
+  flex: none; display: grid; place-items: center;
+  width: 1.9rem; height: 1.9rem; border-radius: 0.6rem;
+  border: 1px solid var(--sl-border); color: var(--sl-muted); font-size: 0.85rem;
+  margin-top: 0.1rem;
+}
+.row-body { flex: 1; min-width: 0; }
+.row-text { display: block; font-size: 0.98rem; line-height: 1.4; word-break: break-word; }
+.row-meta { margin-top: 0.35rem; font-size: 0.82rem; color: var(--sl-muted); }
+.row-meta a { color: var(--sl-accent); text-decoration: none; }
+.row-meta a:hover { text-decoration: underline; }
+.row-actions {
+  display: flex; align-items: center; gap: 0.4rem; flex: none;
+  opacity: 0; transition: opacity .15s;
+}
+.row:hover .row-actions, .row:focus-within .row-actions { opacity: 1; }
+@media (hover: none) { .row-actions { opacity: 1; } }
+.action-btn {
+  font: inherit; font-size: 0.8rem; min-height: 2.75rem;
+  border-radius: 0.55rem; border: 1px solid var(--sl-border);
+  padding: 0.4rem 0.85rem; background: transparent; color: var(--sl-muted); cursor: pointer; white-space: nowrap;
+}
+.action-btn:hover { color: var(--sl-text); border-color: rgba(255,255,255,0.28); }
+.action-btn.danger { color: var(--sl-danger); border-color: rgba(240,138,138,0.35); }
+.action-btn.danger:hover { background: rgba(240,138,138,0.08); border-color: rgba(240,138,138,0.55); }
+
+.empty-note {
+  color: var(--sl-muted); font-size: 0.9rem; padding: 2.25rem 1.25rem; text-align: center;
+  border: 1px dashed var(--sl-border); border-radius: 0.9rem;
+}
+
+/* ---------- delete dialog: styled to match the AlertDialog component
+   AreaRoute/ProjectRoute already use for the exact same "delete this
+   permanently" moment, not a second hand-rolled dialog look. ---------- */
+.dialog-backdrop {
+  position: fixed; z-index: 1050; inset: 0; display: grid; place-items: center;
+  padding: 1rem; background: rgba(2, 7, 14, 0.78); backdrop-filter: blur(0.4rem);
+}
+.dialog {
+  width: min(100%, 28rem); padding: 1.75rem;
+  border: 1px solid var(--sl-border); border-radius: 1rem;
+  background: var(--sl-surface-strong); box-shadow: 0 2rem 6rem rgba(0, 0, 0, 0.45);
+}
+.dialog .eyebrow { color: var(--sl-danger); }
+.dialog h3 { margin: 0 0 0.75rem; font-size: 1.2rem; }
+.dialog p { margin: 0 0 1.5rem; color: var(--sl-muted); font-size: 0.92rem; line-height: 1.5; }
+.dialog p strong { color: var(--sl-text); }
+.dialog-actions { display: flex; justify-content: flex-end; gap: 0.6rem; flex-wrap: wrap; }
+.btn-solid {
+  font: inherit; font-weight: 700; font-size: 0.85rem; min-height: 2.75rem;
+  padding: 0 1.1rem; border-radius: 0.6rem; cursor: pointer;
+  border: 1px solid var(--sl-border); background: transparent; color: var(--sl-text);
+}
+.btn-solid.danger { border-color: var(--sl-danger); background: rgba(240,138,138,0.12); color: var(--sl-danger); }
+.btn-solid.danger:hover { background: rgba(240,138,138,0.2); }
+
+.annot {
+  font-size: 0.78rem; color: var(--sl-warn);
+  background: rgba(244, 201, 138, 0.08); border: 1px dashed rgba(244, 201, 138, 0.3);
+  border-radius: 0.6rem; padding: 0.6rem 0.85rem; margin: 1.75rem 0 0; line-height: 1.55;
+}
+.annot strong { color: var(--sl-warn); }
+</style>
+</head>
+<body>
+<div class="mock-banner">Mockup — <strong>fake data, nothing is saved</strong>. Everything here is clickable.</div>
+
+<div class="site-backdrop">
+  <main class="container page-shell">
+
+    <a class="back-link" href="#">← Back to Clarice</a>
+
+    <div class="diagnosis">
+      <strong>Why it renders like that today:</strong> <code>ArchiveManager.tsx</code>
+      is now the <em>only</em> component left on <code>site.css</code>'s Bootstrap-era
+      classes — <code>list-panel</code>, <code>archived-task-row</code>,
+      <code>btn btn-outline-light</code> — now that
+      <code>TaskWorkspace</code> and <code>AgendaWorkspace</code> have both moved to
+      Tailwind. Unlike those two, this page has no Tailwind-migrated wrapper
+      above it either (<code>ArchiveRoute.tsx</code> renders it directly), so
+      today it's the one screen in the whole app with zero Tailwind on it.
+    </div>
+
+    <div class="diagnosis">
+      <strong>On touch targets:</strong> the same category of finding as the
+      last two passes — Bootstrap's own <code>.btn-sm</code> (Restore, Delete)
+      measures ~28–31px, the plain <code>.btn</code> in the delete dialog
+      ~32–34px, both under the ~44px guideline. Below, every button keeps its
+      current visual size with a real ≥44px hit area around it.
+    </div>
+
+    <div class="diagnosis">
+      <strong>Considered, not changed:</strong> the delete-confirmation dialog
+      is restyled here to match the <code>AlertDialog</code> component
+      <code>AreaRoute</code>/<code>ProjectRoute</code> already use for the exact
+      same "delete this permanently" moment — same visual language, not a
+      second dialog look. Whether the real implementation should switch to
+      that actual component (dropping the hand-rolled focus-trap/Escape-key
+      logic this file currently duplicates) is an implementation call, not a
+      design one — flagged here, not decided.
+    </div>
+
+    <!-- ============================================================ -->
+    <header class="page-header">
+      <div>
+        <p class="eyebrow">Kept for later</p>
+        <h1>Done &amp; archived tasks</h1>
+      </div>
+      <span class="count-pill" id="count-pill">6 archived</span>
+    </header>
+
+    <label class="search-field">
+      <span class="visually-hidden">Search archived tasks</span>
+      <span aria-hidden="true">⌕</span>
+      <input type="search" id="search" placeholder="Search archived tasks or areas" autocomplete="off">
+    </label>
+
+    <div class="feedback" id="feedback" aria-live="polite"></div>
+
+    <div class="task-list" id="task-list"></div>
+
+    <p class="annot">
+      <strong>One naming question, not a visual one:</strong> every row here
+      still says "Created &lt;date&gt;" — the same wording the pre-Tailwind
+      <code>TaskWorkspace</code> used before that redesign changed a completed
+      row to say "Completed &lt;date&gt;" instead
+      (<code>task-list-redesign-plan.md</code> item 8). This page's whole
+      point is being a record of finished work, so archived_at or
+      completed_at may read better here than the creation date — worth
+      deciding before implementation, not assumed either way.
+    </p>
+
+  </main>
+</div>
+
+<div class="dialog-backdrop" id="dialog-backdrop" style="display:none">
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="delete-heading">
+    <p class="eyebrow">Permanent action</p>
+    <h3 id="delete-heading">Delete this task?</h3>
+    <p id="dialog-text"></p>
+    <div class="dialog-actions">
+      <button class="btn-solid" type="button" id="keep-task">Keep task</button>
+      <button class="btn-solid danger" type="button" id="confirm-delete">Delete permanently</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const AREAS = {
+  1: { title: "Home", url: "#" },
+  2: { title: "Admin", url: "#" },
+  3: { title: "Work", url: "#" },
+};
+const PROJECTS = {
+  1: { title: "Kitchen remodel", url: "#" },
+};
+
+let nextId = 100;
+let TASKS = [
+  { id: 1, text: "Order more dish soap", area: 1, project: null, created: "2026-08-03" },
+  { id: 2, text: "Send the invoice to Dan", area: 2, project: null, created: "2026-08-01" },
+  { id: 3, text: "Pick up the paint samples", area: 1, project: 1, created: "2026-07-29" },
+  { id: 4, text: "Renew the domain registration", area: 2, project: null, created: "2026-07-14" },
+  { id: 5, text: "Ship the deploy rollback fix", area: 3, project: null, created: "2026-07-02" },
+  { id: 6, text: "Reorganise the bookshelf", area: 1, project: null, created: "2026-06-18" },
+];
+
+function formatDate(iso) {
+  return new Date(iso + "T12:00:00").toLocaleDateString(undefined, {
+    dateStyle: "medium",
+  });
+}
+
+function render() {
+  const list = document.getElementById("task-list");
+  const query = document.getElementById("search").value.trim().toLowerCase();
+  const shown = TASKS.filter(t =>
+    !query ||
+    t.text.toLowerCase().includes(query) ||
+    AREAS[t.area].title.toLowerCase().includes(query),
+  );
+
+  document.getElementById("count-pill").textContent = `${TASKS.length} archived`;
+  document.getElementById("count-pill").style.display = TASKS.length ? "" : "none";
+
+  list.innerHTML = "";
+
+  if (TASKS.length === 0) {
+    list.innerHTML = `<div class="empty-note">Tasks moved to the archive will stay here until you restore or delete them.</div>`;
+    document.getElementById("search").closest("label").style.display = "none";
+    return;
+  }
+  document.getElementById("search").closest("label").style.display = "flex";
+
+  if (shown.length === 0) {
+    list.innerHTML = `<div class="empty-note">No archived tasks match your search.</div>`;
+    return;
+  }
+
+  shown.forEach(task => {
+    const area = AREAS[task.area];
+    const project = task.project ? PROJECTS[task.project] : null;
+    const row = document.createElement("div");
+    row.className = "row";
+    row.dataset.id = task.id;
+    row.innerHTML = `
+      <span class="row-icon" aria-hidden="true">✓</span>
+      <span class="row-body">
+        <span class="row-text">${task.text}</span>
+        <span class="row-meta">
+          From <a href="${area.url}">${area.title}</a>
+          ${project ? ` · <a href="${project.url}">${project.title}</a>` : ""}
+          · Created ${formatDate(task.created)}
+        </span>
+      </span>
+      <span class="row-actions">
+        <button class="action-btn" type="button" data-act="restore">Restore</button>
+        <button class="action-btn danger" type="button" data-act="delete">Delete</button>
+      </span>
+    `;
+    row.querySelector('[data-act="restore"]').addEventListener("click", () => restore(task.id, row));
+    row.querySelector('[data-act="delete"]').addEventListener("click", () => openDeleteDialog(task));
+    list.appendChild(row);
+  });
+}
+
+function feedback(message, isError) {
+  const el = document.getElementById("feedback");
+  el.textContent = message;
+  el.className = "feedback" + (isError ? " error" : "");
+}
+
+function restore(id, row) {
+  const task = TASKS.find(t => t.id === id);
+  row.classList.add("leaving");
+  setTimeout(() => {
+    TASKS = TASKS.filter(t => t.id !== id);
+    feedback(`Task restored to ${AREAS[task.area].title}.`, false);
+    render();
+  }, 180);
+}
+
+let pendingDelete = null;
+function openDeleteDialog(task) {
+  pendingDelete = task;
+  document.getElementById("dialog-text").innerHTML =
+    `“${task.text}” will be permanently removed. This cannot be undone.`;
+  document.getElementById("dialog-backdrop").style.display = "grid";
+  document.getElementById("keep-task").focus();
+}
+function closeDeleteDialog() {
+  pendingDelete = null;
+  document.getElementById("dialog-backdrop").style.display = "none";
+}
+document.getElementById("keep-task").addEventListener("click", closeDeleteDialog);
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && pendingDelete) closeDeleteDialog();
+});
+document.getElementById("confirm-delete").addEventListener("click", () => {
+  if (!pendingDelete) return;
+  TASKS = TASKS.filter(t => t.id !== pendingDelete.id);
+  feedback("Task permanently deleted.", false);
+  closeDeleteDialog();
+  render();
+});
+
+document.getElementById("search").addEventListener("input", render);
+
+render();
+</script>
+</body>
+</html>

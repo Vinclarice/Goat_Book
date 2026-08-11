@@ -153,7 +153,10 @@ class ProjectJourneyTest(BrowserTest):
         # Creating a project navigates straight to its own page -- the
         # gap this whole redesign closes.
         expect(self.page).to_have_url(re.compile(r"/app/projects/\d+$"))
-        expect(self.page.get_by_role("heading", name="Website Relaunch")).to_be_visible()
+        # The project name has no static heading -- project-workspace-plan.md
+        # made it an always-editable field (label "Project name"), so its
+        # value is the evidence the page loaded the right project.
+        expect(self.page.get_by_label("Project name")).to_have_value("Website Relaunch")
         project_url = self.page.url
 
         self.page.get_by_label("Add an existing area").select_option(label="Work")
@@ -243,7 +246,7 @@ class ProjectJourneyTest(BrowserTest):
 
         self.page.get_by_role("link", name="Website Relaunch").click()
         expect(self.page).to_have_url(re.compile(r"/app/projects/\d+$"))
-        expect(self.page.get_by_role("heading", name="Website Relaunch")).to_be_visible()
+        expect(self.page.get_by_label("Project name")).to_have_value("Website Relaunch")
 
         self.visit(f"/app/areas/{self.work.id}")
         expect(self.page.get_by_text("Website Relaunch")).not_to_be_visible()

@@ -599,19 +599,34 @@ trigger stated so it can be deferred honestly rather than quietly.
 
 **Now, because they are small and something depends on them.**
 
-- **Move local development onto Postgres**, and correct `settings.py`'s stale
-  comment. Per §3, two reasons were named; one is resolved and one still
-  stands. `unique_active_item` being silently uncreated on SQLite is
-  **resolved as of release D's contract step**
+- ~~**Move local development onto Postgres**, and correct `settings.py`'s
+  stale comment.~~ **Done August 11, 2026.** Per §3, two reasons were named;
+  one is resolved and one still stands. `unique_active_item` being silently
+  uncreated on SQLite is **resolved as of release D's contract step**
   ([`release-d-plan.md`](release-d-plan.md) §5): dropping `Item.parent` left
   the constraint's fields all non-nullable, so `nulls_distinct=False` was
   removed as dead weight and the constraint (and `ChecklistStep`'s own) now
   creates on SQLite like any other — the local suite went from 7 silently
-  skipped tests to 0 in the same change. What still stands is the
+  skipped tests to 0 in the same change. What still stood was the
   concurrency difference: `LiveServerTestCase` hands one SQLite connection to
   several server threads, which is not how Postgres behaves, and that gap
   bit for real once already (§3's `IndexError` in `apply_converters`). That
-  reason alone still justifies the move.
+  reason alone still justified the move, so it happened anyway even though
+  the constraint gap had already closed.
+
+  `docker-compose.yml` (new) provides a local Postgres 18 container matching
+  CI's own service container exactly (`clarice`/`clarice`/`clarice`), on
+  host port 5433 rather than 5432 to avoid clashing with another project's
+  Postgres on this machine. `clarice/settings.py`'s `DEBUG` branch now
+  defaults `DJANGO_DATABASE_URL` to that connection string instead of a
+  `db.sqlite3` file, and the stale comment ("nothing about this app's
+  schema depends on Postgres-only behavior yet") is corrected to say why the
+  opposite is true. `DJANGO_DATABASE_URL` still overrides the default, which
+  is exactly what CI does to reach its own service container. Verified: 933
+  backend tests green against the container, `makemigrations --check`
+  clean, `manage.py migrate` applies cleanly, and `unique_active_item`
+  confirmed present via `psql \d lists_item` — the actual constraint this
+  entry exists to stop silently disappearing.
 - ~~**Rate-limit the landing page's login form.**~~ **Done August 3, 2026.**
   `/` is a `LoginView`, so `POST /` authenticated exactly as
   `POST /accounts/login/` did while only the latter was throttled. `location
@@ -651,12 +666,16 @@ trigger stated so it can be deferred honestly rather than quietly.
   at 154MB. A container that fits is not the same as a host that can still
   maintain itself.
 
-  **New item, and the one that actually resolves this: give the droplet
-  swap.** 458MB with no swap has no room for an application and routine
-  package management at the same time, so every future apt run is one
-  memory-hungry step away from the same failure — regardless of gunicorn.
-  A modest swapfile would have absorbed this entirely and costs nothing but
-  disk. A larger droplet is the alternative and is a spending decision.
+  ~~**New item, and the one that actually resolves this: give the droplet
+  swap.**~~ **Done August 3, 2026** (`a98196c`, same day as the finding
+  above — this entry was simply never marked done). 458MB with no swap had
+  no room for an application and routine package management at the same
+  time, so every apt run was one memory-hungry step away from the same
+  failure, regardless of gunicorn. A 1GB swapfile, swappiness 10, placed
+  ahead of the apt tasks it protects and persisted across reboots via
+  `/etc/fstab` — full detail in the deploy playbook's own comment. A larger
+  droplet remains the alternative if swap ever proves insufficient, and is
+  a spending decision rather than an engineering one.
 - ~~**Make `List.owner` non-null:** audit live rows, backfill or remove
   orphans, then a schema migration.~~ **Done August 2, 2026**, as release D
   slice 6 — see [`release-d-plan.md`](release-d-plan.md) §5. Of the two

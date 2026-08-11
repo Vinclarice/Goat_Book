@@ -96,6 +96,10 @@ yours. That inventory has one host and it is production. There is no
 staging environment to rehearse against, so read-only diagnosis comes
 before any redeploy that would overwrite the evidence.
 
+**When Vince says "deploy it," he's asking for this command, not asking
+you to run it.** Surface it in a fenced `bash` block and stop there — he
+runs it himself and reports back once it's done.
+
 **An apt task that looks hung is usually not.** The "Install docker" step
 stalled for minutes on three separate deploys and was cancelled each time,
 because `state: latest` plus an unconditional `update_cache` made apt

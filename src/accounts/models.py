@@ -1,5 +1,6 @@
 import hashlib
 import secrets
+from datetime import timedelta
 from functools import lru_cache
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError, available_timezones
 
@@ -7,6 +8,7 @@ from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, UserM
 from django.contrib.auth.validators import UnicodeUsernameValidator
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.utils import timezone
 
 
 # What every user's day meant before this field existed, so adding the
@@ -171,6 +173,37 @@ def hash_token(raw):
     return hashlib.sha256(raw.encode()).hexdigest()
 
 
+# What a token is actually allowed to do -- see token-scopes-plan.md. Named
+# one at a time, per resource, as each client feature actually needs one;
+# not pre-declared for surfaces that don't exist yet.
+SCOPE_CAPTURE_WRITE = "capture:write"
+SCOPE_IDENTITY_READ = "identity:read"
+SCOPE_DAY_READ = "day:read"
+
+ALL_SCOPES = (SCOPE_CAPTURE_WRITE, SCOPE_IDENTITY_READ, SCOPE_DAY_READ)
+
+# What POST /api/v1/login mints for the Android client without asking
+# anyone to pick scopes to log in -- picking scopes belongs to the web's
+# manual token-creation form, not to signing into the app you're holding.
+ANDROID_DEFAULT_SCOPES = (SCOPE_CAPTURE_WRITE, SCOPE_IDENTITY_READ, SCOPE_DAY_READ)
+
+# How long a login-minted Android token lasts before its holder has to sign
+# in again -- bounding a lost phone's exposure the way an unscoped, never-
+# expiring token never did. Matches the middle option the web's own picker
+# offers (token-scopes-plan.md §3), not a separate policy invented here.
+ANDROID_TOKEN_LIFETIME = timedelta(days=90)
+
+# What every token minted before scopes existed keeps being able to do,
+# applied by the migration that adds the column -- nobody's phone stops
+# working, and nobody's pre-existing token silently gains day:read it was
+# never granted. See token-scopes-plan.md §3's grandfathering.
+GRANDFATHERED_SCOPES = (SCOPE_CAPTURE_WRITE, SCOPE_IDENTITY_READ)
+
+
+def _encode_scopes(scopes):
+    return ",".join(sorted(set(scopes)))
+
+
 class PersonalAccessToken(models.Model):
     """How something that isn't a browser authenticates as a user.
 
@@ -179,6 +212,15 @@ class PersonalAccessToken(models.Model):
     recovered afterwards. Deleting the row is the whole of revocation:
     a revoked token and a deleted one are the same state, so there's no
     second `revoked` flag to keep in sync with it.
+
+    `scopes` is a sorted, comma-joined `TextField` rather than
+    `django.contrib.postgres.fields.ArrayField`: production runs Postgres,
+    but local dev and CI default to SQLite
+    (`clarice/settings.py`, `DJANGO_DATABASE_URL` unset), and `ArrayField`
+    has no SQLite backend at all. Nothing here ever queries *by* scope --
+    only an in-process membership check after a token has already
+    resolved -- so a plain text column loses nothing a real array type
+    would have earned.
     """
 
     owner = models.ForeignKey(
@@ -188,6 +230,11 @@ class PersonalAccessToken(models.Model):
     token_hash = models.CharField(max_length=64, unique=True, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
     last_used_at = models.DateTimeField(null=True, blank=True)
+    scopes = models.TextField(blank=True)
+    # Null means "never expires" -- kept that way for every row that
+    # existed before this field did, rather than reinterpreted, so a
+    # migration cannot silently expire somebody's already-working token.
+    expires_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ("-created_at", "-id")
@@ -195,13 +242,31 @@ class PersonalAccessToken(models.Model):
     def __str__(self):
         return self.label or f"Token {self.pk}"
 
+    @property
+    def scope_set(self):
+        return set(filter(None, self.scopes.split(",")))
+
+    def has_scope(self, scope):
+        return scope in self.scope_set
+
+    def is_expired(self):
+        return self.expires_at is not None and self.expires_at < timezone.now()
+
     @staticmethod
-    def generate(owner, label=""):
+    def generate(owner, label="", scopes=(), expires_at=None):
         """Returns (instance, raw). The raw value is available here and
         nowhere else, ever again.
+
+        `scopes` defaults to none, not to "everything" -- a call site that
+        forgets to pass it produces a token that can do nothing, which is a
+        safe failure mode rather than a dangerous one.
         """
         raw = secrets.token_urlsafe(32)
         instance = PersonalAccessToken.objects.create(
-            owner=owner, label=label, token_hash=hash_token(raw)
+            owner=owner,
+            label=label,
+            token_hash=hash_token(raw),
+            scopes=_encode_scopes(scopes),
+            expires_at=expires_at,
         )
         return instance, raw

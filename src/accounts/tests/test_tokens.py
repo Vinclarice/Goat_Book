@@ -1,9 +1,14 @@
 """Personal access tokens: the model, and the page you manage them from.
 
 The endpoint they exist to authenticate lives in capture/tests/test_api_v1.py.
+Scope and expiry enforcement lives in accounts/tests/test_token_scopes.py --
+this file stays about the token row itself.
 """
+from datetime import timedelta
+
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from accounts.models import PersonalAccessToken, User, hash_token
 
@@ -34,6 +39,47 @@ class TokenModelTest(TestCase):
         token, _ = PersonalAccessToken.generate(self.user)
 
         self.assertEqual(token.label, "")
+
+    def test_a_token_with_no_scopes_given_has_none(self):
+        # Safe by default: forgetting to pass scopes produces a token that
+        # can do nothing, not one that can do everything.
+        token, _ = PersonalAccessToken.generate(self.user)
+
+        self.assertEqual(token.scope_set, set())
+
+    def test_scopes_are_stored_and_read_back(self):
+        token, _ = PersonalAccessToken.generate(
+            self.user, scopes=["capture:write", "identity:read"]
+        )
+
+        self.assertEqual(
+            token.scope_set, {"capture:write", "identity:read"}
+        )
+
+    def test_has_scope_checks_membership(self):
+        token, _ = PersonalAccessToken.generate(self.user, scopes=["capture:write"])
+
+        self.assertTrue(token.has_scope("capture:write"))
+        self.assertFalse(token.has_scope("day:read"))
+
+    def test_a_token_with_no_expiry_never_expires(self):
+        token, _ = PersonalAccessToken.generate(self.user)
+
+        self.assertFalse(token.is_expired())
+
+    def test_a_future_expiry_has_not_expired_yet(self):
+        token, _ = PersonalAccessToken.generate(
+            self.user, expires_at=timezone.now() + timedelta(days=1)
+        )
+
+        self.assertFalse(token.is_expired())
+
+    def test_a_past_expiry_has_expired(self):
+        token, _ = PersonalAccessToken.generate(
+            self.user, expires_at=timezone.now() - timedelta(seconds=1)
+        )
+
+        self.assertTrue(token.is_expired())
 
 
 class TokenPageTest(TestCase):

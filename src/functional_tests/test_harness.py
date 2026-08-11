@@ -50,5 +50,12 @@ class LiveServerConnectionTest(StaticLiveServerTestCase):
 
     def test_the_test_database_is_not_in_memory(self):
         # The condition behind the override above, asserted separately so a
-        # failure says which half broke.
+        # failure says which half broke. Postgres has no in-memory mode and
+        # no is_in_memory_db() at all -- __init__.py's own
+        # _name_the_test_database() already leaves it alone for exactly
+        # that reason, so this assertion only means something on SQLite,
+        # which local dev no longer runs by default
+        # (design/architecture-trajectory.md §6).
+        if "sqlite" not in connections["default"].settings_dict["ENGINE"]:
+            self.skipTest("Only SQLite can be in-memory; not the engine under test here.")
         self.assertFalse(connections["default"].is_in_memory_db())

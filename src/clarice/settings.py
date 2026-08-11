@@ -60,7 +60,6 @@ if not DEBUG:
 else:
     SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "insecure-key-for-dev")
     ALLOWED_HOSTS = []
-    db_path = os.environ.get("DJANGO_DB_PATH", BASE_DIR / "db.sqlite3")
 
 
 email_delivery = os.environ.get(
@@ -270,25 +269,22 @@ WSGI_APPLICATION = 'clarice.wsgi.application'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 if DEBUG:
-    # Local dev stays on SQLite by default -- no local Postgres to install,
-    # and nothing about this app's schema depends on Postgres-only behavior
-    # yet. CI sets DJANGO_DATABASE_URL to run this same suite against
-    # Postgres instead, matching production's engine (see
-    # .github/workflows/ci.yml and design/roadmap.md item A0) -- testing on
-    # a different engine than production is worse than testing on either
-    # one consistently.
-    database_url = os.environ.get("DJANGO_DATABASE_URL")
-    if database_url:
-        DATABASES = {
-            'default': dj_database_url.parse(database_url, conn_max_age=600)
-        }
-    else:
-        DATABASES = {
-            'default': {
-                'ENGINE': 'django.db.backends.sqlite3',
-                'NAME': db_path,
-            }
-        }
+    # Local dev runs on Postgres now, not SQLite: Item.Meta's
+    # unique_active_item uses nulls_distinct=False -- "Postgres 15+ only"
+    # per its own comment -- so a SQLite run silently omits the constraint
+    # production enforces, and the local suite passed while proving
+    # something weaker than it appeared to
+    # (design/architecture-trajectory.md §3). `docker compose up -d db`
+    # starts the local cluster this default points at; DJANGO_DATABASE_URL
+    # still overrides it, which is exactly what CI does to reach its own
+    # service container instead (.github/workflows/ci.yml).
+    database_url = os.environ.get(
+        "DJANGO_DATABASE_URL",
+        "postgresql://clarice:clarice@localhost:5433/clarice",
+    )
+    DATABASES = {
+        'default': dj_database_url.parse(database_url, conn_max_age=600)
+    }
 else:
     DATABASES = {
         'default': dj_database_url.parse(

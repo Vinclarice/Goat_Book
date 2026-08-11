@@ -1,0 +1,38 @@
+# Local development database only -- the application itself still runs
+# through the venv directly (see CLAUDE.md), not in a container here. This
+# exists so `manage.py test` runs against the same engine as CI and
+# production instead of silently omitting the constraints and concurrency
+# behavior only Postgres enforces (design/architecture-trajectory.md §3,
+# §6 "Move local development onto Postgres").
+#
+# Start once per session: `docker compose up -d db`. clarice/settings.py's
+# DEBUG branch defaults DJANGO_DATABASE_URL to the connection string below
+# when the env var isn't set, so no further configuration is needed.
+#
+# Host port 5433, not Postgres's usual 5432 -- deliberately, since another
+# project's Postgres container may already hold 5432 on a shared dev
+# machine. The container's own port stays 5432; only the host mapping
+# differs.
+services:
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_DB: clarice
+      POSTGRES_USER: clarice
+      POSTGRES_PASSWORD: clarice
+    ports:
+      - "5433:5432"
+    # Postgres 18's image expects the volume at the parent directory, not
+    # /var/lib/postgresql/data -- it manages a major-version-specific
+    # subdirectory itself now, to support pg_upgrade --link. Mounting at
+    # the old data/ path made the entrypoint refuse to start.
+    volumes:
+      - clarice-postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "clarice"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  clarice-postgres-data:

@@ -24,10 +24,22 @@ need their own `pnpm install`. Run Python through it directly rather than
 activating:
 
 ```powershell
+docker compose up -d db   # once per session; starts local Postgres
 .\.venv\Scripts\python.exe src\manage.py test accounts lists capture clarice daily routines review
 pnpm --dir frontend test
 pnpm --dir frontend build
 ```
+
+**Tests run on Postgres now, not SQLite.** `Item.Meta`'s
+`unique_active_item` is `nulls_distinct=False`, "Postgres 15+ only" per its
+own comment — SQLite silently omitted that constraint, so a local run
+passed while proving less than it appeared to
+(`design/architecture-trajectory.md` §3). `clarice/settings.py`'s `DEBUG`
+branch now defaults `DJANGO_DATABASE_URL` to the `docker-compose.yml`
+database (`localhost:5433`, chosen to avoid clashing with another
+project's Postgres on `5432`) when the env var isn't set. Nothing to
+configure beyond starting the container; a stale `db.sqlite3` from before
+this change is harmless and can be deleted.
 
 The browser smoke suite is deliberately not in that list — it needs a built
 bundle and a browser binary, which an ordinary edit-and-test loop should not

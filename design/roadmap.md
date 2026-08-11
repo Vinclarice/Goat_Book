@@ -744,6 +744,39 @@ authenticating Settings, confirming the migration's grandfathering didn't
 strand it. See `android-full-client-plan.md`'s own §6 for the full
 before/after and its §5 for what's still undecided about later slices.
 
+**Slice 2 (Agenda) followed the same day, Vince's own call to make it read
+*and* act rather than read-only again** — "let's make it fully functional
+which I realize will require more work." Read: `GET /api/v1/agenda`, the
+same `TokenAuth` gap `/day` had. Write — complete/reopen, reschedule,
+quick-add — turned out bigger than that: those actions live on
+`lists/api.py`'s hand-rolled, pre-Ninja endpoints with no token concept at
+all, sitting behind Django's *real* `CsrfViewMiddleware` that every Ninja
+route is structurally exempt from. `token-scopes-plan.md` §7 traces the
+actual mechanism Ninja uses (blanket Django exemption plus a manual,
+auth-class-scoped CSRF re-check) and ports it by hand via a new
+`token_or_session_required` decorator, plus a field-level guard so
+`agenda:write` can complete or reschedule a task but never delete one or
+touch its text/tags/notes/recurrence — capabilities the Agenda page itself
+doesn't use either. 918 backend tests, 260 Android tests, both green;
+installed clean on the SM-S928U1 with no crash, correctly showing
+"Reconnect" since the new scopes exist only locally. Not yet deployed.
+
+**Slice 1 extended to writable the same day, built before Agenda's own
+device pass:** Vince asked to bring the Daily Page up to the same
+read+write standard — "can we so the same process to the Today? Make the
+app able to edits?" Focus pin/unpin, the day's own text, and all six
+routine actions `DayRoute.tsx` offers, gated behind two new scopes,
+`day:write` and `routines:write`. Unlike Agenda's write half, every one of
+these endpoints was already a Ninja operation, so this needed no
+CSRF-porting — just the same `TokenAuth(scope)` pair `day:read` already
+uses. 933 backend tests, 285 Android tests, both green; installed clean on
+the SM-S928U1 with no crash, the new UI (pin/unpin, routine cards,
+editable Intentions/Grateful for/Happenings) rendering correctly, and
+tapping "Pin to today" correctly showing "Reconnect in Settings to change
+today" — the same "exists only locally" state Agenda's own device pass
+hit, not a bug. Not yet deployed. See `android-full-client-plan.md`'s own
+§8 and `token-scopes-plan.md`'s own §8.
+
 Move completed detail into `roadmap-history.md` and keep only the resulting
 baseline or remaining consequence here. When an idea from Later earns work,
 give it a one-line reason and a focused spec before it joins an active

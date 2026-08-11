@@ -1,7 +1,9 @@
 # Android full client — from capture-only to a real mirror of the website
 
-Vince · brief · written August 10, 2026 · **slice 1 shipped and verified
-in production August 11, 2026**
+Vince · brief · written August 10, 2026 · **slice 1 (Daily Page, read-only)
+shipped and verified in production; slice 1's write extension and slice 2
+(Agenda) both built and locally verified, not yet deployed** — all three
+August 11, 2026
 
 ## 1. Trigger and diagnosis
 
@@ -178,3 +180,158 @@ more endpoints**, rather than opting each one into today's all-or-nothing
 here — this section exists so slice 1's real status (compiles, tests green,
 does not load real data on a phone) isn't lost between sessions, and so the
 next session doesn't re-diagnose what this one already found.
+
+## 7. Slice 2: Agenda, read + complete/reschedule
+
+**Trigger:** Vince's own choice of next surface, August 11, 2026 — "let's
+move on to the agenda." Asked whether this slice should stay read-only
+like slice 1 or include completing a task, Vince chose the fuller,
+harder version: *"let's make it fully functional which I realize will
+require more work."* Named here so the scope decision reads as chosen,
+not defaulted into.
+
+**What "fully functional" means for this slice, checked against the real
+page rather than assumed:** the web `AgendaWorkspace.tsx` does five things
+— quick-add, complete/reopen, snooze/reschedule, area+tag filtering, and
+search — plus links out to a task's own edit page for anything else
+(retagging, renaming, notes). This slice mirrors exactly that boundary:
+what the Agenda page itself does becomes what Android can do; everything
+that page hands off to a task's own detail screen stays out of scope here
+too, same as it does on the web.
+
+**In:**
+
+- `GET /api/v1/agenda` (`agenda:read`) — buckets, items, `completed_today`,
+  areas, projects, same `TaskOut`/`AgendaAreaSummaryOut` shapes the SPA
+  already reads.
+- Complete / reopen a task — `PATCH {task.url}` with `{"status": ...}`
+  (`agenda:write`, restricted to this field — see
+  `token-scopes-plan.md` §7).
+- Reschedule / snooze a task's due date — `PATCH {task.url}` with
+  `{"due_date": ...}` (`agenda:write`, same restriction).
+- Quick-add a task — `POST {area.create_item_url}` (`agenda:write`).
+- Area and tag filter chips, text search, and the scope counts
+  (overdue/today/week/open) — all client-side derivation over the already-
+  fetched payload, the same way the web page computes them; `bucketFor`
+  and a substring search filter get ported to Kotlin alongside the
+  already-ported `dueLabel`/`ageLabel`, same manual-sync convention.
+
+**Out, deliberately:**
+
+- Editing text, tags, recurrence, or notes; deleting a task; reordering.
+  None of these are things the Agenda page itself does — they live on
+  `TaskDetailRoute`, which is its own future slice if it ever gets one.
+- Creating a new area or project (Agenda's sidebar forms) — sidebar
+  chrome, not the task-triage loop this slice is actually about.
+- The Archive link and the daily-digest status line — informational
+  chrome from the same reasoning.
+
+**Auth mechanism:** see `token-scopes-plan.md` §7 for the full design —
+`GET /api/v1/agenda` gets the same `TokenAuth(scope)` treatment `/day`
+already has; `create_item` and `item_detail` (both in the *hand-rolled*
+`lists/api.py`, never on the Ninja router) get a new
+`token_or_session_required(scope)` decorator that ports Ninja's own
+token-skips-CSRF / session-still-checks-CSRF mechanism to a plain Django
+view, plus a field-level guard inside `item_detail` so `agenda:write`
+can't reach the five capabilities named "out" above through the same
+endpoint.
+
+**Built and locally verified, August 11, 2026.** Backend: 918 backend
+tests green (up from 899), `makemigrations --check` clean, new coverage
+for every refusal case (wrong scope, expired, DELETE, and each of
+text/tags/notes/recurrence via a token) alongside the success paths.
+Android: `AgendaFormatting.kt` (`bucketFor`, `matchesQuery`, `filterTasks`,
+`tomorrow`, `nextMonday`) TDD'd first; `AgendaApi`/`AgendaModels` against a
+real `MockWebServer`; `AgendaViewModel` covering load, all three writes,
+filter toggling, and the "a failed write must never blank an
+already-visible list" rule. 260 Android tests green (up from 212),
+`:app:compileDebugKotlin` clean. `AgendaScreen` added as a third tab
+beside Capture/Today.
+
+**Device pass, same day, SM-S928U1:** installed clean, no crash (checked
+logcat directly, not inferred). The Agenda tab correctly shows "Reconnect
+in Settings to see your agenda" — expected and correct, since
+`agenda:read`/`agenda:write` exist only in this session's local database,
+not yet deployed. Today and Capture re-checked on the same build for a
+regression from the third-tab change: neither regressed:
+Today still rendered real production data (the same overdue task,
+correctly labelled, from the prior slice's own device pass).
+
+**Not yet true, same gap slice 1 had:** nothing here has reached
+production. Deploying is Vince's own step; once it lands, the real
+end-to-end check is completing or rescheduling an actual task from the
+phone and confirming it on the web.
+
+## 8. Slice 1, extended: Daily Page becomes writable
+
+**Trigger:** Vince's own choice, same day as slice 2 — "before we do
+[Agenda], can we so the same process to the Today? Make the app able to
+edits?" — asked and built before Agenda's own device pass, so this section
+is numbered after §7 but was built and verified alongside it.
+
+**What "writable" means for this slice, checked against `DayRoute.tsx`
+rather than assumed:** the web Daily Page does four things beyond
+displaying the day — pin/unpin a task to Focus, act on a routine
+(log/skip/pause/resume/call-it-enough), keep a new routine, and save the
+day's own Intentions/Grateful for/Happenings text. This slice mirrors
+exactly that set. The quick-capture box stays off this screen, unchanged
+from slice 1's own reasoning — Capture is one tab away already.
+
+**In:**
+
+- Pin/unpin a task to Focus — `POST`/`DELETE /api/v1/day/{day}/focus[/{id}]`
+  (`day:write`).
+- Save the day's own text — `PATCH /api/v1/day/{day}` with all three
+  fields together, matching the web's own "Save the day" button rather than
+  exposing the server's per-field-optional contract (`day:write`).
+- Every routine action `DayRoute.tsx` itself offers — log an amount
+  (`+1`/`-1`, a negative amount correcting a mis-tap rather than being its
+  own endpoint), skip, call-it-enough, pause, resume, and keep a new
+  routine (`routines:write`).
+
+**Out, deliberately:** everything named out of slice 1 that this doesn't
+touch — a date picker / past-day editing, and any other domain. Editing a
+routine's own title/cadence/target once kept, or deleting one, since
+`DayRoute.tsx` doesn't offer those either.
+
+**Auth mechanism:** both new endpoints groups are Ninja operations
+(`daily/api_v1.py`, `routines/api_v1.py`), so unlike Agenda's write half
+this needed no CSRF-porting — the same `TokenAuth(scope)` +
+`SessionAuthIfLoggedIn()` pair slice 1's `day:read` already uses, just two
+new scopes: `day:write` (`pin_to_day`, `unpin_from_day`, `write_day`) and
+`routines:write` (all six routine actions). See
+`token-scopes-plan.md` for the scope constants; no new CSRF mechanism to
+document since none was needed.
+
+**Built and locally verified, August 11, 2026.** Backend: 933 tests green
+(up from 918), covering every write's success path, wrong-scope refusal,
+expired-token refusal, and session-still-works alongside the token path.
+Android: `DailyApi` extended with `pinFocus`/`unpinFocus`/`writeDayText`
+and the six routine actions against a real `MockWebServer`;
+`DailyViewModel` gained draft text state (seeded once per calendar date,
+not once per load, so a background reload after a routine action can't
+stomp on in-progress typing — the same `seededFor` idea `DayRoute.tsx`
+itself uses) and a shared `write()` helper that reloads the day on success
+and leaves it untouched on failure, matching `AgendaViewModel`'s own rule.
+`DailyScreen` rebuilt: pinned/unpinned rows with an explicit indicator,
+multi-line routine cards with the exact button visibility `DayRoute.tsx`
+itself uses, a collapsed-by-default "keep a routine" form, and the three
+text sections turned into editable fields with their own "Save the day"
+button. 285 Android tests green (up from 260), `:app:compileDebugKotlin`
+clean.
+
+**Device pass, August 11, 2026, SM-S928U1:** installed clean, no crash
+(checked logcat directly). The Today tab renders the full new UI —
+pin/unpin link on each action item, the routine section's empty state and
+"Keep a routine" form, and editable Intentions/Grateful for/Happenings
+fields all render correctly. Tapping "Pin to today" correctly shows
+"Reconnect in Settings to change today" without disturbing the
+already-displayed day — expected and correct, the same "exists only
+locally, not yet deployed" state §7's Agenda device pass hit, not a bug:
+`day:write`/`routines:write` aren't on production yet, so a write is
+refused exactly the way `DayWriteUnauthorised` is supposed to be handled.
+
+**Not yet true, same gap as slice 2:** nothing here has reached
+production. Deploying is Vince's own step; once it lands, the real
+end-to-end check is pinning a task or logging a routine from the phone and
+confirming it on the web.

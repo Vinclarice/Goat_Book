@@ -1,7 +1,9 @@
 # Personal access token scopes and expiry
 
-Vince · brief · written August 10, 2026 · **deployed and verified in
-production August 11, 2026** — see §6.
+Vince · brief · written August 10, 2026 · **original scope tier deployed
+and verified in production August 11, 2026 (see §6); Agenda's and the
+Daily-edit slice's own new scopes built and locally verified the same day,
+not yet deployed (see §7, §8).**
 
 ## 1. Trigger and diagnosis
 
@@ -208,3 +210,114 @@ Every already-connected phone keeps working at its grandfathered scope
 (`capture:write`, `identity:read`) until its owner reconnects; only a
 fresh login picks up `day:read`. Both test phones now also have "Require
 unlock to open" enabled.
+
+## 7. Extending token auth to hand-rolled views (Agenda slice)
+
+`android-full-client-plan.md`'s Agenda slice needs more than `/api/v1/agenda`
+(a Ninja route, same shape as `/day` — add `TokenAuth(SCOPE_AGENDA_READ)`
+and done). The Agenda page's own actions — complete a task, reschedule its
+due date — call endpoints that were deliberately never moved onto the Ninja
+router at all: `lists/api.py`'s docstring is explicit that item mutations
+"stay on the hand-rolled `lists.api` endpoints... a route's migration PR
+only moves what doesn't already have a JSON path." Those views use their
+own `api_login_required`, a plain `request.user.is_authenticated` check
+with no token concept whatsoever.
+
+**Why this isn't just "add `TokenAuth` to another `auth=` list."** These
+aren't Ninja operations, so there's no `auth=` list to extend. Worse, they
+sit behind Django's *real* `CsrfViewMiddleware` — confirmed by
+`lists/tests/test_api.py::test_rejects_missing_csrf_token`, which every
+Ninja route is structurally immune to. Tracing why capture's own token path
+already works clarified the actual mechanism, which turns out not to be
+Ninja-specific magic:
+
+1. Every Ninja view is marked Django-`csrf_exempt` at registration
+   (`ninja/operation.py`), so `CsrfViewMiddleware` never touches any
+   `/api/v1/...` request, token or session.
+2. `SessionAuth` (which `SessionAuthIfLoggedIn` extends) re-implements the
+   check itself, manually, only when *it* is evaluated —
+   `ninja.security.apikey.APIKeyCookie._get_key()` calls
+   `ninja.utils.check_csrf(request)`, which constructs a throwaway
+   `CsrfViewMiddleware` and calls its real `process_request`/`process_view`
+   directly. Same Django logic, just invoked by hand instead of by the
+   middleware chain.
+3. `TokenAuth` extends `HttpBearer`, a sibling class that never touches
+   CSRF at all — there's nothing to skip, since a Bearer header isn't a
+   cookie a cross-site request could ride on.
+4. Because Ninja's `auth=[TokenAuth(...), SessionAuthIfLoggedIn()]` list
+   stops at the first entry that resolves, a successful token auth means
+   `SessionAuthIfLoggedIn` — and the CSRF check living inside it — never
+   runs at all. That's the entire mechanism behind "a bearer request never
+   reaches the cookie auth's CSRF check." Nothing about it is exclusive to
+   Ninja.
+
+**The fix ports that exact mechanism, not a hand-rolled approximation of
+it.** `accounts.auth.token_or_session_required(scope)` — a decorator for
+plain Django views, sitting beside `TokenAuth`:
+
+- A `Bearer` header present → resolve it exactly like `TokenAuth`
+  (hash lookup, `is_active`, `is_expired()`, `has_scope(scope)`); on
+  success, set `request.user` and `request.token_authenticated = True`,
+  no CSRF check (same reasoning as `HttpBearer` — nothing to skip because
+  nothing rides a cookie). On a *present but invalid* header, refuse
+  outright rather than falling through — a failed token must not be told
+  its problem is a missing cookie, same ordering rule `TokenAuth`'s own
+  docstring already states.
+- No `Bearer` header → the view is marked `csrf_exempt` at the Django
+  level (mirroring step 1 above, otherwise a session request would 404⁠-
+  proof itself against a check that used to run automatically), so the
+  session path calls `ninja.utils.check_csrf(request)` itself — reusing
+  Ninja's own primitive rather than re-deriving CSRF-checking logic by
+  hand, a place mistakes are expensive — then falls back to
+  `request.user.is_authenticated`. Byte-for-byte the same protection the
+  browser path had before this decorator existed.
+
+**A real scope-creep risk, found by reading `item_detail` rather than
+assumed away.** It is one view handling `PATCH` (six different possible
+field changes: `text`/`status`/`due_date`/`tags`/`recurrence`/`notes`,
+exactly one per request) and `DELETE`, behind one auth check. A naive
+`agenda:write` wrapping the whole view would let a token that can complete
+a task *also* delete it, rename it, or rewrite its notes — none of which
+Android's Agenda slice sends or needs. The guard belongs inside
+`item_detail`, where the field-level knowledge already lives, not in the
+generic decorator: once `changed_fields` is known, a token-authenticated
+request (`request.token_authenticated`) is refused with 403 unless
+`changed_fields ⊆ {"status", "due_date"}`, and `DELETE` is refused outright
+for a token regardless of scope. Session requests are completely
+unaffected — every existing capability stays reachable from the browser
+exactly as it is today.
+
+**New scopes**, following the existing `capture:write` split of narrow
+verbs over one surface: `agenda:read` (`GET /api/v1/agenda`) and
+`agenda:write` (`create_item`, and `item_detail`'s `status`/`due_date`
+fields only, per the guard above) — not added to `ANDROID_DEFAULT_SCOPES`
+until the Android client actually calls them, same discipline `day:read`
+followed.
+
+## 8. Two more write scopes for the Daily-edit slice
+
+`android-full-client-plan.md` §8: the Daily Page's own write actions —
+focus pin/unpin, the day's own text, and every routine action. Unlike
+Agenda's write half (§7), every one of these endpoints already lives on
+the Ninja router (`daily/api_v1.py`, `routines/api_v1.py`), so this needed
+no CSRF-porting and no `token_or_session_required` — just the same
+`TokenAuth(scope)` + `SessionAuthIfLoggedIn()` pair `day:read` already
+uses, applied to two new scopes:
+
+- `day:write` — `pin_to_day`, `unpin_from_day`, `write_day`
+  (`daily/api_v1.py`). No field-level guard needed the way `agenda:write`
+  needed one: `write_day` already only accepts
+  `intentions`/`gratitude`/`happenings`, nothing more sensitive lives
+  behind it.
+- `routines:write` — `new_routine`, `log_routine`, `call_it_enough`,
+  `pause`, `resume`, `skip_routine` (`routines/api_v1.py`), covering all
+  six actions `DayRoute.tsx` itself offers, one scope rather than one per
+  verb — none of these six needs to be grantable independently of the
+  others.
+
+Both scopes built and locally verified August 11, 2026 as part of
+`android-full-client-plan.md` §8's own numbers (933 backend tests), and
+already added to `ANDROID_DEFAULT_SCOPES` alongside `agenda:read`/
+`agenda:write` — same discipline as `day:read`, added the moment the
+Android client actually calls them, not before. Not yet deployed at all,
+same gap §7's `agenda:read`/`agenda:write` has.

@@ -1,6 +1,6 @@
 # Clarice — Roadmap
 
-Vince · active planning document · refreshed August 10, 2026
+Vince · active planning document · refreshed August 12, 2026
 
 ## Purpose
 
@@ -691,8 +691,8 @@ accounting, including a real layout bug (a search field collapsing to 30px
 for lack of a `flex-shrink:0` guard) that only live verification against
 the actual built bundle caught.
 
-**A fifth, separate line of work — not folded into Release F, shipped
-August 11, 2026 (uncommitted, awaiting review).** The last piece of the
+**A fifth, separate line of work — not folded into Release F, shipped and
+committed August 11, 2026** (`1cf9147`, `85154a8`). The last piece of the
 Bootstrap→Tailwind arc: with `TaskWorkspace.tsx` and `AgendaWorkspace.tsx`
 both migrated, `ArchiveManager.tsx` was the only component left on
 `site.css`, and with no Tailwind-migrated wrapper above it either.
@@ -809,6 +809,14 @@ plan's §5. Alongside this, `architecture-trajectory.md` §6's other two
 gap where SQLite silently omitted a constraint production enforces), and
 the droplet-swap item, done back on August 3, was found to have never
 been marked complete.
+
+**Deliberately deferred, August 12, 2026 — see
+`staging-environment-plan.md` §8.** Revisited before §5 was run: nothing
+currently in flight touches the deploy mechanism itself, and there's no
+real user data yet to protect from an untested migration, so the
+recurring droplet cost has nothing to offset. The decisions and the
+`is_debug()` fix stand; the droplet itself waits for one of those two
+triggers to actually fire.
 
 Move completed detail into `roadmap-history.md` and keep only the resulting
 baseline or remaining consequence here. When an idea from Later earns work,

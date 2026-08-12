@@ -1,6 +1,7 @@
 # Archive redesign — the last Tailwind migration
 
-Vince · brief · written August 11, 2026 · **not started, handoff for a new session**
+Vince · brief · written August 11, 2026 · **shipped and deployed, August
+11, 2026 — see §5**
 
 ## 1. Trigger and diagnosis
 
@@ -168,7 +169,8 @@ should extend it, not replace it.
 
 ## 5. Status
 
-**Shipped, August 11, 2026 (uncommitted — awaiting Vince's review).** All
+**Shipped, committed and deployed, August 11, 2026.** Committed as
+`1cf9147` (plan) and `85154a8` (implementation), both on `main`. All
 seven steps landed in order. `archived_at` replaced `created_at` as
 planned; the formatter turned out to be wanted in exactly the third place
 §4 step 1 flagged as the trigger for extracting it, so `formatShortDate`
@@ -209,5 +211,4 @@ never the shadcn `Button` component itself) is in
 `project_archive_redesign` memory.
 
 `design/archive-mockup.html` was the only artifact that existed before
-this session — reviewed and approved. Changes are uncommitted, sitting in
-the working tree for Vince's review.
+this session — reviewed and approved. Committed and deployed — see above.

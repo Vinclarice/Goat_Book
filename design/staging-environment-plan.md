@@ -2,7 +2,8 @@
 
 Vince · brief · written August 11, 2026 · **decisions made, a real code
 gap found and closed; provisioning the actual droplet/DNS/database is
-still Vince's own step — see §5.**
+still Vince's own step — see §5.** **Deliberately deferred August 12,
+2026 — see §8.**
 
 ## 1. Trigger and diagnosis
 
@@ -167,3 +168,27 @@ real data). Whether staging stays running continuously or gets started
 only when a rehearsal is needed — DigitalOcean bills by the hour either
 way, so this is a cost decision rather than an engineering one, and
 belongs to whoever is paying for it.
+
+## 8. Deferred, August 12, 2026
+
+Revisited before any of §5 was run. This plan's entire value is a place
+to rehearse a risky deploy-mechanism change before it reaches
+production — nothing currently in flight touches
+`deploy-playbook.yaml`, nginx config, or a migration risky enough to
+want that rehearsal, and Clarice doesn't yet hold real user data whose
+loss staging protects against. Against that, a second droplet is a real
+recurring cost and a second environment's secrets, inventory and TLS
+cert are an ongoing tax. Nothing to offset yet, so this stays decided
+but unbuilt rather than built ahead of need.
+
+**Not abandoned.** §2's decisions stand as the answer whenever this is
+picked back up, and §3's `is_debug()` fix is shipped and stays regardless
+— it was cheap, correct on its own terms, and already closed a real gap
+in `settings.py` independent of whether staging itself ever exists. §5
+is exactly what to run when the trigger below fires.
+
+**What would revive this**, matching the "what would promote it" test
+used elsewhere in `roadmap.md` for deferred items: a deploy-mechanism
+change worth rehearsing before it hits production, or the project
+holding real user data worth protecting from an untested migration —
+whichever happens first.

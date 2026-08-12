@@ -1,9 +1,8 @@
 # Personal access token scopes and expiry
 
-Vince · brief · written August 10, 2026 · **original scope tier deployed
-and verified in production August 11, 2026 (see §6); Agenda's and the
-Daily-edit slice's own new scopes built and locally verified the same day,
-not yet deployed (see §7, §8).**
+Vince · brief · written August 10, 2026 · **all scope tiers, including
+Agenda's and the Daily-edit slice's own, deployed and verified in
+production, August 11, 2026 (see §6, §7, §8).**
 
 ## 1. Trigger and diagnosis
 

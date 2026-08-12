@@ -1,9 +1,9 @@
 # Android full client — from capture-only to a real mirror of the website
 
-Vince · brief · written August 10, 2026 · **slice 1 (Daily Page, read-only)
-shipped and verified in production; slice 1's write extension and slice 2
-(Agenda) both built and locally verified, not yet deployed** — all three
-August 11, 2026
+Vince · brief · written August 10, 2026 · **all three slices — Daily Page
+read-only, its write extension, and Agenda — shipped, deployed and
+verified live in production, August 11, 2026** — see `roadmap.md`'s own
+account of this line of work
 
 ## 1. Trigger and diagnosis
 

@@ -1,6 +1,7 @@
 # Agenda redesign — Tailwind, touch targets, unified filtering, search, staleness
 
-Vince · brief · written August 10, 2026 · **not started, handoff for a new session**
+Vince · brief · written August 10, 2026 · **shipped and deployed, August
+10–11, 2026 — see §5**
 
 ## 1. Trigger and diagnosis
 
@@ -254,5 +255,6 @@ person — expects content to still be there once revealed.
 
 `design/agenda-mockup.html` was the only artifact that existed before this
 session — reviewed, iterated once to add search and staleness, and approved
-both times. Changes are uncommitted, sitting in the working tree for
-Vince's review.
+both times. Committed as `0725516` (plan) and `94a6c4f` (implementation),
+deployed and verified live August 10–11, 2026 — see `roadmap.md`'s own
+account of this line of work.

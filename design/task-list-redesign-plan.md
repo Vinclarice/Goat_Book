@@ -1,6 +1,7 @@
 # TaskWorkspace redesign — closing the last Tailwind gap
 
-Vince · brief · written August 10, 2026 · **not started, handoff for a new session**
+Vince · brief · written August 10, 2026 · **shipped and deployed, August
+10, 2026 — see §5**
 
 ## 1. Trigger and diagnosis
 

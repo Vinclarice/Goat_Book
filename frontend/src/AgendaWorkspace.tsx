@@ -627,7 +627,7 @@ export function AgendaWorkspace({ initialData }: Props) {
         className="mb-4 flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-card px-3 py-2.5"
         onSubmit={submitQuickAdd}
       >
-        <label className="visually-hidden" htmlFor="agenda-add-text">
+        <label className="sr-only" htmlFor="agenda-add-text">
           Task
         </label>
         <input
@@ -639,7 +639,7 @@ export function AgendaWorkspace({ initialData }: Props) {
           onChange={(event) => setDraftText(event.target.value)}
           autoComplete="off"
         />
-        <label className="visually-hidden" htmlFor="agenda-add-area">
+        <label className="sr-only" htmlFor="agenda-add-area">
           Area
         </label>
         <span className="inline-flex h-11 items-center rounded-lg border border-border bg-foreground/[0.03] px-2.5 text-xs text-muted-foreground">
@@ -656,7 +656,7 @@ export function AgendaWorkspace({ initialData }: Props) {
             ))}
           </select>
         </span>
-        <label className="visually-hidden" htmlFor="agenda-add-due">
+        <label className="sr-only" htmlFor="agenda-add-due">
           Due date
         </label>
         <span className="inline-flex h-11 items-center rounded-lg border border-border bg-foreground/[0.03] px-2.5 text-xs text-muted-foreground">
@@ -729,7 +729,7 @@ export function AgendaWorkspace({ initialData }: Props) {
         </div>
 
         <label className="flex h-11 w-full max-w-[15rem] shrink-0 items-center gap-1.5 rounded-full border border-border px-3.5 text-sm text-muted-foreground focus-within:border-primary">
-          <span className="visually-hidden">Search your agenda</span>
+          <span className="sr-only">Search your agenda</span>
           <span aria-hidden="true">⌕</span>
           <input
             id="agenda-search"
@@ -904,7 +904,7 @@ export function AgendaWorkspace({ initialData }: Props) {
                   name="csrfmiddlewaretoken"
                   value={getCookie("csrftoken")}
                 />
-                <label className="visually-hidden" htmlFor="agenda-new-title">
+                <label className="sr-only" htmlFor="agenda-new-title">
                   Area name
                 </label>
                 <input
@@ -914,7 +914,7 @@ export function AgendaWorkspace({ initialData }: Props) {
                   placeholder="Area name"
                   maxLength={100}
                 />
-                <label className="visually-hidden" htmlFor="agenda-new-text">
+                <label className="sr-only" htmlFor="agenda-new-text">
                   First task
                 </label>
                 <input
@@ -944,7 +944,7 @@ export function AgendaWorkspace({ initialData }: Props) {
                 + New project
               </summary>
               <form className="mt-2 grid gap-2" onSubmit={handleCreateProject}>
-                <label className="visually-hidden" htmlFor="agenda-new-project">
+                <label className="sr-only" htmlFor="agenda-new-project">
                   Project name
                 </label>
                 <input

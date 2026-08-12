@@ -122,7 +122,7 @@ export function ArchiveManager({ initialData }: Props) {
 
       {items.length > 0 && (
         <label className="mb-5 flex h-11 w-full max-w-xs items-center gap-2 rounded-full border border-border px-3.5 text-sm text-muted-foreground focus-within:border-primary">
-          <span className="visually-hidden">Search archived tasks</span>
+          <span className="sr-only">Search archived tasks</span>
           <span aria-hidden="true">⌕</span>
           <input
             className="w-full border-0 bg-transparent text-foreground outline-none placeholder:text-muted-foreground"

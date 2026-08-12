@@ -63,6 +63,21 @@ jobs:
   # src/functional_tests/__init__.py and test_harness.py.
   browser:
     runs-on: ubuntu-latest
+    env:
+      # Stated, not inherited. This job used to get SQLite by saying
+      # nothing, because the DEBUG branch in clarice/settings.py defaulted
+      # to it -- so when 17aec20 moved that default to the local Postgres
+      # container, this job started dialling localhost:5433 on a runner
+      # that has no such service and died in setup_databases without
+      # reaching a single test. It stayed broken for 17 runs because the
+      # failure looked like the ProjectJourneyTest breakage it had
+      # replaced.
+      #
+      # The engine choice is unchanged and still argued above; what
+      # changed is that it is now written down here, where this job's
+      # other decisions live, rather than depending on a default two
+      # repositories away that nothing stopped anyone from moving.
+      DJANGO_DATABASE_URL: sqlite://:memory:
     steps:
       - uses: actions/checkout@v4
       - run: corepack enable

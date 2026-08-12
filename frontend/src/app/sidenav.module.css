@@ -1,4 +1,13 @@
-/* Layout for the persistent side nav. See design/side-nav-mockup.html. */
+/* Layout for the persistent side nav. See design/side-nav-mockup.html.
+
+   Token names are the `--color-*` ones declared in app/tailwind.css's
+   @theme block, and must stay that way: nothing type-checks CSS, and an
+   unresolvable var() does not fall back -- it invalidates the whole
+   declaration. This file spent the Tailwind v4 migration asking for
+   --border, --text, --accent and --muted-foreground, which no longer
+   existed, and so quietly lost its right border, its hover feedback and
+   its active-page highlight while still compiling.
+   lists/tests/test_frontend_style_contract.py now fails on a stale name. */
 
 .shell {
   display: grid;
@@ -14,14 +23,14 @@
   flex-direction: column;
   gap: 1.1rem;
   padding-right: 1rem;
-  border-right: 1px solid var(--border);
+  border-right: 1px solid var(--color-border);
 }
 
 .group h3 {
   font-size: 0.68rem;
   text-transform: uppercase;
   letter-spacing: 0.07em;
-  color: var(--muted-foreground);
+  color: var(--color-muted-foreground);
   margin: 0 0 0.4rem;
 }
 
@@ -46,17 +55,25 @@
   padding: 0.32rem 0.45rem;
   border-radius: 7px;
   font-size: 0.85rem;
-  color: var(--text);
+  color: var(--color-text);
   text-decoration: none;
 }
 
 .link:hover {
-  background: color-mix(in srgb, var(--text) 6%, transparent);
+  background: color-mix(in srgb, var(--color-text) 6%, transparent);
 }
 
+/* --accent-subtle never existed in either theme, so this rule reached its
+   own fallback and the fallback named --accent, which stopped existing
+   too -- leaving font-weight as the only thing marking the current page.
+   The tint is what the fallback was reaching for, written directly.
+
+   Text stays --color-text rather than --color-accent-foreground: that
+   token is for text on *solid* accent, and against an 18% tint it would
+   put near-black on a dark page. Background and weight carry the state. */
 .active {
-  background: var(--accent-subtle, color-mix(in srgb, var(--accent) 18%, transparent));
-  color: var(--accent-foreground, var(--text));
+  background: color-mix(in srgb, var(--color-accent) 18%, transparent);
+  color: var(--color-text);
   font-weight: 600;
 }
 
@@ -76,17 +93,22 @@
 .count {
   margin-left: auto;
   font-size: 0.75rem;
-  color: var(--muted-foreground);
+  color: var(--color-muted-foreground);
 }
 
+/* This marks an area's overdue count, so it is the overdue token rather
+   than a warning colour of its own. --warn never existed; the amber its
+   fallback rendered was not a colour anything else in the app used, and
+   site.css -- the last stylesheet to style this element -- gave it
+   #f08a8a, the same red family as --color-status-overdue. */
 .warn {
-  color: var(--warn, #f4c98a);
+  color: var(--color-status-overdue);
 }
 
 .empty {
   margin: 0;
   font-size: 0.78rem;
-  color: var(--muted-foreground);
+  color: var(--color-muted-foreground);
 }
 
 /* The disclosure is only used below the breakpoint; above it the nav is
@@ -114,7 +136,7 @@
     list-style: none;
     cursor: pointer;
     padding: 0.4rem 0.6rem;
-    border: 1px solid var(--border);
+    border: 1px solid var(--color-border);
     border-radius: 8px;
     font-size: 0.85rem;
   }

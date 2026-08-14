@@ -77,15 +77,20 @@ class BackendsTest {
         assertEquals(single.capture.tokenPrefs, single.workspace.tokenPrefs)
     }
 
-    @Test
-    fun `an ordinary build is not split`() {
-        // The guard on the build property itself, not just the class. Giving
-        // SECOND_MIND_BASE_URL a default host would silently redirect every
-        // capture in every build that did not ask for it -- somebody's
-        // thoughts posted to a server they never chose. Empty is the only
-        // safe default and this is what keeps it that way.
-        assertFalse(Backends(BuildConfig.CLARICE_BASE_URL, BuildConfig.SECOND_MIND_BASE_URL).isSplit)
-    }
+    // There was a test here asserting BuildConfig.SECOND_MIND_BASE_URL is
+    // empty, meaning to guard against somebody giving that property a default
+    // host and silently redirecting every capture in every build that never
+    // asked for one. **It was removed on its first red**, and the reason is
+    // worth keeping: it asserted a property of the *default* build while
+    // running against whatever the current invocation configured, so
+    // `assembleDebug -PsecondMindBaseUrl=...` -- the build you actually want
+    // on a split install -- failed the suite. A test that goes red when the
+    // build is configured correctly is worse than no test.
+    //
+    // The guard it wanted lives in build.gradle.kts, where the field defaults
+    // to "" with a comment saying why, and the behaviour it cared about is
+    // covered above: blank means unsplit, and unsplit means capture stays on
+    // Clarice.
 
     @Test
     fun `the workspace keeps the token slot every existing install already uses`() {

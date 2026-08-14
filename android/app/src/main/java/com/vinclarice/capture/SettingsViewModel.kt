@@ -7,6 +7,23 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 
+/**
+ * The workspace connection, on a split install.
+ *
+ * Its own type rather than more fields on [SettingsUiState] because it is
+ * genuinely absent when capture and the workspace face the same server -- and
+ * `null` says that in a way a set of defaulted booleans cannot. Rendering one
+ * account twice under two headings would invite someone to disconnect what
+ * they took for a spare.
+ */
+data class WorkspaceConnection(
+    val loading: Boolean = true,
+    val identity: Identity? = null,
+    val message: String? = null,
+    val isError: Boolean = false,
+    val connected: Boolean = true,
+)
+
 data class SettingsUiState(
     val loading: Boolean = true,
     val identity: Identity? = null,
@@ -15,6 +32,11 @@ data class SettingsUiState(
     // Whether a token is held, which is not the same as whether it works.
     // A revoked token leaves this true until someone disconnects.
     val connected: Boolean = true,
+    /**
+     * Clarice, when captures are going somewhere else. Null on an unsplit
+     * install, where the fields above describe the only connection there is.
+     */
+    val workspace: WorkspaceConnection? = null,
     /** Captures the app will keep trying to send on its own. */
     val waiting: Int = 0,
     /** Captures that have stopped trying and need a person. */
@@ -45,6 +67,12 @@ class SettingsViewModel(
     private val queue: CaptureQueue,
     private val scheduler: DeliveryScheduler = DeliveryScheduler.None,
     private val preferences: CapturePreferences,
+    /**
+     * Clarice, when captures go elsewhere. Null on an unsplit install, which
+     * is what keeps this one screen honest about how many connections exist
+     * rather than always drawing two.
+     */
+    private val workspaceConnector: Connector? = null,
     private val io: CoroutineDispatcher = Dispatchers.IO,
 ) {
 
@@ -76,6 +104,28 @@ class SettingsViewModel(
             is Failed -> report(outcome.message, isError = false)
             Blank -> _state.value = _state.value.copy(loading = false, connected = false)
         }
+
+        loadWorkspace()
+    }
+
+    /**
+     * The same three answers for the other server, kept apart from the first.
+     *
+     * Asked after capture rather than alongside it: two servers fail
+     * independently, and the screen has to be able to say Clarice is refusing
+     * a token while Second Mind is fine. Collapsing them into one status would
+     * send somebody to reconnect the half that was working.
+     */
+    private suspend fun loadWorkspace() {
+        val workspace = workspaceConnector ?: return
+
+        val next = when (val outcome = workspace.whoAmI()) {
+            is Connected -> WorkspaceConnection(loading = false, identity = outcome.identity)
+            is Refused -> WorkspaceConnection(loading = false, message = outcome.message, isError = true)
+            is Failed -> WorkspaceConnection(loading = false, message = outcome.message, isError = false)
+            Blank -> WorkspaceConnection(loading = false, connected = false)
+        }
+        _state.value = _state.value.copy(workspace = next)
     }
 
     /**
@@ -115,11 +165,32 @@ class SettingsViewModel(
         connector.disconnect()
         // The queue is deliberately untouched. It has its own Keystore alias
         // precisely so that disconnecting cannot destroy unsent thoughts.
+        //
+        // So is the workspace. Two servers, two credentials: replacing the
+        // token for one of them must not cost the other, and on a split
+        // install this is the *capture* connection -- the act the app exists
+        // for -- so the reverse would be worse still.
         _state.value = _state.value.copy(
             loading = false,
             connected = false,
             identity = null,
             message = null,
+        )
+    }
+
+    /**
+     * Forget Clarice's token and keep capturing.
+     *
+     * A no-op when there is no second connection. The screen never offers the
+     * button in that case, but the model should not be relying on the screen
+     * to enforce it.
+     */
+    fun disconnectWorkspace() {
+        val workspace = workspaceConnector ?: return
+
+        workspace.disconnect()
+        _state.value = _state.value.copy(
+            workspace = WorkspaceConnection(loading = false, connected = false),
         )
     }
 

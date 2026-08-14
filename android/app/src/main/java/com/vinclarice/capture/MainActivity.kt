@@ -90,6 +90,19 @@ class MainActivity : FragmentActivity() {
         // exists for, and on a split install it is the only one of the two
         // that has no token yet.
         val connector = Connector(api = api, store = store)
+
+        // Null when unsplit, which is what tells Settings there is one
+        // connection rather than two -- see [SettingsUiState.workspace]. Its
+        // own ClariceApi because `identify` has to be asked of Clarice, not of
+        // whichever server capture is going to.
+        val workspaceConnector = if (backends.isSplit) {
+            Connector(
+                api = OkHttpClariceApi(baseUrl = backends.workspace.baseUrl),
+                store = workspaceStore,
+            )
+        } else {
+            null
+        }
         val queue = CaptureQueue(EncryptedQueueStorage(applicationContext))
         val scheduler = CaptureWorker.prepare(applicationContext)
         val preferences = AndroidCapturePreferences(applicationContext)
@@ -124,6 +137,7 @@ class MainActivity : FragmentActivity() {
                             agendaApi = agendaApi,
                             store = store,
                             workspaceStore = workspaceStore,
+                            workspaceConnector = workspaceConnector,
                             queue = queue,
                             scheduler = scheduler,
                             preferences = preferences,
@@ -155,6 +169,8 @@ private fun Root(
     store: TokenStore,
     /** Clarice's, which is the same object as [store] on an unsplit install. */
     workspaceStore: TokenStore,
+    /** Clarice's, or null when there is only one connection to manage. */
+    workspaceConnector: Connector?,
     queue: CaptureQueue,
     scheduler: DeliveryScheduler,
     preferences: CapturePreferences,
@@ -197,6 +213,7 @@ private fun Root(
 
     var connected by remember { mutableStateOf(connectModel.isConnected) }
     var showSettings by remember { mutableStateOf(false) }
+    var connectingWorkspace by remember { mutableStateOf(false) }
     var selectedTab by remember { mutableStateOf(RootTab.Capture) }
 
     // Seeded, never sent. Another app's content is put in front of a person
@@ -216,15 +233,33 @@ private fun Root(
         return
     }
 
+    // Reached only from Settings, and only on a split install. Sits above the
+    // Settings branch so that finishing a login returns there rather than
+    // dropping someone back into a tab -- they came here mid-task.
+    if (connectingWorkspace && workspaceConnector != null) {
+        val workspaceConnectModel = remember {
+            ConnectViewModel(workspaceConnector, deviceLabel = "Android (${Build.MODEL})")
+        }
+        BackHandler { connectingWorkspace = false }
+        ConnectScreen(
+            model = workspaceConnectModel,
+            onConnected = { connectingWorkspace = false },
+        )
+        return
+    }
+
     if (showSettings) {
         // Not remembered across visits, deliberately: a fresh model per open
         // is what makes it ask the server again instead of showing the
         // account it saw last time.
-        val settingsModel = remember { SettingsViewModel(connector, queue, scheduler, preferences) }
+        val settingsModel = remember {
+            SettingsViewModel(connector, queue, scheduler, preferences, workspaceConnector)
+        }
         BackHandler { showSettings = false }
         SettingsScreen(
             model = settingsModel,
             onBack = { showSettings = false },
+            onReconnectWorkspace = { connectingWorkspace = true },
             onDisconnected = {
                 // Settings' own disconnect() already cleared the stored
                 // token through this same Connector; this clears the

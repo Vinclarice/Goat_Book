@@ -75,6 +75,110 @@ class SettingsViewModelTest {
         preferences: CapturePreferences = FakePreferences(),
     ) = SettingsViewModel(Connector(FakeApi(result), store), queue, scheduler, preferences)
 
+    private val bob = Identity("bob", "bob@example.com")
+
+    /**
+     * A split install: capture on Second Mind, the workspace on Clarice, each
+     * with its own token and its own answer about whether it still works.
+     */
+    private fun splitViewModel(
+        capture: IdentifyResult = Identified(alice),
+        workspace: IdentifyResult = Identified(bob),
+        captureStore: TokenStore = FakeStore().apply { save("tok_capture") },
+        workspaceStore: TokenStore = FakeStore().apply { save("tok_workspace") },
+    ) = SettingsViewModel(
+        connector = Connector(FakeApi(capture), captureStore),
+        queue = queueOf(),
+        scheduler = FakeScheduler(),
+        preferences = FakePreferences(),
+        workspaceConnector = Connector(FakeApi(workspace), workspaceStore),
+    )
+
+    @Test
+    fun `an unsplit install has no second connection to show`() = runTest {
+        // One server means one row. Rendering the same account twice under two
+        // headings would invite someone to disconnect what they think is a
+        // spare and lose the only one they have.
+        val model = viewModel(Identified(alice))
+
+        model.load()
+
+        assertNull(model.state.value.workspace)
+    }
+
+    @Test
+    fun `a split install reports each account separately`() = runTest {
+        val model = splitViewModel()
+
+        model.load()
+
+        assertEquals(alice, model.state.value.identity)
+        assertEquals(bob, model.state.value.workspace!!.identity)
+    }
+
+    @Test
+    fun `a revoked workspace token does not accuse the capture connection`() = runTest {
+        // The two servers fail independently and the screen has to say which
+        // one. Reporting a single "not connected" would send someone to
+        // reconnect the half that was working.
+        val model = splitViewModel(workspace = Unauthorised)
+
+        model.load()
+
+        assertEquals(alice, model.state.value.identity)
+        assertNull(model.state.value.message)
+        assertNull(model.state.value.workspace!!.identity)
+        assertTrue(model.state.value.workspace!!.isError)
+    }
+
+    @Test
+    fun `disconnecting the workspace leaves capture connected`() = runTest {
+        // The isolation that makes two connections worth having. Capture is
+        // the act this app exists for; losing it because the task server's
+        // token was being replaced would be absurd.
+        val captureStore = FakeStore().apply { save("tok_capture") }
+        val workspaceStore = FakeStore().apply { save("tok_workspace") }
+        val model = splitViewModel(captureStore = captureStore, workspaceStore = workspaceStore)
+        model.load()
+
+        model.disconnectWorkspace()
+
+        assertEquals("tok_capture", captureStore.read())
+        assertNull(workspaceStore.read())
+        assertTrue(model.state.value.connected)
+        assertEquals(alice, model.state.value.identity)
+        assertFalse(model.state.value.workspace!!.connected)
+    }
+
+    @Test
+    fun `disconnecting capture leaves the workspace connected`() = runTest {
+        val captureStore = FakeStore().apply { save("tok_capture") }
+        val workspaceStore = FakeStore().apply { save("tok_workspace") }
+        val model = splitViewModel(captureStore = captureStore, workspaceStore = workspaceStore)
+        model.load()
+
+        model.disconnect()
+
+        assertNull(captureStore.read())
+        assertEquals("tok_workspace", workspaceStore.read())
+        assertTrue(model.state.value.workspace!!.connected)
+        assertEquals(bob, model.state.value.workspace!!.identity)
+    }
+
+    @Test
+    fun `an unsplit disconnect cannot be told to forget a workspace that is not there`() = runTest {
+        // disconnectWorkspace is meaningless without a second connection, and
+        // a no-op is the right answer rather than a crash -- the screen never
+        // offers the button, but the model should not depend on that.
+        val model = viewModel(Identified(alice))
+        model.load()
+
+        model.disconnectWorkspace()
+
+        assertTrue(model.state.value.connected)
+        assertNull(model.state.value.workspace)
+    }
+
     @Test
     fun `it opens in a loading state rather than claiming to be disconnected`() {
         // The account name arrives over the network. Showing "not connected"

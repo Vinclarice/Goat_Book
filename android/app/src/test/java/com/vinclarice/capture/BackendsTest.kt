@@ -78,6 +78,16 @@ class BackendsTest {
     }
 
     @Test
+    fun `an ordinary build is not split`() {
+        // The guard on the build property itself, not just the class. Giving
+        // SECOND_MIND_BASE_URL a default host would silently redirect every
+        // capture in every build that did not ask for it -- somebody's
+        // thoughts posted to a server they never chose. Empty is the only
+        // safe default and this is what keeps it that way.
+        assertFalse(Backends(BuildConfig.CLARICE_BASE_URL, BuildConfig.SECOND_MIND_BASE_URL).isSplit)
+    }
+
+    @Test
     fun `the workspace keeps the token slot every existing install already uses`() {
         // Existing phones hold a token under this alias and this preference
         // file. Renaming either would silently log everybody out and send

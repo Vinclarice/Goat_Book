@@ -42,6 +42,17 @@ android {
             "CLARICE_BASE_URL",
             "\"${project.findProperty("clariceBaseUrl") ?: "https://vinclarice.com/"}\"",
         )
+
+        // Where captures go, when it is somewhere other than Clarice. Empty by
+        // default and empty means unsplit -- see [Backends] -- so a build
+        // without -PsecondMindBaseUrl behaves exactly as every build before
+        // this field existed. There is deliberately no default host: guessing
+        // one would point somebody's thoughts at a server they never chose.
+        buildConfigField(
+            "String",
+            "SECOND_MIND_BASE_URL",
+            "\"${project.findProperty("secondMindBaseUrl") ?: ""}\"",
+        )
     }
 
     signingConfigs {

@@ -68,6 +68,16 @@ These are defects in production or in the pipeline today, not commercial
 readiness items. They are ordered by how quickly they should be fixed, and none
 of them is large.
 
+> **Status, August 14, 2026.** Defects 7, 8, 9 and 10 are fixed — the Android
+> queue's lock and its backup exclusion, `/healthz` with `restart_policy`, and
+> `include_local_variables`. Each is marked below rather than deleted, because
+> what a defect was is the part worth keeping.
+>
+> **Two things this part called for are still outstanding**, and neither is
+> code: an external uptime monitor to poll `/healthz`, and reordering the deploy
+> so it migrates before it recreates. See `CLAUDE.md` for the live list — this
+> document is the analysis, not the tracker.
+
 **1. CI has failed 17 consecutive runs.** Last green was 2026-08-10T20:39;
 every run since has failed, through today. `17aec20` added a Postgres default at
 `src/clarice/settings.py:288`, and its own comment asserts "DJANGO_DATABASE_URL
@@ -118,7 +128,7 @@ with no tags (`:232`). Same user intent, different outcome by route.
 `second-mind-discovery-plan.md` §4.2 declared this closed having audited only the
 hops out of Capture.
 
-**7. The Android capture queue has no lock.** `grep -rn 'Mutex\|synchronized\|
+**7. ~~The Android capture queue has no lock.~~ Fixed August 13, 2026** -- a process-wide lock on the companion object, not `@Synchronized`, because MainActivity and CaptureWorker each construct their own `CaptureQueue` over one store, so a per-instance monitor would have passed a shared-queue test and protected nothing. Covered by a two-thread test over two instances. `grep -rn 'Mutex\|synchronized\|
 withLock' android/app/src/main/` returns nothing. `CaptureQueue.add/delivered/
 update` each load → mutate → save, and `CaptureViewModel.submit()` races
 `CaptureWorker.doWork()` in the same process. Interleaving `add` against
@@ -126,21 +136,21 @@ update` each load → mutate → save, and `CaptureViewModel.submit()` races
 network is active — when someone is most likely typing. This is the one failure
 the app exists to prevent.
 
-**8. The Android queue is not excluded from backup.**
+**8. ~~The Android queue is not excluded from backup.~~ Fixed August 13-14, 2026** -- in `backup_rules.xml`, and then in `backup_rules_legacy.xml` a day later, because the first fix reached only API 31+ while minSdk still admits 26.
 `android/app/src/main/res/xml/backup_rules.xml` excludes only the token file.
 The queue store rides cloud backup and device transfer; the Keystore key does
 not travel; decrypt returns null and the queue reads as empty. Unsent thoughts
 vanish silently on phone upgrade — by the file's own stated reasoning, applied to
 the token and not the queue.
 
-**9. Nothing would tell you the site is down at 3am.** Sentry reports errors
+**9. ~~Nothing would tell you the site is down at 3am.~~ Half fixed.** `restart_policy: unless-stopped` shipped in `b2e16b2` and `/healthz` in `fd896c6`; **nothing polls it yet**, which is the half that still matters. Sentry reports errors
 from a *running* application. A dead container, dead host, expired certificate or
 hung gunicorn produces zero events, which is indistinguishable from a quiet
 night. There is no `/healthz` for anything to poll, and `deploy-playbook.yaml`
 sets **no `restart_policy`**, so Docker's default `no` means a reboot or OOM kill
 takes the site down until you personally intervene.
 
-**10. Sentry can ship private note text.** `include_local_variables` defaults to
+**10. ~~Sentry can ship private note text.~~ Fixed August 14, 2026** (`bbfc38d`). `include_local_variables` defaults to
 `True` and is independent of `send_default_pii=False`. Any 500 inside a capture
 or daily-entry path sends the stack frame's locals — `text`, `intentions`,
 `notes` — to a third party. The code comments assert the opposite.

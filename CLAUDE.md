@@ -58,11 +58,26 @@ accidental edit (separate repositories handle that) but a **justified** one:
 
 **Allowed.** Production defects, which the merger does not make redundant — a
 system with red CI and no uptime monitoring stays broken whichever project it
-becomes part of. The live list is `design/commercial-blueprint.md` Part 1:
-`/healthz`, `restart_policy: unless-stopped`, external uptime monitoring,
-`include_local_variables` shipping note text to Sentry, migrate-before-recreate
-in the deploy, and the two Android queue defects (no lock, not excluded from
-device backup). Security fixes and data-loss fixes qualify without argument.
+becomes part of. The live list is `design/commercial-blueprint.md` Part 1.
+Security fixes and data-loss fixes qualify without argument.
+
+**Two remain, as of August 14, 2026:**
+
+- **External uptime monitoring.** `/healthz` exists now and checks the database;
+  nothing polls it. This one is deliberately not code — a watchdog running on
+  the machine it watches is not a watchdog — so it is an account somebody
+  creates, not a commit.
+- **Migrate-before-recreate.** `deploy-playbook.yaml` runs the container at
+  :259 and migrates at :308, so new code serves traffic against the old schema
+  for the length of the migration.
+
+Closed, and listed only so the next reader does not re-fix them: `/healthz`
+(`fd896c6`), `restart_policy: unless-stopped` (`b2e16b2`),
+`include_local_variables` (`bbfc38d`), and both Android queue defects — the
+process-wide lock and the backup exclusion, in *both* `backup_rules.xml` and
+`backup_rules_legacy.xml`. **This list said those were open after they had been
+fixed**, and that stale line cost a session's worth of re-investigation. If you
+close one, close it here in the same commit.
 
 **Not allowed without a deliberate decision.** New features on `Item`,
 `Capture` or `Idea`. New UI work. New models — a model added now is a model

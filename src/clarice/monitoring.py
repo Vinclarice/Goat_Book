@@ -46,5 +46,22 @@ def initialise(*, dsn, environment, release, initialiser=None):
         # on. That is somebody's private task list leaving the server to
         # answer "what broke" -- more than the question needs.
         send_default_pii=False,
+        # And this is the one the line above does not cover, which the
+        # comment here used to claim it did. `include_local_variables` is
+        # independent of `send_default_pii` and defaults to **True**, so
+        # every stack frame in a 500 shipped its locals -- on a capture or
+        # daily-entry path that is `text`, `intentions`, `notes`: somebody's
+        # unfiltered thinking, sent to a third party by code documented as
+        # not doing that. commercial-blueprint.md defect 10.
+        #
+        # Passed explicitly rather than trusted to stay False, because the
+        # default belongs to a dependency: silence here is a decision made
+        # by whoever last released the SDK.
+        #
+        # It costs real debugging power, and that is the trade being made
+        # knowingly. A traceback without locals says where a 500 happened
+        # but not what value caused it. The material this application holds
+        # is worth more than the shorter investigation.
+        include_local_variables=False,
     )
     return True

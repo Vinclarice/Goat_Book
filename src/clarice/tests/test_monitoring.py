@@ -96,3 +96,28 @@ class TestEnvironmentTest(SimpleTestCase):
         # events. Asserting on the resolved setting covers the wiring in
         # settings.py, not just the function it calls.
         self.assertFalse(settings.ERROR_MONITORING_ENABLED)
+
+
+class PrivateTextStaysOnTheServerTest(InitialisationTest):
+    """`commercial-blueprint.md` defect 10, and the comments asserted the
+    opposite of the truth.
+
+    `send_default_pii=False` withholds usernames, cookies and request bodies.
+    It says nothing about local variables, which are a separate option
+    defaulting to **on** — so every stack frame in a 500 shipped its locals to
+    a third party, and on a capture or daily-entry path those locals are
+    `text`, `intentions` and `notes`. Somebody's unfiltered thinking, sent
+    abroad to answer "what broke", by the code that documented itself as not
+    doing that.
+    """
+
+    def test_local_variables_are_not_sent(self):
+        self.start()
+
+        self.assertIs(self.calls[0]["include_local_variables"], False)
+
+    def test_it_is_passed_explicitly_rather_than_left_to_the_default(self):
+        """The default is True and belongs to a dependency, so silence here is
+        a decision made by whoever last released the SDK. Naming it is what
+        makes the guarantee ours."""
+        self.assertIn("include_local_variables", self.start() and self.calls[0])

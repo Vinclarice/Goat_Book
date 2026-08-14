@@ -79,9 +79,16 @@ backup exclusion, in *both* `backup_rules.xml` and `backup_rules_legacy.xml`.
 that stale line cost a session's worth of re-investigation. If you close one,
 close it here in the same commit.
 
-Still open and untouched: blueprint defects 3, 4, 5 and 6 — `.visually-hidden`
-rendering as visible text, the side nav's missing active-page highlight, no
-error boundary on the router, and tags dropped by `promote_idea_to_task`.
+Also closed: the white screen on any render exception (`0428efb`), and defects
+3 and 4 — the two Tailwind styles — which turned out to have shipped on
+August 12 in `2986ed6`. **That is the second time this list and the blueprint
+have claimed finished work was open.** Check the code before believing either.
+
+**Blueprint defect 6 is the only open one left**: `promote_idea_to_task` calls
+`create_item(for_list, idea.text)` with no tags, while `promote_to_task` carries
+them — same intent, different outcome by route. Weigh it against the merger
+rule above before fixing: `Idea` does not survive, so this is a fix with a known
+expiry.
 
 **Not allowed without a deliberate decision.** New features on `Item`,
 `Capture` or `Idea`. New UI work. New models — a model added now is a model

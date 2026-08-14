@@ -68,14 +68,18 @@ These are defects in production or in the pipeline today, not commercial
 readiness items. They are ordered by how quickly they should be fixed, and none
 of them is large.
 
-> **Status, August 14, 2026.** Six of the ten are fixed — **1** (CI green again,
-> across five jobs), **2** (the wrong day), **7** and **8** (the Android queue's
-> lock and its backup exclusion), **10** (Sentry locals) — plus **9** in part.
+> **Status, August 14, 2026.** Nine of the ten are fixed — **1** (CI green again,
+> across five jobs), **2** (the wrong day), **3** and **4** (the dropped Tailwind
+> styles), **5** (the white screen), **7** and **8** (the Android queue's lock and
+> its backup exclusion), **10** (Sentry locals) — plus **9** in part.
 > Each is marked in place rather than deleted, because what a defect was is the
 > part worth keeping.
 >
-> **Still open: 3, 4, 5 and 6**, all frontend or promotion-path, none of them
-> touched yet. Plus the half of **9** that is not code: nothing polls `/healthz`.
+> **Still open: 6 only** — tags dropped by `promote_idea_to_task` — plus the
+> half of **9** that is not code: nothing polls `/healthz`. **3 and 4 turned out
+> to have been fixed on August 12** and this document said otherwise for two
+> days; that is the second time Part 1 has claimed finished work was open, so
+> check the code before believing a line here.
 > See `CLAUDE.md` for the live list — this document is the analysis, not the
 > tracker.
 >
@@ -123,7 +127,10 @@ silently wrong. There is a real user in Indonesia. Fix inside
 `TokenAuth.authenticate` (`src/accounts/auth.py:72`), where the owner is first
 known, so both auth paths converge.
 
-**3. Screen-reader-only labels are rendering as visible text.**
+**3. ~~Screen-reader-only labels are rendering as visible text.~~ Fixed
+August 12, 2026** (`2986ed6`, already in production) — every use is `sr-only`
+now, and that class is present in the built CSS. Verified by grep, not by the
+commit message: this entry said otherwise for two days.
 `.visually-hidden` is used 13 times across `AgendaWorkspace.tsx`,
 `TaskWorkspace.tsx` and `ArchiveManager.tsx`, and is **defined in zero shipped
 stylesheets** — verified by parsing the built CSS. It only ever existed in
@@ -131,7 +138,9 @@ Bootstrap's utilities, retired with `site.css`. Stray "Task", "Area", "Due date"
 "Search your agenda" are on screen on the Agenda, Area and Archive pages right
 now. Newer code correctly uses `sr-only`; this is an unswept rename.
 
-**4. The side nav has no active-page highlight.** `sidenav.module.css`
+**4. ~~The side nav has no active-page highlight.~~ Fixed August 12, 2026**
+(`2986ed6`, already in production) — the same commit, the same root cause. All
+five variables `sidenav.module.css` reads are declared in the shipped CSS. `sidenav.module.css`
 references `var(--border)`, `var(--text)`, `var(--accent)`, `var(--accent-subtle)`
 and `var(--muted-foreground)` — **zero declarations each** in the shipped CSS,
 while Tailwind v4's `@theme` emits `--color-border` and `--color-text`. An
@@ -139,7 +148,9 @@ invalid `var()` unsets the whole declaration, so the nav has lost its right
 border, its hover feedback, and its current-page indicator. Same root cause as
 3: a token rename that CSS modules didn't follow, and nothing type-checks CSS.
 
-**5. Any render exception is a white screen.** The only `componentDidCatch` is
+**5. ~~Any render exception is a white screen.~~ Fixed August 14, 2026**
+(`0428efb`) — `AppBoundary`, wrapped outermost in `src/app/main.tsx` so it
+catches the providers and router as well as route content. The only `componentDidCatch` is
 at `frontend/src/main.tsx:26`, inside the island entry point that no template
 references any more. `app/main.tsx` mounts the router with no boundary.
 

@@ -1,9 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  The same exclusion for API 30 and below, which uses the older format.
+  The same exclusions for API 30 and below, which uses the older format.
   Both attributes are needed on the application tag: apps targeting Android
   12+ still run on older releases, and each version reads only its own file.
+
+  Keep this list identical to backup_rules.xml. It drifted once, on August 14,
+  2026: the queue exclusion was added there and not here, so on API 26 through
+  30 (which minSdk still admits) the encrypted queue kept riding cloud backup
+  while the newer file said it did not. Two files stating one policy is exactly
+  the shape of thing that goes stale, and the only defence is remembering that
+  this one exists.
+
+  Note what the exclusion does and does not buy. It never saves the captures:
+  the Keystore key does not travel either, so a restored queue is unreadable on
+  the new device whichever file is in force. What it buys is keeping somebody's
+  unfiltered thinking off a backup server at all, which is the half that was
+  missing here.
+
+  Note for anyone editing: XML comments may not contain a double hyphen, so
+  this file cannot use the dashes the rest of the codebase writes with. The
+  same warning is in backup_rules.xml, and writing this file without carrying
+  it over is how the build broke while making this very change.
 -->
 <full-backup-content>
     <exclude domain="sharedpref" path="clarice_capture_secret.xml" />
+    <exclude domain="sharedpref" path="second_mind_capture_secret.xml" />
+    <exclude domain="sharedpref" path="clarice_capture_queue_store.xml" />
 </full-backup-content>

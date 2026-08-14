@@ -58,19 +58,20 @@ class CaptureWorker(
         // objects, so it reconstructs them from the same build config -- which
         // is exactly why the pairing of URL and token slot lives in one place
         // rather than being spelled out at each call site.
-        val capture = Backends(
+        val backends = Backends(
             clariceBaseUrl = BuildConfig.CLARICE_BASE_URL,
             secondMindBaseUrl = BuildConfig.SECOND_MIND_BASE_URL,
-        ).capture
+        )
+        val capture = backends.capture
 
         val report = QueueDrainer(
+            // backends.isSplit rather than re-reading the build config: the
+            // two happen to agree today, and a second copy of the rule is how
+            // they stop agreeing. MainActivity asks the same question the same
+            // way.
             api = OkHttpClariceApi(
                 baseUrl = capture.baseUrl,
-                serverName = if (BuildConfig.SECOND_MIND_BASE_URL.isNotBlank()) {
-                    "Second Mind"
-                } else {
-                    "Clarice"
-                },
+                serverName = if (backends.isSplit) "Second Mind" else "Clarice",
             ),
             store = KeystoreTokenStore(
                 applicationContext,

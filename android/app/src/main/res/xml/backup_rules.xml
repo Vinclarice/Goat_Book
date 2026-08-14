@@ -27,10 +27,12 @@
 <data-extraction-rules>
     <cloud-backup>
         <exclude domain="sharedpref" path="clarice_capture_secret.xml" />
+        <exclude domain="sharedpref" path="second_mind_capture_secret.xml" />
         <exclude domain="sharedpref" path="clarice_capture_queue_store.xml" />
     </cloud-backup>
     <device-transfer>
         <exclude domain="sharedpref" path="clarice_capture_secret.xml" />
+        <exclude domain="sharedpref" path="second_mind_capture_secret.xml" />
         <exclude domain="sharedpref" path="clarice_capture_queue_store.xml" />
     </device-transfer>
 </data-extraction-rules>

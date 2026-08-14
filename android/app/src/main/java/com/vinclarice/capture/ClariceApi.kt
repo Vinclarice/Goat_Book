@@ -223,6 +223,12 @@ class OkHttpClariceApi(
             .atOffset(java.time.ZoneOffset.UTC)
             .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'"))
 
+    /**
+     * A whole-hours-and-minutes reading of an ISO 8601 duration, e.g.
+     * "PT1H" or "PT1H30M" -- axes' own format (axes.helpers.get_cool_off_iso8601),
+     * not a general-purpose parser. `AXES_COOLOFF_TIME` is configured in
+     * whole hours today, so seconds are deliberately not extracted.
+     */
     private fun formatCooloff(iso: String): String? {
         val match = Regex("""PT(?:(\d+)H)?(?:(\d+)M)?""").matchEntire(iso) ?: return null
         val hours = match.groupValues[1].toIntOrNull() ?: 0

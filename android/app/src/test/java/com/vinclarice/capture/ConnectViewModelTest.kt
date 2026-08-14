@@ -42,7 +42,13 @@ class ConnectViewModelTest {
             return loginResult
         }
 
-        override suspend fun capture(token: String, text: String, idempotencyKey: String, tags: List<String>) =
+        override suspend fun capture(
+            token: String,
+            text: String,
+            idempotencyKey: String,
+            tags: List<String>,
+            capturedAt: Long?,
+        ) =
             Disposition.DELIVERED
     }
 

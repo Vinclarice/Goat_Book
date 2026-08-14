@@ -37,6 +37,7 @@ class QueueDrainerTest {
     ) : ClariceApi {
         val keys = mutableListOf<String>()
         val texts = mutableListOf<String>()
+        val times = mutableListOf<Long?>()
 
         override suspend fun identify(token: String) = Identified(Identity("a", "a@b.c"))
 
@@ -48,9 +49,11 @@ class QueueDrainerTest {
             text: String,
             idempotencyKey: String,
             tags: List<String>,
+            capturedAt: Long?,
         ): Disposition {
             keys += idempotencyKey
             texts += text
+            times += capturedAt
             return byKey[idempotencyKey] ?: fallback
         }
     }
@@ -218,5 +221,25 @@ class QueueDrainerTest {
 
         assertEquals(1, report.delivered)
         assertEquals(2, report.waiting)
+    }
+
+    @Test
+    fun `each capture is sent with its own time, not the moment it drained`() = runTest {
+        // The plumbing half of the fix found on a device, August 14, 2026. The
+        // queue has always stamped createdAt when the text was first accepted;
+        // it simply never sent it, so six thoughts typed minutes apart arrived
+        // stamped to the same second -- the moment the queue happened to drain.
+        //
+        // Asserting per item rather than "not null": one shared timestamp for
+        // the whole batch would be the same bug wearing a different value.
+        val api = FakeApi(fallback = Disposition.DELIVERED)
+        val queue = queueOf(
+            PendingCapture(key = "k1", text = "first", createdAt = 1_000),
+            PendingCapture(key = "k2", text = "second", createdAt = 2_000),
+        )
+
+        QueueDrainer(api, FakeStore(), queue).drain()
+
+        assertEquals(listOf<Long?>(1_000, 2_000), api.times)
     }
 }

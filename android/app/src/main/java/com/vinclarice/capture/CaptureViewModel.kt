@@ -130,7 +130,7 @@ class CaptureViewModel(
 
         // The queued item's own key, never a fresh one: a retry has to be
         // recognisably the same write, or it becomes a second note.
-        when (api.capture(token, item.text, item.key, item.tags)) {
+        when (api.capture(token, item.text, item.key, item.tags, item.createdAt)) {
             Disposition.DELIVERED -> {
                 queue.delivered(item.key)
                 report("Captured.", isError = false)

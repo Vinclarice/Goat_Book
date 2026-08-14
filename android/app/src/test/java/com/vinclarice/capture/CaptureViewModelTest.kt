@@ -57,6 +57,7 @@ class CaptureViewModelTest {
             text: String,
             idempotencyKey: String,
             tags: List<String>,
+            capturedAt: Long?,
         ): Disposition {
             queuedWhenCalled = queue?.all()
             tokens += token

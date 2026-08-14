@@ -77,6 +77,15 @@ interface ClariceApi {
         text: String,
         idempotencyKey: String,
         tags: List<String> = emptyList(),
+        /**
+         * When the text was written, epoch millis, or null when unknown.
+         *
+         * Not the same as when it is sent, and the difference is the whole
+         * point: a capture can sit in the queue for hours. The server falls
+         * back to its own clock when this is absent, which is right for
+         * anything captured while connected and wrong for everything else.
+         */
+        capturedAt: Long? = null,
     ): Disposition
 }
 
@@ -202,6 +211,18 @@ class OkHttpClariceApi(
      * not a general-purpose parser. `AXES_COOLOFF_TIME` is configured in
      * whole hours today, so seconds are deliberately not extracted.
      */
+    /**
+     * Epoch millis as ISO 8601 in UTC, which is what the server parses.
+     *
+     * Formatted here rather than sent as a number so the wire format says what
+     * it means, and pinned to UTC so a phone that changes timezone between
+     * capture and delivery cannot move the timestamp.
+     */
+    private fun isoUtc(epochMillis: Long): String =
+        java.time.Instant.ofEpochMilli(epochMillis)
+            .atOffset(java.time.ZoneOffset.UTC)
+            .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'"))
+
     private fun formatCooloff(iso: String): String? {
         val match = Regex("""PT(?:(\d+)H)?(?:(\d+)M)?""").matchEntire(iso) ?: return null
         val hours = match.groupValues[1].toIntOrNull() ?: 0
@@ -219,6 +240,7 @@ class OkHttpClariceApi(
         text: String,
         idempotencyKey: String,
         tags: List<String>,
+        capturedAt: Long?,
     ): Disposition = withContext(Dispatchers.IO) {
         // Built with JSONObject rather than string concatenation: capture
         // text is prose typed in a hurry, and quotes, newlines and
@@ -226,6 +248,11 @@ class OkHttpClariceApi(
         val body = JSONObject()
             .put("text", text)
             .put("tags", JSONArray(tags))
+            // Omitted rather than guessed when unknown: the server falls back
+            // to now, which is the honest answer for a capture that never
+            // waited. Sending an invented time would be worse than sending
+            // none, because a temporal detector cannot tell the two apart.
+            .apply { capturedAt?.let { put("captured_at", isoUtc(it)) } }
             .toString()
         val request = Request.Builder()
             .url(baseUrl.trimEnd('/') + "/api/v1/capture")

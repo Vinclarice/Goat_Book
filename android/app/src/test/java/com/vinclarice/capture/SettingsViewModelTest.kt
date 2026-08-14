@@ -101,6 +101,19 @@ class SettingsViewModelTest {
     )
 
     @Test
+    fun `a split install shows the second connection before it has loaded`() {
+        // Without this the whole "Tasks and today" section is *absent* -- not
+        // spinning, absent -- until the capture server answers, because the
+        // workspace is only asked after it. On a slow or unreachable capture
+        // server that is up to a ten-second timeout, after which a section
+        // appears from nowhere. Present-and-loading is the honest state.
+        val state = splitViewModel().state.value
+
+        assertTrue(state.workspace!!.loading)
+        assertNull(state.workspace!!.identity)
+    }
+
+    @Test
     fun `an unsplit install has no second connection to show`() = runTest {
         // One server means one row. Rendering the same account twice under two
         // headings would invite someone to disconnect what they think is a

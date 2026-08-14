@@ -9,6 +9,16 @@ package com.vinclarice.capture
  */
 data class Backend(
     val baseUrl: String,
+    /**
+     * What to call this server when telling somebody it refused or could not
+     * be reached.
+     *
+     * Travels with the URL for the same reason the credential slot does: on a
+     * split install every one of these strings is shown at the exact moment
+     * somebody is working out *which* of two servers is broken, and a name
+     * chosen at the call site is a name that can be chosen wrongly.
+     */
+    val name: String,
     val tokenAlias: String,
     val tokenPrefs: String,
 )
@@ -51,6 +61,7 @@ class Backends(clariceBaseUrl: String, secondMindBaseUrl: String) {
      */
     val workspace: Backend = Backend(
         baseUrl = clariceBaseUrl,
+        name = CLARICE,
         tokenAlias = KeystoreTokenStore.DEFAULT_ALIAS,
         tokenPrefs = KeystoreTokenStore.DEFAULT_PREFS,
     )
@@ -65,6 +76,7 @@ class Backends(clariceBaseUrl: String, secondMindBaseUrl: String) {
         if (isSplit) {
             Backend(
                 baseUrl = secondMind,
+                name = SECOND_MIND,
                 tokenAlias = SECOND_MIND_ALIAS,
                 tokenPrefs = SECOND_MIND_PREFS,
             )
@@ -73,6 +85,8 @@ class Backends(clariceBaseUrl: String, secondMindBaseUrl: String) {
         }
 
     private companion object {
+        const val CLARICE = "Clarice"
+        const val SECOND_MIND = "Second Mind"
         const val SECOND_MIND_ALIAS = "second_mind_capture_token"
         const val SECOND_MIND_PREFS = "second_mind_capture_secret"
     }

@@ -71,7 +71,7 @@ class MainActivity : FragmentActivity() {
         // there being two.
         val api = OkHttpClariceApi(
             baseUrl = backends.capture.baseUrl,
-            serverName = if (backends.isSplit) "Second Mind" else "Clarice",
+            serverName = backends.capture.name,
         )
         val store = KeystoreTokenStore(
             applicationContext,
@@ -94,7 +94,11 @@ class MainActivity : FragmentActivity() {
         // The gate connects *capture*, deliberately. It is the act this app
         // exists for, and on a split install it is the only one of the two
         // that has no token yet.
-        val connector = Connector(api = api, store = store)
+        val connector = Connector(
+            api = api,
+            store = store,
+            serverName = backends.capture.name,
+        )
 
         // Null when unsplit, which is what tells Settings there is one
         // connection rather than two -- see [SettingsUiState.workspace]. Its
@@ -102,8 +106,12 @@ class MainActivity : FragmentActivity() {
         // whichever server capture is going to.
         val workspaceConnector = if (backends.isSplit) {
             Connector(
-                api = OkHttpClariceApi(baseUrl = backends.workspace.baseUrl),
+                api = OkHttpClariceApi(
+                    baseUrl = backends.workspace.baseUrl,
+                    serverName = backends.workspace.name,
+                ),
                 store = workspaceStore,
+                serverName = backends.workspace.name,
             )
         } else {
             null
@@ -143,6 +151,7 @@ class MainActivity : FragmentActivity() {
                             store = store,
                             workspaceStore = workspaceStore,
                             workspaceConnector = workspaceConnector,
+                            captureName = backends.capture.name,
                             queue = queue,
                             scheduler = scheduler,
                             preferences = preferences,
@@ -176,6 +185,8 @@ private fun Root(
     workspaceStore: TokenStore,
     /** Clarice's, or null when there is only one connection to manage. */
     workspaceConnector: Connector?,
+    /** What to call the server captures go to, wherever that is said on screen. */
+    captureName: String,
     queue: CaptureQueue,
     scheduler: DeliveryScheduler,
     preferences: CapturePreferences,
@@ -201,13 +212,19 @@ private fun Root(
         // A login-minted token is labelled by the device it came from, so
         // the Access tokens page on the web can tell two phones apart --
         // "Android" alone would leave every login indistinguishable there.
-        ConnectViewModel(connector, deviceLabel = "Android (${Build.MODEL})")
+        ConnectViewModel(
+            connector,
+            deviceLabel = "Android (${Build.MODEL})",
+            serverName = captureName,
+        )
     }
     // Held here rather than inside the Capture branch, so that a trip to
     // Settings and back does not drop it out of composition along with
     // whatever half-finished thought was in the field. The queue now covers
     // everything already submitted; this covers what is still being typed.
-    val captureModel = remember { CaptureViewModel(api, store, queue, scheduler, preferences) }
+    val captureModel = remember {
+        CaptureViewModel(api, store, queue, scheduler, preferences, serverName = captureName)
+    }
     // Same reasoning as captureModel: held above the tab switch so opening
     // Settings and coming back doesn't drop today's already-loaded state.
     val dailyModel = remember { DailyViewModel(dailyApi, workspaceStore) }
@@ -243,7 +260,11 @@ private fun Root(
     // dropping someone back into a tab -- they came here mid-task.
     if (connectingWorkspace && workspaceConnector != null) {
         val workspaceConnectModel = remember {
-            ConnectViewModel(workspaceConnector, deviceLabel = "Android (${Build.MODEL})")
+            ConnectViewModel(
+                workspaceConnector,
+                deviceLabel = "Android (${Build.MODEL})",
+                serverName = "Clarice",
+            )
         }
         BackHandler { connectingWorkspace = false }
         ConnectScreen(
@@ -258,7 +279,10 @@ private fun Root(
         // is what makes it ask the server again instead of showing the
         // account it saw last time.
         val settingsModel = remember {
-            SettingsViewModel(connector, queue, scheduler, preferences, workspaceConnector)
+            SettingsViewModel(
+                connector, queue, scheduler, preferences, workspaceConnector,
+                serverName = captureName,
+            )
         }
         BackHandler { showSettings = false }
         SettingsScreen(

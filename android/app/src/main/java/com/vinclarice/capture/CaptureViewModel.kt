@@ -54,6 +54,8 @@ class CaptureViewModel(
     // constraint is scoped to.
     private val newKey: () -> String = { UUID.randomUUID().toString() },
     private val now: () -> Long = { System.currentTimeMillis() },
+    /** Which server captures go to, for the message when it refuses one. */
+    private val serverName: String = "Clarice",
 ) {
     private val _state = MutableStateFlow(CaptureUiState())
     val state: StateFlow<CaptureUiState> = _state.asStateFlow()
@@ -159,7 +161,7 @@ class CaptureViewModel(
                     text = item.text,
                     tags = item.tags.joinToString(", "),
                     sending = false,
-                    message = "Clarice would not accept that. Edit it and try again.",
+                    message = "$serverName would not accept that. Edit it and try again.",
                     isError = true,
                     pending = queue.waiting().size,
                 )

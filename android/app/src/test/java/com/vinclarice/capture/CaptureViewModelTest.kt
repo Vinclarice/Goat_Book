@@ -94,6 +94,7 @@ class CaptureViewModelTest {
         store: TokenStore = FakeStore(),
         ceiling: Int = 5,
         preferences: CapturePreferences = FakePreferences(),
+        serverName: String = "Clarice",
     ): Fixture {
         val api = FakeApi(disposition)
         val queue = CaptureQueue(FakeStorage(), ceiling = ceiling)
@@ -111,6 +112,7 @@ class CaptureViewModelTest {
                 queue,
                 scheduler,
                 preferences,
+                serverName = serverName,
                 // Unconfined so queue work runs inline: these assertions are
                 // about decisions, not about thread hops.
                 io = Dispatchers.Unconfined,
@@ -317,6 +319,21 @@ class CaptureViewModelTest {
 
         assertEquals("buy milk", f.model.state.value.text)
         assertTrue(f.model.state.value.isError)
+    }
+
+    @Test
+    fun `a rejection names the server that rejected it`() = runTest {
+        // The capture path faces Second Mind on a split install, so naming
+        // Clarice here points somebody at the wrong server's rules for text it
+        // never saw.
+        val f = fixture(Disposition.REJECTED, serverName = "Second Mind")
+        f.model.onTextChange("buy milk")
+
+        f.model.submit()
+
+        val message = f.model.state.value.message!!
+        assertTrue(message, message.contains("Second Mind"))
+        assertFalse(message, message.contains("Clarice"))
     }
 
     @Test

@@ -65,13 +65,12 @@ class CaptureWorker(
         val capture = backends.capture
 
         val report = QueueDrainer(
-            // backends.isSplit rather than re-reading the build config: the
-            // two happen to agree today, and a second copy of the rule is how
-            // they stop agreeing. MainActivity asks the same question the same
-            // way.
+            // The name comes off the Backend rather than being decided here:
+            // it is only ever correct alongside the URL it belongs to, which is
+            // the same argument that put the credential slot there.
             api = OkHttpClariceApi(
                 baseUrl = capture.baseUrl,
-                serverName = if (backends.isSplit) "Second Mind" else "Clarice",
+                serverName = capture.name,
             ),
             store = KeystoreTokenStore(
                 applicationContext,

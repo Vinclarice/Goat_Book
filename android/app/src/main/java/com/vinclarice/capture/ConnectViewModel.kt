@@ -24,6 +24,8 @@ class ConnectViewModel(
     // model string; every test gets the same default a device would
     // fall back to reading a blank one.
     private val deviceLabel: String = "Android",
+    /** Named on screen, so a split install says which server to connect to. */
+    val serverName: String = "Clarice",
 ) {
 
     private val _state = MutableStateFlow(ConnectUiState())
@@ -63,7 +65,7 @@ class ConnectViewModel(
             // than fetch all forty again.
             is Refused -> fail(outcome.message)
             is Failed -> fail(outcome.message)
-            Blank -> fail("Paste the access token from the Clarice web app.")
+            Blank -> fail("Paste the access token from the $serverName web app.")
         }
     }
 

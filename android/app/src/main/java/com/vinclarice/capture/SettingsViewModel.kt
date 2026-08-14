@@ -73,10 +73,22 @@ class SettingsViewModel(
      * rather than always drawing two.
      */
     private val workspaceConnector: Connector? = null,
+    /** Which server captures go to, named in the stalled-capture text. */
+    val serverName: String = "Clarice",
     private val io: CoroutineDispatcher = Dispatchers.IO,
 ) {
 
-    private val _state = MutableStateFlow(SettingsUiState())
+    // Seeded with a loading workspace when there is one, rather than left null
+    // until loadWorkspace() answers. Null means "there is no second
+    // connection", so leaving it null while one is being asked about makes the
+    // whole section *absent* -- not spinning, absent -- until the capture
+    // server replies, which on an unreachable one is a ten-second timeout
+    // followed by a section appearing from nowhere.
+    private val _state = MutableStateFlow(
+        SettingsUiState(
+            workspace = if (workspaceConnector != null) WorkspaceConnection() else null,
+        )
+    )
     val state: StateFlow<SettingsUiState> = _state.asStateFlow()
 
     suspend fun load() {

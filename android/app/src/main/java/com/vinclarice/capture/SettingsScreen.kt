@@ -210,7 +210,7 @@ fun SettingsScreen(
             )
         }
 
-        QueueSection(state = state, onRetry = onRetry)
+        QueueSection(state = state, onRetry = onRetry, serverName = model.serverName)
 
         if (state.connected) {
             OutlinedButton(
@@ -264,7 +264,13 @@ fun SettingsScreen(
  * problem without telling them what to do about it.
  */
 @Composable
-private fun QueueSection(state: SettingsUiState, onRetry: (String) -> Unit) {
+private fun QueueSection(
+    state: SettingsUiState,
+    onRetry: (String) -> Unit,
+    /** Named rather than assumed: on a split install the queue faces
+     *  Second Mind, and a rejection is that server's judgement. */
+    serverName: String,
+) {
     if (state.waiting == 0 && state.needsAttention.isEmpty()) return
 
     HorizontalDivider()
@@ -292,7 +298,7 @@ private fun QueueSection(state: SettingsUiState, onRetry: (String) -> Unit) {
             Text(
                 when (item.state) {
                     QueueState.REJECTED ->
-                        "Clarice would not accept this. Retrying it unchanged will fail again."
+                        "$serverName would not accept this. Retrying it unchanged will fail again."
                     // Says what happened rather than naming a state. "Stalled"
                     // means nothing to somebody who did not write the queue.
                     else -> "Stopped after ${item.attempts} attempts."

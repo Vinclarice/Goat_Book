@@ -10,7 +10,18 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:18
+        # pgvector's image, not stock postgres, and pg17 rather than 18.
+        #
+        # The `mind` app's migration 0002 runs `CreateExtension("vector")`, and
+        # Django builds the test database by running *every* app's migrations
+        # whichever labels are being tested -- so a stock image fails this job
+        # in setup_databases before a single test runs, even though nothing in
+        # the task core has ever heard of pgvector.
+        #
+        # 17 because pgvector publishes no pg18 image. Matches
+        # docker-compose.yml, which had to make the same choice for the same
+        # reason.
+        image: pgvector/pgvector:pg17
         env:
           POSTGRES_DB: clarice
           POSTGRES_USER: clarice
@@ -43,41 +54,99 @@ jobs:
         run: python src/manage.py test lists.tests.test_isolation
       - run: python src/manage.py test accounts lists capture clarice daily routines review
 
+  # The knowledge core, and its own runner. `requirements-dev.txt` has claimed
+  # "CI runs both" since the merger and it was not true until now -- 571 tests
+  # covering facets, the commitment parser, detectors and the append-only log
+  # were invisible here, on the half of the application that had just moved in.
+  #
+  # A separate job rather than a step on `django`, because steps stop at the
+  # first failure: as one job, a task-core regression would hide whatever the
+  # knowledge core had to say, and the two suites are independent. This way
+  # both run and both report.
+  mind:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_DB: clarice
+          POSTGRES_USER: clarice
+          POSTGRES_PASSWORD: clarice
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DJANGO_DATABASE_URL: postgresql://clarice:clarice@localhost:5432/clarice
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - run: pip install --disable-pip-version-check -r requirements-dev.txt
+      # Config lives in pytest.ini, including the testpaths that scope this to
+      # src/mind -- passing the path again here would be a second place to
+      # forget.
+      - run: pytest
+
   # A separate job because it is the only one needing both toolchains at
   # once. src/lists/static/frontend is gitignored, so the browser tests
   # have to build the bundle themselves -- a suite that silently served no
   # JavaScript would pass an empty page and prove nothing.
   #
-  # No Postgres service here, unlike the django job. These cover routing,
-  # static assets, session cookies and browser navigation; none of that
-  # changes with the database engine, and SQLite keeps the job quick.
+  # Postgres here too, as of August 14, 2026 -- and that reverses a decision
+  # rather than correcting a mistake, so the old reasoning is worth keeping.
   #
-  # That decision was re-examined on August 2, 2026 and kept. SQLite did
-  # cost this job a flake -- an in-memory test database is unreachable from
-  # a second connection, so LiveServerTestCase handed its own to the server
-  # thread and concurrent requests interleaved on one cursor, surfacing as a
-  # 500 from a session lookup and a Playwright timeout that looked like a UI
-  # bug. Moving to Postgres would have fixed it as a side effect. Naming the
-  # SQLite test database fixes the actual cause instead, and does it for
-  # everyone running these locally rather than only for CI. See
+  # This job ran on SQLite deliberately. These tests cover routing, static
+  # assets, session cookies and browser navigation, none of which changes with
+  # the engine, and SQLite kept the job quick. The choice was re-examined on
+  # August 2, 2026 and kept: SQLite had cost a flake -- an in-memory test
+  # database is unreachable from a second connection, so LiveServerTestCase
+  # handed its own to the server thread and concurrent requests interleaved on
+  # one cursor -- and naming the SQLite test database fixed that actual cause
+  # instead, for everyone rather than only for CI. See
   # src/functional_tests/__init__.py and test_harness.py.
+  #
+  # What changed is not the argument but the premise. The `mind` app arrived
+  # with `VectorField`, `HnswIndex`, and `GeneratedField` over `SearchVector`,
+  # and Django runs every app's migrations to build a test database regardless
+  # of which labels are under test. On SQLite that now dies with
+  # "unrecognized token" partway through migrating -- verified by running it.
+  # There is no version of this job that both keeps SQLite and has the
+  # knowledge core in the repository.
+  #
+  # The engine-independence claim above still holds, so nothing about what
+  # these tests prove has changed. They just cost a service container now.
   browser:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_DB: clarice
+          POSTGRES_USER: clarice
+          POSTGRES_PASSWORD: clarice
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     env:
-      # Stated, not inherited. This job used to get SQLite by saying
-      # nothing, because the DEBUG branch in clarice/settings.py defaulted
-      # to it -- so when 17aec20 moved that default to the local Postgres
-      # container, this job started dialling localhost:5433 on a runner
-      # that has no such service and died in setup_databases without
-      # reaching a single test. It stayed broken for 17 runs because the
-      # failure looked like the ProjectJourneyTest breakage it had
-      # replaced.
-      #
-      # The engine choice is unchanged and still argued above; what
-      # changed is that it is now written down here, where this job's
-      # other decisions live, rather than depending on a default two
-      # repositories away that nothing stopped anyone from moving.
-      DJANGO_DATABASE_URL: sqlite://:memory:
+      # Stated, not inherited, which is the part of the previous fix worth
+      # keeping. This job used to get its engine by saying nothing, so when
+      # 17aec20 moved the DEBUG default in clarice/settings.py to the local
+      # Postgres container it started dialling localhost:5433 on a runner with
+      # no such service and died in setup_databases without reaching a test.
+      # It stayed broken for 17 runs because the failure resembled the
+      # ProjectJourneyTest breakage it had replaced.
+      DJANGO_DATABASE_URL: postgresql://clarice:clarice@localhost:5432/clarice
     steps:
       - uses: actions/checkout@v4
       - run: corepack enable

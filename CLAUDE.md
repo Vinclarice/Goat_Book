@@ -100,9 +100,16 @@ activating:
 ```powershell
 docker compose up -d db   # once per session; starts local Postgres
 .\.venv\Scripts\python.exe src\manage.py test accounts lists capture clarice daily routines review
+.\.venv\Scripts\python.exe -m pytest          # the mind app; config in pytest.ini
 pnpm --dir frontend test
 pnpm --dir frontend build
 ```
+
+**Two Python runners, and both are real.** The task core runs on
+`manage.py test`; the knowledge core arrived with 500-odd pytest-style tests and
+stays on `pytest`, because converting them would be a large mechanical rewrite
+of the thing in that app most worth leaving alone. Running one and reporting
+"tests pass" covers about half the application.
 
 **Tests run on Postgres now, not SQLite.** `Item.Meta`'s
 `unique_active_item` is `nulls_distinct=False`, "Postgres 15+ only" per its
@@ -130,10 +137,18 @@ pnpm --dir frontend build                                   # it loads the real 
 `src/lists/static/frontend/`, so without a rebuild they will happily pass
 against stale JavaScript. `HEADED=1` runs them in a visible browser.
 
-Those three cover the web application; `android/` has its own check below,
-and CI runs all four. Keep the Django app list matched to
-`.github/workflows/ci.yml` — it once omitted `capture`, so following the
-README ran every suite except the one covering the capture API.
+Those cover the web application; `android/` has its own check below, and CI
+runs all of them across five jobs — `django`, `mind`, `browser`, `frontend`,
+`android`. Keep the Django app list matched to `.github/workflows/ci.yml` — it
+once omitted `capture`, so following the README ran every suite except the one
+covering the capture API, and the `mind` suite was absent from CI entirely for
+the first day of the merger while `requirements-dev.txt` claimed otherwise.
+
+**CI's Postgres is `pgvector/pgvector:pg17`, in every job that has one.** The
+`mind` migrations run `CreateExtension("vector")`, and Django builds the test
+database from *every* app's migrations whichever labels are under test — so a
+stock image, or SQLite, fails in `setup_databases` before a single test runs,
+including on jobs that never touch the knowledge core.
 
 Never `npx tsc`; the build's `tsc --noEmit` is the type check.
 

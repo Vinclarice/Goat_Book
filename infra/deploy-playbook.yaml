@@ -25,6 +25,35 @@
     # never appears in mail sent to a user.
     admin_email: vincentjg01@gmail.com
 
+    # The container's environment, defined once because two tasks now need it:
+    # the one-off container that migrates, and the one that serves. Ansible
+    # templates a var where it is used rather than where it is written, so the
+    # `secret_key`/`db_connection_url` registers below are resolved by the time
+    # anything reads this -- which is what lets it sit up here at all.
+    #
+    # Written out twice, it would drift, and the failure would be a migration
+    # running against a different database than the site serves. That is
+    # exactly the class of two-places-one-policy bug the Android backup rules
+    # already demonstrated.
+    clarice_env:
+      DJANGO_SECRET_KEY: "{{ secret_key.content | b64decode }}"
+      DJANGO_ALLOWED_HOST: "{{ site_domain }}"
+      DJANGO_DATABASE_URL: "{{ db_connection_url.content | b64decode }}"
+      DJANGO_ENVIRONMENT: "{{ deployment_environment }}"
+      ALLOW_DATABASE_FLUSH: "{{ allow_database_flush }}"
+      DJANGO_EMAIL_BACKEND: "{{ email_backend }}"
+      DJANGO_EMAIL_HOST_USER: "{{ email_host_user }}"
+      DJANGO_EMAIL_HOST_PASSWORD: >-
+        {{ (email_password.content | b64decode)
+           if email_backend == 'smtp'
+           else '' }}
+      DJANGO_ADMIN_EMAIL: "{{ admin_email }}"
+      DJANGO_SENTRY_DSN: >-
+        {{ (sentry_dsn.content | b64decode | trim)
+           if sentry_dsn_file.stat.exists
+           else '' }}
+      DJANGO_RELEASE: "{{ deployed_commit.stdout | trim }}"
+
   tasks:
 
     # First, and deliberately ahead of the apt tasks below, because those are
@@ -256,6 +285,62 @@
         name: superlists
         state: absent
 
+    # Before the new code serves anything, and using the *new* image.
+    #
+    # This used to run after the container was recreated (`docker exec clarice
+    # ./manage.py migrate`), so new code answered traffic against the old
+    # schema for however long the migration took -- every request in that
+    # window hitting columns that did not exist yet. commercial-blueprint.md
+    # Part 1, "also, cheaply".
+    #
+    # Swapping the two tasks would not have worked, and the reason is worth
+    # stating: the old container runs the old code, which does not contain the
+    # new migrations. Migrating early has to mean a *one-off container from the
+    # new image*, which is what this is.
+    #
+    # A different name and no port binding, because the container being
+    # replaced is still running and still holds 127.0.0.1:8000.
+    #
+    # `detach: false` waits for it and fails the task on a non-zero exit, so a
+    # broken migration now stops the deploy *here* -- with the old container
+    # still serving the schema it was built for, which is the whole point.
+    # `cleanup` only removes it on success, so a failure leaves the container
+    # to be inspected.
+    - name: Migrate, before the new code starts serving
+      community.docker.docker_container:
+        name: clarice-migrate
+        image: clarice
+        command: ./manage.py migrate
+        state: started
+        detach: false
+        cleanup: true
+        # `cleanup` only removes it on success, so a failed migration leaves
+        # this container behind to be inspected -- and the next run must not
+        # quietly restart that corpse and report its old exit status as this
+        # deploy's result.
+        recreate: true
+        # Without this the module returns no output at all, and a data
+        # migration's own printout is sometimes the only record of what it
+        # did -- see the note under "Show what the migrations did".
+        output_logs: true
+        env: "{{ clarice_env }}"
+      register: migration_output
+
+    # Registered and printed because a data migration's own output is
+    # sometimes the only record of what it did. The container is removed the
+    # moment it succeeds, so `docker logs` is not available afterwards and
+    # this is the only place the text survives.
+    #
+    # That cost a real answer on August 3, 2026: release D's deploy ran
+    # 0026 (converts each subtask, deleting the Item it came from) and 0028
+    # (deletes every ownerless area, irreversibly). Both were written to
+    # print their counts precisely so production would be the evidence, and
+    # both printed into nothing. 0026's figure was recoverable by counting
+    # rows afterwards; 0028's is gone for good.
+    - name: Show what the migrations did
+      ansible.builtin.debug:
+        var: migration_output.container.Output
+
     - name: Run container
       community.docker.docker_container:
         name: clarice
@@ -278,24 +363,9 @@
         # policy is fixed when the container is created. An already-running
         # container needs `docker update --restart=unless-stopped <name>`.
         restart_policy: unless-stopped
-        env:
-          DJANGO_SECRET_KEY: "{{ secret_key.content | b64decode }}"
-          DJANGO_ALLOWED_HOST: "{{ site_domain }}"
-          DJANGO_DATABASE_URL: "{{ db_connection_url.content | b64decode }}"
-          DJANGO_ENVIRONMENT: "{{ deployment_environment }}"
-          ALLOW_DATABASE_FLUSH: "{{ allow_database_flush }}"
-          DJANGO_EMAIL_BACKEND: "{{ email_backend }}"
-          DJANGO_EMAIL_HOST_USER: "{{ email_host_user }}"
-          DJANGO_EMAIL_HOST_PASSWORD: >-
-            {{ (email_password.content | b64decode)
-               if email_backend == 'smtp'
-               else '' }}
-          DJANGO_ADMIN_EMAIL: "{{ admin_email }}"
-          DJANGO_SENTRY_DSN: >-
-            {{ (sentry_dsn.content | b64decode | trim)
-               if sentry_dsn_file.stat.exists
-               else '' }}
-          DJANGO_RELEASE: "{{ deployed_commit.stdout | trim }}"
+        # Shared with the migration container above; see `clarice_env` in the
+        # play vars for why it is not written out here.
+        env: "{{ clarice_env }}"
         ports:
           - "127.0.0.1:8000:8888"
       # Recreating here, before nginx is installed/reloaded, matters: on a
@@ -304,28 +374,6 @@
       # this task replaces it. If nginx tries to bind :80 first, it fails
       # with "control process exited with error code" because the port's
       # still taken.
-
-    - name: Run migration inside container
-      community.docker.docker_container_exec:
-        container: clarice
-        command: ./manage.py migrate
-      register: migration_output
-
-    # Registered and printed because a data migration's own output is
-    # sometimes the only record of what it did. docker_container_exec
-    # captures stdout into the result rather than sending it to the
-    # container's logs, so without these two tasks Ansible discards it and
-    # `docker logs clarice` never had it either.
-    #
-    # That cost a real answer on August 3, 2026: release D's deploy ran
-    # 0026 (converts each subtask, deleting the Item it came from) and 0028
-    # (deletes every ownerless area, irreversibly). Both were written to
-    # print their counts precisely so production would be the evidence, and
-    # both printed into nothing. 0026's figure was recoverable by counting
-    # rows afterwards; 0028's is gone for good.
-    - name: Show what the migrations did
-      ansible.builtin.debug:
-        var: migration_output.stdout_lines
 
     # The command has existed and worked for a while but nothing invoked it,
     # so the digest reached nobody. Users with nothing to report are skipped

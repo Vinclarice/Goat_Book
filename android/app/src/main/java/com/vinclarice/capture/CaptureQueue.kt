@@ -60,6 +60,22 @@ interface QueueStorage {
  * Reads go through storage on every call rather than caching, because a
  * foreground submit and a background drain both mutate this and neither is
  * the owner of the truth.
+ *
+ * **Every operation holds [LOCK], and it is deliberately not per-instance.**
+ * `add` and `delivered` each load, mutate and save; interleaved, the later
+ * save silently discards the earlier one, so a thought typed while the worker
+ * was finishing a delivery vanished and a delivered capture came back to be
+ * sent again. Losing a capture is the one failure this app exists to prevent.
+ *
+ * The lock is on the companion rather than on `this` because [MainActivity]
+ * and [CaptureWorker] each construct their own `CaptureQueue` over the same
+ * storage. Two instances mean two monitors, so `@Synchronized` would look
+ * like a fix, pass a test that shared one queue, and protect nothing in the
+ * app. There is one store per process, so one process-wide monitor is the
+ * matching scope.
+ *
+ * Contention is not a concern: two callers, both already off the main thread,
+ * over a handful of rows.
  */
 class CaptureQueue(
     private val storage: QueueStorage,
@@ -71,14 +87,16 @@ class CaptureQueue(
         key: String,
         createdAt: Long,
         tags: List<String> = emptyList(),
-    ): PendingCapture {
+    ): PendingCapture = synchronized(LOCK) {
         val item = PendingCapture(key = key, text = text, createdAt = createdAt, tags = tags)
         storage.save(all() + item)
-        return item
+        item
     }
 
     /** Everything still queued, oldest first, whatever its state. */
-    fun all(): List<PendingCapture> = storage.load().sortedBy { it.createdAt }
+    fun all(): List<PendingCapture> = synchronized(LOCK) {
+        storage.load().sortedBy { it.createdAt }
+    }
 
     /** Only what the background drain should attempt. */
     fun waiting(): List<PendingCapture> = all().filter { it.state == QueueState.WAITING }
@@ -86,7 +104,7 @@ class CaptureQueue(
     fun find(key: String): PendingCapture? = all().firstOrNull { it.key == key }
 
     /** Gone for good, and only ever called after a parsed server response. */
-    fun delivered(key: String) {
+    fun delivered(key: String) = synchronized(LOCK) {
         storage.save(all().filterNot { it.key == key })
     }
 
@@ -123,11 +141,18 @@ class CaptureQueue(
      * drain can deliver the same capture at the same moment, and the loser
      * of that race must be harmless.
      */
-    private fun update(key: String, change: (PendingCapture) -> PendingCapture) {
-        storage.save(all().map { if (it.key == key) change(it) else it })
-    }
+    private fun update(key: String, change: (PendingCapture) -> PendingCapture) =
+        synchronized(LOCK) {
+            storage.save(all().map { if (it.key == key) change(it) else it })
+        }
 
     companion object {
+        /**
+         * Serialises every load-mutate-save in the process. Re-entrant, which
+         * is what lets [add] and [update] call [all] while already holding it.
+         */
+        private val LOCK = Any()
+
         /**
          * Five, and the number is a judgement rather than a measurement.
          * Enough to ride out a flaky connection or a brief outage; few

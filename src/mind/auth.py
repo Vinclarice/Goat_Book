@@ -27,6 +27,8 @@ from datetime import timedelta
 from django.utils import timezone
 from ninja.security import HttpBearer
 
+from accounts.middleware import activate_for
+
 from .models import ApiToken
 
 # How stale `last_used_at` may get before it is rewritten. Capture is the hot path and
@@ -60,6 +62,18 @@ def resolve_token(raw: str) -> ApiToken | None:
         # traffic on the capture path.
         ApiToken.objects.filter(pk=token.pk).update(last_used_at=now)
 
+    # The owner's zone, at the first moment there is an owner to read it from.
+    # `TimeZoneMiddleware` runs before any of this and saw an anonymous
+    # request, so without this line every relative date the capture parser
+    # reads -- "tomorrow", "this Friday" -- resolves in the server's zone.
+    # The task core carried the identical defect across six endpoints for
+    # months (commercial-blueprint.md 2); this core has its own token table
+    # and its own resolver, so it needs the same call in its own seam.
+    #
+    # Nothing undoes this here. The middleware's `finally` does, and it is what
+    # keeps an activated zone from outliving the request on a reused worker
+    # thread -- see the note there.
+    activate_for(token.owner)
     return token
 
 

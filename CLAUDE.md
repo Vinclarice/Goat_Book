@@ -15,7 +15,40 @@ The two that most often get skipped under time pressure:
   "Tests pass" when they were never executed is not.
 
 [`design/roadmap.md`](design/roadmap.md) is the plan; active specs live
-alongside it in `design/`.
+alongside it in `design/`. **[`design/README.md`](design/README.md) indexes all
+thirty documents** — which are standing authorities, which are records of
+shipped work, and which fact each one owns. Start there rather than guessing
+whether a plan is current.
+
+## Closing a piece of work
+
+Thirty design documents drifted out of agreement by August 2026: four plans
+still called themselves forward-looking months after shipping, two files gave
+the same release letter to different work, and 257 lines of shipped narrative
+piled up under a heading instructing the reader to move it elsewhere. **A prose
+rule did not prevent this — it had been in `roadmap.md` since August 1 and was
+simply not followed.** So it is a checklist, here, where it gets read:
+
+1. **Update the plan document's status line** — shipped, when, and what was
+   verified. First six lines of the file.
+2. **Move the narrative to `roadmap-history.md`.** Keep only the resulting
+   baseline or the remaining consequence in `roadmap.md`.
+3. **Close the roadmap item** — strike it, date it, name what replaced it.
+4. **Check `design/README.md`** still tells the truth.
+
+Step 2 is the one that gets skipped, and it is the one that compounds. If a
+document needs a fact it does not own, link to the owner rather than restating
+it; a restated fact is a fact that will be wrong later.
+
+**Second Mind is a separate project and none of this governs it.** It lives at
+`C:\dev\Clarice_secondmind`, has its own design documents, its own venv, its
+own Postgres (port 5434, not 5433) and runs `pytest` rather than
+`manage.py test`. The direction is settled: Clarice is worked into Second Mind,
+not the reverse, ending as one application with a knowledge core and a
+**Superlists** task core. Knowledge-side work — Ideas, resurfacing, the
+mind-map, search over retained material — belongs there now, and the roadmap's
+opening section says what survives the merger and what does not. Nothing about
+the merger is scheduled; Clarice keeps running unchanged meanwhile.
 
 ## Environment
 

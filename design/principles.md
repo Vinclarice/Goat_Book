@@ -9,6 +9,31 @@ not belong here.
 The roadmap decides **what** to build. These principles guide **how** it is
 designed, implemented, reviewed, and verified.
 
+## Scope: this governs Clarice, not Second Mind
+
+**Stated August 13, 2026.** Second Mind is a separate project in its own
+repository, with its own design documents and its own constitution. It is not
+a module inside Clarice, not a bounded context hosted by it, and **not
+answerable to this file**. Nothing here gets a vote there.
+
+The direction between them is settled and runs the other way: Second Mind is
+the host, and Clarice's task system is absorbed into it later as a core named
+Superlists. When that happens, the absorbed code arrives under Second Mind's
+design authority, not this one.
+
+Several principles here would actively obstruct that design, and that is
+expected rather than a problem to reconcile. Second Mind deliberately rejects
+the charter test in
+[`architecture-trajectory.md`](architecture-trajectory.md) §4 — its node-plus-
+facet model is the opposite of "a concept earns its own model when it has a
+different life cycle" — and it reaches different answers on typed relations
+and on how absolute "automations propose" should be. Those principles were
+derived inside the task domain and are correct here; they are not general law.
+
+Two things follow. Do not cite this file at Second Mind, and do not weaken it
+here to accommodate Second Mind. It stays the authority for everything in this
+repository until the merger actually happens.
+
 ## Core planning philosophy
 
 Clarice plans and delivers work through four mutually reinforcing practices:

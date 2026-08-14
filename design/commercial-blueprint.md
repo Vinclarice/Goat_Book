@@ -92,8 +92,10 @@ of them is large.
 (`fd4a8d7`, run 31849757672) — and it needed more than the one cause below. The
 `mind` suite was not in CI at all, `postgres:18` carries no pgvector for
 `CreateExtension("vector")`, and the browser job could no longer use SQLite once
-the knowledge core's migrations existed. Five jobs, all passing. Last green was 2026-08-10T20:39;
-every run since has failed, through today. `17aec20` added a Postgres default at
+the knowledge core's migrations existed. Five jobs, all passing.
+
+The original finding, which remained true for four more days: last green was
+2026-08-10T20:39, and every run since had failed. `17aec20` added a Postgres default at
 `src/clarice/settings.py:288`, and its own comment asserts "DJANGO_DATABASE_URL
 still overrides it, which is exactly what CI does." That is true of the `django`
 job and **false of the `browser` job**, which deliberately has no Postgres

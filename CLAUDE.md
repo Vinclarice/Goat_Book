@@ -61,23 +61,27 @@ system with red CI and no uptime monitoring stays broken whichever project it
 becomes part of. The live list is `design/commercial-blueprint.md` Part 1.
 Security fixes and data-loss fixes qualify without argument.
 
-**Two remain, as of August 14, 2026:**
+**One remains, as of August 14, 2026, and it is not code:**
 
-- **External uptime monitoring.** `/healthz` exists now and checks the database;
-  nothing polls it. This one is deliberately not code — a watchdog running on
+- **External uptime monitoring.** `/healthz` exists and checks the database;
+  nothing polls it. Deliberately not in this repository — a watchdog running on
   the machine it watches is not a watchdog — so it is an account somebody
-  creates, not a commit.
-- **Migrate-before-recreate.** `deploy-playbook.yaml` runs the container at
-  :259 and migrates at :308, so new code serves traffic against the old schema
-  for the length of the migration.
+  creates, not a commit. Until it exists, defect 9 is half fixed: the site can
+  now tell you it is healthy, and still nobody is asking.
 
 Closed, and listed only so the next reader does not re-fix them: `/healthz`
 (`fd896c6`), `restart_policy: unless-stopped` (`b2e16b2`),
-`include_local_variables` (`bbfc38d`), and both Android queue defects — the
-process-wide lock and the backup exclusion, in *both* `backup_rules.xml` and
-`backup_rules_legacy.xml`. **This list said those were open after they had been
-fixed**, and that stale line cost a session's worth of re-investigation. If you
-close one, close it here in the same commit.
+`include_local_variables` (`bbfc38d`), migrate-before-recreate (`b779c0c`), CI
+green across five jobs (`fd4a8d7`), token requests using the owner's time zone
+(`6da41c8`), and both Android queue defects — the process-wide lock and the
+backup exclusion, in *both* `backup_rules.xml` and `backup_rules_legacy.xml`.
+**This list said those Android ones were open after they had been fixed**, and
+that stale line cost a session's worth of re-investigation. If you close one,
+close it here in the same commit.
+
+Still open and untouched: blueprint defects 3, 4, 5 and 6 — `.visually-hidden`
+rendering as visible text, the side nav's missing active-page highlight, no
+error boundary on the router, and tags dropped by `promote_idea_to_task`.
 
 **Not allowed without a deliberate decision.** New features on `Item`,
 `Capture` or `Idea`. New UI work. New models — a model added now is a model

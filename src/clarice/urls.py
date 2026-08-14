@@ -21,10 +21,16 @@ from accounts.views import LandingLoginView, contact
 from lists import views as list_views
 
 from clarice.api import api as api_v1
+from clarice.health import healthz
 
 
 urlpatterns = [
     path("", LandingLoginView.as_view(), name="home"),
+    # No trailing slash, and no login. An uptime monitor has no account, and
+    # APPEND_SLASH would answer a polled `/healthz` with a 301 that several
+    # services record as a failure. See clarice/health.py for what it checks
+    # and why it says so little.
+    path("healthz", healthz, name="healthz"),
     # Public and unauthenticated, hence the root rather than under
     # accounts/: a stranger with a question does not have an account.
     path("contact/", contact, name="contact"),

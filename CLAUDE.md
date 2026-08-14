@@ -47,8 +47,34 @@ own Postgres (port 5434, not 5433) and runs `pytest` rather than
 not the reverse, ending as one application with a knowledge core and a
 **Superlists** task core. Knowledge-side work — Ideas, resurfacing, the
 mind-map, search over retained material — belongs there now, and the roadmap's
-opening section says what survives the merger and what does not. Nothing about
-the merger is scheduled; Clarice keeps running unchanged meanwhile.
+opening section says what survives the merger and what does not.
+
+## Clarice is in maintenance until the merger
+
+Not frozen — maintained. It has real users and it keeps running. But it is no
+longer where features are added, and the risk to guard against is not an
+accidental edit (separate repositories handle that) but a **justified** one:
+*while I'm here*, or *Second Mind needs Clarice to expose X*.
+
+**Allowed.** Production defects, which the merger does not make redundant — a
+system with red CI and no uptime monitoring stays broken whichever project it
+becomes part of. The live list is `design/commercial-blueprint.md` Part 1:
+`/healthz`, `restart_policy: unless-stopped`, external uptime monitoring,
+`include_local_variables` shipping note text to Sentry, migrate-before-recreate
+in the deploy, and the two Android queue defects (no lock, not excluded from
+device backup). Security fixes and data-loss fixes qualify without argument.
+
+**Not allowed without a deliberate decision.** New features on `Item`,
+`Capture` or `Idea`. New UI work. New models — a model added now is a model
+migrated twice, and `Capture` and `Idea` do not survive the merger at all.
+
+**And the rule that actually protects the merger: nothing here grows to serve
+Second Mind.** No new endpoint, no shared table, no export hook. When Second
+Mind wants this data it reads the existing API or a database dump, once, at
+merge time. A bridge built now is code paid for twice and thrown away.
+
+The one exception is `android/`, which is a client of both backends rather than
+part of either core — see Second Mind's `docs/android-two-backends.md`.
 
 ## Environment
 

@@ -67,9 +67,14 @@ class KeystoreTokenStore(
         return null
     }
 
-    private companion object {
+    companion object {
+        // Public, and deliberately so as of the two-backend split: [Backends]
+        // names the slot each connection uses, and a second copy of these
+        // strings living there would be two sources of truth for where a live
+        // token is kept. Renaming either silently logs every existing phone
+        // out, which is not a mistake worth leaving two chances to make.
         const val DEFAULT_ALIAS = "clarice_capture_token"
         const val DEFAULT_PREFS = "clarice_capture_secret"
-        const val KEY_TOKEN = "token"
+        private const val KEY_TOKEN = "token"
     }
 }

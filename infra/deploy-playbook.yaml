@@ -262,6 +262,22 @@
         image: clarice
         state: started
         recreate: true
+        # Docker's default is `no`, which means a reboot, an OOM kill or a
+        # resize leaves the site down until somebody personally notices and
+        # intervenes. That is not hypothetical: resizing the droplet on
+        # August 14, 2026 brought nginx back on its own (systemd) and left this
+        # container stopped, so the site answered 502 until it was started by
+        # hand. Sentry saw nothing, because Sentry reports errors from a
+        # *running* application and a dead one produces none.
+        #
+        # `unless-stopped` rather than `always`, so that a deliberate
+        # `docker stop` during an incident stays stopped rather than fighting
+        # whoever stopped it.
+        #
+        # Note this only takes effect from the next deploy, since a restart
+        # policy is fixed when the container is created. An already-running
+        # container needs `docker update --restart=unless-stopped <name>`.
+        restart_policy: unless-stopped
         env:
           DJANGO_SECRET_KEY: "{{ secret_key.content | b64decode }}"
           DJANGO_ALLOWED_HOST: "{{ site_domain }}"

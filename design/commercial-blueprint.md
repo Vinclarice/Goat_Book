@@ -68,17 +68,31 @@ These are defects in production or in the pipeline today, not commercial
 readiness items. They are ordered by how quickly they should be fixed, and none
 of them is large.
 
-> **Status, August 14, 2026.** Defects 7, 8, 9 and 10 are fixed — the Android
-> queue's lock and its backup exclusion, `/healthz` with `restart_policy`, and
-> `include_local_variables`. Each is marked below rather than deleted, because
-> what a defect was is the part worth keeping.
+> **Status, August 14, 2026.** Six of the ten are fixed — **1** (CI green again,
+> across five jobs), **2** (the wrong day), **7** and **8** (the Android queue's
+> lock and its backup exclusion), **10** (Sentry locals) — plus **9** in part.
+> Each is marked in place rather than deleted, because what a defect was is the
+> part worth keeping.
 >
-> **Two things this part called for are still outstanding**, and neither is
-> code: an external uptime monitor to poll `/healthz`, and reordering the deploy
-> so it migrates before it recreates. See `CLAUDE.md` for the live list — this
-> document is the analysis, not the tracker.
+> **Still open: 3, 4, 5 and 6**, all frontend or promotion-path, none of them
+> touched yet. Plus the half of **9** that is not code: nothing polls `/healthz`.
+> See `CLAUDE.md` for the live list — this document is the analysis, not the
+> tracker.
+>
+> **One fix does not repair what it prevented.** Defect 2 wrote real records
+> against the wrong date for as long as it existed, and correcting the code
+> leaves those rows exactly as they are. They cannot be found reliably either:
+> the fix removes the difference between a token-written row and a
+> session-written one, and nothing ever recorded which path created a
+> `RoutineOccurrence`. A repair would have to guess, on a durable record, which
+> is the thing `principles.md` refuses. Left alone deliberately, and named here
+> so it is a decision rather than an oversight.
 
-**1. CI has failed 17 consecutive runs.** Last green was 2026-08-10T20:39;
+**1. ~~CI has failed 17 consecutive runs.~~ Green again August 14, 2026**
+(`fd4a8d7`, run 31849757672) — and it needed more than the one cause below. The
+`mind` suite was not in CI at all, `postgres:18` carries no pgvector for
+`CreateExtension("vector")`, and the browser job could no longer use SQLite once
+the knowledge core's migrations existed. Five jobs, all passing. Last green was 2026-08-10T20:39;
 every run since has failed, through today. `17aec20` added a Postgres default at
 `src/clarice/settings.py:288`, and its own comment asserts "DJANGO_DATABASE_URL
 still overrides it, which is exactly what CI does." That is true of the `django`
@@ -89,7 +103,13 @@ loads the real bundle in a real browser has been dark for two days, and
 `14810ba` — the locator fix — has never been verified by CI, because the database
 failure masks it. Red has stopped carrying information.
 
-**2. Token-authenticated writes record the wrong day.** `TimeZoneMiddleware`
+**2. ~~Token-authenticated writes record the wrong day.~~ Fixed August 14, 2026**
+(`6da41c8`) — at `_resolve_scoped_token`, the seam both token paths already
+share, rather than at the endpoints. The suggestion below was
+`TokenAuth.authenticate`, which would have missed `token_or_session_required`
+and left half the surface; and the knowledge core turned out to carry the same
+defect in its own resolver, so it was fixed in the same commit. Rows written
+before it are still wrong — see the status note above. `TimeZoneMiddleware`
 runs before Ninja resolves a bearer token, so `request.user` is anonymous and the
 middleware deactivates (`src/accounts/middleware.py:21`). Its own docstring says
 "a future date-bearing token endpoint has to activate the owner's zone itself."

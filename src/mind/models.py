@@ -273,6 +273,92 @@ class InferenceOrigin(models.TextChoices):
     INFERRED = "inferred"
 
 
+class FacetKind(models.TextChoices):
+    """What a facet gives a node.
+
+    Open by design: new kinds are new values with their own validation, not new
+    tables, because the set is expected to keep growing and a migration per kind
+    would make adding one a decision rather than a note.
+    """
+
+    ACTIONABLE = "actionable", "Actionable"
+    MEDIA = "media", "Media"
+    GOAL = "goal", "Goal"
+    EPISTEMIC = "epistemic", "Epistemic status"
+    CONCEPT = "concept", "Concept"
+
+
+class Facet(models.Model):
+    """A capability a node carries, without being filed as it.
+
+    A node may have several at once or none, and capture never asks. That is the
+    design's answer to a promotion path whose terminus was a task: everything
+    inside such a path inherits a direction, and a facet has none.
+
+    `data` is JSONB validated per kind rather than a column per kind. The
+    threshold for promoting a kind's fields to real columns is not defined yet
+    and is deliberately left open; what is not open is that a facet nobody
+    queries hard should not cost a migration.
+
+    **Completion is not stored here.** It is a `completed` event on the log, and
+    anything showing completion state is a projection over that. Two places
+    recording whether a thing is done is how they come to disagree.
+    """
+
+    node = models.ForeignKey(Node, on_delete=models.CASCADE, related_name="facets")
+    kind = models.CharField(max_length=16, choices=FacetKind)
+    data = models.JSONField(default=dict, blank=True)
+
+    # The same provenance columns every proposal in this system carries. A facet
+    # with origin=inferred and confirmed_at NULL is soft-applied: visible,
+    # labelled, dismissible, and not ground truth for anything downstream.
+    origin = models.CharField(max_length=16, choices=InferenceOrigin)
+    confirmed_at = models.DateTimeField(null=True, blank=True)
+    reason = models.TextField(null=True, blank=True)
+
+    # The commitment this facet materialised, for the actionable kind only.
+    #
+    # A real foreign key rather than an id in `data`, because the invariant --
+    # a confirmed actionable facet always has a live task -- is only checkable
+    # if the database knows about the relationship. SET_NULL rather than CASCADE:
+    # deleting a task should not delete the thought it came from, and a facet
+    # left pointing at nothing is exactly what the reconciliation count is for.
+    task = models.ForeignKey(
+        "lists.Item",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="mind_facets",
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    retired_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(kind__in=[k for k, _ in FacetKind.choices]),
+                name="facet_kind_valid",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(origin__in=[o for o, _ in InferenceOrigin.choices]),
+                name="facet_origin_valid",
+            ),
+            # One facet of a kind per node, so a second proposal updates rather
+            # than accumulates. Retired ones are excluded so a dismissed facet
+            # can be proposed again later on new evidence.
+            models.UniqueConstraint(
+                fields=["node", "kind"],
+                condition=models.Q(retired_at__isnull=True),
+                name="facet_one_live_per_kind",
+            ),
+        ]
+        indexes = [models.Index(fields=["node", "kind"])]
+
+    def __str__(self):
+        return f"{self.kind} on {self.node_id}"
+
+
 class Mention(models.Model):
     """A node refers to a concept, optionally at a specific span."""
 
@@ -561,6 +647,8 @@ class EventType(models.TextChoices):
     CONCEPT_PROPOSED = "concept_proposed"
     CONCEPT_CONFIRMED = "concept_confirmed"
     CONCEPT_RETIRED = "concept_retired"
+    FACET_PROPOSED = "facet_proposed"
+    FACET_CONFIRMED = "facet_confirmed"
     ALIAS_MERGED = "alias_merged"
     MENTION_PROPOSED = "mention_proposed"
     MENTION_CONFIRMED = "mention_confirmed"

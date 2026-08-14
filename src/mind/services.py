@@ -32,6 +32,8 @@ from django.db import transaction
 from django.db.models import Count, Max, Q
 
 from .models import (
+    Facet,
+    FacetKind,
     ActivityEvent,
     Attachment,
     ConceptCandidate,
@@ -375,6 +377,126 @@ def merge_concept(
         },
     )
     return alias
+
+
+# ---------------------------------------------------------------------------
+# Facets
+# ---------------------------------------------------------------------------
+
+
+def propose_facet(
+    node: Node,
+    *,
+    kind: str,
+    data: dict,
+    now: datetime,
+    actor: str,
+    reason: str,
+    origin: str = InferenceOrigin.INFERRED,
+) -> Facet:
+    """Offer a node a capability. Soft-applied, except for one kind.
+
+    **The actionable facet may be proposed but never attached outright.** Every
+    other facet is applied immediately and dismissed in one tap, because being
+    wrong about one costs a row. This one creates an obligation, and an
+    obligation nobody agreed to is worse than a missing feature -- so
+    `confirm_actionable` is the only way it becomes real, and passing
+    `origin=explicit` here is refused rather than quietly honoured.
+    """
+    if kind == FacetKind.ACTIONABLE and origin == InferenceOrigin.EXPLICIT:
+        raise MindError(
+            "an actionable facet is never attached outright -- propose it and "
+            "confirm it, because it is the one kind that creates an obligation"
+        )
+
+    facet, created = Facet.objects.get_or_create(
+        node=node,
+        kind=kind,
+        retired_at=None,
+        defaults={"data": data, "origin": origin, "reason": reason},
+    )
+    if created:
+        _record(
+            node.owner,
+            EventType.FACET_PROPOSED,
+            node=node,
+            occurred_at=now,
+            actor=actor,
+            payload={"kind": kind, "reason": reason},
+        )
+    return facet
+
+
+@transaction.atomic
+def confirm_actionable(facet: Facet, *, area, now: datetime, actor: str) -> Facet:
+    """Accept a commitment, and make it one.
+
+    The merger's payoff, and the reason the two cores had to become one database
+    before this could exist. Node, facet and task are written in a single
+    transaction, so "a confirmed actionable facet with no live task" is not a
+    state anything can reach -- no outbox, no reconciler, and no window in which
+    somebody believes they recorded a dentist appointment and only half of it
+    happened.
+
+    The node is not consumed. It leaves the quiet tier, not the graph: the facet
+    keeps pointing at both ends, so a task can always answer where it came from.
+    That backlink is the defect this whole design exists to escape.
+    """
+    # Imported here rather than at module scope: the knowledge core reaching
+    # into the task core is a one-directional seam and should be visible at the
+    # one call site that uses it, not in a header that suggests a wider coupling.
+    from lists import services as task_services
+
+    from . import queries
+
+    if facet.kind != FacetKind.ACTIONABLE:
+        raise MindError(f"{facet.kind!r} is not a commitment")
+    _require_live(facet.node)
+    if area.owner_id != facet.node.owner_id:
+        raise MindError("a commitment cannot be filed in somebody else's area")
+
+    # Two taps, or a tap against a stale page. Neither should double a
+    # commitment, and the first decision's task is the one that counts.
+    if facet.task_id is not None:
+        return facet
+
+    due = facet.data.get("due_date") or None
+    task = task_services.create_item(
+        area,
+        queries.current_body(facet.node),
+        due_date=due,
+        recurrence=facet.data.get("recurrence") or None,
+    )
+
+    facet.task = task
+    facet.confirmed_at = now
+    facet.save(update_fields=["task", "confirmed_at"])
+    _record(
+        facet.node.owner,
+        EventType.FACET_CONFIRMED,
+        node=facet.node,
+        occurred_at=now,
+        actor=actor,
+        payload={"kind": facet.kind, "task": task.pk},
+    )
+    return facet
+
+
+def commitments_without_tasks(owner) -> int:
+    """Confirmed commitments whose task has gone. Should always be zero.
+
+    The invariant is enforced by the transaction above, so this exists to say so
+    in a number rather than to be trusted. A task deleted directly in the admin,
+    or a future write path that forgets, shows up here instead of in a missed
+    appointment -- which is the difference between finding a broken guarantee and
+    being told about it by its consequence.
+    """
+    return Facet.objects.filter(
+        node__owner=owner,
+        kind=FacetKind.ACTIONABLE,
+        confirmed_at__isnull=False,
+        task__isnull=True,
+    ).count()
 
 
 # ---------------------------------------------------------------------------

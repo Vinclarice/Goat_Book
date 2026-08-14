@@ -1,0 +1,71 @@
+{% extends "mind/base.html" %}
+{% block title %}Numbers — Second Mind{% endblock %}
+{% block content %}
+
+<h1>Is this working?</h1>
+<p class="meta">{{ nodes }} note{{ nodes|pluralize }} ·
+{{ confirmed_connections }} connection{{ confirmed_connections|pluralize }} accepted ·
+{{ explicit_links }} linked by hand ·
+{{ retrieval_misses }} recorded miss{{ retrieval_misses|pluralize:"es" }}</p>
+<p class="meta">Every figure below is conditional on the note count: a detector
+proposing nothing across forty notes and across four thousand are different findings.</p>
+
+{% comment %}
+Above the accept rates on purpose. A detector with no proposals and a detector
+that cannot run yet produce the same empty row below, and only this tells them
+apart -- which is the difference between a quiet mechanic and a broken one, and
+the reason somebody does or does not give up on the whole idea.
+{% endcomment %}
+<h1 style="margin-top:1.8rem">What can run</h1>
+<table>
+  <tr><th>Detector</th><th>Ready</th><th>Waiting for</th></tr>
+  {% for r in readiness %}
+  <tr>
+    <td>{{ r.detector }}</td>
+    <td>{% if r.ready %}yes{% else %}not yet{% endif %}</td>
+    <td class="meta">{{ r.blocked_by }}</td>
+  </tr>
+  {% endfor %}
+</table>
+<p class="meta">Nothing here is a fault. Most of these wait on material or on a
+decision only you can make, and saying which is the point of the column.</p>
+
+<h1 style="margin-top:1.8rem">Detectors</h1>
+{% if detectors %}
+<table>
+  <tr><th>Detector</th><th>Proposed</th><th>Accepted</th><th>Dismissed</th>
+      <th>Never seen</th><th>Accept rate</th></tr>
+  {% for d in detectors %}
+  <tr>
+    <td>{{ d.detector }}</td>
+    <td>{{ d.proposed }}</td>
+    <td>{{ d.confirmed }}</td>
+    <td>{{ d.dismissed }}</td>
+    <td>{{ d.expired }}</td>
+    {% comment %}
+    None, never zero. "No evidence yet" and "wrong every time" call for opposite
+    responses, so they must not render the same.
+    {% endcomment %}
+    <td>{% if d.accept_rate is None %}<span class="meta">no decisions yet</span>
+        {% else %}{% widthratio d.accept_rate 1 100 %}%{% endif %}</td>
+  </tr>
+  {% endfor %}
+</table>
+<p class="meta">Per detector, never blended — a good one and a noisy one average into
+a number that means nothing.</p>
+{% else %}
+<p class="empty">No proposals yet.</p>
+{% endif %}
+
+<h1 style="margin-top:1.8rem">Retirement gate</h1>
+<p class="meta">The three conditions for folding the old system into this one. Stated
+as prose in the design document, which is how a gate becomes indefinite.</p>
+{% for c in gate %}
+  <div class="card">
+    <strong>{% if c.met %}✓{% else %}·{% endif %} {{ c.name }}</strong>
+    <div class="meta" style="margin-top:.3rem">{{ c.value }}</div>
+    <div class="meta" style="margin-top:.3rem">{{ c.detail }}</div>
+  </div>
+{% endfor %}
+
+{% endblock %}

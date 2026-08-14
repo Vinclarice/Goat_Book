@@ -45,6 +45,16 @@ urlpatterns = [
     ),
     path("accounts/", include("accounts.urls")),
     path("capture/", include("capture.urls")),
+    # The knowledge core, under a prefix during the crossover. Second Mind's
+    # pages sat at the root in their own project and cannot here: "/" is this
+    # site's landing login, and /api/v1/capture is defined by both cores.
+    #
+    # Temporary, and cheap to move. Every template reverses through {% url %}
+    # and the app's own URLconf is entirely relative, so the prefix appears in
+    # exactly one place -- this line. Where these pages finally live is a
+    # question for the step that ends the crossover, when there is one capture
+    # surface rather than two.
+    path("mind/", include("mind.urls")),
     # Has to sit BEFORE the admin include, not just for tidiness:
     # admin.site.urls is itself a resolver mounted at admin/, so a later
     # entry would never be reached -- Django would look for

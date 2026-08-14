@@ -1,0 +1,11 @@
+{% extends "mind/base.html" %}
+{% block title %}Sign in — Second Mind{% endblock %}
+{% block content %}
+<h1>Second Mind</h1>
+<form method="post">
+  {% csrf_token %}
+  {{ form.as_p }}
+  <div class="row"><button type="submit" class="primary">Sign in</button></div>
+</form>
+{% if form.errors %}<p class="meta">That did not work.</p>{% endif %}
+{% endblock %}

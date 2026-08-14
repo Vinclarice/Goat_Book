@@ -15,7 +15,15 @@
 # differs.
 services:
   db:
-    image: postgres:18
+    # pgvector rather than plain postgres, and 17 rather than 18: the `mind`
+    # app's first migration creates the `vector` extension, and pgvector
+    # publishes no pg18 image. Nothing in this schema needs 18 -- the one
+    # version-sensitive thing is nulls_distinct, which wants 15+.
+    #
+    # Production is unaffected either way. It runs DigitalOcean managed
+    # Postgres, which offers pgvector on 14 through 18 independently of what
+    # this file chooses for a laptop.
+    image: pgvector/pgvector:pg17
     environment:
       POSTGRES_DB: clarice
       POSTGRES_USER: clarice

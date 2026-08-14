@@ -1,0 +1,35 @@
+{% extends "mind/base.html" %}
+{% block title %}Search — Second Mind{% endblock %}
+{% block content %}
+
+<form method="get" action="{% url 'search' %}">
+  <input type="search" name="q" value="{{ q }}" placeholder="Search everything"
+         autofocus aria-label="Search">
+  <div class="row"><button type="submit" class="primary">Search</button></div>
+</form>
+
+{% if q %}
+  {% for result in results %}
+    <div class="card">
+      <div class="body">{{ result.body }}</div>
+      <div class="meta" style="margin-top:.5rem">{{ result.node.captured_at|date:"j M Y" }}</div>
+    </div>
+  {% empty %}
+    <p class="empty">Nothing matched “{{ q }}”.</p>
+  {% endfor %}
+
+  {% comment %}
+  The point of this page as much as the results. A recorded miss is the strongest
+  evidence available about retrieval, because the correct answer is known — and
+  vocabulary drift shows up here before it shows up anywhere else.
+  {% endcomment %}
+  <form method="post" action="{% url 'record_miss' %}" class="row" style="margin-top:1.5rem">
+    {% csrf_token %}
+    <input type="hidden" name="q" value="{{ q }}">
+    <button type="submit">I know I wrote this and can’t find it</button>
+  </form>
+  <p class="meta">Recording that is how the search gets judged — it is the one signal
+  where the right answer is already known.</p>
+{% endif %}
+
+{% endblock %}

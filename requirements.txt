@@ -7,3 +7,7 @@ django-unfold==0.96.0
 psycopg[binary]==3.2.13
 dj-database-url==2.3.0
 sentry-sdk==2.66.1
+# For the `mind` app's SentenceEmbedding: a real vector column and an HNSW
+# index. Nothing in the task core touches it, but the schema is one app's, not
+# one project's, and a migration that cannot run is not optional.
+pgvector==0.4.1

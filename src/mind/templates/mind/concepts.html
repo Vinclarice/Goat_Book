@@ -1,0 +1,58 @@
+{% extends "mind/base.html" %}
+{% block title %}Things — Second Mind{% endblock %}
+{% block content %}
+
+<h1>Things you keep mentioning</h1>
+
+{% comment %}
+The cold-start surface. A brain dump has nothing forgotten in it to discover,
+only unconsolidated structure -- so the payoff here is not a connection but a
+name: forty fragments handed back as the few things they are about.
+
+Every candidate on this page has already earned its way here by recurring
+across more than one sitting. The ones seen once are extracted and deliberately
+never shown, which is what keeps this from becoming a second inbox.
+{% endcomment %}
+
+{% for candidate in candidates %}
+  <div class="card">
+    <div class="meta">mentioned {{ candidate.mention_count }} times</div>
+    <h2>{{ candidate.label }}</h2>
+
+    {% comment %}
+    The sentences, not just the count. "Indonesian, 4 mentions" asks somebody to
+    take the system's word for it; this lets them check, which is the same rule
+    the review's span citations follow.
+    {% endcomment %}
+    {% for node in candidate.evidence %}
+      <div class="quote">{{ node.original_content|truncatechars:140 }}</div>
+      <div class="meta">{{ node.captured_at|date:"j M Y" }}</div>
+    {% endfor %}
+
+    <form method="post" action="{% url 'decide_concept' candidate.public_id %}" class="row">
+      {% csrf_token %}
+      <button type="submit" name="action" value="confirm" class="primary">Yes, that is a thing</button>
+      <button type="submit" name="action" value="retire">No</button>
+    </form>
+  </div>
+{% empty %}
+  {% comment %}
+  Empty is the ordinary early state and says so, rather than looking broken.
+  Nothing is asked about until a name recurs across more than one sitting, so a
+  new corpus is quiet by construction rather than by failure.
+  {% endcomment %}
+  <p class="empty">Nothing to name yet. A name has to come back on more than
+  one day before it is worth asking about — and nothing here runs on its own,
+  so this fills in after <code>manage.py extract_concepts</code>.</p>
+{% endfor %}
+
+{% if confirmed %}
+  <h2>Named</h2>
+  <ul class="plain">
+    {% for thing in confirmed %}
+      <li><a href="{% url 'concept' thing.public_id %}">{{ thing.label }}</a></li>
+    {% endfor %}
+  </ul>
+{% endif %}
+
+{% endblock %}

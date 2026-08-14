@@ -177,7 +177,7 @@ def snooze_presets(today):
 def open_items_for(user):
     """Every task the user still has to do, across all of their lists."""
     return (
-        Item.objects.filter(list__owner=user, status=Item.Status.ACTIVE)
+        Item.objects.filter(owner=user, status=Item.Status.ACTIVE)
         .select_related("list")
         .prefetch_related("tags")
         .order_by(F("due_date").asc(nulls_last=True), "position", "id")
@@ -194,7 +194,7 @@ def completed_today_for(user, today=None):
     end_of_day = start_of_day + timedelta(days=1)
     return (
         Item.objects.filter(
-            list__owner=user,
+            owner=user,
             status=Item.Status.COMPLETED,
             completed_at__gte=start_of_day,
             completed_at__lt=end_of_day,

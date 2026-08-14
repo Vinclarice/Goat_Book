@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 from django.db.models import Q
 from django.urls import reverse
@@ -91,7 +92,40 @@ class Item(models.Model):
     Recurrence = Recurrence
 
     text = models.TextField(default="")
-    list = models.ForeignKey('List', default=None, on_delete=models.CASCADE)
+    # Nullable since August 14, 2026. A task no longer needs an Area to exist.
+    #
+    # Three independent findings in product-stories.md converge on this -- a
+    # stranger's first four minutes, a task made from an external source, and a
+    # someday state that currently has to masquerade as an Idea -- which made it
+    # the most-supported single change in either planning document. The merger
+    # then made it urgent rather than merely right: a thought that becomes a
+    # commitment has no Area to be filed in, and demanding one at that moment
+    # asks a filing question exactly where this design refuses to.
+    #
+    # Widening only. Every existing row keeps its Area and every creation path
+    # that supplies one is unchanged; what is new is that a task may stand on
+    # its own.
+    list = models.ForeignKey(
+        'List', default=None, null=True, blank=True, on_delete=models.CASCADE
+    )
+    # The other half of that change, and the half without which it is a defect.
+    #
+    # Ownership ran through the Area -- `Item.objects.filter(list__owner=user)`
+    # at about twenty call sites -- so making `list` nullable created rows that
+    # belonged to nobody and were returned by no query anybody makes. Not lost
+    # exactly, but unreachable, which for somebody who wrote down an appointment
+    # is the same thing.
+    #
+    # Derived, not a second opinion: `save()` forces this to the Area's owner
+    # whenever there is an Area, so the two cannot disagree. It is authoritative
+    # only for a task standing on its own. Django has no composite foreign key
+    # to make the database say that instead, and a trigger for a field one
+    # method already keeps correct is more machinery than the risk earns.
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="items",
+    )
     # `project` retired -- project-workspace-plan.md 2. A task's project is
     # derived through its Area (item.list.project) rather than stored here;
     # it belongs to a project only by belonging to an Area that's inside it.
@@ -144,6 +178,20 @@ class Item(models.Model):
                 condition=~Q(status="archived"),
                 name="unique_active_item",
             ),
+            # The same protection for a task with no Area, which the one above
+            # stops giving the moment `list` is NULL -- NULLs are distinct, so
+            # it matches nothing and every duplicate passes. A phone retrying a
+            # share would have written the note twice.
+            #
+            # Keyed on owner, and scoped to `list IS NULL` so it says only what
+            # the other cannot: two people may each have "Buy milk", and one
+            # person may have it both filed and unfiled, because those are
+            # different places rather than the same task twice.
+            models.UniqueConstraint(
+                fields=("owner", "text"),
+                condition=Q(list__isnull=True) & ~Q(status="archived"),
+                name="unique_active_arealess_item",
+            ),
             models.CheckConstraint(
                 condition=(
                     Q(
@@ -193,6 +241,40 @@ class Item(models.Model):
                 name="item_commitment_seq_idx",
             ),
         ]
+
+    def _derive_owner(self):
+        """An Area's owner wins whenever there is an Area.
+
+        That is what makes a mismatch unreachable rather than merely rejected --
+        a task whose two owners disagreed would show up in one person's queries
+        and another person's Area at the same time.
+        """
+        if self.list_id is not None:
+            self.owner_id = self.list.owner_id
+
+    def full_clean(self, *args, **kwargs):
+        """Derive before validating, not after.
+
+        `Model.clean()` would be the natural home, but `full_clean` runs
+        `clean_fields()` first -- so a task built with an Area and validated
+        before saving failed as ownerless, which is a task that is perfectly
+        well-formed being called invalid. Found by two existing model tests.
+        """
+        self._derive_owner()
+        return super().full_clean(*args, **kwargs)
+
+    def save(self, *args, **kwargs):
+        """Keep `owner` derived on the way to the database.
+
+        `update_fields` is widened rather than obeyed: a caller saving only
+        `list` is also changing who owns the row, and quietly not writing that
+        is precisely the drift this exists to prevent.
+        """
+        self._derive_owner()
+        fields = kwargs.get("update_fields")
+        if fields is not None and "list" in fields and "owner" not in fields:
+            kwargs["update_fields"] = list(fields) + ["owner"]
+        return super().save(*args, **kwargs)
 
     def __str__(self):
         return self.text

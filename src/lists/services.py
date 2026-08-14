@@ -40,10 +40,24 @@ def normalize_task_text(text):
     return normalized
 
 
-def _duplicate_exists(for_list, text, excluding=None):
-    duplicates = for_list.item_set.exclude(status=Item.Status.ARCHIVED).filter(
-        text=text,
-    )
+def _duplicate_exists(for_list, text, excluding=None, owner=None):
+    # An unfiled task is deduplicated against its owner's other unfiled tasks,
+    # which reverses what this said an hour earlier. The argument then was that
+    # unfiled tasks are not a list, so two thoughts sharing wording should both
+    # be allowed through. What changed it is the retry: a phone re-sending a
+    # share is the common case and a second identical commitment is the common
+    # cost, while the thought itself is never at stake -- the node stays in the
+    # knowledge core either way, and only the duplicate task is refused.
+    if for_list is None:
+        if owner is None:
+            return False
+        duplicates = Item.objects.filter(
+            owner=owner, list__isnull=True, text=text
+        ).exclude(status=Item.Status.ARCHIVED)
+    else:
+        duplicates = for_list.item_set.exclude(status=Item.Status.ARCHIVED).filter(
+            text=text,
+        )
     if excluding is not None:
         duplicates = duplicates.exclude(pk=excluding.pk)
     return duplicates.exists()
@@ -73,7 +87,20 @@ def create_area(owner, title, project=None):
     return List.objects.create(owner=owner, title=normalized_title, project=project)
 
 
-def _next_position(for_list):
+def _next_position(for_list, owner=None):
+    # Position orders a task within its Area. An unfiled task is ordered by the
+    # agenda's own rules instead, so any value is unused -- but they still get
+    # distinct ones, because a column full of zeroes makes a stable sort
+    # impossible the day something does want to arrange them.
+    if for_list is None:
+        if owner is None:
+            return 0
+        highest = (
+            Item.objects.filter(owner=owner, list__isnull=True)
+            .exclude(status=Item.Status.ARCHIVED)
+            .aggregate(Max("position"))["position__max"]
+        )
+        return 0 if highest is None else highest + 1
     highest = for_list.item_set.exclude(
         status=Item.Status.ARCHIVED,
     ).aggregate(Max("position"))["position__max"]
@@ -126,7 +153,7 @@ def _anchor_commitment(item):
     # otherwise reach its first spawn with a blank template and produce a
     # blank task.
     commitment = RecurringCommitment.objects.create(
-        owner=item.list.owner,
+        owner=item.owner,
         text=item.text,
         list=item.list,
         cadence=item.recurrence,
@@ -174,18 +201,30 @@ def _write_through_to_commitment(item, **fields):
 
 
 @transaction.atomic
-def create_item(for_list, text, due_date=None, tags=None, recurrence=None):
+def create_item(for_list, text, due_date=None, tags=None, recurrence=None, owner=None):
+    """A task, in an Area or standing on its own.
+
+    `owner` is only needed when `for_list` is None; with an Area, the Area's
+    owner is the answer and passing a different one would be inventing a second
+    opinion. Callers that already pass an Area are unchanged, which is what
+    makes this a widening rather than a migration of every call site.
+    """
+    if for_list is None and owner is None:
+        raise TaskConflict("A task with no Area still has to belong to somebody")
+    owner = for_list.owner if for_list is not None else owner
+
     normalized = normalize_task_text(text)
-    if _duplicate_exists(for_list, normalized):
+    if _duplicate_exists(for_list, normalized, owner=owner):
         raise TaskConflict(DUPLICATE_ITEM_ERROR)
     if recurrence and recurrence not in Item.Recurrence.values:
         raise TaskConflict("Choose a valid recurrence.")
     try:
         item = Item.objects.create(
             list=for_list,
+            owner=owner,
             text=normalized,
             due_date=due_date,
-            position=_next_position(for_list),
+            position=_next_position(for_list, owner=owner),
             recurrence=recurrence or Item.Recurrence.NONE,
         )
     except IntegrityError as error:
@@ -194,13 +233,13 @@ def create_item(for_list, text, due_date=None, tags=None, recurrence=None):
         _anchor_commitment(item)
         item.save(update_fields=["commitment"])
     if tags:
-        item.tags.set(resolve_tags(for_list.owner, tags))
+        item.tags.set(resolve_tags(owner, tags))
     return item
 
 
 @transaction.atomic
 def edit_item(item, text):
-    item = Item.objects.select_for_update().select_related("list").get(pk=item.pk)
+    item = Item.objects.select_for_update(of=("self",)).select_related("list").get(pk=item.pk)
     if item.status == Item.Status.ARCHIVED:
         raise InvalidTaskTransition("Restore this task before editing it")
 
@@ -241,10 +280,10 @@ def reorder_items(for_list, ordered_ids):
 
 @transaction.atomic
 def set_item_tags(item, tag_names):
-    item = Item.objects.select_for_update().select_related("list").get(pk=item.pk)
+    item = Item.objects.select_for_update(of=("self",)).select_related("list").get(pk=item.pk)
     if item.status == Item.Status.ARCHIVED:
         raise InvalidTaskTransition("Restore this task before editing it")
-    resolved = resolve_tags(item.list.owner, tag_names)
+    resolved = resolve_tags(item.owner, tag_names)
     item.tags.set(resolved)
     _write_through_to_commitment(item, tags=resolved)
     return item
@@ -317,7 +356,7 @@ def _duplicate_step_exists(task, text, excluding=None):
 
 @transaction.atomic
 def add_checklist_step(task, text, carries_forward=None):
-    task = Item.objects.select_for_update().select_related("list").get(pk=task.pk)
+    task = Item.objects.select_for_update(of=("self",)).select_related("list").get(pk=task.pk)
     if task.status == Item.Status.ARCHIVED:
         raise InvalidTaskTransition(CHECKLIST_STEP_ARCHIVED_ERROR)
     normalized = normalize_task_text(text)
@@ -325,7 +364,7 @@ def add_checklist_step(task, text, carries_forward=None):
         raise TaskConflict(DUPLICATE_ITEM_ERROR)
     try:
         step = ChecklistStep.objects.create(
-            owner=task.list.owner,
+            owner=task.owner,
             task=task,
             text=normalized,
             position=_next_step_position(task),
@@ -408,7 +447,7 @@ def promote_checklist_step(step):
     document for why.
     """
     step = (
-        ChecklistStep.objects.select_for_update()
+        ChecklistStep.objects.select_for_update(of=("self",))
         .select_related("task", "task__list")
         .get(pk=step.pk)
     )
@@ -507,8 +546,20 @@ def _checklist_steps_to_carry_forward(item):
 
 
 @transaction.atomic
+# `of=("self",)` on every lock that also selects the Area.
+#
+# Item.list became nullable on August 14, 2026, which turned select_related("list")
+# from an inner join into an outer one -- and Postgres refuses "FOR UPDATE cannot
+# be applied to the nullable side of an outer join". Locking only the base row is
+# what was meant anyway: nothing here mutates the Area, and locking it would take
+# a lock on every task in it.
+#
+# Found by the suite rather than by reading: 95 errors from one column changing
+# nullability, none of them in code that mentions the column.
+
+
 def complete_item(item):
-    item = Item.objects.select_for_update().select_related("list").get(pk=item.pk)
+    item = Item.objects.select_for_update(of=("self",)).select_related("list").get(pk=item.pk)
     if item.status == Item.Status.ARCHIVED:
         raise InvalidTaskTransition("Archived tasks must be restored first")
     if item.status != Item.Status.COMPLETED:
@@ -571,7 +622,7 @@ def _restore_status_for(item):
 
 @transaction.atomic
 def restore_item(item):
-    item = Item.objects.select_for_update().select_related("list").get(pk=item.pk)
+    item = Item.objects.select_for_update(of=("self",)).select_related("list").get(pk=item.pk)
     if item.status != Item.Status.ARCHIVED:
         raise InvalidTaskTransition("Only archived tasks can be restored")
     if _duplicate_exists(item.list, item.text, excluding=item):

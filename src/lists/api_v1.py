@@ -212,7 +212,7 @@ def navigation(request):
             for each in project_reader.projects_for(user).filter(is_completed=False)
         ],
         "archived_count": Item.objects.filter(
-            list__owner=user, status=Item.Status.ARCHIVED
+            owner=user, status=Item.Status.ARCHIVED
         ).count(),
         # A one-way read into capture. Capture stays isolated in the
         # direction that matters -- no FK, no import the other way -- but a
@@ -249,7 +249,7 @@ def agenda(request):
     )
     lists = agenda_reader.list_summaries(user)
     archived_count = Item.objects.filter(
-        list__owner=user,
+        owner=user,
         status=Item.Status.ARCHIVED,
     ).count()
     projects = project_reader.projects_for(user)
@@ -326,7 +326,7 @@ def task_detail(request, item_id: int):
     item = get_object_or_404(
         Item.objects.select_related("list").prefetch_related("tags"),
         id=item_id,
-        list__owner=request.user,
+        owner=request.user,
         status__in=(Item.Status.ACTIVE, Item.Status.COMPLETED),
     )
     return task_detail_data_for(item)
@@ -539,7 +539,7 @@ def create_area_in_project(request, project_id: int, payload: AreaCreateIn):
 def archive(request):
     user = request.user
     archived_items = list(
-        Item.objects.filter(list__owner=user, status=Item.Status.ARCHIVED)
+        Item.objects.filter(owner=user, status=Item.Status.ARCHIVED)
         .select_related("list")
         .prefetch_related("tags")
         .order_by("-archived_at", "-id")

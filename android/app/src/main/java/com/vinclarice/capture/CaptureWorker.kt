@@ -64,7 +64,14 @@ class CaptureWorker(
         ).capture
 
         val report = QueueDrainer(
-            api = OkHttpClariceApi(baseUrl = capture.baseUrl),
+            api = OkHttpClariceApi(
+                baseUrl = capture.baseUrl,
+                serverName = if (BuildConfig.SECOND_MIND_BASE_URL.isNotBlank()) {
+                    "Second Mind"
+                } else {
+                    "Clarice"
+                },
+            ),
             store = KeystoreTokenStore(
                 applicationContext,
                 alias = capture.tokenAlias,

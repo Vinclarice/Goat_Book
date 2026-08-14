@@ -2,6 +2,10 @@
 .gradle/
 build/
 app/build/
+# The Kotlin compiler's session scratch directory, written by AGP 9's
+# built-in Kotlin support. Appeared untracked once the two-backend work
+# started building repeatedly; it holds nothing a checkout needs.
+.kotlin/
 
 # Machine-specific SDK path, written by Android Studio on first open. The
 # build resolves the SDK from ANDROID_HOME instead, so this never needs to

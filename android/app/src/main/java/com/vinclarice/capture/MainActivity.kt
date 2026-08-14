@@ -66,8 +66,13 @@ class MainActivity : FragmentActivity() {
             secondMindBaseUrl = BuildConfig.SECOND_MIND_BASE_URL,
         )
 
-        // Capture: Second Mind, where a thought becomes a node.
-        val api = OkHttpClariceApi(baseUrl = backends.capture.baseUrl)
+        // Capture: Second Mind, where a thought becomes a node. Named, so a
+        // failure says which server could not be reached -- the whole point of
+        // there being two.
+        val api = OkHttpClariceApi(
+            baseUrl = backends.capture.baseUrl,
+            serverName = if (backends.isSplit) "Second Mind" else "Clarice",
+        )
         val store = KeystoreTokenStore(
             applicationContext,
             alias = backends.capture.tokenAlias,

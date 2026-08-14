@@ -87,10 +87,18 @@ interface ClariceApi {
  *
  * [baseUrl] is supplied rather than compiled in: the plan is explicit that
  * no endpoint or secret is hard-coded into this app.
+ *
+ * [serverName] travels with it, and is not cosmetic. This class serves both
+ * backends on a split install, so a hard-coded "Clarice" in a failure
+ * message names the wrong system exactly when somebody is trying to work out
+ * which one is broken -- found on a device, where a capture that could not
+ * reach Second Mind reported Clarice as unreachable. It defaults to Clarice,
+ * which is what every unsplit call site means.
  */
 class OkHttpClariceApi(
     private val baseUrl: String,
     private val client: OkHttpClient = defaultClient(),
+    private val serverName: String = "Clarice",
 ) : ClariceApi {
 
     override suspend fun identify(token: String): IdentifyResult =
@@ -105,7 +113,7 @@ class OkHttpClariceApi(
                     when (response.code) {
                         200 -> parseIdentity(response.body.string())
                         401, 403 -> Unauthorised
-                        else -> Unreachable("Clarice answered ${response.code}.")
+                        else -> Unreachable("$serverName answered ${response.code}.")
                     }
                 }
             } catch (failure: IOException) {
@@ -113,7 +121,7 @@ class OkHttpClariceApi(
                 // whatever the stack felt like saying, and this string is
                 // shown on screen and written to logs. Nothing that has ever
                 // touched the token goes in here.
-                Unreachable("Could not reach Clarice.")
+                Unreachable("Could not reach $serverName.")
             }
         }
 
@@ -153,11 +161,11 @@ class OkHttpClariceApi(
                         parseCooloffMessage(response.body.string())
                             ?: "Too many attempts. Try again later."
                     )
-                    else -> LoginUnreachable("Clarice answered ${response.code}.")
+                    else -> LoginUnreachable("$serverName answered ${response.code}.")
                 }
             }
         } catch (failure: IOException) {
-            LoginUnreachable("Could not reach Clarice.")
+            LoginUnreachable("Could not reach $serverName.")
         }
     }
 

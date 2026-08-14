@@ -85,6 +85,44 @@ class ClariceApiTest {
     }
 
     @Test
+    fun `an unreachable server is named, so the wrong one is not blamed`() = runTest {
+        // Found on a real device, August 14, 2026. This class now serves both
+        // backends on a split install, and every failure message said
+        // "Clarice" -- so a capture that could not reach Second Mind reported
+        // the *other* server as broken, sending somebody to debug the half
+        // that was working. A message that names the wrong system is worse
+        // than one that names none.
+        val offline = OkHttpClariceApi(baseUrl = "http://127.0.0.1:1/", serverName = "Second Mind")
+
+        val result = offline.identify("tok_abc") as Unreachable
+
+        assertTrue(result.reason, result.reason.contains("Second Mind"))
+        assertFalse(result.reason, result.reason.contains("Clarice"))
+    }
+
+    @Test
+    fun `an unexpected status names the server that sent it`() = runTest {
+        server.server.enqueue(MockResponse(code = 503))
+
+        val result = OkHttpClariceApi(
+            baseUrl = server.server.url("/").toString(),
+            serverName = "Second Mind",
+        ).identify("tok_abc") as Unreachable
+
+        assertTrue(result.reason, result.reason.contains("Second Mind"))
+        assertTrue(result.reason, result.reason.contains("503"))
+    }
+
+    @Test
+    fun `the name defaults to Clarice, so every existing call site is unchanged`() = runTest {
+        val offline = OkHttpClariceApi(baseUrl = "http://127.0.0.1:1/")
+
+        val result = offline.identify("tok_abc") as Unreachable
+
+        assertTrue(result.reason, result.reason.contains("Clarice"))
+    }
+
+    @Test
     fun `a malformed body is a failure rather than a crash`() = runTest {
         server.server.enqueue(MockResponse(code = 200, body = "not json at all"))
 

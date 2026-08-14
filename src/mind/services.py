@@ -30,7 +30,9 @@ from typing import Iterable, NamedTuple, Sequence
 
 from django.db import transaction
 from django.db.models import Count, Max, Q
+from django.utils import timezone
 
+from .commitments import find_commitment
 from .models import (
     Facet,
     FacetKind,
@@ -215,7 +217,39 @@ def capture(
             "attachments": len(attachments),
         },
     )
+
+    _propose_any_commitment(node, now=captured_at, actor=actor)
     return node
+
+
+def _propose_any_commitment(node: Node, *, now: datetime, actor: str) -> Facet | None:
+    """Offer an actionable facet if the words read as a commitment.
+
+    Runs on the live path because the parser is deterministic -- rules and a
+    regex, no model, no network, no per-call cost. That is what lets capture
+    stay one box that returns immediately: the proposal is ready by the time the
+    page comes back, and nothing was asked at the moment of entry.
+
+    Read against `captured_at` rather than now, so "dentist tomorrow" in an
+    imported 2019 note means the day after that note, not the day after today.
+    Conflating the two puts a date nobody ever meant into next week, on exactly
+    the material most likely to carry a relative one.
+    """
+    found = find_commitment(node.original_content, today=timezone.localdate(now))
+    if found is None:
+        return None
+
+    return propose_facet(
+        node,
+        kind=FacetKind.ACTIONABLE,
+        data={
+            "due_date": found.due_date.isoformat(),
+            "recurrence": found.recurrence,
+        },
+        now=now,
+        actor=actor,
+        reason=found.reason,
+    )
 
 
 @transaction.atomic
@@ -428,8 +462,15 @@ def propose_facet(
 
 
 @transaction.atomic
-def confirm_actionable(facet: Facet, *, area, now: datetime, actor: str) -> Facet:
+def confirm_actionable(facet: Facet, *, area=None, now: datetime, actor: str) -> Facet:
     """Accept a commitment, and make it one.
+
+    **`area` is optional, and defaulting it is the point.** Requiring one put a
+    filing decision at exactly the moment a person has already made a different
+    decision -- yes, that is a task -- and asking a second question there is the
+    thing this design refuses to do. `Item.owner` (August 14, 2026) is what
+    makes an unfiled task a real task rather than an orphan; filing stays
+    available for anyone who wants it, but it is no longer the toll on accepting.
 
     The merger's payoff, and the reason the two cores had to become one database
     before this could exist. Node, facet and task are written in a single
@@ -452,7 +493,7 @@ def confirm_actionable(facet: Facet, *, area, now: datetime, actor: str) -> Face
     if facet.kind != FacetKind.ACTIONABLE:
         raise MindError(f"{facet.kind!r} is not a commitment")
     _require_live(facet.node)
-    if area.owner_id != facet.node.owner_id:
+    if area is not None and area.owner_id != facet.node.owner_id:
         raise MindError("a commitment cannot be filed in somebody else's area")
 
     # Two taps, or a tap against a stale page. Neither should double a
@@ -466,6 +507,7 @@ def confirm_actionable(facet: Facet, *, area, now: datetime, actor: str) -> Face
         queries.current_body(facet.node),
         due_date=due,
         recurrence=facet.data.get("recurrence") or None,
+        owner=facet.node.owner,
     )
 
     facet.task = task
@@ -478,6 +520,30 @@ def confirm_actionable(facet: Facet, *, area, now: datetime, actor: str) -> Face
         occurred_at=now,
         actor=actor,
         payload={"kind": facet.kind, "task": task.pk},
+    )
+    return facet
+
+
+def dismiss_facet(facet: Facet, *, now: datetime, actor: str) -> Facet:
+    """Say no to a proposal, without arguing about it.
+
+    Retired rather than deleted, because "this was offered and declined" is a
+    different fact from "this was never offered" -- and the second one cannot
+    tell you the parser is wrong about something. `propose_facet` only ever
+    matches a live facet, so retiring frees the same kind to be proposed again
+    if the note is later edited into something that does read as a commitment.
+    """
+    if facet.retired_at is not None:
+        return facet
+    facet.retired_at = now
+    facet.save(update_fields=["retired_at"])
+    _record(
+        facet.node.owner,
+        EventType.FACET_DISMISSED,
+        node=facet.node,
+        occurred_at=now,
+        actor=actor,
+        payload={"kind": facet.kind, "reason": facet.reason},
     )
     return facet
 

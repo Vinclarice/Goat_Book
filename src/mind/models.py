@@ -649,6 +649,7 @@ class EventType(models.TextChoices):
     CONCEPT_RETIRED = "concept_retired"
     FACET_PROPOSED = "facet_proposed"
     FACET_CONFIRMED = "facet_confirmed"
+    FACET_DISMISSED = "facet_dismissed"
     ALIAS_MERGED = "alias_merged"
     MENTION_PROPOSED = "mention_proposed"
     MENTION_CONFIRMED = "mention_confirmed"

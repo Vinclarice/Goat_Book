@@ -40,9 +40,17 @@ def area(owner):
 
 @pytest.fixture
 def node(owner):
+    """Deliberately undated.
+
+    It was "Dentist next Wednesday at 2pm" until the parser started running at
+    capture, at which point every test using this fixture had an actionable
+    facet it did not ask for -- and `propose_facet` is get_or_create on the live
+    facet, so a test proposing its own data quietly received the parser's
+    instead. The parser has its own tests; these are about what a facet *is*.
+    """
     return services.capture(
         owner,
-        content="Dentist next Wednesday at 2pm",
+        content="Ring the dentist about a cleaning",
         captured_at=NOW,
         source=NodeSource.MOBILE,
         actor="vince",
@@ -99,7 +107,7 @@ def test_confirming_an_actionable_facet_creates_a_task(owner, node, area):
     services.confirm_actionable(facet, area=area, now=NOW, actor="vince")
 
     task = Item.objects.get()
-    assert task.text == "Dentist next Wednesday at 2pm"
+    assert task.text == "Ring the dentist about a cleaning"
     assert task.due_date == date(2026, 6, 10)
     assert task.list == area
 
@@ -164,7 +172,7 @@ def test_a_failure_creating_the_task_leaves_no_confirmed_facet(owner, node, area
     """The invariant, exercised rather than asserted. One database means one
     transaction, so there is no window in which somebody believes they recorded
     a dentist appointment and only half of it exists."""
-    Item.objects.create(list=area, text="Dentist next Wednesday at 2pm")
+    Item.objects.create(list=area, owner=owner, text="Ring the dentist about a cleaning")
     facet = services.propose_facet(node, kind=FacetKind.ACTIONABLE, data={},
                                    now=NOW, actor="vince", reason="parsed a date")
 
@@ -195,3 +203,50 @@ def test_the_reconciliation_count_is_zero(owner, node, area):
     services.confirm_actionable(facet, area=area, now=NOW, actor="vince")
 
     assert services.commitments_without_tasks(owner) == 0
+
+
+# ---------------------------------------------------------------------------
+# A commitment that needs nowhere to be filed
+# ---------------------------------------------------------------------------
+
+
+def test_a_commitment_can_be_accepted_without_choosing_an_area(owner, node):
+    """The filing question, refused at the moment it would be asked.
+
+    Accepting a commitment used to require naming an Area, which put a decision
+    exactly where this design says there is none -- and worse, at the one moment
+    a person has already decided (yes, that is a task) and is being asked
+    something else instead. `Item.owner`, August 14 2026, is what makes this
+    possible: the task belongs to a person rather than to a list.
+    """
+    facet = services.propose_facet(node, kind=FacetKind.ACTIONABLE, data={},
+                                   now=NOW, actor="vince", reason="parsed a date")
+
+    services.confirm_actionable(facet, area=None, now=NOW, actor="vince")
+
+    task = Item.objects.get()
+    assert task.list is None
+    assert task.owner == owner
+
+
+def test_an_unfiled_commitment_still_points_back_at_its_thought(owner, node):
+    """Having no Area is not the same as having no provenance."""
+    facet = services.propose_facet(node, kind=FacetKind.ACTIONABLE, data={},
+                                   now=NOW, actor="vince", reason="parsed a date")
+
+    services.confirm_actionable(facet, area=None, now=NOW, actor="vince")
+
+    facet.refresh_from_db()
+    assert facet.task == Item.objects.get()
+    assert facet.node == node
+
+
+def test_an_area_may_still_be_named_when_there_is_an_obvious_one(owner, node, area):
+    """Optional, not removed. Filing stays available for the person who wants
+    it; what changed is that it is no longer the toll on accepting."""
+    facet = services.propose_facet(node, kind=FacetKind.ACTIONABLE, data={},
+                                   now=NOW, actor="vince", reason="parsed a date")
+
+    services.confirm_actionable(facet, area=area, now=NOW, actor="vince")
+
+    assert Item.objects.get().list == area

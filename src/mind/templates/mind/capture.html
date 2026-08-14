@@ -21,6 +21,36 @@ a chance to.
   </div>
 </form>
 
+{% comment %}
+Below the box, never inside it. The parser reads a date out of what was just
+written, and this offers it on the way back — so the moment of entry still asks
+nothing, and ignoring the offer costs one glance.
+
+Each says what it read, because a proposal that cannot be checked is an
+assertion. "Due 2026-06-24 — read '2026-06-24'" lets somebody see the parser was
+wrong and say so; "looks like a task" only asks for trust.
+{% endcomment %}
+{% for item in commitments %}
+  <div class="card" style="margin-top:1rem">
+    <div class="body">{{ item.body }}</div>
+    <div class="meta" style="margin-top:.5rem">
+      Looks like a commitment — due {{ item.facet.data.due_date }}{% if item.facet.data.recurrence %}, repeating {{ item.facet.data.recurrence }}{% endif %}
+      · {{ item.facet.reason }}
+    </div>
+    <form method="post" action="{% url 'accept_commitment' item.facet.node.public_id %}"
+          class="row" style="margin-top:.5rem">
+      {% csrf_token %}
+      {% comment %}
+      No Area chooser, on purpose. The person has already made the only decision
+      that matters; asking where to file it would put the filing question back
+      exactly where this design refuses to ask one. A task may stand on its own.
+      {% endcomment %}
+      <button type="submit" class="primary">Add to tasks</button>
+      <button type="submit" name="action" value="dismiss">Not a task</button>
+    </form>
+  </div>
+{% endfor %}
+
 <h1 style="margin-top:2rem">Recent</h1>
 {% for item in nodes %}
   <div class="card">

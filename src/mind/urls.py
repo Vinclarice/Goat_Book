@@ -20,6 +20,11 @@ from .api import api
 urlpatterns = [
     path("", views.capture, name="capture"),
     path("share/", views.share, name="share"),
+    path(
+        "commitments/<uuid:public_id>/",
+        views.accept_commitment,
+        name="accept_commitment",
+    ),
     path("manifest.webmanifest", views.manifest, name="manifest"),
     path("review/", views.review, name="review"),
     path("review/<uuid:public_id>/", views.resolve, name="resolve"),

@@ -28,8 +28,16 @@ from django.templatetags.static import static
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
+from lists.services import TaskConflict
+
 from . import instrumentation, queries, services
-from .models import ConceptCandidate, ConnectionHypothesis, NodeSource
+from .models import (
+    ConceptCandidate,
+    ConnectionHypothesis,
+    Facet,
+    FacetKind,
+    NodeSource,
+)
 
 RECENT_LIMIT = 30
 REVIEW_LIMIT = 5
@@ -37,6 +45,10 @@ REVIEW_LIMIT = 5
 # being finite is the point; a screenful of questions is the inbox this
 # design exists to avoid, even when every one of them is a fair question.
 CANDIDATE_LIMIT = 8
+# Fewer still. A commitment proposal is the one kind that asks for a decision
+# rather than offering a label, so a screenful of them would be an inbox --
+# which is the thing this design exists to avoid.
+COMMITMENT_LIMIT = 3
 
 
 def manifest(request):
@@ -91,6 +103,20 @@ def _capture_context(request, *, prefill: str = "") -> dict:
             }
             for node in nodes
         ],
+        # Unaccepted commitments the parser has offered. Shown on the way back
+        # from capture rather than during it, which is what keeps the box one
+        # box: nothing is asked at the moment of entry, and ignoring these
+        # costs nothing.
+        "commitments": [
+            {"facet": facet, "body": queries.current_body(facet.node)}
+            for facet in Facet.objects.filter(
+                node__owner=request.user,
+                node__deleted_at__isnull=True,
+                kind=FacetKind.ACTIONABLE,
+                retired_at__isnull=True,
+                confirmed_at__isnull=True,
+            ).select_related("node")[:COMMITMENT_LIMIT]
+        ],
         "pending": queries.pending_hypotheses(request.user).count(),
         "total": queries.live_nodes(request.user).count(),
     }
@@ -114,6 +140,45 @@ def capture(request):
         return redirect("capture")
 
     return render(request, "mind/capture.html", _capture_context(request))
+
+
+@login_required
+@require_http_methods(["POST"])
+def accept_commitment(request, public_id):
+    """One tap: yes that is a task, or no it is not.
+
+    No Area is asked for, and that omission is the feature. A person tapping
+    this has already made the only decision that matters; sending them to a form
+    to choose where to file it would replace one tap with a filing question at
+    exactly the moment this design refuses to ask one. `Item.owner` is what
+    makes the resulting task a real task rather than an orphan, and filing stays
+    available later for anyone who wants it.
+
+    Owner-scoped in the lookup, so somebody else's proposal is simply not found
+    rather than found and refused.
+    """
+    facet = Facet.objects.filter(
+        node__public_id=public_id,
+        node__owner=request.user,
+        kind=FacetKind.ACTIONABLE,
+        retired_at__isnull=True,
+    ).first()
+    if facet is None:
+        return redirect("capture")
+
+    now = timezone.now()
+    actor = request.user.get_username()
+    try:
+        if request.POST.get("action") == "dismiss":
+            services.dismiss_facet(facet, now=now, actor=actor)
+        else:
+            services.confirm_actionable(facet, now=now, actor=actor)
+    except (services.MindError, TaskConflict):
+        # Already accepted elsewhere, or the same task already exists. Either
+        # way the commitment is recorded, so this returns to capture rather
+        # than presenting an error for something already settled.
+        pass
+    return redirect("capture")
 
 
 @login_required

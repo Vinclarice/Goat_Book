@@ -524,6 +524,24 @@ def confirm_actionable(facet: Facet, *, area=None, now: datetime, actor: str) ->
     return facet
 
 
+def record_maintenance_run(owner, *, now: datetime, actor: str) -> ActivityEvent:
+    """Write down that the scheduled pass happened.
+
+    The only event here whose subject is the corpus rather than a note, which is
+    why it carries no node. Nothing else can answer the question: a pass that
+    found no concepts and a pass that never ran leave identical tables behind,
+    and `detector_readiness` reports what a detector *could* say rather than
+    whether it was ever asked.
+    """
+    return _record(
+        owner,
+        EventType.MAINTENANCE_RAN,
+        occurred_at=now,
+        actor=actor,
+        payload={},
+    )
+
+
 def dismiss_facet(facet: Facet, *, now: datetime, actor: str) -> Facet:
     """Say no to a proposal, without arguing about it.
 

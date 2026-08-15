@@ -26,9 +26,11 @@ from django.db.models import Count, Q
 from django.db.models import Max, Min
 
 from .models import (
+    ActivityEvent,
     ConceptCandidate,
     ConnectionHypothesis,
     Edge,
+    EventType,
     HypothesisResolution,
     InferenceOrigin,
     Mention,
@@ -312,6 +314,25 @@ def detector_readiness(owner, *, now: datetime) -> list[Readiness]:
     return [assignment, questions, referents, dormant, echoes]
 
 
+def last_maintenance_run(owner) -> datetime | None:
+    """When the scheduled pass last completed for this person, or None.
+
+    None means never, and that is a real and reportable state rather than a
+    missing value -- extraction and detection were unscheduled for the whole
+    first day the knowledge core was live, and nothing on this page could say
+    so. `detector_readiness` answers what each detector *could* find; this
+    answers whether anything ever looked.
+    """
+    return (
+        ActivityEvent.objects.filter(
+            owner=owner, event_type=EventType.MAINTENANCE_RAN
+        )
+        .order_by("-occurred_at")
+        .values_list("occurred_at", flat=True)
+        .first()
+    )
+
+
 def lab_summary(owner, *, now: datetime) -> dict:
     """Everything worth knowing about whether the lab is working, in one call.
 
@@ -335,6 +356,10 @@ def lab_summary(owner, *, now: datetime) -> dict:
         # detector that cannot run yet produce the same empty row above, and only
         # this distinguishes them.
         "readiness": detector_readiness(owner, now=now),
+        # Beside readiness for the same reason readiness sits beside the accept
+        # rates: a detector that has never been *asked* looks exactly like one
+        # that found nothing, and only this separates them.
+        "last_maintenance_run": last_maintenance_run(owner),
         "retrieval_misses": RetrievalMiss.objects.filter(owner=owner).count(),
         "gate": retirement_gate(owner, now=now),
     }

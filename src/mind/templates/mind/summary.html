@@ -11,6 +11,28 @@
 proposing nothing across forty notes and across four thousand are different findings.</p>
 
 {% comment %}
+First, because it is the question the rest of the page assumes has been answered.
+"What can run" and the accept rates both describe machinery that is being asked
+to work; if nothing is asking, every figure below reads as a disappointing result
+when it is actually an absent one.
+
+That is not hypothetical. Extraction and detection were unscheduled for the whole
+first day this core was live, and this page -- built precisely so silence would be
+legible -- could not say so.
+{% endcomment %}
+<h1 style="margin-top:1.8rem">Has anything looked?</h1>
+{% if last_maintenance_run %}
+  <p class="meta">Last pass: {{ last_maintenance_run|date:"j M Y, H:i" }}.
+  Concepts and connections are being looked for on a schedule.</p>
+{% else %}
+  <p class="meta"><strong>Never.</strong> Nothing has run the extraction and
+  detection pass for this corpus, so every number below describes machinery that
+  has not been asked a question. This is a missing schedule, not a quiet
+  mechanic — <code>manage.py run_mind_maintenance</code> is the pass, and it is
+  meant to be on a timer.</p>
+{% endif %}
+
+{% comment %}
 Above the accept rates on purpose. A detector with no proposals and a detector
 that cannot run yet produce the same empty row below, and only this tells them
 apart -- which is the difference between a quiet mechanic and a broken one, and

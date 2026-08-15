@@ -343,17 +343,30 @@ def test_claiming_another_persons_id_is_a_permanent_fault(client, bearer, other_
     assert response.status_code == 400, "409 would be retried forever"
 
 
-def test_tags_are_kept_rather_than_discarded(client, bearer, owner):
-    """No tag table exists and structure is meant to emerge — but a person typed these,
-    so they are recorded rather than dropped in silence."""
+def test_tags_become_confirmed_concepts(client, bearer, owner):
+    """A person typed these, so they are a decision rather than a guess.
+
+    This used to assert only that the strings survived, onto an activity event
+    reading "tags kept, not yet modelled" — honest about discarding nothing and
+    read by nothing. Step 1 of one-capture-surface-plan.md gives them somewhere
+    to go: a confirmed concept apiece, skipping the gravity gate, which exists
+    to filter the system's own guesses rather than a person's.
+    """
+    from mind.models import ConceptCandidate, Mention
+
     _json(
         client, "/mind/api/v1/capture",
         {"text": "a thought about the boiler", "tags": ["house", "repairs"]},
         HTTP_IDEMPOTENCY_KEY=UUID_A, **bearer,
     )
 
-    payloads = [e.payload for e in owner.events.all()]
-    assert any(p.get("tags") == ["house", "repairs"] for p in payloads)
+    labels = set(
+        ConceptCandidate.objects.filter(
+            owner=owner, confirmed_at__isnull=False
+        ).values_list("label", flat=True)
+    )
+    assert labels == {"house", "repairs"}
+    assert Mention.objects.filter(node__owner=owner).count() == 2
 
 
 def test_a_bad_token_gives_the_client_reconnect_not_rejection(client, owner):

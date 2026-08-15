@@ -688,6 +688,76 @@ def extract_and_record_concepts(
     return recorded
 
 
+TYPED_TAG_REASON = "typed as a tag at capture"
+
+
+@transaction.atomic
+def record_typed_tags(
+    node: Node, labels: Sequence[str], *, now: datetime, actor: str
+) -> list[Mention]:
+    """Turn tags somebody typed into confirmed concepts on this node.
+
+    Step 1 of `design/one-capture-surface-plan.md`. It replaces a placeholder
+    that wrote the strings onto the activity log under "tags kept, not yet
+    modelled" -- honest about discarding nothing, and read by nothing.
+
+    **A typed tag skips the gravity gate, and that is the whole decision.** A
+    candidate normally earns its question with three mentions across a day,
+    because *extraction* over-generates on purpose and an unfiltered queue would
+    be the inbox this design avoids. That gate exists to filter the system's
+    guesses. Somebody typing a label is not a guess; it is the confirmation the
+    gate was waiting for. So the concept is confirmed outright and the mention
+    is explicit.
+
+    Reuses an existing candidate rather than making a second referent, matched
+    the same case-insensitive way the concept layer already matches -- and
+    **confirms one that extraction had guessed at and was still waiting on**,
+    which is the case that most obviously should not produce a duplicate.
+
+    Forgiving about its input on purpose. Tags arrive from a phone where a
+    trailing comma is ordinary, and none of that is worth failing a capture
+    over: the thought matters more than the tidiness of its labels.
+    """
+    mentions = []
+    seen = set()
+    for raw in labels or []:
+        label = (raw or "").strip()
+        if not label or label.casefold() in seen:
+            continue
+        seen.add(label.casefold())
+
+        concept = _concept_for_label(node.owner, label, now=now, actor=actor)
+        # Through the alias, never at it. A tag matching something already
+        # merged into another concept belongs to the surviving one -- otherwise
+        # typing an old name quietly rebuilds the split that merging fixed.
+        concept = concept.merged_into or concept
+
+        if concept.confirmed_at is None:
+            concept.reason = TYPED_TAG_REASON
+            concept.save(update_fields=["reason"])
+            confirm_concept(concept, now=now, actor=actor)
+
+        # One mention per node per concept. A retried capture, or somebody
+        # adding a tag that is already there, must not deepen the evidence.
+        existing = Mention.objects.filter(node=node, concept=concept).first()
+        if existing is not None:
+            mentions.append(existing)
+            continue
+
+        mentions.append(
+            propose_mention(
+                node,
+                concept,
+                index_version="typed",
+                now=now,
+                actor=actor,
+                reason=TYPED_TAG_REASON,
+                origin=InferenceOrigin.EXPLICIT,
+            )
+        )
+    return mentions
+
+
 def _concept_for_label(owner, label: str, *, now: datetime, actor: str):
     """The existing candidate for this label, or a new unconfirmed one.
 

@@ -387,13 +387,19 @@ def create_capture_mobile(
     )
 
     if payload.tags and created:
-        services._record(
-            request.user,
-            EventType.CAPTURED,
-            node=node,
-            occurred_at=timezone.now(),
+        # Each tag becomes a confirmed concept and an explicit mention -- step 1
+        # of one-capture-surface-plan.md. This used to write the strings onto
+        # the activity log under "tags kept, not yet modelled", which discarded
+        # nothing and was read by nothing.
+        #
+        # Only on a genuine create. A retry resolves to the existing node, and
+        # `record_typed_tags` is idempotent anyway, but doing the work twice for
+        # a request that changed nothing is noise in the log.
+        services.record_typed_tags(
+            node,
+            payload.tags,
+            now=timezone.now(),
             actor=request.user.get_username(),
-            payload={"tags": payload.tags, "note": "tags kept, not yet modelled"},
         )
 
     return Status(201 if created else 200, _node_out(node, now=timezone.now()))

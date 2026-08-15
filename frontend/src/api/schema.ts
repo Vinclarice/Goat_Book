@@ -1389,19 +1389,20 @@ export interface components {
             /** Target */
             target: number;
         };
-        /** IdeaOut */
-        IdeaOut: {
-            /** Idea Id */
-            idea_id: number;
-            /** Text */
-            text: string;
-            /** Status */
-            status: string;
-            /**
-             * Added On
-             * Format: date
-             */
-            added_on: string;
+        /**
+         * NameToConfirmOut
+         * @description A name that has recurred enough to be worth a question.
+         *
+         *     Replaces the Inbox backlog, which the graph has no equivalent of because
+         *     nothing waits for triage. `mentions` is the evidence and the reason it is
+         *     being asked about at all -- a count with no basis is the system asking for
+         *     trust, which every other proposal here refuses to do.
+         */
+        NameToConfirmOut: {
+            /** Label */
+            label: string;
+            /** Mentions */
+            mentions: number;
         };
         /**
          * PlannedOut
@@ -1473,19 +1474,24 @@ export interface components {
             recorded_met: number | null;
         };
         /**
-         * WaitingCaptureOut
-         * @description A thought still in the Inbox, and how long it has been there.
+         * ThoughtOut
+         * @description Something captured this week.
          *
-         *     Same age rule as a task's, from the same place -- how long something
-         *     has been waiting means one thing in this product.
+         *     Was `IdeaOut`, which carried a `status` because an Idea could be exploring,
+         *     reference or promoted. A node has no such state -- a thought is a thought,
+         *     and what became of it is recorded on the facets and edges around it rather
+         *     than on the thing itself.
          */
-        WaitingCaptureOut: {
-            /** Capture Id */
-            capture_id: number;
+        ThoughtOut: {
+            /** Public Id */
+            public_id: string;
             /** Text */
             text: string;
-            /** Age In Days */
-            age_in_days: number;
+            /**
+             * Captured On
+             * Format: date
+             */
+            captured_on: string;
         };
         /** WeekOut */
         WeekOut: {
@@ -1521,10 +1527,10 @@ export interface components {
             planned: components["schemas"]["PlannedOut"];
             /** Written */
             written: components["schemas"]["WrittenDayOut"][];
-            /** Ideas */
-            ideas: components["schemas"]["IdeaOut"][];
-            /** Unresolved Captures */
-            unresolved_captures: components["schemas"]["WaitingCaptureOut"][];
+            /** Thoughts */
+            thoughts: components["schemas"]["ThoughtOut"][];
+            /** Names To Confirm */
+            names_to_confirm: components["schemas"]["NameToConfirmOut"][];
             /** Habits */
             habits: components["schemas"]["HabitOut"][];
             /** Recent Weeks */

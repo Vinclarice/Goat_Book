@@ -99,23 +99,31 @@ class WrittenDayOut(Schema):
     happenings: str
 
 
-class IdeaOut(Schema):
-    idea_id: int
-    text: str
-    status: str
-    added_on: date
+class ThoughtOut(Schema):
+    """Something captured this week.
 
-
-class WaitingCaptureOut(Schema):
-    """A thought still in the Inbox, and how long it has been there.
-
-    Same age rule as a task's, from the same place -- how long something
-    has been waiting means one thing in this product.
+    Was `IdeaOut`, which carried a `status` because an Idea could be exploring,
+    reference or promoted. A node has no such state -- a thought is a thought,
+    and what became of it is recorded on the facets and edges around it rather
+    than on the thing itself.
     """
 
-    capture_id: int
+    public_id: str
     text: str
-    age_in_days: int
+    captured_on: date
+
+
+class NameToConfirmOut(Schema):
+    """A name that has recurred enough to be worth a question.
+
+    Replaces the Inbox backlog, which the graph has no equivalent of because
+    nothing waits for triage. `mentions` is the evidence and the reason it is
+    being asked about at all -- a count with no basis is the system asking for
+    trust, which every other proposal here refuses to do.
+    """
+
+    label: str
+    mentions: int
 
 
 class HabitPeriodOut(Schema):
@@ -229,10 +237,10 @@ class WeekOut(Schema):
     completed: list[CompletedTaskOut]
     planned: PlannedOut
     written: list[WrittenDayOut]
-    ideas: list[IdeaOut]
+    thoughts: list[ThoughtOut]
     # Not week-scoped, and named so that is visible in the contract rather
     # than only in the read: an Inbox is a backlog, not seven days.
-    unresolved_captures: list[WaitingCaptureOut]
+    names_to_confirm: list[NameToConfirmOut]
     habits: list[HabitOut]
     # The shown week and the four before it. Not an analytics surface: the
     # six questions architecture-trajectory.md §4 names are release F's, and
@@ -310,22 +318,18 @@ def _week_out(owner, day):
             }
             for entry in reads.written_in_week(owner, week_start, week_end)
         ],
-        "ideas": [
+        "thoughts": [
             {
-                "idea_id": idea.id,
-                "text": idea.text,
-                "status": idea.status,
-                "added_on": timezone.localtime(idea.created_at).date(),
+                "public_id": str(node.public_id),
+                "text": node.original_content,
+                # The thought's own day, not the row's -- see the read.
+                "captured_on": timezone.localtime(node.captured_at).date(),
             }
-            for idea in reads.ideas_added_in_week(owner, week_start, week_end)
+            for node in reads.thoughts_captured_in_week(owner, week_start, week_end)
         ],
-        "unresolved_captures": [
-            {
-                "capture_id": capture.id,
-                "text": capture.text,
-                "age_in_days": agenda.age_in_days(capture.created_at, today),
-            }
-            for capture in reads.captures_still_waiting(owner)
+        "names_to_confirm": [
+            {"label": candidate.label, "mentions": candidate.mention_count}
+            for candidate in reads.names_worth_confirming(owner)
         ],
         "habits": [
             {

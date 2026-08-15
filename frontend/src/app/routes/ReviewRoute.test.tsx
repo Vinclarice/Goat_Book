@@ -33,8 +33,8 @@ function weekData(overrides: Record<string, unknown> = {}) {
     completed: [],
     planned: { total: 0, met: 0, met_tasks: [], unfinished: [], set_aside: [] },
     written: [],
-    ideas: [],
-    unresolved_captures: [],
+    thoughts: [],
+    names_to_confirm: [],
     habits: [],
     recent_weeks: [],
     review: {
@@ -275,35 +275,34 @@ describe("ReviewRoute", () => {
     expect(screen.queryByText("Intentions")).toBeNull();
   });
 
-  it("lists what is still waiting in the inbox, however old", async () => {
-    // Not week-scoped, and the age is the point: a fortnight-old thought
-    // is exactly what a review should catch.
+  it("lists names worth confirming, with the evidence for asking", async () => {
+    // Replaces the Inbox backlog this used to show, and is deliberately not
+    // the same thing: that was everything untriaged however old, this is the
+    // one queue the design permits — finite, because a name has to recur to
+    // reach it. The count is why the question is being asked.
     vi.spyOn(globalThis, "fetch").mockImplementation(() =>
       jsonResponse(
         weekData({
-          unresolved_captures: [
-            { capture_id: 1, text: "Ask about the lease", age_in_days: 14 },
-          ],
+          names_to_confirm: [{ label: "Marguerite", mentions: 4 }],
         }),
       ),
     );
 
     renderAt("/review");
 
-    expect(await screen.findByText("Ask about the lease")).toBeInTheDocument();
-    expect(screen.getByText("Added 14 days ago")).toBeInTheDocument();
+    expect(await screen.findByText("Marguerite")).toBeInTheDocument();
+    expect(screen.getByText("4 mentions")).toBeInTheDocument();
   });
 
-  it("lists the ideas the week added", async () => {
+  it("lists the thoughts the week captured", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(() =>
       jsonResponse(
         weekData({
-          ideas: [
+          thoughts: [
             {
-              idea_id: 1,
-              text: "A quieter inbox",
-              status: "exploring",
-              added_on: "2026-07-28",
+              public_id: "3f1b0c9e-1111-4a2b-8c3d-000000000001",
+              text: "the boiler is making that noise",
+              captured_on: "2026-07-28",
             },
           ],
         }),
@@ -312,7 +311,9 @@ describe("ReviewRoute", () => {
 
     renderAt("/review");
 
-    expect(await screen.findByText("A quieter inbox")).toBeInTheDocument();
+    expect(
+      await screen.findByText("the boiler is making that noise"),
+    ).toBeInTheDocument();
   });
 
   it("leaves out the sections a week has nothing for", async () => {

@@ -16,8 +16,9 @@ from datetime import datetime, timedelta
 from django.db.models import F
 from django.utils import timezone
 
-from capture.models import Capture, Idea
 from daily.models import DailyEntry, DailyFocus
+from mind import queries as mind_queries
+from mind.models import Node
 from lists.models import Item
 from review.models import WeeklyReview
 from review.weeks import DAYS_IN_WEEK, days_in, week_end_for, week_start_for
@@ -156,39 +157,52 @@ def written_in_week(owner, week_start, week_end):
     )
 
 
-def ideas_added_in_week(owner, week_start, week_end):
-    """Ideas from this week, oldest first.
+def thoughts_captured_in_week(owner, week_start, week_end):
+    """Everything captured this week, oldest first.
 
-    Every status, including promoted ones. An idea that became a task was
-    still a thought somebody had that week, and the review is describing
-    the week rather than serving the Ideas library -- whose own default of
-    hiding promoted ones is a different question about a different page.
+    Was `ideas_added_in_week`, reading `capture.Idea` — a model the crossover
+    deletes, and a distinction it deletes with it. A retained thought and a
+    captured one were two objects because the Inbox needed somewhere to promote
+    things *to*; in the graph a thought is a thought, and this reads that.
+
+    **Filtered on `captured_at`, not `created_at`.** A node carries when the
+    thought happened separately from when the row was written, and the 34
+    captures migrated out of the Inbox all have an original date months before
+    their row. Reading the row would file every one of them into the week of the
+    migration.
+
+    Archived material is left out. Twenty-two of those migrated captures were
+    discards — device-test residue — and a review of the week should not open
+    with a fortnight of "Offline test 3".
     """
     start, end = _instant_range(week_start, week_end)
     return list(
-        Idea.objects.filter(
-            owner=owner, created_at__gte=start, created_at__lt=end
-        ).order_by("created_at", "id")
+        Node.objects.filter(
+            owner=owner,
+            captured_at__gte=start,
+            captured_at__lt=end,
+            deleted_at__isnull=True,
+            archived_at__isnull=True,
+        ).order_by("captured_at", "id")
     )
 
 
-def captures_still_waiting(owner):
-    """Everything still in the Inbox, oldest first, whatever week it is from.
+def names_worth_confirming(owner):
+    """Concept candidates that have earned a question, heaviest first.
 
-    Deliberately not week-scoped. An Inbox is a backlog rather than a
-    seven-day window, and a thought that has been sitting for a fortnight
-    is exactly the one a review should surface -- filtering to this week
-    would hide the ones that have waited longest, which is backwards.
+    Replaces `captures_still_waiting`, and deliberately is not the same shape.
+    That read the Inbox backlog — everything untriaged, whatever week it came
+    from — and the graph has no backlog, because nothing waits for triage. An
+    equivalent would have to be invented, and inventing one would reimport the
+    exact concept the crossover exists to delete.
 
-    Oldest first for the same reason, and against `Capture.Meta.ordering`:
-    newest-first reads as a stack of what you have just written, which is
-    right for the Inbox and wrong for deciding what has gone stale.
+    What is genuinely waiting is the one queue this design permits: a name that
+    has recurred enough to be worth asking about. It is finite by construction
+    (three mentions spanning a day), it is the mechanism the concept layer grows
+    by, and a chosen weekly ritual is precisely when the Attention Policy says a
+    queue may be shown.
     """
-    return list(
-        Capture.objects.filter(owner=owner, resolved_at__isnull=True).order_by(
-            "created_at", "id"
-        )
-    )
+    return list(mind_queries.concept_candidates(owner))
 
 
 def review_for(owner, week_start):
@@ -483,7 +497,7 @@ def first_trace_for(owner):
     for queryset in (
         Item.objects.filter(owner=owner),
         Routine.objects.filter(owner=owner),
-        Capture.objects.filter(owner=owner),
+        Node.objects.filter(owner=owner),
     ):
         first = (
             queryset.order_by("created_at")

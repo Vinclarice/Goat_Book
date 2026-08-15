@@ -281,17 +281,15 @@ type WrittenDay = {
   happenings: string;
 };
 
-type IdeaAdded = {
-  idea_id: number;
+type Thought = {
+  public_id: string;
   text: string;
-  status: string;
-  added_on: string;
+  captured_on: string;
 };
 
-type WaitingCapture = {
-  capture_id: number;
-  text: string;
-  age_in_days: number;
+type NameToConfirm = {
+  label: string;
+  mentions: number;
 };
 
 /** The same three labels the day itself uses, so nothing is renamed on the
@@ -349,47 +347,43 @@ function Written({ written }: { written: WrittenDay[] }) {
   );
 }
 
-function Ideas({ ideas }: { ideas: IdeaAdded[] }) {
+function Thoughts({ thoughts }: { thoughts: Thought[] }) {
   return (
     <ul className="space-y-1">
-      {ideas.map((idea) => (
+      {thoughts.map((thought) => (
         <li
-          key={idea.idea_id}
+          key={thought.public_id}
           className="flex items-baseline justify-between gap-3 rounded-lg border border-border px-3 py-2"
         >
-          <span className="min-w-0">{idea.text}</span>
-          {/* Only when it is not the ordinary case: a chip reading
-              "exploring" beside every row would be noise. */}
-          {idea.status !== "exploring" && (
-            <span className="shrink-0 text-sm text-muted-foreground">
-              {idea.status}
-            </span>
-          )}
+          <span className="min-w-0">{thought.text}</span>
         </li>
       ))}
     </ul>
   );
 }
 
-function Waiting({ captures }: { captures: WaitingCapture[] }) {
+/** Names that have recurred enough to be worth a question.
+ *
+ * Replaces the Inbox backlog, and is deliberately not the same thing. That was
+ * everything untriaged, however old; this is the one queue the design permits,
+ * finite by construction — three mentions spanning a day. The count is shown
+ * because it is the reason the question is being asked at all, and a proposal
+ * that will not show its evidence is asking for trust.
+ */
+function NamesToConfirm({ names }: { names: NameToConfirm[] }) {
   return (
     <ul className="space-y-1">
-      {captures.map((capture) => {
-        const age = ageLabel(capture.age_in_days);
-        return (
-          <li
-            key={capture.capture_id}
-            className="flex items-baseline justify-between gap-3 rounded-lg border border-border px-3 py-2"
-          >
-            <span className="min-w-0">{capture.text}</span>
-            {age && (
-              <span className="shrink-0 text-sm text-muted-foreground">
-                {age}
-              </span>
-            )}
-          </li>
-        );
-      })}
+      {names.map((name) => (
+        <li
+          key={name.label}
+          className="flex items-baseline justify-between gap-3 rounded-lg border border-border px-3 py-2"
+        >
+          <span className="min-w-0">{name.label}</span>
+          <span className="shrink-0 text-sm text-muted-foreground">
+            {name.mentions} mentions
+          </span>
+        </li>
+      ))}
     </ul>
   );
 }
@@ -826,24 +820,25 @@ export function ReviewRoute() {
 
       {/* Absent rather than empty, unlike the writing above: an idea nobody
           had is not a fact about the week worth a heading. */}
-      {data.ideas.length > 0 && (
+      {data.thoughts.length > 0 && (
         <section className="space-y-2">
-          <h2 className="text-sm font-bold">Ideas you added</h2>
-          <Ideas ideas={data.ideas} />
+          <h2 className="text-sm font-bold">Thoughts you captured</h2>
+          <Thoughts thoughts={data.thoughts} />
         </section>
       )}
 
-      {data.unresolved_captures.length > 0 && (
+      {data.names_to_confirm.length > 0 && (
         <section className="space-y-2">
-          <h2 className="text-sm font-bold">Still in your inbox</h2>
-          <Waiting captures={data.unresolved_captures} />
-          {/* Says why old ones are here, and where they get dealt with.
-              This list is not week-scoped and would otherwise look like a
-              mistake on a review of one week. */}
+          <h2 className="text-sm font-bold">Names worth confirming</h2>
+          <NamesToConfirm names={data.names_to_confirm} />
+          {/* Says why these are here and where they are answered. Like the
+              Inbox list it replaces, this is not week-scoped -- a name that
+              recurred over a month is exactly the one worth naming, and
+              filtering to seven days would hide it. */}
           <p className="text-sm text-muted-foreground">
-            Everything still waiting, whenever it arrived.{" "}
-            <a href="/capture/" className="underline hover:text-foreground">
-              Sort them out in the Inbox
+            Things you keep mentioning, whenever they came up.{" "}
+            <a href="/mind/concepts/" className="underline hover:text-foreground">
+              Name them in Second Mind
             </a>
             .
           </p>

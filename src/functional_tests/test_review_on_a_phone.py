@@ -25,7 +25,6 @@ from django.utils import timezone
 from playwright.sync_api import expect
 
 from capture import services as capture_services
-from capture.models import Idea
 from daily import services as daily_services
 from functional_tests.base import BrowserTest
 from lists import services as list_services
@@ -115,13 +114,35 @@ class ReviewOnAPhoneTest(BrowserTest):
             happenings="Started keeping this",
         )
 
-        capture_services.create_capture(
-            self.user, "Ask the landlord about the lease renewal terms"
-        )
-        Idea.objects.create(
-            owner=self.user,
-            text="A quieter inbox, sorted once a week rather than daily",
-        )
+        # Captured into the graph, not the Inbox, which the crossover retires.
+        # Three mentions across three days so the name reaches the gravity gate
+        # and the "Names worth confirming" section has something to render --
+        # that section only exists when a name has earned its question.
+        from django.utils import timezone as dj_timezone
+
+        from mind import services as mind_services
+        from mind.models import NodeSource
+
+        # Inside the week being viewed, so "Thoughts you captured" has rows.
+        # The name is capitalised and never sentence-initial: extraction reads
+        # capitalisation as the signal for a name and skips a leading capital,
+        # since otherwise every sentence would begin with a candidate.
+        base = self.instant_on(self.monday)
+        for day, text in enumerate(
+            [
+                "spoke to Marguerite about the lease renewal terms",
+                "chased Marguerite again about the lease",
+                "Ask Marguerite whether the terms have changed",
+            ]
+        ):
+            node = mind_services.capture(
+                self.user,
+                content=text,
+                captured_at=base + timedelta(days=day),
+                source=NodeSource.WEB,
+                actor=self.user.get_username(),
+            )
+            mind_services.extract_and_record_concepts(node, now=dj_timezone.now())
 
     def test_the_whole_review_fits_the_width_of_a_phone(self):
         """The acceptance condition, as a number rather than an opinion."""
@@ -152,8 +173,8 @@ class ReviewOnAPhoneTest(BrowserTest):
             "Habits",
             "Recent weeks",
             "In your own words",
-            "Ideas you added",
-            "Still in your inbox",
+            "Thoughts you captured",
+            "Names worth confirming",
         ):
             expect(
                 self.page.get_by_role("heading", level=2, name=heading)

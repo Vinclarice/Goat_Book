@@ -3160,33 +3160,23 @@
         "title": "HabitPeriodOut",
         "type": "object"
       },
-      "IdeaOut": {
+      "NameToConfirmOut": {
+        "description": "A name that has recurred enough to be worth a question.\n\nReplaces the Inbox backlog, which the graph has no equivalent of because\nnothing waits for triage. `mentions` is the evidence and the reason it is\nbeing asked about at all -- a count with no basis is the system asking for\ntrust, which every other proposal here refuses to do.",
         "properties": {
-          "idea_id": {
-            "title": "Idea Id",
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "mentions": {
+            "title": "Mentions",
             "type": "integer"
-          },
-          "text": {
-            "title": "Text",
-            "type": "string"
-          },
-          "status": {
-            "title": "Status",
-            "type": "string"
-          },
-          "added_on": {
-            "format": "date",
-            "title": "Added On",
-            "type": "string"
           }
         },
         "required": [
-          "idea_id",
-          "text",
-          "status",
-          "added_on"
+          "label",
+          "mentions"
         ],
-        "title": "IdeaOut",
+        "title": "NameToConfirmOut",
         "type": "object"
       },
       "PlannedOut": {
@@ -3350,28 +3340,29 @@
         "title": "ReviewOut",
         "type": "object"
       },
-      "WaitingCaptureOut": {
-        "description": "A thought still in the Inbox, and how long it has been there.\n\nSame age rule as a task's, from the same place -- how long something\nhas been waiting means one thing in this product.",
+      "ThoughtOut": {
+        "description": "Something captured this week.\n\nWas `IdeaOut`, which carried a `status` because an Idea could be exploring,\nreference or promoted. A node has no such state -- a thought is a thought,\nand what became of it is recorded on the facets and edges around it rather\nthan on the thing itself.",
         "properties": {
-          "capture_id": {
-            "title": "Capture Id",
-            "type": "integer"
+          "public_id": {
+            "title": "Public Id",
+            "type": "string"
           },
           "text": {
             "title": "Text",
             "type": "string"
           },
-          "age_in_days": {
-            "title": "Age In Days",
-            "type": "integer"
+          "captured_on": {
+            "format": "date",
+            "title": "Captured On",
+            "type": "string"
           }
         },
         "required": [
-          "capture_id",
+          "public_id",
           "text",
-          "age_in_days"
+          "captured_on"
         ],
-        "title": "WaitingCaptureOut",
+        "title": "ThoughtOut",
         "type": "object"
       },
       "WeekOut": {
@@ -3422,18 +3413,18 @@
             "title": "Written",
             "type": "array"
           },
-          "ideas": {
+          "thoughts": {
             "items": {
-              "$ref": "#/components/schemas/IdeaOut"
+              "$ref": "#/components/schemas/ThoughtOut"
             },
-            "title": "Ideas",
+            "title": "Thoughts",
             "type": "array"
           },
-          "unresolved_captures": {
+          "names_to_confirm": {
             "items": {
-              "$ref": "#/components/schemas/WaitingCaptureOut"
+              "$ref": "#/components/schemas/NameToConfirmOut"
             },
-            "title": "Unresolved Captures",
+            "title": "Names To Confirm",
             "type": "array"
           },
           "habits": {
@@ -3464,8 +3455,8 @@
           "completed",
           "planned",
           "written",
-          "ideas",
-          "unresolved_captures",
+          "thoughts",
+          "names_to_confirm",
           "habits",
           "recent_weeks",
           "review"

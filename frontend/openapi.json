@@ -1414,6 +1414,10 @@
             "title": "Ideas Url",
             "type": "string"
           },
+          "mind_url": {
+            "title": "Mind Url",
+            "type": "string"
+          },
           "landing_surface": {
             "title": "Landing Surface",
             "type": "string"
@@ -1427,6 +1431,7 @@
           "settings_url",
           "inbox_url",
           "ideas_url",
+          "mind_url",
           "landing_surface"
         ],
         "title": "NavOut",

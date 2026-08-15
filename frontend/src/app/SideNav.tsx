@@ -87,6 +87,24 @@ export function SideNav() {
         <a className={styles.link} href={data?.ideas_url ?? "/capture/ideas/"}>
           Ideas
         </a>
+        {/* The other core, and until now unreachable from here: the merger put
+            it in this application on August 14 and typing /mind/ was the only
+            way in.
+
+            Beside Inbox and Ideas on purpose. All three are places a thought
+            lives, and the crossover retires the first two into this one -- so
+            when they go, this stays where the eye already looks.
+
+            The href comes from the payload because that prefix is temporary
+            and lives in exactly one line of clarice/urls.py. Pinning it here
+            would make it two, in two languages.
+
+            No count, for the same reason Ideas has none and more so: this core
+            is quiet by design, and a number would turn resurfacing into a
+            backlog -- the one thing the attention policy refuses to be. */}
+        <a className={styles.link} href={data?.mind_url ?? "/mind/"}>
+          Second Mind
+        </a>
         <NavLink to="/archive" className={navLinkClass}>
           Archive
           {data && data.archived_count > 0 && (

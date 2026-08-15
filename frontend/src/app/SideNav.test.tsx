@@ -45,6 +45,7 @@ const NAV = {
   settings_url: "/accounts/settings/",
   inbox_url: "/capture/",
   ideas_url: "/capture/ideas/",
+  mind_url: "/mind/",
 };
 
 function renderNav(initialPath = "/agenda") {
@@ -182,6 +183,30 @@ describe("SideNav", () => {
     // A Django page, so a real href rather than a router link.
     expect(inbox).toHaveAttribute("href", "/capture/");
     expect(inbox).toHaveTextContent("3");
+  });
+
+  it("reaches the knowledge core, at the url the server gives it", async () => {
+    // The merger put that core in this application and nothing in the nav
+    // could open it -- typing /mind/ was the only way in. The href comes from
+    // the payload because the prefix is temporary and lives in one line of the
+    // project URLconf; pinning it here would make that two.
+    renderNav();
+    await screen.findByText("Programming");
+
+    const mind = screen.getByRole("link", { name: /Second Mind/ });
+    expect(mind).toHaveAttribute("href", "/mind/");
+  });
+
+  it("does not put a count on it", async () => {
+    // Same reasoning as Ideas, and stronger: the knowledge core is quiet by
+    // design, and a number beside it would turn resurfacing into a backlog --
+    // which is the one thing the whole attention policy refuses to be.
+    renderNav();
+    await screen.findByText("Programming");
+
+    expect(screen.getByRole("link", { name: /Second Mind/ })).toHaveTextContent(
+      /^Second Mind$/,
+    );
   });
 
   it("links out to the ideas page, without a count", async () => {

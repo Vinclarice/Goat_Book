@@ -197,6 +197,11 @@ class NavOut(Schema):
     settings_url: str
     inbox_url: str
     ideas_url: str
+    # The knowledge core. Served rather than written into the client because
+    # `clarice/urls.py` records that this prefix is temporary and lives in
+    # exactly one line -- where those pages finally sit is the decision that
+    # ends the crossover, and the nav should follow it rather than pin it.
+    mind_url: str
     # So the SPA's own index route sends /app/ where the server would send
     # a login, rather than hard-coding a second answer that could drift
     # from lists.views.dashboard's.
@@ -236,6 +241,7 @@ def navigation(request):
         # Django pages, not SPA routes: these links leave the app shell.
         "inbox_url": reverse("capture_inbox"),
         "ideas_url": reverse("ideas"),
+        "mind_url": reverse("capture"),
         "landing_surface": user.landing_surface,
     }
 

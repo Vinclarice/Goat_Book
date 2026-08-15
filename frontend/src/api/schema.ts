@@ -684,6 +684,8 @@ export interface components {
             inbox_url: string;
             /** Ideas Url */
             ideas_url: string;
+            /** Mind Url */
+            mind_url: string;
             /** Landing Surface */
             landing_surface: string;
         };

@@ -55,12 +55,19 @@ live:
   weekly review's honest denominators are the single strongest thing built
   here and are carried across intact.
 
-**One defect to fix on the way in rather than port.** `_advance_due_date`
-computes a recurring task's next occurrence from the previous *due date*, so a
-monthly commitment due July 4 and completed August 10 spawns its successor due
-August 4 — overdue at the instant it is created. Second Mind's design
-specifies anchored and floating recurrence as distinct modes; this is the
-floating case, and it should be fixed in the move.
+**~~One defect to fix on the way in rather than port.~~ Fixed August 15, 2026**
+(`70bc6c8`), and not on the way in — it survived the merger it was supposed to
+be fixed by, which is the argument for closing a defect where it lives rather
+than attaching it to a migration. `_advance_due_date` computed a recurring
+task's next occurrence from the previous *due date*, so a monthly commitment due
+July 4 and completed August 10 spawned its successor due August 4, overdue at
+the instant it was created.
+
+It now skips missed periods and keeps its anchor. **Anchored and floating remain
+distinct modes in `design-concept.md` and only anchored is built** — Clarice has
+one cadence field and cannot say which a commitment is. That gap is deliberate
+and recorded at the function; it is the right shape for a calendar commitment
+and a few days early for an interval one.
 
 **Nothing in this roadmap was cancelled by that decision.** The task core keeps
 running and keeps its users; what changed is that it is no longer a separate

@@ -501,8 +501,10 @@ the next position in a sequence, claimed by whatever ships next, and commercial
 readiness will carry whatever letter it reaches — realistically a long way down
 the alphabet. Nothing is held open for a subject that has not started.
 
-**The next release to start is H.** Its bird is chosen when it ships, same as
-always.
+**The next release to start is H, and it is Heron** — named August 15, 2026,
+ahead of shipping for once. Naming is not tagging: the tag still waits on
+production verifying it, same as always. Its content is the crossover; see
+[`one-capture-surface-plan.md`](one-capture-surface-plan.md).
 
 **Going forward the scheme holds again**: a release is a coherent body of work
 with a finish line, tagged only after production verifies it, and the bird is
@@ -526,10 +528,13 @@ one subject, one finish line:
   `clarice/urls.py`.
 - `Capture` and `Idea` are retired by it, which is the live reason the task core
   stays in maintenance — see `CLAUDE.md`.
-- **One decision blocks the plan**: whether a single capture surface keeps
-  first-class tags, or adopts the knowledge core's position that structure
-  should emerge rather than be declared at entry. That is the only real trade
-  in the consolidation and it is Vince's to make.
+- **That decision is made.** A typed tag becomes a confirmed concept — Vince's
+  call, August 15, 2026. The gravity gate filters the system's *guesses*, and a
+  person typing a tag is not one, so it skips the gate entirely. Tagging
+  survives and the concept layer gains a second way to grow.
+- The plan is [`one-capture-surface-plan.md`](one-capture-surface-plan.md), in
+  five steps that each deploy on their own. **It is the content of Heron**, the
+  next release; its bird was chosen on August 15 and it is tagged when it ships.
 
 **Two things outstanding that are not code.** An external uptime monitor to poll
 `/healthz` — the last open item in Part 1, and deliberately not in this

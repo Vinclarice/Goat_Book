@@ -14,8 +14,9 @@ deployment records and lessons, live in
 [`roadmap-history.md`](roadmap-history.md). Keeping that record separate
 makes this document useful when deciding what to work on next.
 
-**Second Mind is a separate project and this file does not govern it** — see
-the section immediately below. Knowledge-side work is no longer planned here.
+**The knowledge core lives in this repository now** — see the section
+immediately below. Knowledge-side planning documents remain in the Second Mind
+repository even though its code moved here.
 
 The cross-cutting engineering and product standards used to deliver roadmap
 work live in [`principles.md`](principles.md).
@@ -27,21 +28,19 @@ this project has explicitly refused live in
 authority on what is active and what is deferred; that one explains the order
 and the reasoning, and does not schedule anything on its own.
 
-## Second Mind is a separate project, and Clarice is downstream of it
+## The merger happened, and this file is downstream of it
 
-**Decided August 13, 2026.** Second Mind lives in its own repository
-(`C:\dev\Clarice_secondmind`) with its own design documents, its own
-constitution, and its own test suite — 435 tests green as of that date. It is
-**not** a module inside Clarice, not a bounded context hosted by it, and not
-subject to this file, [`principles.md`](principles.md), or
-[`architecture-trajectory.md`](architecture-trajectory.md). Its own
-`docs/design-concept.md` is the authority for everything in it.
+**Decided August 13, 2026; done and deployed August 14–15.** Second Mind was a
+separate repository with its own constitution and its own suite. It is now the
+`mind` app in this tree, behind this site's login and in this database, and its
+suite runs here under `pytest`. `C:\dev\Clarice_secondmind` survives as
+**documents only** — `docs/design-concept.md` remains the authority for the
+knowledge core, and `docs/two-cores.md` records what each merger step cost.
 
-**The direction runs one way: Clarice is worked into Second Mind, not the
-reverse.** The end state is one application with two cores — Second Mind for
-knowledge, and Clarice's task system absorbed as a core named **Superlists**.
-Second Mind's `docs/two-cores.md` is the authority on that merger, including
-what does and does not survive it. Two consequences worth knowing here:
+The direction ran one way and still does: Clarice was worked into Second Mind
+rather than the reverse. The end state is one application with two cores —
+knowledge, and the task system as **Superlists**. Two consequences, both still
+live:
 
 - **Clarice's knowledge half does not survive.** `capture.Capture` exists to
   hold untriaged text pending assignment; the node model does that without
@@ -63,14 +62,16 @@ August 4 — overdue at the instant it is created. Second Mind's design
 specifies anchored and floating recurrence as distinct modes; this is the
 floating case, and it should be fixed in the move.
 
-**Nothing in this roadmap is cancelled by that decision.** Clarice keeps
-running, keeps its users, and keeps being the working tool until the merger
-actually happens; no merger work is scheduled here. What changes is that
-long-horizon knowledge-side work in this file — Reference/Idea search, the
+**Nothing in this roadmap was cancelled by that decision.** The task core keeps
+running and keeps its users; what changed is that it is no longer a separate
+application waiting to be absorbed.
+
+Long-horizon knowledge-side work in this file — Reference/Idea search, the
 mind-map view, idea resurfacing, the second-brain direction in
-[`daily-operating-system-vision.md`](daily-operating-system-vision.md) — is
-now **superseded rather than deferred**, because it is being built properly
-somewhere else.
+[`daily-operating-system-vision.md`](daily-operating-system-vision.md) — stays
+**superseded rather than deferred**. It was superseded because it was being
+built properly in another repository; it is now built properly in this one, and
+planned in the Second Mind documents rather than here.
 
 `design/second-mind-core.md`, written earlier the same day, is deleted. It
 proposed the opposite arrangement — Second Mind as a second core *inside*
@@ -94,8 +95,8 @@ a List is an Area that never completes, a Project is work that does, and
 every model is owned at birth. The full record of each is in the history
 file.
 
-**Everything since Dunlin shipped without a release letter**, between August 6
-and 12, 2026, and it is a substantial part of the current baseline rather than
+**Everything between Dunlin and Fulmar shipped without a release letter** at
+the time — August 6 to 12, 2026, named belatedly on August 15 — and it is a substantial part of the current baseline rather than
 a tail of small fixes: Project became a standalone workspace holding Areas; the
 Bootstrap→Tailwind arc finished across the task list, Agenda and Archive, with
 `site.css` retired outright; the Android client gained read *and* write on the

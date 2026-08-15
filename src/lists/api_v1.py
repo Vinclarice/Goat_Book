@@ -73,7 +73,11 @@ class TaskOut(Schema):
     tags: list[str]
     recurrence: TaskRecurrence
     notes: str
-    area_id: int
+    # Nullable since August 14, 2026 -- a task may stand on its own, so this is
+    # the boundary admitting a state the database already allowed. Ninja
+    # validates responses, so leaving it `int` turned every unfiled task into a
+    # 500 that no amount of care in the serializer could avoid.
+    area_id: int | None
     project_id: int | None
     url: str
     edit_url: str
@@ -152,7 +156,11 @@ class ArchiveOut(Schema):
 
 class TaskDetailOut(Schema):
     task: TaskOut
-    area: TaskAreaSummaryOut
+    # Optional since August 14, 2026: a task may stand on its own. Declared
+    # nullable here rather than only handled in the serializer, because Ninja
+    # validates the response -- a non-optional schema turns an unfiled task
+    # into a 500 no matter how carefully the dict was built.
+    area: TaskAreaSummaryOut | None
     checklist_steps: list[ChecklistStepOut]
     create_checklist_step_url: str
     reorder_checklist_steps_url: str

@@ -41,7 +41,8 @@ type ActionItem = {
   text: string;
   due_date: string | null;
   age_in_days: number;
-  area_id: number;
+  // Null for a task standing on its own -- see Task.area_id in types.ts.
+  area_id: number | null;
   project_id: number | null;
 };
 
@@ -157,7 +158,7 @@ function ActionItems({
     <ul className="space-y-1">
       {items.map((item) => {
         const pinned = pinnedIds.has(item.id);
-        const itemArea = areaById.get(item.area_id);
+        const itemArea = item.area_id ? areaById.get(item.area_id) : undefined;
         const itemProject = item.project_id ? projectById.get(item.project_id) : undefined;
         return (
           <li

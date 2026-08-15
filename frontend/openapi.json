@@ -77,7 +77,10 @@
         },
         "security": [
           {
-            "SessionAuth": []
+            "TokenAuth": []
+          },
+          {
+            "SessionAuthIfLoggedIn": []
           }
         ]
       }
@@ -687,7 +690,10 @@
         },
         "security": [
           {
-            "SessionAuth": []
+            "TokenAuth": []
+          },
+          {
+            "SessionAuthIfLoggedIn": []
           }
         ]
       }
@@ -722,7 +728,10 @@
         },
         "security": [
           {
-            "SessionAuth": []
+            "TokenAuth": []
+          },
+          {
+            "SessionAuthIfLoggedIn": []
           }
         ]
       },
@@ -766,7 +775,10 @@
         },
         "security": [
           {
-            "SessionAuth": []
+            "TokenAuth": []
+          },
+          {
+            "SessionAuthIfLoggedIn": []
           }
         ]
       }
@@ -812,7 +824,10 @@
         },
         "security": [
           {
-            "SessionAuth": []
+            "TokenAuth": []
+          },
+          {
+            "SessionAuthIfLoggedIn": []
           }
         ]
       }
@@ -857,7 +872,10 @@
         "description": "Take a task off this day, keeping the record that it was chosen.",
         "security": [
           {
-            "SessionAuth": []
+            "TokenAuth": []
+          },
+          {
+            "SessionAuthIfLoggedIn": []
           }
         ]
       }
@@ -913,7 +931,10 @@
         },
         "security": [
           {
-            "SessionAuth": []
+            "TokenAuth": []
+          },
+          {
+            "SessionAuthIfLoggedIn": []
           }
         ]
       }
@@ -958,7 +979,10 @@
         },
         "security": [
           {
-            "SessionAuth": []
+            "TokenAuth": []
+          },
+          {
+            "SessionAuthIfLoggedIn": []
           }
         ]
       }
@@ -993,7 +1017,10 @@
         "description": "Close this period at what was done, content with it.\n\nA third route because it is a third statement. Logging says what\nhappened, skipping says the thing was not done, and this says some of\nit was and that was the right amount -- crane-plan.md \u00a78, answering the\nquestion \u00a73 left open. Folding it into the skip route would record\n\"I chose not to\" about somebody who did.",
         "security": [
           {
-            "SessionAuth": []
+            "TokenAuth": []
+          },
+          {
+            "SessionAuthIfLoggedIn": []
           }
         ]
       }
@@ -1028,7 +1055,10 @@
         "description": "Put a routine down, keeping everything it has already done.",
         "security": [
           {
-            "SessionAuth": []
+            "TokenAuth": []
+          },
+          {
+            "SessionAuthIfLoggedIn": []
           }
         ]
       }
@@ -1063,7 +1093,10 @@
         "description": "Pick it back up. Nothing is written for the time it was down.",
         "security": [
           {
-            "SessionAuth": []
+            "TokenAuth": []
+          },
+          {
+            "SessionAuthIfLoggedIn": []
           }
         ]
       }
@@ -1098,7 +1131,10 @@
         "description": "Record that this period was deliberately not done.\n\nIts own route rather than a flag on the log endpoint, because it is a\ndifferent statement: logging says what happened, skipping says what was\ndecided. Collapsing them would be the near-identical-controls problem\nC2 found in the task UI, one layer down.",
         "security": [
           {
-            "SessionAuth": []
+            "TokenAuth": []
+          },
+          {
+            "SessionAuthIfLoggedIn": []
           }
         ]
       }
@@ -1694,8 +1730,15 @@
             "type": "string"
           },
           "area_id": {
-            "title": "Area Id",
-            "type": "integer"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Area Id"
           },
           "project_id": {
             "anyOf": [
@@ -1909,7 +1952,14 @@
             "$ref": "#/components/schemas/TaskOut"
           },
           "area": {
-            "$ref": "#/components/schemas/TaskAreaSummaryOut"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TaskAreaSummaryOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "checklist_steps": {
             "items": {
@@ -2489,8 +2539,15 @@
             "type": "string"
           },
           "area_id": {
-            "title": "Area Id",
-            "type": "integer"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Area Id"
           },
           "project_id": {
             "anyOf": [

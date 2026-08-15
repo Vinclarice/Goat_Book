@@ -226,6 +226,10 @@ export function AgendaWorkspace({ initialData }: Props) {
     const open = new Map<number, number>();
     const overdue = new Map<number, number>();
     for (const task of tasks) {
+      // An unfiled task counts toward no Area. Skipped rather than bucketed
+      // under a placeholder id, so an Area's "3 open" keeps meaning three
+      // tasks that are actually in it.
+      if (task.area_id === null) continue;
       open.set(task.area_id, (open.get(task.area_id) ?? 0) + 1);
       if (bucketFor(task.due_date, today) === "overdue") {
         overdue.set(task.area_id, (overdue.get(task.area_id) ?? 0) + 1);
@@ -421,7 +425,7 @@ export function AgendaWorkspace({ initialData }: Props) {
 
   function renderRow(task: Task, done = false) {
     const bucket = bucketFor(task.due_date, today);
-    const taskArea = areaById.get(task.area_id);
+    const taskArea = task.area_id ? areaById.get(task.area_id) : undefined;
     const taskProject = task.project_id ? projectById.get(task.project_id) : undefined;
     const age = !done ? ageLabel(daysBetween(task.created_at.slice(0, 10), today)) : null;
 

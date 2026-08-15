@@ -82,7 +82,16 @@ LIST_COLOR_KEYS = (
 )
 
 
+# A task standing on its own is not in any Area, so it must not be tinted like
+# one -- borrowing a colour would say it belonged somewhere it does not, and
+# borrowing index 0 would make it look like whichever Area happens to hold that
+# slot. Grey is the absence of the signal rather than another value of it.
+NO_LIST_COLOR = "#c9cdd2"
+
+
 def color_for_list(list_id):
+    if list_id is None:
+        return NO_LIST_COLOR
     return LIST_COLORS[list_id % len(LIST_COLORS)]
 
 

@@ -47,7 +47,14 @@ def serialize_item(item):
         # 2: a task belongs to a project only by belonging to an Area that
         # is inside it. Every caller already select_related("list"), so this
         # is free.
-        "project_id": item.list.project_id,
+        #
+        # Null also when there is no Area at all, which is a different fact
+        # wearing the same value and is correct either way: a task belongs to
+        # a project by belonging to an Area, so one with no Area is in no
+        # project. Written as a guard rather than left to `item.list` because
+        # this line ran for *every* task in the agenda payload -- one unfiled
+        # task did not degrade its own row, it raised and took the whole page.
+        "project_id": item.list.project_id if item.list_id else None,
         # update and delete hit the same endpoint, just with different
         # HTTP methods, so one url covers both.
         "url": reverse("api_item_detail", args=(item.id,)),
@@ -109,11 +116,19 @@ def task_detail_data_for(item):
     """
     return {
         "task": serialize_item(item),
-        "area": {
-            "id": item.list.id,
-            "title": item.list.title,
-            "url": item.list.get_absolute_url(),
-        },
+        # Null for a task standing on its own. Present-but-empty rather than
+        # absent, so the client reads "this task has no Area" instead of
+        # having to infer it from a missing key -- inference is how a filed
+        # task and an unfiled one end up rendered the same.
+        "area": (
+            {
+                "id": item.list.id,
+                "title": item.list.title,
+                "url": item.list.get_absolute_url(),
+            }
+            if item.list_id
+            else None
+        ),
         "checklist_steps": [
             serialize_checklist_step(step)
             for step in item.checklist_steps.order_by("position", "id")

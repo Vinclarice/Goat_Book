@@ -475,17 +475,64 @@ def promote_checklist_step(step):
     return promoted
 
 
-def _advance_due_date(due_date, recurrence):
-    base = due_date or timezone.localdate()
+def _nth_occurrence_after(base, recurrence, n):
+    """The nth scheduled date after `base`, counting in calendar units.
+
+    Computed from the anchor each time rather than by stepping one interval
+    off the last result, which matters for monthly: the 31st advanced through
+    February and then carried forward would spend the rest of the year on the
+    28th. Here February is the only month that clamps, and March is the 31st
+    again.
+    """
     if recurrence == Item.Recurrence.DAILY:
-        return base + timedelta(days=1)
+        return base + timedelta(days=n)
     if recurrence == Item.Recurrence.WEEKLY:
-        return base + timedelta(days=7)
+        return base + timedelta(weeks=n)
     if recurrence == Item.Recurrence.MONTHLY:
-        month = base.month % 12 + 1
-        year = base.year + (base.month // 12)
-        day = min(base.day, monthrange(year, month)[1])
-        return base.replace(year=year, month=month, day=day)
+        month_index = base.month - 1 + n
+        year = base.year + month_index // 12
+        month = month_index % 12 + 1
+        return base.replace(
+            year=year, month=month, day=min(base.day, monthrange(year, month)[1])
+        )
+    return None
+
+
+def _advance_due_date(due_date, recurrence, today=None):
+    """The next occurrence's due date, which is never already in the past.
+
+    It used to be one interval past the *previous due date*, full stop. A
+    monthly commitment due July 4 and completed August 10 therefore produced a
+    successor due August 4 -- overdue at the instant it was created, on a task
+    the person had just finished. `roadmap.md` carried this as "one defect to
+    fix on the way in rather than port"; the way in happened and it was not.
+
+    **Missed periods are skipped, not replayed.** The schedule keeps its anchor
+    and moves forward until it clears today, so a filter changed on the 4th is
+    still on the 4th afterwards, and five missed weeks produce one task rather
+    than five. Occurrences that did not happen are not invented -- a fabricated
+    history is worse than an absent one, and `principles.md` refuses it.
+
+    **This is anchored recurrence, and it is a choice.** `design-concept.md`
+    specifies anchored *and* floating as distinct modes and calls the
+    distinction load-bearing; Clarice has one cadence field and cannot say
+    which a commitment is. Anchored is the safer single answer: for a genuinely
+    floating commitment like a furnace filter it lands a few days early, while
+    floating applied to everything would drift "bins every Monday" off Monday
+    permanently, one day per late completion. Early is cheap; drift is not.
+    """
+    base = due_date or timezone.localdate()
+    if today is None:
+        today = timezone.localdate()
+
+    # Bounded rather than `while True`: a corrupt cadence or a due date far in
+    # the past should not spin. Two thousand steps clears five years of daily.
+    for n in range(1, 2001):
+        candidate = _nth_occurrence_after(base, recurrence, n)
+        if candidate is None:
+            return None
+        if candidate > today:
+            return candidate
     return None
 
 
@@ -525,7 +572,9 @@ def _spawn_next_occurrence(completed_item, carry_forward_steps=()):
         # here and it knows whose it is, whether or not it has a place.
         owner=commitment.owner,
         text=commitment.text,
-        due_date=_advance_due_date(completed_item.due_date, commitment.cadence),
+        due_date=_advance_due_date(
+            completed_item.due_date, commitment.cadence, today=timezone.localdate()
+        ),
         recurrence=commitment.cadence,
         position=_next_position(commitment.list, owner=commitment.owner),
         commitment=commitment,

@@ -1,4 +1,6 @@
 import datetime
+from unittest.mock import patch
+from zoneinfo import ZoneInfo
 
 from django.test import TestCase
 from django.utils import timezone
@@ -151,10 +153,22 @@ class TaskServiceTest(TestCase):
         self.assertIsNone(getattr(completed, "_spawned", None))
 
     def test_completing_a_recurring_task_archives_it_and_spawns_next(self):
+        """Completed the day it was due, so the next is one interval out.
+
+        The clock is pinned, and it did not used to be. This test read the real
+        `localdate()` while asserting a hardcoded 2026-08-08 — fine on the day
+        it was written, and by August 15 it was asserting that completing a task
+        spawns a successor a week *overdue*. A hardcoded future date and a live
+        clock is a test with an expiry date on it.
+        """
         services.set_due_date(self.item, datetime.date(2026, 8, 1))
         services.set_recurrence(self.item, Item.Recurrence.WEEKLY)
 
-        completed = services.complete_item(self.item)
+        with patch(
+            "django.utils.timezone.now",
+            return_value=datetime.datetime(2026, 8, 1, 9, 0, tzinfo=ZoneInfo("UTC")),
+        ):
+            completed = services.complete_item(self.item)
 
         self.assertEqual(completed.status, Item.Status.ARCHIVED)
         self.assertIsNotNone(completed.archived_at)
@@ -172,9 +186,20 @@ class TaskServiceTest(TestCase):
         self.assertEqual(completed._spawned.due_date, expected)
 
     def test_monthly_recurrence_clamps_to_end_of_shorter_month(self):
+        """The 31st in a month that has thirty or fewer days lands on the last.
+
+        Pinned for the same reason as above: unpinned, this was asserting a
+        successor due in February on a task completed in August.
+        """
         services.set_due_date(self.item, datetime.date(2026, 1, 31))
         services.set_recurrence(self.item, Item.Recurrence.MONTHLY)
-        completed = services.complete_item(self.item)
+
+        with patch(
+            "django.utils.timezone.now",
+            return_value=datetime.datetime(2026, 1, 31, 9, 0, tzinfo=ZoneInfo("UTC")),
+        ):
+            completed = services.complete_item(self.item)
+
         self.assertEqual(completed._spawned.due_date, datetime.date(2026, 2, 28))
 
     def test_set_recurrence_rejects_invalid_value(self):

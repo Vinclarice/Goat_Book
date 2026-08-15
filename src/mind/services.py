@@ -508,6 +508,12 @@ def confirm_actionable(facet: Facet, *, area=None, now: datetime, actor: str) ->
         due_date=due,
         recurrence=facet.data.get("recurrence") or None,
         owner=facet.node.owner,
+        # Step 2 of one-capture-surface-plan.md. The Inbox route carried a
+        # capture's tags to its task; this route produced an untagged one, which
+        # was the last functional gap between them. `lists.Tag` and the concept
+        # layer are two vocabularies for the same act, and this is where they
+        # meet -- a confirmed concept becomes a tag on the task it produced.
+        tags=queries.confirmed_concept_labels(facet.node),
     )
 
     facet.task = task

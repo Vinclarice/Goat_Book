@@ -205,3 +205,44 @@ def test_declining_an_offer_leaves_the_thought_and_no_task(signed_in, owner):
     assert Item.objects.count() == 0
     assert Node.objects.count() == 1
     assert b"Looks like a commitment" not in signed_in.get("/mind/").content
+
+
+def test_a_tagged_capture_from_the_phone_becomes_a_tagged_task(signed_in, owner):
+    """Steps 1 and 2 of one-capture-surface-plan.md, walked together.
+
+    The two are separately tested and separately meaningless: step 1 turns a
+    typed tag into a confirmed concept, step 2 carries confirmed concepts onto
+    the task. What a person experiences is neither -- it is that a thought
+    tagged on the phone arrives in the agenda still tagged, which is what the
+    Inbox route always did and this route did not.
+
+    Over the mobile API rather than the web form, because the web form has no
+    tags field: the phone is the only surface that sends them, which makes it
+    the only place this can be walked at all.
+    """
+    import json
+
+    from mind.models import ApiToken
+
+    _, raw = ApiToken.issue(owner, label="Android")
+    signed_in.post(
+        "/mind/api/v1/capture",
+        data=json.dumps(
+            {"text": f"ring the plumber by {tomorrow().isoformat()}",
+             "tags": ["boiler", "flat"]}
+        ),
+        content_type="application/json",
+        HTTP_AUTHORIZATION=f"Bearer {raw}",
+        HTTP_IDEMPOTENCY_KEY="3f1b0c9e-7777-4a2b-8c3d-000000000077",
+    )
+
+    accept(signed_in, offered_commitment(owner))
+
+    task = Item.objects.get()
+    assert set(task.tags.values_list("name", flat=True)) == {"boiler", "flat"}
+    # And it is on the agenda under those tags, which is the point of them.
+    row = next(
+        r for r in signed_in.get("/api/v1/agenda").json()["items"]
+        if r["id"] == task.id
+    )
+    assert set(row["tags"]) == {"boiler", "flat"}

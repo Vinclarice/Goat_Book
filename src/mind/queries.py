@@ -137,6 +137,32 @@ def concept_candidates(owner) -> QuerySet[ConceptCandidate]:
     )
 
 
+def confirmed_concept_labels(node: Node) -> list[str]:
+    """The names a person has confirmed for this node, canonical and in order.
+
+    **Confirmed only.** An inferred mention is the system's guess, and the
+    soft-apply rule says a guess is never treated as fact by anything
+    downstream -- a task is about as downstream as it gets.
+
+    Resolved through aliases, so a node tagged with a name later merged into
+    another arrives under the surviving one. Typing an old spelling should not
+    put it back on a task; that is the split merging exists to undo.
+    """
+    labels = []
+    mentions = (
+        Mention.objects.filter(node=node, confirmed_at__isnull=False)
+        .select_related("concept", "concept__merged_into")
+        .order_by("created_at", "id")
+    )
+    for mention in mentions:
+        concept = canonical_concept(mention.concept)
+        if concept.retired_at is not None:
+            continue
+        if concept.label not in labels:
+            labels.append(concept.label)
+    return labels
+
+
 def confirmed_mentions_of(concept: ConceptCandidate) -> QuerySet[Mention]:
     return Mention.objects.filter(
         concept=concept, confirmed_at__isnull=False

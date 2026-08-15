@@ -234,3 +234,88 @@ def test_running_the_backfill_twice_changes_nothing(owner, node):
 
     assert ConceptCandidate.objects.count() == 1
     assert Mention.objects.count() == 1
+
+
+# ---------------------------------------------------------------------------
+# And back out again, when the thought becomes a task
+# ---------------------------------------------------------------------------
+
+
+def test_a_task_made_from_a_tagged_thought_carries_the_tags(owner, node):
+    """Step 2 of one-capture-surface-plan.md, and the last functional gap
+    between the two routes: the Inbox carried a capture's tags to its task, and
+    accepting a commitment from a tagged thought produced an untagged one."""
+    from lists.models import Item
+    from mind.models import FacetKind
+
+    tag(node, "boiler", "landlord")
+    facet = services.propose_facet(
+        node, kind=FacetKind.ACTIONABLE, data={}, now=NOW, actor="vince",
+        reason="parsed a date",
+    )
+
+    services.confirm_actionable(facet, now=NOW, actor="vince")
+
+    assert set(Item.objects.get().tags.values_list("name", flat=True)) == {
+        "boiler", "landlord",
+    }
+
+
+def test_only_confirmed_concepts_cross_over(owner, node):
+    """An inferred mention is the system's guess, and the soft-apply rule says
+    a guess is never treated as fact downstream. A task is about as downstream
+    as it gets."""
+    from lists.models import Item
+    from mind.models import FacetKind
+
+    guessed = services.propose_concept(
+        owner, label="orchestra", concept_type="unknown", now=NOW, actor="system",
+    )
+    services.propose_mention(node, guessed, index_version="v1", now=NOW, actor="system")
+    tag(node, "boiler")
+
+    facet = services.propose_facet(
+        node, kind=FacetKind.ACTIONABLE, data={}, now=NOW, actor="vince",
+        reason="parsed a date",
+    )
+    services.confirm_actionable(facet, now=NOW, actor="vince")
+
+    assert set(Item.objects.get().tags.values_list("name", flat=True)) == {"boiler"}
+
+
+def test_an_alias_arrives_under_the_name_it_was_merged_into(owner, node):
+    """Typing an old name should not put a retired spelling on a task -- that
+    is the split merging exists to undo."""
+    from lists.models import Item
+    from mind.models import FacetKind
+
+    tag(node, "the boiler")
+    old = ConceptCandidate.objects.get(label="the boiler")
+    canonical = services.propose_concept(
+        owner, label="boiler", concept_type="unknown", now=NOW, actor="vince",
+    )
+    services.confirm_concept(canonical, now=NOW, actor="vince")
+    services.merge_concept(old, into=canonical, now=NOW, actor="vince")
+
+    facet = services.propose_facet(
+        node, kind=FacetKind.ACTIONABLE, data={}, now=NOW, actor="vince",
+        reason="parsed a date",
+    )
+    services.confirm_actionable(facet, now=NOW, actor="vince")
+
+    assert set(Item.objects.get().tags.values_list("name", flat=True)) == {"boiler"}
+
+
+def test_an_untagged_thought_still_makes_an_untagged_task(owner, node):
+    """The common case, unchanged."""
+    from lists.models import Item
+    from mind.models import FacetKind
+
+    facet = services.propose_facet(
+        node, kind=FacetKind.ACTIONABLE, data={}, now=NOW, actor="vince",
+        reason="parsed a date",
+    )
+
+    services.confirm_actionable(facet, now=NOW, actor="vince")
+
+    assert Item.objects.get().tags.count() == 0

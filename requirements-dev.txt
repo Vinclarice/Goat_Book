@@ -10,3 +10,12 @@ cssselect==1.5.0
 # which is why those tests are their own test label and their own CI job
 # rather than part of the ordinary run.
 playwright==1.62.0
+
+# The `mind` app arrived with 521 pytest-style tests. Converting them to
+# Django's TestCase would be a large, purely mechanical rewrite of the one
+# thing in that app most worth not disturbing, so both runners live here:
+# `manage.py test` for the task core, `pytest src/mind` for the knowledge one.
+# CI runs both.
+pytest==9.1.1
+pytest-django==4.14.0
+hypothesis==6.165.5

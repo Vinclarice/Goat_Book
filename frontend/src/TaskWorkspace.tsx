@@ -405,7 +405,7 @@ export function TaskWorkspace({ initialData }: Props) {
 
   return (
     <section aria-labelledby="task-workspace-heading">
-      <h2 id="task-workspace-heading" className="visually-hidden">
+      <h2 id="task-workspace-heading" className="sr-only">
         Tasks
       </h2>
 
@@ -413,7 +413,7 @@ export function TaskWorkspace({ initialData }: Props) {
         className="mb-6 flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-card px-3 py-2.5"
         onSubmit={handleCreate}
       >
-        <label htmlFor="react-new-task" className="visually-hidden">
+        <label htmlFor="react-new-task" className="sr-only">
           Add another item
         </label>
         <input
@@ -495,7 +495,7 @@ export function TaskWorkspace({ initialData }: Props) {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <label className="inline-flex items-center rounded-full border border-border px-3 py-1.5 text-xs text-muted-foreground">
-            <span className="visually-hidden">Sort tasks</span>
+            <span className="sr-only">Sort tasks</span>
             <select
               className="border-0 bg-transparent text-inherit outline-none"
               value={sort}
@@ -514,7 +514,7 @@ export function TaskWorkspace({ initialData }: Props) {
             Select
           </button>
           <label className="inline-flex w-full items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs text-muted-foreground sm:w-56">
-            <span className="visually-hidden">Search tasks</span>
+            <span className="sr-only">Search tasks</span>
             <span aria-hidden="true">⌕</span>
             <input
               className="w-full border-0 bg-transparent text-foreground outline-none placeholder:text-muted-foreground"
@@ -642,7 +642,7 @@ export function TaskWorkspace({ initialData }: Props) {
             <div className="min-w-0 flex-1">
               {editingId === item.id ? (
                 <form className="grid gap-2" onSubmit={(event) => saveEdit(event, item)}>
-                  <label className="visually-hidden" htmlFor={`edit-task-${item.id}`}>
+                  <label className="sr-only" htmlFor={`edit-task-${item.id}`}>
                     Edit task
                   </label>
                   <input

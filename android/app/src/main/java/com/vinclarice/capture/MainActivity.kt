@@ -52,14 +52,70 @@ class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Built here rather than injected: one activity, two collaborators,
-        // and a dependency-injection framework would be more machinery than
-        // the whole app currently contains.
-        val api = OkHttpClariceApi(baseUrl = BuildConfig.CLARICE_BASE_URL)
-        val dailyApi = OkHttpDailyApi(baseUrl = BuildConfig.CLARICE_BASE_URL)
-        val agendaApi = OkHttpAgendaApi(baseUrl = BuildConfig.CLARICE_BASE_URL)
-        val store = KeystoreTokenStore(applicationContext)
-        val connector = Connector(api = api, store = store)
+        // Built here rather than injected: one activity, a handful of
+        // collaborators, and a dependency-injection framework would be more
+        // machinery than the whole app currently contains.
+        //
+        // Two servers now, or one. [Backends] decides which, and pairs each
+        // base URL with the credential slot that belongs to it -- a token
+        // minted by one server is worthless to the other and must never be
+        // sent to it. When unsplit the two Backends are the same object, so
+        // this is one connection and one login exactly as before.
+        val backends = Backends(
+            clariceBaseUrl = BuildConfig.CLARICE_BASE_URL,
+            secondMindBaseUrl = BuildConfig.SECOND_MIND_BASE_URL,
+        )
+
+        // Capture: Second Mind, where a thought becomes a node. Named, so a
+        // failure says which server could not be reached -- the whole point of
+        // there being two.
+        val api = OkHttpClariceApi(
+            baseUrl = backends.capture.baseUrl,
+            serverName = backends.capture.name,
+        )
+        val store = KeystoreTokenStore(
+            applicationContext,
+            alias = backends.capture.tokenAlias,
+            prefsName = backends.capture.tokenPrefs,
+        )
+
+        // Today and Agenda: Clarice, the only one of the two that has tasks.
+        // On a split install this store already holds the token an existing
+        // phone was connected with, so these two keep working across the
+        // change without anybody being sent back to Connect.
+        val workspaceStore = KeystoreTokenStore(
+            applicationContext,
+            alias = backends.workspace.tokenAlias,
+            prefsName = backends.workspace.tokenPrefs,
+        )
+        val dailyApi = OkHttpDailyApi(baseUrl = backends.workspace.baseUrl)
+        val agendaApi = OkHttpAgendaApi(baseUrl = backends.workspace.baseUrl)
+
+        // The gate connects *capture*, deliberately. It is the act this app
+        // exists for, and on a split install it is the only one of the two
+        // that has no token yet.
+        val connector = Connector(
+            api = api,
+            store = store,
+            serverName = backends.capture.name,
+        )
+
+        // Null when unsplit, which is what tells Settings there is one
+        // connection rather than two -- see [SettingsUiState.workspace]. Its
+        // own ClariceApi because `identify` has to be asked of Clarice, not of
+        // whichever server capture is going to.
+        val workspaceConnector = if (backends.isSplit) {
+            Connector(
+                api = OkHttpClariceApi(
+                    baseUrl = backends.workspace.baseUrl,
+                    serverName = backends.workspace.name,
+                ),
+                store = workspaceStore,
+                serverName = backends.workspace.name,
+            )
+        } else {
+            null
+        }
         val queue = CaptureQueue(EncryptedQueueStorage(applicationContext))
         val scheduler = CaptureWorker.prepare(applicationContext)
         val preferences = AndroidCapturePreferences(applicationContext)
@@ -93,6 +149,9 @@ class MainActivity : FragmentActivity() {
                             dailyApi = dailyApi,
                             agendaApi = agendaApi,
                             store = store,
+                            workspaceStore = workspaceStore,
+                            workspaceConnector = workspaceConnector,
+                            captureName = backends.capture.name,
                             queue = queue,
                             scheduler = scheduler,
                             preferences = preferences,
@@ -122,6 +181,12 @@ private fun Root(
     dailyApi: DailyApi,
     agendaApi: AgendaApi,
     store: TokenStore,
+    /** Clarice's, which is the same object as [store] on an unsplit install. */
+    workspaceStore: TokenStore,
+    /** Clarice's, or null when there is only one connection to manage. */
+    workspaceConnector: Connector?,
+    /** What to call the server captures go to, wherever that is said on screen. */
+    captureName: String,
     queue: CaptureQueue,
     scheduler: DeliveryScheduler,
     preferences: CapturePreferences,
@@ -147,23 +212,30 @@ private fun Root(
         // A login-minted token is labelled by the device it came from, so
         // the Access tokens page on the web can tell two phones apart --
         // "Android" alone would leave every login indistinguishable there.
-        ConnectViewModel(connector, deviceLabel = "Android (${Build.MODEL})")
+        ConnectViewModel(
+            connector,
+            deviceLabel = "Android (${Build.MODEL})",
+            serverName = captureName,
+        )
     }
     // Held here rather than inside the Capture branch, so that a trip to
     // Settings and back does not drop it out of composition along with
     // whatever half-finished thought was in the field. The queue now covers
     // everything already submitted; this covers what is still being typed.
-    val captureModel = remember { CaptureViewModel(api, store, queue, scheduler, preferences) }
+    val captureModel = remember {
+        CaptureViewModel(api, store, queue, scheduler, preferences, serverName = captureName)
+    }
     // Same reasoning as captureModel: held above the tab switch so opening
     // Settings and coming back doesn't drop today's already-loaded state.
-    val dailyModel = remember { DailyViewModel(dailyApi, store) }
+    val dailyModel = remember { DailyViewModel(dailyApi, workspaceStore) }
     // Same again, and doubly so here: the Agenda's own filter selections
     // (area, tag, scope, search) live in this model too, and losing them
     // on every trip to Settings would be worse than losing loaded data.
-    val agendaModel = remember { AgendaViewModel(agendaApi, store) }
+    val agendaModel = remember { AgendaViewModel(agendaApi, workspaceStore) }
 
     var connected by remember { mutableStateOf(connectModel.isConnected) }
     var showSettings by remember { mutableStateOf(false) }
+    var connectingWorkspace by remember { mutableStateOf(false) }
     var selectedTab by remember { mutableStateOf(RootTab.Capture) }
 
     // Seeded, never sent. Another app's content is put in front of a person
@@ -183,15 +255,40 @@ private fun Root(
         return
     }
 
+    // Reached only from Settings, and only on a split install. Sits above the
+    // Settings branch so that finishing a login returns there rather than
+    // dropping someone back into a tab -- they came here mid-task.
+    if (connectingWorkspace && workspaceConnector != null) {
+        val workspaceConnectModel = remember {
+            ConnectViewModel(
+                workspaceConnector,
+                deviceLabel = "Android (${Build.MODEL})",
+                serverName = "Clarice",
+            )
+        }
+        BackHandler { connectingWorkspace = false }
+        ConnectScreen(
+            model = workspaceConnectModel,
+            onConnected = { connectingWorkspace = false },
+        )
+        return
+    }
+
     if (showSettings) {
         // Not remembered across visits, deliberately: a fresh model per open
         // is what makes it ask the server again instead of showing the
         // account it saw last time.
-        val settingsModel = remember { SettingsViewModel(connector, queue, scheduler, preferences) }
+        val settingsModel = remember {
+            SettingsViewModel(
+                connector, queue, scheduler, preferences, workspaceConnector,
+                serverName = captureName,
+            )
+        }
         BackHandler { showSettings = false }
         SettingsScreen(
             model = settingsModel,
             onBack = { showSettings = false },
+            onReconnectWorkspace = { connectingWorkspace = true },
             onDisconnected = {
                 // Settings' own disconnect() already cleared the stored
                 // token through this same Connector; this clears the

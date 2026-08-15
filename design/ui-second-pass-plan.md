@@ -1,6 +1,11 @@
 # The web UI's second pass — what the application says
 
-Vince · brief · written August 3, 2026
+**Status: closed August 6, 2026 — F1 through F5 all shipped**, deployed in
+`DEPLOYED-2026-08-06/2248`. Nothing in this brief is open. It describes itself
+below as the opening brief for a release that never existed; that framing is
+stale and the work landed folded into Dunlin instead.
+
+Vince · written August 3, 2026 · status header added August 13, 2026
 
 ## 1. What this is, and what it replaces
 

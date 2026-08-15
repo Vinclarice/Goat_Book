@@ -1,6 +1,21 @@
 # The second mind — discovery pass
 
-Vince · brief · written August 7, 2026
+**Status: shipped August 10, 2026, and superseded August 13, 2026.** The first
+slice landed in full — `Idea.tags` reusing `lists.Tag`, tag carry-forward
+through promotion, and a plain `related_ideas` link — and stays deployed and
+working. Nothing in this brief is open.
+
+**It is the last of that line.** The second mind is now a separate project
+(`C:\dev\Clarice_secondmind`) which Clarice is absorbed into, and `Idea` does
+not survive that merger — see `roadmap.md`'s opening section. This brief is
+kept as the record of the discovery pass, and one of its findings carried
+across intact and is worth naming: reading the current models against the
+charter showed most of the idea/reference/project/task/routine boundary had
+already been settled by releases that were not about this at all. That is what
+made the remaining question narrow enough to see clearly, and seeing it
+clearly is part of why the work moved.
+
+Vince · written August 7, 2026 · status header added August 13, 2026
 
 ## 1\. Trigger, stated honestly
 

@@ -44,6 +44,8 @@ fun SettingsScreen(
     model: SettingsViewModel,
     onBack: () -> Unit = {},
     onDisconnected: () -> Unit = {},
+    /** Open a login for Clarice. Only reachable on a split install. */
+    onReconnectWorkspace: () -> Unit = {},
 ) {
     val state by model.state.collectAsState()
     val scope = rememberCoroutineScope()
@@ -96,6 +98,62 @@ fun SettingsScreen(
                     MaterialTheme.colorScheme.onSurfaceVariant
                 },
             )
+        }
+
+        // Only on a split install, where captures and tasks live on different
+        // servers. Null means there is one connection and the block above is
+        // all of it -- drawing a second heading over the same account would
+        // invite someone to disconnect what they took for a spare.
+        state.workspace?.let { workspace ->
+            HorizontalDivider()
+            Text("Tasks and today", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "Captures go to your second mind. Today and Agenda read Clarice, " +
+                    "which is the only one that has tasks.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
+            val workspaceIdentity = workspace.identity
+            when {
+                workspace.loading ->
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+
+                workspaceIdentity != null -> Text(
+                    "Connected as ${workspaceIdentity.username}",
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+
+                !workspace.connected -> Text(
+                    "Not connected. Today and Agenda will not load.",
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+            }
+
+            workspace.message?.let { message ->
+                Text(
+                    message,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (workspace.isError) {
+                        MaterialTheme.colorScheme.error
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                )
+            }
+
+            if (workspace.connected) {
+                TextButton(onClick = { model.disconnectWorkspace() }) {
+                    Text("Disconnect from tasks")
+                }
+            } else {
+                // Deliberately not a confirmation dialog, unlike the capture
+                // disconnect below: nothing is lost here. The queue is not
+                // involved, and reconnecting is a login away.
+                TextButton(onClick = onReconnectWorkspace) {
+                    Text("Connect to tasks")
+                }
+            }
         }
 
         HorizontalDivider()
@@ -152,7 +210,7 @@ fun SettingsScreen(
             )
         }
 
-        QueueSection(state = state, onRetry = onRetry)
+        QueueSection(state = state, onRetry = onRetry, serverName = model.serverName)
 
         if (state.connected) {
             OutlinedButton(
@@ -206,7 +264,13 @@ fun SettingsScreen(
  * problem without telling them what to do about it.
  */
 @Composable
-private fun QueueSection(state: SettingsUiState, onRetry: (String) -> Unit) {
+private fun QueueSection(
+    state: SettingsUiState,
+    onRetry: (String) -> Unit,
+    /** Named rather than assumed: on a split install the queue faces
+     *  Second Mind, and a rejection is that server's judgement. */
+    serverName: String,
+) {
     if (state.waiting == 0 && state.needsAttention.isEmpty()) return
 
     HorizontalDivider()
@@ -234,7 +298,7 @@ private fun QueueSection(state: SettingsUiState, onRetry: (String) -> Unit) {
             Text(
                 when (item.state) {
                     QueueState.REJECTED ->
-                        "Clarice would not accept this. Retrying it unchanged will fail again."
+                        "$serverName would not accept this. Retrying it unchanged will fail again."
                     // Says what happened rather than naming a state. "Stalled"
                     // means nothing to somebody who did not write the queue.
                     else -> "Stopped after ${item.attempts} attempts."

@@ -104,10 +104,17 @@ class TemplateCommentSyntaxTest(TestCase):
 
 
 class BootstrapRemovalTest(TestCase):
-    """Guards the two things Step 5 was supposed to retire -- there's no
-    CI in this repo to enforce it automatically, so this stands in for
-    the "fail CI on Bootstrap remnants / base_legacy.html" check the UI
-    overhaul plan calls for.
+    """Guards the two things Step 5 was supposed to retire.
+
+    Written when there was no CI, as a stand-in for the "fail CI on
+    Bootstrap remnants / base_legacy.html" check the UI overhaul plan
+    called for. There is CI now (.github/workflows/ci.yml), and it runs
+    this suite -- so the stand-in became the real thing rather than being
+    replaced by it.
+
+    What the sweep never covered is what Bootstrap took *with* it:
+    .visually-hidden lived in bootstrap-utilities.css and its callers
+    outlived the file. See test_frontend_style_contract.py.
     """
 
     def test_base_legacy_template_no_longer_exists(self):

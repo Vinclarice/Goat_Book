@@ -1,6 +1,14 @@
 # Release D — the commitment vocabulary
 
-Vince · plan for the next release · drafted August 2, 2026
+**Status: shipped August 3, 2026 as Dunlin**, across
+`DEPLOYED-2026-08-03/0027` and `/0203`. All six migrations applied and verified
+in production; C2 is closed. This is now the record of what was built and why,
+not a forward plan. **The "not yet run against production" note in §5 is
+stale** — `0028` ran, and its printed count was lost to the migrate task
+discarding stdout, fixed in `a6550e4`; the number is unrecoverable and the
+rows are gone by design.
+
+Vince · drafted August 2, 2026 · status header added August 13, 2026
 
 ## 1. Purpose and scope
 

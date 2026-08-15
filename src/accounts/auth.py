@@ -12,6 +12,7 @@ from django.views.decorators.csrf import csrf_exempt
 from ninja.security import HttpBearer, SessionAuth
 from ninja.utils import check_csrf
 
+from accounts.middleware import activate_for
 from accounts.models import PersonalAccessToken, hash_token
 
 
@@ -20,6 +21,11 @@ def _resolve_scoped_token(raw_token, scope):
     carries [scope] -- or None. Shared by [TokenAuth] (Ninja operations)
     and [token_or_session_required] (the hand-rolled lists.api views), so
     the two can never drift on what "a valid token for this scope" means.
+
+    **Two side effects, not none.** It stamps `last_used_at`, and it
+    activates the owner's time zone for the rest of the request -- see the
+    comment at that line. Both are here rather than in the callers for the
+    same reason the resolution itself is.
     """
     try:
         pat = PersonalAccessToken.objects.select_related("owner").get(
@@ -37,6 +43,19 @@ def _resolve_scoped_token(raw_token, scope):
         return None
     pat.last_used_at = timezone.now()
     pat.save(update_fields=["last_used_at"])
+    # The owner's zone, activated at the first moment there is an owner to read
+    # it from -- commercial-blueprint.md defect 2. TimeZoneMiddleware runs
+    # before Ninja resolves a bearer header, so it saw an anonymous request and
+    # deactivated; every date-bearing token endpoint then computed its day in
+    # the server's zone. A routine logged at 07:30 in Makassar was filed
+    # against the previous day, breaking a streak with no error anywhere.
+    #
+    # Here rather than in the two callers, because this function is already the
+    # one place both token paths agree on what a valid token means -- and the
+    # bug was six endpoints each expected to remember something. The middleware
+    # undoes this in its `finally`; see the note there, which is now
+    # load-bearing for this call and not only for its own.
+    activate_for(pat.owner)
     return pat.owner
 
 

@@ -9,6 +9,250 @@ This preserves the reasoning, deployment record, and lessons behind completed
 work without making the active roadmap hard to scan. The active plan is
 [`roadmap.md`](roadmap.md).
 
+## After Dunlin — Release F and six unlettered lines of work, August 6–12, 2026
+
+Archived from `roadmap.md` on August 13, 2026. Six of these seven shipped
+outside the release structure entirely, which is the honest reason the letters
+stopped carrying information — recorded here as a fact about how the work
+actually went, not as a lapse to correct retrospectively.
+
+### Release F — opened August 7, closed August 13
+
+Opened with the second-mind discovery pass, **Vince's call, ahead of the pain
+that would otherwise have forced it.** `architecture-trajectory.md` §5 named
+two candidates — this and the staging environment — and neither had fired its
+stated trigger; the discovery pass was chosen anyway and recorded as a
+deliberate exception rather than a trigger pretended to have fired.
+
+**Discovery done and the first slice shipped in full, August 10** — see
+[`second-mind-discovery-plan.md`](second-mind-discovery-plan.md). Reading the
+models against the charter found most of the
+idea/reference/project/task/routine boundary already settled by releases that
+were not about this at all: `Idea.status` already made idea/reference one
+model, and Dunlin and Crane 0 had already settled task/project/area and
+routine/task. The slice was `Idea.tags` reusing `lists.Tag`, tag carry-forward
+through promotion, and a plain `related_ideas` link with no `kind` field. 856
+backend tests green throughout.
+
+Two of the brief's own assumptions did not survive contact with the code and
+were corrected in the document rather than built around: `capture.Idea` has no
+Ninja API at all — the `IdeaOut` the brief pictured belongs to an unrelated
+`review` summary — and `Idea` has no detail page for chips to live on, so they
+render inline on the shared list.
+
+**Closed August 13, 2026, with its subject moved out of the project.** The
+second mind became its own repository, which Clarice is absorbed into rather
+than the reverse. The shipped slice stays deployed and working; it is simply
+the last of that line, since `Idea` does not survive the merger. See
+`roadmap.md`'s opening section.
+
+### The project workspace redesign — August 10
+
+Trigger: a real navigation dead end. Opening a project from the side nav only
+ever routed to its parent Area, because `Project` had never had a page of its
+own. [`project-workspace-plan.md`](project-workspace-plan.md) inverted the
+containment — a Project became a standalone workspace holding one or more
+Areas rather than living inside exactly one. Eight slices, each its own commit,
+in order: model, expand migration, service and read layer, API layer, contract
+migration, regenerated client, frontend rewrite, browser smoke pass. 858
+backend, 231 frontend, 28 browser journeys.
+
+One gap the plan missed — nowhere to create a *new* project once
+`ProjectsPanel.tsx` was gone — surfaced only while writing the browser journey.
+
+**Two follow-ups the same day, both from using the shipped feature rather than
+from planning:** a `/projects` index page, and letting a Project create a
+brand-new Area rather than only reassign one. The second forced a standing-rule
+change — **an Area no longer needs a first task to exist.** The follow-up's own
+browser journey caught a real bug neither plan anticipated: the sidebar going
+stale after completing or deleting a project. 865 / 239 / 30.
+
+### The Bootstrap → Tailwind arc — three components, August 10–11
+
+**Task list** (`a12a310`, `DEPLOYED-2026-08-10/1928`). Trigger: `TaskWorkspace.tsx`
+flagged as "simply a mess" mid-review of the Projects redesign. Carried the
+migration plus additions approved against a reviewed mockup — due-date sort,
+select-mode bulk complete/archive, removable tag pills, pill dedup. 254 / 867.
+Pre-existing `ProjectJourneyTest` failures were ruled out by bisecting against
+`main` before the work touched anything.
+
+**Agenda** (`94a6c4f`, `DEPLOYED-2026-08-10/2100`). The last Bootstrap-era
+component and the app's highest-traffic page. Two real functional gaps were
+found by reading the code rather than guessing: no text search anywhere on the
+page, and no staleness signal, because `age_in_days` lived on Daily's and the
+review's own item types rather than the shared `Task` type. Shipped with the
+migration, the touch-target fix, a unified area/tag filter row replacing three
+separate surfaces, search, and the staleness label. Bulk actions and manual
+reordering were deliberately left out as editing-shaped work belonging to the
+Area page. 263 / 867. Live verification against the built bundle caught a
+layout bug nothing else did — a search field collapsing to 30px for want of a
+`flex-shrink:0` guard.
+
+**Archive** (`1cf9147`, `85154a8`). The last component on `site.css`. Carried
+the migration, the same touch-target fix, and switched the row date from
+`created_at` to `archived_at`, confirmed against the model's own
+`CheckConstraint` rather than assumed. Because it was the last dependent,
+**`site.css` and `workspace.module.css` were retired from the app entirely**,
+source file deleted rather than left unreferenced. 264 / 867.
+
+**The finding worth keeping, because it was not confined to one page.** The
+Archive delete dialog's buttons measured 32px against a ≥44px claim.
+`Button`'s size variants top out at 36px, and no component test measures
+rendered layout. Checking the other two found the identical gap in both
+already-deployed redesigns: every `<Button size="sm">` composer and dialog
+button in all three was 28–36px, despite each brief claiming ≥44px and each
+live verification reporting it confirmed. Fixed in all three with an explicit
+height override. **Three consecutive verifications reported a measurement none
+of them had taken.**
+
+### Android as a full client — slices 1 and 2, August 10–11
+
+Trigger: a request for a "more comprehensive overhaul" after a design pass on
+the app's previously nonexistent visual theme.
+[`android-full-client-plan.md`](android-full-client-plan.md) checked the gap
+first and got half of it wrong: `lists`, `daily`, `review` and `routines`
+expose the same *routes* the SPA consumes but not the same *auth* — only
+`/api/v1/me` and `/api/v1/capture` accepted the Bearer token Android carries.
+
+**Slice 1 (Daily, read-only)** installed clean on both devices and then did not
+load: the stored token authenticated Settings and got 401 from `/api/v1/day`.
+Asked directly rather than patched around, the call was to design a scoped
+token tier before opting more routers into `TokenAuth` — see
+[`token-scopes-plan.md`](token-scopes-plan.md). 899 backend tests, deployed the
+same day. Verified live: a fresh login minted a scoped token and Today rendered
+production data end to end, while the older device's pre-existing token kept
+working, confirming the migration's grandfathering.
+
+**Slice 2 (Agenda, read *and* write)** turned out bigger than the read half.
+Complete/reopen, reschedule and quick-add live on `lists/api.py`'s hand-rolled
+pre-Ninja endpoints with no token concept, sitting behind Django's *real*
+`CsrfViewMiddleware` that every Ninja route is structurally exempt from.
+`token-scopes-plan.md` §7 traces the mechanism Ninja actually uses — blanket
+Django exemption plus a manual, auth-class-scoped CSRF re-check — and ports it
+by hand as a `token_or_session_required` decorator, with a field-level guard so
+`agenda:write` can complete or reschedule a task but never delete one or touch
+its text, tags, notes or recurrence. 918 backend, 260 Android.
+
+**Slice 1 extended to writable** the same day: focus pin/unpin, the day's own
+text, and all six routine actions, behind `day:write` and `routines:write`.
+Every endpoint was already Ninja, so no CSRF porting was needed. 933 / 285.
+
+Both verified live on the SM-S928U1 against production. **One operational
+lesson: a scope-adding deploy needs a fresh login on each device**, because an
+existing connection predates the new scopes. Also found and fixed: a long
+action-item title left the "Pinned" badge a few pixels wide, wrapping it letter
+by letter.
+
+### The staging environment — designed August 11, deferred August 12
+
+Next in line on the infrastructure track per `architecture-trajectory.md` §6.
+Decided directly rather than guessed: a second DigitalOcean droplet, not a
+second process on production's already memory-tight host, with its own database
+on the existing Postgres cluster — see
+[`staging-environment-plan.md`](staging-environment-plan.md).
+
+**Designing it found a real gap before it could reach production.**
+`settings.py`'s `DEBUG` had only two states and neither fit `"staging"` safely;
+the decision was pulled into a tested `clarice/deployment.py::is_debug()`, the
+same "a function with a test, not a branch in a config file" pattern
+`monitoring.py` already used. 937 backend tests.
+
+**Deferred the next day, before provisioning** — see that plan's §8. Nothing in
+flight touched the deploy mechanism, and there was no real user data to protect
+from an untested migration, so the recurring droplet cost had nothing to offset.
+The decisions and the `is_debug()` fix stand; the droplet waits for one of those
+two triggers to fire.
+
+Alongside it, §6's other two "now" items closed: **local development moved onto
+Postgres**, closing the gap where SQLite silently omitted a constraint
+production enforces, and the droplet-swap item — done back on August 3 — was
+found never to have been marked complete.
+
+## What the active roadmap carried for B, C and D — archived August 13, 2026
+
+Three things lived in `roadmap.md`'s release sections and nowhere else. The
+fuller what-shipped and what-it-taught records for each release are in the
+sections below; these are the pieces that would have been lost when those
+sections were collapsed.
+
+### Production verification markers, per release
+
+The practice these record is worth more than the markers themselves: **verify
+with a marker the change actually introduced, not one that merely looks
+plausible.** Bittern nearly confirmed a deploy that had not happened by
+checking for `Something went wrong.`, a string that predated the change.
+
+**Bittern.** The deployed bundle carried `RequestFailed`, the class B2.1
+introduced. No unapplied migrations. Sentry active with `DEBUG` false. B1's
+spawned occurrence rendering with its children and no refresh. Android capture
+reaching the Inbox exactly once across every network condition. Per-user time
+zones discriminating between accounts at 07:00 WITA.
+
+**Crane.** The review routes answered 401 while a made-up route answered 404;
+the POST-only `/review/{day}/complete` and `/routines/{id}/enough` answered 405
+to a GET; the served bundle carried "Recent weeks", "Save the review" and
+"Call it enough"; `/app/review` rendered on the real account. `lists/0023`
+linked both existing repeating tasks.
+
+**Dunlin.** `/api/v1/projects` and `/api/v1/areas/1` answered 401 while a
+made-up route answered 404; `/api/v1/lists/1` was gone at 404; `/lists/1/`
+redirected to `/areas/1/`; the login page said "areas" and never "lists"; the
+served bundle carried "No projects in this area yet." and "stay open if you
+complete this" with none of the old vocabulary. `app-shell.js` on production
+was byte-identical to the build the tests ran against. All six migrations
+applied; `0026` converted six subtasks; ownerless areas numbered zero.
+
+### C2 — the interface failure, and the reason it was not an interface problem
+
+C2 was an observation task rather than work: *reassess information architecture
+after B0*, on the theory that "I can't tell where things are" might dissolve
+once the navigation actually rendered.
+
+**Its evidence arrived from B1's own verification on August 2, 2026.** Setting
+up one recurring parent with three children took three attempts, and each
+failure was the interface rather than the person:
+
+- A task's **Repeat** (a select, parent-only) sat directly above each subtask's
+  **Repeats** (a checkbox, child-only). Near-identical words, one screen,
+  opposite meanings — and setting the first to None silently hid every instance
+  of the second, so the control being reached for disappeared as a side effect
+  of the mistake.
+- A subtask row carried two checkboxes with no visual distinction: the leading
+  one completed the task, a later one governed recurrence. Having used the
+  first, the row read as done with.
+- Neither failure produced an error. Both looked like success.
+
+The verdict from that session was recorded as given: the web UI needed a
+complete overhaul, not adjustment.
+
+**Closed by Dunlin, August 3, 2026 — and the verdict was only half right.**
+Both defects are gone. The first dissolved *by construction* when a Checklist
+Step lost its recurrence field: the interface was never redesigned to fix it,
+which is the strongest evidence the thesis behind that release was right. The
+second became a checkbox and a switch. **The model was the larger problem, and
+fixing it removed a defect no amount of interface work would have.** The
+evidence above is left as it was recorded rather than rewritten, because what
+it observed is why the release took the shape it did.
+
+### Capture tags — folded into Dunlin rather than promoted
+
+**Decided August 3, 2026.** Merged onto `main` the same day, deployed August 6
+in `DEPLOYED-2026-08-06/2248`. Optional tags on a capture, typed on the Android
+compose screen and displayed as pills in the web Inbox — see
+[`capture-tags-plan.md`](capture-tags-plan.md). It reuses `lists.Tag` rather
+than a parallel model (`_resolve_tags` became public `resolve_tags` so
+`capture.services` could call it), adds `Capture.tags` additively, and the
+Android queue carries tags through offline capture the same way it already
+carried text. Triage gained no tags field, and a capture's tags did not carry
+forward onto the task or idea it became — both named as deliberate non-goals,
+not oversights. The second of those was closed later by Release F's first
+slice.
+
+The same decision covered the rest of what the Android device-testing branch
+carried in: in-app login, the optional unlock gate, and release signing wired
+into the build. None of it earned a release of its own, **which is why the
+letter sequence skips E.**
+
 ## Dunlin — shipped August 3, 2026
 
 `dunlin` (`82fd591`) was tagged after production was verified. Two deploys

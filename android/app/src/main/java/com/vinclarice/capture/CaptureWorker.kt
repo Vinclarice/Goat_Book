@@ -53,9 +53,30 @@ class CaptureWorker(
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
+        // The capture half of [Backends], matching what MainActivity built.
+        // The worker runs in its own process-less context and cannot be handed
+        // objects, so it reconstructs them from the same build config -- which
+        // is exactly why the pairing of URL and token slot lives in one place
+        // rather than being spelled out at each call site.
+        val backends = Backends(
+            clariceBaseUrl = BuildConfig.CLARICE_BASE_URL,
+            secondMindBaseUrl = BuildConfig.SECOND_MIND_BASE_URL,
+        )
+        val capture = backends.capture
+
         val report = QueueDrainer(
-            api = OkHttpClariceApi(baseUrl = BuildConfig.CLARICE_BASE_URL),
-            store = KeystoreTokenStore(applicationContext),
+            // The name comes off the Backend rather than being decided here:
+            // it is only ever correct alongside the URL it belongs to, which is
+            // the same argument that put the credential slot there.
+            api = OkHttpClariceApi(
+                baseUrl = capture.baseUrl,
+                serverName = capture.name,
+            ),
+            store = KeystoreTokenStore(
+                applicationContext,
+                alias = capture.tokenAlias,
+                prefsName = capture.tokenPrefs,
+            ),
             queue = CaptureQueue(EncryptedQueueStorage(applicationContext)),
         ).drain()
 

@@ -193,6 +193,26 @@ windows only after weekly use proves helpful.
 
 ## Second brain direction
 
+> **Superseded August 13, 2026 — this half of the vision now belongs to Second
+> Mind**, a separate project (`C:\dev\Clarice_secondmind`) that Clarice is
+> absorbed into rather than the reverse. See `roadmap.md`'s opening section and
+> Second Mind's own `docs/design-concept.md`.
+>
+> The section below is kept because it was right about the sequence and the
+> reasoning still reads true — it asked for a discovery pass before features, a
+> cheap human-controlled interim before a graph, and real volume before
+> guessing at what deserves resurfacing. Second Mind reaches the same
+> conclusions from a different starting point, with one correction it makes
+> explicit: **the defect was never that Clarice lacked places to put
+> non-actionable material.** `Capture` and `Idea` exist and work. The defect is
+> that the central pipeline is `Capture → Idea → Task`, a promotion path whose
+> terminus is a task, and everything inside it inherits that direction.
+>
+> What follows from that is recorded in `roadmap.md`: `Capture` and `Idea` do
+> not survive the merger, and the productivity half — the daily loop, the
+> records, the review with honest denominators, everything above this section —
+> does. **This document remains the authority on that half.**
+
 Capture → Idea/Reference is the beginning of the second brain, not a side
 feature. Its domain logic needs its own discovery pass before more features
 ship: define the boundary between an idea, reference, project, task, and
@@ -213,6 +233,18 @@ system needs real information volume before it guesses what deserves
 resurfacing or asks AI to make those connections.
 
 ## AI comes after the practice, as assistance
+
+> **Largely Second Mind's concern now, August 13, 2026.** Its ML policy is
+> stricter than this section and arrives at it independently: no LLM in the
+> interactive path, local embeddings as the one ML dependency, every proposal
+> carrying the concrete signal that produced it, and generated prose confined
+> to a single user-initiated carve-out that v1 does not ship at all. The five
+> commitments below survive intact inside that policy.
+>
+> One correction from the commercial audit stands regardless of which project
+> owns it: the gate "after the daily and review records have earned enough real
+> use" is measured against one person and may never fire. A gate a cohort can
+> satisfy is the honest replacement.
 
 AI should not be the foundation. It first needs trustworthy daily records, clear task state, and real review behavior. When introduced, it should:
 

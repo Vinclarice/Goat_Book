@@ -1,0 +1,44 @@
+{% extends "mind/base.html" %}
+{% block title %}Review — Second Mind{% endblock %}
+{% block content %}
+
+<h1>Worth a look</h1>
+
+{% for proposal in proposals %}
+  <div class="card">
+    <div class="meta">{{ proposal.hypothesis.detector }} · {{ proposal.hypothesis.label }}</div>
+
+    {% comment %}
+    The cited passage, never the whole note. A claim has to be checkable against the
+    evidence that supports it, and the whole note makes the reader do the work the
+    citation exists to save.
+    {% endcomment %}
+    {% for citation in proposal.citations %}
+      <div class="quote">{{ citation.quote }}</div>
+      <div class="meta">
+        {% if citation.is_source %}just captured{% else %}{{ citation.node.captured_at|date:"j M Y" }}{% endif %}
+        {% if citation.reason %} — {{ citation.reason }}{% endif %}
+      </div>
+    {% endfor %}
+
+    <form method="post" action="{% url 'resolve' proposal.hypothesis.public_id %}" class="row">
+      {% csrf_token %}
+      <button type="submit" name="action" value="confirm" class="primary">Yes, connect them</button>
+      <button type="submit" name="action" value="dismiss">No</button>
+    </form>
+  </div>
+{% empty %}
+  {% comment %}
+  An empty review is the normal state, not a failure. Most captured material is
+  quiet knowledge and something has to earn its way in front of a person.
+  {% endcomment %}
+  <p class="empty">Nothing to consider. That is the usual state —
+  most of what you keep is meant to sit quietly.</p>
+{% endfor %}
+
+{% if remaining %}
+  <p class="meta">{{ remaining }} more waiting. Shown a few at a time on purpose:
+  a review that feels like an inbox has already failed.</p>
+{% endif %}
+
+{% endblock %}

@@ -797,7 +797,7 @@ export interface components {
             /** Notes */
             notes: string;
             /** Area Id */
-            area_id: number;
+            area_id: number | null;
             /** Project Id */
             project_id: number | null;
             /** Url */
@@ -865,7 +865,7 @@ export interface components {
         /** TaskDetailOut */
         TaskDetailOut: {
             task: components["schemas"]["TaskOut"];
-            area: components["schemas"]["TaskAreaSummaryOut"];
+            area: components["schemas"]["TaskAreaSummaryOut"] | null;
             /** Checklist Steps */
             checklist_steps: components["schemas"]["ChecklistStepOut"][];
             /** Create Checklist Step Url */
@@ -1107,7 +1107,7 @@ export interface components {
             /** Notes */
             notes: string;
             /** Area Id */
-            area_id: number;
+            area_id: number | null;
             /** Project Id */
             project_id: number | null;
             /** Url */

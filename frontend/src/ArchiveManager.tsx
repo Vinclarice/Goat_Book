@@ -54,7 +54,7 @@ export function ArchiveManager({ initialData }: Props) {
     return items.filter(
       (item) =>
         item.text.toLocaleLowerCase().includes(normalized) ||
-        (areaById.get(item.area_id)?.title ?? "")
+        ((item.area_id ? areaById.get(item.area_id)?.title : "") ?? "")
           .toLocaleLowerCase()
           .includes(normalized),
     );
@@ -67,8 +67,11 @@ export function ArchiveManager({ initialData }: Props) {
     try {
       await updateTaskStatus(item, "completed");
       setItems((current) => current.filter((candidate) => candidate.id !== item.id));
-      const areaTitle = areaById.get(item.area_id)?.title ?? "its area";
-      setNotice(`Task restored to ${areaTitle}.`);
+      const areaTitle = item.area_id
+        ? areaById.get(item.area_id)?.title
+        : undefined;
+      // An unfiled task has nowhere to be restored *to*, so it is not named.
+      setNotice(areaTitle ? `Task restored to ${areaTitle}.` : "Task restored.");
       focusWorkspace();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to restore task.");
@@ -122,7 +125,7 @@ export function ArchiveManager({ initialData }: Props) {
 
       {items.length > 0 && (
         <label className="mb-5 flex h-11 w-full max-w-xs items-center gap-2 rounded-full border border-border px-3.5 text-sm text-muted-foreground focus-within:border-primary">
-          <span className="visually-hidden">Search archived tasks</span>
+          <span className="sr-only">Search archived tasks</span>
           <span aria-hidden="true">⌕</span>
           <input
             className="w-full border-0 bg-transparent text-foreground outline-none placeholder:text-muted-foreground"
@@ -146,7 +149,7 @@ export function ArchiveManager({ initialData }: Props) {
       ) : (
         <div className="flex flex-col gap-2">
           {visibleItems.map((item) => {
-            const itemArea = areaById.get(item.area_id);
+            const itemArea = item.area_id ? areaById.get(item.area_id) : undefined;
             const itemProject = item.project_id ? projectById.get(item.project_id) : undefined;
             return (
             <article

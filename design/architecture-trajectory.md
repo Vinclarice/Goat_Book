@@ -506,6 +506,25 @@ vocabulary.
 
 ### E — the second mind
 
+> **Cancelled as a Clarice release, August 13, 2026.** This work is Second
+> Mind's, in its own repository, and Clarice is absorbed into that project
+> rather than growing this release. See `roadmap.md`'s opening section.
+>
+> Three things named below outlive the cancellation and should not be lost with
+> it. **Cursor pagination** is still needed here, but its trigger moves — the
+> commercial audit measured `/api/v1/agenda` at 1,828ms over 20k rows with no
+> pagination anywhere in the product, so the trigger is now the agenda, not
+> search. **Rich authored content** was always about knowledge material rather
+> than task notes, so it leaves with the knowledge half; the settled boundary
+> that Clarice's notes stay plain text is untouched and now permanent.
+> **Ranked full-text search** over Clarice's own material is a real remaining
+> gap for tasks and daily entries — the audit found no full-text search
+> anywhere in the product — and stays a Clarice candidate on that narrower
+> ground.
+>
+> §8's open question "Does release E happen next?" is therefore answered a
+> second time, and differently: not "no, F first," but "no, not here at all."
+
 The vision document's second-brain direction, currently the least built and
 most often deferred half of the product. Its sequence is argued there and
 should be followed literally: a discovery pass defining the boundary between an
@@ -533,6 +552,16 @@ remaining Track D entries. The discovery pass should precede the search work
 either way.
 
 ### F — wider horizons
+
+> **The letter fork is resolved, August 13, 2026.** This file has called F
+> "wider horizons" while `roadmap.md` opened Release F as the second-mind
+> discovery pass on August 7 — two documents using one letter for two things,
+> flagged by the commercial audit's Part 9. **`roadmap.md` wins on the letter,
+> because it is the authority on what is active and it is what actually
+> shipped.** With E cancelled and the second mind moved out, what this section
+> describes has no letter at all and does not need one: monthly and quarterly
+> review, the audit log and general undo, and time blocking are Clarice
+> candidates governed by their own triggers below, not a numbered release.
 
 Crane orders the present and, at Crane 3, begins tracking the past — a weekly
 review is already a backward look. F is where both widen: monthly and quarterly
@@ -818,6 +847,21 @@ already trusted.
 Recording refusals matters as much as recording plans, because an unrecorded
 refusal gets re-proposed every time a new reviewer reads the codebase — which
 has now happened three times in one week.
+
+**Scope, stated August 13, 2026: these refusals bind Clarice and nothing
+else.** Second Mind is a separate project and is not governed by this
+document — see [`principles.md`](principles.md) §Scope and `roadmap.md`. It
+does exactly what two of the entries below refuse, deliberately and with its
+own argument: it is built on a **node model with facets and typed edges**, and
+it is a **fresh start** rather than a reshaping of this codebase. Neither is a
+reversal here. A refusal reached inside the task domain, on this codebase's
+evidence, does not extend to a different project with a different premise —
+and the third refusal below, *Starting over*, is specifically a refusal to
+discard **this** repository's testing culture, which Second Mind does not do:
+it carries those practices over deliberately.
+
+What has not changed is that these still hold for anything built here. The
+list below is unamended.
 
 - **A universal Node or Block model.** It would trade strong invariants and
   clear queries for flexibility the product has never asked for. Task, Capture,

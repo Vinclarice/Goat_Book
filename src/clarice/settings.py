@@ -157,6 +157,16 @@ INSTALLED_APPS = [
     "accounts",
     "lists",
     "capture",
+    # The knowledge core, moved in from its own repository on August 14, 2026.
+    # Second Mind's design still governs it -- see that project's docs/ -- and
+    # the code lives here because this is the repository with the deployment,
+    # the users, the CI and the surviving accounts.User. Those two directions
+    # pointing opposite ways is deliberate, not a reversal.
+    #
+    # `capture` and `capture.Idea` do not survive the merger; `mind` is what
+    # replaces them. Both are installed during the crossover, which is why the
+    # two capture endpoints currently collide and neither has moved yet.
+    "mind",
     # The daily domain -- Daily Entry now, Daily Focus and the Personal
     # Compass as Crane 1 continues. Its own app rather than more tables in
     # `lists`, because a day is not a task and the vision document's whole

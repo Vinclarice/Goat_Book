@@ -65,14 +65,14 @@ def _read_json(request):
 def _owned_item(request, item_id):
     return Item.objects.select_related("list").filter(
         id=item_id,
-        list__owner=request.user,
+        owner=request.user,
     ).first()
 
 
 def _owned_checklist_step(request, step_id):
     # Charter rule 1 pays off here: a direct owner FK on ChecklistStep makes
     # this a one-hop lookup, the same shape as _owned_item, rather than a
-    # join through task__list__owner.
+    # join through task__owner.
     return ChecklistStep.objects.select_related("task", "task__list").filter(
         id=step_id,
         owner=request.user,

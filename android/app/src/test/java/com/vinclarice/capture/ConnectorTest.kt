@@ -52,7 +52,13 @@ class ConnectorTest {
         }
 
         // Connecting never sends a capture; CaptureApiTest covers this.
-        override suspend fun capture(token: String, text: String, idempotencyKey: String, tags: List<String>) =
+        override suspend fun capture(
+            token: String,
+            text: String,
+            idempotencyKey: String,
+            tags: List<String>,
+            capturedAt: Long?,
+        ) =
             Disposition.DELIVERED
     }
 
@@ -296,5 +302,26 @@ class ConnectorTest {
 
         assertEquals(Failed("offline"), outcome)
         assertEquals("tok_good", store.read())
+    }
+
+    @Test
+    fun `a refused token names the server that refused it`() = runTest {
+        // On a split install this Connector is the *capture* one, so a
+        // hard-coded "Clarice" here sends somebody to re-mint a token on the
+        // server that never saw the request. Same defect as the one fixed in
+        // OkHttpClariceApi, one layer up.
+        val outcome = Connector(
+            FakeApi(Unauthorised), FakeStore(), serverName = "Second Mind",
+        ).connect("tok_bad") as Refused
+
+        assertTrue(outcome.message, outcome.message.contains("Second Mind"))
+        assertFalse(outcome.message, outcome.message.contains("Clarice"))
+    }
+
+    @Test
+    fun `the server name defaults to Clarice`() = runTest {
+        val outcome = Connector(FakeApi(Unauthorised), FakeStore()).connect("tok_bad") as Refused
+
+        assertTrue(outcome.message, outcome.message.contains("Clarice"))
     }
 }

@@ -29,7 +29,7 @@ class ListAdmin(ModelAdmin):
 class ItemAdmin(ModelAdmin):
     list_display = ("text", "list", "status", "due_date", "recurrence", "updated_at")
     list_filter = ("status", "recurrence")
-    search_fields = ("text", "list__title", "list__owner__username")
+    search_fields = ("text", "list__title", "owner__username")
     autocomplete_fields = ("list",)
     filter_horizontal = ("tags",)
     # status/completed_at/archived_at are managed together by

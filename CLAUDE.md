@@ -15,7 +15,94 @@ The two that most often get skipped under time pressure:
   "Tests pass" when they were never executed is not.
 
 [`design/roadmap.md`](design/roadmap.md) is the plan; active specs live
-alongside it in `design/`.
+alongside it in `design/`. **[`design/README.md`](design/README.md) indexes all
+thirty documents** — which are standing authorities, which are records of
+shipped work, and which fact each one owns. Start there rather than guessing
+whether a plan is current.
+
+## Closing a piece of work
+
+Thirty design documents drifted out of agreement by August 2026: four plans
+still called themselves forward-looking months after shipping, two files gave
+the same release letter to different work, and 257 lines of shipped narrative
+piled up under a heading instructing the reader to move it elsewhere. **A prose
+rule did not prevent this — it had been in `roadmap.md` since August 1 and was
+simply not followed.** So it is a checklist, here, where it gets read:
+
+1. **Update the plan document's status line** — shipped, when, and what was
+   verified. First six lines of the file.
+2. **Move the narrative to `roadmap-history.md`.** Keep only the resulting
+   baseline or the remaining consequence in `roadmap.md`.
+3. **Close the roadmap item** — strike it, date it, name what replaced it.
+4. **Check `design/README.md`** still tells the truth.
+
+Step 2 is the one that gets skipped, and it is the one that compounds. If a
+document needs a fact it does not own, link to the owner rather than restating
+it; a restated fact is a fact that will be wrong later.
+
+**Second Mind is a separate project and none of this governs it.** It lives at
+`C:\dev\Clarice_secondmind`, has its own design documents, its own venv, its
+own Postgres (port 5434, not 5433) and runs `pytest` rather than
+`manage.py test`. The direction is settled: Clarice is worked into Second Mind,
+not the reverse, ending as one application with a knowledge core and a
+**Superlists** task core. Knowledge-side work — Ideas, resurfacing, the
+mind-map, search over retained material — belongs there now, and the roadmap's
+opening section says what survives the merger and what does not.
+
+## Clarice is in maintenance until the merger
+
+Not frozen — maintained. It has real users and it keeps running. But it is no
+longer where features are added, and the risk to guard against is not an
+accidental edit (separate repositories handle that) but a **justified** one:
+*while I'm here*, or *Second Mind needs Clarice to expose X*.
+
+**Allowed.** Production defects, which the merger does not make redundant — a
+system with red CI and no uptime monitoring stays broken whichever project it
+becomes part of. The live list is `design/commercial-blueprint.md` Part 1.
+Security fixes and data-loss fixes qualify without argument.
+
+**One remains, as of August 14, 2026, and it is not code:**
+
+- **External uptime monitoring.** `/healthz` exists and checks the database;
+  nothing polls it. Deliberately not in this repository — a watchdog running on
+  the machine it watches is not a watchdog — so it is an account somebody
+  creates, not a commit. Until it exists, defect 9 is half fixed: the site can
+  now tell you it is healthy, and still nobody is asking.
+
+Closed, and listed only so the next reader does not re-fix them: `/healthz`
+(`fd896c6`), `restart_policy: unless-stopped` (`b2e16b2`),
+`include_local_variables` (`bbfc38d`), migrate-before-recreate (`b779c0c`), CI
+green across five jobs (`fd4a8d7`), token requests using the owner's time zone
+(`6da41c8`), and both Android queue defects — the process-wide lock and the
+backup exclusion, in *both* `backup_rules.xml` and `backup_rules_legacy.xml`.
+**This list said those Android ones were open after they had been fixed**, and
+that stale line cost a session's worth of re-investigation. If you close one,
+close it here in the same commit.
+
+Also closed: the white screen on any render exception (`0428efb`), and defects
+3 and 4 — the two Tailwind styles — which turned out to have shipped on
+August 12 in `2986ed6`. **That is the second time this list and the blueprint
+have claimed finished work was open.** Check the code before believing either.
+
+**Blueprint defect 6 will not be fixed — Vince's call, August 14, 2026.** Do
+not re-open it. `promote_idea_to_task` carries an Idea's notes but not its tags,
+where `promote_to_task` carries both. It is a discontinuity rather than data
+loss: the Idea is marked `PROMOTED` and keeps `promoted_task`, so its tags are
+still there and still reachable from the task. Set against that, `Idea` is
+retired by the merger, and no Idea exists locally to have been affected. Left
+deliberately.
+
+**Not allowed without a deliberate decision.** New features on `Item`,
+`Capture` or `Idea`. New UI work. New models — a model added now is a model
+migrated twice, and `Capture` and `Idea` do not survive the merger at all.
+
+**And the rule that actually protects the merger: nothing here grows to serve
+Second Mind.** No new endpoint, no shared table, no export hook. When Second
+Mind wants this data it reads the existing API or a database dump, once, at
+merge time. A bridge built now is code paid for twice and thrown away.
+
+The one exception is `android/`, which is a client of both backends rather than
+part of either core — see Second Mind's `docs/android-two-backends.md`.
 
 ## Environment
 
@@ -26,9 +113,16 @@ activating:
 ```powershell
 docker compose up -d db   # once per session; starts local Postgres
 .\.venv\Scripts\python.exe src\manage.py test accounts lists capture clarice daily routines review
+.\.venv\Scripts\python.exe -m pytest          # the mind app; config in pytest.ini
 pnpm --dir frontend test
 pnpm --dir frontend build
 ```
+
+**Two Python runners, and both are real.** The task core runs on
+`manage.py test`; the knowledge core arrived with 500-odd pytest-style tests and
+stays on `pytest`, because converting them would be a large mechanical rewrite
+of the thing in that app most worth leaving alone. Running one and reporting
+"tests pass" covers about half the application.
 
 **Tests run on Postgres now, not SQLite.** `Item.Meta`'s
 `unique_active_item` is `nulls_distinct=False`, "Postgres 15+ only" per its
@@ -56,10 +150,18 @@ pnpm --dir frontend build                                   # it loads the real 
 `src/lists/static/frontend/`, so without a rebuild they will happily pass
 against stale JavaScript. `HEADED=1` runs them in a visible browser.
 
-Those three cover the web application; `android/` has its own check below,
-and CI runs all four. Keep the Django app list matched to
-`.github/workflows/ci.yml` — it once omitted `capture`, so following the
-README ran every suite except the one covering the capture API.
+Those cover the web application; `android/` has its own check below, and CI
+runs all of them across five jobs — `django`, `mind`, `browser`, `frontend`,
+`android`. Keep the Django app list matched to `.github/workflows/ci.yml` — it
+once omitted `capture`, so following the README ran every suite except the one
+covering the capture API, and the `mind` suite was absent from CI entirely for
+the first day of the merger while `requirements-dev.txt` claimed otherwise.
+
+**CI's Postgres is `pgvector/pgvector:pg17`, in every job that has one.** The
+`mind` migrations run `CreateExtension("vector")`, and Django builds the test
+database from *every* app's migrations whichever labels are under test — so a
+stock image, or SQLite, fails in `setup_databases` before a single test runs,
+including on jobs that never touch the knowledge core.
 
 Never `npx tsc`; the build's `tsc --noEmit` is the type check.
 

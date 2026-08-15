@@ -58,7 +58,7 @@ def completed_in_week(owner, week_start, week_end):
     start, end = _instant_range(week_start, week_end)
     return list(
         Item.objects.filter(
-            list__owner=owner,
+            owner=owner,
             completed_at__gte=start,
             completed_at__lt=end,
         )
@@ -481,7 +481,7 @@ def first_trace_for(owner):
     if first_day:
         candidates.append(first_day)
     for queryset in (
-        Item.objects.filter(list__owner=owner),
+        Item.objects.filter(owner=owner),
         Routine.objects.filter(owner=owner),
         Capture.objects.filter(owner=owner),
     ):

@@ -1,6 +1,13 @@
 # Crane — forward plan
 
-Vince · plan for the next release · drafted August 2, 2026
+**Status: shipped August 2, 2026, tagged `crane`.** Two deploys carried it —
+`DEPLOYED-2026-08-02/1754` (Crane 0a, 1, 2; ten migrations) and
+`DEPLOYED-2026-08-02/2005` (Crane 3; four). This is now the record of what was
+built and why, not a forward plan; `roadmap.md` carries the resulting baseline.
+§2's carried-in checklist and §6's open questions are both closed — see
+`roadmap.md` and `architecture-trajectory.md` §8.
+
+Vince · drafted August 2, 2026 · status header added August 13, 2026
 
 ## 1. Purpose and scope
 

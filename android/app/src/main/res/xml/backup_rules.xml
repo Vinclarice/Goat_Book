@@ -9,6 +9,15 @@
   ciphertext with no key, and decryption would fail where "not connected
   yet" is the honest state.
 
+  The pending-capture queue is excluded for exactly the same reason, and was
+  not, until August 13, 2026. It holds unsent thoughts under its own Keystore
+  alias, so a restored device would read ciphertext it has no key for. The
+  queue treats an unreadable store as an empty one, which is right when a key
+  is genuinely gone and catastrophic here: every thought written down and not
+  yet delivered would disappear on a phone upgrade, silently, with no error
+  and nothing to retry. The reasoning above had been worked out for the token
+  and simply never extended to the thing the app exists to protect.
+
   Every mode is listed on purpose. Omitting a section leaves that transfer
   path fully enabled, so silence here means the opposite of caution.
 
@@ -18,8 +27,12 @@
 <data-extraction-rules>
     <cloud-backup>
         <exclude domain="sharedpref" path="clarice_capture_secret.xml" />
+        <exclude domain="sharedpref" path="second_mind_capture_secret.xml" />
+        <exclude domain="sharedpref" path="clarice_capture_queue_store.xml" />
     </cloud-backup>
     <device-transfer>
         <exclude domain="sharedpref" path="clarice_capture_secret.xml" />
+        <exclude domain="sharedpref" path="second_mind_capture_secret.xml" />
+        <exclude domain="sharedpref" path="clarice_capture_queue_store.xml" />
     </device-transfer>
 </data-extraction-rules>

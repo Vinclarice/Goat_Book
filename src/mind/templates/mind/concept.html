@@ -1,0 +1,40 @@
+{% extends "mind/base.html" %}
+{% block title %}{{ concept.label }} — Second Mind{% endblock %}
+{% block content %}
+
+{% comment %}
+The topic page, and the thing the concept layer exists to produce: everything
+about one referent, gathered without anybody having filed a single note.
+
+Note what this is not. It is not a search result -- these notes are here because
+they name this thing, resolved through its aliases, not because they happen to
+share a word with a query. That is the whole difference between retrieval and
+structure.
+{% endcomment %}
+
+<h1>{{ concept.label }}</h1>
+
+<div class="meta">
+  {% if concept.confirmed_at %}named{% else %}not named yet{% endif %}
+  {% if aliases %}
+    · also{% for alias in aliases %} {{ alias.label }}{% if not forloop.last %},{% endif %}{% endfor %}
+  {% endif %}
+</div>
+
+{% for node in nodes %}
+  <div class="card">
+    <div class="quote">{{ node.original_content }}</div>
+    <div class="meta">{{ node.captured_at|date:"j M Y" }}</div>
+  </div>
+{% empty %}
+  {% comment %}
+  Reachable when every note naming this has since been deleted. The concept
+  outliving its evidence is not an error -- the log still records that it was
+  named -- but a page with nothing on it should say why rather than look broken.
+  {% endcomment %}
+  <p class="empty">Nothing mentions this any more.</p>
+{% endfor %}
+
+<p><a href="{% url 'concepts' %}">← everything</a></p>
+
+{% endblock %}

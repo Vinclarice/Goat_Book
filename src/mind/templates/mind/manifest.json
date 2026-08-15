@@ -1,0 +1,31 @@
+{
+  "name": "Second Mind",
+  "short_name": "Mind",
+  "description": "Capture anything. Connections surface later.",
+  "start_url": "{% url 'capture' %}",
+  "scope": "{% url 'capture' %}",
+  "display": "standalone",
+  "background_color": "#fbfaf8",
+  "theme_color": "#2f5d50",
+  "icons": [
+    {
+      "src": "{{ icon_url }}",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any maskable"
+    }
+  ],
+  "share_target": {
+    "action": "{% url 'share' %}",
+    "method": "GET",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  },
+  "shortcuts": [
+    { "name": "Review", "url": "{% url 'review' %}" },
+    { "name": "Search", "url": "{% url 'search' %}" }
+  ]
+}

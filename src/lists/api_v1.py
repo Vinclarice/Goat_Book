@@ -73,7 +73,11 @@ class TaskOut(Schema):
     tags: list[str]
     recurrence: TaskRecurrence
     notes: str
-    area_id: int
+    # Nullable since August 14, 2026 -- a task may stand on its own, so this is
+    # the boundary admitting a state the database already allowed. Ninja
+    # validates responses, so leaving it `int` turned every unfiled task into a
+    # 500 that no amount of care in the serializer could avoid.
+    area_id: int | None
     project_id: int | None
     url: str
     edit_url: str
@@ -152,7 +156,11 @@ class ArchiveOut(Schema):
 
 class TaskDetailOut(Schema):
     task: TaskOut
-    area: TaskAreaSummaryOut
+    # Optional since August 14, 2026: a task may stand on its own. Declared
+    # nullable here rather than only handled in the serializer, because Ninja
+    # validates the response -- a non-optional schema turns an unfiled task
+    # into a 500 no matter how carefully the dict was built.
+    area: TaskAreaSummaryOut | None
     checklist_steps: list[ChecklistStepOut]
     create_checklist_step_url: str
     reorder_checklist_steps_url: str
@@ -212,7 +220,7 @@ def navigation(request):
             for each in project_reader.projects_for(user).filter(is_completed=False)
         ],
         "archived_count": Item.objects.filter(
-            list__owner=user, status=Item.Status.ARCHIVED
+            owner=user, status=Item.Status.ARCHIVED
         ).count(),
         # A one-way read into capture. Capture stays isolated in the
         # direction that matters -- no FK, no import the other way -- but a
@@ -249,7 +257,7 @@ def agenda(request):
     )
     lists = agenda_reader.list_summaries(user)
     archived_count = Item.objects.filter(
-        list__owner=user,
+        owner=user,
         status=Item.Status.ARCHIVED,
     ).count()
     projects = project_reader.projects_for(user)
@@ -326,7 +334,7 @@ def task_detail(request, item_id: int):
     item = get_object_or_404(
         Item.objects.select_related("list").prefetch_related("tags"),
         id=item_id,
-        list__owner=request.user,
+        owner=request.user,
         status__in=(Item.Status.ACTIVE, Item.Status.COMPLETED),
     )
     return task_detail_data_for(item)
@@ -539,7 +547,7 @@ def create_area_in_project(request, project_id: int, payload: AreaCreateIn):
 def archive(request):
     user = request.user
     archived_items = list(
-        Item.objects.filter(list__owner=user, status=Item.Status.ARCHIVED)
+        Item.objects.filter(owner=user, status=Item.Status.ARCHIVED)
         .select_related("list")
         .prefetch_related("tags")
         .order_by("-archived_at", "-id")

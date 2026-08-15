@@ -226,4 +226,59 @@ class CaptureQueueTest {
 
         assertEquals(listOf("game-dev"), afterRestart.waiting().single().tags)
     }
+
+    /**
+     * Storage with a widened read-modify-write window.
+     *
+     * The race this reproduces is real but narrow, so the sleep makes it
+     * findable rather than lucky. Nothing here is artificial otherwise: two
+     * separate CaptureQueue objects over one store is exactly how the app
+     * runs, since MainActivity and CaptureWorker each construct their own.
+     */
+    private class SlowStorage : QueueStorage {
+        @Volatile
+        private var items: List<PendingCapture> = emptyList()
+
+        override fun load(): List<PendingCapture> {
+            val snapshot = items
+            Thread.sleep(1)
+            return snapshot
+        }
+
+        override fun save(items: List<PendingCapture>) {
+            this.items = items
+        }
+    }
+
+    @Test
+    fun `a foreground add and a background delivery cannot lose each other's work`() {
+        // The one failure this app exists to prevent, and it had no guard.
+        // add() and delivered() each load, mutate and save; interleaved, the
+        // later save overwrites the earlier one -- so a thought typed while
+        // the worker was finishing a delivery vanished, or a delivered
+        // capture came back to be sent a second time.
+        //
+        // Note the two queue objects. A lock on the instance would pass a
+        // test that shared one and still fail in the app, because the
+        // activity and the worker never share an instance.
+        repeat(50) { round ->
+            val storage = SlowStorage()
+            val foreground = CaptureQueue(storage)
+            val background = CaptureQueue(storage)
+            foreground.add("already queued", key = "old", createdAt = 1)
+
+            val adding = Thread { foreground.add("a new thought", key = "new", createdAt = 2) }
+            val delivering = Thread { background.delivered("old") }
+            adding.start()
+            delivering.start()
+            adding.join()
+            delivering.join()
+
+            assertEquals(
+                "round $round: the new capture survives and the delivered one stays gone",
+                listOf("new"),
+                foreground.all().map { it.key },
+            )
+        }
+    }
 }

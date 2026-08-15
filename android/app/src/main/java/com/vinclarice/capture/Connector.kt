@@ -45,6 +45,8 @@ data object Blank : ConnectOutcome
 class Connector(
     private val api: ClariceApi,
     private val store: TokenStore,
+    /** Which server this one talks to, for the message when it says no. */
+    private val serverName: String = "Clarice",
 ) {
     suspend fun connect(rawInput: String): ConnectOutcome {
         // Pasting from a browser or password manager routinely brings a
@@ -103,7 +105,7 @@ class Connector(
         when (val result = api.identify(token)) {
             is Identified -> Connected(result.identity)
             Unauthorised -> Refused(
-                "Clarice did not accept that token. Log in again, or " +
+                "$serverName did not accept that token. Log in again, or " +
                     "create a new one on the web and paste it."
             )
             is Unreachable -> Failed(result.reason)

@@ -81,7 +81,7 @@ def pin_task(owner, day, task):
     writing a second row: one task chosen for one day is one decision,
     however many times it was turned over.
     """
-    if task.list.owner_id != owner.id:
+    if task.owner_id != owner.id:
         # Fails closed, per principles.md. The API addresses tasks by id, so
         # this is the check that stops one person pinning another's work --
         # and the reason it lives here rather than in the view is that every

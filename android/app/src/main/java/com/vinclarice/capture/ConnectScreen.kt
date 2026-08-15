@@ -54,7 +54,7 @@ fun ConnectScreen(
             .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text("Connect to Clarice", style = MaterialTheme.typography.headlineSmall)
+        Text("Connect to ${model.serverName}", style = MaterialTheme.typography.headlineSmall)
 
         OutlinedTextField(
             value = state.username,
@@ -126,7 +126,7 @@ fun ConnectScreen(
 
         if (showTokenPaste) {
             Text(
-                "Open Clarice on the web, go to Access tokens, and create one " +
+                "Open ${model.serverName} on the web, go to Access tokens, and create one " +
                     "labelled for this phone. Paste it below. It is shown only " +
                     "once, so copy it before leaving that page.",
                 style = MaterialTheme.typography.bodyMedium,

@@ -114,6 +114,37 @@ class CaptureApiTest {
     }
 
     @Test
+    fun `a queued capture sends the time it was written`() = runTest {
+        // Found on a device, August 14, 2026. Six thoughts typed minutes apart
+        // while offline all arrived stamped to the same second, because the
+        // body carried no time and the server had to fall back to now. The
+        // queue has known the answer all along -- PendingCapture.createdAt is
+        // stamped when the text is first accepted -- it just never sent it.
+        //
+        // Dormancy is measured *between* notes, so a queue that collapses onto
+        // one delivery instant destroys temporal spread on exactly the
+        // material a phone-first client produces most of.
+        server.server.enqueue(MockResponse(code = 201))
+
+        api().capture("tok", "typed on a train", key, capturedAt = 1_773_480_600_000L)
+
+        val body = JSONObject(server.server.takeRequest().body!!.utf8())
+        assertEquals("2026-03-14T09:30:00Z", body.getString("captured_at"))
+    }
+
+    @Test
+    fun `a capture with no known time sends none, rather than inventing one`() = runTest {
+        // The server falls back to now, which is right when nothing better is
+        // known. Sending a guess would be worse than sending nothing.
+        server.server.enqueue(MockResponse(code = 201))
+
+        api().capture("tok", "buy milk", key)
+
+        val body = JSONObject(server.server.takeRequest().body!!.utf8())
+        assertFalse(body.has("captured_at"))
+    }
+
+    @Test
     fun `tags are optional and absent from the body by default`() = runTest {
         server.server.enqueue(accepted(201))
 

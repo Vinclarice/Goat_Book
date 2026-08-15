@@ -1,6 +1,13 @@
 # Per-user time zones — delivery plan
 
-**Status: deployed August 1, 2026; per-user behaviour not yet exercised.**
+**Status: shipped August 1, 2026, and the per-user behaviour was exercised in
+production the same day** — two accounts twelve hours apart, observed
+discriminating correctly at 07:00 WITA. The line below said "not yet
+exercised" until August 13, 2026, twelve days after it stopped being true;
+corrected while building [`README.md`](README.md), which exists to catch
+exactly this.
+
+**Deployed August 1, 2026.**
 Promoted out of Track D and implemented the same day. The field, middleware,
 per-user digest, preferences API, picker, admin and settings form are all
 in; 437 backend and 120 frontend tests pass locally, CI run `30704717836`

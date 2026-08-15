@@ -267,7 +267,7 @@ def _own_task_or_404(owner, task_id):
     no comparison to forget -- and 404 rather than 403, so the endpoint does
     not confirm that somebody else's task id exists.
     """
-    return get_object_or_404(Item, pk=task_id, list__owner=owner)
+    return get_object_or_404(Item, pk=task_id, owner=owner)
 
 
 _TOKEN_OR_SESSION_READ = [TokenAuth(SCOPE_DAY_READ), SessionAuthIfLoggedIn()]

@@ -1,0 +1,74 @@
+{% extends "mind/base.html" %}
+{% block title %}Capture — Second Mind{% endblock %}
+{% block content %}
+
+{% comment %}
+One box, no fields. Nothing requires classification at the moment of entry — a
+dropdown here would break the product's first principle before anything else got
+a chance to.
+{% endcomment %}
+<form method="post" action="{% url 'capture' %}">
+  {% csrf_token %}
+  {% comment %}
+  Pre-filled, never auto-saved, when text arrives from a share. Sharing is a gesture
+  toward capture; writing the note without being asked would take the decision away.
+  {% endcomment %}
+  <textarea name="content" placeholder="Anything at all." autofocus
+            aria-label="What are you thinking?">{{ prefill }}</textarea>
+  <div class="row">
+    <button type="submit" class="primary">Keep</button>
+    <span class="meta">{{ total }} note{{ total|pluralize }}{% if pending %} · <a href="{% url 'review' %}">{{ pending }} to review</a>{% endif %}</span>
+  </div>
+</form>
+
+{% comment %}
+Below the box, never inside it. The parser reads a date out of what was just
+written, and this offers it on the way back — so the moment of entry still asks
+nothing, and ignoring the offer costs one glance.
+
+Each says what it read, because a proposal that cannot be checked is an
+assertion. "Due 2026-06-24 — read '2026-06-24'" lets somebody see the parser was
+wrong and say so; "looks like a task" only asks for trust.
+{% endcomment %}
+{% for item in commitments %}
+  <div class="card" style="margin-top:1rem">
+    <div class="body">{{ item.body }}</div>
+    <div class="meta" style="margin-top:.5rem">
+      Looks like a commitment — due {{ item.facet.data.due_date }}{% if item.facet.data.recurrence %}, repeating {{ item.facet.data.recurrence }}{% endif %}
+      · {{ item.facet.reason }}
+    </div>
+    <form method="post" action="{% url 'accept_commitment' item.facet.node.public_id %}"
+          class="row" style="margin-top:.5rem">
+      {% csrf_token %}
+      {% comment %}
+      No Area chooser, on purpose. The person has already made the only decision
+      that matters; asking where to file it would put the filing question back
+      exactly where this design refuses to ask one. A task may stand on its own.
+      {% endcomment %}
+      <button type="submit" class="primary">Add to tasks</button>
+      <button type="submit" name="action" value="dismiss">Not a task</button>
+    </form>
+  </div>
+{% endfor %}
+
+<h1 style="margin-top:2rem">Recent</h1>
+{% for item in nodes %}
+  <div class="card">
+    <div class="body">{{ item.body }}</div>
+    <div class="meta" style="margin-top:.5rem">
+      {{ item.node.captured_at|date:"j M Y, H:i" }}
+      · {{ item.node.source }}
+      {% if item.tier != "quiet knowledge" %}· {{ item.tier }}{% endif %}
+      {% if item.node.revisions.count %}· revised {{ item.node.revisions.count }}×{% endif %}
+    </div>
+  </div>
+{% empty %}
+  {% comment %}
+  Said plainly rather than dressed up: the corpus problem is inherent, and
+  connections cannot exist before material does.
+  {% endcomment %}
+  <p class="empty">Nothing yet. Connections need material before they can exist —
+  this is quiet for a while by nature.</p>
+{% endfor %}
+
+{% endblock %}

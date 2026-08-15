@@ -34,7 +34,13 @@ export interface Task {
   // Just the id -- title/url live once in the page's top-level `areas`
   // array (see AgendaAreaSummary / ArchiveWorkspaceData.areas) instead of
   // being repeated on every task.
-  area_id: number;
+  //
+  // Null for a task standing on its own, since August 14, 2026: a commitment
+  // accepted from the knowledge core has no Area, because asking which one at
+  // that moment is the filing question the design refuses to ask. Every lookup
+  // through this already guards with `taskArea && ...`, so an unfiled task
+  // renders without an area chip rather than with a broken one.
+  area_id: number | null;
   // Null for most tasks. Derived through the task's own Area now --
   // project-workspace-plan.md 2 -- rather than settable on the task
   // directly: a task belongs to a project only by belonging to an Area

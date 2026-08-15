@@ -1,0 +1,98 @@
+{% load static %}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#2f5d50">
+<title>{% block title %}Second Mind{% endblock %}</title>
+
+{% comment %}
+Enough for a home-screen icon that behaves like an app. apple-* are what iOS reads —
+it ignores the manifest for this — while Android reads the manifest, including the
+share target that lets any app hand text straight to the capture box.
+{% endcomment %}
+<link rel="manifest" href="{% url 'manifest' %}">
+<link rel="icon" type="image/svg+xml" href="{% static 'mind/icon.svg' %}">
+<link rel="apple-touch-icon" href="{% static 'mind/icon.svg' %}">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Mind">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<style>
+  /* One small stylesheet, no build step. The binding constraint is capture volume
+     from a phone, so what counts is a page that loads instantly and is comfortable
+     to type into with a thumb. */
+  :root {
+    --bg: #fbfaf8; --fg: #1b1a18; --muted: #6d6a65;
+    --line: #e2ded7; --card: #ffffff; --accent: #2f5d50;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #17181a; --fg: #e9e7e3; --muted: #9b968e;
+      --line: #2c2e31; --card: #1e2022; --accent: #7fb3a2;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-text-size-adjust: 100%;
+  }
+  .wrap { max-width: 44rem; margin: 0 auto; padding: 1rem 1rem 4rem; }
+  nav { display: flex; gap: 1rem; align-items: baseline; flex-wrap: wrap;
+        border-bottom: 1px solid var(--line); padding-bottom: .6rem; margin-bottom: 1.2rem; }
+  nav a { color: var(--muted); text-decoration: none; font-size: .95rem; }
+  nav a.here { color: var(--fg); font-weight: 600; }
+  nav .badge { background: var(--accent); color: var(--bg); border-radius: 999px;
+               padding: 0 .45rem; font-size: .78rem; font-weight: 600; }
+  h1 { font-size: 1.15rem; margin: 0 0 .8rem; font-weight: 600; }
+  textarea {
+    width: 100%; min-height: 7.5rem; padding: .8rem; font: inherit;
+    background: var(--card); color: var(--fg);
+    border: 1px solid var(--line); border-radius: .5rem; resize: vertical;
+  }
+  textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  button, .btn {
+    font: inherit; padding: .55rem 1rem; border-radius: .45rem; cursor: pointer;
+    border: 1px solid var(--line); background: var(--card); color: var(--fg);
+  }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .row { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; margin-top: .6rem; }
+  .card { background: var(--card); border: 1px solid var(--line);
+          border-radius: .55rem; padding: .85rem 1rem; margin: .7rem 0; }
+  .meta { color: var(--muted); font-size: .82rem; }
+  .quote { border-left: 3px solid var(--accent); padding: .1rem 0 .1rem .75rem;
+           margin: .5rem 0; white-space: pre-wrap; }
+  .body { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .empty { color: var(--muted); padding: 2rem 0; text-align: center; }
+  input[type=search] { width: 100%; padding: .6rem .8rem; font: inherit;
+    background: var(--card); color: var(--fg);
+    border: 1px solid var(--line); border-radius: .45rem; }
+  table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+  th, td { text-align: left; padding: .4rem .5rem; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 600; }
+  code { font-size: .85em; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  {% comment %}
+  Marked from the resolved route rather than a `page` variable. It used to read
+  `page == 'capture'`, which no view ever set and no context processor ever
+  provided -- so the current-page marker had never once applied. Reading the URL
+  name cannot go stale the same way: there is nothing for a new view to forget
+  to pass.
+  {% endcomment %}
+  {% with here=request.resolver_match.url_name %}
+  <nav>
+    <a href="{% url 'capture' %}" {% if here == 'capture' %}class="here"{% endif %}>Capture</a>
+    <a href="{% url 'concepts' %}" {% if here == 'concepts' or here == 'concept' %}class="here"{% endif %}>Things</a>
+    <a href="{% url 'review' %}" {% if here == 'review' %}class="here"{% endif %}>Review{% if pending %} <span class="badge">{{ pending }}</span>{% endif %}</a>
+    <a href="{% url 'search' %}" {% if here == 'search' %}class="here"{% endif %}>Search</a>
+    <a href="{% url 'summary' %}" {% if here == 'summary' %}class="here"{% endif %}>Numbers</a>
+  </nav>
+  {% endwith %}
+  {% block content %}{% endblock %}
+</div>
+</body>
+</html>

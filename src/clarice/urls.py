@@ -21,10 +21,16 @@ from accounts.views import LandingLoginView, contact
 from lists import views as list_views
 
 from clarice.api import api as api_v1
+from clarice.health import healthz
 
 
 urlpatterns = [
     path("", LandingLoginView.as_view(), name="home"),
+    # No trailing slash, and no login. An uptime monitor has no account, and
+    # APPEND_SLASH would answer a polled `/healthz` with a 301 that several
+    # services record as a failure. See clarice/health.py for what it checks
+    # and why it says so little.
+    path("healthz", healthz, name="healthz"),
     # Public and unauthenticated, hence the root rather than under
     # accounts/: a stranger with a question does not have an account.
     path("contact/", contact, name="contact"),
@@ -45,6 +51,16 @@ urlpatterns = [
     ),
     path("accounts/", include("accounts.urls")),
     path("capture/", include("capture.urls")),
+    # The knowledge core, under a prefix during the crossover. Second Mind's
+    # pages sat at the root in their own project and cannot here: "/" is this
+    # site's landing login, and /api/v1/capture is defined by both cores.
+    #
+    # Temporary, and cheap to move. Every template reverses through {% url %}
+    # and the app's own URLconf is entirely relative, so the prefix appears in
+    # exactly one place -- this line. Where these pages finally live is a
+    # question for the step that ends the crossover, when there is one capture
+    # surface rather than two.
+    path("mind/", include("mind.urls")),
     # Has to sit BEFORE the admin include, not just for tidiness:
     # admin.site.urls is itself a resolver mounted at admin/, so a later
     # entry would never be reached -- Django would look for

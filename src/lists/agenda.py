@@ -82,7 +82,16 @@ LIST_COLOR_KEYS = (
 )
 
 
+# A task standing on its own is not in any Area, so it must not be tinted like
+# one -- borrowing a colour would say it belonged somewhere it does not, and
+# borrowing index 0 would make it look like whichever Area happens to hold that
+# slot. Grey is the absence of the signal rather than another value of it.
+NO_LIST_COLOR = "#c9cdd2"
+
+
 def color_for_list(list_id):
+    if list_id is None:
+        return NO_LIST_COLOR
     return LIST_COLORS[list_id % len(LIST_COLORS)]
 
 
@@ -177,7 +186,7 @@ def snooze_presets(today):
 def open_items_for(user):
     """Every task the user still has to do, across all of their lists."""
     return (
-        Item.objects.filter(list__owner=user, status=Item.Status.ACTIVE)
+        Item.objects.filter(owner=user, status=Item.Status.ACTIVE)
         .select_related("list")
         .prefetch_related("tags")
         .order_by(F("due_date").asc(nulls_last=True), "position", "id")
@@ -194,7 +203,7 @@ def completed_today_for(user, today=None):
     end_of_day = start_of_day + timedelta(days=1)
     return (
         Item.objects.filter(
-            list__owner=user,
+            owner=user,
             status=Item.Status.COMPLETED,
             completed_at__gte=start_of_day,
             completed_at__lt=end_of_day,

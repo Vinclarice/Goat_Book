@@ -501,10 +501,10 @@ the next position in a sequence, claimed by whatever ships next, and commercial
 readiness will carry whatever letter it reaches — realistically a long way down
 the alphabet. Nothing is held open for a subject that has not started.
 
-**The next release to start is H, and it is Heron** — named August 15, 2026,
-ahead of shipping for once. Naming is not tagging: the tag still waits on
-production verifying it, same as always. Its content is the crossover; see
-[`one-capture-surface-plan.md`](one-capture-surface-plan.md).
+**The release in progress is H, and it is Heron** — named August 15, 2026,
+ahead of shipping for once, and started the same day. Naming is not tagging: the
+tag still waits on production verifying it, same as always. Its content is the
+crossover; see [`one-capture-surface-plan.md`](one-capture-surface-plan.md).
 
 **Going forward the scheme holds again**: a release is a coherent body of work
 with a finish line, tagged only after production verifies it, and the bird is
@@ -518,23 +518,26 @@ the Second Mind merger end to end, and nine of the ten defects in
 August 6–12 period behind it. See Release practice for both, and for why the
 letters were restored after being written off.
 
-**There is no active release.** What is in front of the project is the
-**crossover**, and it is release-shaped in a way nothing since Dunlin has been —
-one subject, one finish line:
+**Heron is active.** The **crossover** is release-shaped in a way nothing since
+Dunlin has been — one subject, one finish line — and four of its five steps are
+done. See [`one-capture-surface-plan.md`](one-capture-surface-plan.md) for the
+sequence and `roadmap-history.md` for what each step cost.
 
-- Two capture surfaces still exist. `/capture/` writes a `Capture`, `/mind/`
-  writes a `Node`, and `/api/v1/capture` is defined by both cores under
-  different prefixes. The `/mind/` prefix is temporary and lives in one line of
-  `clarice/urls.py`.
-- `Capture` and `Idea` are retired by it, which is the live reason the task core
-  stays in maintenance — see `CLAUDE.md`.
-- **That decision is made.** A typed tag becomes a confirmed concept — Vince's
-  call, August 15, 2026. The gravity gate filters the system's *guesses*, and a
-  person typing a tag is not one, so it skips the gate entirely. Tagging
-  survives and the concept layer gains a second way to grow.
-- The plan is [`one-capture-surface-plan.md`](one-capture-surface-plan.md), in
-  five steps that each deploy on their own. **It is the content of Heron**, the
-  next release; its bird was chosen on August 15 and it is tagged when it ships.
+- **Steps 1, 2, 3 and 4a shipped August 15, 2026.** A typed tag is a confirmed
+  concept; a task inherits its node's concepts; the Inbox's 34 captures are in
+  the graph; and `/api/v1/capture` writes a `Node`.
+- **There is one capture endpoint now.** `/api/v1/capture` is the application's,
+  served by `mind/api_v1.py`, and it is what the phone and the Day page both
+  post to. The knowledge core keeps a second, unused API at `/mind/api/v1/`,
+  which 4a makes retirable.
+- **Two capture surfaces remain**, both pages: `/capture/`'s form writing a
+  `Capture`, and `/mind/` writing a `Node`. 4b deletes the first along with
+  `Capture` and `Idea` — the live reason the task core stays in maintenance, see
+  `CLAUDE.md`. Step 5 then moves `/mind/` to the freed URL, which 4a reduced to
+  a pages-only move.
+- **The plan's own count was wrong, and finding out is what step 4 bought.** It
+  said two capture surfaces; there were three, and it said `Backends.kt` routed
+  the phone to the knowledge core, which no shipped build has ever done.
 
 **Two things outstanding that are not code.** An external uptime monitor to poll
 `/healthz` — the last open item in Part 1, and deliberately not in this

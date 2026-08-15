@@ -1,6 +1,8 @@
 """Personal access tokens: the model, and the page you manage them from.
 
-The endpoint they exist to authenticate lives in capture/tests/test_api_v1.py.
+The endpoint they exist to authenticate lives in
+mind/tests/test_the_one_capture_endpoint.py -- same URL and same scope as it
+always had, writing a node since Heron 4a rather than a `Capture`.
 Scope and expiry enforcement lives in accounts/tests/test_token_scopes.py --
 this file stays about the token row itself.
 """

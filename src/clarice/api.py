@@ -15,9 +15,9 @@ from ninja.security import django_auth
 from accounts.api_v1 import router as accounts_router
 from accounts.auth import SessionAuthIfLoggedIn, TokenAuth
 from accounts.models import SCOPE_IDENTITY_READ
-from capture.api_v1 import router as capture_router
 from daily.api_v1 import router as daily_router
 from lists.api_v1 import router as lists_router
+from mind.api_v1 import router as capture_router
 from review.api_v1 import router as review_router
 from routines.api_v1 import router as routines_router
 
@@ -27,6 +27,10 @@ api.add_router("", accounts_router)
 # The capture router overrides this default auth per-operation: it also
 # accepts a bearer token, since a phone client can't carry a session
 # cookie. Everything else here stays session-only.
+#
+# It comes from `mind` rather than `capture` since Heron 4a. The URL, the token
+# and the scope are unchanged -- what changed is that it writes a Node. That is
+# what leaves the `capture` app with nothing on this API, so 4b can delete it.
 api.add_router("", capture_router)
 # Session-only, like lists and accounts: a day is written from the browser.
 api.add_router("", daily_router)

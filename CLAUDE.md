@@ -16,7 +16,7 @@ The two that most often get skipped under time pressure:
 
 [`design/roadmap.md`](design/roadmap.md) is the plan; active specs live
 alongside it in `design/`. **[`design/README.md`](design/README.md) indexes all
-thirty documents** — which are standing authorities, which are records of
+thirty-one documents** — which are standing authorities, which are records of
 shipped work, and which fact each one owns. Start there rather than guessing
 whether a plan is current.
 
@@ -54,12 +54,16 @@ on 5434 are history; do not develop there. This paragraph said the opposite for
 a day after the merger, which is exactly the drift the checklist above exists to
 prevent.
 
-The crossover is not finished. There are still **two capture surfaces** —
-`/capture/` writing a `Capture`, `/mind/` writing a `Node` — and
-`/api/v1/capture` is defined by both cores under different prefixes. The
-`/mind/` prefix is temporary and appears in exactly one line of
-`clarice/urls.py`; where those pages finally live is the decision that ends the
-crossover.
+The crossover is not finished. There are still **two capture pages** —
+`/capture/` writing a `Capture`, `/mind/` writing a `Node`. The `/mind/` prefix
+is temporary and appears in exactly one line of `clarice/urls.py`; where those
+pages finally live is the decision that ends the crossover.
+
+**There is one capture *endpoint*, as of Heron 4a on August 15, 2026.**
+`/api/v1/capture` is the application's, served by `mind/api_v1.py`, and it
+writes a `Node`. Both the phone and the SPA's Day page post to it. The knowledge
+core keeps a second, entirely unused API at `/mind/api/v1/` with its own
+`mind.ApiToken` table; nothing calls it, and it is retirable.
 
 ## The task core is in maintenance until the crossover ends
 
@@ -129,9 +133,19 @@ there were two projects. There is one now, one database and one transaction, and
 "bridge" the rule forbade — which is the merger's whole payoff rather than a
 violation of it.
 
-`android/` remains a client of two backends, which is still true and still worth
-knowing: capture goes to the knowledge core, Today and Agenda to the task core.
-See `docs/android-two-backends.md` in the Second Mind repository.
+**`android/` is a client of one backend, and this paragraph said otherwise until
+August 15.** It read: *capture goes to the knowledge core, Today and Agenda to
+the task core*. The code to do that exists — `Backends.isSplit`, a second token
+slot, a second Connect screen — but it switches on `-PsecondMindBaseUrl`, which
+defaults to `""` and has never been passed to a shipped build. Every request the
+phone makes goes to `https://vinclarice.com/`. Heron step 4 planned to delete
+`/api/v1/capture` on the strength of that sentence, which would have drained the
+encrypted offline queue into 404s. `docs/android-two-backends.md` in the Second
+Mind repository describes the design, not the deployment.
+
+Generalise it: **a seam that is not switched on is not a seam.** Three of these
+turned up in two days — `/healthz` with nothing polling it, detectors built and
+never invoked, and this. Check the build configuration, not the branch.
 
 ## Environment
 

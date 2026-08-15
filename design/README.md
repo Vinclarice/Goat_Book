@@ -1,6 +1,6 @@
 # `design/` — what each document is, and whether to trust it
 
-Vince · index · August 13, 2026
+Vince · index · August 13, 2026 · **thirty-one documents as of August 15**
 
 Thirty documents accumulated here for a three-user application, and by August
 12 they had drifted out of agreement with each other: four plans still
@@ -68,6 +68,7 @@ done; until it is done, this table is the more reliable source.
 
 | Document | State |
 |---|---|
+| [`one-capture-surface-plan.md`](one-capture-surface-plan.md) | **Active — this is Heron.** Steps 1, 2, 3 and 4a shipped Aug 15; 4b (delete `Capture` and `Idea`) and 5 (move `/mind/`) remain. Declares its own status |
 | [`staging-environment-plan.md`](staging-environment-plan.md) | Designed Aug 11, **deliberately deferred** Aug 12. The `is_debug()` fix shipped; the droplet waits for a trigger |
 | [`android-release-signing-plan.md`](android-release-signing-plan.md) | Build is wired; **the keystore is Vince's to generate by hand.** One of the three open B/C/D items |
 

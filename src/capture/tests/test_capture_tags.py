@@ -1,7 +1,12 @@
 """Optional tags at capture time -- design/capture-tags-plan.md.
 
-Service-level coverage for create_capture and create_capture_idempotent;
-the API contract itself is covered in test_api_v1.py.
+Service-level coverage for create_capture and create_capture_idempotent.
+
+**Only the Inbox form reaches these now.** `/api/v1/capture` writes a node since
+Heron 4a, so tagging on the route a phone actually uses is
+mind/tests/test_the_one_capture_endpoint.py, where a typed tag becomes a
+confirmed concept. This file and the services under it retire with `Capture`
+in 4b.
 """
 import uuid
 

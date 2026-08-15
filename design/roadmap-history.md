@@ -9,6 +9,74 @@ This preserves the reasoning, deployment record, and lessons behind completed
 work without making the active roadmap hard to scan. The active plan is
 [`roadmap.md`](roadmap.md).
 
+## Heron, steps 1–4a — the crossover, August 15, 2026
+
+Heron is not closed; 4b and 5 remain. This is the narrative of what shipped, so
+that `roadmap.md` can carry the baseline rather than the story. The plan is
+[`one-capture-surface-plan.md`](one-capture-surface-plan.md).
+
+**Steps 1 and 2** wired a typed tag to a confirmed concept and carried a node's
+concepts onto the task made from it. Almost no new machinery — `ConceptCandidate`
+already had `label`, `confirmed_at` and `reason`, and `propose_mention` with an
+explicit origin already self-confirmed. The trade it settled was real, though:
+the Inbox modelled tags as first-class rows and the knowledge core deliberately
+models none. The reconciliation is that **the gravity gate exists to filter the
+system's guesses.** Three mentions across a day is what an *extracted* candidate
+pays because extraction over-generates on purpose. A person typing a tag is not
+a guess and owes that gate nothing.
+
+**Step 3** moved 34 captures and 2 ideas into the graph carrying their original
+timestamps, 22 of them archived on the way in as discards. The corpus is the
+binding constraint on the whole knowledge core, so this was not cleanup that
+preserved data — it was the step that gave the detectors something to work on.
+
+### 4a, and the check that came back the other way round
+
+Step 4 said to *check first that nothing on the phone still uses the task-core
+capture scope*, on the belief that `Backends.kt` already routed capture to the
+knowledge core. **It does not, and never has on any shipped build.**
+`secondMindBaseUrl` defaults to `""`, so `isSplit` is false and `capture` is
+literally the same object as `workspace`. Every thought typed on the phone posts
+to the task core's `/api/v1/capture`. Deleting it, as step 4 planned to, would
+have drained the encrypted offline queue into 404s.
+
+The plan had also miscounted the surfaces. It said two; there were three — the
+SPA Day page's quick-capture box posts to the same endpoint on session auth.
+
+So the step became: keep the URL, the bearer token and the `capture:write`
+scope, change what they write. `/api/v1/capture` writes a `Node` now, through
+`services.capture_idempotent`, shared with `/mind/api/v1/capture` so the two
+cannot drift. The router moved from `capture/api_v1.py` to `mind/api_v1.py`,
+leaving the `capture` app with nothing on the API — which is what turns 4b from
+a migration into a deletion. No APK rebuild, nobody logged in twice, and one
+`/api/v1/` for one application.
+
+`mind/urls.py` had already written down the answer: the two definitions of
+`/api/v1/capture` were "the dual-write question arriving early, and it is
+answered when facets land — one capture endpoint that writes a node and
+optionally a task."
+
+**A fix that had shipped to the wrong endpoint.** Android sends `captured_at`
+from both call sites — `CaptureViewModel.deliver` and `QueueDrainer.drain` — so
+a thought that waited hours in the queue arrives with the time it was written.
+The live endpoint's schema was `text` and `tags` only, so Ninja dropped the
+field in silence. It had been found and fixed once, on the August 14 device
+pass, on `/mind/api/v1/capture` — which nothing calls. The defect stayed live on
+the real path for a day, and the 22 device-test captures now in the graph carry
+delivery times rather than writing times as a result.
+
+**The lesson, and it is the third time in two days.** `/healthz` existed and
+nothing polled it. The detectors were built, tested and green and were never
+invoked. Here a two-backend seam was written, documented, unit-tested and never
+switched on, and a fix for a real defect landed on the half nobody used. Code
+that exists is not code that runs, and a test that walks the wrong endpoint
+proves the wrong thing — `test_journeys.py` was doing exactly that, posting to
+`/mind/api/v1/capture` with a `mind.ApiToken`, and now walks the real route with
+the real credential.
+
+Verified by 974 Django tests, 686 pytest, 271 frontend and a clean build.
+Production verification is owed.
+
 ## After Dunlin — Release F and six unlettered lines of work, August 6–12, 2026
 
 Archived from `roadmap.md` on August 13, 2026. Six of these seven shipped

@@ -418,16 +418,20 @@ function Routines({
 /**
  * Rapid logging, on the page you are already looking at.
  *
- * Posts to the capture endpoint the Inbox and the Android client already
- * use, so the row it writes is the same row -- no daily-shaped capture, no
- * second definition of what an empty capture is. See
- * capture/tests/test_capture_paths_agree.py.
+ * Posts to the capture endpoint the Android client already uses, so the row
+ * it writes is the same row -- no daily-shaped capture, no second definition
+ * of what an empty capture is. See mind/tests/test_capture_paths_agree.py.
  *
- * Deliberately not part of the day's own form. What you capture is a
- * thought going to the Inbox to be triaged later; what you write below is
- * this day's record. Merging them into one save button is precisely the
- * kind of near-identical-controls-with-opposite-meanings confusion C2
- * found in the task UI, and this page is new surface with no excuse for it.
+ * Since Heron 4a that row is a knowledge-core `Node` rather than an Inbox
+ * `Capture`: same URL, same request, different destination. This box is one
+ * of the three surfaces that change under it, and the one nobody counted --
+ * one-capture-surface-plan.md said there were two.
+ *
+ * Deliberately not part of the day's own form. What you capture is a thought
+ * going somewhere to be thought about later; what you write below is this
+ * day's record. Merging them into one save button is precisely the kind of
+ * near-identical-controls-with-opposite-meanings confusion C2 found in the
+ * task UI, and this page is new surface with no excuse for it.
  */
 function CaptureBox() {
   const [text, setText] = useState("");

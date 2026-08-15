@@ -20,6 +20,7 @@ from .api import api
 urlpatterns = [
     path("", views.capture, name="capture"),
     path("share/", views.share, name="share"),
+    path("<uuid:public_id>/tags/", views.tag_node, name="tag_node"),
     path(
         "commitments/<uuid:public_id>/",
         views.accept_commitment,

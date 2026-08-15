@@ -74,6 +74,23 @@ wrong and say so; "looks like a task" only asks for trust.
       {% if item.tier != "quiet knowledge" %}· {{ item.tier }}{% endif %}
       {% if item.node.revisions.count %}· revised {{ item.node.revisions.count }}×{% endif %}
     </div>
+    {% comment %}
+    A thought is often only recognisable as part of something once the something
+    exists -- four notes about films are four notes until you notice. So naming
+    happens here as well as at capture, and shows what a note already carries so
+    two spellings of one thing are visible as two.
+
+    One line, on the card. Most capture will never use it, which is the design:
+    it has to cost nothing to ignore thirty times and be there the once it is
+    wanted.
+    {% endcomment %}
+    <form method="post" action="{% url 'tag_node' item.node.public_id %}"
+          class="tag-row">
+      {% csrf_token %}
+      {% for label in item.labels %}<span class="chip">{{ label }}</span>{% endfor %}
+      <input type="text" name="tags" class="tags tag-add"
+             placeholder="+ tag" aria-label="Add a tag to this note">
+    </form>
   </div>
 {% empty %}
   {% comment %}

@@ -103,6 +103,9 @@ def _capture_context(request, *, prefill: str = "") -> dict:
                 "node": node,
                 "body": queries.current_body(node),
                 "tier": queries.attention_tier(node, now=now),
+                # Shown so a tagged note is distinguishable from an untagged
+                # one, and so two spellings of one thing are visible as two.
+                "labels": queries.confirmed_concept_labels(node),
             }
             for node in nodes
         ],
@@ -171,6 +174,37 @@ def capture(request):
         return redirect("capture")
 
     return render(request, "mind/capture.html", _capture_context(request))
+
+
+@login_required
+@require_http_methods(["POST"])
+def tag_node(request, public_id):
+    """Name a note that already exists.
+
+    The capture-page box only helps notes written from now on, which left the
+    case that produced it unsolved: four notes about films, already captured,
+    and no way to say "these are films". A thought is often only recognisable
+    as part of something once the something exists.
+
+    **Expected use, from Vince, August 15, 2026:** obvious categories — movies,
+    books, a particular project — and not much else. Most capture is random and
+    stays untagged, which is the design rather than a shortfall. That is why
+    this is one line on a card and not a tag manager: it should cost nothing to
+    ignore thirty times and be there the once it is wanted.
+
+    Owner-scoped in the lookup, so somebody else's note is not found rather
+    than found and refused.
+    """
+    node = queries.live_nodes(request.user).filter(public_id=public_id).first()
+    if node is None:
+        return redirect("capture")
+
+    labels = request.POST.get("tags", "").split(",")
+    if any(label.strip() for label in labels):
+        services.record_typed_tags(
+            node, labels, now=timezone.now(), actor=request.user.get_username()
+        )
+    return redirect("capture")
 
 
 @login_required

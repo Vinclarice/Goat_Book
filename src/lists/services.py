@@ -6,6 +6,7 @@ from django.db.models import Max
 from django.utils import timezone
 
 from lists.models import (
+    CadenceMode,
     ChecklistStep,
     Item,
     List,
@@ -300,12 +301,20 @@ def set_due_date(item, due_date):
 
 
 @transaction.atomic
-def set_recurrence(item, recurrence):
+def set_recurrence(item, recurrence, cadence_mode=None):
+    """Set how often this repeats, and optionally whether it is anchored.
+
+    `cadence_mode=None` means "leave it as it is", not "reset to the default".
+    Editing a cadence must not silently undo a mode somebody chose -- that is
+    how a setting gets quietly reverted by an unrelated edit.
+    """
     item = Item.objects.select_for_update().get(pk=item.pk)
     if item.status == Item.Status.ARCHIVED:
         raise InvalidTaskTransition("Restore this task before editing it")
     if recurrence not in Item.Recurrence.values:
         raise TaskConflict("Choose a valid recurrence.")
+    if cadence_mode is not None and cadence_mode not in CadenceMode.values:
+        raise TaskConflict("Choose a valid schedule mode.")
     item.recurrence = recurrence
     if recurrence == Item.Recurrence.NONE:
         # The link stays. This task really was an occurrence of that series,
@@ -324,6 +333,8 @@ def set_recurrence(item, recurrence):
     # was stopped should say so rather than keep advertising the rule it no
     # longer follows.
     _write_through_to_commitment(item, cadence=recurrence)
+    if cadence_mode is not None:
+        _write_through_to_commitment(item, cadence_mode=cadence_mode)
     return item
 
 
@@ -498,7 +509,7 @@ def _nth_occurrence_after(base, recurrence, n):
     return None
 
 
-def _advance_due_date(due_date, recurrence, today=None):
+def _advance_due_date(due_date, recurrence, today=None, mode=CadenceMode.ANCHORED):
     """The next occurrence's due date, which is never already in the past.
 
     It used to be one interval past the *previous due date*, full stop. A
@@ -513,17 +524,22 @@ def _advance_due_date(due_date, recurrence, today=None):
     than five. Occurrences that did not happen are not invented -- a fabricated
     history is worse than an absent one, and `principles.md` refuses it.
 
-    **This is anchored recurrence, and it is a choice.** `design-concept.md`
-    specifies anchored *and* floating as distinct modes and calls the
-    distinction load-bearing; Clarice has one cadence field and cannot say
-    which a commitment is. Anchored is the safer single answer: for a genuinely
-    floating commitment like a furnace filter it lands a few days early, while
-    floating applied to everything would drift "bins every Monday" off Monday
-    permanently, one day per late completion. Early is cheap; drift is not.
+    All of that describes **anchored**, which is the default and was the only
+    mode until August 15, 2026. **Floating** counts from the completion instead
+    -- a furnace filter lasts a month from when it was changed, not from a date
+    nobody acted on -- and needs no skipping, because it starts from today by
+    construction.
+
+    See `CadenceMode` for why anchored is the default rather than a coin toss.
     """
-    base = due_date or timezone.localdate()
     if today is None:
         today = timezone.localdate()
+    if mode == CadenceMode.FLOATING:
+        # The old due date is deliberately ignored, including a future one:
+        # floating means the clock restarts when the work is actually done.
+        return _nth_occurrence_after(today, recurrence, 1)
+
+    base = due_date or today
 
     # Bounded rather than `while True`: a corrupt cadence or a due date far in
     # the past should not spin. Two thousand steps clears five years of daily.
@@ -573,7 +589,10 @@ def _spawn_next_occurrence(completed_item, carry_forward_steps=()):
         owner=commitment.owner,
         text=commitment.text,
         due_date=_advance_due_date(
-            completed_item.due_date, commitment.cadence, today=timezone.localdate()
+            completed_item.due_date,
+            commitment.cadence,
+            today=timezone.localdate(),
+            mode=commitment.cadence_mode,
         ),
         recurrence=commitment.cadence,
         position=_next_position(commitment.list, owner=commitment.owner),

@@ -19,6 +19,28 @@ class Recurrence(models.TextChoices):
     WEEKLY = "weekly", "Weekly"
     MONTHLY = "monthly", "Monthly"
 
+class CadenceMode(models.TextChoices):
+    """Whether a repeating commitment is fixed to the calendar or to the last
+    time it was actually done.
+
+    `design-concept.md` calls this distinction load-bearing, and it is: the two
+    modes disagree by months on a commitment done late, and each is plainly
+    wrong for the other's cases.
+
+    ANCHORED is the default, and the asymmetry is deliberate. A mortgage that
+    quietly drifts off the 1st is a missed payment; a furnace filter changed six
+    days early is nothing. Somebody who never discovers this setting keeps the
+    behaviour that cannot hurt them.
+    """
+
+    #: The calendar rule is the truth. Due the 1st whether or not last month's
+    #: was paid on time. Missed periods are skipped, never replayed.
+    ANCHORED = "anchored", "On a fixed schedule"
+    #: The elapsed interval is the truth. A filter lasts a month from when it
+    #: was changed, not from when it was notionally due.
+    FLOATING = "floating", "A set time after it is done"
+
+
 class RecurringCommitment(models.Model):
     """The durable identity of a repeating commitment, across its occurrences.
 
@@ -74,6 +96,12 @@ class RecurringCommitment(models.Model):
     )
     cadence = models.CharField(
         max_length=12, choices=Recurrence.choices, default=Recurrence.NONE,
+    )
+    # On the commitment rather than the occurrence, because it is a property of
+    # the *rule* -- `Item.recurrence` is a snapshot of what an occurrence ran
+    # under, and this is not something an occurrence has.
+    cadence_mode = models.CharField(
+        max_length=10, choices=CadenceMode.choices, default=CadenceMode.ANCHORED
     )
     notes = models.TextField(blank=True, default="")
     tags = models.ManyToManyField("Tag", related_name="commitments", blank=True)

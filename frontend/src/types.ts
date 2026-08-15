@@ -1,4 +1,13 @@
 export type TaskStatus = "active" | "completed" | "archived";
+/** How a repeating task's next due date is worked out.
+ *
+ * "anchored" keeps the calendar rule -- the mortgage is due on the 1st whether
+ * or not last month's was paid on time. "floating" counts from when the work
+ * was actually done -- a furnace filter lasts a month from the change, not from
+ * a date nobody acted on. Null when the task does not repeat at all.
+ */
+export type CadenceMode = "anchored" | "floating";
+
 export type TaskRecurrence = "none" | "daily" | "weekly" | "monthly";
 export type AreaColorKey =
   | "sky"

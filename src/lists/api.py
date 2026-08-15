@@ -8,7 +8,7 @@ from django.views.decorators.http import require_http_methods
 from accounts.auth import token_or_session_required
 from accounts.models import SCOPE_AGENDA_WRITE
 from lists import services
-from lists.models import ChecklistStep, Item, List
+from lists.models import CadenceMode, ChecklistStep, Item, List
 from lists.serializers import serialize_checklist_step, serialize_item
 
 # What a token-authenticated request may change through item_detail --
@@ -196,6 +196,10 @@ def item_detail(request, item_id):
         return error_response
     changed_fields = {
         "text", "status", "due_date", "tags", "recurrence", "notes",
+        # Its own single change rather than a companion to `recurrence`,
+        # keeping the one-field-per-request discipline the rest of this
+        # endpoint runs on. Setting both is two requests.
+        "cadence_mode",
     }.intersection(payload)
     if len(changed_fields) != 1:
         return JsonResponse(
@@ -203,7 +207,7 @@ def item_detail(request, item_id):
                 "errors": {
                     "body": [
                         "Change exactly one of text, status, due_date, tags, "
-                        "recurrence, or notes per request."
+                        "recurrence, cadence_mode, or notes per request."
                     ]
                 }
             },
@@ -240,6 +244,22 @@ def item_detail(request, item_id):
             item = services.set_item_tags(item, tags)
         elif "recurrence" in changed_fields:
             item = services.set_recurrence(item, payload["recurrence"])
+        elif "cadence_mode" in changed_fields:
+            mode = payload["cadence_mode"]
+            # Checked here rather than left to the service's TaskConflict,
+            # which this endpoint answers with 409. An unknown enum value is a
+            # malformed request, not a conflict -- the same call due_date, tags
+            # and notes already make above. (`recurrence` still falls through
+            # to 409; that inconsistency predates this and is left alone.)
+            if mode not in CadenceMode.values:
+                return JsonResponse(
+                    {"errors": {"cadence_mode": ["Choose a valid schedule mode."]}},
+                    status=400,
+                )
+            # The cadence is unchanged; only how it advances. Routed through
+            # set_recurrence rather than writing the commitment directly, so
+            # the archived-task guard and the write-through stay in one place.
+            item = services.set_recurrence(item, item.recurrence, cadence_mode=mode)
         elif "notes" in changed_fields:
             notes = payload["notes"]
             if not isinstance(notes, str):

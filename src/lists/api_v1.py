@@ -30,7 +30,7 @@ from lists import agenda as agenda_reader
 from lists import projects as project_reader
 from lists import services
 from lists.forms import ListTitleForm
-from lists.models import Item, List
+from lists.models import CadenceMode, Item, List
 from lists.serializers import (
     archive_workspace_data_for,
     area_ref_for,
@@ -156,6 +156,10 @@ class ArchiveOut(Schema):
 
 class TaskDetailOut(Schema):
     task: TaskOut
+    # Whether a repeating task is fixed to the calendar or counts from when it
+    # was last done -- see lists.models.CadenceMode. Null when it does not
+    # repeat, which is the honest answer rather than a default nobody chose.
+    cadence_mode: CadenceMode | None
     # Optional since August 14, 2026: a task may stand on its own. Declared
     # nullable here rather than only handled in the serializer, because Ninja
     # validates the response -- a non-optional schema turns an unfiled task
@@ -332,7 +336,7 @@ def task_detail(request, item_id: int):
     # Matches edit_item's queryset exactly: archived tasks are managed
     # from the Archive route (restore/delete), not edited here.
     item = get_object_or_404(
-        Item.objects.select_related("list").prefetch_related("tags"),
+        Item.objects.select_related("list", "commitment").prefetch_related("tags"),
         id=item_id,
         owner=request.user,
         status__in=(Item.Status.ACTIVE, Item.Status.COMPLETED),

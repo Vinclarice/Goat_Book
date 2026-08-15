@@ -832,6 +832,22 @@ export interface components {
             /** Title */
             title: string;
         };
+        /**
+         * CadenceMode
+         * @description Whether a repeating commitment is fixed to the calendar or to the last
+         *     time it was actually done.
+         *
+         *     `design-concept.md` calls this distinction load-bearing, and it is: the two
+         *     modes disagree by months on a commitment done late, and each is plainly
+         *     wrong for the other's cases.
+         *
+         *     ANCHORED is the default, and the asymmetry is deliberate. A mortgage that
+         *     quietly drifts off the 1st is a missed payment; a furnace filter changed six
+         *     days early is nothing. Somebody who never discovers this setting keeps the
+         *     behaviour that cannot hurt them.
+         * @enum {string}
+         */
+        CadenceMode: "anchored" | "floating";
         /** ChecklistStepOut */
         ChecklistStepOut: {
             /** Id */
@@ -865,6 +881,7 @@ export interface components {
         /** TaskDetailOut */
         TaskDetailOut: {
             task: components["schemas"]["TaskOut"];
+            cadence_mode: components["schemas"]["CadenceMode"] | null;
             area: components["schemas"]["TaskAreaSummaryOut"] | null;
             /** Checklist Steps */
             checklist_steps: components["schemas"]["ChecklistStepOut"][];

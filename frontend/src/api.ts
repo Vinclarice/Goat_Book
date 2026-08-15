@@ -1,4 +1,10 @@
-import type { ChecklistStep, Task, TaskRecurrence, TaskStatus } from "./types";
+import type {
+  CadenceMode,
+  ChecklistStep,
+  Task,
+  TaskRecurrence,
+  TaskStatus,
+} from "./types";
 
 interface ApiErrors {
   [field: string]: string[];
@@ -108,6 +114,19 @@ export function updateTaskRecurrence(
   recurrence: TaskRecurrence,
 ): Promise<Task> {
   return request<Task>(task.url, "PATCH", { recurrence });
+}
+
+/** Whether a repeating task is fixed to the calendar or counts from completion.
+ *
+ * A separate request from `updateTaskRecurrence` rather than a second argument
+ * to it: the endpoint takes exactly one field per PATCH, and this is a property
+ * of the series rather than of this occurrence.
+ */
+export function updateTaskCadenceMode(
+  task: Task,
+  cadence_mode: CadenceMode,
+): Promise<Task> {
+  return request<Task>(task.url, "PATCH", { cadence_mode });
 }
 
 export function updateTaskNotes(task: Task, notes: string): Promise<Task> {

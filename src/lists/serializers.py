@@ -116,6 +116,13 @@ def task_detail_data_for(item):
     """
     return {
         "task": serialize_item(item),
+        # On the detail payload only. It lives on the commitment, so putting it
+        # on every TaskOut would mean joining the series for every row of the
+        # agenda to answer a question only this page asks. Null for a task that
+        # does not repeat, which is most of them.
+        "cadence_mode": (
+            item.commitment.cadence_mode if item.commitment_id else None
+        ),
         # Null for a task standing on its own. Present-but-empty rather than
         # absent, so the client reads "this task has no Area" instead of
         # having to infer it from a missing key -- inference is how a filed

@@ -222,6 +222,37 @@ def capture(
     return node
 
 
+@transaction.atomic
+def archive_node(node: Node, *, now: datetime, actor: str) -> Node:
+    """Take a node out of the live set without deleting it.
+
+    Distinct from deletion, and the distinction is the point: archived material
+    is still searchable and still there, it just stops being offered. `Node`
+    has carried `archived_at` and `EventType.ARCHIVED` since the first slice
+    with nothing to set them; the Inbox migration is the first caller, for
+    captures somebody explicitly discarded.
+
+    **It does take them out of the detectors' reach**, since those read
+    `live_nodes`. That is the right trade for material a person said no to
+    once -- surfacing it again as a connection would be the system overruling
+    that -- but it is a real cost to a corpus this small, which is why the
+    migration reports how many it archived rather than doing it quietly.
+    """
+    if node.archived_at is not None:
+        return node
+    node.archived_at = now
+    node.save(update_fields=["archived_at"])
+    _record(
+        node.owner,
+        EventType.ARCHIVED,
+        node=node,
+        occurred_at=now,
+        actor=actor,
+        payload={},
+    )
+    return node
+
+
 def _propose_any_commitment(node: Node, *, now: datetime, actor: str) -> Facet | None:
     """Offer an actionable facet if the words read as a commitment.
 

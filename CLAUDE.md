@@ -84,11 +84,13 @@ Also closed: the white screen on any render exception (`0428efb`), and defects
 August 12 in `2986ed6`. **That is the second time this list and the blueprint
 have claimed finished work was open.** Check the code before believing either.
 
-**Blueprint defect 6 is the only open one left**: `promote_idea_to_task` calls
-`create_item(for_list, idea.text)` with no tags, while `promote_to_task` carries
-them — same intent, different outcome by route. Weigh it against the merger
-rule above before fixing: `Idea` does not survive, so this is a fix with a known
-expiry.
+**Blueprint defect 6 will not be fixed — Vince's call, August 14, 2026.** Do
+not re-open it. `promote_idea_to_task` carries an Idea's notes but not its tags,
+where `promote_to_task` carries both. It is a discontinuity rather than data
+loss: the Idea is marked `PROMOTED` and keeps `promoted_task`, so its tags are
+still there and still reachable from the task. Set against that, `Idea` is
+retired by the merger, and no Idea exists locally to have been affected. Left
+deliberately.
 
 **Not allowed without a deliberate decision.** New features on `Item`,
 `Capture` or `Idea`. New UI work. New models — a model added now is a model

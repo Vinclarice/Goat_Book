@@ -75,8 +75,9 @@ of them is large.
 > Each is marked in place rather than deleted, because what a defect was is the
 > part worth keeping.
 >
-> **Still open: 6 only** — tags dropped by `promote_idea_to_task` — plus the
-> half of **9** that is not code: nothing polls `/healthz`. **3 and 4 turned out
+> **Nothing in Part 1 is open in code.** Nine are fixed; **6 is closed as
+> won't-fix** (see its entry). What remains is the half of **9** that is not
+> code: nothing polls `/healthz`. **3 and 4 turned out
 > to have been fixed on August 12** and this document said otherwise for two
 > days; that is the second time Part 1 has claimed finished work was open, so
 > check the code before believing a line here.
@@ -154,7 +155,12 @@ catches the providers and router as well as route content. The only `componentDi
 at `frontend/src/main.tsx:26`, inside the island entry point that no template
 references any more. `app/main.tsx` mounts the router with no boundary.
 
-**6. Tags are dropped on one of two promotion routes.** `promote_to_task`
+**6. ~~Tags are dropped on one of two promotion routes.~~ Will not be fixed —
+decided August 14, 2026.** Not data loss, which this entry did not say: the Idea
+is marked `PROMOTED` and keeps `promoted_task`, so the tags remain on it and
+remain reachable. Against a two-line fix stands a model the merger retires and
+no known affected row. Deliberate, so that the next reader does not spend the
+fifteen minutes deciding again. `promote_to_task`
 (Capture → Item) carries them (`src/capture/services.py:135`);
 `promote_idea_to_task` (Idea → Item) calls `create_item(for_list, idea.text)`
 with no tags (`:232`). Same user intent, different outcome by route.

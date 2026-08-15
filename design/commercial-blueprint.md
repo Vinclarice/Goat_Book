@@ -153,7 +153,8 @@ border, its hover feedback, and its current-page indicator. Same root cause as
 (`0428efb`) — `AppBoundary`, wrapped outermost in `src/app/main.tsx` so it
 catches the providers and router as well as route content. The only `componentDidCatch` is
 at `frontend/src/main.tsx:26`, inside the island entry point that no template
-references any more. `app/main.tsx` mounts the router with no boundary.
+references any more (that file is gone as of `54d39ab`; the shell got its own
+boundary in `0428efb`). `app/main.tsx` mounts the router with no boundary.
 
 **6. ~~Tags are dropped on one of two promotion routes.~~ Will not be fixed —
 decided August 14, 2026.** Not data loss, which this entry did not say: the Idea
@@ -369,9 +370,10 @@ palette, AI synthesis. All correctly deferred; none has a trigger.
 ### Remove / retire
 
 - `src/app/routes/` — an empty directory tree.
-- The dead island layer: `frontend/src/main.tsx`, `frontend_assets()` in
-  `frontend_tags.py`, and the `app` JS Rollup entry. No template references any
-  of the three mount points; it still builds and ships.
+- ~~The dead island layer~~ — **deleted August 15, 2026** (`54d39ab`).
+  `frontend/src/main.tsx`, `frontend_assets()` and the `app` Rollup entry all
+  went; the three components they mounted stayed, because they are the SPA's
+  routes now.
 - `static/bootstrap/` — 8.4 MB still in the tree after retirement.
 - The Django `/capture/` template stack, once M1 lands.
 - `src/lists/api.py` + `api_urls.py` — seven hand-rolled endpoints that own
@@ -437,7 +439,7 @@ drifted, and Android hand-parses every field.
 
 | | Effort | Why |
 |---|---|---|
-| Delete the dead island layer | S | Removes a build entry and 99 lines of misleading bootstrap |
+| ~~Delete the dead island layer~~ — done, `54d39ab` | S | Removed a build entry and 99 lines of misleading bootstrap |
 | **Serve the date policy in the payload** | S | Add `bucket` to `TaskOut`, `week_horizon_days` and `snooze_presets` to the agenda payload; two of three implementations then delete. Highest ROI item here |
 | `.importlinter` contracts in CI | S | ~30 lines; would have caught all three couplings above |
 | A written five-context map | S | Planning / Practice / Knowledge / Reflection / Identity, with `Tag` named as a shared kernel rather than an accident of history |

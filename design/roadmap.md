@@ -523,9 +523,11 @@ Dunlin has been — one subject, one finish line — and four of its five steps 
 done. See [`one-capture-surface-plan.md`](one-capture-surface-plan.md) for the
 sequence and `roadmap-history.md` for what each step cost.
 
-- **Steps 1, 2, 3 and 4a shipped August 15, 2026.** A typed tag is a confirmed
-  concept; a task inherits its node's concepts; the Inbox's 34 captures are in
-  the graph; and `/api/v1/capture` writes a `Node`.
+- **Steps 1, 2, 3 and 4a shipped and were verified in production August 15,
+  2026.** A typed tag is a confirmed concept; a task inherits its node's
+  concepts; the Inbox is drained into the graph — 41 nodes, 19 visible to the
+  detectors; and `/api/v1/capture` writes a `Node`, keeping the time a queued
+  thought was written rather than the time it was delivered.
 - **There is one capture endpoint now.** `/api/v1/capture` is the application's,
   served by `mind/api_v1.py`, and it is what the phone and the Day page both
   post to. The knowledge core keeps a second, unused API at `/mind/api/v1/`,

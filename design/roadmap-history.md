@@ -74,8 +74,23 @@ proves the wrong thing — `test_journeys.py` was doing exactly that, posting to
 `/mind/api/v1/capture` with a `mind.ApiToken`, and now walks the real route with
 the real credential.
 
-Verified by 974 Django tests, 686 pytest, 271 frontend and a clean build.
-Production verification is owed.
+Verified by 974 Django tests, 686 pytest, 271 frontend, 30 browser and a clean
+build, then in production on August 15: the live OpenAPI schema carries
+`captured_at` and returns `{public_id, captured_at}`, and an offline capture was
+walked from the phone through the queue to `/mind/`.
+
+**A last capture had reached the Inbox after the migration and before the
+deploy** — "Barry tv show", August 15 — which is exactly the gap the re-run of
+`migrate_inbox` exists to close. The graph stands at 41 nodes, 19 of them visible
+to the detectors.
+
+**Both of that command's counts describe the input rather than the action**, and
+it is worth saying because somebody read them to decide whether to proceed. The
+dry run lists everything in `Capture` rather than what it would write, so one new
+capture reads as thirty-five; and "22 discarded capture(s) archived" counts the
+discarded captures it walked past, not the nodes it archived. Neither is wrong
+about the world, and neither answers the question being asked of it. The command
+retires with `Capture` in 4b, so it was left alone.
 
 ## After Dunlin — Release F and six unlettered lines of work, August 6–12, 2026
 

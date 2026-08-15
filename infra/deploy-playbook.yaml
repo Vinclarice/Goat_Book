@@ -397,6 +397,13 @@
         hour: "3"
         job: docker exec clarice ./manage.py run_mind_maintenance
         user: root
+      # Writing root's crontab needs root -- the same omission the digest task
+      # below already documents, made again directly above its explanation.
+      # `user: root` alone makes the module run `crontab -u root` as the deploy
+      # user, which is refused with "must be privileged to use -u". A cron task
+      # cannot be checked by --syntax-check or --list-tasks; only a real run
+      # finds this, which is exactly what the note below says happened last time.
+      become: true
 
     # The command has existed and worked for a while but nothing invoked it,
     # so the digest reached nobody. Users with nothing to report are skipped

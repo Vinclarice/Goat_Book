@@ -454,13 +454,20 @@ def promote_checklist_step(step):
     if step.task.status == Item.Status.ARCHIVED:
         raise InvalidTaskTransition(CHECKLIST_STEP_ARCHIVED_ERROR)
     task_list = step.task.list
-    if _duplicate_exists(task_list, step.text):
+    # From the task, not from its Area, which may not exist -- the same
+    # correction as in _spawn_next_occurrence, and the same mistake: relying on
+    # save() to derive an owner works for every filed task and leaves an
+    # unfiled one violating NOT NULL. Passing it here also restores the
+    # duplicate check, which followed the Area and so did nothing without one.
+    owner = step.task.owner
+    if _duplicate_exists(task_list, step.text, owner=owner):
         raise TaskConflict(DUPLICATE_ITEM_ERROR)
     try:
         promoted = Item.objects.create(
             list=task_list,
+            owner=owner,
             text=step.text,
-            position=_next_position(task_list),
+            position=_next_position(task_list, owner=owner),
         )
     except IntegrityError as error:
         raise TaskConflict(DUPLICATE_ITEM_ERROR) from error
@@ -511,10 +518,16 @@ def _spawn_next_occurrence(completed_item, carry_forward_steps=()):
     # wrong day rather than just describing it wrongly.
     next_item = Item.objects.create(
         list=commitment.list,
+        # From the series, not from the Area. `Item.save()` derives owner from
+        # `list`, which works for every filed task and leaves an unfiled one
+        # with nothing to derive from -- so this insert violated NOT NULL and
+        # completing the task raised. The commitment is the durable identity
+        # here and it knows whose it is, whether or not it has a place.
+        owner=commitment.owner,
         text=commitment.text,
         due_date=_advance_due_date(completed_item.due_date, commitment.cadence),
         recurrence=commitment.cadence,
-        position=_next_position(commitment.list),
+        position=_next_position(commitment.list, owner=commitment.owner),
         commitment=commitment,
         notes=commitment.notes,
     )

@@ -122,3 +122,96 @@ class TaskWithoutAnAreaTest(TestCase):
 
         assert task.commitment is not None
         assert task.commitment.owner == self.user
+
+
+class UnfiledSeriesContinuesTest(TestCase):
+    """The second occurrence, which is where an unfiled series actually breaks.
+
+    `_spawn_next_occurrence` builds the next task with `list=commitment.list`
+    and no owner, relying on `Item.save()` deriving one from the Area. A
+    commitment with no Area has nothing to derive from, so the insert violated
+    NOT NULL and completing the task raised.
+
+    Found from a real one: "change the office furnace filter on the 10th of
+    each month", accepted from a capture on August 15, 2026 with no Area. It
+    was created fine, listed fine, and would have failed the first time it was
+    ticked off -- a month later, with nothing linking the error to the day the
+    task was made.
+    """
+
+    def setUp(self):
+        self.user = User.objects.create_user("alice", "a@example.com", "pw")
+
+    def test_completing_an_unfiled_repeating_task_spawns_the_next_one(self):
+        task = services.create_item(
+            None, "Change the furnace filter", owner=self.user,
+            recurrence=Item.Recurrence.MONTHLY, due_date=datetime.date(2026, 9, 10),
+        )
+
+        services.complete_item(task)
+
+        following = Item.objects.filter(status=Item.Status.ACTIVE).get()
+        assert following.text == "Change the furnace filter"
+        assert following.due_date == datetime.date(2026, 10, 10)
+
+    def test_the_next_occurrence_belongs_to_the_same_person(self):
+        """The failure itself: no Area to inherit an owner from, so it has to
+        come from the series. An occurrence owned by nobody is a row its own
+        owner cannot see."""
+        task = services.create_item(
+            None, "Change the furnace filter", owner=self.user,
+            recurrence=Item.Recurrence.MONTHLY, due_date=datetime.date(2026, 9, 10),
+        )
+
+        services.complete_item(task)
+
+        assert Item.objects.filter(status=Item.Status.ACTIVE).get().owner == self.user
+
+    def test_it_stays_unfiled_rather_than_acquiring_an_area(self):
+        task = services.create_item(
+            None, "Change the furnace filter", owner=self.user,
+            recurrence=Item.Recurrence.MONTHLY, due_date=datetime.date(2026, 9, 10),
+        )
+
+        services.complete_item(task)
+
+        assert Item.objects.filter(status=Item.Status.ACTIVE).get().list is None
+
+
+class UnfiledChecklistStepPromotesTest(TestCase):
+    """The same shape as the series bug, one function along.
+
+    `promote_step` reads `step.task.list` and creates the new task from it,
+    again relying on `Item.save()` to derive an owner from the Area. Found by
+    grepping every `Item.objects.create` in the non-test tree after the series
+    bug, rather than by tripping over it next -- the two are one mistake made
+    twice, and the second was worth finding without a person hitting it.
+    """
+
+    def setUp(self):
+        self.user = User.objects.create_user("alice", "a@example.com", "pw")
+        self.task = services.create_item(None, "Plan the trip", owner=self.user)
+
+    def test_a_step_on_an_unfiled_task_can_become_a_task(self):
+        step = services.add_checklist_step(self.task, "Book the ferry")
+
+        promoted = services.promote_checklist_step(step)
+
+        assert promoted.owner == self.user
+        assert promoted.list is None
+
+    def test_the_promoted_task_is_visible_to_its_owner(self):
+        step = services.add_checklist_step(self.task, "Book the ferry")
+
+        services.promote_checklist_step(step)
+
+        assert Item.objects.filter(owner=self.user, text="Book the ferry").exists()
+
+    def test_it_still_refuses_a_duplicate_among_unfiled_tasks(self):
+        """Dedup followed the Area too, so with no Area there was none -- the
+        same gap `_duplicate_exists` already had for `create_item`."""
+        services.create_item(None, "Book the ferry", owner=self.user)
+        step = services.add_checklist_step(self.task, "Book the ferry")
+
+        with self.assertRaises(services.TaskConflict):
+            services.promote_checklist_step(step)

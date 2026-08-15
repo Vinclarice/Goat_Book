@@ -24,8 +24,22 @@ class ChecklistStepBackfillTest(TransactionTestCase):
         return executor.loader.project_state(target).apps
 
     def tearDown(self):
-        # Leave the test database where the rest of the suite expects it.
-        self.migrate(AFTER)
+        # Every app forward, not just this one's target.
+        #
+        # Rewinding `lists` drags every app that depends on it backwards too,
+        # and migrating only to AFTER left those where the rewind put them. That
+        # was invisible for as long as every app's tables matched a live model:
+        # the flush between tests truncates by model, so extra columns were
+        # harmless. Heron 4b deleted `Capture` and `Idea`, and a table with no
+        # model is one the flush cannot see -- `cannot truncate a table
+        # referenced in a foreign key constraint`, in a test about checklist
+        # steps.
+        #
+        # `graph.leaf_nodes()` is what accounts/tests/test_migrations.py has
+        # always done, and is what the comment above used to claim.
+        executor = MigrationExecutor(connection)
+        executor.loader.build_graph()
+        executor.migrate(executor.loader.graph.leaf_nodes())
 
     def test_a_plain_subtask_becomes_a_checklist_step(self):
         old_apps = self.migrate(BEFORE)

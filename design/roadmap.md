@@ -532,11 +532,16 @@ sequence and `roadmap-history.md` for what each step cost.
   served by `mind/api_v1.py`, and it is what the phone and the Day page both
   post to. The knowledge core keeps a second, unused API at `/mind/api/v1/`,
   which 4a makes retirable.
-- **Two capture surfaces remain**, both pages: `/capture/`'s form writing a
-  `Capture`, and `/mind/` writing a `Node`. 4b deletes the first along with
-  `Capture` and `Idea` — the live reason the task core stays in maintenance, see
-  `CLAUDE.md`. Step 5 then moves `/mind/` to the freed URL, which 4a reduced to
-  a pages-only move.
+- **4b is built and awaits deployment.** `/capture/`, `Capture`, `Idea` and
+  `migrate_inbox` are deleted, and Inbox and Ideas are out of both navs. **There
+  is one capture surface.** It carries an irreversible migration dropping two
+  tables, so the deploy is a decision rather than a routine push.
+- **Step 5 is what remains**: move `/mind/` to the URL 4b freed. 4a reduced it
+  to a pages-only move, so a plain redirect suffices.
+- **The task core's maintenance rule expires when 4b deploys.** `Capture` and
+  `Idea` being slated for retirement was its live reason — see `CLAUDE.md`,
+  which says the restraint should be re-examined rather than left standing by
+  habit.
 - **The plan's own count was wrong, and finding out is what step 4 bought.** It
   said two capture surfaces; there were three, and it said `Backends.kt` routed
   the phone to the knowledge core, which no shipped build has ever done.

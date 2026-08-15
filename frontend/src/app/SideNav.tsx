@@ -74,34 +74,22 @@ export function SideNav() {
         <NavLink to="/review" className={navLinkClass}>
           Review
         </NavLink>
-        {/* A Django page, not an SPA route, so a plain anchor: React Router
-            would try to handle /capture/ itself and 404 inside the shell. */}
-        <a className={styles.link} href={data?.inbox_url ?? "/capture/"}>
-          Inbox
-          {data && data.inbox_count > 0 && (
-            <span className={styles.count}>{data.inbox_count}</span>
-          )}
-        </a>
-        {/* No count: unlike the inbox, a pile of ideas isn't a backlog to
-            work down, so a number next to it would read as pressure. */}
-        <a className={styles.link} href={data?.ideas_url ?? "/capture/ideas/"}>
-          Ideas
-        </a>
-        {/* The other core, and until now unreachable from here: the merger put
-            it in this application on August 14 and typing /mind/ was the only
-            way in.
+        {/* Where a thought lives, and since Heron 4b the only such place.
+            Inbox and Ideas sat above this until 4b deleted them; it was put
+            here beside them deliberately, so that when they went this would
+            already be where the eye looks.
 
-            Beside Inbox and Ideas on purpose. All three are places a thought
-            lives, and the crossover retires the first two into this one -- so
-            when they go, this stays where the eye already looks.
+            A Django page, not an SPA route, so a plain anchor: React Router
+            would try to handle /mind/ itself and 404 inside the shell.
 
             The href comes from the payload because that prefix is temporary
             and lives in exactly one line of clarice/urls.py. Pinning it here
             would make it two, in two languages.
 
-            No count, for the same reason Ideas has none and more so: this core
-            is quiet by design, and a number would turn resurfacing into a
-            backlog -- the one thing the attention policy refuses to be. */}
+            No count, and this is the one nav entry that must never grow one:
+            the Inbox's number measured a backlog, and this core is quiet by
+            design. A number here would turn resurfacing into the thing the
+            attention policy exists to refuse. */}
         <a className={styles.link} href={data?.mind_url ?? "/mind/"}>
           Second Mind
         </a>

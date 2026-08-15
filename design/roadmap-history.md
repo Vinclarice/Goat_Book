@@ -9,10 +9,11 @@ This preserves the reasoning, deployment record, and lessons behind completed
 work without making the active roadmap hard to scan. The active plan is
 [`roadmap.md`](roadmap.md).
 
-## Heron, steps 1–4a — the crossover, August 15, 2026
+## Heron, steps 1–4b — the crossover, August 15, 2026
 
-Heron is not closed; 4b and 5 remain. This is the narrative of what shipped, so
-that `roadmap.md` can carry the baseline rather than the story. The plan is
+Heron is not closed; step 5 remains, and 4b is built but not deployed. This is
+the narrative of what shipped, so that `roadmap.md` can carry the baseline rather
+than the story. The plan is
 [`one-capture-surface-plan.md`](one-capture-surface-plan.md).
 
 **Steps 1 and 2** wired a typed tag to a confirmed concept and carried a node's
@@ -90,7 +91,46 @@ dry run lists everything in `Capture` rather than what it would write, so one ne
 capture reads as thirty-five; and "22 discarded capture(s) archived" counts the
 discarded captures it walked past, not the nodes it archived. Neither is wrong
 about the world, and neither answers the question being asked of it. The command
-retires with `Capture` in 4b, so it was left alone.
+retired with `Capture` in 4b rather than being fixed.
+
+### 4b — the deletion, and three things it did not cause
+
+`/capture/`'s pages, forms, services, admin and tests are gone, with `Capture`,
+`Idea` and `migrate_inbox`. Inbox and Ideas left both navs — the SPA's `SideNav`
+and the Django `base.html` — and `inbox_count`, `inbox_url` and `ideas_url` left
+the `/nav` payload. **`inbox_count` was the only number in that nav measuring a
+backlog**, and nothing replaces it; a test now asserts that no nav key ends in
+`_count` except `archived_count`, because a bare entry invites somebody to add
+one and the attention policy exists to refuse exactly that.
+
+`capture` stays in `INSTALLED_APPS`. Django needs it there for the delete
+migration to run; removing the app in the same change would leave two tables in
+production that no migration could reach. That is a follow-up, after the deploy.
+
+Three things broke, and none of them were about capture:
+
+- **`base.html` reversed `capture_inbox` and `ideas`.** Every Django-rendered
+  page 500'd. The suite caught it in the first run.
+- **The generated migration would not reverse.** `idea_owner_status_idx` covers
+  `owner`, and unapplying `DeleteModel` runs before unapplying `RemoveField` —
+  so a rewind rebuilt the table and then tried to index a column it had not
+  re-added. Nothing in production would ever have reached it; the
+  migration-rewind tests did. Fixed with a `RemoveIndex` first, on the grounds
+  that a migration nobody can back out of is worst at the moment they want to.
+- **Four migration-rewind tests only rolled their own app forward** in teardown.
+  Harmless for as long as every table had a live model, because the inter-test
+  flush truncates by model — and fatal the instant a table had none, surfacing
+  as `cannot truncate a table referenced in a foreign key constraint` in a test
+  about checklist steps. They now roll the whole graph forward, which is what
+  their own comment already claimed and what `accounts` had always done.
+
+The pattern in all three: **deleting a model is a schema change, and the things
+it breaks are the things that quietly depended on the schema being wider than
+they needed.** None was found by reading the diff.
+
+872 Django, 672 pytest, 270 frontend, 30 browser, clean build. Not yet deployed,
+and the deploy is a decision rather than a routine push: `0008` drops two tables
+and has no reverse.
 
 ## After Dunlin — Release F and six unlettered lines of work, August 6–12, 2026
 

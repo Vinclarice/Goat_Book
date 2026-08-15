@@ -28,8 +28,12 @@
           <a class="text-muted-foreground hover:text-text" href="{% url 'contact' %}">Contact</a>
           {% if user.is_authenticated %}
             <a class="text-muted-foreground hover:text-text" href="{% url 'dashboard' %}">Today</a>
-            <a class="text-muted-foreground hover:text-text" href="{% url 'capture_inbox' %}">Inbox</a>
-            <a class="text-muted-foreground hover:text-text" href="{% url 'ideas' %}">Ideas</a>
+            {# Inbox and Ideas stood here until Heron 4b deleted them. This nav #}
+            {# is the Django-rendered half's, and the knowledge core is now the #}
+            {# whole of it -- so it takes their place rather than being added #}
+            {# beside them. Reversed through {% url %} like everything here, so #}
+            {# step 5's move of the prefix does not have to find this line. #}
+            <a class="text-muted-foreground hover:text-text" href="{% url 'capture' %}">Second Mind</a>
             <a class="text-muted-foreground hover:text-text" href="{% url 'archive' %}">Archive</a>
             <a class="text-muted-foreground hover:text-text" href="{% url 'account_settings' %}">{{ user.username }}</a>
             <form method="post" action="{% url 'logout' %}">

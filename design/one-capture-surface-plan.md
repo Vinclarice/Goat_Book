@@ -1,10 +1,12 @@
 # One capture surface — the plan for Heron
 
 Vince · August 15, 2026 · **active. Steps 1, 2, 3 and 4a shipped and verified in
-production August 15; 4b and 5 remain.** 4a verified by 974 Django, 686 pytest,
-271 frontend and 30 browser tests, then on the droplet: the live schema carries
-`captured_at` and returns a node, the Inbox sweep drained its last capture, and
-an offline capture from the phone was walked end to end.
+production August 15; 4b built the same day and awaits deployment; step 5
+remains.** 4a was verified on the droplet: the live schema carries `captured_at`
+and returns a node, the Inbox sweep drained its last capture, and an offline
+capture from the phone was walked end to end. 4b is verified by 872 Django, 672
+pytest, 270 frontend and 30 browser tests plus a clean build — **production
+verification owed, and it carries an irreversible migration**; see 4b below.
 
 Ends the crossover the merger deliberately left open. Three capture surfaces
 become one: `/mind/` writing a `Node` survives, `/capture/` writing a `Capture`
@@ -115,10 +117,37 @@ same discipline `two-cores.md` used, and it is why the merger shipped in a day.
    calls. The fix had shipped to the wrong endpoint and the defect stayed live
    for a day.
 
-4b. **Retire the Inbox.**
-   Delete `/capture/`'s pages, `capture/services.py`, and the `Capture` and
-   `Idea` models. Unblocked by 4a: nothing writes a `Capture` any more except
-   `/capture/new/`'s own form, which goes with it.
+4b. **Retire the Inbox.** *Built August 15, 2026; not yet deployed.*
+   `/capture/`'s pages, forms, services, admin and tests are gone, along with
+   `Capture`, `Idea`, and `migrate_inbox`, which retires with the models it
+   moved. `capture/migrations/0008_delete_idea_capture` drops the two tables.
+   Inbox and Ideas left both navs — the SPA's `SideNav` and the Django
+   `base.html` — and `inbox_count`, `inbox_url` and `ideas_url` left the `/nav`
+   payload. **`inbox_count` was the only number in the nav that measured a
+   backlog, and nothing replaces it**; there is now a test asserting no nav key
+   ends in `_count` except `archived_count`, because a bare nav entry invites
+   somebody to add one.
+
+   **The migration is irreversible and the app stays installed.** Django needs
+   `capture` in `INSTALLED_APPS` for 0008 to run at all; removing the app in the
+   same change would leave two tables in production that no migration can reach.
+   Deleting the app is a follow-up, after the next deploy.
+
+   Three things broke that had nothing to do with capture, and all three were
+   latent rather than caused:
+
+   - **`base.html` reversed `capture_inbox` and `ideas`**, so every
+     Django-rendered page 500'd. Caught by the suite immediately.
+   - **The generated migration would not reverse.** `idea_owner_status_idx`
+     covers `owner`, and unapplying `DeleteModel` runs before unapplying
+     `RemoveField` — so a rewind rebuilt the table and then indexed a column it
+     had not re-added. Fixed with a `RemoveIndex` first.
+   - **Four migration-rewind tests only rolled their own app forward** in
+     teardown, leaving `capture` behind. Harmless for as long as every table had
+     a live model, because the inter-test flush truncates by model; fatal the
+     moment a table had none. They now roll the whole graph forward, which is
+     what their comment already claimed and what `accounts` had always done.
+
    *The step that makes the whole thing worth doing: one place to type.*
 
 5. **Move the surviving surface to its canonical URL.**

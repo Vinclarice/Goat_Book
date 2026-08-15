@@ -1410,20 +1410,8 @@
             "title": "Archived Count",
             "type": "integer"
           },
-          "inbox_count": {
-            "title": "Inbox Count",
-            "type": "integer"
-          },
           "settings_url": {
             "title": "Settings Url",
-            "type": "string"
-          },
-          "inbox_url": {
-            "title": "Inbox Url",
-            "type": "string"
-          },
-          "ideas_url": {
-            "title": "Ideas Url",
             "type": "string"
           },
           "mind_url": {
@@ -1439,10 +1427,7 @@
           "areas",
           "projects",
           "archived_count",
-          "inbox_count",
           "settings_url",
-          "inbox_url",
-          "ideas_url",
           "mind_url",
           "landing_surface"
         ],

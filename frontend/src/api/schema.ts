@@ -684,14 +684,8 @@ export interface components {
             projects: components["schemas"]["NavProjectOut"][];
             /** Archived Count */
             archived_count: number;
-            /** Inbox Count */
-            inbox_count: number;
             /** Settings Url */
             settings_url: string;
-            /** Inbox Url */
-            inbox_url: string;
-            /** Ideas Url */
-            ideas_url: string;
             /** Mind Url */
             mind_url: string;
             /** Landing Surface */

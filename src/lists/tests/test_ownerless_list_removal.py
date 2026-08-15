@@ -33,8 +33,13 @@ class OwnerlessListRemovalTest(TransactionTestCase):
         return executor.loader.project_state(target).apps
 
     def tearDown(self):
-        # Leave the test database where the rest of the suite expects it.
-        self.migrate(AFTER)
+        # Every app forward, not just the two named in AFTER -- see the note in
+        # lists/tests/test_checklist_step_backfill.py. Leaving `capture` pinned
+        # at 0004 left its tables in a database with no models for them, which
+        # the inter-test flush cannot truncate.
+        executor = MigrationExecutor(connection)
+        executor.loader.build_graph()
+        executor.migrate(executor.loader.graph.leaf_nodes())
 
     def test_an_ownerless_list_and_its_tasks_are_removed(self):
         old_apps = self.migrate(BEFORE)

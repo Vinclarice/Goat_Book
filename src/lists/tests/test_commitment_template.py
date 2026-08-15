@@ -412,7 +412,10 @@ class CommitmentTemplateBackfillTest(TransactionTestCase):
         return executor.loader.project_state(target).apps
 
     def tearDown(self):
-        self.migrate(AFTER)
+        # Every app forward -- see the note in test_checklist_step_backfill.py.
+        executor = MigrationExecutor(connection)
+        executor.loader.build_graph()
+        executor.migrate(executor.loader.graph.leaf_nodes())
 
     def test_a_commitment_is_seeded_from_its_most_recent_occurrence(self):
         old_apps = self.migrate(BEFORE)

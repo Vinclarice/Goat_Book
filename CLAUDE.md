@@ -54,10 +54,11 @@ on 5434 are history; do not develop there. This paragraph said the opposite for
 a day after the merger, which is exactly the drift the checklist above exists to
 prevent.
 
-The crossover is not finished. There are still **two capture pages** —
-`/capture/` writing a `Capture`, `/mind/` writing a `Node`. The `/mind/` prefix
-is temporary and appears in exactly one line of `clarice/urls.py`; where those
-pages finally live is the decision that ends the crossover.
+**There is one capture surface**, as of Heron 4b on August 15, 2026: `/mind/`,
+writing a `Node`. `/capture/` and its `Capture` and `Idea` models are deleted.
+The `/mind/` prefix is still temporary and still appears in exactly one line of
+`clarice/urls.py`; moving it to the URL 4b freed is step 5, and is all that is
+left of the crossover.
 
 **There is one capture *endpoint*, as of Heron 4a on August 15, 2026.**
 `/api/v1/capture` is the application's, served by `mind/api_v1.py`, and it
@@ -65,14 +66,24 @@ writes a `Node`. Both the phone and the SPA's Day page post to it. The knowledge
 core keeps a second, entirely unused API at `/mind/api/v1/` with its own
 `mind.ApiToken` table; nothing calls it, and it is retirable.
 
-## The task core is in maintenance until the crossover ends
+## The task core is in maintenance — and the reason has now expired
 
-**This heading used to read "until the merger", and the merger is over** — so
-the restraint needs a live reason or it is cargo. It has one, and it is
-narrower: `Capture` and `Idea` are still slated for retirement, there are still
-two capture surfaces, and work put into either is work thrown away. That is a
-smaller claim than the old one and it should be re-examined when the crossover
-ends rather than left standing by habit.
+**This heading has been rewritten twice, and needs deciding rather than
+rewriting a third time.** It read "until the merger", and the merger ended. It
+then read "until the crossover ends", on the narrower ground that `Capture` and
+`Idea` were slated for retirement and there were two capture surfaces, so work
+on either was work thrown away.
+
+**Heron 4b deleted both models and one of the two surfaces, so that ground is
+gone.** Step 5 does not sustain it: moving a URL prefix does not make task-core
+work throwaway. The file's own instruction was that this be *re-examined when
+the crossover ends rather than left standing by habit*, so — re-examined, and
+the stated reason no longer holds.
+
+**Whether the restraint lifts is Vince's call, not an inference from this
+paragraph.** There may be other reasons to keep the task core quiet; there is no
+longer *this* reason. Until he says, treat it as still in force and say so when
+it bites, rather than quietly acting on the expiry.
 
 The other half of the old reasoning is simply gone. It warned that separate
 repositories guard against an *accidental* edit, leaving only the **justified**
@@ -107,17 +118,15 @@ Also closed: the white screen on any render exception (`0428efb`), and defects
 August 12 in `2986ed6`. **That is the second time this list and the blueprint
 have claimed finished work was open.** Check the code before believing either.
 
-**Blueprint defect 6 will not be fixed — Vince's call, August 14, 2026.** Do
-not re-open it. `promote_idea_to_task` carries an Idea's notes but not its tags,
-where `promote_to_task` carries both. It is a discontinuity rather than data
-loss: the Idea is marked `PROMOTED` and keeps `promoted_task`, so its tags are
-still there and still reachable from the task. Set against that, `Idea` is
-retired by the merger, and no Idea exists locally to have been affected. Left
-deliberately.
+**Blueprint defect 6 is moot, not open — Vince declined it August 14, 2026 and
+Heron 4b removed the code.** `promote_idea_to_task` carried an Idea's notes but
+not its tags; `Idea` no longer exists, so neither does the function. Recorded
+because the blueprint still lists it, and this list has twice claimed finished
+work was open.
 
-**Not allowed without a deliberate decision.** New features on `Capture` or
-`Idea`, which are retired by the crossover. New models on the task core — a
-model added now is a model migrated twice.
+**Not allowed without a deliberate decision.** New models on the task core — a
+model added now is a model migrated twice. `Capture` and `Idea` used to head
+this list and are simply gone.
 
 `Item` is no longer on that list. It is the destination for every accepted
 commitment, and it gained `owner` on August 14 precisely so a thought from the

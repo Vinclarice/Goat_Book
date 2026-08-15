@@ -8,9 +8,10 @@ depending on which surface it arrived through.
 
 **The pair being compared has changed, and that is the point.** The old version
 of this test compared the Day page's route to the Inbox form, both writing a
-`Capture`. Those two have deliberately diverged: `/api/v1/capture` writes a
-`Node` now and `/capture/new/` still writes a `Capture` until 4b deletes it. It
-was the right test and it correctly failed; what it guarded has moved.
+`Capture`. 4a made the first write a `Node` while the second still wrote a
+`Capture`, so the two deliberately diverged and this test correctly failed; 4b
+then deleted the Inbox form outright. It was the right test throughout — what it
+guards has moved, twice, and it is still the only thing comparing the surfaces.
 
 The three surfaces that must agree now:
 

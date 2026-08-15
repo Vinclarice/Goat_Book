@@ -25,7 +25,6 @@ from ninja.errors import HttpError
 
 from accounts.auth import SessionAuthIfLoggedIn, TokenAuth
 from accounts.models import SCOPE_AGENDA_READ
-from capture.models import Capture
 from lists import agenda as agenda_reader
 from lists import projects as project_reader
 from lists import services
@@ -193,14 +192,16 @@ class NavOut(Schema):
     # project actually has a completion state to filter on.
     projects: list[NavProjectOut]
     archived_count: int
-    inbox_count: int
     settings_url: str
-    inbox_url: str
-    ideas_url: str
-    # The knowledge core. Served rather than written into the client because
-    # `clarice/urls.py` records that this prefix is temporary and lives in
-    # exactly one line -- where those pages finally sit is the decision that
-    # ends the crossover, and the nav should follow it rather than pin it.
+    # The knowledge core, and since Heron 4b the only place a thought lives.
+    # `inbox_count`, `inbox_url` and `ideas_url` sat beside this until the Inbox
+    # was deleted; the count was the one number here that measured a backlog,
+    # and it went with the thing that had one.
+    #
+    # Served rather than written into the client because `clarice/urls.py`
+    # records that this prefix is temporary and lives in exactly one line --
+    # where those pages finally sit is step 5, and the nav should follow it
+    # rather than pin it.
     mind_url: str
     # So the SPA's own index route sends /app/ where the server would send
     # a login, rather than hard-coding a second answer that could drift
@@ -231,16 +232,8 @@ def navigation(request):
         "archived_count": Item.objects.filter(
             owner=user, status=Item.Status.ARCHIVED
         ).count(),
-        # A one-way read into capture. Capture stays isolated in the
-        # direction that matters -- no FK, no import the other way -- but a
-        # nav that can't show what's waiting is a nav nobody clicks.
-        "inbox_count": Capture.objects.filter(
-            owner=user, resolved_at__isnull=True
-        ).count(),
         "settings_url": reverse("account_settings"),
         # Django pages, not SPA routes: these links leave the app shell.
-        "inbox_url": reverse("capture_inbox"),
-        "ideas_url": reverse("ideas"),
         "mind_url": reverse("capture"),
         "landing_surface": user.landing_surface,
     }

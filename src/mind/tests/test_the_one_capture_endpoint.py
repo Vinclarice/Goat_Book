@@ -31,7 +31,6 @@ from django.test import Client
 from django.utils import timezone
 
 from accounts.models import SCOPE_CAPTURE_WRITE, PersonalAccessToken, User
-from capture.models import Capture
 from mind.models import ConceptCandidate, Mention, Node, NodeSource
 from mind.services import TYPED_TAG_REASON
 
@@ -89,12 +88,14 @@ def test_a_valid_token_writes_a_node(client, alice, token):
     assert response.json()["public_id"] == str(node.public_id)
 
 
-def test_it_no_longer_writes_a_capture(client, token):
-    """The whole point of the step. `Capture` stops growing here, which is what
-    makes it deletable in 4b."""
+def test_it_writes_exactly_one_row(client, token):
+    """This asserted `not Capture.objects.exists()` for the day between 4a and
+    4b, which was the point of 4a: `Capture` stopped growing here, which is what
+    made it deletable. There is no `Capture` to assert against now, so what
+    survives is the property underneath — one thought in, one node out."""
     post(client, {"text": "Call the vet"}, token=token)
 
-    assert not Capture.objects.exists()
+    assert Node.objects.count() == 1
 
 
 def test_the_source_says_it_came_from_a_phone(client, token):

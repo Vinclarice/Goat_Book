@@ -486,11 +486,16 @@ Two birds were assigned belatedly, on August 15:
   the ten defects in `commercial-blueprint.md` Part 1. Verified in production on
   August 15.
 
-**Godwit spends the letter G**, which `architecture-trajectory.md` §5 had
-speculatively reserved for commercial readiness while asking "does release G
-exist?". A letter is a position in a sequence, not a reservation — so that
-question is now answered by renumbering rather than by decision, and commercial
-readiness is H or later whenever it is taken up.
+**Letters are never reserved for a subject — Vince's call, August 15, 2026.**
+`architecture-trajectory.md` §5 had speculatively attached commercial readiness
+to "release G" while asking whether release G exists. Godwit spent that letter
+on the merger, and the reservation is void rather than renumbered: a letter is
+the next position in a sequence, claimed by whatever ships next, and commercial
+readiness will carry whatever letter it reaches — realistically a long way down
+the alphabet. Nothing is held open for a subject that has not started.
+
+**The next release to start is H.** Its bird is chosen when it ships, same as
+always.
 
 **Going forward the scheme holds again**: a release is a coherent body of work
 with a finish line, tagged only after production verifies it, and the bird is

@@ -68,6 +68,15 @@ share target that lets any app hand text straight to the capture box.
   input[type=search] { width: 100%; padding: .6rem .8rem; font: inherit;
     background: var(--card); color: var(--fg);
     border: 1px solid var(--line); border-radius: .45rem; }
+  /* Quieter than the textarea it sits under, on purpose: the thought is the
+     point and the label is an afterthought somebody may never reach for.
+     Same width so the form still reads as one thing rather than two. */
+  input.tags { width: 100%; margin-top: .45rem; padding: .45rem .8rem;
+    font: inherit; font-size: .9rem;
+    background: transparent; color: var(--fg);
+    border: 1px dashed var(--line); border-radius: .45rem; }
+  input.tags:focus { outline: 2px solid var(--accent); outline-offset: 1px;
+    background: var(--card); border-style: solid; }
   table { width: 100%; border-collapse: collapse; font-size: .9rem; }
   th, td { text-align: left; padding: .4rem .5rem; border-bottom: 1px solid var(--line); }
   th { color: var(--muted); font-weight: 600; }

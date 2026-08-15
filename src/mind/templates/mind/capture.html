@@ -15,6 +15,19 @@ a chance to.
   {% endcomment %}
   <textarea name="content" placeholder="Anything at all." autofocus
             aria-label="What are you thinking?">{{ prefill }}</textarea>
+  {% comment %}
+  Deliberately secondary, and deliberately not a dropdown. This surface asks
+  nothing at the moment of entry; a closed set of options would break that,
+  because leaving one alone still reads as an answer withheld. An empty text
+  box reads as nothing at all.
+
+  It exists because a typed tag is a confirmed concept -- the one way to name
+  something the extractor cannot see, which on real material turned out to be
+  most of what actually recurs.
+  {% endcomment %}
+  <input type="text" name="tags" class="tags"
+         placeholder="Tags, optional — comma separated"
+         aria-label="Tags, optional">
   <div class="row">
     <button type="submit" class="primary">Keep</button>
     <span class="meta">{{ total }} note{{ total|pluralize }}{% if pending %} · <a href="{% url 'review' %}">{{ pending }} to review</a>{% endif %}</span>

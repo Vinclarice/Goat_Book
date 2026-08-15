@@ -8,9 +8,12 @@ the thing it does need, which is being usable today.
 
 Two surfaces, matching the two halves of the loop:
 
-* **Capture** — one textarea. Nothing to classify, nothing to file, no fields. The first
-  principle of the product is that nothing requires a decision at the moment of entry,
-  and a form with a dropdown on it would break that before anything else got a chance to.
+* **Capture** — one textarea, and since August 15 one optional tags box beside it.
+  Nothing to classify, nothing to file, nothing required. The first principle of the
+  product is that nothing demands a decision at the moment of entry, and a form with a
+  dropdown on it would break that before anything else got a chance to — a closed set
+  asks which one, and leaving it alone still reads as an answer withheld. An empty text
+  box asks nothing. See `capture()` for why the exception was worth making.
 * **Review** — the few proposals worth considering, each quoting its evidence, with
   accept and dismiss. Opening the page marks them shown, because showing and surfacing
   are one operation.
@@ -125,17 +128,45 @@ def _capture_context(request, *, prefill: str = "") -> dict:
 @login_required
 @require_http_methods(["GET", "POST"])
 def capture(request):
-    """One box. Type, submit, done."""
+    """One box, and one optional field beside it. Type, submit, done.
+
+    **The tags field is a considered exception to "no fields", not a drift from
+    it.** This surface refuses to ask anything at the moment of entry, and a
+    dropdown would break that — it presents a closed set, and leaving it alone
+    still feels like an answer withheld. An empty text box asks nothing, and
+    somebody who never touches it captures exactly as before.
+
+    What it buys is the other half of a decision already made: a typed tag
+    becomes a confirmed concept (`services.record_typed_tags`), and until now
+    the only surface that could type one was the phone.
+
+    The evidence for wanting it is concrete. The first real detector run, over
+    18 notes on August 15, proposed nothing — and the six candidates extraction
+    found were `Gravity`, `MOT`, `Oct`, `YT` and two phrases, each seen once.
+    What actually recurred across four notes and twelve days was *movie*,
+    lowercase, which a capitalisation-based extractor cannot see. The gravity
+    gate exists to filter the system's guesses; a person who knows "movie" is a
+    thing should not have to wait behind it.
+    """
     if request.method == "POST":
         content = request.POST.get("content", "")
         if content.strip():
-            services.capture(
+            now = timezone.now()
+            node = services.capture(
                 request.user,
                 content=content,
-                captured_at=timezone.now(),
+                captured_at=now,
                 source=NodeSource.WEB,
                 actor=request.user.get_username(),
             )
+            # Split here rather than in the service, which takes labels: how a
+            # surface spells a list is the surface's business, and the phone
+            # sends a JSON array for the same call.
+            labels = request.POST.get("tags", "").split(",")
+            if any(label.strip() for label in labels):
+                services.record_typed_tags(
+                    node, labels, now=now, actor=request.user.get_username()
+                )
         # Redirect after post, so a refresh cannot duplicate a thought.
         return redirect("capture")
 

@@ -8,14 +8,30 @@ and it is where every detector's candidate query will live.
 from datetime import datetime, timedelta
 
 from django.db.models import Count, F, Max, Min, Q, QuerySet
+from django.utils import timezone
 
 from .models import (
     ConceptCandidate,
     ConnectionHypothesis,
     EventType,
+    Facet,
+    FacetKind,
     Mention,
     Node,
 )
+
+# How close a confirmed commitment's due date has to be before its node reaches
+# the one tier allowed to interrupt outside a planning or review moment.
+#
+# Narrow on purpose, and the asymmetry is the reason: a commitment shown a day
+# late is a missed reminder, while one that interrupts a week early teaches
+# somebody to ignore the channel -- after which the tier is worth nothing at
+# all. Overdue is included, since a commitment already past is not less
+# time-bound than one arriving tomorrow.
+#
+# `design-concept.md` calls this "a short, configurable proximity window" and
+# names no number. This is that number, in the one place it can be changed.
+URGENT_PROXIMITY = timedelta(days=1)
 
 
 def live_nodes(owner) -> QuerySet[Node]:
@@ -228,13 +244,41 @@ def attention_tier(node: Node, *, now: datetime) -> str:
     read time, because a stored tier is a second source of truth for something that
     changes with every capture.
 
-    The lab reaches only the first two tiers. *Active commitment* and *urgent /
-    time-bound* both require a confirmed actionable facet, and there is no facet
-    table: those are destination shape, and returning a tier that cannot occur
-    would be pretending otherwise.
+    All four tiers are reachable as of August 15, 2026. This used to return only
+    the lower two and explain that *active commitment* and *urgent / time-bound*
+    "both require a confirmed actionable facet, and there is no facet table".
+    There is one — facets landed the day before — so the gate had become stale
+    rather than the feature being absent, and a commitment somebody had
+    explicitly accepted still reported as quiet knowledge.
+
+    Order matters and follows the policy's own wording: quiet knowledge is
+    "anything with **no** confirmed actionable facet and no review due", so the
+    facet is consulted before review candidacy rather than after.
     """
     if node.deleted_at is not None or node.archived_at is not None:
+        # Before anything else: deleted material is never pushed, so a
+        # commitment must not resurrect a note somebody removed.
         return "quiet knowledge"
+
+    committed = (
+        Facet.objects.filter(
+            node=node,
+            kind=FacetKind.ACTIONABLE,
+            confirmed_at__isnull=False,
+            retired_at__isnull=True,
+        )
+        .select_related("task")
+        .first()
+    )
+    if committed is not None:
+        # The *task's* due date, not the facet's `data`. The facet records what
+        # was proposed; once confirmed the task is the live record and can be
+        # rescheduled in the other core, so reading the proposal would keep
+        # calling something urgent after it had been moved.
+        due = committed.task.due_date if committed.task_id else None
+        if due is not None and due <= timezone.localdate(now) + URGENT_PROXIMITY:
+            return "urgent"
+        return "active commitment"
 
     if is_due_for_review(node, now=now):
         return "review candidate"

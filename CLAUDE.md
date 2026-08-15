@@ -40,26 +40,45 @@ Step 2 is the one that gets skipped, and it is the one that compounds. If a
 document needs a fact it does not own, link to the owner rather than restating
 it; a restated fact is a fact that will be wrong later.
 
-**Second Mind is a separate project and none of this governs it.** It lives at
-`C:\dev\Clarice_secondmind`, has its own design documents, its own venv, its
-own Postgres (port 5434, not 5433) and runs `pytest` rather than
-`manage.py test`. The direction is settled: Clarice is worked into Second Mind,
-not the reverse, ending as one application with a knowledge core and a
-**Superlists** task core. Knowledge-side work — Ideas, resurfacing, the
-mind-map, search over retained material — belongs there now, and the roadmap's
-opening section says what survives the merger and what does not.
+**The merger is done. Second Mind's code lives here now.** All five steps of its
+`two-cores.md` shipped on August 14, 2026 and deployed the same day: the
+knowledge core is `src/mind/`, mounted at `/mind/`, behind this project's login,
+in this project's database. One application, two cores — knowledge, and the
+**Superlists** task core.
 
-## Clarice is in maintenance until the merger
+`C:\dev\Clarice_secondmind` still exists and is now **documents only**. Its
+`docs/` remain the design authority for everything the merger did not settle —
+what each core owns, salience, the joint weekly report, the visual map — and
+`two-cores.md` records what each step cost. Its code, its venv and its Postgres
+on 5434 are history; do not develop there. This paragraph said the opposite for
+a day after the merger, which is exactly the drift the checklist above exists to
+prevent.
 
-Not frozen — maintained. It has real users and it keeps running. But it is no
-longer where features are added, and the risk to guard against is not an
-accidental edit (separate repositories handle that) but a **justified** one:
-*while I'm here*, or *Second Mind needs Clarice to expose X*.
+The crossover is not finished. There are still **two capture surfaces** —
+`/capture/` writing a `Capture`, `/mind/` writing a `Node` — and
+`/api/v1/capture` is defined by both cores under different prefixes. The
+`/mind/` prefix is temporary and appears in exactly one line of
+`clarice/urls.py`; where those pages finally live is the decision that ends the
+crossover.
 
-**Allowed.** Production defects, which the merger does not make redundant — a
-system with red CI and no uptime monitoring stays broken whichever project it
-becomes part of. The live list is `design/commercial-blueprint.md` Part 1.
-Security fixes and data-loss fixes qualify without argument.
+## The task core is in maintenance until the crossover ends
+
+**This heading used to read "until the merger", and the merger is over** — so
+the restraint needs a live reason or it is cargo. It has one, and it is
+narrower: `Capture` and `Idea` are still slated for retirement, there are still
+two capture surfaces, and work put into either is work thrown away. That is a
+smaller claim than the old one and it should be re-examined when the crossover
+ends rather than left standing by habit.
+
+The other half of the old reasoning is simply gone. It warned that separate
+repositories guard against an *accidental* edit, leaving only the **justified**
+one to worry about — *while I'm here*, or *Second Mind needs Clarice to expose
+X*. There are no separate repositories now. Everything is one tree, so the
+accidental edit is back on the table and nothing structural prevents it.
+
+**Allowed.** Production defects. The live list is
+`design/commercial-blueprint.md` Part 1. Security fixes and data-loss fixes
+qualify without argument.
 
 **One remains, as of August 14, 2026, and it is not code:**
 
@@ -92,17 +111,27 @@ still there and still reachable from the task. Set against that, `Idea` is
 retired by the merger, and no Idea exists locally to have been affected. Left
 deliberately.
 
-**Not allowed without a deliberate decision.** New features on `Item`,
-`Capture` or `Idea`. New UI work. New models — a model added now is a model
-migrated twice, and `Capture` and `Idea` do not survive the merger at all.
+**Not allowed without a deliberate decision.** New features on `Capture` or
+`Idea`, which are retired by the crossover. New models on the task core — a
+model added now is a model migrated twice.
 
-**And the rule that actually protects the merger: nothing here grows to serve
-Second Mind.** No new endpoint, no shared table, no export hook. When Second
-Mind wants this data it reads the existing API or a database dump, once, at
-merge time. A bridge built now is code paid for twice and thrown away.
+`Item` is no longer on that list. It is the destination for every accepted
+commitment, and it gained `owner` on August 14 precisely so a thought from the
+knowledge core could become a task without a filing question. Work on it is
+work on the thing that survives.
 
-The one exception is `android/`, which is a client of both backends rather than
-part of either core — see Second Mind's `docs/android-two-backends.md`.
+**The rule that protected the merger has expired, and is recorded here so it is
+not reapplied.** It read: *nothing here grows to serve Second Mind — no new
+endpoint, no shared table, no export hook; when Second Mind wants this data it
+reads the existing API or a dump, once, at merge time*. That was right while
+there were two projects. There is one now, one database and one transaction, and
+`confirm_actionable` writing a node, a facet and a task together is exactly the
+"bridge" the rule forbade — which is the merger's whole payoff rather than a
+violation of it.
+
+`android/` remains a client of two backends, which is still true and still worth
+knowing: capture goes to the knowledge core, Today and Agenda to the task core.
+See `docs/android-two-backends.md` in the Second Mind repository.
 
 ## Environment
 

@@ -67,34 +67,21 @@ def add_class(field, css_class):
 
 
 @register.simple_tag
-def frontend_assets():
-    dev_server_url = settings.VITE_DEV_SERVER_URL.rstrip("/")
-    if settings.DEBUG and dev_server_url:
-        return format_html(
-            '<script type="module" src="{}/@vite/client"></script>'
-            '<script type="module" src="{}/src/main.tsx"></script>',
-            dev_server_url,
-            dev_server_url,
-        )
-
-    return format_html(
-        '<link rel="stylesheet" href="{}">'
-        '<script type="module" src="{}"></script>',
-        static("frontend/app.css"),
-        static("frontend/app.js"),
-    )
-
-
-@register.simple_tag
 def app_shell_assets():
-    """Same dev/build split as frontend_assets(), for the router-based
-    shell entry's JS. Token styling is separate -- see token_styles()
-    below, shared with the Django-rendered token pages.
+    """The router-based shell entry's JS, with the usual dev/build split.
 
-    Also links app.css: reused components (AgendaWorkspace, TaskWorkspace)
-    still use their original CSS-module styles, compiled into that file
-    alongside the legacy per-page bundle's. In dev mode this isn't needed
-    -- Vite's dev server injects CSS-module styles itself as the importing
+    The only entry there is. It used to be described as "the same split as
+    frontend_assets()", which was deleted on August 15, 2026 along with the
+    per-page island bundle nothing loaded -- a docstring pointing at a function
+    that no longer exists.
+
+    Token styling is separate -- see token_styles() below, shared with the
+    Django-rendered token pages.
+
+    Also links app.css, which is not dead: the route components carry
+    CSS-module styles that Vite collapses into that one predictable filename
+    (see the asset-naming rule in vite.config.ts). In dev mode this is not
+    needed -- Vite's dev server injects those styles itself as the importing
     JS module loads.
     """
     dev_server_url = settings.VITE_DEV_SERVER_URL.rstrip("/")

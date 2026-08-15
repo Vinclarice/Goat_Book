@@ -664,6 +664,11 @@ class EventType(models.TextChoices):
     ARCHIVED = "archived"
     DELETED = "deleted"
     PURGED = "purged"
+    #: A scheduled maintenance pass completed for this owner. Owner-scoped and
+    #: node-less, unlike everything above it -- the subject is the corpus, not
+    #: any one note. It exists so `/numbers/` can tell "ran and found nothing"
+    #: from "never ran", which no amount of counting rows can distinguish.
+    MAINTENANCE_RAN = "maintenance_ran"
 
 
 class ActivityEvent(models.Model):

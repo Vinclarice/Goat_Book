@@ -1863,6 +1863,15 @@
         "title": "AreaRenameIn",
         "type": "object"
       },
+      "CadenceMode": {
+        "description": "Whether a repeating commitment is fixed to the calendar or to the last\ntime it was actually done.\n\n`design-concept.md` calls this distinction load-bearing, and it is: the two\nmodes disagree by months on a commitment done late, and each is plainly\nwrong for the other's cases.\n\nANCHORED is the default, and the asymmetry is deliberate. A mortgage that\nquietly drifts off the 1st is a missed payment; a furnace filter changed six\ndays early is nothing. Somebody who never discovers this setting keeps the\nbehaviour that cannot hurt them.",
+        "enum": [
+          "anchored",
+          "floating"
+        ],
+        "title": "CadenceMode",
+        "type": "string"
+      },
       "ChecklistStepOut": {
         "properties": {
           "id": {
@@ -1951,6 +1960,16 @@
           "task": {
             "$ref": "#/components/schemas/TaskOut"
           },
+          "cadence_mode": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CadenceMode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "area": {
             "anyOf": [
               {
@@ -1979,6 +1998,7 @@
         },
         "required": [
           "task",
+          "cadence_mode",
           "area",
           "checklist_steps",
           "create_checklist_step_url",

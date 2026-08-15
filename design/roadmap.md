@@ -14,8 +14,9 @@ deployment records and lessons, live in
 [`roadmap-history.md`](roadmap-history.md). Keeping that record separate
 makes this document useful when deciding what to work on next.
 
-**Second Mind is a separate project and this file does not govern it** — see
-the section immediately below. Knowledge-side work is no longer planned here.
+**The knowledge core lives in this repository now** — see the section
+immediately below. Knowledge-side planning documents remain in the Second Mind
+repository even though its code moved here.
 
 The cross-cutting engineering and product standards used to deliver roadmap
 work live in [`principles.md`](principles.md).
@@ -27,21 +28,19 @@ this project has explicitly refused live in
 authority on what is active and what is deferred; that one explains the order
 and the reasoning, and does not schedule anything on its own.
 
-## Second Mind is a separate project, and Clarice is downstream of it
+## The merger happened, and this file is downstream of it
 
-**Decided August 13, 2026.** Second Mind lives in its own repository
-(`C:\dev\Clarice_secondmind`) with its own design documents, its own
-constitution, and its own test suite — 435 tests green as of that date. It is
-**not** a module inside Clarice, not a bounded context hosted by it, and not
-subject to this file, [`principles.md`](principles.md), or
-[`architecture-trajectory.md`](architecture-trajectory.md). Its own
-`docs/design-concept.md` is the authority for everything in it.
+**Decided August 13, 2026; done and deployed August 14–15.** Second Mind was a
+separate repository with its own constitution and its own suite. It is now the
+`mind` app in this tree, behind this site's login and in this database, and its
+suite runs here under `pytest`. `C:\dev\Clarice_secondmind` survives as
+**documents only** — `docs/design-concept.md` remains the authority for the
+knowledge core, and `docs/two-cores.md` records what each merger step cost.
 
-**The direction runs one way: Clarice is worked into Second Mind, not the
-reverse.** The end state is one application with two cores — Second Mind for
-knowledge, and Clarice's task system absorbed as a core named **Superlists**.
-Second Mind's `docs/two-cores.md` is the authority on that merger, including
-what does and does not survive it. Two consequences worth knowing here:
+The direction ran one way and still does: Clarice was worked into Second Mind
+rather than the reverse. The end state is one application with two cores —
+knowledge, and the task system as **Superlists**. Two consequences, both still
+live:
 
 - **Clarice's knowledge half does not survive.** `capture.Capture` exists to
   hold untriaged text pending assignment; the node model does that without
@@ -56,21 +55,30 @@ what does and does not survive it. Two consequences worth knowing here:
   weekly review's honest denominators are the single strongest thing built
   here and are carried across intact.
 
-**One defect to fix on the way in rather than port.** `_advance_due_date`
-computes a recurring task's next occurrence from the previous *due date*, so a
-monthly commitment due July 4 and completed August 10 spawns its successor due
-August 4 — overdue at the instant it is created. Second Mind's design
-specifies anchored and floating recurrence as distinct modes; this is the
-floating case, and it should be fixed in the move.
+**~~One defect to fix on the way in rather than port.~~ Fixed August 15, 2026**
+(`70bc6c8`), and not on the way in — it survived the merger it was supposed to
+be fixed by, which is the argument for closing a defect where it lives rather
+than attaching it to a migration. `_advance_due_date` computed a recurring
+task's next occurrence from the previous *due date*, so a monthly commitment due
+July 4 and completed August 10 spawned its successor due August 4, overdue at
+the instant it was created.
 
-**Nothing in this roadmap is cancelled by that decision.** Clarice keeps
-running, keeps its users, and keeps being the working tool until the merger
-actually happens; no merger work is scheduled here. What changes is that
-long-horizon knowledge-side work in this file — Reference/Idea search, the
+It now skips missed periods and keeps its anchor. **Anchored and floating remain
+distinct modes in `design-concept.md` and only anchored is built** — Clarice has
+one cadence field and cannot say which a commitment is. That gap is deliberate
+and recorded at the function; it is the right shape for a calendar commitment
+and a few days early for an interval one.
+
+**Nothing in this roadmap was cancelled by that decision.** The task core keeps
+running and keeps its users; what changed is that it is no longer a separate
+application waiting to be absorbed.
+
+Long-horizon knowledge-side work in this file — Reference/Idea search, the
 mind-map view, idea resurfacing, the second-brain direction in
-[`daily-operating-system-vision.md`](daily-operating-system-vision.md) — is
-now **superseded rather than deferred**, because it is being built properly
-somewhere else.
+[`daily-operating-system-vision.md`](daily-operating-system-vision.md) — stays
+**superseded rather than deferred**. It was superseded because it was being
+built properly in another repository; it is now built properly in this one, and
+planned in the Second Mind documents rather than here.
 
 `design/second-mind-core.md`, written earlier the same day, is deleted. It
 proposed the opposite arrangement — Second Mind as a second core *inside*
@@ -94,8 +102,8 @@ a List is an Area that never completes, a Project is work that does, and
 every model is owned at birth. The full record of each is in the history
 file.
 
-**Everything since Dunlin shipped without a release letter**, between August 6
-and 12, 2026, and it is a substantial part of the current baseline rather than
+**Everything between Dunlin and Fulmar shipped without a release letter** at
+the time — August 6 to 12, 2026, named belatedly on August 15 — and it is a substantial part of the current baseline rather than
 a tail of small fixes: Project became a standalone workspace holding Areas; the
 Bootstrap→Tailwind arc finished across the task list, Agenda and Archive, with
 `site.css` retired outright; the Android client gained read *and* write on the
@@ -465,38 +473,76 @@ release, so there is no Release E. The next release to actually start is
 - The bird codename is a permanent annotated release tag describing what
   shipped and how it was verified.
 
-**The letters have stopped carrying information, and that is a finding rather
-than a lapse.** Six of the seven lines of work between August 6 and 12 shipped
-outside the release structure entirely — see `roadmap-history.md`. The
-convention above still applies to anything deployed, because the tags are how
-production truth is established; what has lapsed is the *letter*, which no
-longer names a coherent body of work. Do not invent one to restore the pattern.
+**The letters lapsed between August 6 and 12, and were deliberately restored on
+August 15 — Vince's call.** Six of the seven lines of work in that window
+shipped outside the release structure entirely (see `roadmap-history.md`), and
+this section previously ended "do not invent one to restore the pattern." That
+instruction is superseded, because what it was written about has changed: the
+merger was a single coherent body of work with one finish line, which is the
+thing the letters had stopped naming.
 
-## Where things stand — August 13, 2026
+Two birds were assigned belatedly, on August 15:
 
-**There is no active release.** Release F opened August 7 with the second-mind
-discovery pass, shipped it August 10, and closed August 13 when its subject
-left the project for its own repository — see the opening section and
-`roadmap-history.md`.
+- **Fulmar** (`2986ed6`) — the whole August 6–12 period, Release F's discovery
+  pass plus the six unlettered lines that shipped beside it. **Its annotation
+  states that verification was piecemeal**, because it was: only the task list
+  and agenda redesigns had their own verified deploys, and everything after
+  reached production inside a later one. The tag exists so the sequence is
+  unbroken, not to claim a release that was verified as a whole.
+- **Godwit** (`d0983a8`) — the Second Mind merger, all five steps, plus nine of
+  the ten defects in `commercial-blueprint.md` Part 1. Verified in production on
+  August 15.
 
-**Nothing is promoted to replace it** until there is a deliberate decision
-about what Clarice does between now and the merger. Recorded so the question is
-answered rather than drifted past:
+**Letters are never reserved for a subject — Vince's call, August 15, 2026.**
+`architecture-trajectory.md` §5 had speculatively attached commercial readiness
+to "release G" while asking whether release G exists. Godwit spent that letter
+on the merger, and the reservation is void rather than renumbered: a letter is
+the next position in a sequence, claimed by whatever ships next, and commercial
+readiness will carry whatever letter it reaches — realistically a long way down
+the alphabet. Nothing is held open for a subject that has not started.
 
-- The knowledge-side roadmap is gone, not deferred. Ideas, resurfacing, the
-  mind-map and search over retained material belong to Second Mind now.
-- The productivity roadmap is intact and unaffected. The Daily Page, routines,
-  reviews, wider horizons and mobile web all still stand on their own triggers,
-  and all of them survive the merger.
-- **The strongest claim on the next stretch of work is defect and operations
-  work, not features** — `commercial-blueprint.md`'s Phase 0 and Phase 1. A
-  production system with 17 consecutive red CI runs, no uptime monitoring, no
-  `restart_policy`, and `include_local_variables` shipping note text to Sentry
-  stays broken whichever project it eventually becomes part of. None of that is
-  made redundant by the merger, and all of it gets worse the longer it waits.
+**The next release to start is H.** Its bird is chosen when it ships, same as
+always.
 
-The one thing not to do is start feature work on the half that does not
-survive.
+**Going forward the scheme holds again**: a release is a coherent body of work
+with a finish line, tagged only after production verifies it, and the bird is
+chosen when it ships.
+
+## Where things stand — August 15, 2026
+
+**The last release is Godwit**, tagged and verified in production on August 15:
+the Second Mind merger end to end, and nine of the ten defects in
+`commercial-blueprint.md` Part 1. Fulmar was assigned the same day to the
+August 6–12 period behind it. See Release practice for both, and for why the
+letters were restored after being written off.
+
+**There is no active release.** What is in front of the project is the
+**crossover**, and it is release-shaped in a way nothing since Dunlin has been —
+one subject, one finish line:
+
+- Two capture surfaces still exist. `/capture/` writes a `Capture`, `/mind/`
+  writes a `Node`, and `/api/v1/capture` is defined by both cores under
+  different prefixes. The `/mind/` prefix is temporary and lives in one line of
+  `clarice/urls.py`.
+- `Capture` and `Idea` are retired by it, which is the live reason the task core
+  stays in maintenance — see `CLAUDE.md`.
+- **One decision blocks the plan**: whether a single capture surface keeps
+  first-class tags, or adopts the knowledge core's position that structure
+  should emerge rather than be declared at entry. That is the only real trade
+  in the consolidation and it is Vince's to make.
+
+**Two things outstanding that are not code.** An external uptime monitor to poll
+`/healthz` — the last open item in Part 1, and deliberately not in this
+repository, because a watchdog on the machine it watches is not a watchdog. And
+the deployment tags, which drifted: `LIVE` sat five days and thirty commits
+behind production until August 15, and the August 14 deploy went untagged
+entirely. The convention is only worth having if it is kept.
+
+**What no longer applies.** The knowledge-side roadmap did not come back with
+the code — Ideas, resurfacing, the mind-map and search over retained material
+are the knowledge core's now, and it is in this repository. The productivity
+roadmap is intact and unaffected: the Daily Page, routines, reviews, wider
+horizons and mobile web all still stand on their own triggers.
 
 ## Keeping this current
 

@@ -13,6 +13,7 @@ import {
   updateChecklistStepDone,
   updateTaskDueDate,
   updateTaskNotes,
+  updateTaskCadenceMode,
   updateTaskRecurrence,
   updateTaskStatus,
   updateTaskTags,
@@ -21,7 +22,20 @@ import {
 import { apiV1 } from "../../api/client";
 import { RequestFailed, statusOf } from "../../api/failure";
 import { RouteFailure } from "./RouteFailure";
-import type { ChecklistStep, Task, TaskRecurrence } from "../../types";
+import type {
+  CadenceMode,
+  ChecklistStep,
+  Task,
+  TaskRecurrence,
+} from "../../types";
+
+// Written as what the schedule *does*, not as the mode's name. "Anchored" and
+// "floating" are the domain's words and mean nothing to somebody choosing
+// between them at a task page.
+const CADENCE_MODE_LABELS: Record<CadenceMode, string> = {
+  anchored: "On the same date each time",
+  floating: "A set time after I finish it",
+};
 
 const RECURRENCE_LABELS: Record<TaskRecurrence, string> = {
   none: "Doesn't repeat",
@@ -46,6 +60,9 @@ export function TaskDetailRoute() {
   const id = Number(taskId);
   const navigate = useNavigate();
   const [task, setTask] = useState<Task | null>(null);
+  // A sibling of `task` in the detail payload rather than a field on it: the
+  // mode belongs to the series, and most tasks have no series at all.
+  const [cadenceMode, setCadenceMode] = useState<CadenceMode | null>(null);
   const [areaRef, setAreaRef] = useState<{ id: number; title: string } | null>(null);
   const [text, setText] = useState("");
   const [tagsDraft, setTagsDraft] = useState("");
@@ -66,6 +83,7 @@ export function TaskDetailRoute() {
       });
       if (!response.ok || !data) throw new RequestFailed(response.status);
       setTask(data.task as Task);
+      setCadenceMode(data.cadence_mode ?? null);
       setAreaRef(data.area);
       setText(data.task.text);
       setTagsDraft(data.task.tags.join(", "));
@@ -270,6 +288,23 @@ export function TaskDetailRoute() {
     }
   }
 
+  async function handleCadenceMode(mode: CadenceMode) {
+    if (!task) return;
+    setError(null);
+    setNotice(null);
+    setBusy(true);
+    try {
+      const updated = await updateTaskCadenceMode(task, mode);
+      setTask(updated);
+      setCadenceMode(mode);
+      setNotice("Schedule updated.");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to update schedule.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function handleComplete() {
     if (!task) return;
     setError(null);
@@ -399,6 +434,34 @@ export function TaskDetailRoute() {
           ))}
         </select>
       </div>
+
+      {task.recurrence !== "none" && cadenceMode !== null && (
+        <div className="space-y-1">
+          <label htmlFor="task-cadence-mode" className="text-sm font-bold">
+            Next one is due
+          </label>
+          <select
+            id="task-cadence-mode"
+            value={cadenceMode}
+            onChange={(event) =>
+              handleCadenceMode(event.target.value as CadenceMode)
+            }
+            disabled={busy}
+            className="w-full rounded-lg border border-border bg-input px-3 py-1.5"
+          >
+            {(Object.keys(CADENCE_MODE_LABELS) as CadenceMode[]).map((value) => (
+              <option key={value} value={value}>
+                {CADENCE_MODE_LABELS[value]}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-muted-foreground">
+            {cadenceMode === "anchored"
+              ? "Keeps its date even if you finish late — right for rent or a bill."
+              : "Counts from the day you finish — right for a filter or a haircut."}
+          </p>
+        </div>
+      )}
 
       {/* The per-task Project select used to live here --
           project-workspace-plan.md 2 dropped the task-level override. A

@@ -375,6 +375,29 @@
       # with "control process exited with error code" because the port's
       # still taken.
 
+    # The same failure as the digest below, found a fortnight later and in the
+    # half of the application that most depended on it. Concept extraction and
+    # connection detection have been management commands since the knowledge
+    # core arrived, and nothing invoked them -- so on the live site a note was
+    # stored, indexed and date-parsed, and then never looked at again. Every
+    # detector: built, tested, green, and switched off.
+    #
+    # 03:20 rather than on the hour, because it shares a small droplet with the
+    # hourly digest and there is no reason for the two to contend. Nightly
+    # rather than hourly because these read the whole recent corpus per person,
+    # and nothing here is time-sensitive -- a connection surfacing tomorrow
+    # morning instead of within the hour is the same connection.
+    #
+    # No --owner: the command covers everybody with notes, so an account created
+    # tomorrow is maintained without anybody remembering to add a line here.
+    - name: Schedule the knowledge core's extraction and detection pass
+      ansible.builtin.cron:
+        name: clarice-mind-maintenance
+        minute: "20"
+        hour: "3"
+        job: docker exec clarice ./manage.py run_mind_maintenance
+        user: root
+
     # The command has existed and worked for a while but nothing invoked it,
     # so the digest reached nobody. Users with nothing to report are skipped
     # by the command itself, so a quiet day stays quiet.

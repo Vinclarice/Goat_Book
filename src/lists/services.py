@@ -6,6 +6,7 @@ from django.db.models import Max
 from django.utils import timezone
 
 from lists.models import (
+    CadenceMode,
     ChecklistStep,
     Item,
     List,
@@ -300,12 +301,20 @@ def set_due_date(item, due_date):
 
 
 @transaction.atomic
-def set_recurrence(item, recurrence):
+def set_recurrence(item, recurrence, cadence_mode=None):
+    """Set how often this repeats, and optionally whether it is anchored.
+
+    `cadence_mode=None` means "leave it as it is", not "reset to the default".
+    Editing a cadence must not silently undo a mode somebody chose -- that is
+    how a setting gets quietly reverted by an unrelated edit.
+    """
     item = Item.objects.select_for_update().get(pk=item.pk)
     if item.status == Item.Status.ARCHIVED:
         raise InvalidTaskTransition("Restore this task before editing it")
     if recurrence not in Item.Recurrence.values:
         raise TaskConflict("Choose a valid recurrence.")
+    if cadence_mode is not None and cadence_mode not in CadenceMode.values:
+        raise TaskConflict("Choose a valid schedule mode.")
     item.recurrence = recurrence
     if recurrence == Item.Recurrence.NONE:
         # The link stays. This task really was an occurrence of that series,
@@ -324,6 +333,8 @@ def set_recurrence(item, recurrence):
     # was stopped should say so rather than keep advertising the rule it no
     # longer follows.
     _write_through_to_commitment(item, cadence=recurrence)
+    if cadence_mode is not None:
+        _write_through_to_commitment(item, cadence_mode=cadence_mode)
     return item
 
 
@@ -454,13 +465,20 @@ def promote_checklist_step(step):
     if step.task.status == Item.Status.ARCHIVED:
         raise InvalidTaskTransition(CHECKLIST_STEP_ARCHIVED_ERROR)
     task_list = step.task.list
-    if _duplicate_exists(task_list, step.text):
+    # From the task, not from its Area, which may not exist -- the same
+    # correction as in _spawn_next_occurrence, and the same mistake: relying on
+    # save() to derive an owner works for every filed task and leaves an
+    # unfiled one violating NOT NULL. Passing it here also restores the
+    # duplicate check, which followed the Area and so did nothing without one.
+    owner = step.task.owner
+    if _duplicate_exists(task_list, step.text, owner=owner):
         raise TaskConflict(DUPLICATE_ITEM_ERROR)
     try:
         promoted = Item.objects.create(
             list=task_list,
+            owner=owner,
             text=step.text,
-            position=_next_position(task_list),
+            position=_next_position(task_list, owner=owner),
         )
     except IntegrityError as error:
         raise TaskConflict(DUPLICATE_ITEM_ERROR) from error
@@ -468,17 +486,69 @@ def promote_checklist_step(step):
     return promoted
 
 
-def _advance_due_date(due_date, recurrence):
-    base = due_date or timezone.localdate()
+def _nth_occurrence_after(base, recurrence, n):
+    """The nth scheduled date after `base`, counting in calendar units.
+
+    Computed from the anchor each time rather than by stepping one interval
+    off the last result, which matters for monthly: the 31st advanced through
+    February and then carried forward would spend the rest of the year on the
+    28th. Here February is the only month that clamps, and March is the 31st
+    again.
+    """
     if recurrence == Item.Recurrence.DAILY:
-        return base + timedelta(days=1)
+        return base + timedelta(days=n)
     if recurrence == Item.Recurrence.WEEKLY:
-        return base + timedelta(days=7)
+        return base + timedelta(weeks=n)
     if recurrence == Item.Recurrence.MONTHLY:
-        month = base.month % 12 + 1
-        year = base.year + (base.month // 12)
-        day = min(base.day, monthrange(year, month)[1])
-        return base.replace(year=year, month=month, day=day)
+        month_index = base.month - 1 + n
+        year = base.year + month_index // 12
+        month = month_index % 12 + 1
+        return base.replace(
+            year=year, month=month, day=min(base.day, monthrange(year, month)[1])
+        )
+    return None
+
+
+def _advance_due_date(due_date, recurrence, today=None, mode=CadenceMode.ANCHORED):
+    """The next occurrence's due date, which is never already in the past.
+
+    It used to be one interval past the *previous due date*, full stop. A
+    monthly commitment due July 4 and completed August 10 therefore produced a
+    successor due August 4 -- overdue at the instant it was created, on a task
+    the person had just finished. `roadmap.md` carried this as "one defect to
+    fix on the way in rather than port"; the way in happened and it was not.
+
+    **Missed periods are skipped, not replayed.** The schedule keeps its anchor
+    and moves forward until it clears today, so a filter changed on the 4th is
+    still on the 4th afterwards, and five missed weeks produce one task rather
+    than five. Occurrences that did not happen are not invented -- a fabricated
+    history is worse than an absent one, and `principles.md` refuses it.
+
+    All of that describes **anchored**, which is the default and was the only
+    mode until August 15, 2026. **Floating** counts from the completion instead
+    -- a furnace filter lasts a month from when it was changed, not from a date
+    nobody acted on -- and needs no skipping, because it starts from today by
+    construction.
+
+    See `CadenceMode` for why anchored is the default rather than a coin toss.
+    """
+    if today is None:
+        today = timezone.localdate()
+    if mode == CadenceMode.FLOATING:
+        # The old due date is deliberately ignored, including a future one:
+        # floating means the clock restarts when the work is actually done.
+        return _nth_occurrence_after(today, recurrence, 1)
+
+    base = due_date or today
+
+    # Bounded rather than `while True`: a corrupt cadence or a due date far in
+    # the past should not spin. Two thousand steps clears five years of daily.
+    for n in range(1, 2001):
+        candidate = _nth_occurrence_after(base, recurrence, n)
+        if candidate is None:
+            return None
+        if candidate > today:
+            return candidate
     return None
 
 
@@ -511,10 +581,21 @@ def _spawn_next_occurrence(completed_item, carry_forward_steps=()):
     # wrong day rather than just describing it wrongly.
     next_item = Item.objects.create(
         list=commitment.list,
+        # From the series, not from the Area. `Item.save()` derives owner from
+        # `list`, which works for every filed task and leaves an unfiled one
+        # with nothing to derive from -- so this insert violated NOT NULL and
+        # completing the task raised. The commitment is the durable identity
+        # here and it knows whose it is, whether or not it has a place.
+        owner=commitment.owner,
         text=commitment.text,
-        due_date=_advance_due_date(completed_item.due_date, commitment.cadence),
+        due_date=_advance_due_date(
+            completed_item.due_date,
+            commitment.cadence,
+            today=timezone.localdate(),
+            mode=commitment.cadence_mode,
+        ),
         recurrence=commitment.cadence,
-        position=_next_position(commitment.list),
+        position=_next_position(commitment.list, owner=commitment.owner),
         commitment=commitment,
         notes=commitment.notes,
     )

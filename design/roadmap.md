@@ -465,38 +465,71 @@ release, so there is no Release E. The next release to actually start is
 - The bird codename is a permanent annotated release tag describing what
   shipped and how it was verified.
 
-**The letters have stopped carrying information, and that is a finding rather
-than a lapse.** Six of the seven lines of work between August 6 and 12 shipped
-outside the release structure entirely — see `roadmap-history.md`. The
-convention above still applies to anything deployed, because the tags are how
-production truth is established; what has lapsed is the *letter*, which no
-longer names a coherent body of work. Do not invent one to restore the pattern.
+**The letters lapsed between August 6 and 12, and were deliberately restored on
+August 15 — Vince's call.** Six of the seven lines of work in that window
+shipped outside the release structure entirely (see `roadmap-history.md`), and
+this section previously ended "do not invent one to restore the pattern." That
+instruction is superseded, because what it was written about has changed: the
+merger was a single coherent body of work with one finish line, which is the
+thing the letters had stopped naming.
 
-## Where things stand — August 13, 2026
+Two birds were assigned belatedly, on August 15:
 
-**There is no active release.** Release F opened August 7 with the second-mind
-discovery pass, shipped it August 10, and closed August 13 when its subject
-left the project for its own repository — see the opening section and
-`roadmap-history.md`.
+- **Fulmar** (`2986ed6`) — the whole August 6–12 period, Release F's discovery
+  pass plus the six unlettered lines that shipped beside it. **Its annotation
+  states that verification was piecemeal**, because it was: only the task list
+  and agenda redesigns had their own verified deploys, and everything after
+  reached production inside a later one. The tag exists so the sequence is
+  unbroken, not to claim a release that was verified as a whole.
+- **Godwit** (`d0983a8`) — the Second Mind merger, all five steps, plus nine of
+  the ten defects in `commercial-blueprint.md` Part 1. Verified in production on
+  August 15.
 
-**Nothing is promoted to replace it** until there is a deliberate decision
-about what Clarice does between now and the merger. Recorded so the question is
-answered rather than drifted past:
+**Godwit spends the letter G**, which `architecture-trajectory.md` §5 had
+speculatively reserved for commercial readiness while asking "does release G
+exist?". A letter is a position in a sequence, not a reservation — so that
+question is now answered by renumbering rather than by decision, and commercial
+readiness is H or later whenever it is taken up.
 
-- The knowledge-side roadmap is gone, not deferred. Ideas, resurfacing, the
-  mind-map and search over retained material belong to Second Mind now.
-- The productivity roadmap is intact and unaffected. The Daily Page, routines,
-  reviews, wider horizons and mobile web all still stand on their own triggers,
-  and all of them survive the merger.
-- **The strongest claim on the next stretch of work is defect and operations
-  work, not features** — `commercial-blueprint.md`'s Phase 0 and Phase 1. A
-  production system with 17 consecutive red CI runs, no uptime monitoring, no
-  `restart_policy`, and `include_local_variables` shipping note text to Sentry
-  stays broken whichever project it eventually becomes part of. None of that is
-  made redundant by the merger, and all of it gets worse the longer it waits.
+**Going forward the scheme holds again**: a release is a coherent body of work
+with a finish line, tagged only after production verifies it, and the bird is
+chosen when it ships.
 
-The one thing not to do is start feature work on the half that does not
-survive.
+## Where things stand — August 15, 2026
+
+**The last release is Godwit**, tagged and verified in production on August 15:
+the Second Mind merger end to end, and nine of the ten defects in
+`commercial-blueprint.md` Part 1. Fulmar was assigned the same day to the
+August 6–12 period behind it. See Release practice for both, and for why the
+letters were restored after being written off.
+
+**There is no active release.** What is in front of the project is the
+**crossover**, and it is release-shaped in a way nothing since Dunlin has been —
+one subject, one finish line:
+
+- Two capture surfaces still exist. `/capture/` writes a `Capture`, `/mind/`
+  writes a `Node`, and `/api/v1/capture` is defined by both cores under
+  different prefixes. The `/mind/` prefix is temporary and lives in one line of
+  `clarice/urls.py`.
+- `Capture` and `Idea` are retired by it, which is the live reason the task core
+  stays in maintenance — see `CLAUDE.md`.
+- **One decision blocks the plan**: whether a single capture surface keeps
+  first-class tags, or adopts the knowledge core's position that structure
+  should emerge rather than be declared at entry. That is the only real trade
+  in the consolidation and it is Vince's to make.
+
+**Two things outstanding that are not code.** An external uptime monitor to poll
+`/healthz` — the last open item in Part 1, and deliberately not in this
+repository, because a watchdog on the machine it watches is not a watchdog. And
+the deployment tags, which drifted: `LIVE` sat five days and thirty commits
+behind production until August 15, and the August 14 deploy went untagged
+entirely. The convention is only worth having if it is kept.
+
+**What no longer applies.** The knowledge-side roadmap did not come back with
+the code — Ideas, resurfacing, the mind-map and search over retained material
+are the knowledge core's now, and it is in this repository. The productivity
+roadmap is intact and unaffected: the Daily Page, routines, reviews, wider
+horizons and mobile web all still stand on their own triggers.
 
 ## Keeping this current
 

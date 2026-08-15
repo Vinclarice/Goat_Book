@@ -55,12 +55,27 @@ same discipline `two-cores.md` used, and it is why the merger shipped in a day.
 3. **Move existing captures into the graph.**
    A one-time command in the shape of `import_second_mind`: every `Capture`
    becomes a `Node` carrying its original `created_at`, its tags as confirmed
-   concepts, and its resolution. **An unresolved capture is the one that
-   matters** — it is somebody's untriaged thought, and the whole point is that
-   it stops needing triage. Resolved ones keep their link to whatever they
+   concepts, and its resolution. Resolved ones keep their link to whatever they
    became.
-   *Needs a production row count first: locally there are zero captures and zero
-   ideas, so the local run proves the mechanism and nothing about the volume.*
+
+   **Production, checked August 15, 2026: 34 captures, 8 of them unresolved,
+   and 2 ideas.** Those numbers change what this step is for.
+
+   The 8 unresolved are somebody's untriaged thoughts, and the point of the
+   crossover is that they stop needing triage. But **the 26 resolved ones are
+   the reason to migrate all of them**: the corpus is the binding constraint on
+   this entire core. Three detectors rest on argument rather than evidence
+   because there is no material, and the gravity gate cannot see recurrence in a
+   corpus of four notes. Thirty-four real captures with real timestamps spread
+   over months is the largest single body of material available, and it is
+   currently sitting inside the model being deleted.
+
+   So this is not cleanup that happens to preserve data. **It is the step that
+   gives the detectors something to work on**, and it should run before anybody
+   judges whether they are any good.
+
+   Two ideas is small enough that their `notes` and `related_ideas` can be
+   mapped by hand if the automatic answer is unclear — see below.
 
 4. **Retire the Inbox.**
    Delete `/capture/`'s pages, the task core's `/api/v1/capture`, and the
@@ -83,9 +98,10 @@ same discipline `two-cores.md` used, and it is why the merger shipped in a day.
   root as the task core's agenda is a navigation question this plan does not
   answer.
 - **Whether `Idea`'s notes and links survive the migration.** An Idea has notes
-  and `related_ideas`; a Node has revisions and edges. The mapping is obvious in
-  shape and needs a decision about whether links become confirmed edges or are
-  dropped. Zero Ideas exist locally, so this may be moot — check production.
+  and `related_ideas`; a Node has revisions and edges. Notes map to a revision
+  cleanly; whether a link becomes a confirmed edge is the real question. There
+  are **two** in production, which is few enough to decide by looking at them
+  rather than by writing a general rule.
 - **Anything about the daily page, routines or reviews.** They are the task
   core's and are untouched by this.
 

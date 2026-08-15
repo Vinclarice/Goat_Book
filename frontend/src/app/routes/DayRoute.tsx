@@ -483,11 +483,14 @@ function CaptureBox() {
         <Button type="submit" variant="secondary" disabled={mutation.isPending}>
           Capture
         </Button>
-        {/* Says where it went. Without this the thought appears to vanish,
-            and the next one gets typed into Intentions instead. */}
+        {/* Says where it went, and has to keep being true. Without it the
+            thought appears to vanish and the next one gets typed into
+            Intentions instead -- but a confirmation naming the wrong place is
+            worse than none, because somebody will go and look there. This read
+            "Sent to your Inbox." until Heron 4a moved the destination. */}
         {captured && (
           <span className="text-sm text-muted-foreground">
-            Sent to your Inbox.
+            Kept. <a href="/mind/" className="underline">See it</a>
           </span>
         )}
         {mutation.isError && (

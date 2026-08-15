@@ -268,7 +268,16 @@ describe("DayRoute", () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const request = input as Request;
       if (request.url.includes("/api/v1/capture")) {
-        return jsonResponse({ id: 1, created_at: "2026-08-03T10:00:00" }, true, 201);
+        // A node, not an Inbox row -- Heron 4a. The box reads only `error`, so
+        // a stale mock would keep passing while lying about the contract.
+        return jsonResponse(
+          {
+            public_id: "2ecb0dba-fc57-4f7e-9891-9b0e938ca344",
+            captured_at: "2026-08-03T10:00:00Z",
+          },
+          true,
+          201,
+        );
       }
       return jsonResponse(dayData());
     });
@@ -280,13 +289,16 @@ describe("DayRoute", () => {
     );
     await userEvent.click(screen.getByRole("button", { name: "Capture" }));
 
-    await waitFor(() =>
-      expect(screen.getByText("Sent to your Inbox.")).toBeInTheDocument(),
+    await waitFor(() => expect(screen.getByText("Kept.")).toBeInTheDocument());
+    // And it says where to go and look, which is no longer the Inbox.
+    expect(screen.getByRole("link", { name: "See it" })).toHaveAttribute(
+      "href",
+      "/mind/",
     );
     const posted = fetchSpy.mock.calls
       .map(([input]) => input as Request)
       .find((request) => request.url.includes("/api/v1/capture"));
-    // The endpoint the Inbox and the phone already use, not a daily one.
+    // The endpoint the phone already uses, not a daily one.
     expect(posted?.method).toBe("POST");
   });
 
@@ -294,7 +306,11 @@ describe("DayRoute", () => {
     vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const request = input as Request;
       if (request.url.includes("/api/v1/capture")) {
-        return jsonResponse({ id: 1, created_at: "x" }, true, 201);
+        return jsonResponse(
+          { public_id: "2ecb0dba-fc57-4f7e-9891-9b0e938ca344", captured_at: "x" },
+          true,
+          201,
+        );
       }
       return jsonResponse(dayData());
     });

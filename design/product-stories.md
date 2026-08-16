@@ -3,15 +3,32 @@
 Vince · written August 12, 2026 · the target these stories describe is the
 two-year product, not the next release
 
-**The "current product" half of every verdict below is a snapshot of August 12
-and has moved since.** Heron deleted `Capture` and `Idea` on August 15 and put
-every thought in the knowledge core's graph, so verdicts reasoning about
-`Idea`'s eight fields or the Inbox's triage flow are describing a product that
-no longer exists — including §"Verdict: impossible" at the `Idea` search story,
-and the line predicting that `Idea` "does not survive", which has now happened.
-The **target** half is unaffected, which is the half this document is for.
-Re-running the stories against the current product is worth doing once step 5
-lands rather than piecemeal now.
+## The score — re-checked August 16, 2026
+
+**3 work · 6 bend · 10 impossible.** It was 2 · 2 · 15 when this was written on
+August 12, and the difference is almost entirely the merger and Heron rather than
+work aimed at these stories.
+
+| | journeys |
+|---|---|
+| **Works** | S4 durable capture · S6 the honest weekly review · **S17 leaving with your data** |
+| **Bends** | S2 the phone morning · S5 closing the day · **S13 finding what you wrote** · **S14 a note that knows when** · **S16 the past arriving** · **S18 bringing your history** |
+| **Impossible** | S1 signing up · S3 planning against capacity · S7 acting on the review · S8 the quarter · S9 the week · S10 a project's why · S11 a decision returning · S12 a project explaining itself · S15 reading producing work · S19 paying |
+
+**This score lives here and nowhere else.** `roadmap.md`, `design/README.md` and
+`commercial-blueprint.md` quoted it until August 16 and went on quoting *2
+working* for four days after it stopped being true. They link now.
+
+**Every verdict below cites a `file:line` that resolved on August 16.** The
+August 12 verdicts cited `src/accounts/forms.py:77`, `ReviewRoute.tsx:352` and
+`Idea`'s eight fields — one had moved, one was wrong, and one described a deleted
+model. A citation that does not resolve is how this document became misleading
+while every sentence in it still read as evidence.
+
+**One journey needs rewriting rather than re-scoring, and that is a product
+decision.** S7's premise — *"the review says four captures have been waiting
+eleven days"* — describes triage, which the crossover deliberately removed. It is
+marked below and left for Vince.
 
 ## What this is for
 
@@ -72,11 +89,17 @@ And the first screen offers one obvious thing to do, not six concepts
 And within four minutes he has captured a thought and planned a day
 ```
 
-**Verdict: impossible.** `src/accounts/forms.py:77` creates the account
-`is_active=False`; approval is a checkbox at `src/accounts/admin.py:25`; and
-`src/accounts/emails.py` has three functions, none of which tells him he was
-approved. Even past that gate, `LOGIN_REDIRECT_URL` lands him on `/app/day`,
-which has no affordance that creates anything.
+**Verdict: impossible — unchanged, August 16, 2026.** `src/accounts/forms.py:81`
+creates the account `is_active=False`; approval is a checkbox in
+`src/accounts/admin.py` (`list_filter` at `:24`); and `src/accounts/emails.py`
+now has **six** functions rather than three — three of them added on August 16
+for account deletion — and still none of them tells him he was approved. Past
+that gate, `LOGIN_REDIRECT_URL` lands him on `/app/day`, which has no affordance
+that creates anything.
+
+That the email module tripled in size without gaining the one message this story
+needs is the sharpest evidence in the set that nobody has been building toward
+these journeys.
 
 **Requires:** self-service signup with email verification, a first-run path, an
 empty state that teaches, and a landing page that is not a login form.
@@ -94,10 +117,11 @@ And reschedule another without leaving it
 And every control is large enough to hit with a thumb
 ```
 
-**Verdict: bends.** Android does agenda read/write, but the Day page's action
-items are read-only *by design* (`DayRoute.tsx:117`) — completing a task means
-navigating away. On mobile web, `button.tsx` tops out at 36px and `DayRoute`
-carries none of the per-call-site 44px overrides.
+**Verdict: bends — unchanged, August 16, 2026.** Android does agenda read/write,
+but the Day page's action items are still read-only *by design*
+(`DayRoute.tsx:122` explains why a Complete button was refused) — completing a
+task means navigating away. On mobile web `button.tsx:28` still tops out at
+`h-9`, 36px, and `DayRoute` carries none of the per-call-site 44px overrides.
 
 **Requires:** complete/add from the day surface; a 44px floor in the primitive;
 a decided client strategy so "on a phone" has one answer.
@@ -137,8 +161,15 @@ And it is waiting in her inbox, undecided
 network is asked anything, stable idempotency key, owner-scoped uniqueness
 constraint behind it.
 
-**Requires:** nothing. Two caveats already logged in the blueprint: the queue
-has no lock, and it is not excluded from device backup.
+**Requires:** nothing, and **both caveats are now closed** — the queue gained a
+process-wide lock, and it is excluded from device backup in *both*
+`backup_rules.xml` and `backup_rules_legacy.xml` (blueprint defects 7 and 8,
+August 13).
+
+One correction to the story's own wording: it lands in the graph at `/mind/`
+now, not "her inbox" — the Inbox was deleted on August 15. Nothing about the
+capture path changed; `/api/v1/capture` kept its URL, token and scope and writes
+a `Node`.
 
 ### S5. Vince closes the day
 
@@ -194,15 +225,31 @@ Then she triages them without leaving the review
 And the numbers update in place
 ```
 
-**Verdict: impossible.** `ReviewRoute.tsx:352` renders each item as inert
-`<span>` text. The review already runs the query and then refuses to let anyone
-act on it — and `src/review/` has a structural test asserting the router stays
-read-only, so this is a designed boundary, not an oversight.
+> **⚠ This journey's premise no longer exists — Vince's decision, not an edit.**
+> It opens with *"four captures have been waiting eleven days"*. Captures, the
+> Inbox and triage were deleted on August 15; the crossover's whole claim is that
+> a thought stops needing to be filed. The story has to be rewritten against
+> today's vocabulary or retired, and either is a product choice. **Left as
+> written, marked, and counted as impossible until it is decided.**
+>
+> The nearest live equivalent is *names worth confirming* — the review already
+> surfaces concept candidates that have earned a question by recurring, and
+> confirming one from the review is not possible. That is the same story with a
+> different noun, if it is still the story worth telling.
 
-**Requires:** a decision about whether the review may mutate. The read-only rule
-is *why* the numbers are trustworthy; breaking it casually would be a mistake.
-The likely resolution is triage-in-place that writes through capture's own
-services, leaving review itself still read-only.
+**Verdict: impossible — but not for the reason recorded on August 12.** That
+verdict said `ReviewRoute.tsx:352` renders items as inert `<span>` text and that
+the router is structurally read-only. Both are now wrong: `ReviewRoute.tsx:147`
+pins a task to today and `:896` reopens or completes one, so the review does
+mutate, through the task core's own services.
+
+What is missing is action on the thing *this story* names, which no longer
+exists.
+
+**Requires:** deciding what the ageing pile is now. The read-only rule is *why*
+the numbers are trustworthy, and the resolution already found for tasks —
+writing through the owning core's services, leaving the review's own reads
+untouched — is the one to repeat.
 
 ### S8. Vince zooms out to a quarter
 
@@ -318,13 +365,19 @@ And are ranked, not merely filtered
 And he can reach the day it was written and see what else was happening
 ```
 
-**Verdict: impossible.** There is no full-text search anywhere — verified, zero
-hits for `SearchVector`/`GinIndex`/`pg_trgm`. Ideas offer `text__icontains`;
-three other boxes are `Array.includes()` over data already in the browser; daily
-entries are not searchable by any means, and no date picker exists.
+**Verdict: bends — August 16, 2026.** The August 12 verdict said *"no full-text
+search anywhere — verified, zero hits for `SearchVector`/`GinIndex`"*. That is
+now false: `src/mind/models.py` gives `Node` a `search_original`
+`SearchVectorField` with a GIN index and revisions a `search_body`, and `/mind/`
+has a search page over both.
 
-**Requires:** ranked cross-content search. Nothing else in the knowledge core
-matters until this exists — it is what makes retention worth anything.
+What it does not do is what this story asks for. It searches **notes only** —
+tasks, days and reviews are outside it — and it filters rather than ranks
+(`SearchQuery` without `SearchRank`). Reaching the day a note was written still
+means clicking back a week at a time.
+
+**Requires:** ranking, and reach across content. The index this was waiting for
+exists; the query does not.
 
 ### S14. A note knows when it was written
 
@@ -339,13 +392,20 @@ Then it carries the day it belongs to, the project it was inside,
 And she reached it without having filed it anywhere by hand
 ```
 
-**Verdict: impossible.** `Idea` has eight fields, no `updated_at`, no link to a
-day, project or task.
+**Verdict: bends — August 16, 2026.** The August 12 verdict described `Idea`'s
+eight fields; `Idea` is deleted. `Node` carries `captured_at` separately from
+`created_at` — the thought's own time, not the row's — plus `Revision` history,
+confirmed concepts, and a `Facet` linking to the `Item` it became.
 
-**Requires:** `Note` with typed links into domain objects. **This is the
-differentiator** — the graph accretes from what you were already doing instead
-of being built by hand, which is the one thing Obsidian and Notion structurally
-cannot do.
+So a note does know when it was written, and what it turned into. What it does
+not know is the **surrounding**: no link to the `DailyEntry` for that day, or to
+the `Project` it was inside, so "what had she committed to that week" is not
+answerable from the note.
+
+**Requires:** typed links from a node into the day and project domain objects.
+**This is still the differentiator** — the graph accreting from what you were
+already doing rather than being built by hand — and it is now one relationship
+short rather than a model short.
 
 ### S15. Reading produces work
 
@@ -379,8 +439,17 @@ And each says why it surfaced
 And nothing is changed on his behalf
 ```
 
-**Verdict: impossible**, and correctly deferred until there is material to
-resurface.
+**Verdict: bends — August 16, 2026.** The mechanism exists and the trigger does
+not. `/mind/review/` resurfaces material on a schedule, `mark_reviewed` records
+what was done with it, and every proposal carries a `contribution_reason` — which
+is precisely this story's *"each says why it surfaced"*, built without anybody
+aiming at this story.
+
+What is missing is the entry point the story describes: opening a **project**
+surfaces nothing. Resurfacing is time-driven, not context-driven.
+
+Still limited by the corpus rather than the code — 41 nodes, 19 of them visible
+to the detectors.
 
 **Requires:** S13 and S14 first. This is the story that makes a second brain
 feel like one, and it is worthless before the corpus exists.
@@ -397,10 +466,19 @@ And can delete the account herself
 And is told plainly what happens to the copy
 ```
 
-**Verdict: impossible.** No export, no deletion, no self-service deactivation.
+**Verdict: works — August 16, 2026.** Preferences carries a download of
+everything the account owns (JSON plus Markdown a person can actually read) and a
+self-service deletion with a thirty-day grace period, an acknowledgement, a
+password re-entry and three emails. `src/accounts/export.py`,
+`src/accounts/services.py:ACCOUNT_DELETION_GRACE`.
 
-**Requires:** export and deletion. A legal obligation before payment, and for a
-second brain a trust precondition — a private archive with no exit is not one.
+Proven by `src/functional_tests/test_leaving.py`, which downloads the archive in
+a real browser and opens it.
+
+**The obstacle was not effort.** `ActivityEvent` is append-only by database
+trigger and `owner` was `on_delete=CASCADE`, so `User.delete()` raised — deletion
+was impossible rather than unbuilt, and nobody had noticed because nobody had
+ever tried. See `mind/migrations/0015_erasure_exemption`.
 
 ---
 
@@ -415,8 +493,19 @@ Then his projects, tasks, due dates and completion history arrive intact
 And he is told what could not be carried across
 ```
 
-**Verdict: impossible.** No import of any kind. This is the switching cost that
-decides whether an experienced user ever becomes a real one.
+**Verdict: bends — August 16, 2026.** *"No import of any kind"* is false. The
+knowledge core arrived with `src/mind/importers/` — Markdown files, `.docx`,
+JSONL — plus `import_material`, a runner that is idempotent on an import key and
+reports what it skipped.
+
+None of it imports a **competitor**, and none of it reaches the task core: there
+is no path that turns a Todoist export into projects, tasks, due dates and
+completion history. But the machinery for "read a foreign file, land it here
+without duplicating on a re-run" is built and tested, which is the part that
+usually costs the most.
+
+Still the switching cost that decides whether an experienced user becomes a real
+one.
 
 ### S19. Sam decides to pay
 
@@ -433,9 +522,28 @@ And cancelling leaves him able to read and export
 
 ## What the stories add up to
 
-**19 stories: 2 work, 2 bend, 15 impossible.** The two that work — durable
-capture and the honest weekly review — are the two the product should be sold
-on, and neither needs changing.
+**19 stories: 3 work, 6 bend, 10 impossible** — re-checked August 16, 2026. It
+was 2 · 2 · 15 on August 12.
+
+**Almost none of that movement was aimed at these stories**, which is the most
+useful thing this re-score found. The merger and Heron were about capture
+surfaces and models; they moved S13, S14, S16 and S18 off "impossible" as a side
+effect, and nobody noticed because this document was not re-read. S17 is the only
+one closed deliberately.
+
+Two consequences worth stating:
+
+- **The knowledge core is further along than its own planning said.** Four of the
+  five second-brain journeys moved. The remaining gaps are narrower than "build a
+  second brain" — ranking on a search that exists, two typed links on a model
+  that exists, a context trigger on resurfacing that exists.
+- **The task core's gaps did not move at all.** S3, S8, S9, S10, S11 and S12 are
+  untouched since August 12, and they are the planning, quarterly and project
+  stories. That is the honest shape of the product: capture and reflection work,
+  planning and projects do not.
+
+The three that work — durable capture, the honest weekly review, and leaving with
+your data — are what the product should be sold on, and none needs changing.
 
 The impossible pile resolves into a target model:
 

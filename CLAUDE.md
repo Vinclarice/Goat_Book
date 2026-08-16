@@ -100,11 +100,16 @@ named a migration that has happened — and `architecture-trajectory.md` §4 gat
 new models in **either** core anyway, more strictly.
 
 **The reason that does not expire.** The task core is a competent todo
-application. The graph is the thing that makes this worth building, and
-`product-stories.md` has nineteen journeys with two working, most of them not
-the task core's. Alongside it sits the commercial substrate — account deletion
-and data export are untouched and `commercial-blueprint.md` calls them legal
-blockers. That is where work goes.
+application; the graph is the thing that makes this worth building. **The
+scoreboard is `product-stories.md` and it is not restated here** — read it, and
+note that its August 12 score stood unchallenged for four days after it stopped
+being true.
+
+What it says as of August 16: capture and reflection work, planning and projects
+do not, and four of the five knowledge-core journeys moved without anybody aiming
+at them. Account deletion and data export shipped the same day, so the commercial
+substrate's next pieces are terms, a privacy policy, and the three open decisions
+in `commercial-blueprint.md` Part 9.
 
 **So, concretely.** Production defects, security and data-loss fixes need no
 argument, in either core. Task-core *feature* work needs a reason beyond *while

@@ -266,6 +266,30 @@ before any redeploy that would overwrite the evidence.
 you to run it.** Surface it in a fenced `bash` block and stop there — he
 runs it himself and reports back once it's done.
 
+**The deploy is not finished until it is tagged, and this is your job, not
+his.** Three tags, each meaning a different thing:
+
+- `LIVE` — a moving pointer at the code currently running. **The only tag
+  that is ever overwritten** (`git tag -f` plus `git push --force origin
+  LIVE`), which is safe precisely because the position it leaves is kept by
+  the `DEPLOYED-` tag that marked it.
+- `DEPLOYED-<YYYY-MM-DD>/<HHMM>` — a permanent record of one deployment
+  event. Ask for the time if you do not have it; do not guess, and check
+  the name is free, because these collide silently.
+- The bird codename — a permanent annotated release tag, applied when a
+  release is verified in production, describing what shipped and how.
+
+This drifted badly through August: `LIVE` sat five days and thirty commits
+behind production, and two deploys went untagged. It drifted because
+tagging was written down in `roadmap.md` as a convention and nowhere as a
+step. So: when he reports a deploy done, verify what is live, then tag it
+in the same turn.
+
+Note that the playbook builds the image **from the working tree**
+(`delegate_to: 127.0.0.1`), not from a git ref — so what is deployed is
+whatever branch is checked out, merged or not. Tag the commit that was
+actually built, and confirm it with `git describe --always --dirty`.
+
 **An apt task that looks hung is usually not.** The "Install docker" step
 stalled for minutes on three separate deploys and was cancelled each time,
 because `state: latest` plus an unconditional `update_cache` made apt

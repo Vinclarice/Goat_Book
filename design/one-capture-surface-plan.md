@@ -1,12 +1,13 @@
 # One capture surface — the plan for Heron
 
 Vince · August 15, 2026 · **active. Steps 1, 2, 3 and 4a shipped and verified in
-production August 15; 4b built the same day and awaits deployment; step 5
-remains.** 4a was verified on the droplet: the live schema carries `captured_at`
-and returns a node, the Inbox sweep drained its last capture, and an offline
-capture from the phone was walked end to end. 4b is verified by 872 Django, 672
-pytest, 270 frontend and 30 browser tests plus a clean build — **production
-verification owed, and it carries an irreversible migration**; see 4b below.
+production August 15 as `DEPLOYED-2026-08-15/1200`; 4b built the same day and
+awaits deployment; step 5 remains.** 4a was verified on the droplet: the live
+schema carries `captured_at` and returns a node, the Inbox sweep drained its
+last capture, and an offline capture from the phone was walked end to end. 4b is
+verified by 872 Django, 672 pytest, 270 frontend and 30 browser tests plus a
+clean build — **production verification owed, and it carries an irreversible
+migration**; see 4b below.
 
 Ends the crossover the merger deliberately left open. Three capture surfaces
 become one: `/mind/` writing a `Node` survives, `/capture/` writing a `Capture`

@@ -524,10 +524,11 @@ done. See [`one-capture-surface-plan.md`](one-capture-surface-plan.md) for the
 sequence and `roadmap-history.md` for what each step cost.
 
 - **Steps 1, 2, 3 and 4a shipped and were verified in production August 15,
-  2026.** A typed tag is a confirmed concept; a task inherits its node's
-  concepts; the Inbox is drained into the graph — 41 nodes, 19 visible to the
-  detectors; and `/api/v1/capture` writes a `Node`, keeping the time a queued
-  thought was written rather than the time it was delivered.
+  2026**, tagged `DEPLOYED-2026-08-15/1200`. A typed tag is a confirmed concept;
+  a task inherits its node's concepts; the Inbox is drained into the graph — 41
+  nodes, 19 visible to the detectors; and `/api/v1/capture` writes a `Node`,
+  keeping the time a queued thought was written rather than the time it was
+  delivered.
 - **There is one capture endpoint now.** `/api/v1/capture` is the application's,
   served by `mind/api_v1.py`, and it is what the phone and the Day page both
   post to. The knowledge core keeps a second, unused API at `/mind/api/v1/`,
@@ -546,12 +547,20 @@ sequence and `roadmap-history.md` for what each step cost.
   said two capture surfaces; there were three, and it said `Backends.kt` routed
   the phone to the knowledge core, which no shipped build has ever done.
 
-**Two things outstanding that are not code.** An external uptime monitor to poll
+**One thing outstanding that is not code.** An external uptime monitor to poll
 `/healthz` — the last open item in Part 1, and deliberately not in this
-repository, because a watchdog on the machine it watches is not a watchdog. And
-the deployment tags, which drifted: `LIVE` sat five days and thirty commits
-behind production until August 15, and the August 14 deploy went untagged
-entirely. The convention is only worth having if it is kept.
+repository, because a watchdog on the machine it watches is not a watchdog.
+
+**The deployment tags were brought back into line on August 15.** They had
+drifted badly: `LIVE` sat five days and thirty commits behind production, and
+the August 14 deploy went untagged. Heron 4a's deploy is
+`DEPLOYED-2026-08-15/1200` on `99d48a2`, and `LIVE` was moved to the same commit
+— it had been left on `d0983a8`, which is where `DEPLOYED-2026-08-15/0246` still
+correctly records the August 14 merger deploy. Moving `LIVE` is the one tag
+operation that overwrites: the position it leaves is preserved by whichever
+`DEPLOYED-` tag marked it, which is the reason both tags exist rather than one.
+The convention is only worth having if it is kept, and keeping it is a step in
+the deploy rather than a thing remembered afterwards — see `CLAUDE.md`.
 
 **What no longer applies.** The knowledge-side roadmap did not come back with
 the code — Ideas, resurfacing, the mind-map and search over retained material

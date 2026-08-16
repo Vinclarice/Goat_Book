@@ -75,8 +75,9 @@ proves the wrong thing — `test_journeys.py` was doing exactly that, posting to
 `/mind/api/v1/capture` with a `mind.ApiToken`, and now walks the real route with
 the real credential.
 
-Verified by 974 Django tests, 686 pytest, 271 frontend, 30 browser and a clean
-build, then in production on August 15: the live OpenAPI schema carries
+Deployed at noon on August 15 as `DEPLOYED-2026-08-15/1200` (`99d48a2`), which
+`LIVE` now points at. Verified by 974 Django tests, 686 pytest, 271 frontend, 30
+browser and a clean build, then in production: the live OpenAPI schema carries
 `captured_at` and returns `{public_id, captured_at}`, and an offline capture was
 walked from the phone through the queue to `/mind/`.
 

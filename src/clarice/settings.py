@@ -174,9 +174,12 @@ INSTALLED_APPS = [
     # the users, the CI and the surviving accounts.User. Those two directions
     # pointing opposite ways is deliberate, not a reversal.
     #
-    # `capture` and `capture.Idea` do not survive the merger; `mind` is what
-    # replaces them. Both are installed during the crossover, which is why the
-    # two capture endpoints currently collide and neither has moved yet.
+    # It replaced `capture` rather than sitting beside it. The three sentences
+    # that stood here described a crossover in progress -- both apps installed,
+    # two `/api/v1/capture` definitions colliding, neither moved yet -- and all
+    # three stopped being true on August 15 when Heron finished. There is one
+    # capture surface at `/mind/`, one endpoint at `/api/v1/capture` served by
+    # `mind/api_v1.py`, and `capture` is gone.
     "mind",
     # The daily domain -- Daily Entry now, Daily Focus and the Personal
     # Compass as Crane 1 continues. Its own app rather than more tables in

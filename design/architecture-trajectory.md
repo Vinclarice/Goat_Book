@@ -848,13 +848,16 @@ Recording refusals matters as much as recording plans, because an unrecorded
 refusal gets re-proposed every time a new reviewer reads the codebase — which
 has now happened three times in one week.
 
-**Scope, stated August 13, 2026: these refusals bind Clarice and nothing
-else.** Second Mind is a separate project and is not governed by this
-document — see [`principles.md`](principles.md) §Scope and `roadmap.md`. It
-does exactly what two of the entries below refuse, deliberately and with its
+**Scope, stated August 13, 2026: these refusals bind the task core and nothing
+else.** They were written for a Clarice that was a whole repository; since
+August 14 it is one core of one, and the knowledge core in `src/mind/` is **not
+governed by this document** — see [`principles.md`](principles.md) §Scope, which
+draws the line by kind of rule rather than by directory.
+
+It does exactly what two of the entries below refuse, deliberately and with its
 own argument: it is built on a **node model with facets and typed edges**, and
-it is a **fresh start** rather than a reshaping of this codebase. Neither is a
-reversal here. A refusal reached inside the task domain, on this codebase's
+it was a **fresh start** rather than a reshaping of this codebase. Neither is a
+reversal here, and living in the same tree does not make it one. A refusal reached inside the task domain, on this codebase's
 evidence, does not extend to a different project with a different premise —
 and the third refusal below, *Starting over*, is specifically a refusal to
 discard **this** repository's testing culture, which Second Mind does not do:

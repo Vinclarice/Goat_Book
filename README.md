@@ -1,7 +1,27 @@
 # Clarice
 
-A private Django to-do application with focused React enhancements for task and
-archive management. Django forms remain usable if JavaScript is unavailable.
+A private Django application with two cores, sharing one login, one database and
+one deployment.
+
+**The task core** — *Superlists* — is commitments: tasks, areas, projects,
+recurring commitments, checklist steps, routines, the daily page and a weekly
+review. Mostly a React SPA under `/app/`, with the Django forms still usable if
+JavaScript is unavailable.
+
+**The knowledge core** — *Second Mind* — is `src/mind/`, at `/mind/`. A thought
+is captured as a `Node` and nothing is asked of it at the moment of writing: no
+filing, no category, no due date. Structure emerges afterwards, from concepts
+that recur and from connections the system proposes and a person confirms. It is
+server-rendered, deliberately plain, and carries no JavaScript.
+
+The two meet where a captured thought turns out to be a commitment: the parser
+reads a date out of what was written, offers it, and a confirmed offer becomes a
+task in the other core. `/api/v1/capture` is the one capture endpoint — the
+Android client and the daily page's quick-capture box both post to it, and it
+writes a `Node`.
+
+Second Mind's design authority is its own `docs/`, which still live at
+`C:\dev\Clarice_secondmind`; its code does not.
 
 ## The agenda
 
@@ -57,11 +77,25 @@ $env:VITE_DEV_SERVER_URL = "http://127.0.0.1:5173"
 
 ## Checks
 
+**Two Python runners, and both are real.** The task core runs on
+`manage.py test`; the knowledge core arrived with several hundred pytest-style
+tests and stays on `pytest`, because converting them would be a large mechanical
+rewrite of the thing in that app most worth leaving alone. Running one and
+reporting "tests pass" covers about half the application.
+
 ```powershell
-.\.venv\Scripts\python.exe src\manage.py test accounts lists capture clarice daily routines review
+docker compose up -d db   # once per session; starts local Postgres
+.\.venv\Scripts\python.exe src\manage.py test accounts lists clarice daily routines review
+.\.venv\Scripts\python.exe -m pytest          # the mind app; config in pytest.ini
 pnpm --dir frontend test
 pnpm --dir frontend build
 ```
+
+Tests run on Postgres, not SQLite: `Item.Meta`'s `unique_active_item` is
+`nulls_distinct=False` and Postgres 15+ only, so SQLite silently omitted it and a
+local run proved less than it appeared to. `DEBUG` defaults
+`DJANGO_DATABASE_URL` to the `docker-compose.yml` database on `localhost:5433`,
+so there is nothing to configure beyond starting the container.
 
 ### Browser smoke tests
 
@@ -80,14 +114,20 @@ Build first, or the tests run against whatever the last build produced --
 they load the real files from `src/lists/static/frontend/`. Set `HEADED=1`
 to watch them in a visible browser.
 
-CI (`.github/workflows/ci.yml`) runs the same three checks on every push and
-pull request, with the Django suite run against a Postgres service
-container instead of SQLite, matching production's database engine.
+CI (`.github/workflows/ci.yml`) runs all of the above on every push and pull
+request, across five jobs: `django`, `mind`, `browser`, `frontend`, `android`.
 
-Keep the Django app list here matching CI's. It previously omitted `capture`,
-so following this file ran every suite except the one covering the capture
-API -- the reason an idempotency change could be committed claiming its
-tests had never been run.
+**Keep the Django app list here matching CI's.** It once omitted `capture`, so
+following this file ran every suite except the one covering the capture API --
+which is how an idempotency change was committed claiming tests that had never
+run. The `mind` suite was likewise absent from CI for the first day of the
+merger while `requirements-dev.txt` claimed otherwise.
+
+Every CI job with a database uses `pgvector/pgvector:pg17`. The `mind`
+migrations run `CreateExtension("vector")`, and Django builds the test database
+from *every* app's migrations whichever labels are under test -- so a stock
+Postgres image, or SQLite, fails in `setup_databases` before a single test runs,
+including on jobs that never touch the knowledge core.
 
 The local recovery path for a forgotten password is Django's authenticated
 management command:
@@ -159,10 +199,23 @@ every day boundary -- agenda buckets, per-list overdue counts, snooze
 presets, the completed-today range -- is computed against that user's date
 without any of that code knowing a user exists.
 
-Token-authenticated API requests are outside this, because Ninja resolves the
-token inside the view and `request.user` is still anonymous at middleware
-time. Capture stores timestamps rather than local dates, so it is unaffected;
-a future date-bearing token endpoint must activate the owner's zone itself.
+**Token-authenticated requests are covered too, and this paragraph said the
+opposite until August 15, 2026.** It read: *a future date-bearing token endpoint
+must activate the owner's zone itself.* Five such endpoints shipped and none
+did, so a routine logged at 07:30 in Makassar was filed against the previous day
+— `commercial-blueprint.md` defect 2, a durable record silently wrong, with no
+error anywhere.
+
+The observation underneath it was correct: Ninja resolves a bearer token inside
+the view, so `TimeZoneMiddleware` has already run against an anonymous request
+and deactivated. The mistake was making that each endpoint's problem. It is
+fixed once, in `accounts.auth._resolve_scoped_token`, which is the single point
+both token paths converge on — and `TimeZoneMiddleware`'s `finally` is what
+stops an activated zone outliving the request on a reused worker thread.
+
+Rows written before the fix are still wrong and were deliberately left alone:
+nothing recorded which auth path created a `RoutineOccurrence`, so a repair
+would have to guess at a durable record.
 
 ## Brute-force protection
 

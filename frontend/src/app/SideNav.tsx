@@ -82,9 +82,10 @@ export function SideNav() {
             A Django page, not an SPA route, so a plain anchor: React Router
             would try to handle /mind/ itself and 404 inside the shell.
 
-            The href comes from the payload because that prefix is temporary
-            and lives in exactly one line of clarice/urls.py. Pinning it here
-            would make it two, in two languages.
+            The href comes from the payload. That began as a hedge against a
+            temporary prefix; Heron step 5 made /mind/ permanent and it is
+            still right, because the server owns its own URLs and a route
+            spelled out in two languages is one that can disagree with itself.
 
             No count, and this is the one nav entry that must never grow one:
             the Inbox's number measured a backlog, and this core is quiet by

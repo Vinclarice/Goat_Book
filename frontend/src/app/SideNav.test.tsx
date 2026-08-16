@@ -183,8 +183,9 @@ describe("SideNav", () => {
   it("reaches the knowledge core, at the url the server gives it", async () => {
     // The merger put that core in this application and nothing in the nav
     // could open it -- typing /mind/ was the only way in. The href comes from
-    // the payload because the prefix is temporary and lives in one line of the
-    // project URLconf; pinning it here would make that two.
+    // the payload: that began as a hedge against a temporary prefix, and after
+    // Heron step 5 made /mind/ permanent it is still right, because pinning a
+    // server route here would spell it out in two languages.
     renderNav();
     await screen.findByText("Programming");
 

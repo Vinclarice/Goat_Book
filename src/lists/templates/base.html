@@ -31,8 +31,9 @@
             {# Inbox and Ideas stood here until Heron 4b deleted them. This nav #}
             {# is the Django-rendered half's, and the knowledge core is now the #}
             {# whole of it -- so it takes their place rather than being added #}
-            {# beside them. Reversed through {% url %} like everything here, so #}
-            {# step 5's move of the prefix does not have to find this line. #}
+            {# beside them. Reversed through {% url %} like everything here: #}
+            {# /mind/ is permanent as of step 5, and a reversed URL costs #}
+            {# nothing and survives being wrong about that. #}
             <a class="text-muted-foreground hover:text-text" href="{% url 'capture' %}">Second Mind</a>
             <a class="text-muted-foreground hover:text-text" href="{% url 'archive' %}">Archive</a>
             <a class="text-muted-foreground hover:text-text" href="{% url 'account_settings' %}">{{ user.username }}</a>

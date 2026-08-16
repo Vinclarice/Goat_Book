@@ -198,10 +198,10 @@ class NavOut(Schema):
     # was deleted; the count was the one number here that measured a backlog,
     # and it went with the thing that had one.
     #
-    # Served rather than written into the client because `clarice/urls.py`
-    # records that this prefix is temporary and lives in exactly one line --
-    # where those pages finally sit is step 5, and the nav should follow it
-    # rather than pin it.
+    # Served rather than written into the client. That was originally because
+    # the prefix was temporary; step 5 made `/mind/` permanent, and it is still
+    # served -- the server owns its own URLs, and a route spelled out in two
+    # languages is one that can disagree with itself.
     mind_url: str
     # So the SPA's own index route sends /app/ where the server would send
     # a login, rather than hard-coding a second answer that could drift

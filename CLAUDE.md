@@ -54,11 +54,18 @@ on 5434 are history; do not develop there. This paragraph said the opposite for
 a day after the merger, which is exactly the drift the checklist above exists to
 prevent.
 
-**There is one capture surface**, as of Heron 4b on August 15, 2026: `/mind/`,
-writing a `Node`. `/capture/` and its `Capture` and `Idea` models are deleted.
-The `/mind/` prefix is still temporary and still appears in exactly one line of
-`clarice/urls.py`; moving it to the URL 4b freed is step 5, and is all that is
-left of the crossover.
+**The crossover is over.** There is one capture surface, `/mind/`, writing a
+`Node`; `/capture/` and its `Capture` and `Idea` models are deleted (Heron 4b),
+and **`/mind/` is where the knowledge core lives** — step 5, Vince's call,
+August 15, 2026.
+
+It is no longer temporary, and that is a decision rather than an omission.
+`/capture/` was freed and deliberately not taken: nine routes sit under `/mind/`
+and only one is capture, so `/capture/` would have named the smallest thing in
+the room, against a live PWA shortcut and every bookmark that a move breaks. The
+prefix still appears in exactly one line of `clarice/urls.py` and everything
+under it is still relative, so this stays cheap to revisit — it is settled, not
+welded.
 
 **There is one capture *endpoint*, as of Heron 4a on August 15, 2026.**
 `/api/v1/capture` is the application's, served by `mind/api_v1.py`, and it

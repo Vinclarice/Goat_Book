@@ -68,7 +68,7 @@ done; until it is done, this table is the more reliable source.
 
 | Document | State |
 |---|---|
-| [`one-capture-surface-plan.md`](one-capture-surface-plan.md) | **Active — this is Heron.** Steps 1–4a shipped and verified in production Aug 15; **4b built the same day, not yet deployed, and it carries an irreversible migration**; step 5 (move `/mind/`) remains. Declares its own status |
+| [`one-capture-surface-plan.md`](one-capture-surface-plan.md) | **Active — this is Heron, and all five steps are built.** 1–4a verified in production Aug 15 (`DEPLOYED-2026-08-15/1200`); **4b and 5 await one deployment together, and 4b carries an irreversible migration.** Step 5 settled `/mind/` as permanent rather than moving it. Declares its own status |
 | [`staging-environment-plan.md`](staging-environment-plan.md) | Designed Aug 11, **deliberately deferred** Aug 12. The `is_debug()` fix shipped; the droplet waits for a trigger |
 | [`android-release-signing-plan.md`](android-release-signing-plan.md) | Build is wired; **the keystore is Vince's to generate by hand.** One of the three open B/C/D items |
 

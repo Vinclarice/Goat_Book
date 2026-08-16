@@ -9,11 +9,13 @@ This preserves the reasoning, deployment record, and lessons behind completed
 work without making the active roadmap hard to scan. The active plan is
 [`roadmap.md`](roadmap.md).
 
-## Heron, steps 1–4b — the crossover, August 15, 2026
+## Heron — the crossover, August 15, 2026
 
-Heron is not closed; step 5 remains, and 4b is built but not deployed. This is
-the narrative of what shipped, so that `roadmap.md` can carry the baseline rather
-than the story. The plan is
+All five steps built in one day. 1–4a are in production; **4b and 5 await one
+deployment together, Vince's call, so that Heron lands whole rather than leaving
+a half-crossed state live in between.** The bird is tagged when that deploy is
+verified, same as always. This is the narrative, so that `roadmap.md` can carry
+the baseline rather than the story; the plan is
 [`one-capture-surface-plan.md`](one-capture-surface-plan.md).
 
 **Steps 1 and 2** wired a typed tag to a confirmed concept and carried a node's
@@ -132,6 +134,31 @@ they needed.** None was found by reading the diff.
 872 Django, 672 pytest, 270 frontend, 30 browser, clean build. Not yet deployed,
 and the deploy is a decision rather than a routine push: `0008` drops two tables
 and has no reverse.
+
+### 5 — the URL that did not move
+
+Step 5 was written as *move `/mind/` to the URL 4b frees*, and asking the
+question directly reversed it. **`/mind/` is permanent — Vince's call.**
+
+`/capture/` came free and was deliberately not taken. Nine routes live under
+`/mind/` and only one of them is capture; the rest are review, concepts, search,
+numbers, share, the manifest and two actions. `/capture/concepts/` reads as
+nonsense, and scattering them across the root instead — all four paths were free
+— would have put a second "review" beside the task core's weekly one and spread
+a single core across four places, ending the property that made the step cheap.
+Against a rename with no winner stood a live PWA home-screen shortcut and every
+bookmark.
+
+**"Temporary" was a reason to reconsider the name once the collision was gone,
+not an obligation to move.** The change was therefore subtraction: the word came
+out of `clarice/urls.py`, `mind/urls.py`, both navs and their tests, replaced by
+the reason it is permanent. It is still one line and everything under it is
+still relative, so it is settled rather than welded.
+
+This also answered a question the plan had listed as beyond it — where the
+knowledge core's other pages live. They stay together, under a different root
+from the task core's `/app/`: two cores, two homes, one login, one nav reaching
+both.
 
 ## After Dunlin — Release F and six unlettered lines of work, August 6–12, 2026
 

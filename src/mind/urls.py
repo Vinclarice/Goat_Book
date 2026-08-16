@@ -1,4 +1,4 @@
-"""The knowledge core's own routes, mounted under a prefix by the project.
+"""The knowledge core's own routes, mounted at `/mind/` by the project.
 
 Split out of Second Mind's project URLconf when the app moved here on
 August 14, 2026. Login, logout and admin stayed behind: this project already has
@@ -6,10 +6,15 @@ all three, and a second login page would be two ways to sign in to one
 application.
 
 Everything is relative and every template reverses through `{% url %}`, so the
-prefix the project chooses is not baked in anywhere. That matters more than
-usual, because the prefix is temporary — the crossover ends with one capture
-surface rather than two, and where these pages finally live is a decision for
-that step rather than this one.
+prefix the project chooses is not baked in anywhere. That was written when the
+prefix was temporary; it held, the prefix is now permanent (Heron step 5, see
+`clarice/urls.py`), and it stays true because a URLconf that does not know where
+it is mounted is simply a better URLconf.
+
+**This is where the crossover ended.** Nine routes live here and only one is
+capture — so this is the knowledge core's home rather than a capture page's, and
+`/capture/`, freed by deleting the Inbox, would have named the smallest thing
+under it.
 """
 
 from django.urls import path

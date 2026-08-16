@@ -1,13 +1,14 @@
 # One capture surface — the plan for Heron
 
 Vince · August 15, 2026 · **active. Steps 1, 2, 3 and 4a shipped and verified in
-production August 15 as `DEPLOYED-2026-08-15/1200`; 4b built the same day and
-awaits deployment; step 5 remains.** 4a was verified on the droplet: the live
-schema carries `captured_at` and returns a node, the Inbox sweep drained its
-last capture, and an offline capture from the phone was walked end to end. 4b is
-verified by 872 Django, 672 pytest, 270 frontend and 30 browser tests plus a
-clean build — **production verification owed, and it carries an irreversible
-migration**; see 4b below.
+production August 15 as `DEPLOYED-2026-08-15/1200`. 4b and 5 built the same day
+and await one deployment together — Vince's call, so that Heron lands whole.**
+
+4a was verified on the droplet: the live schema carries `captured_at` and
+returns a node, the Inbox sweep drained its last capture, and an offline capture
+from the phone was walked end to end. 4b and 5 are verified by the full suites
+plus a clean build — **production verification owed, and 4b carries an
+irreversible migration**; see the pre-flight check under 4b.
 
 Ends the crossover the merger deliberately left open. Three capture surfaces
 become one: `/mind/` writing a `Node` survives, `/capture/` writing a `Capture`
@@ -151,29 +152,51 @@ same discipline `two-cores.md` used, and it is why the merger shipped in a day.
 
    *The step that makes the whole thing worth doing: one place to type.*
 
-5. **Move the surviving surface to its canonical URL.**
-   `/mind/` was always temporary and appears in exactly one line of
-   `clarice/urls.py`. With `/capture/` freed by step 4b, the obvious home is
-   there. Old paths redirect rather than break — a phone with a home-screen
-   shortcut should not need reinstalling.
+5. **Settle the surviving surface's canonical URL.** *Decided August 15, 2026 —
+   Vince's call. It is `/mind/`, and it does not move.*
 
-   **4a made this a pages-only move**, which is what makes an ordinary redirect
-   safe. `/api/v1/capture` is the application's, not a core's, and does not move
-   with the prefix. Had the phone instead been pointed at `/mind/`, this step
-   would have broken it a second time — and with a 301 or 302, silently: OkHttp
-   converts a redirected POST to a GET.
+   This step was written as *move `/mind/` to the URL 4b frees*, on the reasoning
+   that the prefix was always temporary and `/capture/` was the obvious home.
+   The first half was true and the second did not survive being asked directly.
+
+   **`/capture/` was freed and deliberately not taken.** Nine routes sit under
+   `/mind/` — capture, review, concepts, search, numbers, share, the manifest,
+   and the tag and commitment actions — so `/capture/` would have named the
+   smallest thing in the room, and `/capture/concepts/` reads as nonsense.
+   Scattering them across the root instead (`/capture/`, `/review/`,
+   `/concepts/`, `/search/`, all free) would have put a second "review" beside
+   the task core's weekly one and spread a single core across four paths, ending
+   the property that made this step cheap in the first place.
+
+   Set against a rename with no winner: a live PWA home-screen shortcut and
+   every bookmark, both of which a move breaks. **"Temporary" was a reason to
+   reconsider the name once the collision was gone, not an obligation to move.**
+
+   So the change is subtraction — the word *temporary* comes out of
+   `clarice/urls.py`, `mind/urls.py`, both navs and their tests, and is replaced
+   by the reason it is permanent. It stays one line and everything under it
+   stays relative, so this is settled rather than welded.
+
+   **4a is what made this a free choice.** `/api/v1/capture` is the
+   application's, not a core's, and never moved with the prefix. Had the phone
+   been pointed at `/mind/` instead, this step would have had to move an
+   endpoint a queued client posts to — and a 301 or 302 would have broken it
+   silently, since OkHttp converts a redirected POST to a GET.
+
+## What this settled after all
+
+- **Where the knowledge core's other pages live.** Listed below as unanswerable
+  by this plan; step 5 answered it. They stay together under `/mind/`, which is
+  a different root from the task core's `/app/` — two cores, two homes, one
+  login and one nav reaching both.
+- **Whether `Idea`'s notes and links survive the migration.** Yes, both, and
+  automatically rather than by hand: notes became a revision and `related_ideas`
+  became a confirmed `relates_to` edge, which is exactly what a person's own
+  undirected link is. The two in production went through unexamined because the
+  general rule turned out to be obvious once written.
 
 ## What this does not settle
 
-- **Where the knowledge core's other pages live.** Review, concepts, search and
-  numbers move with the prefix in step 5, but whether they belong under the same
-  root as the task core's agenda is a navigation question this plan does not
-  answer.
-- **Whether `Idea`'s notes and links survive the migration.** An Idea has notes
-  and `related_ideas`; a Node has revisions and edges. Notes map to a revision
-  cleanly; whether a link becomes a confirmed edge is the real question. There
-  are **two** in production, which is few enough to decide by looking at them
-  rather than by writing a general rule.
 - **Anything about the daily page, routines or reviews.** They are the task
   core's and are untouched by this. The daily page's quick-capture box is the
   exception, and only because it posts to the endpoint 4a converted.

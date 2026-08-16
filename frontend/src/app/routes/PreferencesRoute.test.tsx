@@ -319,3 +319,181 @@ describe("PreferencesRoute", () => {
     });
   });
 });
+
+/** Routes `/api/v1/nav` as well, which is where the purge date comes from. */
+function mockLeaving(purgeAt: string | null, onDelete?: () => Response | object) {
+  return vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+    const request = input as Request;
+    if (request.url.includes("/api/v1/nav")) {
+      return jsonResponse({
+        areas: [],
+        projects: [],
+        archived_count: 0,
+        settings_url: "/accounts/settings/",
+        mind_url: "/mind/",
+        landing_surface: "day",
+        deletion_purge_at: purgeAt,
+      });
+    }
+    if (request.url.includes("/api/v1/me/delete")) {
+      const answer = onDelete?.();
+      return answer instanceof Promise ? answer : jsonResponse(answer ?? {});
+    }
+    if (request.url.includes("/api/v1/time-zones")) {
+      return jsonResponse({ time_zones: TIME_ZONES });
+    }
+    return jsonResponse(preferencesData());
+  });
+}
+
+describe("PreferencesRoute — leaving", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    localStorage.clear();
+    document.cookie = "csrftoken=test-token";
+  });
+
+  it("offers the export before it offers the deletion", async () => {
+    // Order on the page, not decoration. Deletion without export is a trap --
+    // the only way out would be to destroy everything -- so the way to take
+    // your data has to be visible from the same place, first.
+    mockLeaving(null);
+    renderRoute();
+    await screen.findByDisplayValue("vince");
+
+    const download = screen.getByRole("link", { name: "Download my data" });
+    const remove = screen.getByRole("button", { name: "Delete my account…" });
+
+    expect(download).toHaveAttribute("href", "/api/v1/me/export");
+    expect(
+      download.compareDocumentPosition(remove) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("asks for the password before it will schedule anything", async () => {
+    const fetchMock = mockLeaving(null);
+    const user = userEvent.setup();
+    renderRoute();
+    await screen.findByDisplayValue("vince");
+
+    await user.click(screen.getByRole("button", { name: "Delete my account…" }));
+
+    expect(screen.getByLabelText("Confirm your password")).toBeInTheDocument();
+    // Nothing has been sent yet -- opening the form is not the request.
+    expect(
+      fetchMock.mock.calls.filter(([r]) =>
+        (r as Request).url.includes("/me/delete"),
+      ),
+    ).toHaveLength(0);
+  });
+
+  it("says it is permanent and cannot be undone, before anything is clicked", async () => {
+    // The words, asserted. It previously said only "erased after 30 days",
+    // which implies permanence rather than stating it -- not enough for the one
+    // control on the site that destroys data.
+    mockLeaving(null);
+    renderRoute();
+    await screen.findByDisplayValue("vince");
+
+    const section = screen
+      .getByRole("heading", { name: "Delete my account" })
+      .closest("div")!;
+    expect(section).toHaveTextContent(/permanently deleted/i);
+    expect(section).toHaveTextContent(/cannot be recovered/i);
+  });
+
+  it("needs both the acknowledgement and the password", async () => {
+    // Two gates guarding different mistakes: the checkbox guards somebody who
+    // thinks this pauses the account, the password guards somebody who is not
+    // the account holder. Either alone leaves the other case uncovered.
+    mockLeaving(null);
+    const user = userEvent.setup();
+    renderRoute();
+    await screen.findByDisplayValue("vince");
+    await user.click(screen.getByRole("button", { name: "Delete my account…" }));
+
+    const submit = screen.getByRole("button", { name: "Schedule deletion" });
+    expect(submit).toBeDisabled();
+
+    await user.type(screen.getByLabelText("Confirm your password"), "hunter2");
+    expect(submit).toBeDisabled();
+
+    await user.click(screen.getByRole("checkbox"));
+    expect(submit).toBeEnabled();
+  });
+
+  it("sends the password when both gates are satisfied", async () => {
+    const fetchMock = mockLeaving(null);
+    const user = userEvent.setup();
+    renderRoute();
+    await screen.findByDisplayValue("vince");
+    await user.click(screen.getByRole("button", { name: "Delete my account…" }));
+
+    await user.type(screen.getByLabelText("Confirm your password"), "hunter2");
+    await user.click(screen.getByRole("checkbox"));
+    await user.click(screen.getByRole("button", { name: "Schedule deletion" }));
+
+    await waitFor(async () => {
+      const call = fetchMock.mock.calls.find(([r]) =>
+        (r as Request).url.includes("/me/delete"),
+      );
+      expect(JSON.parse(await (call![0] as Request).text())).toEqual({
+        password: "hunter2",
+      });
+    });
+  });
+
+  it("says when the data goes, that it is permanent, and offers to stop it", async () => {
+    mockLeaving("2026-09-15T04:00:00Z");
+    renderRoute();
+
+    expect(
+      await screen.findByRole("heading", {
+        name: /scheduled for permanent deletion/i,
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/cannot be recovered/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Keep my account" }),
+    ).toBeInTheDocument();
+    // And the delete control is gone -- there is nothing to schedule twice.
+    expect(
+      screen.queryByRole("button", { name: "Delete my account…" }),
+    ).toBeNull();
+  });
+
+  it("still offers the export while the account is on its way out", async () => {
+    // The last day before an erasure is the most likely moment somebody wants
+    // their data, so this must not disappear along with the rest of the form.
+    mockLeaving("2026-09-15T04:00:00Z");
+    renderRoute();
+
+    expect(
+      await screen.findByRole("link", { name: "Download my data" }),
+    ).toHaveAttribute("href", "/api/v1/me/export");
+  });
+
+  it("reports a refused password instead of looking like it worked", async () => {
+    mockLeaving(null, () => jsonResponse({ detail: "no" }, false, 400));
+    const user = userEvent.setup();
+    renderRoute();
+    await screen.findByDisplayValue("vince");
+    await user.click(screen.getByRole("button", { name: "Delete my account…" }));
+
+    await user.type(screen.getByLabelText("Confirm your password"), "wrong");
+    await user.click(screen.getByRole("checkbox"));
+    await user.click(screen.getByRole("button", { name: "Schedule deletion" }));
+
+    expect(
+      await screen.findByText("That password did not match."),
+    ).toBeInTheDocument();
+  });
+
+  it("tells them an email was sent, so an unexpected one is checkable", async () => {
+    mockLeaving("2026-09-15T04:00:00Z");
+    renderRoute();
+
+    expect(await screen.findByText(/emailed you about this/i)).toBeInTheDocument();
+    expect(screen.getByText(/change your password/i)).toBeInTheDocument();
+  });
+});

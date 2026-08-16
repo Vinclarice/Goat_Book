@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Outlet, useLocation } from "react-router";
 
+import { DeletionBanner } from "./DeletionBanner";
 import { SideNav } from "./SideNav";
 import styles from "./sidenav.module.css";
 
@@ -54,6 +55,11 @@ export function AppLayout() {
         <SideNav />
       </details>
       <main>
+        {/* Above the outlet, so it is the first thing on every route rather
+            than something a page can scroll past. See DeletionBanner: a
+            scheduled erasure visible only where it was scheduled is one
+            somebody can forget for thirty days. */}
+        <DeletionBanner />
         <Outlet />
       </main>
     </div>

@@ -111,6 +111,14 @@ were two repositories, and nothing structural prevents it.
 
 The live production defect list is `design/commercial-blueprint.md` Part 1.
 
+**`ActivityEvent` is append-only by database trigger, and there is exactly one
+hole in it.** `mind/migrations/0015_erasure_exemption` permits `DELETE` when a
+transaction-local setting names the owner being erased, which is what makes
+account deletion possible at all — before it, `User.delete()` raised, because
+`owner` is a cascade and a cascade is a mutation of the log. The only caller is
+`accounts.services.purge_account`. Do not widen it into a general "allow
+deletes"; `mind/tests/test_erasure.py` fails if you do, on purpose.
+
 **All ten are closed, as of August 15, 2026.** The last one was never code:
 
 - ~~**External uptime monitoring.**~~ **Closed August 15, 2026 — UptimeRobot is

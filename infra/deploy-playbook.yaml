@@ -429,6 +429,28 @@
       # omission survived until the first real run.
       become: true
 
+    # Erases accounts whose 30-day grace period has run out. Requesting deletion
+    # writes a timestamp and nothing else; this is what eventually makes it
+    # true, so an account only actually leaves if this runs.
+    #
+    # Daily, at an hour of its own. It is not time-sensitive to the minute -- a
+    # purge landing at 04:40 instead of 04:00 is the same purge -- but it must
+    # not miss a day silently, which is why the command prints a count even when
+    # that count is zero.
+    #
+    # No --owner and no arguments: `due_for_purge` decides, from the timestamp,
+    # so a request made tomorrow is honoured without anybody editing this file.
+    - name: Schedule the account-erasure sweep
+      ansible.builtin.cron:
+        name: clarice-purge-deleted-accounts
+        minute: "40"
+        hour: "4"
+        job: docker exec clarice ./manage.py purge_deleted_accounts
+        user: root
+      # Writing root's crontab needs root -- the same reason the two tasks above
+      # both document, one of them after being caught by a real run.
+      become: true
+
     - name: Install nginx and certbot
       ansible.builtin.apt:
         name:

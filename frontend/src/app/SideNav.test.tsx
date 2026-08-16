@@ -169,6 +169,19 @@ describe("SideNav", () => {
     expect(archive.className).toMatch(/active/);
   });
 
+  it("offers one way to the account page, not two", async () => {
+    // "Settings" sat beside "Preferences" and linked to /accounts/settings/,
+    // which is a two-line view that redirects to the /preferences route -- two
+    // names for one screen, the second taking a round trip through the server
+    // to reach the first. The URL still exists and is still bookmarkable; what
+    // went is the duplicate way in.
+    renderNav();
+    await screen.findByText("Programming");
+
+    expect(screen.getByRole("link", { name: "Preferences" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Settings" })).toBeNull();
+  });
+
   it("no longer offers the Inbox or Ideas at all", async () => {
     // Heron 4b deleted both, and this asserts their absence rather than simply
     // dropping the tests that covered them: a nav entry pointing at a route

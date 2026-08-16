@@ -14,7 +14,7 @@ same split `Item`/"task" already lives with. Python locals below still read
 `our_list`, because renaming them would be churn no client can observe.
 See `lists/tests/test_area_vocabulary.py` for the guard.
 """
-from datetime import date
+from datetime import date, datetime
 from typing import Literal
 
 from django.shortcuts import get_object_or_404
@@ -23,6 +23,7 @@ from django.utils import timezone
 from ninja import Router, Schema
 from ninja.errors import HttpError
 
+from accounts import services as account_services
 from accounts.auth import SessionAuthIfLoggedIn, TokenAuth
 from accounts.models import SCOPE_AGENDA_READ
 from lists import agenda as agenda_reader
@@ -207,6 +208,11 @@ class NavOut(Schema):
     # a login, rather than hard-coding a second answer that could drift
     # from lists.views.dashboard's.
     landing_surface: str
+    # Null unless this account is leaving. On the nav rather than only on
+    # Preferences because the banner it drives has to appear on every route: a
+    # scheduled erasure that is only visible on the page you asked to schedule
+    # it from is one somebody can forget they started.
+    deletion_purge_at: datetime | None
 
 
 @router.get("/nav", response=NavOut)
@@ -236,6 +242,7 @@ def navigation(request):
         # Django pages, not SPA routes: these links leave the app shell.
         "mind_url": reverse("capture"),
         "landing_surface": user.landing_surface,
+        "deletion_purge_at": account_services.purge_at(user),
     }
 
 

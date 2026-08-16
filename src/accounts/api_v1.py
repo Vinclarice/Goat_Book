@@ -3,16 +3,20 @@
 Password/security changes stay Django-owned (accounts.views.change_password)
 -- this is only the fields AccountSettingsForm already covers, plus theme.
 """
+from datetime import datetime
 from typing import Literal
 
 from axes.handlers.proxy import AxesProxyHandler
 from axes.helpers import get_credentials, get_failure_limit
 from axes.utils import reset as axes_reset
 from django.contrib.auth import authenticate, logout
+from django.http import HttpResponse
 from django.utils import timezone
 from ninja import Router, Schema
 from ninja.errors import HttpError
 
+from accounts import export
+from accounts import services as account_services
 from accounts.forms import AccountSettingsForm
 from accounts.models import (
     ANDROID_DEFAULT_SCOPES,
@@ -188,6 +192,75 @@ def list_time_zones(request):
 @router.get("/me/preferences", response=PreferencesOut)
 def get_preferences(request):
     return _preferences_out(request.user)
+
+
+# ---------------------------------------------------------------------------
+# Leaving
+# ---------------------------------------------------------------------------
+
+
+class DeletionIn(Schema):
+    password: str
+
+
+class DeletionOut(Schema):
+    deletion_requested_at: datetime | None
+    purge_at: datetime | None
+
+
+def _deletion_out(user: User) -> dict:
+    return {
+        "deletion_requested_at": user.deletion_requested_at,
+        "purge_at": account_services.purge_at(user),
+    }
+
+
+@router.post("/me/delete", response=DeletionOut)
+def request_deletion(request, payload: DeletionIn):
+    """Schedule this account for erasure, after a grace period.
+
+    **Password re-entry, and it is not theatre.** Everything else on this router
+    is recoverable; this is the one action that ends with data that cannot be
+    got back, and a session left open on a shared machine should not be enough
+    to start it.
+
+    Checked with `check_password` rather than `authenticate`: this person is
+    already signed in, and routing through the auth stack would count a typo
+    towards an axes lockout — locking somebody out of the account they are
+    trying to leave, from a form that is not a login.
+    """
+    if not request.user.check_password(payload.password):
+        raise HttpError(400, "That password did not match.")
+
+    account_services.request_deletion(request.user, now=timezone.now())
+    return _deletion_out(request.user)
+
+
+@router.post("/me/delete/cancel", response=DeletionOut)
+def cancel_deletion(request):
+    """Change your mind. No password: undoing a destructive thing should never
+    be harder than starting it."""
+    account_services.cancel_deletion(request.user)
+    return _deletion_out(request.user)
+
+
+@router.get("/me/export")
+def export_account(request):
+    """Everything this account owns, as a zip.
+
+    Session auth only, which the whole router already enforces — deliberately
+    not reachable with a scoped token. `capture:write` on a phone should not be
+    able to walk off with the entire account, and no scope exists that would
+    sensibly mean "all of it".
+    """
+    stamp = timezone.now()
+    response = HttpResponse(
+        export.build_archive(request.user, now=stamp),
+        content_type="application/zip",
+    )
+    filename = f"clarice-{request.user.get_username()}-{stamp:%Y-%m-%d}.zip"
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
 
 
 @router.patch("/me/preferences", response=PreferencesOut)

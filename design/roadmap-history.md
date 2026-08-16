@@ -9,6 +9,88 @@ This preserves the reasoning, deployment record, and lessons behind completed
 work without making the active roadmap hard to scan. The active plan is
 [`roadmap.md`](roadmap.md).
 
+## Account deletion and data export — August 16, 2026
+
+The first piece of the commercial substrate, and the one that did not wait on
+`commercial-blueprint.md` Part 9's unanswered first question — *is Clarice a
+business, a product with users, or a personal tool* — because the answer is the
+same either way. The blueprint calls the pair a legal blocker rather than a
+feature gap: Sentry and Resend already process other people's data.
+
+**Deletion was not unbuilt, it was impossible.** `ActivityEvent` is append-only
+by database trigger, firing `BEFORE UPDATE OR DELETE`, and `ActivityEvent.owner`
+was `on_delete=CASCADE` — so `User.delete()` issued a `DELETE` against the log
+and raised. The model had reasoned exactly this through for its *node*
+reference, whose comment says "CASCADE, SET_NULL and SET_DEFAULT are each a
+*mutation* of the log, which the append-only trigger refuses", and made that one
+non-constraining. The owner reference never got the same treatment, because
+nothing had ever deleted an account.
+
+**The line taken: append-only means history cannot be rewritten within a live
+account.** It was never a promise to outlive the account's own erasure — and it
+could not be, because the log is not content-free. `purge_node` keeps events on
+the stated grounds that a purge payload "retains no content", which is true of
+nodes; concept events carry the labels somebody typed, which on real material
+include other people's names, and every event carries the username as `actor`.
+
+The exemption is narrow on purpose: `DELETE` only, naming **one owner id**,
+read from a **transaction-local** setting. A boolean would have passed the
+"erases my log" test and failed the "does not touch anybody else's" one, which
+is why both exist. `SET LOCAL` matters because connections are reused across
+requests.
+
+**A thirty-day grace period, and `is_active` deliberately untouched.** That flag
+already means "pending admin approval", and one flag for two unrelated states is
+indistinguishable everywhere it is read. The account stays fully usable while
+leaving, which is also what keeps *cancel* reachable without inventing a
+signed-link email flow for a window that is the person's own to close.
+
+**Two things were found by reading rather than by asserting.** A fixture claimed
+to cover every owned model and missed four — caught by the "another account is
+untouched" test failing, since a neighbour with no rows cannot have them
+preserved; there is now a test that the fixture populates what it claims. And an
+export for an account with no areas produced a `tasks.md` containing the word
+"Tasks" and nothing else, which a reader cannot tell from a broken export at the
+exact moment they most need to trust the file.
+
+**And four more came from Vince reading the copy rather than the code**, which
+is the review the tests could not do — every one of them passed against wording
+that was not good enough.
+
+* **It never said "permanent".** The copy read *erased after 30 days*, which
+  implies irreversibility rather than stating it. For the one control on the
+  site that destroys data, implying is not enough. It now says permanently
+  deleted and cannot be recovered, in the section, in the banner and in the
+  email, and tests assert those words.
+* **There was no acknowledgement.** Password re-entry was the only friction, and
+  it guards the wrong mistake: it stops a passer-by at an unlocked screen and
+  does nothing about somebody who has simply misread what the button does. Two
+  gates now, and the tests say which mistake each one guards.
+* **Nothing was emailed.** The thirty-day window only protects somebody who
+  finds out inside it, and a banner cannot guarantee that. Three messages now —
+  scheduled, cancelled, and a receipt sent immediately before the rows go, which
+  reads the address *before* the delete because a receipt that depends on the
+  record whose destruction it confirms is one that never sends.
+* **The banner was built to be global and wasn't.** `deletion_purge_at` was put
+  on the nav payload specifically so it could render on every route, and then it
+  was only wired into Preferences — the data was right and the component was in
+  the wrong place. `DeletionBanner` now lives in `AppLayout` and carries the
+  stop button itself, because "go and find the page where you did it" is harder
+  than starting it was.
+
+**One nav entry went with it.** "Settings" sat beside "Preferences" and linked to
+`/accounts/settings/`, which is a two-line view that redirects to the
+`/preferences` route: two names for one screen, the second taking a round trip
+through the server to arrive at the first. Vince read it as two pages worth
+merging; it was one page with two doors. The URL stays — it is bookmarkable and
+`change_password` redirects to it — and the duplicate door is gone.
+
+Verified by 911 Django, 616 pytest, 277 frontend and 32 browser tests, including
+a browser test that downloads the archive and opens it. The secrets exclusion was
+checked by emptying it and confirming the password and token hash then appear —
+the test would have caught its removal, which is not the same as the test having
+been watched fail.
+
 ## Heron — the crossover, August 15, 2026
 
 **Tagged `heron` on `04e7c71`.** All five steps built, deployed and verified in

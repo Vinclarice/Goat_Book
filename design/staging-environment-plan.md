@@ -1,124 +1,94 @@
 # Staging environment
 
-Vince · brief · written August 11, 2026 · **decisions made, a real code
-gap found and closed; provisioning the actual droplet/DNS/database is
-still Vince's own step — see §5.** **Deliberately deferred August 12,
-2026 — see §8.**
+Vince · brief · written August 11, 2026 · **deliberately deferred August 12,
+2026 — see §6 for the trigger that revives it.** The decisions are made and a
+real code gap was found and closed on the way; provisioning the droplet, DNS
+and database is still Vince's own step — see §5.
 
-## 1. Trigger and diagnosis
+## 1. Why
 
-`architecture-trajectory.md` §6 names this "next, because it gates
-everything below it": an asynchronous task queue, Terraform, independent
-backup restores and CI-built images are all listed as waiting on staging
-existing first. `CLAUDE.md` already identifies its absence as the reason
-read-only diagnosis must precede any redeploy that would overwrite
-evidence — there has never been anywhere to rehearse a risky change
-before running it against the only environment that exists.
+`architecture-trajectory.md` §6 names this "next, because it gates everything
+below it": an asynchronous task queue, Terraform, independent backup restores
+and CI-built images all wait on staging existing first. `CLAUDE.md` already
+identifies its absence as the reason read-only diagnosis must precede any
+redeploy that would overwrite evidence — there has never been anywhere to
+rehearse a risky change.
 
-**This is not the first time this project has had something called
-"staging."** `infra/production-inventory.ini`'s own header records that
-`infra/staging-inventory.ini` once named the host `staging.vinclarice.com`
-— but that environment "no longer exist[ed] and had always been the same
-droplet as production," so the file was renamed rather than left to invite
-someone to treat production as a scratch target (`d001020`, August 1,
-2026). Named here so this plan is read as building the real thing for the
-first time, not restoring something that existed before.
+**This is not the first time this project has had something called "staging."**
+`infra/staging-inventory.ini` once named `staging.vinclarice.com`, which had
+always been the same droplet as production; it was renamed away in `d001020`
+(August 1, 2026) rather than left to invite someone to treat production as a
+scratch target. This plan builds the real thing for the first time.
 
 ## 2. Decisions
 
-Asked directly rather than guessed, since getting either wrong here is
-expensive to unwind once real infrastructure exists:
+Asked directly rather than guessed, since either is expensive to unwind once
+real infrastructure exists:
 
-- **A second DigitalOcean droplet**, same provider and region as
-  production, cheapest tier. Not a container or a second process on the
-  production host itself — the droplet has 458MB of RAM and one core,
-  already tight per `architecture-trajectory.md` §6's own swap finding,
-  and sharing it would mean a staging incident could take production down
-  too. Defeats the point of rehearsing risk somewhere it can't reach the
-  real thing.
-- **Its own database, on production's existing Postgres cluster** rather
-  than a second managed cluster. `provision-postgres.sh` already supports
-  this exactly — it reuses a cluster named `$CLUSTER_NAME` if one exists,
-  "DigitalOcean's own guidance is to share one cluster across small apps
-  rather than pay per cluster" — and `restrict-database-user.sh` already
-  creates a role scoped to exactly one database with every other
-  database's `CONNECT` privilege revoked, which is what keeps a staging
-  credential from being able to read or write production's data even
-  though they share hardware. No new managed-database cost.
+- **A second DigitalOcean droplet**, same provider and region as production,
+  cheapest tier. Not a container or a second process on the production host:
+  that droplet has 458MB of RAM and one core, already tight per
+  `architecture-trajectory.md` §6's swap finding, and a staging incident would
+  be able to take production down — which defeats the entire point.
+- **Its own database on production's existing Postgres cluster**, not a second
+  managed cluster. `provision-postgres.sh` already reuses a cluster named
+  `$CLUSTER_NAME` if one exists, and `restrict-database-user.sh` already
+  creates a role scoped to one database with every other database's `CONNECT`
+  privilege revoked — which is what stops a staging credential reading
+  production's data despite shared hardware. No new managed-database cost.
 
-## 3. A real gap, found while designing rather than while deploying
+## 3. The gap found while designing rather than while deploying
 
-`clarice/settings.py`'s `DEBUG = DEPLOYMENT_ENVIRONMENT != "production"`
-only has two states. Neither fits staging cleanly:
+`settings.py`'s `DEBUG = DEPLOYMENT_ENVIRONMENT != "production"` has only two
+states and neither fits staging. `DEPLOYMENT_ENVIRONMENT=staging` puts
+`DEBUG=True` on a publicly reachable host — tracebacks to anyone, no required
+`DJANGO_SECRET_KEY`, no HSTS, no secure cookies. Calling staging "production"
+to dodge that makes `clarice/monitoring.py` report staging's errors into
+production's own Sentry project, which is exactly the noise its
+`environment == "production"` guard exists to prevent.
 
-- Give staging `DEPLOYMENT_ENVIRONMENT=staging`: `DEBUG` becomes `True` on
-  a publicly reachable host — debug tracebacks served to anyone, no
-  `DJANGO_SECRET_KEY` required (falls back to `"insecure-key-for-dev"`),
-  no HSTS, no secure cookies. A real security problem, not a cosmetic one.
-- Give staging `DEPLOYMENT_ENVIRONMENT=production` instead, to dodge that:
-  `clarice/monitoring.py` reports exclusively when
-  `environment == "production"` (deliberately, per its own docstring — a
-  DSN leaking into a non-production environment would bury real incidents
-  under a developer's own broken experiments). Staging would start
-  reporting its own errors into the *same Sentry project* production
-  uses, exactly the noise that guard exists to prevent.
+**Fixed and shipped**, following the pattern `monitoring.py` already set — pull
+the decision into a tested function rather than an inline branch in a config
+file. `clarice/deployment.py`'s `is_debug()` treats `"production"` and
+`"staging"` identically, both getting the full production-grade block, while
+`monitoring.py` is untouched and still refuses everything but the literal
+string `"production"`. An unrecognised or missing `DJANGO_ENVIRONMENT` still
+fails safe into `DEBUG=True`. TDD: `clarice/tests/test_deployment.py` written
+first and confirmed failing on `ModuleNotFoundError`, then the module. 937
+backend tests green, up from 933.
 
-**Fixed, following the same pattern `monitoring.py` already set: pull the
-decision out into a tested function rather than an inline branch in a
-config file.** `clarice/deployment.py`'s `is_debug()` treats `"production"`
-and `"staging"` identically — both get the full production-grade block
-(required `SECRET_KEY`, secure cookies, HSTS, no tracebacks) — and
-`clarice/monitoring.py` is untouched, so it keeps refusing everything but
-the literal string `"production"`. An unrecognised or missing
-`DJANGO_ENVIRONMENT` still fails safe into `DEBUG=True`, same as before.
-
-TDD: `clarice/tests/test_deployment.py` written first (confirmed failing
-on `ModuleNotFoundError: No module named 'clarice.deployment'`), then
-`clarice/deployment.py` implemented. 937 backend tests green (up from
-933), including the four new ones.
+This fix stays regardless of whether staging is ever built.
 
 ## 4. Scope
 
-**In:** a second droplet running the same Docker image as production, its
-own restricted database on the shared cluster, its own subdomain and
-TLS cert, `deployment_environment: staging` so it gets production's real
-security posture without polluting production's Sentry project.
+**In:** a second droplet running the same Docker image as production, its own
+restricted database on the shared cluster, its own subdomain and TLS cert, and
+`deployment_environment: staging` so it gets production's security posture
+without polluting production's Sentry project.
 
 **Out, deliberately:**
 
-- **A separate Sentry project for staging.** Nothing today needs staging
-  error visibility beyond watching a deploy run — `roadmap.md`'s later
-  infra items (the task queue, Terraform, CI-built images) are the actual
-  reasons staging exists, and none of them need monitoring on staging
-  itself yet. Designing that now would be exactly the "design for
-  hypothetical future requirements" `principles.md` warns against; revisit
-  if staging ever runs unattended for long enough that silent failure
-  there would matter.
-- **Automatic promotion or CI wiring between staging and production.**
-  Nothing here makes staging part of the deploy pipeline — it's a place
-  to run the same playbook by hand against a different inventory before
-  running it against production, not a gate production's own deploy waits
-  on. That's the CI-built-images/health-checks item later in the
-  infrastructure track, which explicitly waits on staging existing first
-  rather than being bundled into standing it up.
-- **Terraform.** Named in `architecture-trajectory.md` §6 as the next
-  infrastructure item after staging exists, specifically so it can be
-  written against staging first — provisioning staging itself stays
-  Ansible plus the existing shell scripts, the same tools that already
-  provisioned production.
+- **A separate Sentry project for staging.** Nothing needs staging error
+  visibility beyond watching a deploy run. Revisit if staging ever runs
+  unattended long enough that silent failure there would matter.
+- **Automatic promotion or CI wiring.** Staging is a place to run the same
+  playbook by hand against a different inventory first, not a gate
+  production's deploy waits on. That is the later CI-built-images item, which
+  waits on staging existing rather than being bundled into it.
+- **Terraform.** Named in `architecture-trajectory.md` §6 as the item *after*
+  staging, specifically so it can be written against staging first.
+  Provisioning staging itself stays Ansible plus the existing shell scripts.
 
 ## 5. What staging needs to actually exist — Vince's own steps
 
-Nothing here can run from this machine: `doctl auth` and the production
-SSH key both live in WSL (`CLAUDE.md`), and creating a droplet or a
-database user is real spending and a real credential, the same category
-of action a deploy already is.
+Nothing here can run from this machine: `doctl auth` and the production SSH key
+both live in WSL, and creating a droplet or a database user is real spending
+and a real credential — the same category of action a deploy already is.
 
-1. **Create the droplet.** `doctl compute droplet create` (or the
-   DigitalOcean console), same region as production, cheapest size.
-2. **Point DNS at it.** A `staging` subdomain — `staging.vinclarice.com` —
-   at the new droplet's IP, wherever `vinclarice.com`'s other records
-   already live.
+1. **Create the droplet.** `doctl compute droplet create` (or the DigitalOcean
+   console), same region as production, cheapest size.
+2. **Point DNS at it.** A `staging.vinclarice.com` record at the new droplet's
+   IP, wherever `vinclarice.com`'s other records already live.
 3. **Create its database**, reusing the existing cluster:
    ```bash
    CLUSTER_NAME=clarice-db DB_NAME=clarice_staging \
@@ -128,67 +98,45 @@ of action a deploy already is.
    ```bash
    ./infra/restrict-database-user.sh clarice_staging_app clarice_staging
    ```
-   Follow the script's own printed "Next" steps — the connection URL goes
-   in `~/.db-connection-url` on the *staging* droplet, not production's.
+   Follow the script's own printed "Next" steps — the connection URL goes in
+   `~/.db-connection-url` on the *staging* droplet, not production's.
 5. **Write `infra/staging-inventory.ini`**, the same shape as
-   `production-inventory.ini` but pointed at the new droplet's IP and
-   user.
-6. **Deploy to it**, overriding exactly the two vars the playbook's own
-   comment already anticipates, plus the environment:
+   `production-inventory.ini` but pointed at the new droplet's IP and user.
+6. **Deploy to it**, overriding exactly the two vars the playbook's own comment
+   anticipates, plus the environment:
    ```bash
    .venv-wsl/bin/ansible-playbook -i infra/staging-inventory.ini \
      infra/deploy-playbook.yaml -K \
      --extra-vars '{"site_domain":"staging.vinclarice.com","include_www_alias":false,"deployment_environment":"staging"}'
    ```
-   `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOST`, and the database connection
-   file all need setting up on the new host the same way they are on
-   production — a fresh `DJANGO_SECRET_KEY`, not production's.
+   `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOST` and the database connection file
+   all need setting up on the new host the same way they are on production —
+   with a fresh `DJANGO_SECRET_KEY`, not production's.
 
-## 6. Acceptance
+Acceptance, once it runs: HTTPS at `staging.vinclarice.com` with a real Let's
+Encrypt cert, `DEBUG=False`, and an empty account rather than production's
+data; a garbage request to `/api/v1/day` still 401s; a deliberately triggered
+staging error leaves the production Sentry project quiet; and the staging
+credential is refused when it tries to connect to production's database, the
+same check `restrict-database-user.sh` already runs for any restricted user.
 
-- Staging serves over HTTPS at `staging.vinclarice.com` with a real
-  Let's Encrypt cert, `DEBUG=False`, and its own database — confirmed by
-  logging in and seeing an empty account, not production's data.
-- A garbage request to staging's `/api/v1/day` still 401s, same baseline
-  sanity every production deploy already gets.
-- Staging's own errors do not appear in the production Sentry project —
-  confirmed by triggering one deliberately (e.g. a bad request) and
-  checking Sentry stays quiet.
-- Production's database is unreachable from the staging credential —
-  confirmed the same way `restrict-database-user.sh`'s own script already
-  verifies for any restricted user, by attempting to connect to the wrong
-  database and getting refused.
+## 6. Deferred, August 12, 2026 — and what would revive it
 
-## 7. What this doesn't decide yet
+Revisited before any of §5 was run. This plan's entire value is somewhere to
+rehearse a risky deploy-mechanism change before it reaches production. Nothing
+in flight touches `deploy-playbook.yaml`, nginx config, or a migration risky
+enough to want that, and Clarice does not yet hold real user data whose loss
+staging protects against. Against nothing, a second droplet is a real recurring
+cost plus a second environment's secrets, inventory and TLS cert. So this stays
+decided but unbuilt.
 
-Whether staging gets its own scheduled backups (the "independent
-long-retention encrypted backups" item is about production's backups
-being restorable, not about backing up staging itself, which holds no
-real data). Whether staging stays running continuously or gets started
-only when a rehearsal is needed — DigitalOcean bills by the hour either
-way, so this is a cost decision rather than an engineering one, and
-belongs to whoever is paying for it.
+**What would revive it**, matching the "what would promote it" test `roadmap.md`
+uses for deferred items: a deploy-mechanism change worth rehearsing before it
+hits production, or the project holding real user data worth protecting from an
+untested migration — whichever happens first. §2's decisions stand as the answer
+when it does.
 
-## 8. Deferred, August 12, 2026
-
-Revisited before any of §5 was run. This plan's entire value is a place
-to rehearse a risky deploy-mechanism change before it reaches
-production — nothing currently in flight touches
-`deploy-playbook.yaml`, nginx config, or a migration risky enough to
-want that rehearsal, and Clarice doesn't yet hold real user data whose
-loss staging protects against. Against that, a second droplet is a real
-recurring cost and a second environment's secrets, inventory and TLS
-cert are an ongoing tax. Nothing to offset yet, so this stays decided
-but unbuilt rather than built ahead of need.
-
-**Not abandoned.** §2's decisions stand as the answer whenever this is
-picked back up, and §3's `is_debug()` fix is shipped and stays regardless
-— it was cheap, correct on its own terms, and already closed a real gap
-in `settings.py` independent of whether staging itself ever exists. §5
-is exactly what to run when the trigger below fires.
-
-**What would revive this**, matching the "what would promote it" test
-used elsewhere in `roadmap.md` for deferred items: a deploy-mechanism
-change worth rehearsing before it hits production, or the project
-holding real user data worth protecting from an untested migration —
-whichever happens first.
+Still undecided at that point: whether staging gets its own scheduled backups,
+and whether it runs continuously or is started only for a rehearsal.
+DigitalOcean bills by the hour either way, so the second is a cost decision for
+whoever is paying, not an engineering one.

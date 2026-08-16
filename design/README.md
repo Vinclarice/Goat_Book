@@ -5,25 +5,16 @@ Vince · index · rewritten August 16, 2026
 ## The rule
 
 **A document that outlives its work has a status, and a status can be wrong.**
+Twenty-two plans here were kept in full "for their reasoning", each with a
+status line that could rot; eleven index rows said theirs had. **So a shipped
+plan is now a stub** — four lines saying what it was, when it shipped, and where
+its narrative went. *"Crane shipped August 2, 2026"* cannot drift.
 
-That was the drift engine. Twenty-two of the thirty-two files here were shipped
-plans kept in full "for their reasoning" — each carrying a status line that could
-rot, and an index row asserting whether that status line was honest. This file
-used to have a column called *"Declares it?"*, and eleven rows said **no**.
-Sixteen of the sixty commits before this rewrite touched documentation only, and
-about half were corrections.
-
-**So a shipped plan is now reduced to a stub**: four lines saying what it was,
-when it shipped, and where its narrative went. A stub cannot drift, because
-*"Crane shipped August 2, 2026"* is permanently true.
-
-**Stubs rather than deletions**, and the reason is measurable rather than
-sentimental: 251 comments across `src/`, `frontend/`, `android/` and `infra/`
-cite these plans by name and section. Those citations are provenance for
-reasoning each comment already states in full — so the file needs to resolve, and
-its three hundred lines do not.
-
-11,002 lines became roughly 4,000 without breaking one citation.
+**Stubs rather than deletions**, for a measurable reason: 251 comments across
+`src/`, `frontend/`, `android/` and `infra/` cite these plans by name and
+section as provenance for reasoning each comment already states in full. The
+file has to resolve; its three hundred lines do not. 11,002 lines became roughly
+4,000 without breaking one citation.
 
 ## Standing authorities — read these
 
@@ -32,25 +23,35 @@ its three hundred lines do not.
 | [`principles.md`](principles.md) | How work is delivered — **everywhere in this tree, knowledge core included.** Its *design* rules stop at the task core; see its §Scope |
 | [`roadmap.md`](roadmap.md) | What is active, what is deferred, what is still open |
 | [`roadmap-history.md`](roadmap-history.md) | The record: every shipped release, its deployment, and what it taught. **The one file that cannot go stale**, because it is explicitly about the past |
-| [`architecture-trajectory.md`](architecture-trajectory.md) | §4's charter for new models and §7's refusals. §5's release arc was cut on August 16 — sequencing lives in `roadmap.md` |
+| [`architecture-trajectory.md`](architecture-trajectory.md) | §4's charter for new models and §7's refusals. Release sequencing lives in `roadmap.md` |
 | [`commercial-blueprint.md`](commercial-blueprint.md) | The commercial decision and its sequence. **Part 1's defect list is closed and empty**; Part 9's three open decisions are the live content |
 | [`product-stories.md`](product-stories.md) | What the product is *for*, as behaviour, and **the only score measuring the product rather than the process** |
-| [`daily-operating-system-vision.md`](daily-operating-system-vision.md) | Product direction for the task core. Its Crane slice plans and its second-brain sections came out on August 16 |
+| [`daily-operating-system-vision.md`](daily-operating-system-vision.md) | Product direction for the task core: the premise, the thesis, and the rules the Daily Page must not break |
 
 ## Open — designed but not done
 
 | Document | State |
 |---|---|
-| [`staging-environment-plan.md`](staging-environment-plan.md) | Designed Aug 11, **deliberately deferred** Aug 12. The `is_debug()` fix shipped; the droplet waits for a trigger |
-| [`android-release-signing-plan.md`](android-release-signing-plan.md) | Build is wired; **the keystore is Vince's to generate by hand** |
+| [`staging-environment-plan.md`](staging-environment-plan.md) | Designed Aug 11, **deliberately deferred** Aug 12. The `is_debug()` fix shipped; the droplet waits for the trigger the plan names |
+| [`android-release-signing-plan.md`](android-release-signing-plan.md) | Build is wired; **the keystore is Vince's to generate by hand**, with the `keytool` command the plan carries |
 
-## Stubs — shipped, kept only so their citations resolve
+## The rest of `design/` — one record, the stubs, and the mockups
 
-Twenty-two files. Each is four lines pointing at
-[`roadmap-history.md`](roadmap-history.md), which holds the narrative. **They are
-not listed individually here**, because a list of stubs is exactly the kind of
-second copy this rewrite removed — `ls design/` is the list, and every one of
-them says what it is in its first line.
+**A record:** [`code-review-2026-08-16.md`](code-review-2026-08-16.md), one
+risk-based review at `305d1e7` with the suite counts actually run. Explicitly
+about the past, so it cannot go stale; its findings are **not** production
+defects until someone promotes them to `commercial-blueprint.md` Part 1.
+
+**Twenty-two stubs**, each four lines pointing at
+[`roadmap-history.md`](roadmap-history.md), which holds the narrative. Not
+listed individually — that list is the second copy this rewrite removed, and
+`ls design/*.md` gives it.
+
+**Six `.html` mockups** — `agenda`, `archive`, `dashboard`, `projects`,
+`side-nav`, `tasks`. Static design comps from the Tailwind overhaul, kept for
+the same reason the stubs are: `SideNav.tsx`, `AgendaWorkspace.tsx` and
+`test_project_api.py` cite them for a visual decision the code cannot show. Not
+documents; do not look for a status in them.
 
 ## Where a fact is allowed to live
 
@@ -79,5 +80,5 @@ Also in `CLAUDE.md`, because that is what actually gets read:
 1. **Move the narrative to `roadmap-history.md` and reduce the plan to a stub.**
 2. **Close the roadmap item** — strike it, date it, name what replaced it.
 
-There is no third step checking this index, and no fourth updating a status line.
-Both existed only because plans kept their full text.
+There is no third step checking this index, and no fourth updating a status
+line. Both existed only because plans kept their full text.

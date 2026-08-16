@@ -1,453 +1,274 @@
 # Clarice — Roadmap
 
-Vince · active planning document · refreshed August 13, 2026
+Vince · active planning document · refreshed August 16, 2026
 
 ## Purpose
 
-This is the forward-looking plan: what is active now, what is next, and
-what has deliberately been deferred. It is not the implementation spec for
-an item; write a focused file in `design/` once work is ready to start.
+The forward-looking plan: what is active, what is next, what is deliberately
+deferred, and what is still open. It is not the implementation spec for an
+item; write a focused file in `design/` once work is ready to start.
 
-Every completed release — Albatross, Bittern, Crane, Dunlin — plus Release F
-and the six unlettered lines of work that shipped alongside it, with their
-deployment records and lessons, live in
-[`roadmap-history.md`](roadmap-history.md). Keeping that record separate
-makes this document useful when deciding what to work on next.
+What shipped — every release from Albatross through Heron, with its deployment
+records and lessons — is in [`roadmap-history.md`](roadmap-history.md). The
+standards used to deliver it are in [`principles.md`](principles.md). The
+ordering behind releases, the charter every new model must satisfy, and the
+directions this project has refused are in
+[`architecture-trajectory.md`](architecture-trajectory.md). This file is the
+authority on what is active and deferred; that one explains why.
 
-**The knowledge core lives in this repository now** — see the section
-immediately below. Knowledge-side planning documents remain in the Second Mind
-repository even though its code moved here.
+The knowledge core's code lives in this repository; its **planning documents do
+not**. `C:\dev\Clarice_secondmind` survives as documents only, and
+`docs/design-concept.md` there remains the knowledge core's design authority.
 
-The cross-cutting engineering and product standards used to deliver roadmap
-work live in [`principles.md`](principles.md).
+## Where things stand — August 16, 2026
 
-The multi-release ordering behind Crane and the releases after it, the design
-constraints every new model has to satisfy, and the architectural directions
-this project has explicitly refused live in
-[`architecture-trajectory.md`](architecture-trajectory.md). This file stays the
-authority on what is active and what is deferred; that one explains the order
-and the reasoning, and does not schedule anything on its own.
+**There is no active release.** Heron was the last, verified in production
+August 15. What it leaves is a baseline rather than a backlog:
 
-## The merger happened, and this file is downstream of it
+- **One capture surface.** `/mind/`, writing a `Node`, and that is where the
+  knowledge core lives permanently. `/capture/`, `Capture` and `Idea` are gone;
+  `/capture/` came free and was deliberately not taken.
+- **One of everything.** One API at `/api/v1/`, one token table with scopes,
+  one login. `/api/v1/capture` is the application's, served by
+  `mind/api_v1.py`; both the phone and the Day page post to it.
+- **Two cores, one tree, one database.** The knowledge core is `src/mind/`;
+  the task core is **Superlists**. The merger's direction ran one way and still
+  does: Clarice was worked into Second Mind rather than the reverse.
+- **No maintenance freeze on the task core.** A priority replaces it, see
+  `CLAUDE.md`. Knowledge core and commercial substrate are where work goes.
+- **`commercial-blueprint.md` Part 1 is closed** — all ten defects, August 15.
+  There is no open production defect list.
+- `django_migrations` keeps eight inert rows for the deleted `capture` app,
+  **deliberately not deleted**: hand-editing production's bookkeeping to tidy
+  something nothing reads is the worse trade.
 
-**Decided August 13, 2026; done and deployed August 14–15.** Second Mind was a
-separate repository with its own constitution and its own suite. It is now the
-`mind` app in this tree, behind this site's login and in this database, and its
-suite runs here under `pytest`. `C:\dev\Clarice_secondmind` survives as
-**documents only** — `docs/design-concept.md` remains the authority for the
-knowledge core, and `docs/two-cores.md` records what each merger step cost.
+Long-horizon knowledge work that used to sit in this file — idea resurfacing,
+the mind-map, search over retained material — is **superseded, not deferred**.
+It is planned in the Second Mind documents and built in `src/mind/`; do not
+re-add it here.
 
-The direction ran one way and still does: Clarice was worked into Second Mind
-rather than the reverse. The end state is one application with two cores —
-knowledge, and the task system as **Superlists**. Two consequences, both still
-live:
+## Open now
 
-- **Clarice's knowledge half does not survive.** `capture.Capture` exists to
-  hold untriaged text pending assignment; the node model does that without
-  the debt. `capture.Idea` exists to hold retained material; that is what the
-  graph is for — the conclusion `product-stories.md` already reached
-  independently. This is also how the commercial audit's open question
-  ("second brain: invest or retire?") resolves: `Idea` is retired because
-  something better replaces it.
-- **Clarice's commitment half does survive**, and is the reason the merger is
-  worth doing: `Item`, `RecurringCommitment`, `ChecklistStep`, `Routine` and
-  `RoutineOccurrence`, `DailyFocus`, `WeeklyReview`, `Project`, Area. The
-  weekly review's honest denominators are the single strongest thing built
-  here and are carried across intact.
+- **`/api/v1/login` is unthrottled.** `accounts/api_v1.py` registers it with
+  `auth=None`, and nginx's `^/(accounts/login|accounts/signup)/` block does not
+  match it, so it falls through to the catch-all. The landing-page hole this
+  resembles was closed (`nginx-clarice.conf.j2` throttles `= /` on POST); this
+  one was not. django-axes still locks the account, so it is a defect rather
+  than an emergency.
+- **Terms of service and a privacy policy.** Writing, not code.
+- **Removing user data from Sentry and Resend when an account goes.** An
+  account-level action in each, outside this application. Deletion and export
+  inside Clarice shipped August 16.
+- **Three genuinely open decisions in `commercial-blueprint.md` Part 9** — is
+  this a business, which wedge, and mobile native versus responsive web. Two of
+  its five are stale rather than open: #3 is answered but its reasoning predates
+  the merger, and #5 was largely done by the August 15 documentation pass.
+- **Whether the Android client keeps growing.** Slices 1 and 2 shipped (Today
+  read-only, then Agenda with read and act); later slices are undecided. Part 9
+  recommends freezing native for responsive web, on the evidence that
+  `android-full-client-plan.md`'s core assumption — mostly an Android build-out,
+  not a backend rebuild — was falsified twice, and that iOS is absent entirely.
+  Nothing is scheduled. That plan's stub points here for this question.
+- **Floating cadence is unbuilt.** ~~One defect to fix on the way in rather
+  than port~~ — `_advance_due_date` spawning a successor already overdue —
+  was fixed August 15, 2026 (`70bc6c8`), *after* the merger it was supposed to
+  be fixed by, which is the argument for closing a defect where it lives rather
+  than attaching it to a migration. What remains open is the mode: it is
+  anchored-only, because Clarice has one cadence field and cannot say which
+  mode a commitment is, while `design-concept.md` calls the distinction
+  load-bearing. Deliberate, and recorded at the function.
 
-**~~One defect to fix on the way in rather than port.~~ Fixed August 15, 2026**
-(`70bc6c8`), and not on the way in — it survived the merger it was supposed to
-be fixed by, which is the argument for closing a defect where it lives rather
-than attaching it to a migration. `_advance_due_date` computed a recurring
-task's next occurrence from the previous *due date*, so a monthly commitment due
-July 4 and completed August 10 spawned its successor due August 4, overdue at
-the instant it was created.
-
-It now skips missed periods and keeps its anchor. **Anchored and floating remain
-distinct modes in `design-concept.md` and only anchored is built** — Clarice has
-one cadence field and cannot say which a commitment is. That gap is deliberate
-and recorded at the function; it is the right shape for a calendar commitment
-and a few days early for an interval one.
-
-**Nothing in this roadmap was cancelled by that decision.** The task core keeps
-running and keeps its users; what changed is that it is no longer a separate
-application waiting to be absorbed.
-
-Long-horizon knowledge-side work in this file — Reference/Idea search, the
-mind-map view, idea resurfacing, the second-brain direction in
-[`daily-operating-system-vision.md`](daily-operating-system-vision.md) — stays
-**superseded rather than deferred**. It was superseded because it was being
-built properly in another repository; it is now built properly in this one, and
-planned in the Second Mind documents rather than here.
-
-`design/second-mind-core.md`, written earlier the same day, is deleted. It
-proposed the opposite arrangement — Second Mind as a second core *inside*
-Clarice, with actionability delegating to `Item` — and was wrong about the
-direction. It is recorded here rather than kept, because a wrong charter left
-in place is worse than an absent one.
-
-## Current product baseline
-
-Four releases are live. **Albatross** established the API-backed SPA and
-Postgres foundation, then shipped task notes, subtasks, recurrence, Capture
-triage and Ideas, password recovery, personal access tokens, CI, backups and
-production hardening. **Bittern** added the Android capture client, per-user
-time zones, and the session and failure-state gaps the web application still
-had. **Crane** made the day the product: the Daily Page is the home surface,
-practice is its own domain rather than a kind of task, repeating commitments
-have an identity across their occurrences, and a weekly review reads the
-record back against denominators that mean something. **Dunlin** settled the
-commitment vocabulary: a subtask is a Checklist Step with its own life cycle,
-a List is an Area that never completes, a Project is work that does, and
-every model is owned at birth. The full record of each is in the history
-file.
-
-**Everything between Dunlin and Fulmar shipped without a release letter** at
-the time — August 6 to 12, 2026, named belatedly on August 15 — and it is a substantial part of the current baseline rather than
-a tail of small fixes: Project became a standalone workspace holding Areas; the
-Bootstrap→Tailwind arc finished across the task list, Agenda and Archive, with
-`site.css` retired outright; the Android client gained read *and* write on the
-Daily Page and the Agenda behind a new scoped-token tier; local development
-moved onto Postgres; and Release F shipped the second-mind discovery pass and
-its first slice. All of it is deployed. The record is in
-[`roadmap-history.md`](roadmap-history.md).
-
-C2's recorded interface failure is fully closed as of Dunlin — the evidence and
-its resolution are in the history file. What replaced it, five findings in
-[`ui-second-pass-plan.md`](ui-second-pass-plan.md) (F1 through F5), is now
-closed too. F1 shipped inside Dunlin itself; F2, F2a, F3 and F5 shipped
-August 6, 2026, following the observational sitting recorded there on
-August 3 that confirmed F2 and F3 rather than inferring them. Nothing named
-in that brief is still open.
-
-## B / C / D legacy — what those releases left open
-
-Bittern, Crane and Dunlin all shipped and are verified in production.
-Their deploy records, what each changed and taught, the production
-verification markers, C2's interface evidence and the capture-tags decision
-are in [`roadmap-history.md`](roadmap-history.md). The executable detail
-stays in [`bittern-plan.md`](bittern-plan.md),
-[`crane-plan.md`](crane-plan.md) and
-[`release-d-plan.md`](release-d-plan.md), each of which now carries a status
-header saying it is a record rather than a plan.
-
-**This section is only what those releases left open**, collapsed here on
-August 13, 2026 from three release sections that had become a second copy of
-the history file.
-
-### Three carried-in items, none of them schedulable work
+## Carried in from B / C / D — not schedulable work
 
 Fourteen items came out of Bittern; eleven closed through Crane and Dunlin.
-`crane-plan.md` §2 stays the authority on the full checklist.
+`crane-plan.md` §2 stays the authority on the full checklist. These three
+remain, and none of them is a task:
 
 - **A real production 500 reaching Sentry**, rather than only the controlled
-  probe. Needs an actual incident, not a task — the same reasoning that
-  rejected a permanent `/sentry-debug/`-style route as a verification method.
+  probe. Needs an actual incident — the same reasoning that rejected a
+  permanent `/sentry-debug/`-style route as a verification method.
 - **No Android emulator run.** This SDK install has no AVD and no way to build
-  one without a multi-gigabyte download better done through Android Studio's
-  own AVD Manager. Judged low-priority: everything M4 wanted a device for is
-  answered twice over on real hardware — the SM-F966U pilot against
-  production, and two SM-S928U1 sessions.
-- **Release signing.** `app/build.gradle.kts` is wired for it; the keystore
-  itself is deliberately left for Vince to generate by hand — a non-rotatable
+  one without a multi-gigabyte download better done through Android Studio.
+  Low priority: everything M4 wanted a device for is answered twice over on
+  real hardware.
+- **Release signing.** `app/build.gradle.kts` is wired for it; the keystore is
+  deliberately left for Vince to generate by hand, because a non-rotatable
   credential is the wrong thing for an agent to generate and momentarily hold.
-  The exact command is in
+  The command is in
   [`android-release-signing-plan.md`](android-release-signing-plan.md).
 
-### Track D — Postgres-enabled features
+## Track D — Postgres-enabled features
 
 Candidates. Each needs its own product trigger or focused brief before it
-becomes work. Per-user time zones left this list on August 1, 2026 when both
-halves of its stated trigger fired at once — a second active user in
-Indonesia, and a real scheduling error caused by the global zone.
+becomes work.
 
 - **Full-text search over Clarice's own material.** `Item.text`, `Item.notes`
-  and `DailyEntry`'s three fields, ranked. **This replaced Reference/Idea
-  search on August 13, 2026**, when the Idea half left for Second Mind and did
-  not come back. The commercial audit found no full-text search anywhere in
-  the product — zero hits for `SearchVector`, `GinIndex` or `pg_trgm` — that a
-  daily journal entry is not searchable by any means at all, and that no date
-  picker exists to reach one by hand. That is a real gap in the half Clarice
-  keeps, and unlike its predecessor it needs no discovery pass first.
+  and `DailyEntry`'s three fields, ranked. There is no full-text search
+  anywhere in the product — zero hits for `SearchVector`, `GinIndex` or
+  `pg_trgm` — a daily journal entry is not searchable by any means, and no date
+  picker exists to reach one by hand.
 
-  **Trigger: it has one now, which the old entry never did.** The old trigger
-  was "enough retained material that finding something again is a felt
-  problem" — anticipated, never observed, and unreachable because nobody
-  accumulates in a store they cannot search. Daily entries are already
-  written, already numerous and already unfindable, so the felt problem
-  exists today. Note `idea_owner_status_idx` was added specifically for the
-  search that left, and is now dead weight.
+  **Trigger: fired.** The old entry (Reference/Idea search) asked for "enough
+  retained material that finding something again is a felt problem" —
+  anticipated, never observed, and unreachable, because nobody accumulates in a
+  store they cannot search. Daily entries are already written, already numerous
+  and already unfindable, so the problem exists today. This entry replaced the
+  Idea half on August 13, 2026 and needs no discovery pass first.
 
-- **Audit log and general undo.** Use structured change records to make more
-  than task completion safely reversible. **No trigger.**
+- **Audit log and general undo.** Structured change records making more than
+  task completion safely reversible. **No trigger.**
 - **Time blocking.** Model calendar ranges and prevent a user's blocks from
   overlapping at the database layer. **No trigger.**
 
 This section has asked every candidate for a trigger since August 2, 2026,
-"which is how a future candidate quietly becomes a plan." Two of the three
-above have gone eleven days without one. Recorded rather than let pass: **a
-candidate with no trigger is a candidate nobody wants yet**, and the honest
-options are to find the trigger or to drop it, not to leave it accruing
-significance by sitting in a list.
-
-### Track E — folded into Later
-
-Both Bittern items shipped: branded email with a rate-limited contact path
-(B3), and production error monitoring (B4).
-
-The one remaining item — **account export and deletion** — is the same item
-as the one under "Remaining public-readiness work" below, and is tracked
-there rather than in two places. The commercial audit raises it from a
-feature to a legal blocker, with Sentry and Resend already processing user
-data, and it is a trust precondition for anything holding personal material.
-
-### Track F — Android capture MVP: complete
-
-M1–M5 shipped August 1–2, 2026: a native Kotlin client that authenticates
-with a personal access token, captures online or offline, accepts shares from
-other apps, and delivers a durable encrypted queue in the background without
-ever creating a duplicate. The device pilot ran against production — fifteen
-captures across Wi-Fi, cellular, a mid-request radio switch and airplane mode
-arrived as fifteen rows with fifteen distinct keys.
-
-Its create-only scope was later widened by the full-client work recorded in
-`roadmap-history.md`. **That direction is now an open question rather than a
-plan**: the commercial audit recommends freezing native and going responsive
-web, since its core assumption was falsified twice and iOS is entirely absent
-— and the merger reopens the client question anyway. Nothing is scheduled.
-
-**Two defects in the shipped client**, found by the commercial audit and still
-unfixed: `CaptureQueue` has no lock, so `CaptureViewModel.submit()` racing
-`CaptureWorker.doWork()` can lose a capture permanently; and the queue is not
-excluded from device backup, so it rides cloud transfer while its Keystore key
-does not, and unsent thoughts vanish silently on phone upgrade. Both are in
-`commercial-blueprint.md` Part 1. **These are the one failure the app exists to
-prevent**, and they outrank every open question above.
-
+which is how a future candidate quietly becomes a plan. Two of the three above
+have gone two weeks without one. **A candidate with no trigger is a candidate
+nobody wants yet**; the honest options are to find the trigger or drop it, not
+to let it accrue significance by sitting in a list.
 
 ## Later — visible, not scheduled
 
 ### Sharing
 
-- Shared lists with real-time updates.
-- Conflict handling for concurrent edits.
+Shared lists with real-time updates, and conflict handling for concurrent
+edits. These belong together. **Do not start either until list sharing itself
+is a deliberate product decision.**
 
-These belong together. Do not start either until list sharing itself is a
-deliberate product decision.
-
-Two mechanism notes, recorded on August 2, 2026 so they are not rediscovered
-from scratch when that decision is finally made. Neither is a commitment to an
-approach, and both were proposed rather than evaluated. **Real-time without
-Redis:** Postgres `LISTEN`/`NOTIFY` driving Server-Sent Events, which would
-suit one small deployment better than adding a broker. **Granularity:** if
-sharing happens, viewer / editor / co-owner is the obvious first split, and
-naming it early matters because it decides whether permission is a column or a
-table. That question sits close to row-level security, whose own trigger in
+Two mechanism notes, recorded August 2, 2026 so they are not rediscovered from
+scratch; both proposed rather than evaluated, neither a commitment. **Real-time
+without Redis:** Postgres `LISTEN`/`NOTIFY` driving Server-Sent Events would
+suit one small deployment better than adding a broker. **Granularity:** viewer
+/ editor / co-owner is the obvious first split, and naming it early decides
+whether permission is a column or a table. That sits close to row-level
+security, whose trigger in
 [`architecture-trajectory.md`](architecture-trajectory.md) §6 is this same
 sharing work.
 
 ### Remaining public-readiness work
 
 - Self-service signup with email verification.
-- Rate limiting for capture.
-- Account export and deletion, after deciding immediate deletion versus a
-  grace period before purge.
-- Privacy policy and terms of service.
+- Rate limiting for capture. `/api/v1/capture` falls through nginx's catch-all;
+  signup and login are throttled at 5r/m and this is not.
+- ~~Account export and deletion.~~ **Shipped August 16, 2026** — self-service,
+  a thirty-day grace period rather than immediate purge, and an export of every
+  owned row as JSON beside readable Markdown.
+- ~~Privacy policy and terms of service.~~ Tracked under *Open now* above.
 
-Password recovery and adversarial per-user isolation tests are already done.
-
-Two items left this list on August 2, 2026, having shipped without being
-struck from it. **Transactional email** is live: `EMAIL_HOST` defaults to
-Resend and the provider decision is recorded in
-[`bittern-plan.md`](bittern-plan.md), so personal Gmail SMTP is no longer in
-the path. **Rate limiting for signup** is done at the edge —
-`infra/templates/nginx-clarice.conf.j2` throttles `/accounts/signup/` at 5r/m
-alongside login, and that is the only signup route. Capture is still
-unthrottled and stays on the list. Separately, the uncovered authentication
-surface is `/`, a full login view the login/signup rate-limit block does not
-match; that is a defect rather than a release item and is tracked in
-[`architecture-trajectory.md`](architecture-trajectory.md) §6.
+Password recovery, adversarial per-user isolation tests, transactional email
+via Resend and edge rate limiting for signup are all done.
 
 ### Support for people who are signed in
 
-B3 gave strangers a contact path and left users without one: the link is in
-the Django shell's nav, and users live in the SPA. The person most likely to
-have something worth reporting has the worst route to reporting it.
+B3 gave strangers a contact path and left users without one: the link is in the
+Django shell's nav, and users live in the SPA. The person most likely to have
+something worth reporting has the worst route to reporting it. Not merely a
+missing link — asking someone with a session to retype their name and email
+invites an address that isn't the one on their account, and per-IP rate
+limiting is the wrong key once there is an identity to use. The argument for
+adapting `/contact/` rather than forking it is in
+[`bittern-plan.md`](bittern-plan.md).
 
-Not merely a missing link — asking someone with a session to retype their
-name and email invites an address that isn't the one on their account, and
-per-IP rate limiting is the wrong key once there is an identity to use. The
-reasoning, and the argument for adapting `/contact/` rather than forking it,
-is in [`bittern-plan.md`](bittern-plan.md).
-
-**What would promote it:** B4. A user's report and a monitoring event are two
-halves of one incident, and the version of this worth building — where a
-signed-in report carries its own context — cannot be designed before there is
-error monitoring to design it against.
+**Its promoter has already fired and nobody noticed.** The stated condition was
+B4, production error monitoring, so that a signed-in report could carry its own
+context. B4 shipped. This is promotable, not deferred.
 
 ### Public updates page
 
 An unauthenticated page announcing what has shipped, written for people rather
-than for the repository — closer to a short press release per release than to
-a changelog. No account, no login wall.
+than the repository — closer to a short press release per release than to a
+changelog. No account, no login wall.
 
-**No broad roadmap preview.** The page does not publish tracks, Later items,
-or what the next release might contain. The single exception is a specific
-named feature already in development, which may be announced as coming.
-Everything else is described only once it exists.
+**No broad roadmap preview.** The page does not publish tracks, Later items, or
+what the next release might contain. The single exception is a specific named
+feature already in development, and it needs a definition or it drifts back
+into promising: a feature qualifies when it has a focused spec in `design/` and
+work has actually begun. A candidate sitting in a Later list never qualifies.
 
-That exception needs a definition or it drifts back into promising. The
-existing practice supplies one: a focused spec is written in `design/` once
-work is ready to start, so a feature qualifies when it has that spec and work
-has actually begun — not when it is merely wanted. A candidate sitting in a
-Later list or a deferred-item table never qualifies.
+Two things to settle. **Where the text comes from:** the annotated release tags
+and `roadmap-history.md` are both written for the developer, so expect to write
+the public version by hand and treat those as sources, not drafts. **Which
+stack renders it:** unauthenticated, cacheable and wanting to be indexable, so
+a Django-rendered page rather than an SPA route, in keeping with the settled
+boundary that only the task UI is SPA-only.
 
-Two things still to settle:
-
-- **Where the text comes from.** The material exists: each release gets an
-  annotated bird tag describing what shipped and how it was verified, and
-  `roadmap-history.md` records the same at length. Both are written for the
-  developer, and announcement-style writing is a different job from either.
-  Expect to write the public version by hand and treat the tag and history as
-  its sources, not its draft.
-- **Which stack renders it.** This is unauthenticated, cacheable, and wants to
-  be indexable, so it is a Django-rendered page rather than an SPA route, in
-  keeping with the settled boundary that only the task UI is SPA-only.
-
-**What would promote it:** there is currently nobody unauthenticated to read
-it. This earns work when strangers can actually arrive — realistically
-alongside self-service signup, or whenever a public `/contact/` page from B3
-means the site has a public face at all.
+**What would promote it:** somebody unauthenticated to read it — realistically
+alongside self-service signup.
 
 ### Mobile web experience
 
 Making the browser application genuinely usable on a phone, as opposed to
-merely surviving a narrow window. This is not the Android app: Bittern's
-native client captures and nothing else, so every other thing you might want
-to do from a phone — triage the Inbox, complete a task, read an Idea — happens
-in the browser. “The Android app captures; the web app reviews” quietly
-assumes the web app is reachable from a phone, and today it is not really.
+merely surviving a narrow window. This is not the Android client: everything
+beyond capture and the two shipped Android slices happens in the browser, and
+"the app captures, the web app reviews" assumes the web app is reachable from a
+phone. It is not really.
 
-**Measured starting point, not a guess.** Both shells already set
-`<meta name="viewport" content="width=device-width, initial-scale=1">`, so the
-foundation is there. Beyond that there are exactly two layout breakpoints: the
-side navigation collapses at 760px and the workspace input row stacks at
-768px. Those two numbers should agree and do not. Everything else is
-desktop-first. B0 already has to confirm the navigation works at its mobile
-disclosure breakpoint, so the first real evidence arrives with Stage 0.
+**Measured, not guessed.** Both shells set
+`<meta name="viewport" content="width=device-width, initial-scale=1">`. Beyond
+that there are exactly two layout breakpoints — side navigation collapses at
+760px, the workspace input row stacks at 768px. Those two numbers should agree
+and do not. Everything else is desktop-first.
 
-Considerations to settle before this becomes a spec:
+**Touch targets are the largest thing in this entry**, found with numbers
+attached during Crane 1 slice 7's phone pass. At 375px the Daily Page itself is
+sound — no horizontal overflow, everything works — but its buttons measure
+32px and its "Edit your compass" link 20px, against the ~44px both platform
+guidelines and WCAG 2.5.8 ask for; the Agenda, untouched by Crane, is worse at
+19–31px. The height lives on the shared `Button` primitive, which is still
+`h-8`: the 44px fixes made during the Tailwind arc were applied per call site,
+not to the primitive. Changing it restyles every page in the application.
 
-- **One responsive application, not a mobile site.** No `m.` host, no second
-  codebase, no divergent templates. There is one API and one SPA; say this
-  once so it is not reopened later.
-- **The overlap with the native client is real and should be decided, not
-  discovered.** Native earns its cost through launch speed, Keystore-backed
-  token storage, WorkManager retries, and the Android share target. A capable
-  installable web app can approximate the share target and an offline queue,
-  less reliably. If mobile web lands well, M5 and parts of M3 deserve a fresh
-  look rather than being finished out of momentum.
-- **Sequencing against Crane — settled by events.** The argument was that a
-  mobile pass done first would be redone for a surface that did not exist
-  yet, and that done inside Crane the new surfaces would be mobile-aware
-  from their first day. That is what happened: the Daily Page and the weekly
-  review were each measured at a phone width as they landed. What was
-  deferred rather than done is everything Crane did not build — the older
-  surfaces, and the two breakpoints that disagree.
+**One responsive application, not a mobile site.** No `m.` host, no second
+codebase, no divergent templates. One API, one SPA. Said once so it is not
+reopened.
 
-**What would promote it:** M4's device pilot. The moment captures arrive from
-a phone daily, triaging from that same phone will be attempted, and the
-friction becomes specific and observable. Treat it the way C2 is treated —
-watch real failures rather than redesigning from a hunch.
+**The overlap with native should be decided, not discovered.** Native earns its
+cost through launch speed, Keystore-backed token storage, WorkManager retries
+and the Android share target. A capable installable web app can approximate the
+share target and an offline queue, less reliably. If mobile web lands well, M5
+and parts of M3 deserve a fresh look rather than being finished out of
+momentum.
 
-**A measured finding, from Crane 1 slice 7.** This entry asks for observed
-failures rather than a redesign from a hunch, and slice 7's phone pass
-produced one with numbers attached. At 375px the Daily Page itself is sound —
-no horizontal overflow, no control past the right edge, and writing, saving
-and capturing all work. What it exposed is application-wide and older than
-Crane: **touch targets are well under the ~44px both platform guidelines and
-WCAG 2.5.8 ask for.** The Daily Page's buttons measure 32px and its "Edit
-your compass" link 20px; the Agenda, which nothing in Crane touched, is worse
-at 19–31px.
-
-That is not slice 7's to fix. The height lives on the shared `Button`
-component, so changing it restyles every page in the application — which
-`crane-plan.md` §5 fences off, and which is the web UI overhaul's second pass
-rather than a side effect of a smoke test. Recorded here, with the
-measurements, so it is a finding rather than a feeling when that work starts.
-
-**Note on scope, August 2, 2026.** The pilot has run, but the stated condition
-is daily phone use producing observable triage friction, and one session is
-not that — so this stays here rather than being promoted on a technicality.
-What Crane carried is narrower than this item: a phone-viewport pass over
-each new surface — the assembled Daily Page at slice 7, and the weekly review
-at Crane 3 slice 10, both measured at 375x812 against the built bundle and
-both clean. Triaging the Inbox, completing a task and reading an Idea from a
-phone, and reconciling the 760px and 768px breakpoints, are all still here.
-Crane made its own surfaces mobile-aware; it did not close this entry, and
-the touch-target finding above is still the largest thing in it.
+**What would promote it:** daily phone use producing observable triage
+friction. One device pilot is not that. Crane made its own new surfaces
+mobile-aware — the Daily Page and the weekly review were each measured at
+375x812 against the built bundle, both clean — and did not close this entry.
+The older surfaces, the two disagreeing breakpoints and the touch targets are
+all still here. Watch real failures rather than redesigning from a hunch.
 
 ### Recorded candidates with no trigger yet
 
-Three ideas salvaged on August 2, 2026 from an abandoned review branch, whose
-draft was ninety commits stale and whose every other proposal had either
-shipped or been re-planned with better reasoning. These three had never been
-written down anywhere in `design/`, which is the only reason they are here.
-
-**Provenance stated plainly, because it bears on how much weight they carry.**
-They were generated by an outside review of the codebase, not by using
-Clarice and wanting them. This section asks every candidate for a trigger and
-none of these has one, so they are recorded as ideas rather than promoted to
-Track D — writing something down is not the same as deciding to build it, and
-the distinction is exactly what keeps a Later list from becoming a backlog.
+Three ideas salvaged August 2, 2026 from an abandoned review branch. They were
+generated by an outside review of the codebase, not by using Clarice and
+wanting them, and none has a trigger — recorded as ideas rather than promoted
+to Track D, because writing something down is not deciding to build it.
 
 - **A calendar feed.** An authenticated read-only ICS endpoint so due dates
-  appear in Google, Apple or Outlook calendars. Note it points the opposite
-  way from time blocking in Track D: that one models calendar ranges *inside*
-  Clarice, this one publishes what already exists to a calendar someone
-  already reads. Cheaper, and possibly the only one of the two ever wanted.
+  appear in Google, Apple or Outlook calendars. It points the opposite way from
+  time blocking: that models calendar ranges *inside* Clarice, this publishes
+  what exists to a calendar someone already reads. Cheaper, and possibly the
+  only one of the two ever wanted.
 - **Natural-language due dates.** "Next Friday", "tomorrow at 3pm" parsed on
-  input. Worth noting against a settled principle: the server owns date
-  meaning, so parsing belongs server-side with the client showing what was
-  understood before it is committed — an automation that proposes rather than
-  silently decides.
-- **A command palette.** `Ctrl+K` over tasks, lists and Ideas. Genuinely
-  premature: it is a *retrieval* affordance, and Reference/Idea search above
-  already records that retrieval earns work only when finding something again
-  is a felt problem. Revisit it with that search, not before.
+  input. The server owns date meaning, so parsing belongs server-side with the
+  client showing what was understood before it is committed — an automation
+  that proposes rather than silently decides.
+- **A command palette.** `Ctrl+K` over tasks, lists and nodes. Genuinely
+  premature: it is a *retrieval* affordance, and full-text search above is the
+  thing that earns retrieval work first. Revisit it with that, not before.
 
 ### Longer-term product direction
 
-- Build the Daily Page and its weekly, monthly, and quarterly review cadence
-  from the direction set out for Crane.
-- ~~Let exploring ideas resurface and relate to one another, potentially
-  through a mind-map-style view and an append-only idea log.~~ **Moved to
-  Second Mind, August 13, 2026** — and built further there than this line
-  imagined: resurfacing is a named detector registry with per-detector accept
-  rates, the append-only log exists and is enforced by a database trigger, and
-  the mind-map is specified as a map of *concepts* rather than nodes, for
-  structural findings only.
-- ~~Add AI only as a transparent, confirm-before-write planning assistant after
-  the daily and review records have earned enough real use.~~ **Moved to Second
-  Mind, August 13, 2026**, whose ML policy is stricter than this line and whose
-  v1 ships no generation at all. The commercial audit's correction stands
-  wherever it lands: a gate measured against one person may never fire.
-- ~~**Turn the Android app into a fully functional client, not just
-  capture.**~~ **Trigger fired August 10, 2026 (the same day this was first
-  recorded)** — see below. Vince's stated direction, raised while reviewing
-  whether 4.1–4.3 needed a Ninja API: they didn't, because Track F's Android
-  client is deliberately create-only today ("triage remains in the web app,"
-  per that section) and nothing yet asked it to be more. Browsing, tagging,
-  editing and relating Ideas from the phone still needs capture's
-  create-only API (`capture/api_v1.py`) to grow into a real read/write
-  surface for Idea (and likely Item), the same gap 4.1 and 4.3's design
-  notes already flagged — that piece is explicitly not part of slice 1,
-  named as open in the new plan's §5.
+- Build out the Daily Page's weekly, monthly and quarterly review cadence from
+  the direction set for Crane. Weekly exists — its honest denominators are the
+  single strongest thing built here — and the wider horizons do not.
+- ~~Idea resurfacing, a mind-map view, an append-only idea log, and AI as a
+  confirm-before-write planning assistant.~~ **All moved to the knowledge core,
+  August 13, 2026**, and built further there than these lines imagined. Its ML
+  policy is stricter than the AI line was; v1 ships no generation at all.
 
 ### Only if Clarice becomes a business
 
-Billing, support operations, deeper legal requirements, and horizontal
-scaling remain out of scope until the public-readiness bar is genuinely met.
+Billing, support operations, deeper legal requirements and horizontal scaling
+remain out of scope until the public-readiness bar is genuinely met.
 
 ## Settled boundaries
 
@@ -455,144 +276,53 @@ scaling remain out of scope until the public-readiness bar is genuinely met.
 - Subtasks are one level deep only.
 - Completing every subtask does not auto-complete its parent.
 - Only top-level tasks recur.
+- `/mind/` is where the knowledge core lives, permanently — settled August 15,
+  2026, not left temporary. Cheap to revisit: the prefix appears in one line of
+  `clarice/urls.py` and everything under it is relative.
+- **SSL expiry alerting is refused, not missing.** UptimeRobot paywalls it,
+  certbot renews automatically. Recorded so nobody re-investigates and reaches
+  the same paywall.
 
 ## Release practice
 
-Production releases use alphabetic bird codenames: `albatross`, then
-`bittern`, `crane`, `dunlin`. Tag only after production is verified. The
-letter carries; the bird is chosen when the release ships.
+Production releases use alphabetic bird codenames: `albatross`, `bittern`,
+`crane`, `dunlin`, `fulmar`, `godwit`, `heron`. **Tag only after production is
+verified.** The letter carries; the bird is chosen when the release ships. The
+sequence skips E — Vince's call, August 3, 2026 — and the next release takes I.
 
-**The letter sequence skips E.** Decided August 3, 2026, by Vince: the
-Android device-testing branch and capture tags — merged onto `main` the same
-day — stay folded into Dunlin rather than being promoted to their own
-release, so there is no Release E. The next release to actually start is
-**Release F**; its bird is still chosen only when it ships, same as always.
-
-- `LIVE` is a moving tag for the code currently running.
+- `LIVE` is a moving tag for the code currently running. It is the only tag
+  ever overwritten, which is safe precisely because the position it leaves is
+  kept by the `DEPLOYED-` tag that marked it.
 - `DEPLOYED-<date>/<HHMM>` is a permanent deployment-event tag.
 - The bird codename is a permanent annotated release tag describing what
   shipped and how it was verified.
 
-**The letters lapsed between August 6 and 12, and were deliberately restored on
-August 15 — Vince's call.** Six of the seven lines of work in that window
-shipped outside the release structure entirely (see `roadmap-history.md`), and
-this section previously ended "do not invent one to restore the pattern." That
-instruction is superseded, because what it was written about has changed: the
-merger was a single coherent body of work with one finish line, which is the
-thing the letters had stopped naming.
+**Letters are never reserved for a subject** — Vince's call, August 15, 2026,
+after `architecture-trajectory.md` §5 speculatively attached commercial
+readiness to "release G" and Godwit spent that letter on the merger. A letter
+is the next position in a sequence, claimed by whatever ships next.
 
-Two birds were assigned belatedly, on August 15:
+**A release is a coherent body of work with a finish line.** The letters lapsed
+between August 6 and 12, when six of seven lines of work shipped outside the
+release structure, and were deliberately restored on August 15 — the merger was
+exactly the coherent body of work the letters had stopped naming. Fulmar and
+Godwit were assigned belatedly to close the gap, and Fulmar's annotation admits
+its verification was piecemeal.
 
-- **Fulmar** (`2986ed6`) — the whole August 6–12 period, Release F's discovery
-  pass plus the six unlettered lines that shipped beside it. **Its annotation
-  states that verification was piecemeal**, because it was: only the task list
-  and agenda redesigns had their own verified deploys, and everything after
-  reached production inside a later one. The tag exists so the sequence is
-  unbroken, not to claim a release that was verified as a whole.
-- **Godwit** (`d0983a8`) — the Second Mind merger, all five steps, plus nine of
-  the ten defects in `commercial-blueprint.md` Part 1. Verified in production on
-  August 15.
-
-**Letters are never reserved for a subject — Vince's call, August 15, 2026.**
-`architecture-trajectory.md` §5 had speculatively attached commercial readiness
-to "release G" while asking whether release G exists. Godwit spent that letter
-on the merger, and the reservation is void rather than renumbered: a letter is
-the next position in a sequence, claimed by whatever ships next, and commercial
-readiness will carry whatever letter it reaches — realistically a long way down
-the alphabet. Nothing is held open for a subject that has not started.
-
-**H was Heron, and it is tagged** — named August 15, 2026 ahead of shipping for
-once, then started, finished, deployed and verified the same day. Naming was not
-tagging: the `heron` tag went on `04e7c71` only after production answered, which
-is the practice working rather than an exception to it. Its content was the
-crossover; see [`one-capture-surface-plan.md`](one-capture-surface-plan.md).
-
-**Going forward the scheme holds again**: a release is a coherent body of work
-with a finish line, tagged only after production verifies it, and the bird is
-chosen when it ships.
-
-## Where things stand — August 15, 2026
-
-**The last release is Heron**, tagged and verified in production on August 15:
-~~the crossover~~ — closed the same day it started, all five steps of
-[`one-capture-surface-plan.md`](one-capture-surface-plan.md), deployed at 1200
-and 2030. Godwit was the merger, the day before; Fulmar covered August 6–12.
-See Release practice, and `roadmap-history.md` for what each step cost.
-
-**There is no active release.** What Heron leaves is a baseline rather than a
-backlog:
-
-- **One capture surface.** `/mind/`, writing a `Node`, and that is where the
-  knowledge core lives permanently. `/capture/`, `Capture` and `Idea` are gone;
-  `/capture/` came free and was deliberately not taken.
-- **One of everything.** `/api/v1/capture` is the application's rather than a
-  core's, served by `mind/api_v1.py`, and is what both the phone and the Day
-  page post to. The knowledge core's own API at `/mind/api/v1/` and its
-  `mind.ApiToken` table were deleted the same day, having never been called by
-  anything: one API, one token table with scopes, one login.
-- **41 nodes, 19 visible to the detectors.** The corpus is no longer split
-  across two models, which was the binding constraint on the whole knowledge
-  core.
-- **The task core's maintenance freeze is lifted** — a priority replaces it, see
-  `CLAUDE.md`. The knowledge core and the commercial substrate are where work
-  goes.
-- **The `capture` app is gone**, once `0008` was applied in production and it
-  had nothing left to hold. `django_migrations` keeps eight inert rows for it,
-  deliberately not deleted: Django ignores rows for apps it does not know, and
-  hand-editing production's bookkeeping to tidy something nothing reads is a
-  worse trade than the untidiness.
-
-**`commercial-blueprint.md` Part 1 is closed — all ten, as of August 15, 2026.**
-The last was the external uptime monitor, which is now polling `/healthz`; it
-was never a commit, because a watchdog on the machine it watches is not a
-watchdog. SSL expiry alerting is refused rather than missed — UptimeRobot puts
-it behind a paid plan, certbot renews automatically, and at three users that is
-not worth a subscription.
-
-**What is outstanding is no longer a defect list.** It is the commercial
-substrate, and its first piece is done: **account deletion and data export
-shipped August 16, 2026** — self-service, a thirty-day grace period, and an
-export of every owned row as JSON beside readable Markdown. That was the one
-commercial item that did not depend on Part 9's unanswered first question, which
-is why it went first.
-
-What remains there: terms and a privacy policy (writing, not code), removing
-data from Sentry and Resend when an account goes (an account-level action in
-each, outside this application), and **three genuinely open decisions in Part 9**
-— is this a business, which wedge, and mobile native or responsive web. Two of
-its five are stale rather than open: #3 is answered but its reasoning predates
-the merger, and #5 was largely done by the August 15 documentation pass.
-
-**The deployment tags were brought back into line on August 15.** They had
-drifted badly: `LIVE` sat five days and thirty commits behind production, and
-the August 14 deploy went untagged. Heron 4a's deploy is
-`DEPLOYED-2026-08-15/1200` on `99d48a2`, and `LIVE` was moved to the same commit
-— it had been left on `d0983a8`, which is where `DEPLOYED-2026-08-15/0246` still
-correctly records the August 14 merger deploy. Moving `LIVE` is the one tag
-operation that overwrites: the position it leaves is preserved by whichever
-`DEPLOYED-` tag marked it, which is the reason both tags exist rather than one.
-The convention is only worth having if it is kept, and keeping it is a step in
-the deploy rather than a thing remembered afterwards — see `CLAUDE.md`.
-
-**What no longer applies.** The knowledge-side roadmap did not come back with
-the code — Ideas, resurfacing, the mind-map and search over retained material
-are the knowledge core's now, and it is in this repository. The productivity
-roadmap is intact and unaffected: the Daily Page, routines, reviews, wider
-horizons and mobile web all still stand on their own triggers.
+**Tagging is a step in the deploy, not something remembered afterwards.** It
+drifted badly through August because it was written down here as a convention
+and nowhere as a step. The step is in `CLAUDE.md`.
 
 ## Keeping this current
 
 Update this file when work begins, changes scope, ships, or is explicitly
-deferred.
+deferred. When an idea from Later earns work, give it a one-line reason and a
+focused spec before it joins an active track.
 
 **Move completed detail into [`roadmap-history.md`](roadmap-history.md) and
 keep only the resulting baseline or remaining consequence here.** That
-instruction has been in this file since August 1 and was not followed —
-257 lines of shipped-work narrative had accumulated below "Keeping this
-current" by August 13, and were migrated then. This document is the
-forward-looking plan; if a section is describing what already happened at
-length, it is in the wrong file.
-
-When an idea from Later earns work, give it a one-line reason and a focused
-spec before it joins an active track.
-
+instruction has been in this file since August 1 and has been ignored twice —
+257 lines migrated out on August 13, and 272 more on August 16, by which point
+the file was contradicting itself about work it recorded as both open and
+closed. If a section here is describing the past at length, it is in the wrong
+file.

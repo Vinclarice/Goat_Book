@@ -9,11 +9,13 @@ This preserves the reasoning, deployment record, and lessons behind completed
 work without making the active roadmap hard to scan. The active plan is
 [`roadmap.md`](roadmap.md).
 
-## Heron, steps 1–4b — the crossover, August 15, 2026
+## Heron — the crossover, August 15, 2026
 
-Heron is not closed; step 5 remains, and 4b is built but not deployed. This is
-the narrative of what shipped, so that `roadmap.md` can carry the baseline rather
-than the story. The plan is
+All five steps built in one day. 1–4a are in production; **4b and 5 await one
+deployment together, Vince's call, so that Heron lands whole rather than leaving
+a half-crossed state live in between.** The bird is tagged when that deploy is
+verified, same as always. This is the narrative, so that `roadmap.md` can carry
+the baseline rather than the story; the plan is
 [`one-capture-surface-plan.md`](one-capture-surface-plan.md).
 
 **Steps 1 and 2** wired a typed tag to a confirmed concept and carried a node's
@@ -132,6 +134,58 @@ they needed.** None was found by reading the diff.
 872 Django, 672 pytest, 270 frontend, 30 browser, clean build. Not yet deployed,
 and the deploy is a decision rather than a routine push: `0008` drops two tables
 and has no reverse.
+
+### 5 — the URL that did not move
+
+Step 5 was written as *move `/mind/` to the URL 4b frees*, and asking the
+question directly reversed it. **`/mind/` is permanent — Vince's call.**
+
+`/capture/` came free and was deliberately not taken. Nine routes live under
+`/mind/` and only one of them is capture; the rest are review, concepts, search,
+numbers, share, the manifest and two actions. `/capture/concepts/` reads as
+nonsense, and scattering them across the root instead — all four paths were free
+— would have put a second "review" beside the task core's weekly one and spread
+a single core across four places, ending the property that made the step cheap.
+Against a rename with no winner stood a live PWA home-screen shortcut and every
+bookmark.
+
+**"Temporary" was a reason to reconsider the name once the collision was gone,
+not an obligation to move.** The change was therefore subtraction: the word came
+out of `clarice/urls.py`, `mind/urls.py`, both navs and their tests, replaced by
+the reason it is permanent. It is still one line and everything under it is
+still relative, so it is settled rather than welded.
+
+This also answered a question the plan had listed as beyond it — where the
+knowledge core's other pages live. They stay together, under a different root
+from the task core's `/app/`: two cores, two homes, one login, one nav reaching
+both.
+
+### And the rule Heron finally killed
+
+The task core had been in maintenance since the merger was planned. **The freeze
+is lifted — Vince's call, the same day.**
+
+It is worth recording *why* rather than just *that*, because the rule's history
+is the useful part. It had been rewritten twice to survive: "until the merger",
+then — when the merger ended — "until the crossover ends", on the narrower
+ground that `Capture` and `Idea` were retiring so work on either was thrown
+away. Heron deleted both. **Each rewrite found a narrower justification for a
+conclusion already held**, which is the shape of motivated reasoning, and a
+third would have been cargo. Its own text had said the restraint needed a live
+reason or it was exactly that.
+
+On its own terms nothing was left. The surviving clause — *no new models on the
+task core, because a model added now is a model migrated twice* — named a
+migration that had happened, and `architecture-trajectory.md` §4 already gated
+new models in either core, more strictly.
+
+**What replaced it is a priority, not a prohibition**, on a reason that does not
+expire: the task core is a competent todo application, the graph is what makes
+this worth building, and `product-stories.md` has nineteen journeys with two
+working. Task-core feature work now needs a reason beyond *while I'm here*, and
+the instruction is to surface it and ask rather than to fix silently or refuse —
+which is the one thing the freeze was actually buying, and the thing that got
+riskier when two repositories became one tree.
 
 ## After Dunlin — Release F and six unlettered lines of work, August 6–12, 2026
 

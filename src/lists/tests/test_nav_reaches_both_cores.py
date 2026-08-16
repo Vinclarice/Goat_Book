@@ -6,11 +6,10 @@ to open it was to type `/mind/` into the address bar. A surface nobody can reach
 has been shipped twice in this project already, which is why `side-nav-mockup`'s
 own comments keep saying so.
 
-**The URL comes from the server, not the client.** `clarice/urls.py` records
-that the `/mind/` prefix is temporary and appears in exactly one line, because
-where those pages finally live is the decision that ends the crossover.
-Hardcoding it in the nav would make that two lines, in two languages, and the
-second one would be found late.
+**The URL comes from the server, not the client.** That began as a hedge against
+a temporary prefix; Heron step 5 made `/mind/` permanent, and it is still the
+right shape — the server owns its own URLs, and a route spelled out in two
+languages is one that can disagree with itself, with the second copy found late.
 """
 
 from django.test import TestCase
@@ -30,8 +29,10 @@ class NavReachesBothCoresTest(TestCase):
         self.assertEqual(response.json()["mind_url"], "/mind/")
 
     def test_it_is_reversed_rather_than_written_out(self):
-        """The prefix lives in one line of the project URLconf and moves when
-        the crossover ends. Reversing means the nav follows it."""
+        """The prefix lives in one line of the project URLconf. Reversing means
+        the nav follows it if it ever moves again -- which step 5 decided it
+        will not, but the cost of being wrong about that is one line here and
+        none anywhere else."""
         from django.urls import reverse
 
         response = self.client.get("/api/v1/nav")

@@ -50,15 +50,25 @@ urlpatterns = [
         RedirectView.as_view(pattern_name="view_list", permanent=False),
     ),
     path("accounts/", include("accounts.urls")),
-    # The knowledge core, under a prefix during the crossover. Second Mind's
-    # pages sat at the root in their own project and could not here: "/" is
-    # this site's landing login, and /api/v1/capture was defined by both cores.
+    # The knowledge core. **This is where it lives** -- Heron step 5, Vince's
+    # call, August 15, 2026, and the decision that ends the crossover.
     #
-    # Both halves of that are now resolved. Heron 4a made /api/v1/capture the
-    # application's one endpoint, and 4b freed /capture/ by deleting the Inbox.
-    # What remains is choosing where these pages sit, which is step 5 -- still
-    # one line, and now an ordinary move rather than one that could break a
-    # phone.
+    # The prefix was called temporary for a year's worth of reasons that all
+    # expired within a day. Second Mind's pages sat at the root in their own
+    # project and could not here, because "/" is this site's landing login and
+    # /api/v1/capture was defined by both cores; 4a made that endpoint the
+    # application's one endpoint and 4b freed /capture/ by deleting the Inbox.
+    #
+    # Freed, and deliberately not taken. Nine routes sit under here and only
+    # one of them is capture -- review, concepts, search, numbers, share and
+    # the manifest are the rest -- so /capture/ would have named the smallest
+    # thing in the room. Against that stood a live PWA shortcut and every
+    # bookmark, both of which a move breaks for no gain. "Temporary" was a
+    # reason to reconsider the name once the collision was gone, not an
+    # obligation to move.
+    #
+    # It stays one line, and everything under it stays relative, so this is
+    # still cheap to change if a better answer turns up.
     path("mind/", include("mind.urls")),
     # Has to sit BEFORE the admin include, not just for tidiness:
     # admin.site.urls is itself a resolver mounted at admin/, so a later

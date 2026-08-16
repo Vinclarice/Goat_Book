@@ -2,8 +2,8 @@
 
 Vince · index · August 13, 2026 · **thirty-one documents as of August 15**
 
-Thirty documents accumulated here for a three-user application, and by August
-12 they had drifted out of agreement with each other: four plans still
+Thirty-one documents accumulated here for a three-user application, and by
+August 12 they had drifted out of agreement with each other: four plans still
 described themselves as forward-looking months after shipping, two files gave
 the same release letter to different work, and 257 lines of shipped-work
 narrative had piled up under a heading that instructed the reader to move it
@@ -17,7 +17,7 @@ first six lines**, and this table agrees with what they say.
 
 | Document | Authority for |
 |---|---|
-| [`principles.md`](principles.md) | How work is designed, implemented and verified. **Clarice only** — it does not govern Second Mind |
+| [`principles.md`](principles.md) | How work is delivered — **everywhere in this tree, knowledge core included.** Its *design* rules stop at the task core; see its §Scope, which splits by kind of rule rather than by directory |
 | [`roadmap.md`](roadmap.md) | What is active, what is deferred, what is still open |
 | [`daily-operating-system-vision.md`](daily-operating-system-vision.md) | Product direction for the productivity half. Its second-brain and AI sections are superseded |
 | [`architecture-trajectory.md`](architecture-trajectory.md) | Release ordering, the charter for new models, and what this project refuses. §5's release arc is largely overtaken |
@@ -25,9 +25,22 @@ first six lines**, and this table agrees with what they say.
 | [`product-stories.md`](product-stories.md) | What the product is *for*, as behaviour. 19 journeys, 2 working |
 | [`roadmap-history.md`](roadmap-history.md) | The record: every shipped release, its deployment, and what it taught |
 
-**Second Mind is not indexed here.** It is a separate project at
-`C:\dev\Clarice_secondmind` with its own `docs/`, and none of the above governs
-it — see `roadmap.md`'s opening section.
+**Second Mind's *documents* are not indexed here; its *code* is in this tree.**
+Those two halves separated on August 14, 2026 and this note said otherwise until
+August 15. The knowledge core is `src/mind/`, mounted at `/mind/`, behind this
+site's login and in this database.
+
+What stayed at `C:\dev\Clarice_secondmind` is `docs/` and nothing else — no
+code, no venv, no database. It remains the **design** authority for the
+knowledge core: what each core owns, salience, the attention policy, the joint
+weekly report, the visual map. Do not develop there.
+
+**The line is by kind of rule, not by directory.** How work is delivered —
+failing test first, say what was run, inject the clock — is `principles.md` and
+applies to `src/mind/` like everything else in this repository. What a new model
+must satisfy splits: `architecture-trajectory.md` §4 for the task core,
+`design-concept.md` for the knowledge core, which deliberately rejects §4's
+charter test. See `roadmap.md`'s opening section.
 
 ## Records — shipped, kept for their reasoning
 
@@ -86,7 +99,8 @@ them being updated. The rule:
 | What is refused, and why | `architecture-trajectory.md` §7 |
 | Current production defects | `commercial-blueprint.md` Part 1 |
 | A specific slice's acceptance criteria | that slice's own plan document |
-| Anything about Second Mind | Second Mind's own `docs/` |
+| Second Mind's **design** — what each core owns, salience, the visual map | Second Mind's own `docs/`, still at `C:\dev\Clarice_secondmind` |
+| The knowledge core's **code**, and anything shipped in it | this repository, same as everything else |
 
 If a document needs to mention a fact it does not own, **link to the owner
 rather than restating it.** A restated fact is a fact that will be wrong later.

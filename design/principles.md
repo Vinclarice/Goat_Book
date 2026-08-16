@@ -9,26 +9,41 @@ not belong here.
 The roadmap decides **what** to build. These principles guide **how** it is
 designed, implemented, reviewed, and verified.
 
-## Scope: this governs Clarice, not Second Mind
+## Scope: delivery practice governs everything here; design authority splits
 
-**Stated August 13, 2026.** Second Mind is a separate project in its own
-repository, with its own design documents and its own constitution. It is not
-a module inside Clarice, not a bounded context hosted by it, and **not
-answerable to this file**. Nothing here gets a vote there.
+**Stated August 13, 2026, when Second Mind was a separate repository. Rewritten
+August 15, 2026, when it stopped being one** — the section had said Second Mind
+"is a separate project in its own repository" and "is absorbed into Clarice's
+codebase later", both of which the merger made false on August 14.
 
-The direction between them is settled and runs the other way: Second Mind is
-the host, and Clarice's task system is absorbed into it later as a core named
-Superlists. When that happens, the absorbed code arrives under Second Mind's
-design authority, not this one.
+The split that survives is not by repository. It is by *what kind of rule*:
 
-Several principles here would actively obstruct that design, and that is
-expected rather than a problem to reconcile. Second Mind deliberately rejects
-the charter test in
+**How work is delivered — this file, everywhere in this tree.** Write the
+failing test first and watch it fail for the reason you expect. Say what was
+actually run. Inject the clock. Guards fail closed. `src/mind/` is tested in
+this CI, deployed by this playbook and read by whoever reads the rest, so
+exempting it would mean two standards for one repository, which is how one of
+them quietly becomes optional.
+
+**How the knowledge core is designed — Second Mind's own `docs/`**, still at
+`C:\dev\Clarice_secondmind`, which is documents only now. `design-concept.md`
+remains the authority on what each core owns, on salience and on the attention
+policy. Several principles here would actively obstruct that design, and that
+is expected rather than a problem to reconcile — see below.
+
+The obstruction is real and is the reason the split is by kind rather than by
+directory. The knowledge core deliberately rejects the charter test in
 [`architecture-trajectory.md`](architecture-trajectory.md) §4 — its node-plus-
 facet model is the opposite of "a concept earns its own model when it has a
-different life cycle" — and it reaches different answers on typed relations
-and on how absolute "automations propose" should be. Those principles were
-derived inside the task domain and are correct here; they are not general law.
+different life cycle" — and it reaches different answers on typed relations and
+on how absolute "automations propose" should be. Those principles were derived
+inside the task domain and are correct there; they are not general law, and
+`src/mind/` sitting in this tree does not make them so.
+
+**In practice this is one question: is the rule about how you work, or about
+what you build?** A test written after the fact is wrong in either core. A new
+model in `src/mind/` answers to `design-concept.md`; a new model in `lists/`
+answers to §4.
 
 Two things follow. Do not cite this file at Second Mind, and do not weaken it
 here to accommodate Second Mind. It stays the authority for everything in this

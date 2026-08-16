@@ -15,119 +15,101 @@ The two that most often get skipped under time pressure:
   "Tests pass" when they were never executed is not.
 
 [`design/roadmap.md`](design/roadmap.md) is the plan; active specs live
-alongside it in `design/`. **[`design/README.md`](design/README.md) indexes all
-thirty-one documents** — which are standing authorities, which are records of
-shipped work, and which fact each one owns. Start there rather than guessing
-whether a plan is current.
+alongside it in `design/`. **[`design/README.md`](design/README.md) indexes every
+document there and owns the table of which fact lives where** — start there
+rather than guessing whether a plan is current.
+
+**If a document needs a fact it does not own, link to the owner rather than
+restating it.** A restated fact is a fact that will be wrong later; this file
+carried a copy of the production defect list for four days and twice described
+finished work as open.
 
 ## Closing a piece of work
 
-**Two steps.** It was four until August 16, 2026, and the two that went were the
-two that existed only because a shipped plan kept its full text:
+Two steps:
 
 1. **Move the narrative to `roadmap-history.md`, and reduce the plan to a stub** —
    four lines saying what it was, when it shipped, and where the narrative went.
    Keep only the resulting baseline or remaining consequence in `roadmap.md`.
 2. **Close the roadmap item** — strike it, date it, name what replaced it.
 
-There is no longer a status line to update or an index to re-check, because a
-stub *is* its status and it says something permanently true. Sixteen of the sixty
-commits before this change touched documentation only, and about half were
-corrections to statuses that had rotted.
+There is no status line to update and no index to re-check: a stub *is* its
+status. Stubs rather than deletions, because 251 code comments cite these plans
+by name and section — the file has to resolve, its 300 lines do not.
 
-**Stubs rather than deletions, and the reason is measurable**: 251 comments in
-`src/`, `frontend/`, `android/` and `infra/` cite these plans by name and
-section. Those citations are provenance for reasoning the comment already states
-— so a file that still resolves is worth keeping and its 300 lines are not.
+## The shape of the application
 
-**If a document needs a fact it does not own, link to the owner rather than
-restating it.** A restated fact is a fact that will be wrong later; this file
-proved it by carrying a copy of the production defect list that twice said
-finished work was open.
+One application, two cores, one login, one database, one deployment: the
+**Superlists** task core, and the knowledge core at `src/mind/` mounted at
+`/mind/`. The merger shipped and deployed on August 14, 2026.
 
-**The merger is done. Second Mind's code lives here now.** All five steps of its
-`two-cores.md` shipped on August 14, 2026 and deployed the same day: the
-knowledge core is `src/mind/`, mounted at `/mind/`, behind this project's login,
-in this project's database. One application, two cores — knowledge, and the
-**Superlists** task core.
+`C:\dev\Clarice_secondmind` still exists and is **documents only**: its `docs/`
+remain the design authority for what the merger did not settle — what each core
+owns, salience, the joint weekly report, the visual map. Its code, its venv and
+its Postgres on 5434 are history; do not develop there.
 
-`C:\dev\Clarice_secondmind` still exists and is now **documents only**. Its
-`docs/` remain the design authority for everything the merger did not settle —
-what each core owns, salience, the joint weekly report, the visual map — and
-`two-cores.md` records what each step cost. Its code, its venv and its Postgres
-on 5434 are history; do not develop there. This paragraph said the opposite for
-a day after the merger, which is exactly the drift the checklist above exists to
-prevent.
-
-**The crossover is over.** There is one capture surface, `/mind/`, writing a
-`Node`; `/capture/` and its `Capture` and `Idea` models are deleted (Heron 4b),
-and **`/mind/` is where the knowledge core lives** — step 5, Vince's call,
-August 15, 2026.
-
-It is no longer temporary, and that is a decision rather than an omission.
-`/capture/` was freed and deliberately not taken: nine routes sit under `/mind/`
-and only one is capture, so `/capture/` would have named the smallest thing in
-the room, against a live PWA shortcut and every bookmark that a move breaks. The
-prefix still appears in exactly one line of `clarice/urls.py` and everything
-under it is still relative, so this stays cheap to revisit — it is settled, not
-welded.
-
-**There is one capture *endpoint*, as of Heron 4a on August 15, 2026.**
-`/api/v1/capture` is the application's, served by `mind/api_v1.py`, and it
-writes a `Node`. Both the phone and the SPA's Day page post to it.
-
-**There is one of everything now.** One API at `/api/v1/`, one token table
-(`accounts.PersonalAccessToken`, which has scopes), one login. The knowledge
+**There is one of everything.** One capture surface — `/mind/`, writing a `Node`;
+`/capture/` and its `Capture` and `Idea` models are deleted. One capture endpoint
+— `/api/v1/capture`, served by `mind/api_v1.py`, which both the phone and the
+SPA's Day page post to. One API at `/api/v1/`, one token table
+(`accounts.PersonalAccessToken`, which has scopes), one login; the knowledge
 core's own `NinjaAPI` at `/mind/api/v1/` and its `mind.ApiToken` were deleted on
-August 15 having never been called by anything — no shipped Android build was
-ever split, and the `/mind/` pages carry no JavaScript at all. A knowledge-core
-endpoint belongs on `/api/v1/` as a router in `mind/api_v1.py`, beside the
-capture one; do not start a second API.
+August 15 having never been called by anything. **A knowledge-core endpoint
+belongs on `/api/v1/` as a router in `mind/api_v1.py`, beside the capture one; do
+not start a second API.**
+
+**`/capture/` was freed and deliberately not taken.** Nine routes sit under
+`/mind/` and only one is capture, so the prefix would have named the smallest
+thing in the room, against a live PWA shortcut and every bookmark a move breaks.
+It survives in one line of `clarice/urls.py` and everything under it is relative
+— settled rather than welded.
+
+**`android/` is a client of one backend.** The code for a split exists —
+`Backends.isSplit`, a second token slot, a second Connect screen — but it
+switches on `-PsecondMindBaseUrl`, which defaults to `""` and has never been
+passed to a shipped build. Every request the phone makes goes to
+`https://vinclarice.com/`. `docs/android-two-backends.md` in the Second Mind
+repository describes the design, not the deployment; a plan to delete
+`/api/v1/capture` on the strength of it would have drained the encrypted offline
+queue into 404s.
+
+Generalise it: **a seam that is not switched on is not a seam.** Three turned up
+in two days — `/healthz` with nothing polling it, detectors built and never
+invoked, and this. Check the build configuration, not the branch.
 
 ## Where work goes — the task core is not frozen, it is not the priority
 
-**The freeze is lifted — Vince's call, August 15, 2026.** What replaces it is a
-priority, which is a different thing and is not a licence.
-
-The freeze had been rewritten twice to survive. It read "until the merger", and
-the merger ended; then "until the crossover ends", on the ground that `Capture`
-and `Idea` were retiring so work on either was thrown away, and Heron deleted
-both. Each rewrite found a narrower justification for a conclusion already held,
-which is the shape of motivated reasoning, and a third rewrite would have been
-cargo. On its own terms there was nothing left: the surviving clause, *no new
-models on the task core, because a model added now is a model migrated twice*,
-named a migration that has happened — and `architecture-trajectory.md` §4 gates
-new models in **either** core anyway, more strictly.
-
-**The reason that does not expire.** The task core is a competent todo
-application; the graph is the thing that makes this worth building. **The
-scoreboard is `product-stories.md` and it is not restated here** — read it, and
-note that its August 12 score stood unchallenged for four days after it stopped
-being true.
-
-What it says as of August 16: capture and reflection work, planning and projects
-do not, and four of the five knowledge-core journeys moved without anybody aiming
-at them. Account deletion and data export shipped the same day, so the commercial
-substrate's next pieces are terms, a privacy policy, and the three open decisions
-in `commercial-blueprint.md` Part 9.
+The freeze was lifted on August 15, 2026. What replaces it is a priority, which
+is a different thing and is not a licence: the task core is a competent todo
+application, and the graph is the thing that makes this worth building. **The
+scoreboard is `product-stories.md` and it is not restated here.**
 
 **So, concretely.** Production defects, security and data-loss fixes need no
 argument, in either core. Task-core *feature* work needs a reason beyond *while
 I'm here* — and when you notice something there mid-task, **surface it and ask
 rather than either fixing it silently or refusing.** That is the one thing the
-freeze was actually buying, and it is worth keeping on its own: everything is
-one tree now, so the accidental edit is available in a way it was not when there
-were two repositories, and nothing structural prevents it.
+freeze was actually buying: everything is one tree now, so the accidental edit is
+available in a way it was not when there were two repositories.
+
+**New models, in either core, are governed by `architecture-trajectory.md` §4**
+and not by anything here. Its test is the strict one — *a concept earns its own
+model when it has a different life cycle, not when it has a different name*.
+`Item` is not restricted: it is the destination for every accepted commitment,
+and it gained `owner` on August 14 precisely so a thought from the knowledge core
+could become a task without a filing question.
 
 **There is no open production defect list.** All ten from the August 12 audit
 closed on August 15; what they were and what fixed them is in
 `design/roadmap-history.md`. When there is a list again it lives in
-`design/commercial-blueprint.md` Part 1 and **is not copied here.**
+`design/commercial-blueprint.md` Part 1 and **is not copied here.** The
+commercial substrate's next pieces are terms, a privacy policy, and the three
+open decisions in that file's Part 9.
 
-This file carried a second copy of that list for four days. It twice described
-finished work as open — the two Android queue defects, and the two Tailwind
-styles — and each stale line cost a session of re-investigation. That is the
-whole argument for one fact having one home, made at this project's own expense.
+**The rule that protected the merger has expired, recorded here so it is not
+reapplied**: *nothing here grows to serve Second Mind — no new endpoint, no
+shared table, no export hook.* One project now, one transaction, and
+`confirm_actionable` writing a node, a facet and a task together is the merger's
+payoff rather than a violation of it.
 
 **`ActivityEvent` is append-only by database trigger, and there is exactly one
 hole in it.** `mind/migrations/0015_erasure_exemption` permits `DELETE` when a
@@ -140,42 +122,6 @@ deletes"; `mind/tests/test_erasure.py` fails if you do, on purpose.
 **SSL expiry alerting is refused, not missing.** UptimeRobot paywalls it, certbot
 renews automatically and the playbook exercises it. Recorded here rather than in
 a defect list so nobody re-investigates and reaches the same paywall.
-
-**New models, in either core, are governed by `architecture-trajectory.md` §4**
-and not by anything here. Its test is the strict one — *a concept earns its own
-model when it has a different life cycle, not when it has a different name* —
-and it applies to the knowledge core too. This file used to carry a separate
-task-core prohibition on the grounds that a model added then would be migrated
-twice; that migration has happened, and one gate is better than two that can
-disagree.
-
-`Item` is no longer on that list. It is the destination for every accepted
-commitment, and it gained `owner` on August 14 precisely so a thought from the
-knowledge core could become a task without a filing question. Work on it is
-work on the thing that survives.
-
-**The rule that protected the merger has expired, and is recorded here so it is
-not reapplied.** It read: *nothing here grows to serve Second Mind — no new
-endpoint, no shared table, no export hook; when Second Mind wants this data it
-reads the existing API or a dump, once, at merge time*. That was right while
-there were two projects. There is one now, one database and one transaction, and
-`confirm_actionable` writing a node, a facet and a task together is exactly the
-"bridge" the rule forbade — which is the merger's whole payoff rather than a
-violation of it.
-
-**`android/` is a client of one backend, and this paragraph said otherwise until
-August 15.** It read: *capture goes to the knowledge core, Today and Agenda to
-the task core*. The code to do that exists — `Backends.isSplit`, a second token
-slot, a second Connect screen — but it switches on `-PsecondMindBaseUrl`, which
-defaults to `""` and has never been passed to a shipped build. Every request the
-phone makes goes to `https://vinclarice.com/`. Heron step 4 planned to delete
-`/api/v1/capture` on the strength of that sentence, which would have drained the
-encrypted offline queue into 404s. `docs/android-two-backends.md` in the Second
-Mind repository describes the design, not the deployment.
-
-Generalise it: **a seam that is not switched on is not a seam.** Three of these
-turned up in two days — `/healthz` with nothing polling it, detectors built and
-never invoked, and this. Check the build configuration, not the branch.
 
 ## Environment
 
@@ -197,16 +143,16 @@ stays on `pytest`, because converting them would be a large mechanical rewrite
 of the thing in that app most worth leaving alone. Running one and reporting
 "tests pass" covers about half the application.
 
-**Tests run on Postgres now, not SQLite.** `Item.Meta`'s
-`unique_active_item` is `nulls_distinct=False`, "Postgres 15+ only" per its
-own comment — SQLite silently omitted that constraint, so a local run
-passed while proving less than it appeared to
-(`design/architecture-trajectory.md` §3). `clarice/settings.py`'s `DEBUG`
-branch now defaults `DJANGO_DATABASE_URL` to the `docker-compose.yml`
-database (`localhost:5433`, chosen to avoid clashing with another
-project's Postgres on `5432`) when the env var isn't set. Nothing to
-configure beyond starting the container; a stale `db.sqlite3` from before
-this change is harmless and can be deleted.
+**Tests run on Postgres now, not SQLite.** `mind.Mention.mention_unique` is
+`nulls_distinct=False`, "Postgres 15+ only" per its own comment, and SQLite omits
+that class of constraint in silence — so a local run would pass while proving
+less than it appeared to (`design/architecture-trajectory.md` §3). The `mind`
+migrations also `CreateExtension("vector")`, which SQLite cannot do at all.
+`clarice/settings.py`'s `DEBUG` branch defaults `DJANGO_DATABASE_URL` to the
+`docker-compose.yml` database (`localhost:5433`, chosen to avoid clashing with
+another project's Postgres on `5432`) when the env var isn't set. Nothing to
+configure beyond starting the container; a stale `db.sqlite3` from before this
+change is harmless and can be deleted.
 
 The browser smoke suite is deliberately not in that list — it needs a built
 bundle and a browser binary, which an ordinary edit-and-test loop should not
@@ -223,20 +169,15 @@ pnpm --dir frontend build                                   # it loads the real 
 `src/lists/static/frontend/`, so without a rebuild they will happily pass
 against stale JavaScript. `HEADED=1` runs them in a visible browser.
 
-Those cover the web application; `android/` has its own check below, and CI
-runs all of them across five jobs — `django`, `mind`, `browser`, `frontend`,
-`android`. **Keep the Django app list matched to `.github/workflows/ci.yml`.**
-That list once omitted `capture`, so following the README ran every suite except
-the one covering the capture API, and the `mind` suite was absent from CI
-entirely for the first day of the merger while `requirements-dev.txt` claimed
-otherwise. `capture` has since been deleted outright and came off both lists
-together — which is the easy direction; the failure mode is an app added to one
-and not the other.
+CI runs all of the above across five jobs — `django`, `mind`, `browser`,
+`frontend`, `android`. **Keep the Django app list above matched to
+`.github/workflows/ci.yml`.** It has been out of step twice, and both times the
+effect was a suite nobody ran while the docs said otherwise. The failure mode is
+an app added to one list and not the other.
 
-**CI's Postgres is `pgvector/pgvector:pg17`, in every job that has one.** The
-`mind` migrations run `CreateExtension("vector")`, and Django builds the test
-database from *every* app's migrations whichever labels are under test — so a
-stock image, or SQLite, fails in `setup_databases` before a single test runs,
+**CI's Postgres is `pgvector/pgvector:pg17`, in every job that has one.** Django
+builds the test database from *every* app's migrations whichever labels are under
+test, so a stock image fails in `setup_databases` before a single test runs,
 including on jobs that never touch the knowledge core.
 
 Never `npx tsc`; the build's `tsc --noEmit` is the type check.
@@ -303,11 +244,10 @@ his.** Three tags, each meaning a different thing:
 - The bird codename — a permanent annotated release tag, applied when a
   release is verified in production, describing what shipped and how.
 
-This drifted badly through August: `LIVE` sat five days and thirty commits
-behind production, and two deploys went untagged. It drifted because
-tagging was written down in `roadmap.md` as a convention and nowhere as a
-step. So: when he reports a deploy done, verify what is live, then tag it
-in the same turn.
+Tagging drifted badly through August — `LIVE` sat five days and thirty commits
+behind production, two deploys went untagged — because it was written down in
+`roadmap.md` as a convention and nowhere as a step. It is a step: when he reports
+a deploy done, verify what is live, then tag it in the same turn.
 
 Note that the playbook builds the image **from the working tree**
 (`delegate_to: 127.0.0.1`), not from a git ref — so what is deployed is
@@ -335,13 +275,11 @@ application. Prefer `present` and make upgrades deliberate.
 **A "Build container image locally" failure with a DNS timeout is WSL's
 network stack, not the deploy.** That step's `docker build` failed against
 `auth.docker.io` with `dial tcp: lookup auth.docker.io on
-10.255.255.254:53: ... i/o timeout` on 2026-08-10 — nothing to do with the
-commit being deployed or the playbook itself. `10.255.255.254` is WSL2's
-internal DNS relay (`/etc/resolv.conf`'s `nameserver` line), and it had
-gone unreachable: `ping 8.8.8.8` (a raw IP) worked fine while `ping
-auth.docker.io` and `getent hosts auth.docker.io` both timed out,
-confirming resolution specifically, not general connectivity, was broken.
-Fixed from a **Windows PowerShell prompt, not WSL**:
+10.255.255.254:53: ... i/o timeout` — `10.255.255.254` is WSL2's internal DNS
+relay (`/etc/resolv.conf`'s `nameserver` line) and it had gone unreachable:
+`ping 8.8.8.8` worked while `getent hosts auth.docker.io` timed out, so
+resolution specifically was broken, not connectivity. Fixed from a **Windows
+PowerShell prompt, not WSL**:
 
 ```powershell
 wsl --shutdown

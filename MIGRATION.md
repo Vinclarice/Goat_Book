@@ -1,16 +1,17 @@
 # Moving Clarice's database to DigitalOcean Managed PostgreSQL
 
-This covers the one-time cutover from the SQLite file on the production
-droplet to a DigitalOcean Managed PostgreSQL cluster. Staging keeps SQLite
-for now -- this is production only.
+**This cutover has been performed.** Production runs `Clarice_todo` on the
+managed cluster `db-pgsql-nyc1-16061`. The steps below are kept as the record of
+how it was done and as the procedure if it is ever done again; the live parts of
+this file are the **restore drill** and the **notes** at the end.
 
-Code side is already done: `settings.py` reads `DJANGO_DATABASE_URL` in
-production (via `dj-database-url`), `requirements.txt` has `psycopg`, and
-`infra/deploy-playbook.yaml` wires that env var from `~/.db-connection-url`
-on the server instead of bind-mounting a SQLite file. What's left is
-provisioning the cluster and moving the existing data. Do this at a quiet
-time -- there's a few minutes of downtime, and a small window where writes
-made after the data dump wouldn't carry over.
+It covered the one-time move from the SQLite file on the production droplet to a
+DigitalOcean Managed PostgreSQL cluster. `settings.py` reads
+`DJANGO_DATABASE_URL` in production (via `dj-database-url`), `requirements.txt`
+has `psycopg`, and `infra/deploy-playbook.yaml` wires that env var from
+`~/.db-connection-url` on the server instead of bind-mounting a SQLite file. Do
+it at a quiet time -- there's a few minutes of downtime, and a small window where
+writes made after the data dump wouldn't carry over.
 
 ## 1. Provision the cluster (run locally, not on the server)
 
@@ -86,29 +87,20 @@ docker exec clarice ./manage.py loaddata /tmp/clarice-data.json
 
 ## 6. Verify
 
-- Log into `/admin/` and confirm lists, tasks, and user accounts look
-  right (spot-check counts against what you remember, or diff against
-  `clarice-data.json`).
-- Log in as a normal user and confirm the dashboard/agenda renders.
-- Tail logs for errors: `docker logs -f clarice`.
+Log into `/admin/` and check lists, tasks and accounts against
+`clarice-data.json`; log in as a normal user and confirm the dashboard renders;
+tail `docker logs -f clarice` for errors.
 
 ## 7. Clean up
 
-Once you're confident the cutover worked (give it a day or two of normal
-use):
-
-```
-rm ~/db.sqlite3 ~/clarice-data.json   # on the server
-```
-
-Keep the `scp`'d backup copy of `clarice-data.json` somewhere safe for a
-while longer, just in case.
+After a day or two of normal use, `rm ~/db.sqlite3 ~/clarice-data.json` on the
+server. Keep the `scp`'d copy of `clarice-data.json` somewhere safe for longer.
 
 ## Restore drill
 
-Managed Postgres was chosen partly so backups would be someone else's
-problem. That is only true once a restore has actually been performed, so
-this is the procedure, and the record of it having been run.
+Managed Postgres was chosen partly so backups would be someone else's problem,
+which is only true once a restore has actually been performed. This is the
+procedure, and the record of it having been run.
 
 **Backups are cluster-wide, not per-database.** Recovering Clarice means
 restoring the *whole* cluster to a new one and taking `Clarice_todo` out of
@@ -152,6 +144,15 @@ matched the live cluster exactly — `lists_item` 24, `lists_list` 17,
 from the 2026-07-31 06:56 UTC backup. Provisioning the clone took about
 seven minutes end to end.
 
+**That pass is narrower than it reads, and the schema has moved under it.** Step
+4 compares row counts per table and `django_migrations` — nothing else. Since
+August 1 the database has gained the `vector` extension, `ActivityEvent`'s
+append-only triggers, and the knowledge core's tables; the migration count is 74,
+not 53. A restore that came back without the extension or without the triggers
+would pass this drill exactly as written and then fail on the first write. Before
+calling the next run a pass, add explicit checks for extensions (`\dx`) and
+triggers (`information_schema.triggers`) to step 4.
+
 Three things worth knowing before the next one:
 
 - **The restore inherits the source cluster's trusted sources.** The clone
@@ -180,31 +181,32 @@ the server is untouched. Revert the code changes (`git checkout` the
 previous commit), rebuild, and redeploy with the old playbook -- your data
 is still there.
 
-## Notes from design/subtasks-plan.md
+## Notes
 
-This migration was already scoped out in `design/subtasks-plan.md` (Step 2)
-before this change -- worth reading in full, but the load-bearing points:
+Scoped out in `design/subtasks-plan.md` (Step 2), which is now a stub -- so these
+are the load-bearing points, kept here rather than cited:
 
 - The migration history is all `RunPython`, no SQLite-specific `RunSQL` or
   PRAGMAs, so it replays cleanly on an empty Postgres database.
-- `reset_test_database` (used by the functional test suite) is guarded by
-  both `DJANGO_ENVIRONMENT=test` and `ALLOW_DATABASE_FLUSH=1` -- production
-  always sets `DJANGO_ENVIRONMENT=production`, so this stays refused
-  regardless of database engine. Confirmed unchanged by this migration.
-- **This cluster used the default `doadmin` credential** until July 31,
-  2026, when `infra/restrict-database-user.sh` cut production over to a
-  restricted per-database credential (roadmap item A1 in
-  `design/roadmap.md`); see "One cluster, several projects" in
-  `design/subtasks-plan.md` for the reasoning. **Ground truth, since it
-  drifted from what this file's examples assume**: the actual cluster is
-  named `db-pgsql-nyc1-16061` (not `clarice-db`), the database is
-  `Clarice_todo` (mixed case, not `clarice`), and the engine is Postgres
-  18 (not 17). The cutover also surfaced that `GRANT ALL PRIVILEGES` does
-  not transfer table ownership -- existing tables stayed owned by
-  `doadmin`, which broke the next `ALTER TABLE`-style migration until
+- **`ALLOW_DATABASE_FLUSH` is not a guard, and this file claimed it was.** It
+  gated a `reset_test_database` command that no longer exists. The variable is
+  still set to `0` in the `Dockerfile` and passed through by
+  `infra/deploy-playbook.yaml`, but **nothing reads it** -- three references set
+  it, zero consume it (checked August 16, 2026). What actually protects
+  production is that there is no code path that flushes a database at all; the
+  functional suite uses Django's ordinary test-database teardown. Either delete
+  the variable or give it a reader, but do not cite it as protection.
+- **Ground truth, since the examples above drifted from it**: the cluster is
+  `db-pgsql-nyc1-16061` (not `clarice-db`), the database is `Clarice_todo`
+  (mixed case, not `clarice`), and the engine is Postgres 18 (not 17).
+- **The cluster used the default `doadmin` credential** until July 31, 2026,
+  when `infra/restrict-database-user.sh` cut production over to a restricted
+  per-database credential (roadmap item A1). That cutover surfaced that `GRANT
+  ALL PRIVILEGES` does not transfer table ownership -- existing tables stayed
+  owned by `doadmin`, which broke the next `ALTER TABLE`-style migration until
   `REASSIGN OWNED BY doadmin TO clarice_app` ran. That statement is now a
-  permanent step in the script, so a second project sharing this cluster
-  won't hit the same thing.
+  permanent step in the script, so a second project sharing this cluster won't
+  hit the same thing.
 - `CONN_MAX_AGE=600` is set in `settings.py` because connection reuse
   matters far more over a network round trip than it did with a local
   SQLite file.

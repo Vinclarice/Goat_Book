@@ -69,9 +69,15 @@ welded.
 
 **There is one capture *endpoint*, as of Heron 4a on August 15, 2026.**
 `/api/v1/capture` is the application's, served by `mind/api_v1.py`, and it
-writes a `Node`. Both the phone and the SPA's Day page post to it. The knowledge
-core keeps a second, entirely unused API at `/mind/api/v1/` with its own
-`mind.ApiToken` table; nothing calls it, and it is retirable.
+writes a `Node`. Both the phone and the SPA's Day page post to it.
+
+**There is one of everything now.** One API at `/api/v1/`, one token table
+(`accounts.PersonalAccessToken`, which has scopes), one login. The knowledge
+core's own `NinjaAPI` at `/mind/api/v1/` and its `mind.ApiToken` were deleted on
+August 15 having never been called by anything — no shipped Android build was
+ever split, and the `/mind/` pages carry no JavaScript at all. A knowledge-core
+endpoint belongs on `/api/v1/` as a router in `mind/api_v1.py`, beside the
+capture one; do not start a second API.
 
 ## Where work goes — the task core is not frozen, it is not the priority
 
@@ -105,13 +111,19 @@ were two repositories, and nothing structural prevents it.
 
 The live production defect list is `design/commercial-blueprint.md` Part 1.
 
-**One remains, as of August 14, 2026, and it is not code:**
+**All ten are closed, as of August 15, 2026.** The last one was never code:
 
-- **External uptime monitoring.** `/healthz` exists and checks the database;
-  nothing polls it. Deliberately not in this repository — a watchdog running on
-  the machine it watches is not a watchdog — so it is an account somebody
-  creates, not a commit. Until it exists, defect 9 is half fixed: the site can
-  now tell you it is healthy, and still nobody is asking.
+- ~~**External uptime monitoring.**~~ **Closed August 15, 2026 — UptimeRobot is
+  polling `/healthz`.** Not a commit and never was: a watchdog running on the
+  machine it watches is not a watchdog, so this was always an account somebody
+  creates. Defect 9 is fully fixed — the site can say it is healthy and
+  something is now asking.
+
+  **SSL expiry alerting is not included, and will not be chased.** UptimeRobot
+  gates it behind a paid plan. Certbot renews automatically and the playbook
+  exercises it, so the residual risk is a silent renewal failure — worth knowing
+  about, not worth a subscription at three users. Recorded so nobody
+  re-investigates and reaches the same paywall.
 
 Closed, and listed only so the next reader does not re-fix them: `/healthz`
 (`fd896c6`), `restart_policy: unless-stopped` (`b2e16b2`),
@@ -178,7 +190,7 @@ activating:
 
 ```powershell
 docker compose up -d db   # once per session; starts local Postgres
-.\.venv\Scripts\python.exe src\manage.py test accounts lists capture clarice daily routines review
+.\.venv\Scripts\python.exe src\manage.py test accounts lists clarice daily routines review
 .\.venv\Scripts\python.exe -m pytest          # the mind app; config in pytest.ini
 pnpm --dir frontend test
 pnpm --dir frontend build
@@ -218,10 +230,13 @@ against stale JavaScript. `HEADED=1` runs them in a visible browser.
 
 Those cover the web application; `android/` has its own check below, and CI
 runs all of them across five jobs — `django`, `mind`, `browser`, `frontend`,
-`android`. Keep the Django app list matched to `.github/workflows/ci.yml` — it
-once omitted `capture`, so following the README ran every suite except the one
-covering the capture API, and the `mind` suite was absent from CI entirely for
-the first day of the merger while `requirements-dev.txt` claimed otherwise.
+`android`. **Keep the Django app list matched to `.github/workflows/ci.yml`.**
+That list once omitted `capture`, so following the README ran every suite except
+the one covering the capture API, and the `mind` suite was absent from CI
+entirely for the first day of the merger while `requirements-dev.txt` claimed
+otherwise. `capture` has since been deleted outright and came off both lists
+together — which is the easy direction; the failure mode is an app added to one
+and not the other.
 
 **CI's Postgres is `pgvector/pgvector:pg17`, in every job that has one.** The
 `mind` migrations run `CreateExtension("vector")`, and Django builds the test

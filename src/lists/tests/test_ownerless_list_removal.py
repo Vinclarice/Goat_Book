@@ -18,11 +18,11 @@ from django.test import TransactionTestCase
 from accounts.models import User
 
 
-# capture is named alongside lists so Idea is present in the historical
-# state -- project_state only carries the apps the target actually reaches,
-# and the SET_NULL case below needs both.
-BEFORE = [("lists", "0027_retire_subtask_fields"), ("capture", "0004_idea_idea_owner_status_idx")]
-AFTER = [("lists", "0029_list_owner_required"), ("capture", "0004_idea_idea_owner_status_idx")]
+# `capture` used to be named alongside `lists` here, so that `Idea` was present
+# in the historical state for the SET_NULL case. That app is deleted and so is
+# the case; only `lists` is reached now.
+BEFORE = [("lists", "0027_retire_subtask_fields")]
+AFTER = [("lists", "0029_list_owner_required")]
 
 
 class OwnerlessListRemovalTest(TransactionTestCase):
@@ -33,10 +33,9 @@ class OwnerlessListRemovalTest(TransactionTestCase):
         return executor.loader.project_state(target).apps
 
     def tearDown(self):
-        # Every app forward, not just the two named in AFTER -- see the note in
-        # lists/tests/test_checklist_step_backfill.py. Leaving `capture` pinned
-        # at 0004 left its tables in a database with no models for them, which
-        # the inter-test flush cannot truncate.
+        # Every app forward, not just the one named in AFTER -- see the note in
+        # lists/tests/test_checklist_step_backfill.py for what leaving another
+        # app behind costs.
         executor = MigrationExecutor(connection)
         executor.loader.build_graph()
         executor.migrate(executor.loader.graph.leaf_nodes())
@@ -72,29 +71,17 @@ class OwnerlessListRemovalTest(TransactionTestCase):
         self.assertTrue(List.objects.filter(pk=kept.pk).exists())
         self.assertTrue(Item.objects.filter(pk=task.pk).exists())
 
-    def test_a_real_user_s_idea_survives_losing_the_task_it_pointed_at(self):
-        """The one way this deletion is visible to somebody who still exists.
-
-        An Idea belongs to a real owner but can point at a promoted task,
-        and that task could have been sitting in an ownerless List. The FK
-        is SET_NULL -- the same protection delete_archived_item relies on --
-        so the Idea survives and reads "Became a task, since deleted."
-        rather than being cascaded away with the orphan.
-        """
-        old_apps = self.migrate(BEFORE)
-        List = old_apps.get_model("lists", "List")
-        Item = old_apps.get_model("lists", "Item")
-        Idea = old_apps.get_model("capture", "Idea")
-
-        alice = User.objects.create_user("alice", "alice@example.com", "a password")
-        orphan = List.objects.create(owner=None, title="Anonymous era")
-        stranded = Item.objects.create(list=orphan, text="Promoted long ago")
-        idea = Idea.objects.create(
-            owner_id=alice.pk, text="An old thought", promoted_task=stranded,
-        )
-
-        new_apps = self.migrate(AFTER)
-        Idea = new_apps.get_model("capture", "Idea")
-
-        survivor = Idea.objects.get(pk=idea.pk)
-        self.assertIsNone(survivor.promoted_task_id)
+    # A third test stood here: an `Idea` pointing at a task inside an ownerless
+    # List survives the deletion, because `Idea.promoted_task` is SET_NULL. It
+    # was the one way this migration was visible to somebody who still existed.
+    #
+    # `Idea` no longer exists -- Heron 4b deleted it and the `capture` app went
+    # with it -- so the test cannot be written at all: it needed the model in a
+    # historical migration state, and there is no longer a historical state that
+    # contains one.
+    #
+    # Removed rather than replaced, and worth being plain about what that costs.
+    # It is not that the risk was re-evaluated; it is that the scenario stopped
+    # existing. `0028` has run everywhere it will ever run, and the object it
+    # protected is deleted. What remains covered below is the part still true:
+    # ownerless Lists and their Items go, real users' Lists and Items stay.

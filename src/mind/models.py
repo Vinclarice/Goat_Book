@@ -16,8 +16,6 @@ in docs/ddl-decisions.md and belong to the service layer, each with its own
 test.
 """
 
-import hashlib
-import secrets
 import uuid
 
 from django.conf import settings
@@ -795,73 +793,20 @@ class SentenceEmbedding(models.Model):
         return f"{self.node_id}#{self.seq}"
 
 
-class ApiToken(models.Model):
-    """A long-lived bearer token, for a client that cannot hold a session cookie.
-
-    Session authentication covers a browser, including a phone browser, but a native
-    client needs a credential it can store and present. This is that.
-
-    **Only a hash is stored.** The token is shown once, at issue, and never again —
-    a leaked database yields no working credentials. SHA-256 rather than a slow KDF
-    is deliberate and not a shortcut: the secret is 256 bits of CSPRNG output, so
-    there is no low-entropy password to brute-force, and a per-request bcrypt would
-    put a deliberate delay on the capture path, which is the one path that must stay
-    cheap.
-
-    `label` exists so a person can tell one device from another when revoking, which
-    is the only moment anybody looks at this table.
-    """
-
-    PREFIX = "sm_"
-
-    owner = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="api_tokens"
-    )
-    label = models.CharField(max_length=64, default="device")
-    token_hash = models.CharField(max_length=64, unique=True, editable=False)
-    # First few characters of the token, kept in clear so a device is identifiable
-    # in a list. Far too short to be useful to anyone who steals it.
-    display_prefix = models.CharField(max_length=12, editable=False)
-    created_at = models.DateTimeField(auto_now_add=True)
-    last_used_at = models.DateTimeField(null=True, blank=True)
-    revoked_at = models.DateTimeField(null=True, blank=True)
-
-    class Meta:
-        indexes = [
-            models.Index(
-                fields=["owner"],
-                condition=Q(revoked_at__isnull=True),
-                name="apitoken_live",
-            ),
-        ]
-
-    def __str__(self) -> str:
-        return f"{self.label} ({self.display_prefix}…)"
-
-    @staticmethod
-    def hash_token(raw: str) -> str:
-        return hashlib.sha256(raw.encode()).hexdigest()
-
-    @classmethod
-    def issue(cls, owner, *, label: str = "device") -> tuple["ApiToken", str]:
-        """Create a token and return it with its one and only plaintext.
-
-        The caller must hand the string to the person immediately; nothing can
-        recover it afterwards, which is the property that makes the stored hash
-        worth having.
-        """
-        raw = f"{cls.PREFIX}{secrets.token_urlsafe(32)}"
-        token = cls.objects.create(
-            owner=owner,
-            label=label[:64] or "device",
-            token_hash=cls.hash_token(raw),
-            display_prefix=raw[:11],
-        )
-        return token, raw
-
-    @property
-    def is_live(self) -> bool:
-        return self.revoked_at is None and self.owner.is_active
+# `ApiToken` stood here: a long-lived bearer token for a native client, with its
+# own `sm_` prefix, its own hash-only storage and its own resolver in
+# `mind/auth.py`. It was built so the Android app could point at a separate
+# Second Mind server by changing one build property.
+#
+# **It never was.** No shipped build set `secondMindBaseUrl`, so the phone always
+# talked to the task core, and these pages carry no JavaScript, so nothing here
+# called it either. Deleted August 15, 2026 with `/mind/api/v1/`, holding zero
+# rows in production — counted before the table was dropped, because afterwards
+# there is nothing left to ask. See `migrations/0014_delete_apitoken`.
+#
+# The application has one token table, `accounts.PersonalAccessToken`, and it
+# has scopes, which this never did. Two token tables over one user table was
+# merger residue rather than a design.
 
 
 class MissContext(models.TextChoices):

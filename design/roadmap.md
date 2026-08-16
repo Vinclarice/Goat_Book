@@ -525,27 +525,34 @@ backlog:
 - **One capture surface.** `/mind/`, writing a `Node`, and that is where the
   knowledge core lives permanently. `/capture/`, `Capture` and `Idea` are gone;
   `/capture/` came free and was deliberately not taken.
-- **One capture endpoint.** `/api/v1/capture`, the application's rather than a
-  core's, served by `mind/api_v1.py`, and what both the phone and the Day page
-  post to. The knowledge core keeps a second, entirely unused API at
-  `/mind/api/v1/` with its own token table — **retirable, and the obvious next
-  tidy-up.**
+- **One of everything.** `/api/v1/capture` is the application's rather than a
+  core's, served by `mind/api_v1.py`, and is what both the phone and the Day
+  page post to. The knowledge core's own API at `/mind/api/v1/` and its
+  `mind.ApiToken` table were deleted the same day, having never been called by
+  anything: one API, one token table with scopes, one login.
 - **41 nodes, 19 visible to the detectors.** The corpus is no longer split
   across two models, which was the binding constraint on the whole knowledge
   core.
 - **The task core's maintenance freeze is lifted** — a priority replaces it, see
   `CLAUDE.md`. The knowledge core and the commercial substrate are where work
   goes.
-- **The `capture` app is still installed**, holding migrations and nothing else,
-  because Django needed it there to run the one that dropped the tables. Now
-  that `0008` is applied in production, removing it is a follow-up somebody can
-  simply do.
+- **The `capture` app is gone**, once `0008` was applied in production and it
+  had nothing left to hold. `django_migrations` keeps eight inert rows for it,
+  deliberately not deleted: Django ignores rows for apps it does not know, and
+  hand-editing production's bookkeeping to tidy something nothing reads is a
+  worse trade than the untidiness.
 
-**Two things outstanding that are not code.** An external uptime monitor to poll
-`/healthz` — the last open item in Part 1, and deliberately not in this
-repository, because a watchdog on the machine it watches is not a watchdog. And
-the commercial blockers, account deletion and data export, which
-`commercial-blueprint.md` calls legal and which nothing has yet touched.
+**`commercial-blueprint.md` Part 1 is closed — all ten, as of August 15, 2026.**
+The last was the external uptime monitor, which is now polling `/healthz`; it
+was never a commit, because a watchdog on the machine it watches is not a
+watchdog. SSL expiry alerting is refused rather than missed — UptimeRobot puts
+it behind a paid plan, certbot renews automatically, and at three users that is
+not worth a subscription.
+
+**What is outstanding is no longer a defect list.** It is the commercial
+substrate: account deletion and data export, which the blueprint calls legal
+blockers and which nothing has yet touched, and the five open decisions in its
+Part 9. That is where the lifted maintenance rule points work.
 
 **The deployment tags were brought back into line on August 15.** They had
 drifted badly: `LIVE` sat five days and thirty commits behind production, and

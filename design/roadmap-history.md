@@ -169,6 +169,47 @@ knowledge core's other pages live. They stay together, under a different root
 from the task core's `/app/`: two cores, two homes, one login, one nav reaching
 both.
 
+### The leftovers, cleared the same day
+
+Two things Heron made retirable rather than retiring, both deleted immediately
+after the release was tagged.
+
+**`/mind/api/v1/` and `mind.ApiToken`.** The knowledge core arrived with its own
+`NinjaAPI` — login, me, tokens, captures, search, review, summary — and its own
+bearer token table with an `sm_` prefix and its own resolver. It existed so the
+Android app could point at a separate Second Mind server by setting one build
+property. **No shipped build ever set it, and the `/mind/` pages carry no
+JavaScript at all**, so nothing had ever called it from either direction. The
+application now has one API, one token table — `PersonalAccessToken`, which has
+scopes, which this never did — and one login.
+
+Dropping the table took the same pre-flight 4b took, for the same reason: a row
+would have meant a device this silently disconnects, and after the migration
+there is nothing left to ask. Production returned **0**.
+
+**The `capture` app.** 4b left it installed holding nothing but migrations,
+because Django needs an app installed for its migrations to run and `0008` is
+what dropped the tables. With that applied in production the shell went too. No
+other app's migrations depended on it, which was checked first because it would
+have been the blocker. `django_migrations` keeps eight inert rows; Django
+ignores rows for apps it does not know, and editing production's bookkeeping to
+tidy something nothing reads is the worse trade.
+
+**One test was rewritten rather than deleted, and it is the point of the whole
+exercise.** `test_capture_time_zones.py` asserted that a token capture reads
+"tomorrow" in the *owner's* zone — the twin of `commercial-blueprint.md` defect
+2, found by asking whether the task core's bug had a counterpart here. It ran
+through `/mind/api/v1/capture`. Deleting that endpoint would have removed the
+only coverage of a behaviour that is still live, on the grounds that an unused
+route went away; it now runs through `/api/v1/capture` on a
+`PersonalAccessToken`, where `_resolve_scoped_token` makes the same
+`activate_for` call. **The seam moved; the defect did not.**
+
+One test was genuinely lost: `test_ownerless_list_removal`'s third case, that an
+`Idea` survives losing the task it pointed at. It needed `Idea` in a historical
+migration state, and there is no longer a historical state containing one. Not a
+re-evaluated risk — a scenario that stopped existing.
+
 ### And the rule Heron finally killed
 
 The task core had been in maintenance since the merger was planned. **The freeze

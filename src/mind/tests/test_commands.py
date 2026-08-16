@@ -197,9 +197,15 @@ def test_force_is_available_for_when_that_is_actually_meant(owner, tmp_path, mak
 def test_credentials_are_left_behind(owner, tmp_path):
     """A token authenticates a device against a particular server, and the
     server is what this step changes. Carrying the hash across would leave a
-    credential that looks valid and addresses somewhere that no longer serves."""
-    from mind.models import ApiToken
+    credential that looks valid and addresses somewhere that no longer serves.
 
+    **`ApiToken` no longer exists** — the knowledge core's own API went with the
+    crossover, and this endpoint's job is now done by the application's single
+    `/api/v1/capture` on a `PersonalAccessToken`. So there is nowhere for these
+    records to land even by accident, and what this asserts is the part still
+    worth asserting: a dump that contains them still imports rather than
+    tripping over a model that is not there.
+    """
     dump = _dump(
         tmp_path,
         [
@@ -220,10 +226,13 @@ def test_credentials_are_left_behind(owner, tmp_path):
         ],
     )
 
-    _run("import_second_mind", dump, owner=owner.username)
+    out = _run("import_second_mind", dump, owner=owner.username)
 
     assert Node.objects.count() == 1
-    assert ApiToken.objects.count() == 0
+    # Skipped by name rather than by model, which is what makes it survive the
+    # model's deletion -- and said out loud, so a dump full of credentials does
+    # not silently look like a dump full of nothing.
+    assert "skipped (credentials do not move)" in out
 
 
 def test_a_dry_run_writes_nothing(owner, tmp_path):

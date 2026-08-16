@@ -52,7 +52,7 @@ jobs:
       # would never appear. First position is what makes it unmissable.
       - name: Per-user isolation tests
         run: python src/manage.py test lists.tests.test_isolation
-      - run: python src/manage.py test accounts lists capture clarice daily routines review
+      - run: python src/manage.py test accounts lists clarice daily routines review
 
   # The knowledge core, and its own runner. `requirements-dev.txt` has claimed
   # "CI runs both" since the merger and it was not true until now -- 571 tests

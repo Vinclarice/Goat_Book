@@ -386,16 +386,18 @@ class TheTemplateIsTheOnlySourceTest(TestCase):
         self.assertEqual(spawned.notes, "Moved and rescheduled")
 
 
-# capture is named alongside lists for the reason test_ownerless_list_removal
-# discovered the hard way: a target that mentions only one app lets the next
-# migration test ask for a plan that runs lists backwards and capture
-# forwards, which Django refuses outright. Naming both keeps every plan
-# single-direction regardless of the order these classes run in.
-BEFORE = [("lists", "0030_project"), ("capture", "0004_idea_idea_owner_status_idx")]
-AFTER = [
-    ("lists", "0031_commitment_template"),
-    ("capture", "0004_idea_idea_owner_status_idx"),
-]
+# `capture` used to be named alongside `lists` here, for the reason
+# test_ownerless_list_removal discovered the hard way: a target mentioning only
+# one app let the next migration test ask for a plan that ran lists backwards
+# and capture forwards, which Django refuses outright.
+#
+# The pin went with the app. The hazard did not, and pinning was never the right
+# answer to it -- it named one app that happened to collide, and would have said
+# nothing about the next. What actually fixes it is every one of these classes
+# rolling the *whole* graph forward in tearDown, so no test ever starts from a
+# state a previous one left behind. See test_checklist_step_backfill.py.
+BEFORE = [("lists", "0030_project")]
+AFTER = [("lists", "0031_commitment_template")]
 
 
 class CommitmentTemplateBackfillTest(TransactionTestCase):

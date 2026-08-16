@@ -156,7 +156,18 @@ INSTALLED_APPS = [
     "axes",
     "accounts",
     "lists",
-    "capture",
+    # `capture` stood here until August 15, 2026. It held the Inbox -- `Capture`
+    # and `Idea` -- which Heron 4b deleted; the app itself stayed one more
+    # deploy, holding nothing but migrations, because Django needs an app
+    # installed for its migrations to run and `0008_delete_idea_capture` is what
+    # actually dropped the tables. That migration is applied in production, so
+    # the app is gone too.
+    #
+    # `django_migrations` keeps eight rows for it. They are inert -- Django
+    # ignores rows for apps it does not know -- and deleting them by hand would
+    # be a write against production's bookkeeping to tidy something nothing
+    # reads.
+    #
     # The knowledge core, moved in from its own repository on August 14, 2026.
     # Second Mind's design still governs it -- see that project's docs/ -- and
     # the code lives here because this is the repository with the deployment,

@@ -525,21 +525,22 @@ backlog:
 - **One capture surface.** `/mind/`, writing a `Node`, and that is where the
   knowledge core lives permanently. `/capture/`, `Capture` and `Idea` are gone;
   `/capture/` came free and was deliberately not taken.
-- **One capture endpoint.** `/api/v1/capture`, the application's rather than a
-  core's, served by `mind/api_v1.py`, and what both the phone and the Day page
-  post to. The knowledge core keeps a second, entirely unused API at
-  `/mind/api/v1/` with its own token table — **retirable, and the obvious next
-  tidy-up.**
+- **One of everything.** `/api/v1/capture` is the application's rather than a
+  core's, served by `mind/api_v1.py`, and is what both the phone and the Day
+  page post to. The knowledge core's own API at `/mind/api/v1/` and its
+  `mind.ApiToken` table were deleted the same day, having never been called by
+  anything: one API, one token table with scopes, one login.
 - **41 nodes, 19 visible to the detectors.** The corpus is no longer split
   across two models, which was the binding constraint on the whole knowledge
   core.
 - **The task core's maintenance freeze is lifted** — a priority replaces it, see
   `CLAUDE.md`. The knowledge core and the commercial substrate are where work
   goes.
-- **The `capture` app is still installed**, holding migrations and nothing else,
-  because Django needed it there to run the one that dropped the tables. Now
-  that `0008` is applied in production, removing it is a follow-up somebody can
-  simply do.
+- **The `capture` app is gone**, once `0008` was applied in production and it
+  had nothing left to hold. `django_migrations` keeps eight inert rows for it,
+  deliberately not deleted: Django ignores rows for apps it does not know, and
+  hand-editing production's bookkeeping to tidy something nothing reads is a
+  worse trade than the untidiness.
 
 **Two things outstanding that are not code.** An external uptime monitor to poll
 `/healthz` — the last open item in Part 1, and deliberately not in this

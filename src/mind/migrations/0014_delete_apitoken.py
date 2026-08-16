@@ -5,14 +5,13 @@ own resolver, built so the Android app could point at a separate Second Mind
 server by setting one build property. No shipped build ever set it, and these
 pages carry no JavaScript, so nothing ever called the API it authenticated.
 
-**Check before dropping, not after, and do not deploy this without it:**
+**Checked before dropping, not after: `ApiToken.objects.count()` on production
+returned 0 on August 15, 2026**, before this was written to run there.
 
-    ApiToken.objects.count()
-
-Zero is the expected answer and the whole of the safety here. The table stores
-only hashes, so there is nothing to migrate anywhere and nothing a backup would
-help with; a non-zero count means a device somewhere that this silently
-disconnects, and means stopping to find out which.
+That check was the whole of the safety. The table stores only hashes, so there
+is nothing to migrate anywhere and nothing a backup would have helped with; a
+non-zero count would have meant a device somewhere that this silently
+disconnects, and would have meant stopping to find out which.
 
 Reversing recreates an empty table, which is honest: the secrets were never
 recoverable, so no reverse could restore a working credential even in principle.

@@ -184,12 +184,24 @@ not travel; decrypt returns null and the queue reads as empty. Unsent thoughts
 vanish silently on phone upgrade — by the file's own stated reasoning, applied to
 the token and not the queue.
 
-**9. ~~Nothing would tell you the site is down at 3am.~~ Half fixed.** `restart_policy: unless-stopped` shipped in `b2e16b2` and `/healthz` in `fd896c6`; **nothing polls it yet**, which is the half that still matters. Sentry reports errors
-from a *running* application. A dead container, dead host, expired certificate or
-hung gunicorn produces zero events, which is indistinguishable from a quiet
-night. There is no `/healthz` for anything to poll, and `deploy-playbook.yaml`
-sets **no `restart_policy`**, so Docker's default `no` means a reboot or OOM kill
-takes the site down until you personally intervene.
+**9. ~~Nothing would tell you the site is down at 3am.~~ Fixed August 15, 2026 —
+and this entry stayed at "half fixed" for most of a day after it was true.**
+`restart_policy: unless-stopped` shipped in `b2e16b2`, `/healthz` in `fd896c6`,
+and **UptimeRobot now polls it** — the half that actually mattered, since a
+health endpoint nobody asks is the same as no health endpoint. The reasoning
+still worth keeping: Sentry reports errors from a *running* application, so a
+dead container, dead host, expired certificate or hung gunicorn produces zero
+events, which is indistinguishable from a quiet night.
+
+The monitor is deliberately not in this repository — a watchdog running on the
+machine it watches is not a watchdog — which is why it closed as an account
+rather than a commit, and why nothing here can prove it exists.
+
+**SSL expiry alerting is refused, not missed.** UptimeRobot gates it behind a
+paid plan. Certbot renews automatically and the playbook exercises it, so the
+residual risk is a silent renewal failure; at three users that does not justify
+a subscription. Recorded so the next reader does not re-investigate and reach
+the same paywall.
 
 **10. ~~Sentry can ship private note text.~~ Fixed August 14, 2026** (`bbfc38d`). `include_local_variables` defaults to
 `True` and is independent of `send_default_pii=False`. Any 500 inside a capture

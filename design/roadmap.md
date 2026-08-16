@@ -542,11 +542,17 @@ backlog:
   hand-editing production's bookkeeping to tidy something nothing reads is a
   worse trade than the untidiness.
 
-**Two things outstanding that are not code.** An external uptime monitor to poll
-`/healthz` — the last open item in Part 1, and deliberately not in this
-repository, because a watchdog on the machine it watches is not a watchdog. And
-the commercial blockers, account deletion and data export, which
-`commercial-blueprint.md` calls legal and which nothing has yet touched.
+**`commercial-blueprint.md` Part 1 is closed — all ten, as of August 15, 2026.**
+The last was the external uptime monitor, which is now polling `/healthz`; it
+was never a commit, because a watchdog on the machine it watches is not a
+watchdog. SSL expiry alerting is refused rather than missed — UptimeRobot puts
+it behind a paid plan, certbot renews automatically, and at three users that is
+not worth a subscription.
+
+**What is outstanding is no longer a defect list.** It is the commercial
+substrate: account deletion and data export, which the blueprint calls legal
+blockers and which nothing has yet touched, and the five open decisions in its
+Part 9. That is where the lifted maintenance rule points work.
 
 **The deployment tags were brought back into line on August 15.** They had
 drifted badly: `LIVE` sat five days and thirty commits behind production, and

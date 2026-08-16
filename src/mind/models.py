@@ -800,9 +800,9 @@ class SentenceEmbedding(models.Model):
 #
 # **It never was.** No shipped build set `secondMindBaseUrl`, so the phone always
 # talked to the task core, and these pages carry no JavaScript, so nothing here
-# called it either. Deleted August 15, 2026 with `/mind/api/v1/` — see
-# `migrations/0014_delete_apitoken`, which says what to check on production
-# before that migration runs.
+# called it either. Deleted August 15, 2026 with `/mind/api/v1/`, holding zero
+# rows in production — counted before the table was dropped, because afterwards
+# there is nothing left to ask. See `migrations/0014_delete_apitoken`.
 #
 # The application has one token table, `accounts.PersonalAccessToken`, and it
 # has scopes, which this never did. Two token tables over one user table was

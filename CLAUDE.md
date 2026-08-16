@@ -111,13 +111,19 @@ were two repositories, and nothing structural prevents it.
 
 The live production defect list is `design/commercial-blueprint.md` Part 1.
 
-**One remains, as of August 14, 2026, and it is not code:**
+**All ten are closed, as of August 15, 2026.** The last one was never code:
 
-- **External uptime monitoring.** `/healthz` exists and checks the database;
-  nothing polls it. Deliberately not in this repository — a watchdog running on
-  the machine it watches is not a watchdog — so it is an account somebody
-  creates, not a commit. Until it exists, defect 9 is half fixed: the site can
-  now tell you it is healthy, and still nobody is asking.
+- ~~**External uptime monitoring.**~~ **Closed August 15, 2026 — UptimeRobot is
+  polling `/healthz`.** Not a commit and never was: a watchdog running on the
+  machine it watches is not a watchdog, so this was always an account somebody
+  creates. Defect 9 is fully fixed — the site can say it is healthy and
+  something is now asking.
+
+  **SSL expiry alerting is not included, and will not be chased.** UptimeRobot
+  gates it behind a paid plan. Certbot renews automatically and the playbook
+  exercises it, so the residual risk is a silent renewal failure — worth knowing
+  about, not worth a subscription at three users. Recorded so nobody
+  re-investigates and reaches the same paywall.
 
 Closed, and listed only so the next reader does not re-fix them: `/healthz`
 (`fd896c6`), `restart_policy: unless-stopped` (`b2e16b2`),

@@ -183,9 +183,9 @@ JavaScript at all**, so nothing had ever called it from either direction. The
 application now has one API, one token table — `PersonalAccessToken`, which has
 scopes, which this never did — and one login.
 
-Dropping the table needs the same pre-flight 4b needed, for the same reason: a
-row would mean a device this silently disconnects, and after the migration there
-is nothing left to ask. `migrations/0014_delete_apitoken` carries the check.
+Dropping the table took the same pre-flight 4b took, for the same reason: a row
+would have meant a device this silently disconnects, and after the migration
+there is nothing left to ask. Production returned **0**.
 
 **The `capture` app.** 4b left it installed holding nothing but migrations,
 because Django needs an app installed for its migrations to run and `0008` is

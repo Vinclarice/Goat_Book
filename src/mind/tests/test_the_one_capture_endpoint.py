@@ -104,6 +104,28 @@ def test_the_source_says_it_came_from_a_phone(client, token):
     assert Node.objects.get().source == NodeSource.MOBILE
 
 
+def test_the_source_says_web_when_it_came_from_the_browser(client, alice):
+    """One endpoint, two clients, and the node should say which.
+
+    This endpoint hard-coded `MOBILE` for every caller, so a thought typed into
+    the Day page's box was labelled `mobile` — visible in the account export,
+    which is where it was noticed. `source` is not decoration: it is provenance
+    on a durable record, and a record that says the wrong thing about where it
+    came from is the kind of quiet wrongness `principles.md` refuses.
+    """
+    client.force_login(alice)
+    csrf = client.get("/accounts/password/change/").cookies["csrftoken"].value
+
+    client.post(
+        URL,
+        data=json.dumps({"text": "From the Day page"}),
+        content_type="application/json",
+        HTTP_X_CSRFTOKEN=csrf,
+    )
+
+    assert Node.objects.get().source == NodeSource.WEB
+
+
 def test_the_thought_is_visible_on_the_capture_page(client, alice, token):
     """The read half. A capture that lands somewhere nobody looks is not a
     capture, and this endpoint's whole justification is that `/mind/` is now

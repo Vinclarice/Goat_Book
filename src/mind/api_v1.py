@@ -102,6 +102,17 @@ def new_capture(
     except ValueError:
         raise HttpError(400, "Idempotency-Key must be a UUID")
 
+    # Which client this was, not which client this endpoint was built for. It
+    # hard-coded MOBILE for every caller until August 16, 2026, so a thought
+    # typed into the Day page's quick-capture box was recorded as having come
+    # from a phone -- noticed by reading an account export, where the label is
+    # shown to the person it is wrong about.
+    #
+    # A bearer token means a native client; a session means a browser. There is
+    # no third case here, because those are the only two auth classes this
+    # operation accepts.
+    from_a_phone = getattr(request, "token_authenticated", False)
+
     try:
         node, created = services.capture_idempotent(
             request.user,
@@ -109,7 +120,7 @@ def new_capture(
             # Now only when nobody said. Guessing a time would be worse than
             # having none, because a temporal detector cannot tell the two apart.
             captured_at=payload.captured_at or timezone.now(),
-            source=NodeSource.MOBILE,
+            source=NodeSource.MOBILE if from_a_phone else NodeSource.WEB,
             actor=request.user.get_username(),
             public_id=public_id,
             tags=payload.tags,

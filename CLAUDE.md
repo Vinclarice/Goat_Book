@@ -22,23 +22,28 @@ whether a plan is current.
 
 ## Closing a piece of work
 
-Thirty design documents drifted out of agreement by August 2026: four plans
-still called themselves forward-looking months after shipping, two files gave
-the same release letter to different work, and 257 lines of shipped narrative
-piled up under a heading instructing the reader to move it elsewhere. **A prose
-rule did not prevent this — it had been in `roadmap.md` since August 1 and was
-simply not followed.** So it is a checklist, here, where it gets read:
+**Two steps.** It was four until August 16, 2026, and the two that went were the
+two that existed only because a shipped plan kept its full text:
 
-1. **Update the plan document's status line** — shipped, when, and what was
-   verified. First six lines of the file.
-2. **Move the narrative to `roadmap-history.md`.** Keep only the resulting
-   baseline or the remaining consequence in `roadmap.md`.
-3. **Close the roadmap item** — strike it, date it, name what replaced it.
-4. **Check `design/README.md`** still tells the truth.
+1. **Move the narrative to `roadmap-history.md`, and reduce the plan to a stub** —
+   four lines saying what it was, when it shipped, and where the narrative went.
+   Keep only the resulting baseline or remaining consequence in `roadmap.md`.
+2. **Close the roadmap item** — strike it, date it, name what replaced it.
 
-Step 2 is the one that gets skipped, and it is the one that compounds. If a
-document needs a fact it does not own, link to the owner rather than restating
-it; a restated fact is a fact that will be wrong later.
+There is no longer a status line to update or an index to re-check, because a
+stub *is* its status and it says something permanently true. Sixteen of the sixty
+commits before this change touched documentation only, and about half were
+corrections to statuses that had rotted.
+
+**Stubs rather than deletions, and the reason is measurable**: 251 comments in
+`src/`, `frontend/`, `android/` and `infra/` cite these plans by name and
+section. Those citations are provenance for reasoning the comment already states
+— so a file that still resolves is worth keeping and its 300 lines are not.
+
+**If a document needs a fact it does not own, link to the owner rather than
+restating it.** A restated fact is a fact that will be wrong later; this file
+proved it by carrying a copy of the production defect list that twice said
+finished work was open.
 
 **The merger is done. Second Mind's code lives here now.** All five steps of its
 `two-cores.md` shipped on August 14, 2026 and deployed the same day: the
@@ -95,11 +100,16 @@ named a migration that has happened — and `architecture-trajectory.md` §4 gat
 new models in **either** core anyway, more strictly.
 
 **The reason that does not expire.** The task core is a competent todo
-application. The graph is the thing that makes this worth building, and
-`product-stories.md` has nineteen journeys with two working, most of them not
-the task core's. Alongside it sits the commercial substrate — account deletion
-and data export are untouched and `commercial-blueprint.md` calls them legal
-blockers. That is where work goes.
+application; the graph is the thing that makes this worth building. **The
+scoreboard is `product-stories.md` and it is not restated here** — read it, and
+note that its August 12 score stood unchallenged for four days after it stopped
+being true.
+
+What it says as of August 16: capture and reflection work, planning and projects
+do not, and four of the five knowledge-core journeys moved without anybody aiming
+at them. Account deletion and data export shipped the same day, so the commercial
+substrate's next pieces are terms, a privacy policy, and the three open decisions
+in `commercial-blueprint.md` Part 9.
 
 **So, concretely.** Production defects, security and data-loss fixes need no
 argument, in either core. Task-core *feature* work needs a reason beyond *while
@@ -109,7 +119,15 @@ freeze was actually buying, and it is worth keeping on its own: everything is
 one tree now, so the accidental edit is available in a way it was not when there
 were two repositories, and nothing structural prevents it.
 
-The live production defect list is `design/commercial-blueprint.md` Part 1.
+**There is no open production defect list.** All ten from the August 12 audit
+closed on August 15; what they were and what fixed them is in
+`design/roadmap-history.md`. When there is a list again it lives in
+`design/commercial-blueprint.md` Part 1 and **is not copied here.**
+
+This file carried a second copy of that list for four days. It twice described
+finished work as open — the two Android queue defects, and the two Tailwind
+styles — and each stale line cost a session of re-investigation. That is the
+whole argument for one fact having one home, made at this project's own expense.
 
 **`ActivityEvent` is append-only by database trigger, and there is exactly one
 hole in it.** `mind/migrations/0015_erasure_exemption` permits `DELETE` when a
@@ -119,40 +137,9 @@ account deletion possible at all — before it, `User.delete()` raised, because
 `accounts.services.purge_account`. Do not widen it into a general "allow
 deletes"; `mind/tests/test_erasure.py` fails if you do, on purpose.
 
-**All ten are closed, as of August 15, 2026.** The last one was never code:
-
-- ~~**External uptime monitoring.**~~ **Closed August 15, 2026 — UptimeRobot is
-  polling `/healthz`.** Not a commit and never was: a watchdog running on the
-  machine it watches is not a watchdog, so this was always an account somebody
-  creates. Defect 9 is fully fixed — the site can say it is healthy and
-  something is now asking.
-
-  **SSL expiry alerting is not included, and will not be chased.** UptimeRobot
-  gates it behind a paid plan. Certbot renews automatically and the playbook
-  exercises it, so the residual risk is a silent renewal failure — worth knowing
-  about, not worth a subscription at three users. Recorded so nobody
-  re-investigates and reaches the same paywall.
-
-Closed, and listed only so the next reader does not re-fix them: `/healthz`
-(`fd896c6`), `restart_policy: unless-stopped` (`b2e16b2`),
-`include_local_variables` (`bbfc38d`), migrate-before-recreate (`b779c0c`), CI
-green across five jobs (`fd4a8d7`), token requests using the owner's time zone
-(`6da41c8`), and both Android queue defects — the process-wide lock and the
-backup exclusion, in *both* `backup_rules.xml` and `backup_rules_legacy.xml`.
-**This list said those Android ones were open after they had been fixed**, and
-that stale line cost a session's worth of re-investigation. If you close one,
-close it here in the same commit.
-
-Also closed: the white screen on any render exception (`0428efb`), and defects
-3 and 4 — the two Tailwind styles — which turned out to have shipped on
-August 12 in `2986ed6`. **That is the second time this list and the blueprint
-have claimed finished work was open.** Check the code before believing either.
-
-**Blueprint defect 6 is moot, not open — Vince declined it August 14, 2026 and
-Heron 4b removed the code.** `promote_idea_to_task` carried an Idea's notes but
-not its tags; `Idea` no longer exists, so neither does the function. Recorded
-because the blueprint still lists it, and this list has twice claimed finished
-work was open.
+**SSL expiry alerting is refused, not missing.** UptimeRobot paywalls it, certbot
+renews automatically and the playbook exercises it. Recorded here rather than in
+a defect list so nobody re-investigates and reaches the same paywall.
 
 **New models, in either core, are governed by `architecture-trajectory.md` §4**
 and not by anything here. Its test is the strict one — *a concept earns its own

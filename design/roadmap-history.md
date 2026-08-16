@@ -9,6 +9,41 @@ This preserves the reasoning, deployment record, and lessons behind completed
 work without making the active roadmap hard to scan. The active plan is
 [`roadmap.md`](roadmap.md).
 
+## Production defects — Part 1, opened August 12 and closed August 15, 2026
+
+Ten defects found by the commercial audit. All closed. `commercial-blueprint.md`
+Part 1 carried them in full until August 16; it is four lines now, because a
+defect list with nothing on it is a document outliving its work.
+
+| # | Defect | Closed by |
+|---|---|---|
+| 1 | CI had failed 17 consecutive runs | `fd4a8d7` — and it needed three fixes, not one: the `mind` suite was not in CI at all, `postgres:18` carries no pgvector, and the browser job could no longer use SQLite |
+| 2 | Token-authenticated writes recorded the wrong day | `6da41c8`, at `_resolve_scoped_token` — the seam both token paths share, rather than at the six endpoints that each forgot |
+| 3, 4 | Two dropped Tailwind styles | `2986ed6` — **already shipped on August 12**; the list said otherwise for two days |
+| 5 | A white screen on any render exception | `0428efb` |
+| 6 | Tags dropped on one of two promotion routes | Declined August 14; moot August 15 when Heron deleted both routes |
+| 7 | The Android capture queue had no lock | A process-wide lock on the companion object — not `@Synchronized`, which would have passed a shared-queue test and protected nothing |
+| 8 | The queue was included in Android backups | Excluded in *both* `backup_rules.xml` and `backup_rules_legacy.xml` |
+| 9 | Nothing would tell you the site was down at 3am | `/healthz` (`fd896c6`), `restart_policy: unless-stopped` (`b2e16b2`), and UptimeRobot polling it from August 15 |
+| 10 | Sentry could ship private note text | `bbfc38d` — `include_local_variables` defaults to `True` and is independent of `send_default_pii=False` |
+
+**Three lessons cost a session each and outlive the defects.**
+
+**A signal that is always red carries no information.** CI failed seventeen times
+and stopped being read; the same shape appeared twice more that week — certbot
+failing on a deleted staging certificate, and a defect list nobody trusted.
+
+**A fix does not repair what the defect already wrote.** Defect 2 filed real
+`RoutineOccurrence` rows against the wrong date for as long as it existed.
+Nothing ever recorded which auth path created a row, so a repair would have to
+guess at a durable record — which `principles.md` refuses. Left alone
+deliberately, and recorded so it is a decision rather than an oversight.
+
+**The list twice described finished work as open**, which cost more than the
+defects did — a session of re-investigation on the Android pair, and two days on
+the Tailwind pair. If a list like this exists again, check the code before
+believing it.
+
 ## Account deletion and data export — August 16, 2026
 
 The first piece of the commercial substrate, and the one that did not wait on

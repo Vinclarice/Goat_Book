@@ -1,120 +1,83 @@
 # `design/` — what each document is, and whether to trust it
 
-Vince · index · August 13, 2026 · **thirty-one documents as of August 15**
+Vince · index · rewritten August 16, 2026
 
-Thirty-one documents accumulated here for a three-user application, and by
-August 12 they had drifted out of agreement with each other: four plans still
-described themselves as forward-looking months after shipping, two files gave
-the same release letter to different work, and 257 lines of shipped-work
-narrative had piled up under a heading that instructed the reader to move it
-elsewhere. **This file exists so that drift is visible in one place instead of
-discovered one document at a time.**
+## The rule
 
-The rule it enforces is small: **every document declares its own status in its
-first six lines**, and this table agrees with what they say.
+**A document that outlives its work has a status, and a status can be wrong.**
+
+That was the drift engine. Twenty-two of the thirty-two files here were shipped
+plans kept in full "for their reasoning" — each carrying a status line that could
+rot, and an index row asserting whether that status line was honest. This file
+used to have a column called *"Declares it?"*, and eleven rows said **no**.
+Sixteen of the sixty commits before this rewrite touched documentation only, and
+about half were corrections.
+
+**So a shipped plan is now reduced to a stub**: four lines saying what it was,
+when it shipped, and where its narrative went. A stub cannot drift, because
+*"Crane shipped August 2, 2026"* is permanently true.
+
+**Stubs rather than deletions**, and the reason is measurable rather than
+sentimental: 251 comments across `src/`, `frontend/`, `android/` and `infra/`
+cite these plans by name and section. Those citations are provenance for
+reasoning each comment already states in full — so the file needs to resolve, and
+its three hundred lines do not.
+
+11,002 lines became roughly 4,000 without breaking one citation.
 
 ## Standing authorities — read these
 
 | Document | Authority for |
 |---|---|
-| [`principles.md`](principles.md) | How work is delivered — **everywhere in this tree, knowledge core included.** Its *design* rules stop at the task core; see its §Scope, which splits by kind of rule rather than by directory |
+| [`principles.md`](principles.md) | How work is delivered — **everywhere in this tree, knowledge core included.** Its *design* rules stop at the task core; see its §Scope |
 | [`roadmap.md`](roadmap.md) | What is active, what is deferred, what is still open |
-| [`daily-operating-system-vision.md`](daily-operating-system-vision.md) | Product direction for the productivity half. Its second-brain and AI sections are superseded |
-| [`architecture-trajectory.md`](architecture-trajectory.md) | Release ordering, the charter for new models, and what this project refuses. §5's release arc is largely overtaken |
-| [`commercial-blueprint.md`](commercial-blueprint.md) | The commercial decision, the production defect list, and the sequence. **Part 1 is the live defect list** |
-| [`product-stories.md`](product-stories.md) | What the product is *for*, as behaviour. 19 journeys, 2 working |
-| [`roadmap-history.md`](roadmap-history.md) | The record: every shipped release, its deployment, and what it taught |
+| [`roadmap-history.md`](roadmap-history.md) | The record: every shipped release, its deployment, and what it taught. **The one file that cannot go stale**, because it is explicitly about the past |
+| [`architecture-trajectory.md`](architecture-trajectory.md) | §4's charter for new models and §7's refusals. §5's release arc was cut on August 16 — sequencing lives in `roadmap.md` |
+| [`commercial-blueprint.md`](commercial-blueprint.md) | The commercial decision and its sequence. **Part 1's defect list is closed and empty**; Part 9's three open decisions are the live content |
+| [`product-stories.md`](product-stories.md) | What the product is *for*, as behaviour, and **the only score measuring the product rather than the process** |
+| [`daily-operating-system-vision.md`](daily-operating-system-vision.md) | Product direction for the task core. Its Crane slice plans and its second-brain sections came out on August 16 |
 
-**Second Mind's *documents* are not indexed here; its *code* is in this tree.**
-Those two halves separated on August 14, 2026 and this note said otherwise until
-August 15. The knowledge core is `src/mind/`, mounted at `/mind/`, behind this
-site's login and in this database.
-
-What stayed at `C:\dev\Clarice_secondmind` is `docs/` and nothing else — no
-code, no venv, no database. It remains the **design** authority for the
-knowledge core: what each core owns, salience, the attention policy, the joint
-weekly report, the visual map. Do not develop there.
-
-**The line is by kind of rule, not by directory.** How work is delivered —
-failing test first, say what was run, inject the clock — is `principles.md` and
-applies to `src/mind/` like everything else in this repository. What a new model
-must satisfy splits: `architecture-trajectory.md` §4 for the task core,
-`design-concept.md` for the knowledge core, which deliberately rejects §4's
-charter test. See `roadmap.md`'s opening section.
-
-## Records — shipped, kept for their reasoning
-
-Status as recorded in `roadmap.md` and `roadmap-history.md`. Where a document
-does not yet declare its own status, that is marked, because an undeclared
-status is exactly how the drift above started.
-
-| Document | Status | Declares it? |
-|---|---|---|
-| [`one-capture-surface-plan.md`](one-capture-surface-plan.md) | Shipped Aug 15, 2026 as **Heron**; all five steps verified in production the same day | yes |
-| [`bittern-plan.md`](bittern-plan.md) | Shipped Aug 2, 2026 | yes |
-| [`crane-plan.md`](crane-plan.md) | Shipped Aug 2, 2026 | yes |
-| [`release-d-plan.md`](release-d-plan.md) | Shipped Aug 3, 2026 as Dunlin | yes |
-| [`ui-second-pass-plan.md`](ui-second-pass-plan.md) | Closed Aug 6, 2026 — F1–F5 | yes |
-| [`second-mind-discovery-plan.md`](second-mind-discovery-plan.md) | Shipped Aug 10; **superseded** Aug 13 | yes |
-| [`subtasks-plan.md`](subtasks-plan.md) | Fully built, Jul 31, 2026 | yes |
-| [`per-user-time-zones-plan.md`](per-user-time-zones-plan.md) | Deployed Aug 1; **verified in production Aug 1 at 07:00 WITA** | stale — says "not yet exercised" |
-| [`task-list-redesign-plan.md`](task-list-redesign-plan.md) | Shipped and deployed Aug 10 | yes |
-| [`agenda-redesign-plan.md`](agenda-redesign-plan.md) | Shipped and deployed Aug 10–11 | yes |
-| [`archive-redesign-plan.md`](archive-redesign-plan.md) | Shipped Aug 11 | yes |
-| [`android-full-client-plan.md`](android-full-client-plan.md) | Slices 1–2 shipped and deployed Aug 11; later slices **undecided** | yes |
-| [`token-scopes-plan.md`](token-scopes-plan.md) | Shipped and deployed Aug 11 | no |
-| [`project-workspace-plan.md`](project-workspace-plan.md) | Shipped Aug 10 with two follow-ups | no |
-| [`recurring-commitment-vocabulary-plan.md`](recurring-commitment-vocabulary-plan.md) | Shipped and deployed Aug 3 | no |
-| [`capture-tags-plan.md`](capture-tags-plan.md) | Shipped; deployed Aug 6 | no |
-| [`android-login-plan.md`](android-login-plan.md) | Shipped; deployed Aug 6 | no |
-| [`android-unlock-plan.md`](android-unlock-plan.md) | Shipped; deployed Aug 6 | no |
-| [`capture-api-and-tokens-plan.md`](capture-api-and-tokens-plan.md) | Shipped (Albatross/Bittern era) | no |
-| [`capture-triage-and-polish-plan.md`](capture-triage-and-polish-plan.md) | Shipped (Albatross era) | no |
-| [`password-reset-plan.md`](password-reset-plan.md) | Shipped (Albatross era) | no |
-| [`recurring-subtasks-addendum.md`](recurring-subtasks-addendum.md) | Shipped with `subtasks-plan.md` | no |
-
-**Eleven documents do not declare their own status**, and the four dated
-"Albatross era" above are inferred from the roadmap rather than read out of the
-documents themselves. Adding a status line to each is a small job nobody has
-done; until it is done, this table is the more reliable source.
-
-## Open — work that is designed but not done
+## Open — designed but not done
 
 | Document | State |
 |---|---|
 | [`staging-environment-plan.md`](staging-environment-plan.md) | Designed Aug 11, **deliberately deferred** Aug 12. The `is_debug()` fix shipped; the droplet waits for a trigger |
-| [`android-release-signing-plan.md`](android-release-signing-plan.md) | Build is wired; **the keystore is Vince's to generate by hand.** One of the three open B/C/D items |
+| [`android-release-signing-plan.md`](android-release-signing-plan.md) | Build is wired; **the keystore is Vince's to generate by hand** |
+
+## Stubs — shipped, kept only so their citations resolve
+
+Twenty-two files. Each is four lines pointing at
+[`roadmap-history.md`](roadmap-history.md), which holds the narrative. **They are
+not listed individually here**, because a list of stubs is exactly the kind of
+second copy this rewrite removed — `ls design/` is the list, and every one of
+them says what it is in its first line.
 
 ## Where a fact is allowed to live
 
-Most of the drift came from one fact living in two documents and only one of
-them being updated. The rule:
+Most drift came from one fact in two documents and only one being updated.
 
 | Fact | Sole authority |
 |---|---|
 | Whether something is active, deferred or open | `roadmap.md` |
 | What shipped, when, and how it was verified | `roadmap-history.md` |
-| How work is done and verified | `principles.md` |
-| What a new model must satisfy | `architecture-trajectory.md` §4 |
+| How work is delivered and verified | `principles.md` |
+| What a new model must satisfy | `architecture-trajectory.md` §4 (task core), `design-concept.md` (knowledge core) |
 | What is refused, and why | `architecture-trajectory.md` §7 |
-| Current production defects | `commercial-blueprint.md` Part 1 |
-| A specific slice's acceptance criteria | that slice's own plan document |
-| Second Mind's **design** — what each core owns, salience, the visual map | Second Mind's own `docs/`, still at `C:\dev\Clarice_secondmind` |
-| The knowledge core's **code**, and anything shipped in it | this repository, same as everything else |
+| Production defects, when there are any | `commercial-blueprint.md` Part 1 |
+| **How the product scores against its journeys** | `product-stories.md` — quoted nowhere else |
+| Second Mind's **design** | Second Mind's own `docs/`, at `C:\dev\Clarice_secondmind` |
+| The knowledge core's **code** | this repository, like everything else |
 
-If a document needs to mention a fact it does not own, **link to the owner
-rather than restating it.** A restated fact is a fact that will be wrong later.
+If a document needs a fact it does not own, **link to the owner rather than
+restating it.** `CLAUDE.md` carried a copy of the defect list for four days and
+twice described finished work as open; that is the cost, measured.
 
 ## Closing a piece of work
 
-The checklist that would have prevented every problem this file was written to
-fix — also in `CLAUDE.md`, because that is what actually gets read:
+Also in `CLAUDE.md`, because that is what actually gets read:
 
-1. **Update the plan document's status line** to say it shipped, and when.
-2. **Move the narrative to `roadmap-history.md`**, keeping only the resulting
-   baseline or the remaining consequence in `roadmap.md`.
-3. **Close the roadmap item** — strike it, date it, and say what replaced it if
-   anything did.
-4. **Check this index** still tells the truth.
+1. **Move the narrative to `roadmap-history.md` and reduce the plan to a stub.**
+2. **Close the roadmap item** — strike it, date it, name what replaced it.
 
-Step 2 is the one that gets skipped, and it is the one that compounds.
+There is no third step checking this index, and no fourth updating a status line.
+Both existed only because plans kept their full text.

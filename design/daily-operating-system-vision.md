@@ -1,4 +1,4 @@
-# Daily operating system — product direction
+﻿# Daily operating system â€” product direction
 
 ## The premise
 
@@ -27,9 +27,9 @@ available as editable capture drafts.
 ## The daily loop
 
 ```text
-Capture quickly → Clarify when ready → Work from today's page
-       ↑                                      │
-       └────────── Review and reflect ←───────┘
+Capture quickly â†’ Clarify when ready â†’ Work from today's page
+       â†‘                                      â”‚
+       â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Review and reflect â†â”€â”€â”€â”€â”€â”€â”€â”˜
 ```
 
 ### Capture and clarify
@@ -68,9 +68,9 @@ A review is not another task list. It is a guided view of completed work, unfini
 
 | User intention | Appropriate shape | Current position |
 | --- | --- | --- |
-| “Pay rent every month” | Recurring task; completion creates the next occurrence | Already supported. |
-| “Follow this checklist each weekday” | Recurring parent with reusable subtasks | Largely supported; Bittern B1 fixes immediate rendering. |
-| “Do five lessons today” | Daily target/routine with progress toward a count | Not yet modeled; needs a focused design. |
+| â€œPay rent every monthâ€ | Recurring task; completion creates the next occurrence | Already supported. |
+| â€œFollow this checklist each weekdayâ€ | Recurring parent with reusable subtasks | Largely supported; Bittern B1 fixes immediate rendering. |
+| â€œDo five lessons todayâ€ | Daily target/routine with progress toward a count | Not yet modeled; needs a focused design. |
 
 Five lesson sessions are neither five copied calendar tasks nor necessarily five named subtasks. **Routines and habits are their own domain**, not a variant
 of `Item` recurrence. A future Routine model needs an explicit cadence, target
@@ -79,182 +79,29 @@ partial completion, skipped days, and historical edits. It also needs a
 per-user time-zone decision before day boundaries and streaks can be trusted.
 Do not misuse task recurrence to fake this before those rules are designed.
 
-## Crane 0 — Routine and target domain design
+## What used to be here
 
-Do this design work immediately after Bittern, before Crane implementation,
-even though routine implementation follows the Daily Page foundation. The
-“five daily lessons” case is a central reason Clarice exists and must not stay
-as a placeholder while adjacent surfaces ship.
+**Two kinds of section came out on August 16, 2026, and both had the same
+problem in different clothes.**
 
-**Wider scope proposed and settled, August 2, 2026.** The brief below is the
-routine half and stands unchanged. The proposal was that it sit inside a wider
-one covering repetition generally, because recurring tasks are missing the same
-template-and-occurrence shape this section designs for routines:
-`_spawn_next_occurrence` writes no link back to the item that spawned it, so a
-recurring commitment has no identity across its occurrences beyond a matching
-text string. Nothing below is violated by that — the rules here already say not
-to fake a routine with task recurrence. The point is the mirror image: the
-routine half will be able to answer “how has this gone over eight weeks” and
-recurring commitments will not, for the same question, unless the same shape is
-designed for them at the same time. It was accepted in narrowed form: the
-missing occurrence link is built before Crane 1, and the fuller template that
-would move text and cadence off the task waits for release D. Both halves, and
-the reasoning for splitting them, are in [`crane-plan.md`](crane-plan.md) §3.
+**The Crane slice plans** â€” Crane 0's routine and target design, and Crane 1, 2
+and 3's Daily Page sequence â€” described work that shipped on August 2. A shipped
+plan embedded inside a standing authority is the drift engine in the one place a
+file-level rule cannot reach it: nobody deletes a *section*. What they built and
+what it taught is in [`roadmap-history.md`](roadmap-history.md) under *Crane*.
 
-Settle, in a focused design brief:
+**The second-brain and AI-assistance sections** were superseded on August 13 and
+then overtaken entirely by the merger. The knowledge core is `src/mind/` in this
+repository now; its design authority is Second Mind's own
+`docs/design-concept.md`. The one correction those sections had already reached
+is worth keeping in a sentence: *the defect was never that Clarice lacked places
+to put non-actionable material* â€” `Capture` and `Idea` existed and worked. The
+defect was that the central pipeline ran `Capture â†’ Idea â†’ Task`, a promotion
+path whose terminus is a task, and everything inside it inherited that direction.
+Heron deleted that pipeline.
 
-- A `Routine` template's owner, title, active/paused state, cadence, target
-  quantity, and human unit such as “lessons” or “sessions.”
-- A dated `RoutineOccurrence` record with target, actual progress, and an
-  explicit completed/skipped/open outcome; history must not be recalculated
-  from a routine's current settings.
-- The minimum initial cadence, how a person logs one unit of progress, how
-  they correct it, and what a deliberate skip means.
-- The per-user time-zone model required for day boundaries, streaks, and
-  weekly habit metrics.
-- The boundary with tasks: a routine measures repeated practice; a recurring
-  task represents one discrete commitment that creates its next occurrence.
-
-The deliverable is a spec and acceptance examples, not a migration. Use the
-lesson target, a daily exercise target, and a weekly practice target as cases.
-
-## Crane — Daily Page foundation
-
-Crane follows Bittern. It is deliberately sequenced after production stabilization and Android capture so the daily surface can rely on a dependable task and capture loop.
-
-### Crane 1 — ship a small Daily Entry
-
-- Add an owner-scoped, date-unique Daily Entry record.
-- Start with plain-text or simple structured fields for intentions, gratitude, and happenings; do not build a rich block editor.
-- Add a user-level **Personal Compass**: a rarely edited purpose statement and
-  guiding question, such as “What is the most I can do?” Display it on the
-  Daily Page, but keep it separate from that day's Intentions and do not copy
-  it into every Daily Entry.
-- Add a date-scoped **Daily Focus** join between a Daily Entry and an existing
-  task. “Pin this to today” creates a focus record; it does not alter the
-  task's due date, status, or ownership. Show the deliberate focus list above
-  the broader embedded Agenda output so the Daily Page is visibly a planning
-  surface on its first day.
-- Give focus records an order and selection timestamp. If a person removes a
-  focus, retain enough history to distinguish an intentional decommitment from
-  an unfinished planned commitment in a later review.
-- Make the Daily Page the authenticated home surface while preserving direct access to Agenda, Inbox, Ideas, lists, and archive.
-- Design its layout for a phone from the first day rather than adapting a
-  desktop layout afterwards. The existing surfaces are desktop-first with two
-  lone breakpoints, so Crane is the first chance to build the home surface
-  mobile-aware instead of retrofitting it. See the roadmap's mobile web
-  experience entry for why the layout work waits for this rather than
-  preceding it.
-- Embed existing agenda output as Action Items rather than duplicating task state.
-- Add a direct capture action to the page.
-
-**Success:** opening Clarice each morning gives a useful working page without
-rebuilding a template or transferring yesterday's unfinished work — and makes
-the person’s chosen commitments visibly different from the rest of the agenda.
-
-### Crane 2 — refine daily planning
-
-- Show task age and overdue context so carry-forward is visible, not silently punitive.
-- Implement routine/target behavior only after Crane 0's design has settled
-  its occurrence and progress model.
-
-### Crane 3 — weekly review and trends
-
-Weekly review is the first planning feature after the Daily Page. Start with
-one guided weekly view, not weekly/monthly/quarterly at once. It should gather:
-
-- completed work and recurring commitments from the preceding week;
-- chosen daily-focus tasks that remain incomplete, with age and due context;
-- unresolved captures and recently added Ideas;
-- daily intentions, reflections, gratitude, and happenings; and
-- a short planning area for the coming week.
-
-The review should show what was actually done, what was deliberately planned
-but remained incomplete, and how habits performed. It should also retain a
-dated review record and any explicit task changes — never automatically
-reschedule everything left incomplete.
-
-#### Metrics need trustworthy denominators
-
-“60% finish rate” must mean *completed planned commitments ÷ planned
-commitments*, not “completed tasks ÷ every task in the backlog.” The Daily Page
-therefore needs a durable record of deliberately chosen focus tasks before it
-can report that metric over a week. Completed work can be derived from task
-completion timestamps; the planned denominator cannot be reconstructed after
-the fact from a mutable due date.
-
-Routine metrics similarly need per-day occurrence/progress records. A weekly
-language-learning result should say, for example, “4 of 5 planned lesson
-targets met,” and later support trend views over several weeks. It must not
-infer a habit from a recurring task's current state after history has changed.
-
-Monthly and quarterly planning can reuse the same review model at wider
-windows only after weekly use proves helpful.
-
-## Second brain direction
-
-> **Superseded August 13, 2026 — this half of the vision now belongs to Second
-> Mind**, a separate project (`C:\dev\Clarice_secondmind`) that Clarice is
-> absorbed into rather than the reverse. See `roadmap.md`'s opening section and
-> Second Mind's own `docs/design-concept.md`.
->
-> The section below is kept because it was right about the sequence and the
-> reasoning still reads true — it asked for a discovery pass before features, a
-> cheap human-controlled interim before a graph, and real volume before
-> guessing at what deserves resurfacing. Second Mind reaches the same
-> conclusions from a different starting point, with one correction it makes
-> explicit: **the defect was never that Clarice lacked places to put
-> non-actionable material.** `Capture` and `Idea` exist and work. The defect is
-> that the central pipeline is `Capture → Idea → Task`, a promotion path whose
-> terminus is a task, and everything inside it inherits that direction.
->
-> What follows from that is recorded in `roadmap.md`: `Capture` and `Idea` do
-> not survive the merger, and the productivity half — the daily loop, the
-> records, the review with honest denominators, everything above this section —
-> does. **This document remains the authority on that half.**
-
-Capture → Idea/Reference is the beginning of the second brain, not a side
-feature. Its domain logic needs its own discovery pass before more features
-ship: define the boundary between an idea, reference, project, task, and
-routine; decide whether links and sources are plain text or structured data;
-and establish what a relationship between two ideas actually means.
-
-Before a visual map or AI-assisted grouping, ship a cheap, human-controlled
-interim step: shared topic tags on Ideas and/or a manually selected “related
-idea” link. Render those connections as ordinary chips or links, not a graph.
-They let real use answer whether “relates to” means a shared topic, a source,
-a follow-on, or something else — and create the relationship data a later map
-would need.
-
-Only after that examine richer retrieval and resurfacing: make old references
-easy to find, let exploring ideas reappear at useful moments without anxiety,
-and later consider a visual relationship view or an append-only idea log. The
-system needs real information volume before it guesses what deserves
-resurfacing or asks AI to make those connections.
-
-## AI comes after the practice, as assistance
-
-> **Largely Second Mind's concern now, August 13, 2026.** Its ML policy is
-> stricter than this section and arrives at it independently: no LLM in the
-> interactive path, local embeddings as the one ML dependency, every proposal
-> carrying the concrete signal that produced it, and generated prose confined
-> to a single user-initiated carve-out that v1 does not ship at all. The five
-> commitments below survive intact inside that policy.
->
-> One correction from the commercial audit stands regardless of which project
-> owns it: the gate "after the daily and review records have earned enough real
-> use" is measured against one person and may never fire. A gate a cohort can
-> satisfy is the honest replacement.
-
-AI should not be the foundation. It first needs trustworthy daily records, clear task state, and real review behavior. When introduced, it should:
-
-- Summarize evidence already in Clarice rather than inventing a narrative.
-- Suggest priorities, routines, and review prompts rather than silently changing tasks, dates, or plans.
-- Show the records and time range behind each suggestion.
-- Require explicit confirmation for every mutation.
-- Be opt-in, with clear control over what personal data is sent to a model.
-
-Useful first experiments are a weekly-review summary, a stale-idea resurfacing prompt, and a proposed plan for the coming week. Autonomous scheduling, opaque scoring, and automatic task editing are non-goals until the person trusts the underlying system.
+What remains below is what this document is actually the authority for: the
+premise, the thesis, the daily loop, the records, and the design principles.
 
 ## Design principles
 

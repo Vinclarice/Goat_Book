@@ -16,6 +16,7 @@ from datetime import timedelta
 
 from django.db import connection, transaction
 
+from accounts import emails
 from mind.models import ActivityEvent
 
 # Long enough to survive a change of mind, a holiday, and an account somebody
@@ -28,19 +29,32 @@ def request_deletion(user, *, now):
 
     Idempotent: asking twice does not move the date further out, because that
     would let a repeated click quietly extend the very window somebody is
-    waiting on.
+    waiting on — and it does not send a second email either, for the same
+    reason a doubled click is not a second decision.
+
+    **The email is the half that protects somebody who did not do this.** The
+    password re-entry on the form stops a passer-by at an unlocked screen; it
+    does nothing against someone who has the password. A message to the address
+    on the account is what makes the thirty days a real window rather than one
+    that only helps if you happen to sign in and read a banner.
     """
-    if user.deletion_requested_at is None:
-        user.deletion_requested_at = now
-        user.save(update_fields=["deletion_requested_at"])
+    if user.deletion_requested_at is not None:
+        return user
+
+    user.deletion_requested_at = now
+    user.save(update_fields=["deletion_requested_at"])
+    emails.confirm_deletion_scheduled(user, purge_at=purge_at(user))
     return user
 
 
 def cancel_deletion(user):
     """Change your mind. Nothing has been touched, so nothing is restored."""
-    if user.deletion_requested_at is not None:
-        user.deletion_requested_at = None
-        user.save(update_fields=["deletion_requested_at"])
+    if user.deletion_requested_at is None:
+        return user
+
+    user.deletion_requested_at = None
+    user.save(update_fields=["deletion_requested_at"])
+    emails.confirm_deletion_cancelled(user)
     return user
 
 
@@ -80,6 +94,10 @@ def purge_account(user, *, now):
     what it did rather than what existed.
     """
     owner_id = user.pk
+    # Read before anything is destroyed, and sent before the transaction that
+    # destroys it. A receipt that depends on the record whose destruction it is
+    # confirming is a receipt that does not send.
+    username, address = user.get_username(), user.email
     with connection.cursor() as cursor:
         # Parameterised through `set_config` rather than interpolated into a
         # `SET LOCAL` statement: SET does not take bind parameters, and building
@@ -97,4 +115,13 @@ def purge_account(user, *, now):
     # the rest of mind, and the access tokens.
     _, per_model = user.delete()
     removed.update(per_model)
+
+    # After the deletes, inside the transaction. If anything above raises, the
+    # rollback takes the account back and this never ran -- which is the right
+    # way round: a receipt for an erasure that did not happen is worse than no
+    # receipt. Django's locmem and SMTP backends both send immediately rather
+    # than on commit, so the narrow reverse risk is a message sent for a
+    # transaction that then fails; that is the failure worth having.
+    if address:
+        emails.confirm_account_erased(username=username, email=address)
     return removed

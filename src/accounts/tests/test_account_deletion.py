@@ -16,6 +16,7 @@ append-only log's owner-scoped exemption to run at all; that half is tested in
 
 from datetime import timedelta
 
+from django.core import mail
 from django.core.management import call_command
 from django.test import TestCase
 from django.utils import timezone
@@ -102,6 +103,87 @@ class RequestingDeletionTest(TestCase):
         self.user.refresh_from_db()
         self.assertIsNone(self.user.deletion_requested_at)
         self.assertTrue(List.objects.filter(owner=self.user).exists())
+
+
+class LeavingIsAnnouncedByEmailTest(TestCase):
+    """The half that protects somebody who did not do this.
+
+    Password re-entry stops a passer-by at an unlocked screen. It does nothing
+    against somebody who has the password, and the thirty-day window only helps
+    if the person finds out inside it — which a banner cannot guarantee and a
+    message to the address on the account can.
+    """
+
+    def setUp(self):
+        self.user = User.objects.create_user("alice", "alice@example.com", PASSWORD)
+        self.now = timezone.now()
+
+    def test_requesting_it_writes_to_the_account_holder(self):
+        services.request_deletion(self.user, now=self.now)
+
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ["alice@example.com"])
+
+    def test_the_message_names_the_date_and_says_it_is_permanent(self):
+        services.request_deletion(self.user, now=self.now)
+
+        body = mail.outbox[0].body
+        self.assertIn(f"{services.purge_at(self.user):%d %B %Y}", body)
+        self.assertIn("permanently", body)
+        self.assertIn("cannot be undone", body)
+
+    def test_it_tells_them_what_to_do_if_they_did_not_ask(self):
+        """The whole reason this is sent to somebody who may not have acted."""
+        services.request_deletion(self.user, now=self.now)
+
+        self.assertIn("did not ask for this", mail.outbox[0].body)
+
+    def test_asking_twice_does_not_write_twice(self):
+        services.request_deletion(self.user, now=self.now)
+
+        services.request_deletion(self.user, now=self.now + timedelta(days=1))
+
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_cancelling_says_so_in_the_same_place(self):
+        services.request_deletion(self.user, now=self.now)
+        mail.outbox.clear()
+
+        services.cancel_deletion(self.user)
+
+        self.assertEqual(len(mail.outbox), 1)
+        # The subject has to answer the question from the inbox list, unopened:
+        # somebody who got the first message wants to know the second one means
+        # it is off.
+        self.assertIn("no longer scheduled for deletion", mail.outbox[0].subject)
+        self.assertIn("cancelled", mail.outbox[0].body)
+
+    def test_cancelling_twice_does_not_write_twice(self):
+        services.request_deletion(self.user, now=self.now)
+        services.cancel_deletion(self.user)
+        mail.outbox.clear()
+
+        services.cancel_deletion(self.user)
+
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_the_erasure_sends_a_receipt(self):
+        services.request_deletion(self.user, now=self.now)
+        mail.outbox.clear()
+
+        services.purge_account(self.user, now=self.now)
+
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ["alice@example.com"])
+        self.assertIn("has been deleted", mail.outbox[0].subject)
+
+    def test_the_receipt_survives_the_account_it_reports_on(self):
+        """Read before the delete, not after. A receipt that reads the row it is
+        confirming the destruction of is one that never sends."""
+        services.purge_account(self.user, now=self.now)
+
+        self.assertFalse(User.objects.filter(username="alice").exists())
+        self.assertIn("alice", mail.outbox[-1].body)
 
 
 class WhoIsDueTest(TestCase):

@@ -315,6 +315,7 @@ export function PreferencesRoute() {
 function LeavingSection() {
   const queryClient = useQueryClient();
   const [password, setPassword] = useState("");
+  const [acknowledged, setAcknowledged] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -337,6 +338,7 @@ function LeavingSection() {
     },
     onSuccess: () => {
       setPassword("");
+      setAcknowledged(false);
       setConfirming(false);
       setError(null);
       queryClient.invalidateQueries({ queryKey: ["nav"] });
@@ -357,12 +359,17 @@ function LeavingSection() {
     return (
       <section className="space-y-3 rounded-lg border border-destructive px-4 py-4">
         <h2 className="text-sm font-bold text-destructive">
-          This account is scheduled for deletion
+          This account is scheduled for permanent deletion
         </h2>
         <p className="text-sm text-muted-foreground">
           Everything you have here is erased on{" "}
-          <strong>{new Date(purgeAt).toLocaleDateString()}</strong>. Until then
-          nothing has changed and you can stop this.
+          <strong>{new Date(purgeAt).toLocaleDateString()}</strong> and cannot
+          be recovered afterwards. Until then nothing has been touched, and you
+          can stop this.
+        </p>
+        <p className="text-sm text-muted-foreground">
+          We have emailed you about this. If you did not ask for it, cancel it
+          here and then change your password.
         </p>
         {/* Export stays offered right up to the end. The last day before an
             erasure is the most likely moment somebody wants their data. */}
@@ -404,9 +411,11 @@ function LeavingSection() {
       <div className="space-y-1 border-t border-border pt-4">
         <h2 className="text-sm font-bold text-destructive">Delete my account</h2>
         <p className="text-sm text-muted-foreground">
-          Everything is erased after 30 days — every task, note, routine and
-          review. You can stop it at any point before then. Download your data
-          first; afterwards there is nothing to download.
+          After 30 days everything is{" "}
+          <strong>permanently deleted and cannot be recovered</strong> — every
+          task, note, routine, review and the record of them. You can stop it at
+          any point before then, and we will email you to confirm. Download your
+          data first; afterwards there is nothing to download.
         </p>
       </div>
 
@@ -416,9 +425,23 @@ function LeavingSection() {
         </Button>
       ) : (
         <div className="space-y-3">
-          {/* The password again. Everything else on this page is recoverable;
-              this is the one action that ends in data nobody can get back, and
-              an open session on a shared machine should not be enough. */}
+          {/* Two gates, guarding different mistakes.
+              The acknowledgement guards a misunderstanding -- somebody who
+              thinks this hides the account or pauses it. The password guards a
+              different person entirely: an open session on a shared machine.
+              Either alone leaves the other case uncovered. */}
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={acknowledged}
+              onChange={(event) => setAcknowledged(event.target.checked)}
+              className="mt-0.5"
+            />
+            <span>
+              I understand this permanently deletes everything in my account and
+              cannot be undone.
+            </span>
+          </label>
           <label htmlFor="pref-delete-password" className="text-sm font-bold">
             Confirm your password
           </label>
@@ -432,7 +455,9 @@ function LeavingSection() {
           <div className="flex items-center gap-3">
             <Button
               onClick={() => request.mutate()}
-              disabled={request.isPending || password.length === 0}
+              disabled={
+                request.isPending || password.length === 0 || !acknowledged
+              }
             >
               Schedule deletion
             </Button>
@@ -441,6 +466,7 @@ function LeavingSection() {
               onClick={() => {
                 setConfirming(false);
                 setPassword("");
+                setAcknowledged(false);
                 setError(null);
               }}
             >

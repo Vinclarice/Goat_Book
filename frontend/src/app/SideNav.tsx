@@ -161,12 +161,16 @@ export function SideNav() {
 
       <div className={styles.group}>
         <h3>Account</h3>
+        {/* One entry, because there was only ever one page.
+            "Settings" sat here as a second link to /accounts/settings/, which
+            is a two-line view that redirects to this exact route -- so the nav
+            offered two names for one screen and the second took a round trip
+            through the server to arrive at the first.
+            The URL stays: it is bookmarkable and `change_password` redirects to
+            it. What went is the duplicate way in. */}
         <NavLink to="/preferences" className={navLinkClass}>
           Preferences
         </NavLink>
-        <a className={styles.link} href={data?.settings_url ?? "/accounts/settings/"}>
-          Settings
-        </a>
         {/* In the nav rather than on a preferences page, so it is reachable
             from every SPA route -- including the mobile disclosure, which
             renders this same markup. */}

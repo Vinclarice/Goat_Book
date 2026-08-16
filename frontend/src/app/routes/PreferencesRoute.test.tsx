@@ -387,17 +387,42 @@ describe("PreferencesRoute — leaving", () => {
     ).toHaveLength(0);
   });
 
-  it("will not submit an empty password", async () => {
+  it("says it is permanent and cannot be undone, before anything is clicked", async () => {
+    // The words, asserted. It previously said only "erased after 30 days",
+    // which implies permanence rather than stating it -- not enough for the one
+    // control on the site that destroys data.
+    mockLeaving(null);
+    renderRoute();
+    await screen.findByDisplayValue("vince");
+
+    const section = screen
+      .getByRole("heading", { name: "Delete my account" })
+      .closest("div")!;
+    expect(section).toHaveTextContent(/permanently deleted/i);
+    expect(section).toHaveTextContent(/cannot be recovered/i);
+  });
+
+  it("needs both the acknowledgement and the password", async () => {
+    // Two gates guarding different mistakes: the checkbox guards somebody who
+    // thinks this pauses the account, the password guards somebody who is not
+    // the account holder. Either alone leaves the other case uncovered.
     mockLeaving(null);
     const user = userEvent.setup();
     renderRoute();
     await screen.findByDisplayValue("vince");
     await user.click(screen.getByRole("button", { name: "Delete my account…" }));
 
-    expect(screen.getByRole("button", { name: "Schedule deletion" })).toBeDisabled();
+    const submit = screen.getByRole("button", { name: "Schedule deletion" });
+    expect(submit).toBeDisabled();
+
+    await user.type(screen.getByLabelText("Confirm your password"), "hunter2");
+    expect(submit).toBeDisabled();
+
+    await user.click(screen.getByRole("checkbox"));
+    expect(submit).toBeEnabled();
   });
 
-  it("sends the password when it does", async () => {
+  it("sends the password when both gates are satisfied", async () => {
     const fetchMock = mockLeaving(null);
     const user = userEvent.setup();
     renderRoute();
@@ -405,6 +430,7 @@ describe("PreferencesRoute — leaving", () => {
     await user.click(screen.getByRole("button", { name: "Delete my account…" }));
 
     await user.type(screen.getByLabelText("Confirm your password"), "hunter2");
+    await user.click(screen.getByRole("checkbox"));
     await user.click(screen.getByRole("button", { name: "Schedule deletion" }));
 
     await waitFor(async () => {
@@ -417,13 +443,16 @@ describe("PreferencesRoute — leaving", () => {
     });
   });
 
-  it("says when the data goes, and offers to stop it", async () => {
+  it("says when the data goes, that it is permanent, and offers to stop it", async () => {
     mockLeaving("2026-09-15T04:00:00Z");
     renderRoute();
 
     expect(
-      await screen.findByText(/scheduled for deletion/i),
+      await screen.findByRole("heading", {
+        name: /scheduled for permanent deletion/i,
+      }),
     ).toBeInTheDocument();
+    expect(screen.getByText(/cannot be recovered/i)).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Keep my account" }),
     ).toBeInTheDocument();
@@ -452,10 +481,19 @@ describe("PreferencesRoute — leaving", () => {
     await user.click(screen.getByRole("button", { name: "Delete my account…" }));
 
     await user.type(screen.getByLabelText("Confirm your password"), "wrong");
+    await user.click(screen.getByRole("checkbox"));
     await user.click(screen.getByRole("button", { name: "Schedule deletion" }));
 
     expect(
       await screen.findByText("That password did not match."),
     ).toBeInTheDocument();
+  });
+
+  it("tells them an email was sent, so an unexpected one is checkable", async () => {
+    mockLeaving("2026-09-15T04:00:00Z");
+    renderRoute();
+
+    expect(await screen.findByText(/emailed you about this/i)).toBeInTheDocument();
+    expect(screen.getByText(/change your password/i)).toBeInTheDocument();
   });
 });

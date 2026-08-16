@@ -10,6 +10,7 @@ The purge itself is not walked here — it is a cron job thirty days later, and
 `accounts/tests/test_account_deletion.py` covers what it removes.
 """
 
+from django.core import mail
 from playwright.sync_api import expect
 
 from accounts.models import User
@@ -28,13 +29,22 @@ class LeavingTest(BrowserTest):
             "href", "/api/v1/me/export"
         )
 
-        # 2. Scheduling asks for the password again. An open session is not
-        #    enough for the one action that ends in unrecoverable data.
+        # 2. Two gates, guarding different mistakes. The checkbox guards a
+        #    misunderstanding; the password guards a different person at an
+        #    unlocked screen.
         self.page.get_by_role("button", name="Delete my account…").click()
-        self.page.get_by_label("Confirm your password").fill(PASSWORD)
-        self.page.get_by_role("button", name="Schedule deletion").click()
+        schedule = self.page.get_by_role("button", name="Schedule deletion")
+        expect(schedule).to_be_disabled()
 
-        expect(self.page.get_by_text("scheduled for deletion")).to_be_visible()
+        self.page.get_by_label("Confirm your password").fill(PASSWORD)
+        expect(schedule).to_be_disabled()
+        self.page.get_by_role("checkbox").check()
+        expect(schedule).to_be_enabled()
+        schedule.click()
+
+        expect(
+            self.page.get_by_role("heading", name="This account is scheduled for permanent deletion")
+        ).to_be_visible()
         user.refresh_from_db()
         self.assertIsNotNone(user.deletion_requested_at)
 
@@ -42,10 +52,21 @@ class LeavingTest(BrowserTest):
         #    makes cancelling reachable at all.
         self.assertTrue(user.is_active)
 
-        # 4. And it can be called off, from the same place.
-        self.page.get_by_role("button", name="Keep my account").click()
+        # 4. And they were told, at the address on the account -- the half that
+        #    protects somebody who did not do this.
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("scheduled for deletion", mail.outbox[0].subject)
 
-        expect(self.page.get_by_role("button", name="Delete my account…")).to_be_visible()
+        # 5. The warning follows them off this page. A scheduled erasure that is
+        #    only visible where it was scheduled is one somebody can forget.
+        self.visit("/app/agenda")
+        banner = self.page.get_by_role("alert")
+        expect(banner).to_contain_text("permanent deletion")
+
+        # 6. And it can be called off from there, not only from Preferences.
+        banner.get_by_role("button", name="Keep my account").click()
+
+        expect(self.page.get_by_role("alert")).to_have_count(0)
         user.refresh_from_db()
         self.assertIsNone(user.deletion_requested_at)
 

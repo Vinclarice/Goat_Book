@@ -208,33 +208,48 @@ def test_declining_an_offer_leaves_the_thought_and_no_task(signed_in, owner):
 
 
 def test_a_tagged_capture_from_the_phone_becomes_a_tagged_task(signed_in, owner):
-    """Steps 1 and 2 of one-capture-surface-plan.md, walked together.
+    """Steps 1, 2 and 4a of one-capture-surface-plan.md, walked together.
 
-    The two are separately tested and separately meaningless: step 1 turns a
+    The layers are separately tested and separately meaningless: step 1 turns a
     typed tag into a confirmed concept, step 2 carries confirmed concepts onto
     the task. What a person experiences is neither -- it is that a thought
-    tagged on the phone arrives in the agenda still tagged, which is what the
-    Inbox route always did and this route did not.
+    tagged on the phone arrives in the agenda still tagged.
 
-    Over the mobile API rather than the web form, because the web form has no
-    tags field: the phone is the only surface that sends them, which makes it
-    the only place this can be walked at all.
+    **This test used to post to `/mind/api/v1/capture` with a `mind.ApiToken`,
+    and that is the endpoint the phone does not use.** The shipped APK is built
+    with no `-PsecondMindBaseUrl`, so `Backends.isSplit` is false and every
+    capture goes to `/api/v1/capture` on a `PersonalAccessToken`. Walking the
+    wrong one is how the whole path looked covered while the live route was
+    still writing a `Capture` and dropping `captured_at` on the floor.
+
+    So it walks the real one, with the real credential, carrying the field a
+    drained queue actually sends.
     """
     import json
 
-    from mind.models import ApiToken
+    from accounts.models import SCOPE_CAPTURE_WRITE, PersonalAccessToken
 
-    _, raw = ApiToken.issue(owner, label="Android")
+    # Three days in the queue, which is the case the endpoint used to get wrong.
+    written = timezone.now() - timedelta(days=3)
+    _, raw = PersonalAccessToken.generate(
+        owner, label="Android", scopes=[SCOPE_CAPTURE_WRITE]
+    )
     signed_in.post(
-        "/mind/api/v1/capture",
+        "/api/v1/capture",
         data=json.dumps(
             {"text": f"ring the plumber by {tomorrow().isoformat()}",
-             "tags": ["boiler", "flat"]}
+             "tags": ["boiler", "flat"],
+             "captured_at": written.isoformat()}
         ),
         content_type="application/json",
         HTTP_AUTHORIZATION=f"Bearer {raw}",
         HTTP_IDEMPOTENCY_KEY="3f1b0c9e-7777-4a2b-8c3d-000000000077",
     )
+
+    # It reached the graph, keeping the day it was typed rather than the day it
+    # was delivered -- and it is on the page a person actually reads.
+    assert Node.objects.get().captured_at == written
+    assert b"ring the plumber" in signed_in.get("/mind/").content
 
     accept(signed_in, offered_commitment(owner))
 

@@ -316,39 +316,48 @@ class ContentSecurityPolicyTest(BrowserTest):
         self.assertIn(theme, ("light", "dark"))
 
 
-class CaptureTriageTest(BrowserTest):
-    """Journey 3. Capture is Django-rendered rather than SPA, so this is
-    the one journey covering the other half of the application -- server
-    forms, POST-redirect-GET, and the capture/idea domain boundary.
+class CaptureTest(BrowserTest):
+    """Journey 3. Capture is Django-rendered rather than SPA, so this is the one
+    journey covering the other half of the application -- server forms and
+    POST-redirect-GET.
+
+    **It used to be a triage journey**: capture into the Inbox, keep it for
+    reference, find it in Ideas. Heron 4b deleted all three of those surfaces,
+    and the journey did not survive them because triage was the thing being
+    removed -- the crossover's whole claim is that a thought stops needing to be
+    filed at the moment it is written.
+
+    So what it walks now is what replaced it: type it, and it is kept. The
+    second half is naming, which is the only structure this design asks for and
+    asks for it *later*, once four notes about films are recognisable as four
+    notes about films.
     """
 
-    def test_a_captured_thought_can_be_kept_as_an_idea(self):
+    def test_a_thought_is_kept_and_can_be_named_afterwards(self):
         user = self.make_user()
         self.log_in(user)
 
-        self.visit("/capture/")
-        self.page.fill("#id_text", "Read more about spaced repetition")
-        self.page.get_by_role("button", name="Capture").click()
+        self.visit("/mind/")
+        self.page.fill("textarea[name=content]", "Read more about spaced repetition")
+        self.page.get_by_role("button", name="Keep").click()
 
         expect(
             self.page.get_by_text("Read more about spaced repetition")
         ).to_be_visible()
+        # Nothing was asked at the moment of writing. No filing question, no
+        # dropdown, and -- since the words carry no date -- no offer either.
+        expect(self.page.get_by_text("Looks like a commitment")).to_have_count(0)
 
-        self.page.get_by_role("button", name="Keep for reference").click()
+        # Naming happens on the note, after the fact, and costs one line.
+        #
+        # `.tag-add` rather than `input[name=tags]`: the page carries two inputs
+        # by that name -- the capture box's own optional tags field and this
+        # one, on the note -- and the looser selector picks the first, which
+        # submits an empty capture and silently does nothing.
+        self.page.fill("input.tag-add", "reading")
+        self.page.keyboard.press("Enter")
 
-        # It left the Inbox, which is the half people notice. Asserting
-        # the text is gone would fail for the wrong reason -- the undo
-        # banner quotes it back. No triage buttons means no captures.
-        expect(
-            self.page.get_by_role("button", name="Keep for reference")
-        ).to_have_count(0)
-
-        # ...and arrived in Ideas, which is the half that matters. A triage
-        # that quietly dropped the thought would pass the assertion above.
-        self.visit("/capture/ideas/")
-        expect(
-            self.page.get_by_text("Read more about spaced repetition")
-        ).to_be_visible()
+        expect(self.page.locator(".chip", has_text="reading")).to_be_visible()
 
 
 class LogoutTest(BrowserTest):

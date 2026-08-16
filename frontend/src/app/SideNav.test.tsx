@@ -41,10 +41,7 @@ const NAV = {
   ],
   projects: [],
   archived_count: 4,
-  inbox_count: 3,
   settings_url: "/accounts/settings/",
-  inbox_url: "/capture/",
-  ideas_url: "/capture/ideas/",
   mind_url: "/mind/",
 };
 
@@ -172,17 +169,15 @@ describe("SideNav", () => {
     expect(archive.className).toMatch(/active/);
   });
 
-  it("links the inbox out of the SPA and shows what's waiting", async () => {
+  it("no longer offers the Inbox or Ideas at all", async () => {
+    // Heron 4b deleted both, and this asserts their absence rather than simply
+    // dropping the tests that covered them: a nav entry pointing at a route
+    // that 404s is the kind of thing nobody notices until they click it.
     renderNav();
-    // Wait for the payload before asserting: the loading shell renders an
-    // Inbox link too, with the same fallback href, so asserting on the
-    // first match would pass without the data ever arriving.
     await screen.findByText("Programming");
 
-    const inbox = screen.getByRole("link", { name: /Inbox/ });
-    // A Django page, so a real href rather than a router link.
-    expect(inbox).toHaveAttribute("href", "/capture/");
-    expect(inbox).toHaveTextContent("3");
+    expect(screen.queryByRole("link", { name: /Inbox/ })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Ideas" })).toBeNull();
   });
 
   it("reaches the knowledge core, at the url the server gives it", async () => {
@@ -198,27 +193,17 @@ describe("SideNav", () => {
   });
 
   it("does not put a count on it", async () => {
-    // Same reasoning as Ideas, and stronger: the knowledge core is quiet by
-    // design, and a number beside it would turn resurfacing into a backlog --
-    // which is the one thing the whole attention policy refuses to be.
+    // The knowledge core is quiet by design, and a number beside it would turn
+    // resurfacing into a backlog -- the one thing the attention policy refuses
+    // to be. This mattered less when the Inbox carried the only count in the
+    // nav; now that this is the only place a thought lives, it is the entry
+    // somebody would think to add one to.
     renderNav();
     await screen.findByText("Programming");
 
     expect(screen.getByRole("link", { name: /Second Mind/ })).toHaveTextContent(
       /^Second Mind$/,
     );
-  });
-
-  it("links out to the ideas page, without a count", async () => {
-    renderNav();
-    await screen.findByText("Programming");
-
-    const ideas = screen.getByRole("link", { name: "Ideas" });
-
-    expect(ideas).toHaveAttribute("href", "/capture/ideas/");
-    // Deliberately bare: a pile of ideas isn't a backlog to work down, and
-    // a number beside it would read as pressure to empty it.
-    expect(ideas).toHaveTextContent(/^Ideas$/);
   });
 
   it("renders the nav before its data arrives", () => {

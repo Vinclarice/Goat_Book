@@ -5,7 +5,6 @@ from django.test import TestCase
 from django.utils import timezone
 
 from accounts.models import SCOPE_AGENDA_READ, PersonalAccessToken, User
-from capture.models import Capture
 from lists import agenda as agenda_reader
 from lists import services as list_services
 from lists.models import Item, List, Project
@@ -395,15 +394,9 @@ class NavEndpointTest(TestCase):
             status=Item.Status.ARCHIVED,
             archived_at=timezone.now(),
         )
-        Capture.objects.create(owner=self.user, text="A stray thought")
-        Capture.objects.create(
-            owner=self.user, text="Dealt with", resolved_at=timezone.now()
-        )
-
         # Another user's everything, none of which may appear below.
         others = List.objects.create(owner=self.other, title="Bob's list")
         Item.objects.create(list=others, text="Not mine")
-        Capture.objects.create(owner=self.other, text="Bob's thought")
 
     def test_rejects_anonymous_requests(self):
         response = self.client.get("/api/v1/nav")
@@ -438,19 +431,34 @@ class NavEndpointTest(TestCase):
         self.assertEqual(body["projects"][0]["title"], "Kitchen remodel")
         self.assertIn("open_task_count", body["projects"][0])
 
-    def test_counts_the_archive_and_the_unresolved_inbox(self):
+    def test_counts_the_archive(self):
         self.client.force_login(self.user)
 
         body = self.client.get("/api/v1/nav").json()
 
         self.assertEqual(body["archived_count"], 1)
-        # Only the unresolved one, and only this user's.
-        self.assertEqual(body["inbox_count"], 1)
+
+    def test_the_nav_carries_no_count_that_measures_a_backlog(self):
+        """`inbox_count` went with the Inbox in Heron 4b, and nothing replaces
+        it. The knowledge core is quiet by design and a number beside it would
+        turn resurfacing into the backlog the attention policy refuses to be --
+        so this asserts the absence rather than leaving it to be re-added by
+        somebody who thinks a nav entry looks bare without one."""
+        self.client.force_login(self.user)
+
+        body = self.client.get("/api/v1/nav").json()
+
+        self.assertNotIn("inbox_count", body)
+        self.assertEqual(
+            [key for key in body if key.endswith("_count")], ["archived_count"]
+        )
 
     def test_carries_the_links_that_leave_the_spa(self):
         self.client.force_login(self.user)
 
         body = self.client.get("/api/v1/nav").json()
 
-        self.assertEqual(body["inbox_url"], "/capture/")
+        self.assertEqual(body["mind_url"], "/mind/")
         self.assertTrue(body["settings_url"].startswith("/accounts/"))
+        self.assertNotIn("inbox_url", body)
+        self.assertNotIn("ideas_url", body)

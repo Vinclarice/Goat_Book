@@ -223,6 +223,56 @@ def capture(
 
 
 @transaction.atomic
+def capture_idempotent(
+    owner,
+    *,
+    content: str,
+    captured_at: datetime,
+    source: str,
+    actor: str,
+    public_id: uuid_module.UUID | None = None,
+    tags: Sequence[str] = (),
+) -> tuple[Node, bool]:
+    """Record something and say whether it was new. The whole of a retry-safe
+    capture, in one place.
+
+    `capture` alone cannot answer "was this new", because returning the existing
+    node is exactly what it does for a retry. Both HTTP surfaces need that answer
+    — 201 against 200 is how a phone learns its earlier attempt had in fact
+    landed — and both need the same two rules on top of it, so they live here
+    rather than being written out twice.
+
+    **Tags only on a genuine create.** `record_typed_tags` is idempotent anyway,
+    but the gravity gate counts mentions: a queue that retried six times must not
+    manufacture a recurrence that never happened.
+
+    **`captured_at` is the thought's own time**, not the moment it arrived. A
+    capture can sit in an offline queue for hours, and dormancy is measured
+    between notes — so stamping a drained queue with now collapses hours onto one
+    instant on precisely the material a phone-first client produces most of.
+    The caller decides what to do when nobody said; this does not guess.
+    """
+    existed = (
+        public_id is not None
+        and Node.objects.filter(public_id=public_id).exists()
+    )
+    node = capture(
+        owner,
+        content=content,
+        captured_at=captured_at,
+        source=source,
+        actor=actor,
+        public_id=public_id,
+    )
+    created = not existed
+
+    if tags and created:
+        record_typed_tags(node, tags, now=captured_at, actor=actor)
+
+    return node, created
+
+
+@transaction.atomic
 def archive_node(node: Node, *, now: datetime, actor: str) -> Node:
     """Take a node out of the live set without deleting it.
 

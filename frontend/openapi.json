@@ -626,9 +626,20 @@
     },
     "/api/v1/capture": {
       "post": {
-        "operationId": "capture_api_v1_new_capture",
+        "operationId": "mind_api_v1_new_capture",
         "summary": "New Capture",
-        "parameters": [],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "schema": {
+              "default": "",
+              "title": "Idempotency-Key",
+              "type": "string"
+            },
+            "required": false
+          }
+        ],
         "responses": {
           "201": {
             "description": "Created",
@@ -651,6 +662,7 @@
             }
           }
         },
+        "description": "Record a thought as a node.\n\n`Idempotency-Key` is a UUID the client owns, which is precisely what\n`public_id` already is \u2014 so retry safety here is the graph's own mechanism\nrather than a parallel one. The server must not invent or silently ignore a\nkey it cannot use.",
         "requestBody": {
           "content": {
             "application/json": {
@@ -1398,20 +1410,8 @@
             "title": "Archived Count",
             "type": "integer"
           },
-          "inbox_count": {
-            "title": "Inbox Count",
-            "type": "integer"
-          },
           "settings_url": {
             "title": "Settings Url",
-            "type": "string"
-          },
-          "inbox_url": {
-            "title": "Inbox Url",
-            "type": "string"
-          },
-          "ideas_url": {
-            "title": "Ideas Url",
             "type": "string"
           },
           "mind_url": {
@@ -1427,10 +1427,7 @@
           "areas",
           "projects",
           "archived_count",
-          "inbox_count",
           "settings_url",
-          "inbox_url",
-          "ideas_url",
           "mind_url",
           "landing_surface"
         ],
@@ -2432,33 +2429,29 @@
       },
       "CaptureOut": {
         "properties": {
-          "id": {
-            "title": "Id",
-            "type": "integer"
-          },
-          "created_at": {
-            "title": "Created At",
+          "public_id": {
+            "format": "uuid",
+            "title": "Public Id",
             "type": "string"
           },
-          "tags": {
-            "default": [],
-            "items": {
-              "type": "string"
-            },
-            "title": "Tags",
-            "type": "array"
+          "captured_at": {
+            "format": "date-time",
+            "title": "Captured At",
+            "type": "string"
           }
         },
         "required": [
-          "id",
-          "created_at"
+          "public_id",
+          "captured_at"
         ],
         "title": "CaptureOut",
         "type": "object"
       },
       "CaptureIn": {
+        "description": "What the Android client sends.\n\nIts own field names \u2014 `text`, not `content` \u2014 kept rather than changed,\nbecause the point of this endpoint is that an app with an encrypted offline\nqueue and a share-sheet handler already built needs no Kotlin changes.",
         "properties": {
           "text": {
+            "default": "",
             "title": "Text",
             "type": "string"
           },
@@ -2469,11 +2462,20 @@
             },
             "title": "Tags",
             "type": "array"
+          },
+          "captured_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Captured At"
           }
         },
-        "required": [
-          "text"
-        ],
         "title": "CaptureIn",
         "type": "object"
       },

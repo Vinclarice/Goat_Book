@@ -31,8 +31,11 @@ class PauseBackfillTest(TransactionTestCase):
         return executor.loader.project_state(target).apps
 
     def tearDown(self):
-        # Leave the test database where the rest of the suite expects it.
-        self.migrate(AFTER)
+        # Every app forward -- see the note in
+        # lists/tests/test_checklist_step_backfill.py.
+        executor = MigrationExecutor(connection)
+        executor.loader.build_graph()
+        executor.migrate(executor.loader.graph.leaf_nodes())
 
     def test_a_routine_that_is_down_now_gets_the_pause_it_is_down_in(self):
         old_apps = self.migrate(BEFORE)

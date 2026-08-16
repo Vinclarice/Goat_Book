@@ -24,7 +24,6 @@ from datetime import timedelta
 from django.utils import timezone
 from playwright.sync_api import expect
 
-from capture import services as capture_services
 from daily import services as daily_services
 from functional_tests.base import BrowserTest
 from lists import services as list_services

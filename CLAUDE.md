@@ -16,7 +16,7 @@ The two that most often get skipped under time pressure:
 
 [`design/roadmap.md`](design/roadmap.md) is the plan; active specs live
 alongside it in `design/`. **[`design/README.md`](design/README.md) indexes all
-thirty documents** — which are standing authorities, which are records of
+thirty-one documents** — which are standing authorities, which are records of
 shipped work, and which fact each one owns. Start there rather than guessing
 whether a plan is current.
 
@@ -54,21 +54,36 @@ on 5434 are history; do not develop there. This paragraph said the opposite for
 a day after the merger, which is exactly the drift the checklist above exists to
 prevent.
 
-The crossover is not finished. There are still **two capture surfaces** —
-`/capture/` writing a `Capture`, `/mind/` writing a `Node` — and
-`/api/v1/capture` is defined by both cores under different prefixes. The
-`/mind/` prefix is temporary and appears in exactly one line of
-`clarice/urls.py`; where those pages finally live is the decision that ends the
-crossover.
+**There is one capture surface**, as of Heron 4b on August 15, 2026: `/mind/`,
+writing a `Node`. `/capture/` and its `Capture` and `Idea` models are deleted.
+The `/mind/` prefix is still temporary and still appears in exactly one line of
+`clarice/urls.py`; moving it to the URL 4b freed is step 5, and is all that is
+left of the crossover.
 
-## The task core is in maintenance until the crossover ends
+**There is one capture *endpoint*, as of Heron 4a on August 15, 2026.**
+`/api/v1/capture` is the application's, served by `mind/api_v1.py`, and it
+writes a `Node`. Both the phone and the SPA's Day page post to it. The knowledge
+core keeps a second, entirely unused API at `/mind/api/v1/` with its own
+`mind.ApiToken` table; nothing calls it, and it is retirable.
 
-**This heading used to read "until the merger", and the merger is over** — so
-the restraint needs a live reason or it is cargo. It has one, and it is
-narrower: `Capture` and `Idea` are still slated for retirement, there are still
-two capture surfaces, and work put into either is work thrown away. That is a
-smaller claim than the old one and it should be re-examined when the crossover
-ends rather than left standing by habit.
+## The task core is in maintenance — and the reason has now expired
+
+**This heading has been rewritten twice, and needs deciding rather than
+rewriting a third time.** It read "until the merger", and the merger ended. It
+then read "until the crossover ends", on the narrower ground that `Capture` and
+`Idea` were slated for retirement and there were two capture surfaces, so work
+on either was work thrown away.
+
+**Heron 4b deleted both models and one of the two surfaces, so that ground is
+gone.** Step 5 does not sustain it: moving a URL prefix does not make task-core
+work throwaway. The file's own instruction was that this be *re-examined when
+the crossover ends rather than left standing by habit*, so — re-examined, and
+the stated reason no longer holds.
+
+**Whether the restraint lifts is Vince's call, not an inference from this
+paragraph.** There may be other reasons to keep the task core quiet; there is no
+longer *this* reason. Until he says, treat it as still in force and say so when
+it bites, rather than quietly acting on the expiry.
 
 The other half of the old reasoning is simply gone. It warned that separate
 repositories guard against an *accidental* edit, leaving only the **justified**
@@ -103,17 +118,15 @@ Also closed: the white screen on any render exception (`0428efb`), and defects
 August 12 in `2986ed6`. **That is the second time this list and the blueprint
 have claimed finished work was open.** Check the code before believing either.
 
-**Blueprint defect 6 will not be fixed — Vince's call, August 14, 2026.** Do
-not re-open it. `promote_idea_to_task` carries an Idea's notes but not its tags,
-where `promote_to_task` carries both. It is a discontinuity rather than data
-loss: the Idea is marked `PROMOTED` and keeps `promoted_task`, so its tags are
-still there and still reachable from the task. Set against that, `Idea` is
-retired by the merger, and no Idea exists locally to have been affected. Left
-deliberately.
+**Blueprint defect 6 is moot, not open — Vince declined it August 14, 2026 and
+Heron 4b removed the code.** `promote_idea_to_task` carried an Idea's notes but
+not its tags; `Idea` no longer exists, so neither does the function. Recorded
+because the blueprint still lists it, and this list has twice claimed finished
+work was open.
 
-**Not allowed without a deliberate decision.** New features on `Capture` or
-`Idea`, which are retired by the crossover. New models on the task core — a
-model added now is a model migrated twice.
+**Not allowed without a deliberate decision.** New models on the task core — a
+model added now is a model migrated twice. `Capture` and `Idea` used to head
+this list and are simply gone.
 
 `Item` is no longer on that list. It is the destination for every accepted
 commitment, and it gained `owner` on August 14 precisely so a thought from the
@@ -129,9 +142,19 @@ there were two projects. There is one now, one database and one transaction, and
 "bridge" the rule forbade — which is the merger's whole payoff rather than a
 violation of it.
 
-`android/` remains a client of two backends, which is still true and still worth
-knowing: capture goes to the knowledge core, Today and Agenda to the task core.
-See `docs/android-two-backends.md` in the Second Mind repository.
+**`android/` is a client of one backend, and this paragraph said otherwise until
+August 15.** It read: *capture goes to the knowledge core, Today and Agenda to
+the task core*. The code to do that exists — `Backends.isSplit`, a second token
+slot, a second Connect screen — but it switches on `-PsecondMindBaseUrl`, which
+defaults to `""` and has never been passed to a shipped build. Every request the
+phone makes goes to `https://vinclarice.com/`. Heron step 4 planned to delete
+`/api/v1/capture` on the strength of that sentence, which would have drained the
+encrypted offline queue into 404s. `docs/android-two-backends.md` in the Second
+Mind repository describes the design, not the deployment.
+
+Generalise it: **a seam that is not switched on is not a seam.** Three of these
+turned up in two days — `/healthz` with nothing polling it, detectors built and
+never invoked, and this. Check the build configuration, not the branch.
 
 ## Environment
 
@@ -242,6 +265,30 @@ before any redeploy that would overwrite the evidence.
 **When Vince says "deploy it," he's asking for this command, not asking
 you to run it.** Surface it in a fenced `bash` block and stop there — he
 runs it himself and reports back once it's done.
+
+**The deploy is not finished until it is tagged, and this is your job, not
+his.** Three tags, each meaning a different thing:
+
+- `LIVE` — a moving pointer at the code currently running. **The only tag
+  that is ever overwritten** (`git tag -f` plus `git push --force origin
+  LIVE`), which is safe precisely because the position it leaves is kept by
+  the `DEPLOYED-` tag that marked it.
+- `DEPLOYED-<YYYY-MM-DD>/<HHMM>` — a permanent record of one deployment
+  event. Ask for the time if you do not have it; do not guess, and check
+  the name is free, because these collide silently.
+- The bird codename — a permanent annotated release tag, applied when a
+  release is verified in production, describing what shipped and how.
+
+This drifted badly through August: `LIVE` sat five days and thirty commits
+behind production, and two deploys went untagged. It drifted because
+tagging was written down in `roadmap.md` as a convention and nowhere as a
+step. So: when he reports a deploy done, verify what is live, then tag it
+in the same turn.
+
+Note that the playbook builds the image **from the working tree**
+(`delegate_to: 127.0.0.1`), not from a git ref — so what is deployed is
+whatever branch is checked out, merged or not. Tag the commit that was
+actually built, and confirm it with `git describe --always --dirty`.
 
 **An apt task that looks hung is usually not.** The "Install docker" step
 stalled for minutes on three separate deploys and was cancelled each time,

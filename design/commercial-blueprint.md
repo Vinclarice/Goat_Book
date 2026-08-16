@@ -156,17 +156,18 @@ at `frontend/src/main.tsx:26`, inside the island entry point that no template
 references any more (that file is gone as of `54d39ab`; the shell got its own
 boundary in `0428efb`). `app/main.tsx` mounts the router with no boundary.
 
-**6. ~~Tags are dropped on one of two promotion routes.~~ Will not be fixed —
-decided August 14, 2026.** Not data loss, which this entry did not say: the Idea
-is marked `PROMOTED` and keeps `promoted_task`, so the tags remain on it and
-remain reachable. Against a two-line fix stands a model the merger retires and
-no known affected row. Deliberate, so that the next reader does not spend the
-fifteen minutes deciding again. `promote_to_task`
-(Capture → Item) carries them (`src/capture/services.py:135`);
-`promote_idea_to_task` (Idea → Item) calls `create_item(for_list, idea.text)`
-with no tags (`:232`). Same user intent, different outcome by route.
-`second-mind-discovery-plan.md` §4.2 declared this closed having audited only the
-hops out of Capture.
+**6. ~~Tags are dropped on one of two promotion routes.~~ Declined August 14,
+2026; moot since August 15.** Heron 4b deleted `Capture`, `Idea` and both
+promotion routes, so there is no longer any code to fix. **The file and line
+references this entry carried are dangling — do not go looking for them.**
+
+Kept for the decision rather than the defect. It was never data loss: the Idea
+was marked `PROMOTED` and kept `promoted_task`, so its tags stayed reachable.
+Against a two-line fix stood a model the crossover was already retiring and no
+known affected row — and the retirement duly arrived a day later, which is the
+argument working rather than luck. `second-mind-discovery-plan.md` §4.2 had
+declared this closed having audited only the hops out of Capture; the lesson
+that outlives the code is that "audited" meant "audited one of two routes".
 
 **7. ~~The Android capture queue has no lock.~~ Fixed August 13, 2026** -- a process-wide lock on the companion object, not `@Synchronized`, because MainActivity and CaptureWorker each construct their own `CaptureQueue` over one store, so a per-instance monitor would have passed a shared-queue test and protected nothing. Covered by a two-thread test over two instances. `grep -rn 'Mutex\|synchronized\|
 withLock' android/app/src/main/` returns nothing. `CaptureQueue.add/delivered/
@@ -375,7 +376,11 @@ palette, AI synthesis. All correctly deferred; none has a trigger.
   went; the three components they mounted stayed, because they are the SPA's
   routes now.
 - `static/bootstrap/` — 8.4 MB still in the tree after retirement.
-- The Django `/capture/` template stack, once M1 lands.
+- ~~The Django `/capture/` template stack~~ — **deleted August 15, 2026** by
+  Heron 4b, along with `Capture`, `Idea`, `capture/services.py` and
+  `migrate_inbox`. The `capture` app itself is still installed, holding nothing
+  but migrations, because Django needs it there to run the one that drops the
+  tables. Removing the app is the follow-up, after that migration deploys.
 - `src/lists/api.py` + `api_urls.py` — seven hand-rolled endpoints that own
   *every task mutation*, with a different error envelope from `/api/v1/`, no
   OpenAPI description, and an undocumented "exactly one field per PATCH" rule
@@ -420,12 +425,15 @@ each client buckets it. The server owns the *rule* on paper and ships *inputs* i
 practice.
 
 **No enforced module boundaries, so a comment can stand in for an invariant.**
-Two comments assert a boundary that does not exist, in mirror image:
-`src/lists/api_v1.py:217` says of capture "no FK, no import the other way" while
-`capture/services.py:12` and `capture/views.py:10` both import `lists`; and
-`src/capture/models.py:79` says "nothing in lists imports this" while
-`lists/api_v1.py` imports `Capture` and queries it three lines below its own
-comment. Both are wrong, each about the other. Separately, `daily/api_v1.py:20`
+Two comments asserted a boundary that did not exist, in mirror image:
+`lists/api_v1.py` said of capture "no FK, no import the other way" while
+`capture/services.py` and `capture/views.py` both imported `lists`; and
+`capture/models.py` said "nothing in lists imports this" while `lists/api_v1.py`
+imported `Capture` and queried it three lines below its own comment. Both were
+wrong, each about the other. **Resolved by deletion rather than by fixing,
+August 15, 2026** — Heron 4b removed every file involved, which settles this
+instance and settles nothing about the general problem: there is still no
+enforcement, only prose. Separately, `daily/api_v1.py:20`
 imports schema classes from `lists.api_v1` and `routines.api_v1`, so a field
 added to `TaskOut` for the Agenda silently changes the Day contract for all three
 clients.

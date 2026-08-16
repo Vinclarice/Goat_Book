@@ -153,11 +153,24 @@ class DailyPageOnAPhoneTest(BrowserTest):
 
     def test_a_thought_can_be_captured_on_a_phone(self):
         """Rapid logging is the affordance the vision document calls
-        'especially important on mobile'."""
+        'especially important on mobile'.
+
+        The confirmation is asserted because it has to keep being true. It read
+        "Sent to your Inbox." until Heron 4a moved the destination to the graph,
+        and a confirmation naming the wrong place is worse than none — somebody
+        goes and looks there. This test would have passed either way, which is
+        why the string is checked against where the thought actually went.
+        """
         self.log_in(self.user)
         self.visit("/app/day")
 
         self.page.get_by_label("Capture a thought").fill("A thought on the move")
         self.page.get_by_role("button", name="Capture").click()
 
-        expect(self.page.get_by_text("Sent to your Inbox.")).to_be_visible()
+        expect(self.page.get_by_text("Kept.")).to_be_visible()
+        expect(self.page.get_by_role("link", name="See it")).to_have_attribute(
+            "href", "/mind/"
+        )
+        # And it is where the link says it is.
+        self.visit("/mind/")
+        expect(self.page.get_by_text("A thought on the move")).to_be_visible()

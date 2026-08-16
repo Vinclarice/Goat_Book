@@ -280,25 +280,23 @@ def revoke_token(request, token_id: int):
 # ---------------------------------------------------------------------------
 
 
-def _capture(request, payload: CaptureIn) -> tuple[Node, bool]:
+def _capture(request, payload: CaptureIn, *, tags: list[str] = ()) -> tuple[Node, bool]:
     """The one capture implementation. Returns the node and whether it is new.
 
     Shared by both capture endpoints rather than reimplemented, because two capture
-    paths with two behaviours is how a retry quietly stops being idempotent.
+    paths with two behaviours is how a retry quietly stops being idempotent — and the
+    rules themselves now live one layer down, in `services.capture_idempotent`, so
+    this API and the shared `/api/v1/capture` in `mind/api_v1.py` cannot drift either.
     """
-    existing = (
-        Node.objects.filter(public_id=payload.public_id).first()
-        if payload.public_id
-        else None
-    )
     try:
-        node = services.capture(
+        return services.capture_idempotent(
             request.user,
             content=payload.content,
             captured_at=payload.captured_at or timezone.now(),
             source=payload.source,
             actor=request.user.get_username(),
             public_id=payload.public_id,
+            tags=tags,
         )
     # 400, not 422 or 409. A queued client treats anything other than 400/401/403 as
     # "retry later", so an unprocessable body returned as 422 would be retried forever
@@ -308,8 +306,6 @@ def _capture(request, payload: CaptureIn) -> tuple[Node, bool]:
         raise HttpError(400, str(exc))
     except services.NotYours:
         raise HttpError(400, "that id belongs to someone else")
-
-    return node, existing is None
 
 
 @api.post("/captures", response={201: NodeOut, 200: NodeOut})
@@ -376,6 +372,11 @@ def create_capture_mobile(
     except ValueError:
         raise HttpError(400, "Idempotency-Key must be a UUID")
 
+    # Each tag becomes a confirmed concept and an explicit mention -- step 1 of
+    # one-capture-surface-plan.md -- and only on a genuine create, so a retried
+    # queue cannot manufacture a recurrence. Both rules live in
+    # `services.capture_idempotent`, which is where the other capture endpoint
+    # reads them from too.
     node, created = _capture(
         request,
         CaptureIn(
@@ -384,23 +385,8 @@ def create_capture_mobile(
             captured_at=payload.captured_at,
             source=NodeSource.MOBILE,
         ),
+        tags=payload.tags,
     )
-
-    if payload.tags and created:
-        # Each tag becomes a confirmed concept and an explicit mention -- step 1
-        # of one-capture-surface-plan.md. This used to write the strings onto
-        # the activity log under "tags kept, not yet modelled", which discarded
-        # nothing and was read by nothing.
-        #
-        # Only on a genuine create. A retry resolves to the existing node, and
-        # `record_typed_tags` is idempotent anyway, but doing the work twice for
-        # a request that changed nothing is noise in the log.
-        services.record_typed_tags(
-            node,
-            payload.tags,
-            now=timezone.now(),
-            actor=request.user.get_username(),
-        )
 
     return Status(201 if created else 200, _node_out(node, now=timezone.now()))
 

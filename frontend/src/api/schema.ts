@@ -317,8 +317,16 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** New Capture */
-        post: operations["capture_api_v1_new_capture"];
+        /**
+         * New Capture
+         * @description Record a thought as a node.
+         *
+         *     `Idempotency-Key` is a UUID the client owns, which is precisely what
+         *     `public_id` already is — so retry safety here is the graph's own mechanism
+         *     rather than a parallel one. The server must not invent or silently ignore a
+         *     key it cannot use.
+         */
+        post: operations["mind_api_v1_new_capture"];
         delete?: never;
         options?: never;
         head?: never;
@@ -676,14 +684,8 @@ export interface components {
             projects: components["schemas"]["NavProjectOut"][];
             /** Archived Count */
             archived_count: number;
-            /** Inbox Count */
-            inbox_count: number;
             /** Settings Url */
             settings_url: string;
-            /** Inbox Url */
-            inbox_url: string;
-            /** Ideas Url */
-            ideas_url: string;
             /** Mind Url */
             mind_url: string;
             /** Landing Surface */
@@ -1064,25 +1066,38 @@ export interface components {
         };
         /** CaptureOut */
         CaptureOut: {
-            /** Id */
-            id: number;
-            /** Created At */
-            created_at: string;
             /**
-             * Tags
-             * @default []
+             * Public Id
+             * Format: uuid
              */
-            tags: string[];
+            public_id: string;
+            /**
+             * Captured At
+             * Format: date-time
+             */
+            captured_at: string;
         };
-        /** CaptureIn */
+        /**
+         * CaptureIn
+         * @description What the Android client sends.
+         *
+         *     Its own field names — `text`, not `content` — kept rather than changed,
+         *     because the point of this endpoint is that an app with an encrypted offline
+         *     queue and a share-sheet handler already built needs no Kotlin changes.
+         */
         CaptureIn: {
-            /** Text */
+            /**
+             * Text
+             * @default
+             */
             text: string;
             /**
              * Tags
              * @default []
              */
             tags: string[];
+            /** Captured At */
+            captured_at?: string | null;
         };
         /**
          * DayActionItemOut
@@ -2048,10 +2063,12 @@ export interface operations {
             };
         };
     };
-    capture_api_v1_new_capture: {
+    mind_api_v1_new_capture: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
             path?: never;
             cookie?: never;
         };

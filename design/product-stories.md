@@ -3,6 +3,16 @@
 Vince · written August 12, 2026 · the target these stories describe is the
 two-year product, not the next release
 
+**The "current product" half of every verdict below is a snapshot of August 12
+and has moved since.** Heron deleted `Capture` and `Idea` on August 15 and put
+every thought in the knowledge core's graph, so verdicts reasoning about
+`Idea`'s eight fields or the Inbox's triage flow are describing a product that
+no longer exists — including §"Verdict: impossible" at the `Idea` search story,
+and the line predicting that `Idea` "does not survive", which has now happened.
+The **target** half is unaffected, which is the half this document is for.
+Re-running the stories against the current product is worth doing once step 5
+lands rather than piecemeal now.
+
 ## What this is for
 
 [`commercial-blueprint.md`](commercial-blueprint.md) audits what Clarice is.

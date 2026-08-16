@@ -9,6 +9,130 @@ This preserves the reasoning, deployment record, and lessons behind completed
 work without making the active roadmap hard to scan. The active plan is
 [`roadmap.md`](roadmap.md).
 
+## Heron, steps 1–4b — the crossover, August 15, 2026
+
+Heron is not closed; step 5 remains, and 4b is built but not deployed. This is
+the narrative of what shipped, so that `roadmap.md` can carry the baseline rather
+than the story. The plan is
+[`one-capture-surface-plan.md`](one-capture-surface-plan.md).
+
+**Steps 1 and 2** wired a typed tag to a confirmed concept and carried a node's
+concepts onto the task made from it. Almost no new machinery — `ConceptCandidate`
+already had `label`, `confirmed_at` and `reason`, and `propose_mention` with an
+explicit origin already self-confirmed. The trade it settled was real, though:
+the Inbox modelled tags as first-class rows and the knowledge core deliberately
+models none. The reconciliation is that **the gravity gate exists to filter the
+system's guesses.** Three mentions across a day is what an *extracted* candidate
+pays because extraction over-generates on purpose. A person typing a tag is not
+a guess and owes that gate nothing.
+
+**Step 3** moved 34 captures and 2 ideas into the graph carrying their original
+timestamps, 22 of them archived on the way in as discards. The corpus is the
+binding constraint on the whole knowledge core, so this was not cleanup that
+preserved data — it was the step that gave the detectors something to work on.
+
+### 4a, and the check that came back the other way round
+
+Step 4 said to *check first that nothing on the phone still uses the task-core
+capture scope*, on the belief that `Backends.kt` already routed capture to the
+knowledge core. **It does not, and never has on any shipped build.**
+`secondMindBaseUrl` defaults to `""`, so `isSplit` is false and `capture` is
+literally the same object as `workspace`. Every thought typed on the phone posts
+to the task core's `/api/v1/capture`. Deleting it, as step 4 planned to, would
+have drained the encrypted offline queue into 404s.
+
+The plan had also miscounted the surfaces. It said two; there were three — the
+SPA Day page's quick-capture box posts to the same endpoint on session auth.
+
+So the step became: keep the URL, the bearer token and the `capture:write`
+scope, change what they write. `/api/v1/capture` writes a `Node` now, through
+`services.capture_idempotent`, shared with `/mind/api/v1/capture` so the two
+cannot drift. The router moved from `capture/api_v1.py` to `mind/api_v1.py`,
+leaving the `capture` app with nothing on the API — which is what turns 4b from
+a migration into a deletion. No APK rebuild, nobody logged in twice, and one
+`/api/v1/` for one application.
+
+`mind/urls.py` had already written down the answer: the two definitions of
+`/api/v1/capture` were "the dual-write question arriving early, and it is
+answered when facets land — one capture endpoint that writes a node and
+optionally a task."
+
+**A fix that had shipped to the wrong endpoint.** Android sends `captured_at`
+from both call sites — `CaptureViewModel.deliver` and `QueueDrainer.drain` — so
+a thought that waited hours in the queue arrives with the time it was written.
+The live endpoint's schema was `text` and `tags` only, so Ninja dropped the
+field in silence. It had been found and fixed once, on the August 14 device
+pass, on `/mind/api/v1/capture` — which nothing calls. The defect stayed live on
+the real path for a day, and the 22 device-test captures now in the graph carry
+delivery times rather than writing times as a result.
+
+**The lesson, and it is the third time in two days.** `/healthz` existed and
+nothing polled it. The detectors were built, tested and green and were never
+invoked. Here a two-backend seam was written, documented, unit-tested and never
+switched on, and a fix for a real defect landed on the half nobody used. Code
+that exists is not code that runs, and a test that walks the wrong endpoint
+proves the wrong thing — `test_journeys.py` was doing exactly that, posting to
+`/mind/api/v1/capture` with a `mind.ApiToken`, and now walks the real route with
+the real credential.
+
+Deployed at noon on August 15 as `DEPLOYED-2026-08-15/1200` (`99d48a2`), which
+`LIVE` now points at. Verified by 974 Django tests, 686 pytest, 271 frontend, 30
+browser and a clean build, then in production: the live OpenAPI schema carries
+`captured_at` and returns `{public_id, captured_at}`, and an offline capture was
+walked from the phone through the queue to `/mind/`.
+
+**A last capture had reached the Inbox after the migration and before the
+deploy** — "Barry tv show", August 15 — which is exactly the gap the re-run of
+`migrate_inbox` exists to close. The graph stands at 41 nodes, 19 of them visible
+to the detectors.
+
+**Both of that command's counts describe the input rather than the action**, and
+it is worth saying because somebody read them to decide whether to proceed. The
+dry run lists everything in `Capture` rather than what it would write, so one new
+capture reads as thirty-five; and "22 discarded capture(s) archived" counts the
+discarded captures it walked past, not the nodes it archived. Neither is wrong
+about the world, and neither answers the question being asked of it. The command
+retired with `Capture` in 4b rather than being fixed.
+
+### 4b — the deletion, and three things it did not cause
+
+`/capture/`'s pages, forms, services, admin and tests are gone, with `Capture`,
+`Idea` and `migrate_inbox`. Inbox and Ideas left both navs — the SPA's `SideNav`
+and the Django `base.html` — and `inbox_count`, `inbox_url` and `ideas_url` left
+the `/nav` payload. **`inbox_count` was the only number in that nav measuring a
+backlog**, and nothing replaces it; a test now asserts that no nav key ends in
+`_count` except `archived_count`, because a bare entry invites somebody to add
+one and the attention policy exists to refuse exactly that.
+
+`capture` stays in `INSTALLED_APPS`. Django needs it there for the delete
+migration to run; removing the app in the same change would leave two tables in
+production that no migration could reach. That is a follow-up, after the deploy.
+
+Three things broke, and none of them were about capture:
+
+- **`base.html` reversed `capture_inbox` and `ideas`.** Every Django-rendered
+  page 500'd. The suite caught it in the first run.
+- **The generated migration would not reverse.** `idea_owner_status_idx` covers
+  `owner`, and unapplying `DeleteModel` runs before unapplying `RemoveField` —
+  so a rewind rebuilt the table and then tried to index a column it had not
+  re-added. Nothing in production would ever have reached it; the
+  migration-rewind tests did. Fixed with a `RemoveIndex` first, on the grounds
+  that a migration nobody can back out of is worst at the moment they want to.
+- **Four migration-rewind tests only rolled their own app forward** in teardown.
+  Harmless for as long as every table had a live model, because the inter-test
+  flush truncates by model — and fatal the instant a table had none, surfacing
+  as `cannot truncate a table referenced in a foreign key constraint` in a test
+  about checklist steps. They now roll the whole graph forward, which is what
+  their own comment already claimed and what `accounts` had always done.
+
+The pattern in all three: **deleting a model is a schema change, and the things
+it breaks are the things that quietly depended on the schema being wider than
+they needed.** None was found by reading the diff.
+
+872 Django, 672 pytest, 270 frontend, 30 browser, clean build. Not yet deployed,
+and the deploy is a decision rather than a routine push: `0008` drops two tables
+and has no reverse.
+
 ## After Dunlin — Release F and six unlettered lines of work, August 6–12, 2026
 
 Archived from `roadmap.md` on August 13, 2026. Six of these seven shipped

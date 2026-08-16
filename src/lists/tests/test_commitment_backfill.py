@@ -31,8 +31,10 @@ class CommitmentBackfillTest(TransactionTestCase):
         return executor.loader.project_state(target).apps
 
     def tearDown(self):
-        # Leave the test database where the rest of the suite expects it.
-        self.migrate(AFTER)
+        # Every app forward -- see the note in test_checklist_step_backfill.py.
+        executor = MigrationExecutor(connection)
+        executor.loader.build_graph()
+        executor.migrate(executor.loader.graph.leaf_nodes())
 
     def test_existing_repeating_roots_are_anchored_and_others_left_alone(self):
         old_apps = self.migrate(BEFORE)

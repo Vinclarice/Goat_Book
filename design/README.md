@@ -37,6 +37,7 @@ status is exactly how the drift above started.
 
 | Document | Status | Declares it? |
 |---|---|---|
+| [`one-capture-surface-plan.md`](one-capture-surface-plan.md) | Shipped Aug 15, 2026 as **Heron**; all five steps verified in production the same day | yes |
 | [`bittern-plan.md`](bittern-plan.md) | Shipped Aug 2, 2026 | yes |
 | [`crane-plan.md`](crane-plan.md) | Shipped Aug 2, 2026 | yes |
 | [`release-d-plan.md`](release-d-plan.md) | Shipped Aug 3, 2026 as Dunlin | yes |
@@ -68,7 +69,6 @@ done; until it is done, this table is the more reliable source.
 
 | Document | State |
 |---|---|
-| [`one-capture-surface-plan.md`](one-capture-surface-plan.md) | **Active — this is Heron, and all five steps are built.** 1–4a verified in production Aug 15 (`DEPLOYED-2026-08-15/1200`); **4b and 5 await one deployment together, and 4b carries an irreversible migration.** Step 5 settled `/mind/` as permanent rather than moving it. Declares its own status |
 | [`staging-environment-plan.md`](staging-environment-plan.md) | Designed Aug 11, **deliberately deferred** Aug 12. The `is_debug()` fix shipped; the droplet waits for a trigger |
 | [`android-release-signing-plan.md`](android-release-signing-plan.md) | Build is wired; **the keystore is Vince's to generate by hand.** One of the three open B/C/D items |
 

@@ -11,12 +11,11 @@ work without making the active roadmap hard to scan. The active plan is
 
 ## Heron — the crossover, August 15, 2026
 
-All five steps built in one day. 1–4a are in production; **4b and 5 await one
-deployment together, Vince's call, so that Heron lands whole rather than leaving
-a half-crossed state live in between.** The bird is tagged when that deploy is
-verified, same as always. This is the narrative, so that `roadmap.md` can carry
-the baseline rather than the story; the plan is
-[`one-capture-surface-plan.md`](one-capture-surface-plan.md).
+**Tagged `heron` on `04e7c71`.** All five steps built, deployed and verified in
+production in one day: 1–4a at 1200, then 4b and 5 together at 2030 — held to
+one deploy on Vince's call, so that the crossover was never half-live. This is
+the narrative, so that `roadmap.md` can carry the baseline rather than the story;
+the plan is [`one-capture-surface-plan.md`](one-capture-surface-plan.md).
 
 **Steps 1 and 2** wired a typed tag to a confirmed concept and carried a node's
 concepts onto the task made from it. Almost no new machinery — `ConceptCandidate`
@@ -131,9 +130,19 @@ The pattern in all three: **deleting a model is a schema change, and the things
 it breaks are the things that quietly depended on the schema being wider than
 they needed.** None was found by reading the diff.
 
-872 Django, 672 pytest, 270 frontend, 30 browser, clean build. Not yet deployed,
-and the deploy is a decision rather than a routine push: `0008` drops two tables
-and has no reverse.
+872 Django, 672 pytest, 270 frontend, 30 browser, clean build.
+
+Deployed with step 5 at 2030 as `DEPLOYED-2026-08-15/2030`. The pre-flight ran
+first, against production while the models still existed, because `0008` has no
+reverse and after it there is nothing left to check against: every `Capture` and
+`Idea` row accounted for by a `Node` with an `inbox:` import key. Confirmed after
+with `showmigrations capture` — `[X] 0008_delete_idea_capture` — because the
+migration runs in its own container before the app is recreated and could in
+principle fail without the play visibly failing.
+
+`/capture/` and `/capture/ideas/` now answer 404 where they used to redirect to a
+login, and the live `/nav` payload carries none of `inbox_count`, `inbox_url` or
+`ideas_url`. Those are the two observable facts that say 4b actually landed.
 
 ### 5 — the URL that did not move
 

@@ -1,14 +1,18 @@
 # One capture surface — the plan for Heron
 
-Vince · August 15, 2026 · **active. Steps 1, 2, 3 and 4a shipped and verified in
-production August 15 as `DEPLOYED-2026-08-15/1200`. 4b and 5 built the same day
-and await one deployment together — Vince's call, so that Heron lands whole.**
+Vince · August 15, 2026 · **shipped complete and verified in production the same
+day. Tagged `heron`.** All five steps: deployed at 1200 (1–4a,
+`DEPLOYED-2026-08-15/1200`) and 2030 (4b and 5, `DEPLOYED-2026-08-15/2030`).
 
-4a was verified on the droplet: the live schema carries `captured_at` and
-returns a node, the Inbox sweep drained its last capture, and an offline capture
-from the phone was walked end to end. 4b and 5 are verified by the full suites
-plus a clean build — **production verification owed, and 4b carries an
-irreversible migration**; see the pre-flight check under 4b.
+Verified by 872 Django, 672 pytest, 270 frontend and 30 browser tests, a clean
+build and CI green across five jobs — then on the droplet: `/healthz` ok,
+`/capture/` 404s where an Inbox used to be, the nav carries no inbox keys, the
+live schema returns a node and accepts `captured_at`, migration `0008` shows
+`[X]`, and an offline capture from the phone arrived at `/mind/` carrying the
+time it was typed.
+
+This document is now a record. What it got wrong on the way is kept rather than
+tidied — see step 4a on `Backends.kt` and step 5 on the URL that did not move.
 
 Ends the crossover the merger deliberately left open. Three capture surfaces
 become one: `/mind/` writing a `Node` survives, `/capture/` writing a `Capture`

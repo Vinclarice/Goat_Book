@@ -501,9 +501,10 @@ the next position in a sequence, claimed by whatever ships next, and commercial
 readiness will carry whatever letter it reaches — realistically a long way down
 the alphabet. Nothing is held open for a subject that has not started.
 
-**The release in progress is H, and it is Heron** — named August 15, 2026,
-ahead of shipping for once, and started the same day. Naming is not tagging: the
-tag still waits on production verifying it, same as always. Its content is the
+**H was Heron, and it is tagged** — named August 15, 2026 ahead of shipping for
+once, then started, finished, deployed and verified the same day. Naming was not
+tagging: the `heron` tag went on `04e7c71` only after production answered, which
+is the practice working rather than an exception to it. Its content was the
 crossover; see [`one-capture-surface-plan.md`](one-capture-surface-plan.md).
 
 **Going forward the scheme holds again**: a release is a coherent body of work
@@ -512,53 +513,39 @@ chosen when it ships.
 
 ## Where things stand — August 15, 2026
 
-**The last release is Godwit**, tagged and verified in production on August 15:
-the Second Mind merger end to end, and nine of the ten defects in
-`commercial-blueprint.md` Part 1. Fulmar was assigned the same day to the
-August 6–12 period behind it. See Release practice for both, and for why the
-letters were restored after being written off.
+**The last release is Heron**, tagged and verified in production on August 15:
+~~the crossover~~ — closed the same day it started, all five steps of
+[`one-capture-surface-plan.md`](one-capture-surface-plan.md), deployed at 1200
+and 2030. Godwit was the merger, the day before; Fulmar covered August 6–12.
+See Release practice, and `roadmap-history.md` for what each step cost.
 
-**Heron is active.** The **crossover** is release-shaped in a way nothing since
-Dunlin has been — one subject, one finish line — and four of its five steps are
-done. See [`one-capture-surface-plan.md`](one-capture-surface-plan.md) for the
-sequence and `roadmap-history.md` for what each step cost.
+**There is no active release.** What Heron leaves is a baseline rather than a
+backlog:
 
-- **Steps 1, 2, 3 and 4a shipped and were verified in production August 15,
-  2026**, tagged `DEPLOYED-2026-08-15/1200`. A typed tag is a confirmed concept;
-  a task inherits its node's concepts; the Inbox is drained into the graph — 41
-  nodes, 19 visible to the detectors; and `/api/v1/capture` writes a `Node`,
-  keeping the time a queued thought was written rather than the time it was
-  delivered.
-- **There is one capture endpoint now.** `/api/v1/capture` is the application's,
-  served by `mind/api_v1.py`, and it is what the phone and the Day page both
-  post to. The knowledge core keeps a second, unused API at `/mind/api/v1/`,
-  which 4a makes retirable.
-- **4b and 5 are built and await one deployment together** — Vince's call, so
-  that Heron lands whole rather than in two halves with a half-crossed state
-  live in between. 4b deleted `/capture/`, `Capture`, `Idea` and
-  `migrate_inbox`, and took Inbox and Ideas out of both navs. **There is one
-  capture surface.** It carries an irreversible migration dropping two tables,
-  so the deploy is a decision rather than a routine push.
-- **Step 5 settled the URL rather than moving it — `/mind/` is permanent.**
-  `/capture/` was freed and deliberately not taken: nine routes live under
-  `/mind/` and only one is capture, against a live PWA shortcut and every
-  bookmark that a move breaks. "Temporary" was a reason to reconsider once the
-  collision was gone, not an obligation to move. It stays one line in
-  `clarice/urls.py`, so it is settled rather than welded.
-- **The task core's maintenance freeze is lifted — Vince's call, August 15,
-  2026.** It had been rewritten twice to survive, each time on a narrower
-  justification for a conclusion already held, and Heron removed the last of
-  them. What replaces it is a priority rather than a prohibition: the knowledge
-  core and the commercial substrate are where work goes, task-core feature work
-  needs a reason beyond *while I'm here*, and new models in either core are
-  governed by `architecture-trajectory.md` §4 alone. See `CLAUDE.md`.
-- **The plan's own count was wrong, and finding out is what step 4 bought.** It
-  said two capture surfaces; there were three, and it said `Backends.kt` routed
-  the phone to the knowledge core, which no shipped build has ever done.
+- **One capture surface.** `/mind/`, writing a `Node`, and that is where the
+  knowledge core lives permanently. `/capture/`, `Capture` and `Idea` are gone;
+  `/capture/` came free and was deliberately not taken.
+- **One capture endpoint.** `/api/v1/capture`, the application's rather than a
+  core's, served by `mind/api_v1.py`, and what both the phone and the Day page
+  post to. The knowledge core keeps a second, entirely unused API at
+  `/mind/api/v1/` with its own token table — **retirable, and the obvious next
+  tidy-up.**
+- **41 nodes, 19 visible to the detectors.** The corpus is no longer split
+  across two models, which was the binding constraint on the whole knowledge
+  core.
+- **The task core's maintenance freeze is lifted** — a priority replaces it, see
+  `CLAUDE.md`. The knowledge core and the commercial substrate are where work
+  goes.
+- **The `capture` app is still installed**, holding migrations and nothing else,
+  because Django needed it there to run the one that dropped the tables. Now
+  that `0008` is applied in production, removing it is a follow-up somebody can
+  simply do.
 
-**One thing outstanding that is not code.** An external uptime monitor to poll
+**Two things outstanding that are not code.** An external uptime monitor to poll
 `/healthz` — the last open item in Part 1, and deliberately not in this
-repository, because a watchdog on the machine it watches is not a watchdog.
+repository, because a watchdog on the machine it watches is not a watchdog. And
+the commercial blockers, account deletion and data export, which
+`commercial-blueprint.md` calls legal and which nothing has yet touched.
 
 **The deployment tags were brought back into line on August 15.** They had
 drifted badly: `LIVE` sat five days and thirty commits behind production, and

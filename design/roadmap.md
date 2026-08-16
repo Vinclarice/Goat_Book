@@ -545,10 +545,13 @@ sequence and `roadmap-history.md` for what each step cost.
   bookmark that a move breaks. "Temporary" was a reason to reconsider once the
   collision was gone, not an obligation to move. It stays one line in
   `clarice/urls.py`, so it is settled rather than welded.
-- **The task core's maintenance rule expires when this deploys.** `Capture` and
-  `Idea` being slated for retirement was its live reason — see `CLAUDE.md`,
-  which says the restraint should be re-examined rather than left standing by
-  habit. **Vince has not yet ruled on it; it stands until he does.**
+- **The task core's maintenance freeze is lifted — Vince's call, August 15,
+  2026.** It had been rewritten twice to survive, each time on a narrower
+  justification for a conclusion already held, and Heron removed the last of
+  them. What replaces it is a priority rather than a prohibition: the knowledge
+  core and the commercial substrate are where work goes, task-core feature work
+  needs a reason beyond *while I'm here*, and new models in either core are
+  governed by `architecture-trajectory.md` §4 alone. See `CLAUDE.md`.
 - **The plan's own count was wrong, and finding out is what step 4 bought.** It
   said two capture surfaces; there were three, and it said `Backends.kt` routed
   the phone to the knowledge core, which no shipped build has ever done.

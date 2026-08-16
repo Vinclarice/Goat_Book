@@ -160,6 +160,33 @@ knowledge core's other pages live. They stay together, under a different root
 from the task core's `/app/`: two cores, two homes, one login, one nav reaching
 both.
 
+### And the rule Heron finally killed
+
+The task core had been in maintenance since the merger was planned. **The freeze
+is lifted — Vince's call, the same day.**
+
+It is worth recording *why* rather than just *that*, because the rule's history
+is the useful part. It had been rewritten twice to survive: "until the merger",
+then — when the merger ended — "until the crossover ends", on the narrower
+ground that `Capture` and `Idea` were retiring so work on either was thrown
+away. Heron deleted both. **Each rewrite found a narrower justification for a
+conclusion already held**, which is the shape of motivated reasoning, and a
+third would have been cargo. Its own text had said the restraint needed a live
+reason or it was exactly that.
+
+On its own terms nothing was left. The surviving clause — *no new models on the
+task core, because a model added now is a model migrated twice* — named a
+migration that had happened, and `architecture-trajectory.md` §4 already gated
+new models in either core, more strictly.
+
+**What replaced it is a priority, not a prohibition**, on a reason that does not
+expire: the task core is a competent todo application, the graph is what makes
+this worth building, and `product-stories.md` has nineteen journeys with two
+working. Task-core feature work now needs a reason beyond *while I'm here*, and
+the instruction is to surface it and ask rather than to fix silently or refuse —
+which is the one thing the freeze was actually buying, and the thing that got
+riskier when two repositories became one tree.
+
 ## After Dunlin — Release F and six unlettered lines of work, August 6–12, 2026
 
 Archived from `roadmap.md` on August 13, 2026. Six of these seven shipped

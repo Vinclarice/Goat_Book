@@ -96,6 +96,16 @@ class TokenAuth(HttpBearer):
         # too means endpoints read the same attribute either way and don't
         # have to care which of the two authenticated the caller.
         request.user = owner
+        # And the same flag `token_or_session_required` already sets, so the
+        # two token paths agree on what it means. Most endpoints do not care;
+        # the ones that do are the ones recording *provenance* rather than
+        # ownership -- `/api/v1/capture` writes the source onto a durable node,
+        # and hard-coded `mobile` for every caller until August 16, 2026,
+        # labelling the web Day page's captures as though they came from a
+        # phone. Read it with `getattr(request, "token_authenticated", False)`:
+        # a session request never reaches this method, so the attribute is
+        # absent rather than False on that path.
+        request.token_authenticated = True
         return owner
 
 

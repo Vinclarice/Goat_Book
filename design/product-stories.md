@@ -171,6 +171,11 @@ now, not "her inbox" — the Inbox was deleted on August 15. Nothing about the
 capture path changed; `/api/v1/capture` kept its URL, token and scope and writes
 a `Node`.
 
+The node also records that it came from a phone. That was hard-coded for every
+caller until August 16 — so a thought typed into the web Day page said `mobile`
+too — and was found by reading an account export, which is the one place the
+label is shown to the person it is wrong about.
+
 ### S5. Vince closes the day
 
 > At the end of the day Vince records what actually happened, while it is still

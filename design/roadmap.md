@@ -550,9 +550,18 @@ it behind a paid plan, certbot renews automatically, and at three users that is
 not worth a subscription.
 
 **What is outstanding is no longer a defect list.** It is the commercial
-substrate: account deletion and data export, which the blueprint calls legal
-blockers and which nothing has yet touched, and the five open decisions in its
-Part 9. That is where the lifted maintenance rule points work.
+substrate, and its first piece is done: **account deletion and data export
+shipped August 16, 2026** — self-service, a thirty-day grace period, and an
+export of every owned row as JSON beside readable Markdown. That was the one
+commercial item that did not depend on Part 9's unanswered first question, which
+is why it went first.
+
+What remains there: terms and a privacy policy (writing, not code), removing
+data from Sentry and Resend when an account goes (an account-level action in
+each, outside this application), and **three genuinely open decisions in Part 9**
+— is this a business, which wedge, and mobile native or responsive web. Two of
+its five are stale rather than open: #3 is answered but its reasoning predates
+the merger, and #5 was largely done by the August 15 documentation pass.
 
 **The deployment tags were brought back into line on August 15.** They had
 drifted badly: `LIVE` sat five days and thirty commits behind production, and

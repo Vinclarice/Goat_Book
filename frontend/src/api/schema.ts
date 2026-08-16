@@ -308,6 +308,82 @@ export interface paths {
         patch: operations["accounts_api_v1_update_preferences"];
         trace?: never;
     };
+    "/api/v1/me/delete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Request Deletion
+         * @description Schedule this account for erasure, after a grace period.
+         *
+         *     **Password re-entry, and it is not theatre.** Everything else on this router
+         *     is recoverable; this is the one action that ends with data that cannot be
+         *     got back, and a session left open on a shared machine should not be enough
+         *     to start it.
+         *
+         *     Checked with `check_password` rather than `authenticate`: this person is
+         *     already signed in, and routing through the auth stack would count a typo
+         *     towards an axes lockout — locking somebody out of the account they are
+         *     trying to leave, from a form that is not a login.
+         */
+        post: operations["accounts_api_v1_request_deletion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/delete/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel Deletion
+         * @description Change your mind. No password: undoing a destructive thing should never
+         *     be harder than starting it.
+         */
+        post: operations["accounts_api_v1_cancel_deletion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export Account
+         * @description Everything this account owns, as a zip.
+         *
+         *     Session auth only, which the whole router already enforces — deliberately
+         *     not reachable with a scoped token. `capture:write` on a phone should not be
+         *     able to walk off with the entire account, and no scope exists that would
+         *     sensibly mean "all of it".
+         */
+        get: operations["accounts_api_v1_export_account"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/capture": {
         parameters: {
             query?: never;
@@ -690,6 +766,8 @@ export interface components {
             mind_url: string;
             /** Landing Surface */
             landing_surface: string;
+            /** Deletion Purge At */
+            deletion_purge_at: string | null;
         };
         /** NavProjectOut */
         NavProjectOut: {
@@ -1063,6 +1141,18 @@ export interface components {
              * @enum {string}
              */
             landing_surface: "day" | "agenda";
+        };
+        /** DeletionOut */
+        DeletionOut: {
+            /** Deletion Requested At */
+            deletion_requested_at: string | null;
+            /** Purge At */
+            purge_at: string | null;
+        };
+        /** DeletionIn */
+        DeletionIn: {
+            /** Password */
+            password: string;
         };
         /** CaptureOut */
         CaptureOut: {
@@ -2060,6 +2150,68 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["PreferencesOut"];
                 };
+            };
+        };
+    };
+    accounts_api_v1_request_deletion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeletionIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeletionOut"];
+                };
+            };
+        };
+    };
+    accounts_api_v1_cancel_deletion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeletionOut"];
+                };
+            };
+        };
+    };
+    accounts_api_v1_export_account: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

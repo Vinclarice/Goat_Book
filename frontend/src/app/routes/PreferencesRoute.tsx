@@ -296,6 +296,160 @@ export function PreferencesRoute() {
           Access tokens
         </a>
       </div>
+
+      <LeavingSection />
     </div>
+  );
+}
+
+/**
+ * Taking your data out, and taking yourself out.
+ *
+ * Both together, and export first, deliberately. Deletion without export is a
+ * trap — the only way to leave would be to destroy everything — so the way out
+ * has to be visible from the same place as the way off.
+ *
+ * commercial-blueprint.md calls the pair a legal blocker rather than a feature
+ * gap: Sentry and Resend already process other people's data.
+ */
+function LeavingSection() {
+  const queryClient = useQueryClient();
+  const [password, setPassword] = useState("");
+  const [confirming, setConfirming] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const { data } = useQuery({
+    queryKey: ["nav"],
+    queryFn: async () => {
+      const { data, response } = await apiV1.GET("/api/v1/nav");
+      if (!response.ok || !data) throw new RequestFailed(response.status);
+      return data;
+    },
+  });
+  const purgeAt = data?.deletion_purge_at ?? null;
+
+  const request = useMutation({
+    mutationFn: async () => {
+      const { error } = await apiV1.POST("/api/v1/me/delete", {
+        body: { password },
+      });
+      if (error) throw new Error("That password did not match.");
+    },
+    onSuccess: () => {
+      setPassword("");
+      setConfirming(false);
+      setError(null);
+      queryClient.invalidateQueries({ queryKey: ["nav"] });
+    },
+    onError: (caught: Error) => setError(caught.message),
+  });
+
+  const cancel = useMutation({
+    mutationFn: async () => {
+      const { error } = await apiV1.POST("/api/v1/me/delete/cancel", {});
+      if (error) throw new Error("Couldn't cancel that. Please try again.");
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["nav"] }),
+    onError: (caught: Error) => setError(caught.message),
+  });
+
+  if (purgeAt) {
+    return (
+      <section className="space-y-3 rounded-lg border border-destructive px-4 py-4">
+        <h2 className="text-sm font-bold text-destructive">
+          This account is scheduled for deletion
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          Everything you have here is erased on{" "}
+          <strong>{new Date(purgeAt).toLocaleDateString()}</strong>. Until then
+          nothing has changed and you can stop this.
+        </p>
+        {/* Export stays offered right up to the end. The last day before an
+            erasure is the most likely moment somebody wants their data. */}
+        <div className="flex flex-wrap items-center gap-3">
+          <Button onClick={() => cancel.mutate()} disabled={cancel.isPending}>
+            Keep my account
+          </Button>
+          <a
+            href="/api/v1/me/export"
+            className="text-sm text-muted-foreground hover:text-foreground"
+          >
+            Download my data
+          </a>
+        </div>
+        {error && <p className="text-sm text-destructive">{error}</p>}
+      </section>
+    );
+  }
+
+  return (
+    <section className="space-y-4 rounded-lg border border-border px-4 py-4">
+      <div className="space-y-1">
+        <h2 className="text-sm font-bold">Your data</h2>
+        <p className="text-sm text-muted-foreground">
+          A zip holding everything in this account — your notes and tasks as
+          Markdown you can read, and a JSON file with the complete record.
+        </p>
+      </div>
+      {/* A plain anchor, not a fetch. The response is a file; letting the
+          browser handle it means the download works the way every other
+          download does, and nothing has to hold the whole archive in memory. */}
+      <a
+        href="/api/v1/me/export"
+        className="inline-flex h-9 items-center rounded-lg border border-border px-3 text-sm font-bold hover:bg-input"
+      >
+        Download my data
+      </a>
+
+      <div className="space-y-1 border-t border-border pt-4">
+        <h2 className="text-sm font-bold text-destructive">Delete my account</h2>
+        <p className="text-sm text-muted-foreground">
+          Everything is erased after 30 days — every task, note, routine and
+          review. You can stop it at any point before then. Download your data
+          first; afterwards there is nothing to download.
+        </p>
+      </div>
+
+      {!confirming ? (
+        <Button variant="secondary" onClick={() => setConfirming(true)}>
+          Delete my account…
+        </Button>
+      ) : (
+        <div className="space-y-3">
+          {/* The password again. Everything else on this page is recoverable;
+              this is the one action that ends in data nobody can get back, and
+              an open session on a shared machine should not be enough. */}
+          <label htmlFor="pref-delete-password" className="text-sm font-bold">
+            Confirm your password
+          </label>
+          <input
+            id="pref-delete-password"
+            type="password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            className="w-full rounded-lg border border-border bg-input px-3 py-1.5"
+          />
+          <div className="flex items-center gap-3">
+            <Button
+              onClick={() => request.mutate()}
+              disabled={request.isPending || password.length === 0}
+            >
+              Schedule deletion
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setConfirming(false);
+                setPassword("");
+                setError(null);
+              }}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
+      {error && <p className="text-sm text-destructive">{error}</p>}
+    </section>
   );
 }

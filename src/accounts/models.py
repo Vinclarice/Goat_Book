@@ -74,6 +74,22 @@ class User(AbstractBaseUser, PermissionsMixin):
     )
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
+
+    # When this person asked to be erased, or null. A field rather than a
+    # model, so architecture-trajectory.md §4's charter test does not apply --
+    # it has exactly the User's life cycle, one value per person.
+    #
+    # **Deliberately not `is_active`.** That flag already means "pending admin
+    # approval", and one flag meaning two unrelated things is indistinguishable
+    # in the admin and in every login path. The account also stays fully usable
+    # while this is set, which is what keeps *cancel* reachable: they log in and
+    # press the button, and no signed-link email flow has to exist for a window
+    # that is theirs to close.
+    #
+    # `accounts.services.ACCOUNT_DELETION_GRACE` turns this into a date; nothing
+    # is destroyed until `purge_deleted_accounts` reaches it.
+    deletion_requested_at = models.DateTimeField(null=True, blank=True)
+
     daily_digest = models.BooleanField(
         default=True,
         verbose_name="Email me a daily summary",

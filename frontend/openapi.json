@@ -624,6 +624,84 @@
         ]
       }
     },
+    "/api/v1/me/delete": {
+      "post": {
+        "operationId": "accounts_api_v1_request_deletion",
+        "summary": "Request Deletion",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeletionOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Schedule this account for erasure, after a grace period.\n\n**Password re-entry, and it is not theatre.** Everything else on this router\nis recoverable; this is the one action that ends with data that cannot be\ngot back, and a session left open on a shared machine should not be enough\nto start it.\n\nChecked with `check_password` rather than `authenticate`: this person is\nalready signed in, and routing through the auth stack would count a typo\ntowards an axes lockout \u2014 locking somebody out of the account they are\ntrying to leave, from a form that is not a login.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeletionIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/me/delete/cancel": {
+      "post": {
+        "operationId": "accounts_api_v1_cancel_deletion",
+        "summary": "Cancel Deletion",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeletionOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Change your mind. No password: undoing a destructive thing should never\nbe harder than starting it.",
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/me/export": {
+      "get": {
+        "operationId": "accounts_api_v1_export_account",
+        "summary": "Export Account",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "description": "Everything this account owns, as a zip.\n\nSession auth only, which the whole router already enforces \u2014 deliberately\nnot reachable with a scoped token. `capture:write` on a phone should not be\nable to walk off with the entire account, and no scope exists that would\nsensibly mean \"all of it\".",
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/capture": {
       "post": {
         "operationId": "mind_api_v1_new_capture",
@@ -1421,6 +1499,18 @@
           "landing_surface": {
             "title": "Landing Surface",
             "type": "string"
+          },
+          "deletion_purge_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deletion Purge At"
           }
         },
         "required": [
@@ -1429,7 +1519,8 @@
           "archived_count",
           "settings_url",
           "mind_url",
-          "landing_surface"
+          "landing_surface",
+          "deletion_purge_at"
         ],
         "title": "NavOut",
         "type": "object"
@@ -2425,6 +2516,53 @@
           "time_zone"
         ],
         "title": "PreferencesIn",
+        "type": "object"
+      },
+      "DeletionOut": {
+        "properties": {
+          "deletion_requested_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deletion Requested At"
+          },
+          "purge_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Purge At"
+          }
+        },
+        "required": [
+          "deletion_requested_at",
+          "purge_at"
+        ],
+        "title": "DeletionOut",
+        "type": "object"
+      },
+      "DeletionIn": {
+        "properties": {
+          "password": {
+            "title": "Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "password"
+        ],
+        "title": "DeletionIn",
         "type": "object"
       },
       "CaptureOut": {

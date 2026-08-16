@@ -40,13 +40,24 @@ TODO/FIXME/HACK comments in the non-test tree. The Django suite is 937 tests in
 positive controls on every ownership rejection. Clocks are injected. History is
 snapshotted so it cannot be silently rewritten.
 
-**What is missing is the commercial substrate, and it is missing entirely.**
-There is no billing, no plan model, no entitlement check. No account deletion
+**What is missing is the commercial substrate, and it was missing entirely.**
+There is no billing, no plan model, no entitlement check. ~~No account deletion
 and no data export — a legal blocker, not a feature gap, with Sentry and Resend
-already processing user data. No terms, no privacy policy. No analytics of any
-kind, so every product decision to date is n=1 introspection. No onboarding, no
-help, no in-product explanation of six invented concepts. No import from any
-competitor. One outbound channel, a 07:00 email, which contains no link.
+already processing user data.~~ **Both shipped August 16, 2026**: self-service
+deletion with a thirty-day grace period, and an export holding every owned row
+as JSON alongside Markdown a person can read. No terms, no privacy policy. No
+analytics of any kind, so every product decision to date is n=1 introspection.
+No onboarding, no help, no in-product explanation of six invented concepts. No
+import from any competitor. One outbound channel, a 07:00 email, which contains
+no link.
+
+**The deletion half was blocked by something nobody had noticed.**
+`ActivityEvent` is append-only by database trigger and `owner` was
+`on_delete=CASCADE`, so `User.delete()` raised — account deletion was not
+merely unbuilt, it was impossible. The model had reasoned this through for its
+*node* reference and made it non-constraining; the owner reference never got the
+same treatment, because nothing had ever deleted an account. See
+`mind/migrations/0015_erasure_exemption`.
 
 **And a stranger cannot become a user.** Signup creates the account
 `is_active=False` (`src/accounts/forms.py:77`) and an admin ticks a checkbox

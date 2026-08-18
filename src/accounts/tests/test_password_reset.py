@@ -6,6 +6,10 @@ out, had forgotten the password, and had no way back in from any page.
 """
 import re
 
+from unittest.mock import patch
+
+from django.conf import settings
+from django.contrib.auth.forms import PasswordResetForm
 from django.core import mail
 from django.test import TestCase
 from django.urls import reverse
@@ -27,6 +31,18 @@ def reset_link_in(message):
     """
     found = re.search(r"/accounts/password/reset/confirm/[^\s]+", message.body)
     return found.group(0) if found else None
+
+
+
+def without_nonces(response):
+    """A response's body with CSP nonces blanked.
+
+    `clarice.middleware.ContentSecurityPolicyMiddleware` mints one per request,
+    so two renders of the same page never match byte for byte. That difference
+    is random and carries no information; everything else on these two pages
+    has to match exactly.
+    """
+    return re.sub(rb'nonce="[^"]*"', b'nonce=""', response.content)
 
 
 class PasswordResetRequestTest(TestCase):
@@ -60,6 +76,72 @@ class PasswordResetRequestTest(TestCase):
 
         self.assertEqual(mail.outbox, [])
         self.assertContains(response, "Check your email")
+
+    def test_an_unreachable_relay_does_not_500_the_recovery_page(self):
+        """Django's PasswordResetView sends inside form_valid, so a send
+        failure was an unhandled 500 -- on a public page, for the one person
+        who by definition cannot log in and work around it.
+
+        Live on this deployment until the transport moved: DigitalOcean drops
+        outbound SMTP, so *every* reset for a real account 500d.
+        """
+        from smtplib import SMTPException
+
+        with patch.object(
+            PasswordResetForm, "save", side_effect=SMTPException("relay unreachable")
+        ):
+            response = self.request_reset("edith@example.com")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Check your email")
+
+    def test_a_failed_send_is_indistinguishable_from_an_unknown_address(self):
+        """The constraint the contact form did not have, and the reason this
+        guard cannot simply show the error the contact form shows.
+
+        `password_reset_done.html` says it in its own comment: the page renders
+        the same way whether or not the address matched, so it cannot be used
+        to find out which addresses are registered. A send only *fails* when an
+        account matched -- so an error page shown on failure would announce
+        exactly what that comment protects.
+        """
+        from smtplib import SMTPException
+
+        with patch.object(
+            PasswordResetForm, "save", side_effect=SMTPException("relay unreachable")
+        ):
+            failed = self.request_reset("edith@example.com")
+        unknown = self.request_reset("nobody@example.com")
+
+        self.assertEqual(failed.status_code, unknown.status_code)
+        self.assertEqual(failed.redirect_chain, unknown.redirect_chain)
+        # Byte-identical apart from the CSP nonce, which is fresh per request
+        # by design and tells an observer nothing about which case they hit.
+        # Asserting on the raw bytes would fail for a reason that is not the
+        # property under test.
+        self.assertEqual(without_nonces(failed), without_nonces(unknown))
+
+    def test_a_failed_send_is_reported_where_sentry_can_see_it(self):
+        """Since the page deliberately cannot say anything, this is the only
+        place the failure is visible at all."""
+        from smtplib import SMTPException
+
+        with patch.object(
+            PasswordResetForm, "save", side_effect=SMTPException("relay unreachable")
+        ):
+            with self.assertLogs("accounts.views", level="ERROR") as logged:
+                self.request_reset("edith@example.com")
+
+        self.assertIsNotNone(logged.records[0].exc_info)
+
+    def test_the_page_always_offers_a_way_to_ask_a_human(self):
+        """Shown on every reset, not only the failed ones -- a line that
+        appeared only on failure would be the same disclosure by another
+        route. It costs nothing when the mail arrives and is the only route
+        left when it does not."""
+        response = self.request_reset("edith@example.com")
+
+        self.assertContains(response, settings.SUPPORT_EMAIL)
 
     def test_a_pending_account_looks_identical_and_sends_nothing(self):
         # An unapproved signup has nothing worth resetting into yet, and

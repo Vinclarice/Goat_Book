@@ -6,7 +6,12 @@ from django.contrib import messages
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import PasswordChangeForm
-from django.contrib.auth.views import LoginView, PasswordResetConfirmView
+from django.http import HttpResponseRedirect
+from django.contrib.auth.views import (
+    LoginView,
+    PasswordResetConfirmView,
+    PasswordResetView,
+)
 from django.core.cache import cache
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
@@ -23,6 +28,43 @@ class LandingLoginView(LoginView):
     template_name = "accounts/login.html"
     authentication_form = LoginForm
     redirect_authenticated_user = True
+
+
+class ResilientPasswordResetView(PasswordResetView):
+    """Django's reset view, except a mail failure is not a 500.
+
+    `form_valid` sends inside the request, so an unreachable relay was an
+    unhandled exception on a **public** page, for the one person who by
+    definition cannot log in and work around it. Live on this deployment until
+    the transport moved: DigitalOcean drops outbound SMTP, so every reset for a
+    real account 500d.
+
+    **It cannot say what the contact form says, and that is the interesting
+    part.** `password_reset_done.html` states the constraint in its own
+    comment -- the page renders identically whether or not the address matched,
+    so it cannot be used to discover which addresses are registered. A send is
+    only *attempted* when an account matched, so an error page shown on failure
+    would announce precisely what that comment protects. The contact form has
+    no such problem: the visitor typed their own address and no account is
+    implied by it.
+
+    So the failure is swallowed *to the visitor* and reported to us. The done
+    page carries a support address on every reset, not only the failed ones --
+    a line appearing only on failure would be the same disclosure by another
+    route.
+    """
+
+    def form_valid(self, form):
+        try:
+            return super().form_valid(form)
+        except Exception:
+            # The only place this failure is visible at all, since the page
+            # deliberately cannot mention it. sentry-sdk's LoggingIntegration
+            # turns an ERROR into an event.
+            logger.exception("password reset email failed to send")
+            # The same redirect the success path returns, so the two responses
+            # are indistinguishable -- which is the property under test.
+            return HttpResponseRedirect(self.get_success_url())
 
 
 class ClearLockoutPasswordResetConfirmView(PasswordResetConfirmView):

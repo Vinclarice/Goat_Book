@@ -1,4 +1,5 @@
 from django.contrib.auth import views as auth_views
+from django.conf import settings
 from django.urls import path
 
 from . import views
@@ -17,7 +18,10 @@ urlpatterns = [
     # the rest are the built-ins with a template name.
     path(
         "password/reset/",
-        auth_views.PasswordResetView.as_view(
+        # Not auth_views.PasswordResetView: a mail failure here used to be a
+        # 500 on a public page. See the subclass for why it cannot show an
+        # error the way the contact form does.
+        views.ResilientPasswordResetView.as_view(
             template_name="accounts/password_reset_form.html",
             email_template_name="accounts/password_reset_email.txt",
             subject_template_name="accounts/password_reset_subject.txt",
@@ -27,7 +31,10 @@ urlpatterns = [
     path(
         "password/reset/done/",
         auth_views.PasswordResetDoneView.as_view(
-            template_name="accounts/password_reset_done.html"
+            template_name="accounts/password_reset_done.html",
+            # The page offers a human on every reset, so it needs the address
+            # whether or not anything went wrong -- see the template's comment.
+            extra_context={"support_email": settings.SUPPORT_EMAIL},
         ),
         name="password_reset_done",
     ),

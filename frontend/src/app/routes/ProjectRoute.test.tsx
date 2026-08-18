@@ -41,10 +41,7 @@ const NAV = {
   areas: [],
   projects: [],
   archived_count: 0,
-  inbox_count: 0,
   settings_url: "/accounts/settings/",
-  inbox_url: "/capture/",
-  ideas_url: "/capture/ideas/",
 };
 
 /* ProjectRoute also fetches /api/v1/nav for its "add an area" picker. Every

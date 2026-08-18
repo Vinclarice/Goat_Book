@@ -973,28 +973,32 @@ export function AgendaWorkspace({ initialData }: Props) {
             </details>
           </div>
 
-          {/* A direct entry point to Capture from the main page itself,
-              not just the persistent side nav -- the inbox is where
-              anything gets in, and Ideas is the "second brain" shelf, so
-              neither should be reachable only through a nav element that
-              could fail to render. Plain hrefs, same fallback pattern
-              SideNav.tsx already uses, since AgendaOut doesn't carry
-              these URLs today. */}
+          {/* A direct entry point from the main page itself, not just the
+              persistent side nav, which could fail to render. The reason
+              survived Heron; the destination did not.
+
+              This used to link to /capture/ and /capture/ideas/. 4b deleted
+              the Inbox and the Ideas shelf, and clarice/urls.py deliberately
+              did not take the freed prefix -- so both were plain Django 404s,
+              outside the SPA shell, with nothing but the browser button to get
+              back. SideNav.tsx dropped the same two and this duplicate was
+              missed, which nothing caught because no test looked at this block.
+
+              A Django page, not an SPA route, so a plain anchor: React Router
+              would try to handle /mind/ and 404 inside the shell. Hardcoded
+              rather than read from the payload, unlike SideNav's -- AgendaOut
+              carries no mind_url, and inventing one for a single link would be
+              a schema change to avoid a constant that Heron step 5 made
+              permanent. */}
           <div className="rounded-xl border border-border bg-card p-4">
             <h3 className="mb-3 text-xs font-extrabold tracking-[0.14em] text-muted-foreground uppercase">
               Capture
             </h3>
             <a
               className="flex min-h-11 items-center text-sm text-foreground hover:text-primary"
-              href="/capture/"
+              href="/mind/"
             >
-              Inbox →
-            </a>
-            <a
-              className="flex min-h-11 items-center text-sm text-foreground hover:text-primary"
-              href="/capture/ideas/"
-            >
-              Ideas →
+              Second Mind →
             </a>
           </div>
 

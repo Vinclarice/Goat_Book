@@ -42,10 +42,7 @@ const NAV = {
     { id: 1, title: "Programming", open_count: 5, overdue_count: 2, color_key: "sky" },
   ],
   archived_count: 4,
-  inbox_count: 3,
   settings_url: "/accounts/settings/",
-  inbox_url: "/capture/",
-  ideas_url: "/capture/ideas/",
 };
 
 /** Pretend the viewport is wide (or not) for the layout's own query.

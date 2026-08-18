@@ -494,4 +494,28 @@ describe("AgendaWorkspace", () => {
       ).toBe(true);
     });
   });
+
+  it("does not offer routes that no longer exist", async () => {
+    // Heron 4b deleted the Inbox and the Ideas shelf and freed /capture/,
+    // which clarice/urls.py deliberately did not take -- so both hrefs here
+    // were plain Django 404s, outside the SPA shell, with no way back but the
+    // browser button. SideNav.tsx removed the same two links and this
+    // duplicate was missed; nothing failed because no test asserted on the
+    // block at all.
+    renderAgenda();
+    await screen.findByText("Renew insurance");
+
+    const dead = document.querySelectorAll('a[href^="/capture/"]');
+    expect(dead).toHaveLength(0);
+  });
+
+  it("still offers a way into the knowledge core from the page itself", async () => {
+    // The block's reason survives its links: a direct entry point from the
+    // main page, not only through a nav element that could fail to render.
+    // Only the destination changed, and there is one of them now.
+    renderAgenda();
+    await screen.findByText("Renew insurance");
+
+    expect(document.querySelector('a[href="/mind/"]')).not.toBeNull();
+  });
 });

@@ -49,12 +49,14 @@ re-add it here.
 
 ## Open now
 
-- **`/api/v1/login` is unthrottled.** `accounts/api_v1.py` registers it with
-  `auth=None`, and nginx's `^/(accounts/login|accounts/signup)/` block does not
-  match it, so it falls through to the catch-all. The landing-page hole this
-  resembles was closed (`nginx-clarice.conf.j2` throttles `= /` on POST); this
-  one was not. django-axes still locks the account, so it is a defect rather
-  than an emergency.
+- ~~**`/api/v1/login` is unthrottled.**~~ Fixed August 18, 2026 (`9eb9eea`),
+  with `/accounts/password/reset/` alongside it — an exact-match `limit_req`
+  block each, proved by running nginx against the rendered template rather than
+  by reading it. **Not live until the next deploy**, because an nginx template
+  changes nothing until the playbook runs. What replaces it is a test:
+  `clarice/tests/test_unauthenticated_endpoints_are_throttled.py` reads the
+  template and the API together, so the *next* `auth=None` endpoint cannot ship
+  unthrottled the way this one did.
 - **Terms of service and a privacy policy.** Writing, not code.
 - **Removing user data from Sentry and Resend when an account goes.** An
   account-level action in each, outside this application. Deletion and export

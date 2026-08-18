@@ -58,6 +58,7 @@ a finding remains a separate decision.
 | D1 | CRITICAL — unsaved edits destroyed by a background refetch, in three routes | `4bf8bc9` |
 | D2 | HIGH — one nullable column, four broken surfaces | `4e89675` |
 | D3 | HIGH — Sentry shipped raw request bodies despite `send_default_pii=False` | `dedc23d` |
+| D4 | HIGH — `/api/v1/login` unthrottled at every layer | `9eb9eea` |
 
 ### D1 — the refetch clobber
 
@@ -119,6 +120,36 @@ released the SDK"* — and the option beside it was left silent. Two comments an
 test docstring asserted the opposite of the truth in between, which is what let
 the second one sit unnoticed after the first was found.
 
+### D4 — the rule that was written down twice and never applied
+
+`POST /api/v1/login` trades a password for a 90-day all-scopes token, is
+`auth=None` by design, and matched nothing but the catch-all `location /`.
+Both the nginx template's header and `settings.py` state that nginx throttling
+is the first line of defence and django-axes the second; neither was true for
+the one route where it mattered most. `architecture-trajectory.md` §6 records
+closing this identical hole for `/` on August 3, and the API login shipped three
+days later without a matching rule.
+
+**The only one of these findings `roadmap.md` already carried as open**, and now
+the only one whose fix is not yet live: an nginx template changes nothing until
+the playbook runs.
+
+**What replaces it is a test, not a rule.** The rule closes this route; the test
+reads the template and the API together and fails on any operation with an
+explicit `auth=None` that has no throttled exact-match block. `auth_param` is
+the discriminator Ninja already keeps — `NOT_SET` for an operation inheriting
+`django_auth`, `None` for one opting out. Two more tests keep it from passing
+vacuously, because an introspection that quietly returned an empty set would
+pass while covering nothing.
+
+**Proved by running it.** There is no staging, so a template test that says a
+rule exists is not the same as knowing nginx accepts it. The template was
+rendered with the playbook's own variables and served by nginx 1.31.3 in a
+container: eight POSTs to the login gave four 200s then four 429s, the reset
+gave six then two, and eight GETs to `/api/v1/agenda` all returned 200 — the
+half that matters second, since a rate limit that reached the authenticated API
+would be a worse defect than the one being fixed.
+
 ### What these have in common
 
 - **A fix applied only where the bug was reported is not a fix.** D1 was guarded
@@ -139,6 +170,12 @@ the second one sit unnoticed after the first was found.
 - **The type check earns its place at a schema change.** Regenerating the
   contract after D2 named `ReviewRoute`'s hand-written mirror type immediately —
   the same way `0857835` found seven.
+
+- **A stated architecture is not an implemented one.** D4's rule was written
+  down in two files and applied in neither, for the route that needed it most.
+  Where a guarantee spans two languages or two tools, the only thing that holds
+  it is a test that reads both — which is what D2's and D4's fixes each left
+  behind.
 
 D1b — `AddRoutine` clearing before its request resolves, and expired-session 401s
 handled on reads but not writes — is D1's class and is **not** fixed.

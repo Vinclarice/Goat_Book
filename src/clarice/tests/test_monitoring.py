@@ -116,6 +116,31 @@ class RealSdkTest(SimpleTestCase):
             request_body_within_bounds(ClientWithOurOptions(), 200)
         )
 
+    def test_the_sdks_own_scrubber_does_not_cover_query_strings(self):
+        """Why a `before_send` is needed at all rather than a setting. The
+        default `EventScrubber` reaches `headers`, `cookies` and `data` and
+        stops -- so it would carry a shared passage through untouched."""
+        from sentry_sdk.scrubber import EventScrubber
+
+        event = {
+            "request": {
+                "query_string": "text=the+thing+I+cannot+say",
+                "headers": {"Authorization": "Bearer secret"},
+            }
+        }
+        EventScrubber().scrub_event(event)
+
+        self.assertEqual(
+            event["request"]["query_string"], "text=the+thing+I+cannot+say"
+        )
+        # The neighbour it *does* cover, so this test fails loudly if the
+        # scrubber stops running rather than quietly asserting nothing. Checked
+        # as "no longer the secret" rather than against a literal: the SDK
+        # replaces the value with an AnnotatedValue, not the string.
+        self.assertNotEqual(
+            event["request"]["headers"]["Authorization"], "Bearer secret"
+        )
+
     def test_the_sdk_default_would_have_sent_one(self):
         """Why the option is passed at all. Left alone, a capture-sized body
         is within bounds and goes."""
@@ -156,6 +181,74 @@ class RequestBodiesStayOnTheServerTest(InitialisationTest):
         what makes the guarantee ours rather than whoever last released the
         SDK's."""
         self.assertIn("max_request_body_size", self.start() and self.calls[0])
+
+
+class QueryStringsStayOnTheServerTest(InitialisationTest):
+    """The third field in this family, and the one no option covers.
+
+    `/mind/share/` takes the shared passage as `?text=`, because the PWA share
+    target is declared `"method": "GET"` and that is what makes it work without
+    a service worker. `/mind/search/` takes the query as `?q=`. So the note text
+    is in the URL by design, and `wsgi.py` sets `request_info["query_string"]`
+    unconditionally — `should_send_default_pii()` guards only the IP block above
+    it. The default `EventScrubber` never touches `query_string` either; it
+    reaches `headers`, `cookies` and `data` and stops.
+
+    Unlike the request body there is no option for this, so it takes a
+    `before_send`. Narrower than D3's in reach — no `traces_sample_rate` is set,
+    so there are no transaction events and the query travels only when an event
+    is captured during that request — and the same material.
+    """
+
+    def test_a_before_send_hook_is_installed(self):
+        self.start()
+
+        self.assertIsNotNone(self.calls[0]["before_send"])
+
+    def test_it_removes_the_query_string_from_an_event(self):
+        self.start()
+        before_send = self.calls[0]["before_send"]
+
+        event = before_send(
+            {"request": {"query_string": "text=the+thing+I+cannot+say", "url": "https://x/mind/share/"}},
+            {},
+        )
+
+        self.assertNotIn("query_string", event["request"])
+
+    def test_it_leaves_the_rest_of_the_event_alone(self):
+        """A scrubber that drops the URL or the method would take the event's
+        usefulness with it. `get_request_url` already excludes the query, so
+        the path is safe to keep and is most of what makes a 500 locatable."""
+        self.start()
+        before_send = self.calls[0]["before_send"]
+
+        event = before_send(
+            {
+                "request": {
+                    "query_string": "q=therapy+notes",
+                    "url": "https://x/mind/search/",
+                    "method": "GET",
+                },
+                "exception": {"values": []},
+            },
+            {},
+        )
+
+        self.assertEqual(event["request"]["url"], "https://x/mind/search/")
+        self.assertEqual(event["request"]["method"], "GET")
+        self.assertIn("exception", event)
+
+    def test_an_event_with_no_request_survives(self):
+        """Not every event comes from a request -- a management command raising
+        has no `request` key at all, and a hook that assumed one would drop the
+        event entirely by raising inside Sentry."""
+        self.start()
+        before_send = self.calls[0]["before_send"]
+
+        event = before_send({"level": "error"}, {})
+
+        self.assertEqual(event, {"level": "error"})
 
 
 class TestEnvironmentTest(SimpleTestCase):

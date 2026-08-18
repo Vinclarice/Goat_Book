@@ -65,6 +65,52 @@ def unauthenticated_api_paths():
     return paths
 
 
+class AccessLogKeepsTheQueryOffDiskTest(SimpleTestCase):
+    """On this site the query string *is* the private material.
+
+    `/mind/share/` is the PWA share target and `manifest.json` declares it
+    `"method": "GET"`, so a shared passage arrives as `?text=...`;
+    `/mind/search/` takes `?q=...`. Both are somebody's own words, and nothing
+    in this template set `access_log`, so the distro default applied: the
+    built-in `combined` format, whose `$request` is the verbatim request line.
+    Every search and every share went to a plaintext disk log on every request.
+
+    Lives beside the throttle test because it is the same kind of guarantee --
+    one stated in a file no compiler reads.
+    """
+
+    def test_a_query_free_log_format_is_defined(self):
+        config = NGINX_TEMPLATE.read_text(encoding="utf-8")
+
+        self.assertIn("log_format clarice_no_query", config)
+
+    def test_that_format_carries_no_query_string(self):
+        """`$request` and `$request_uri` both carry it; `$uri` is the path
+        after normalisation and does not."""
+        config = NGINX_TEMPLATE.read_text(encoding="utf-8")
+        start = config.index("log_format clarice_no_query")
+        definition = config[start : config.index(";", start)]
+
+        for carries_the_query in ("$request_uri", "$query_string", "$request "):
+            self.assertNotIn(carries_the_query, definition)
+        self.assertIn("$uri", definition)
+
+    def test_every_server_that_carries_our_traffic_uses_it(self):
+        """Including the port-80 block, which only redirects -- but
+        `return 301 https://$host$request_uri` carries the query with it, so
+        that hop logs the same thing the https hop would."""
+        config = NGINX_TEMPLATE.read_text(encoding="utf-8")
+        serving = [
+            block
+            for block in config.split("server {")[1:]
+            if "{{ site_domain }}" in block
+        ]
+
+        self.assertEqual(len(serving), 2)
+        for block in serving:
+            self.assertIn("access_log /var/log/nginx/access.log clarice_no_query;", block)
+
+
 class UnauthenticatedEndpointsAreThrottledTest(SimpleTestCase):
     def test_every_unauthenticated_api_operation_has_a_rate_limit(self):
         """The guard for the whole class. Adding an `auth=None` operation

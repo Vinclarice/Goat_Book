@@ -60,6 +60,26 @@ map $request_method $landing_login_key {
 }
 limit_req_zone $landing_login_key zone=clarice_landing:10m rate=5r/m;
 
+# The access log records the path and not the query, because on this site the
+# query *is* the private material. /mind/share/ is the PWA share target and is
+# declared "method": "GET", so a shared passage arrives as ?text=...;
+# /mind/search/ takes ?q=... . Both are somebody's own words.
+#
+# Nothing here set access_log before, so the distro default applied: the
+# built-in `combined` format, whose "$request" is the verbatim request line.
+# Every search and every share was therefore written to a plaintext disk log on
+# every request -- not on error, on every request -- and kept for as long as
+# rotation keeps it.
+#
+# $uri rather than $request or $request_uri: it is the path after normalisation
+# and carries no query string. Method and protocol are restored either side of
+# it so the line stays the same shape, and every other field of `combined` is
+# unchanged -- this drops one thing and keeps the log's operational value.
+log_format clarice_no_query
+    '$remote_addr - $remote_user [$time_local] '
+    '"$request_method $uri $server_protocol" $status $body_bytes_sent '
+    '"$http_referer" "$http_user_agent"';
+
 # Reject unknown hostnames before they reach Django. The TLS catch-all rejects
 # the handshake without needing to present a certificate for an unknown name.
 server {
@@ -78,6 +98,11 @@ server {
     listen 80;
     server_name {{ site_domain }}{% if include_www_alias | bool %} www.{{ site_domain }}{% endif %};
 
+    # This block only redirects, and `return 301 https://$host$request_uri`
+    # carries the query with it -- so without this the redirect hop logs
+    # exactly what the https hop would have.
+    access_log /var/log/nginx/access.log clarice_no_query;
+
     location ^~ /.well-known/acme-challenge/ {
         root /var/www/certbot;
     }
@@ -90,6 +115,8 @@ server {
 server {
     listen 443 ssl;
     server_name {{ site_domain }}{% if include_www_alias | bool %} www.{{ site_domain }}{% endif %};
+
+    access_log /var/log/nginx/access.log clarice_no_query;
 
     ssl_certificate /etc/letsencrypt/live/{{ site_domain }}/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/{{ site_domain }}/privkey.pem;

@@ -19,6 +19,38 @@ def sentry_initialiser():
     return sentry_sdk.init
 
 
+def without_the_query_string(event, hint):
+    """Drop `request.query_string` before an event leaves the process.
+
+    The third field in this family, and the only one with no option behind it.
+    `send_default_pii` covers usernames and cookies; `max_request_body_size`
+    covers bodies; nothing covers the query. `wsgi.py`'s event processor sets
+    `request_info["query_string"]` unconditionally -- `should_send_default_pii()`
+    guards the IP block directly above it and stops -- and the default
+    `EventScrubber` reaches `headers`, `cookies` and `data`, never this.
+
+    It matters here specifically because this application puts note text in the
+    URL **by design**: `/mind/share/` is the PWA share target, declared
+    `"method": "GET"` so it works with no service worker, and the shared passage
+    arrives as `?text=`. `/mind/search/` takes `?q=`. Both are somebody's own
+    words.
+
+    Narrower than the body case in reach, and worth saying so rather than
+    overstating it: no `traces_sample_rate` is set, so there are no transaction
+    events, and the query travels only when an error is captured during that
+    request.
+
+    `request_info["url"]` is left alone deliberately. `get_request_url` builds it
+    from SCRIPT_NAME and PATH_INFO and documents itself as "the absolute URL
+    without query string", so the path survives -- which is most of what makes a
+    500 locatable, and none of what makes it private.
+    """
+    request = event.get("request")
+    if request:
+        request.pop("query_string", None)
+    return event
+
+
 def initialise(*, dsn, environment, release, initialiser=None):
     """Switch on error reporting, and report whether it was switched on.
 
@@ -78,5 +110,7 @@ def initialise(*, dsn, environment, release, initialiser=None):
         # writing becomes safe to forward, and the debugging value of a body
         # we already refuse to keep locals for is not worth the trade.
         max_request_body_size="never",
+        # And the one with no option at all -- see the hook's own docstring.
+        before_send=without_the_query_string,
     )
     return True

@@ -8,12 +8,27 @@
 limit_req_zone $binary_remote_addr zone=clarice_auth:10m rate=5r/m;
 
 # The two places a stranger can make the server send mail: the contact form
-# and the password reset. This throttles *requests*; accounts.views.contact
-# separately caps how many messages actually leave per hour. Different jobs:
-# this stops a flood, that stops a patient script sending five valid
-# messages and waiting. The reset has no such second cap, which is the
-# argument for it sharing this zone rather than sitting behind nothing --
-# it sends its mail synchronously, on the request thread.
+# and the password reset. This throttles *requests*, and on this deployment it
+# is the throughput bound that actually holds.
+#
+# It used to say that accounts.views.contact "separately caps how many messages
+# actually leave per hour". That is not true here and the correction is the
+# point of this comment. The view's counter lives in Django's default cache,
+# which is LocMemCache -- a dict in one process -- and the Dockerfile runs one
+# gunicorn worker with --max-requests 500 --max-requests-jitter 50. A recycled
+# worker starts at zero. Worse, nothing in this file serves /static/, so
+# whitenoise answers every CSS, JS and font request through gunicorn and
+# ordinary browsing spends that budget: the counter resets on its own, with
+# nobody attacking anything.
+#
+# So the view's cap is "up to five per worker lifetime", not per hour, and what
+# bounds a patient script is this zone plus the form's honeypot. Making the
+# hourly claim true needs a cache shared between processes, which is
+# infrastructure this deployment does not have and a decision nobody has taken.
+#
+# The reset has no second cap at all, which is the argument for it sharing this
+# zone rather than sitting behind nothing -- it sends its mail synchronously,
+# on the request thread.
 limit_req_zone $binary_remote_addr zone=clarice_contact:10m rate=10r/m;
 
 # POST /api/v1/login trades a password for a 90-day, all-scopes bearer

@@ -129,9 +129,16 @@ EMAIL_SUBJECT_PREFIX = "[Clarice] "
 # send-only address: Resend only sends, so this receives through the IONOS
 # mailboxes the domain's MX records point at.
 SUPPORT_EMAIL = os.environ.get("DJANGO_SUPPORT_EMAIL", f"support@{EMAIL_DOMAIN}")
-# Successful contact-form sends allowed per client IP per hour. nginx
-# throttles the same path more bluntly (see infra/templates/
-# nginx-clarice.conf.j2); this is the layer with a test.
+# Successful contact-form sends allowed per client IP, per *worker lifetime*
+# rather than per hour despite the name -- CONTACT_WINDOW_SECONDS sets an hour
+# on the key, but the default cache is LocMemCache and one gunicorn worker
+# recycles every ~500 requests, which ordinary static-file traffic reaches on
+# its own. nginx-clarice.conf.j2 carries the full reasoning; the name is left
+# alone because renaming a setting to describe a deployment accident would
+# make the code wrong if the cache ever became shared.
+#
+# nginx throttles the same path more bluntly and is the bound that holds; this
+# is the layer with a test.
 CONTACT_MAX_PER_HOUR = int(os.environ.get("DJANGO_CONTACT_MAX_PER_HOUR", "5"))
 
 # Production error reporting. The decision itself lives in

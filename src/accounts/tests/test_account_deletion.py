@@ -21,6 +21,7 @@ from django.core.management import call_command
 from django.test import TestCase
 from django.utils import timezone
 from io import StringIO
+from unittest.mock import patch
 
 from accounts import services
 from accounts.models import SCOPE_CAPTURE_WRITE, PersonalAccessToken, User
@@ -340,6 +341,34 @@ class PurgeCommandTest(TestCase):
         self.run_command()
 
         self.assertFalse(User.objects.filter(username="alice").exists())
+
+    def test_one_failed_erasure_does_not_block_the_rest(self):
+        """Same shape as the digest's send loop. `purge_account` sends a
+        confirmation, and a rejected address rolls that erasure back --
+        deliberate, since a half-erased account is worse than an unerased one.
+        Unguarded, it also blocked every account after it, nightly and
+        alphabetically, so the same person's bad address held everyone else's
+        erasure open indefinitely."""
+        from smtplib import SMTPRecipientsRefused
+        from django.core.management.base import CommandError
+
+        self.leaving("alice", days_ago=31)
+        self.leaving("bob", days_ago=31)
+
+        real = services.purge_account
+
+        def fail_for_alice(user, **kwargs):
+            if user.get_username() == "alice":
+                raise SMTPRecipientsRefused({"alice@example.com": (550, b"nope")})
+            return real(user, **kwargs)
+
+        with patch.object(services, "purge_account", side_effect=fail_for_alice):
+            with self.assertRaises(CommandError) as raised:
+                self.run_command()
+
+        self.assertTrue(User.objects.filter(username="alice").exists())
+        self.assertFalse(User.objects.filter(username="bob").exists())
+        self.assertIn("alice", str(raised.exception))
 
     def test_it_leaves_one_still_inside_its_window(self):
         self.leaving("alice", days_ago=10)

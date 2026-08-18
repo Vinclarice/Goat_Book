@@ -17,7 +17,7 @@ from zoneinfo import ZoneInfo
 
 from django.conf import settings
 from django.core.mail import send_mail
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 from django.utils.formats import date_format
 
@@ -133,54 +133,75 @@ class Command(BaseCommand):
 
         now = timezone.now()
         sent = 0
+        # One recipient must not cost everybody else their morning. The loop
+        # orders by username, so an unguarded raise here did not delay the
+        # rest -- it never delivered to them at all, and the write-off path
+        # below stamped the day as decided anyway. The other
+        # one-user-blocks-everyone failure in this loop was already guarded
+        # (`resolve_time_zone(...) or ...` two lines down); this is the
+        # likelier instance of the same class.
+        #
+        # Deliberately not stamping on failure: their day was *not* decided,
+        # so the next hourly run tries again, and the existing until_hour
+        # write-off is what eventually closes it out. That keeps a transient
+        # rejection from silently costing a whole day.
+        failed = []
         for user in recipients.order_by("username"):
-            zone = resolve_time_zone(user.time_zone) or ZoneInfo(settings.TIME_ZONE)
-            local_now = now.astimezone(zone)
-            today = local_now.date()
+            try:
+                zone = resolve_time_zone(user.time_zone) or ZoneInfo(settings.TIME_ZONE)
+                local_now = now.astimezone(zone)
+                today = local_now.date()
 
-            # Their day is already decided, so an hourly run is a no-op for
-            # them. This is what makes running twelve more times today safe.
-            if user.last_digest_date == today:
-                continue
+                # Their day is already decided, so an hourly run is a no-op for
+                # them. This is what makes running twelve more times today safe.
+                if user.last_digest_date == today:
+                    continue
 
-            # "At or after" rather than "equals": an equality test silently
-            # drops a whole day whenever the 07:00 run is missed -- a
-            # reboot, a slow image pull, or a spring-forward transition that
-            # skips the hour outright in some zones.
-            if local_now.hour < send_hour:
-                continue
+                # "At or after" rather than "equals": an equality test silently
+                # drops a whole day whenever the 07:00 run is missed -- a
+                # reboot, a slow image pull, or a spring-forward transition that
+                # skips the hour outright in some zones.
+                if local_now.hour < send_hour:
+                    continue
 
-            # Inside the window this sends; past it the day falls straight
-            # through to being stamped, which is how a missed morning is
-            # written off rather than delivered stale in the evening.
-            if local_now.hour < until_hour:
-                items = agenda_reader.digest_items_for(user, today)
-                if items:
-                    subject = build_subject(items, today)
-                    body = build_message(user, items, today)
+                # Inside the window this sends; past it the day falls straight
+                # through to being stamped, which is how a missed morning is
+                # written off rather than delivered stale in the evening.
+                if local_now.hour < until_hour:
+                    items = agenda_reader.digest_items_for(user, today)
+                    if items:
+                        subject = build_subject(items, today)
+                        body = build_message(user, items, today)
 
-                    if dry_run:
-                        self.stdout.write(
-                            f"--- {user.email} ({user.time_zone}) ---"
-                        )
-                        self.stdout.write(subject)
-                        self.stdout.write(body)
-                    else:
-                        send_mail(
-                            subject=subject,
-                            message=body,
-                            from_email=settings.DEFAULT_FROM_EMAIL,
-                            recipient_list=[user.email],
-                        )
-                        sent += 1
+                        if dry_run:
+                            self.stdout.write(
+                                f"--- {user.email} ({user.time_zone}) ---"
+                            )
+                            self.stdout.write(subject)
+                            self.stdout.write(body)
+                        else:
+                            send_mail(
+                                subject=subject,
+                                message=body,
+                                from_email=settings.DEFAULT_FROM_EMAIL,
+                                recipient_list=[user.email],
+                            )
+                            sent += 1
 
-            if not dry_run:
-                # Stamped even when nothing was sent, which is the whole
-                # difference between a morning digest and an alarm. Without
-                # it the hourly job keeps reconsidering, and a task that
-                # becomes overdue at 14:00 mails a "good morning" at 15:00.
-                user.last_digest_date = today
-                user.save(update_fields=["last_digest_date"])
+                if not dry_run:
+                    # Stamped even when nothing was sent, which is the whole
+                    # difference between a morning digest and an alarm. Without
+                    # it the hourly job keeps reconsidering, and a task that
+                    # becomes overdue at 14:00 mails a "good morning" at 15:00.
+                    user.last_digest_date = today
+                    user.save(update_fields=["last_digest_date"])
+            except Exception as error:
+                # Broad on purpose: the mail backend's failure modes are not
+                # ours to enumerate, and any of them costs the same thing.
+                failed.append(user.get_username())
+                self.stderr.write(
+                    self.style.ERROR(f"  {user.get_username()}: {error}")
+                )
 
         if dry_run:
             self.stdout.write(self.style.SUCCESS("Dry run complete."))
@@ -190,3 +211,11 @@ class Command(BaseCommand):
             self.stdout.write(
                 self.style.SUCCESS(f"Sent {sent} digest email(s).")
             )
+
+        # After the summary, not before it: a partial run should still say how
+        # much of it worked. Caught so the run completes, raised so a daily
+        # failure is not invisible -- without this the command exits 0 having
+        # delivered nothing to somebody, every morning, leaving no trace in
+        # the data.
+        if failed:
+            raise CommandError("digest failed for: " + ", ".join(failed))

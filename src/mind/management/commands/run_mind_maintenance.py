@@ -76,24 +76,45 @@ class Command(BaseCommand):
             return
 
         since_days = options["since_days"]
+        # The third loop of this shape, after the digest's and the purge's.
+        # `run_detectors` handles `Unavailable` and nothing else, so one
+        # corpus raising anything else ended the pass -- and every owner
+        # sorting after them got no maintenance and no marker, which
+        # `/numbers/` then reports as never maintained. True, and silent about
+        # why.
+        failed = []
         for owner in owners:
             username = owner.get_username()
             self.stdout.write(f"— {username}")
-            call_command(
-                "extract_concepts", owner=username, since_days=since_days,
-                verbosity=options["verbosity"],
-            )
-            call_command(
-                "run_detectors", owner=username, since_days=since_days,
-                verbosity=options["verbosity"],
-            )
+            try:
+                call_command(
+                    "extract_concepts", owner=username, since_days=since_days,
+                    verbosity=options["verbosity"],
+                )
+                call_command(
+                    "run_detectors", owner=username, since_days=since_days,
+                    verbosity=options["verbosity"],
+                )
+            except Exception as error:
+                failed.append(username)
+                self.stderr.write(self.style.ERROR(f"  {username}: {error}"))
+                continue
             # Last, and only on the way out: the record says a pass *completed*.
             # Written before the work, it would report health for a run that
             # died halfway, which is the reading this exists to make honest.
+            # A failed corpus therefore gets no marker, deliberately -- that is
+            # the same guarantee, not a gap in it.
             services.record_maintenance_run(
                 owner, now=timezone.now(), actor="scheduler"
             )
 
         self.stdout.write(
-            self.style.SUCCESS(f"Maintained {len(owners)} corpus/corpora.")
+            self.style.SUCCESS(
+                f"Maintained {len(owners) - len(failed)} corpus/corpora."
+            )
         )
+
+        # After the summary, so a partial pass still says how much of it
+        # worked -- the same order the digest command uses.
+        if failed:
+            raise CommandError("maintenance failed for: " + ", ".join(failed))

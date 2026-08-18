@@ -14,7 +14,7 @@ nothing to do is indistinguishable from a command that did not run, which is how
 a cron job stops being noticed at all.
 """
 
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 
 from accounts import services
@@ -45,9 +45,20 @@ class Command(BaseCommand):
             self.stdout.write("Dry run: nothing erased.")
             return
 
+        # Same shape as the digest's send loop, and the same fix. Erasure
+        # sends a confirmation, so a rejected address rolls that erasure back
+        # -- which is deliberate, since a half-erased account is worse than an
+        # unerased one. What is not deliberate is that it also held every
+        # account after it open, nightly, on one person's bad address.
+        failed = []
         for user in due:
             username = user.get_username()
-            removed = services.purge_account(user, now=now)
+            try:
+                removed = services.purge_account(user, now=now)
+            except Exception as error:
+                failed.append(username)
+                self.stderr.write(self.style.ERROR(f"  {username}: {error}"))
+                continue
             total = sum(removed.values())
             # Per model, not just a total. "1,204 rows removed" cannot be
             # checked against anything; a breakdown can be read against what
@@ -56,3 +67,8 @@ class Command(BaseCommand):
             for model, count in sorted(removed.items()):
                 if count:
                     self.stdout.write(f"      {count:>6}  {model}")
+
+        if failed:
+            # An erasure that did not happen is a legal obligation still
+            # outstanding, so this must not exit 0.
+            raise CommandError("erasure failed for: " + ", ".join(failed))

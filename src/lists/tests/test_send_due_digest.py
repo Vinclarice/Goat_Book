@@ -5,6 +5,7 @@ from zoneinfo import ZoneInfo
 
 from django.core import mail
 from django.core.management import call_command
+from django.core.management.base import CommandError
 from django.test import TestCase
 from django.utils import timezone
 
@@ -98,6 +99,75 @@ class SendDueDigestTest(TestCase):
 
         body = mail.outbox[0].body
         self.assertIn("  - Dentist (due today)", body)
+
+    def test_one_rejected_recipient_does_not_starve_everybody_after_them(self):
+        """The loop orders by username and had no guard, so a raise on the
+        first recipient ended the run. For anyone in the same or an earlier
+        time zone -- which at three users is everybody -- the digest was not
+        delayed, it was never delivered, and the write-off path stamped
+        `last_digest_date` anyway, so the day was recorded as decided.
+
+        This file already guards the *other* one-user-blocks-everyone failure,
+        two lines up: `resolve_time_zone(...) or ZoneInfo(...)`. The class was
+        recognised; the likelier instance was not.
+        """
+        from smtplib import SMTPRecipientsRefused
+
+        alice = User.objects.create_user("alice", "alice@example.com", "pw")
+        alice_area = List.objects.create(owner=alice, title="Hers")
+        Item.objects.create(list=alice_area, text="Alice task", due_date=self.today)
+        self.make("Vince task", due_offset=0)
+
+        def refuse_alice(*args, **kwargs):
+            if kwargs["recipient_list"] == ["alice@example.com"]:
+                raise SMTPRecipientsRefused({"alice@example.com": (550, b"nope")})
+            return mail.send_mail(*args, **kwargs)
+
+        with patch(
+            "lists.management.commands.send_due_digest.send_mail",
+            side_effect=refuse_alice,
+        ):
+            # Raised at the end, after everybody else has been served -- see
+            # test_a_failed_send_is_reported_rather_than_swallowed.
+            with self.assertRaises(CommandError):
+                self.run_command()
+
+        self.assertEqual([message.to for message in mail.outbox], [["vince@example.com"]])
+
+    def test_a_recipient_whose_send_failed_is_not_written_off(self):
+        """Their day was not decided, so it must not be stamped -- otherwise
+        the next hourly run skips them and a transient rejection costs a whole
+        day silently."""
+        from smtplib import SMTPRecipientsRefused
+
+        self.make("Ship the fix", due_offset=0)
+
+        with patch(
+            "lists.management.commands.send_due_digest.send_mail",
+            side_effect=SMTPRecipientsRefused({"vince@example.com": (550, b"nope")}),
+        ):
+            with self.assertRaises(CommandError):
+                self.run_command()
+
+        self.user.refresh_from_db()
+        self.assertIsNone(self.user.last_digest_date)
+
+    def test_a_failed_send_is_reported_rather_than_swallowed(self):
+        """Catching the exception is what keeps the run going; saying nothing
+        about it is how a daily failure becomes invisible. The command names
+        who failed and exits non-zero."""
+        from smtplib import SMTPRecipientsRefused
+
+        self.make("Ship the fix", due_offset=0)
+
+        with patch(
+            "lists.management.commands.send_due_digest.send_mail",
+            side_effect=SMTPRecipientsRefused({"vince@example.com": (550, b"nope")}),
+        ):
+            with self.assertRaises(CommandError) as raised:
+                self.run_command()
+
+        self.assertIn("vince", str(raised.exception))
 
     def test_says_how_overdue_each_task_is(self):
         self.make("Renew insurance", due_offset=-3)

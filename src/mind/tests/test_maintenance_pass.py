@@ -18,9 +18,11 @@ the whole numbers page exists to draw.
 """
 
 from datetime import timedelta
+from unittest import mock
 
 import pytest
 from django.core.management import call_command
+from django.core.management.base import CommandError
 from django.utils import timezone
 
 from mind import instrumentation, services
@@ -71,6 +73,40 @@ def test_one_person_can_be_named(owner, other_owner):
     assert not ActivityEvent.objects.filter(
         owner=other_owner, event_type=EventType.MAINTENANCE_RAN
     ).exists()
+
+
+def test_one_owners_failure_does_not_cost_everybody_after_them_a_pass(owner, other_owner):
+    """The third loop of this shape, after the digest's and the purge's.
+    `run_detectors` catches `Unavailable` and nothing else, so anything the
+    extraction or detection of one corpus raised aborted the command -- and
+    every owner sorting after them got no maintenance and, because the marker
+    is written last and deliberately, no marker either. `/numbers/` would then
+    report them as never maintained, which is true and says nothing about why.
+    """
+    import mind.management.commands.run_mind_maintenance as command_module
+
+    capture(owner, "the woman upstairs is called Marguerite")
+    capture(other_owner, "The Gravity is a good car")
+
+    real = command_module.call_command
+    failed_for = owner.get_username()
+
+    def fail_for_one(name, *args, **kwargs):
+        if name == "run_detectors" and kwargs.get("owner") == failed_for:
+            raise RuntimeError("the index went away mid-pass")
+        return real(name, *args, **kwargs)
+
+    with mock.patch.object(command_module, "call_command", side_effect=fail_for_one):
+        with pytest.raises(CommandError) as raised:
+            call_command("run_mind_maintenance")
+
+    assert ActivityEvent.objects.filter(
+        owner=other_owner, event_type=EventType.MAINTENANCE_RAN
+    ).exists()
+    assert not ActivityEvent.objects.filter(
+        owner=owner, event_type=EventType.MAINTENANCE_RAN
+    ).exists()
+    assert failed_for in str(raised.value)
 
 
 def test_somebody_with_no_notes_is_skipped(owner, other_owner):

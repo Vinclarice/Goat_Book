@@ -56,6 +56,91 @@ def test_writing_with_no_commitment_in_it_proposes_nothing(text):
     assert find_commitment(text, today=TODAY) is None
 
 
+# ---------------------------------------------------------------------------
+# Ordinary prose that names a day — recorded, not yet refused
+# ---------------------------------------------------------------------------
+#
+# The four negative cases above contain no weekday, no "today" and no cadence
+# word, so none of them exercises the input that actually trips this parser: a
+# sentence *describing* something that already happened, in a corpus that is
+# mostly a journal. Every string below proposes a commitment today, verified by
+# running it.
+#
+# **Not a defect being fixed here — a decision being deferred with its evidence
+# attached.** Vince's call, August 18, 2026. The false positives are
+# structurally identical to the true ones: "Met Bob on Tuesday" differs from
+# "Dentist on Tuesday" only by the verb, so any gate has to read tense, and the
+# obvious past-tense rule reaches three of these five while silencing "Booked
+# the dentist for Tuesday", which is a real commitment.
+#
+# `cold-start.md` says thresholds like this get set by the confirmation accept
+# rate rather than guessed at, and there is no accept-rate data yet. So this
+# records what trips it and waits for that, rather than inventing a heuristic
+# whose false negatives nobody has measured either.
+#
+# Strict, following test_dormant_thread_evaluation.py: if a change ever makes
+# one of these pass, the suite says so and the decision gets revisited
+# deliberately instead of the baseline moving in silence.
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "Ungated at the proposal today, and deliberately so until there is "
+        "accept-rate data to set a gate from. This parser carries two "
+        "false-positive gates already — _UNHOLDABLE and _ORDINAL's positional "
+        "lookahead — but neither reads tense, and nothing bounds the proposal "
+        "itself: no length floor, no confidence threshold. Contrast "
+        "queries.MIN_MENTIONS_TO_ASK, where extraction over-generates on "
+        "purpose and the gate is what stops it becoming an inbox."
+    ),
+)
+@pytest.mark.parametrize(
+    "text",
+    [
+        # Past tense, and the date word is incidental to it.
+        "Feeling good today. Walked to the shops and back.",
+        "Met Bob on Tuesday for coffee, he looked well.",
+        "Spoke to mum on the 3rd of June.",
+        # Not past tense, which is why a tense rule alone would not be enough.
+        "Rereading the Sunday papers, nothing much in them.",
+        # A habit being described rather than one being taken on. This one is
+        # the most expensive of the five: it proposes a *daily* recurrence.
+        "I drink coffee daily and it is probably too much.",
+    ],
+)
+def test_prose_describing_the_past_proposes_nothing(text):
+    """What this should do, recorded while it does not.
+
+    `_propose_any_commitment` writes an unconfirmed ACTIONABLE facet whenever
+    this returns non-None, and `services.capture` calls it on every capture --
+    so a journal backfill through `importers/runner.py` proposes one for every
+    entry naming a weekday, "today" or a cadence word.
+
+    The worst of them is not the count. "Spoke to mum on the 3rd of June",
+    read in August, proposes a commitment due **the following June** -- ten
+    months of an agenda carrying something nobody agreed to.
+    """
+    assert find_commitment(text, today=TODAY) is None
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Dentist on Tuesday",
+        "Call the plumber tomorrow",
+        "Take the pills every day",
+        "Booked the dentist for Tuesday",
+    ],
+)
+def test_the_commitments_it_must_keep_finding(text):
+    """The other side of the gate that has not been written.
+
+    Here so that whoever writes it has the cost in front of them rather than
+    only the benefit -- the last string is past tense and is a real commitment,
+    which is precisely what the obvious rule would silence.
+    """
+    assert find_commitment(text, today=TODAY) is not None
+
+
 def test_a_recurrence_is_read_and_named(): 
     found = find_commitment("change the furnace filter every month", today=TODAY)
 

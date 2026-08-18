@@ -291,6 +291,21 @@ this step runs `delegate_to: 127.0.0.1` before anything touches the remote
 host, a failure here never reaches production — there is nothing to undo
 before retrying.
 
+**Rolling back.** Since August 18 the image is tagged with the commit's
+abbreviated SHA and the last four are kept on the server, so undoing a bad
+deploy no longer means rebuilding from an old checkout:
+
+```bash
+ssh elspeth@vinclarice.com 'docker images clarice'          # what is still there
+ssh elspeth@vinclarice.com 'docker stop clarice && docker rm clarice'
+# then re-run the playbook from the good commit, which retags and recreates
+```
+
+**It rolls back code and not the database, and that is the whole caveat.** If
+the bad deploy migrated, the old image meets the new schema — often worse than
+the bug. A migration is undone by `MIGRATION.md`'s restore drill or not at all,
+which is why the drill is the thing to keep exercised rather than this.
+
 **The container is recreated and migrated before the nginx and certbot
 tasks.** New assets therefore start being served while the run still has
 work to do — a rotated bundle hash proves the container step succeeded, not

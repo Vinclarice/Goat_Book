@@ -198,15 +198,43 @@
       changed_when: false
       delegate_to: 127.0.0.1
 
-    - name: Build container image locally
+    # A tag the previous deploy's image survives under, which `-t clarice`
+    # alone did not: one mutable tag means each build overwrites the only copy
+    # of what was working, and undoing a bad deploy meant a full local rebuild
+    # from an old checkout.
+    #
+    # Not `deployed_commit` above, and the difference is not cosmetic. That is
+    # `git describe`, which resolves to the nearest *annotated* tag -- today
+    # `ibis-8-gd8b67b38`, which is legal, and tomorrow whatever bird gets
+    # tagged next. Docker tags forbid `/`, and this repository's own
+    # `DEPLOYED-<date>/<time>` convention is full of them; those are lightweight
+    # so `describe` ignores them, which is a property of git's defaults rather
+    # than a guarantee anybody wrote down. `--match ''` matches no tag at all,
+    # so `--always` falls through to the bare abbreviated SHA, which cannot
+    # contain a character a tag rejects.
+    - name: Compute a docker-safe tag for the image
       ansible.builtin.command:
-        cmd: docker build --platform linux/amd64 -t clarice .
+        cmd: git describe --always --match "" --dirty --abbrev=12
+        chdir: "{{ playbook_dir }}/.."
+      register: image_tag
+      changed_when: false
+      delegate_to: 127.0.0.1
+
+    - name: Build container image locally
+      # Two tags on one build, not two builds. `clarice:current` is the moving
+      # pointer the container follows; the SHA tag is what makes a previous
+      # image nameable after the next deploy has moved that pointer.
+      ansible.builtin.command:
+        cmd: >-
+          docker build --platform linux/amd64
+          -t clarice:{{ image_tag.stdout | trim }}
+          -t clarice:current .
         chdir: "{{ playbook_dir }}/.."
       delegate_to: 127.0.0.1
 
     - name: Export container image locally
       community.docker.docker_image:
-        name: clarice
+        name: "clarice:{{ image_tag.stdout | trim }}"
         archive_path: /tmp/clarice-img.tar
         source: local
       delegate_to: 127.0.0.1
@@ -218,11 +246,31 @@
 
     - name: Import container image on server
       community.docker.docker_image:
-        name: clarice
+        name: "clarice:{{ image_tag.stdout | trim }}"
         load_path: /tmp/clarice-img.tar
         source: load
         force_source: true
         state: present
+
+    # Keep a few, not all and not one. All of them fills a 25GB droplet disk
+    # with images nobody will ever roll back to; one of them is where this
+    # started. Four is roughly a week of deploys at the rate this moves.
+    #
+    # `clarice:current` is excluded by name -- it is a pointer at an image the
+    # SHA tags already cover, and removing it would leave the moving tag
+    # dangling. Untagged parents are left alone too: `docker image prune` is a
+    # blunter instrument than this needs and would reach images other things
+    # own.
+    - name: Prune old images, keeping enough to roll back to
+      ansible.builtin.shell:
+        cmd: |
+          {% raw %}
+          docker images --filter 'reference=clarice'             --format '{{.Tag}}	{{.CreatedAt}}'             | grep -v '^current'             | sort -k2 -r             | tail -n +5             | cut -f1             | while read -r tag; do
+                [ -n "$tag" ] && docker rmi "clarice:$tag" || true
+              done
+          exit 0
+          {% endraw %}
+      changed_when: false
 
     - name: Ensure .secret-key file exists
       # the intention is that this only happens once per server
@@ -323,7 +371,7 @@
     - name: Migrate, before the new code starts serving
       community.docker.docker_container:
         name: clarice-migrate
-        image: clarice
+        image: "clarice:{{ image_tag.stdout | trim }}"
         command: ./manage.py migrate
         state: started
         detach: false
@@ -358,7 +406,7 @@
     - name: Run container
       community.docker.docker_container:
         name: clarice
-        image: clarice
+        image: "clarice:{{ image_tag.stdout | trim }}"
         state: started
         recreate: true
         # Docker's default is `no`, which means a reboot, an OOM kill or a

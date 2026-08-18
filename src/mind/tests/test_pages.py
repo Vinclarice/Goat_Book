@@ -282,6 +282,98 @@ def test_search_finds_a_note(signed_in, owner):
     assert "furnace filter" in content
 
 
+def test_a_truncated_search_says_so_and_says_how_many(signed_in, owner):
+    """The page returned thirty and said nothing about the rest.
+
+    That is worse here than on an ordinary search page, because the "I know I
+    wrote this and can't find it" button sits directly beneath the results. A
+    person whose note was number thirty-one presses it, and a truncation is
+    recorded as a retrieval failure -- corrupting the one signal where the
+    right answer is known.
+    """
+    for index in range(35):
+        services.capture(
+            owner, content=f"kestrel sighting number {index}", captured_at=JAN,
+            source=NodeSource.WEB, actor="vince",
+        )
+
+    content = signed_in.get("/mind/search/?q=kestrel").content.decode()
+
+    assert "35" in content
+    assert "30" in content
+
+
+def test_an_untruncated_search_does_not_talk_about_limits(signed_in, owner):
+    """Saying "3 of 3" on every search is noise, and noise beside a button
+    about failure is how the button stops being read."""
+    services.capture(
+        owner, content="the furnace filter needs changing", captured_at=JAN,
+        source=NodeSource.WEB, actor="vince",
+    )
+
+    content = signed_in.get("/mind/search/?q=furnace").content.decode()
+
+    assert "showing" not in content.lower()
+
+
+def test_the_best_match_comes_first_rather_than_the_newest(signed_in, owner):
+    """`live_nodes` orders by -captured_at and nothing re-ordered it, so the
+    thirty *newest* matches were kept rather than the thirty best. Truncation
+    by recency over an unranked filter is the half that makes the cut
+    arbitrary."""
+    services.capture(
+        owner,
+        content="kestrel kestrel kestrel — the nest above the substation",
+        captured_at=JAN, source=NodeSource.WEB, actor="vince",
+    )
+    services.capture(
+        owner,
+        content="a long note about the weather that mentions a kestrel once, "
+        "among a great many other unrelated words about the sky and the rain",
+        captured_at=JAN.replace(day=28), source=NodeSource.WEB, actor="vince",
+    )
+
+    content = signed_in.get("/mind/search/?q=kestrel").content.decode()
+
+    assert content.index("the nest above the substation") < content.index(
+        "a long note about the weather"
+    )
+
+
+def test_a_match_only_in_superseded_text_says_so(signed_in, owner):
+    """Searching matches any revision, and the page renders `current_body` --
+    so a term the person edited out returns the note, and the note shown does
+    not contain the word they typed.
+
+    Keeping the match is deliberate: `original_content` is never mutated
+    precisely so what was first said survives, and finding it is that design
+    working. What was missing is the label saying why it matched.
+    """
+    node = services.capture(
+        owner, content="the appointment is about tinnitus", captured_at=JAN,
+        source=NodeSource.WEB, actor="vince",
+    )
+    services.revise(
+        node, body="the appointment is about my knee", now=JAN, actor="vince"
+    )
+
+    content = signed_in.get("/mind/search/?q=tinnitus").content.decode()
+
+    assert "my knee" in content
+    assert "earlier version" in content.lower()
+
+
+def test_a_current_match_is_not_labelled_as_superseded(signed_in, owner):
+    services.capture(
+        owner, content="the furnace filter needs changing", captured_at=JAN,
+        source=NodeSource.WEB, actor="vince",
+    )
+
+    content = signed_in.get("/mind/search/?q=furnace").content.decode()
+
+    assert "earlier version" not in content.lower()
+
+
 def test_a_failed_search_offers_to_record_the_miss(signed_in):
     """The point of the page as much as the results: a miss is the one retrieval
     signal where the right answer is already known."""

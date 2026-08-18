@@ -9,10 +9,19 @@
 </form>
 
 {% if q %}
+  {% comment %}
+  Only when it is true. "Showing 3 of 3" on every search is noise, and noise
+  directly above a button about failure is how that button stops being read.
+  {% endcomment %}
+  {% if truncated %}
+    <p class="meta">Showing the {{ limit }} closest matches of {{ total }}.
+    Try a longer phrase to narrow it.</p>
+  {% endif %}
+
   {% for result in results %}
     <div class="card">
       <div class="body">{{ result.body }}</div>
-      <div class="meta" style="margin-top:.5rem">{{ result.node.captured_at|date:"j M Y" }}</div>
+      <div class="meta" style="margin-top:.5rem">{{ result.node.captured_at|date:"j M Y" }}{% if result.superseded %} · matched an earlier version of this note{% endif %}</div>
     </div>
   {% empty %}
     <p class="empty">Nothing matched “{{ q }}”.</p>

@@ -25,7 +25,6 @@ from __future__ import annotations
 
 from django.contrib.auth.decorators import login_required
 from django.contrib.postgres.search import SearchQuery
-from django.db.models import Q
 from django.shortcuts import redirect, render
 from django.templatetags.static import static
 from django.utils import timezone
@@ -420,15 +419,41 @@ def search(request):
     """
     q = (request.GET.get("q") or "").strip()
     results = []
+    total = 0
     if q:
         query = SearchQuery(q, config="english")
-        nodes = (
-            queries.live_nodes(request.user)
-            .filter(Q(search_original=query) | Q(revisions__search_body=query))
-            .distinct()[:RECENT_LIMIT]
-        )
-        results = [{"node": node, "body": queries.current_body(node)} for node in nodes]
-    return render(request, "mind/search.html", {"q": q, "results": results})
+        matching = queries.search_ranked(request.user, query)
+        # Counted before slicing, because the count is the point: a page that
+        # returns thirty of thirty-five and says nothing is a page that invites
+        # the miss button below it to be pressed for a note it simply did not
+        # show. That records a truncation as a retrieval failure, in the one
+        # signal where the right answer is known.
+        total = matching.count()
+        nodes = list(matching[:RECENT_LIMIT])
+        current = queries.current_text_matches(nodes, query)
+        results = [
+            {
+                "node": node,
+                "body": queries.current_body(node),
+                # Matched only in text since edited away. Kept as a result --
+                # the original is preserved on purpose -- and labelled, so the
+                # word somebody typed not being in the note they are shown is
+                # explained rather than baffling.
+                "superseded": node.pk not in current,
+            }
+            for node in nodes
+        ]
+    return render(
+        request,
+        "mind/search.html",
+        {
+            "q": q,
+            "results": results,
+            "total": total,
+            "truncated": total > len(results),
+            "limit": RECENT_LIMIT,
+        },
+    )
 
 
 @login_required

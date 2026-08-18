@@ -7,7 +7,9 @@ and it is where every detector's candidate query will live.
 
 from datetime import datetime, timedelta
 
-from django.db.models import Count, F, Max, Min, Q, QuerySet
+from django.contrib.postgres.search import SearchRank
+from django.db.models import Count, F, FloatField, Max, Min, Q, QuerySet, Value
+from django.db.models.functions import Coalesce, Greatest
 from django.utils import timezone
 
 from .models import (
@@ -18,6 +20,7 @@ from .models import (
     FacetKind,
     Mention,
     Node,
+    Revision,
 )
 
 # How close a confirmed commitment's due date has to be before its node reaches
@@ -51,6 +54,74 @@ def current_body(node: Node) -> str:
     """
     latest = node.revisions.order_by("-seq").values_list("body", flat=True).first()
     return latest if latest is not None else node.original_content
+
+
+def search_ranked(owner, query) -> QuerySet[Node]:
+    """This owner's live notes matching `query`, best first.
+
+    **Ranked, where this used to be a recency truncation.** `live_nodes` orders
+    by `-captured_at`, nothing re-ordered it, and the view took the first
+    thirty — so the thirty *newest* matches were kept rather than the thirty
+    best, and which note you found depended on when you wrote it.
+
+    The rank is the better of the two vectors. A node matches on its original
+    capture or on any revision, and `Max` over the revision join is what
+    collapses the several rows a multi-revision match produces — which also
+    removes the `.distinct()` this used to need.
+    """
+    return (
+        live_nodes(owner)
+        .filter(Q(search_original=query) | Q(revisions__search_body=query))
+        .annotate(
+            rank=Greatest(
+                SearchRank(F("search_original"), query),
+                Coalesce(
+                    Max(SearchRank(F("revisions__search_body"), query)),
+                    Value(0.0, output_field=FloatField()),
+                ),
+            )
+        )
+        .order_by("-rank", "-captured_at")
+    )
+
+
+def current_text_matches(nodes, query) -> set[int]:
+    """Of these nodes, the ids whose text *as it now stands* matches.
+
+    The rest matched only in superseded text, which is not a bug to fix:
+    `original_content` is never mutated precisely so what was first said
+    survives, and finding it is that design working. What it needs is a label,
+    because otherwise a search for a word somebody edited out returns the note
+    and renders a body without the word in it.
+
+    Mirrors `current_body`'s rule exactly — the highest-seq revision, falling
+    back to the original — because two answers to "what does this node
+    currently say" is how the label starts lying.
+    """
+    ids = [node.pk for node in nodes]
+    if not ids:
+        return set()
+
+    revised = set(
+        Revision.objects.filter(node_id__in=ids).values_list("node_id", flat=True)
+    )
+    latest_ids = list(
+        Revision.objects.filter(node_id__in=ids)
+        .order_by("node_id", "-seq")
+        .distinct("node_id")
+        .values_list("pk", flat=True)
+    )
+    matches = set(
+        Revision.objects.filter(pk__in=latest_ids, search_body=query).values_list(
+            "node_id", flat=True
+        )
+    )
+    matches |= set(
+        Node.objects.filter(pk__in=ids, search_original=query)
+        .exclude(pk__in=revised)
+        .values_list("pk", flat=True)
+    )
+    return matches
 
 
 def canonical_concept(concept: ConceptCandidate) -> ConceptCandidate:

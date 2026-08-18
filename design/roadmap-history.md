@@ -67,6 +67,8 @@ a finding remains a separate decision.
 | D10 | MEDIUM — a deletion could be scheduled with its warning never sent | `4d4a225` |
 | — | A production incident, and what guarding these loops had cost | `0a87f91` |
 | D12 | MEDIUM — the export dropped every tag association and three models | `79d2816` |
+| D16 | LOW-MED — corrected the false hourly-cap claim (behaviour unchanged) | `0476bb3` |
+| D13 | MEDIUM — side-nav counts went stale on every task write | `9631e32` |
 
 ### D1 — the refetch clobber
 
@@ -377,6 +379,35 @@ so a key appearing in somebody's activity data counted as proof a model was
 exported — it reported the export complete with `Attachment` removed. It reads
 the payload's own two levels now and fails on that same mutation.
 
+### D13, D14 and D16 — re-verified before being touched
+
+Three findings the review itself was least sure of, checked against the tree
+before any of them was fixed. **All three mechanisms held**, and three details
+did not.
+
+**D13 was understated.** The right pattern is in *seven* files, not four —
+`AgendaWorkspace`, `AreaRoute`, `PreferencesRoute`, `ProjectRoute`,
+`ProjectsIndexRoute`, `ReviewRoute` and `DeletionBanner`. Seven right and three
+wrong reads as oversight rather than unsettled convention. Fixed by invalidating
+after *every* write path in the three, not the ones whose counts obviously move:
+picking is how it happened, and a rule re-derived per handler gets missed again.
+
+**D14 held, including its own self-correction.** No `SearchRank` anywhere; a
+`.distinct()[:30]` over a `-captured_at` order with no count in the template. Run
+directly: 35 matches, 30 returned, 5 silently dropped. And searching a term the
+person *deleted* in a revision returns the note while the page renders text
+without it. `retirement_gate` really is about absorbing the task core's domains,
+so inflated misses hold it shut — the review was right to invert its own claim.
+
+**D16 held, and I had made it worse.** Its honest framing is that the defect is a
+false statement, and D4 rewrote that exact comment block while preserving the
+sentence — *"caps how many messages actually leave per hour"* — the review had
+already identified as untrue. The counter is `LocMemCache` in one gunicorn worker
+recycling every ~500 requests, and whitenoise serves every static asset through
+that worker, so ordinary browsing resets it. Corrected in both places that
+claimed it; the behaviour fix needs a shared cache, which is infrastructure
+nobody has decided to add.
+
 ### What these have in common
 
 - **A fix applied only where the bug was reported is not a fix.** D1 was guarded
@@ -425,6 +456,12 @@ the payload's own two levels now and fails on that same mutation.
   between a row and the object holding it, both times caught by a test. The
   sweep these lessons keep asking for is not free; the tests are what make it
   affordable.
+
+- **Editing around a known untruth preserves it.** D16's false comment survived
+  a rewrite of the very lines it sat in, because the edit was about rate limits
+  and the sentence was about something else. A finding that says "this comment is
+  wrong" is a finding about a file, and touching that file is the moment to act
+  on it.
 
 - **A test written after the fix has to be attacked before it is trusted.** D12's
   coverage guard passed on its first run and was worthless: it descended into a

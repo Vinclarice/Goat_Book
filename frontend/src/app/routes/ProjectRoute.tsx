@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -46,11 +46,29 @@ export function ProjectRoute() {
         params: { path: { project_id: id } },
       });
       if (!response.ok || !data) throw new RequestFailed(response.status);
-      setTitle(data.title);
-      setDueDate(data.due_date ?? "");
       return data;
     },
   });
+
+  // Seeded once per project, not on every settle of the query.
+  //
+  // These setters used to live inside the queryFn, so they re-ran on every
+  // refetch -- and this page does not need an alt-tab to lose an edit, since
+  // four of its own mutations call refresh() below, which invalidates this
+  // very query. Retyping the title and then adding an area reseeded the
+  // field from the server and the rename was gone. PreferencesRoute and
+  // DayRoute already carry this guard; the ref holds *which* project was
+  // seeded so navigating between two of them still loads the second.
+  //
+  // Both renames write their own result back through setTitle/setDueDate in
+  // onSuccess, so nothing depends on the query re-seeding them.
+  const seededFor = useRef<number | null>(null);
+  useEffect(() => {
+    if (!data || seededFor.current === id) return;
+    seededFor.current = id;
+    setTitle(data.title);
+    setDueDate(data.due_date ?? "");
+  }, [data, id]);
 
   // Only fetched for the "add an area" picker.
   const { data: nav } = useQuery({

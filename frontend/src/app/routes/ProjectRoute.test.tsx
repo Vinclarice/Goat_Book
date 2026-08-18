@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router";
@@ -59,10 +59,15 @@ function projectPageFetch(data: object = projectDetailData()) {
 }
 
 function renderAt(projectId: string) {
+  // Mirrors main.tsx: retry off, everything else at TanStack's defaults. The
+  // default staleTime of 0 is what makes a background refetch possible at
+  // all, so pinning it here would prove nothing about the real app.
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
-  return render(
+  return {
+    queryClient,
+    ...render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter initialEntries={[`/projects/${projectId}`]}>
         <Routes>
@@ -71,7 +76,8 @@ function renderAt(projectId: string) {
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
-  );
+    ),
+  };
 }
 
 describe("ProjectRoute", () => {
@@ -405,5 +411,60 @@ describe("ProjectRoute", () => {
     renderAt("3");
 
     expect(await screen.findByText("⚠ Overdue")).toBeInTheDocument();
+  });
+
+  it("keeps an unsaved project name and due date when the query refetches", async () => {
+    // The queryFn seeded both fields, so every refetch re-ran the setters
+    // and discarded whatever was being typed.
+    const user = userEvent.setup();
+    vi.spyOn(globalThis, "fetch").mockImplementation(projectPageFetch());
+
+    const { queryClient } = renderAt("3");
+    await screen.findByDisplayValue("Website Relaunch");
+
+    await user.clear(screen.getByLabelText("Project name"));
+    await user.type(screen.getByLabelText("Project name"), "Website Relaunch v2");
+    await user.type(screen.getByLabelText("Due date"), "2026-09-30");
+    // Wrapped in act so the refetch's state update is flushed before the
+    // assertion -- without it the update is still pending and the test
+    // passes over a value that is already lost.
+    await act(async () => {
+      await queryClient.refetchQueries({ queryKey: ["project", 3] });
+    });
+
+    expect(screen.getByLabelText("Project name")).toHaveValue("Website Relaunch v2");
+    expect(screen.getByLabelText("Due date")).toHaveValue("2026-09-30");
+  });
+
+  it("keeps an unsaved project name while an area is added underneath it", async () => {
+    // This page does not need an alt-tab to lose the edit. Four of its
+    // mutations call refresh(), which invalidates this very query -- so
+    // creating an area while the title was being retyped reseeded the field
+    // from the server and the rename was gone, with the success message for
+    // the area sitting right beside it.
+    const user = userEvent.setup();
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const request = input as Request;
+      const url = typeof input === "string" ? input : request.url;
+      if (url.includes("/api/v1/nav")) return jsonResponse(NAV);
+      if (request.method === "POST" && url.includes("/areas")) {
+        return jsonResponse({ id: 9, title: "Legal" });
+      }
+      return jsonResponse(projectDetailData());
+    });
+
+    renderAt("3");
+    await screen.findByDisplayValue("Website Relaunch");
+
+    await user.clear(screen.getByLabelText("Project name"));
+    await user.type(screen.getByLabelText("Project name"), "Website Relaunch v2");
+
+    await user.type(screen.getByLabelText("New area name"), "Legal");
+    await user.click(screen.getByRole("button", { name: "Create area" }));
+
+    await waitFor(() =>
+      expect(screen.getByLabelText("New area name")).toHaveValue(""),
+    );
+    expect(screen.getByLabelText("Project name")).toHaveValue("Website Relaunch v2");
   });
 });

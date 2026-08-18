@@ -1,7 +1,7 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { MemoryRouter, Route, Routes } from "react-router";
+import { Link, MemoryRouter, Route, Routes } from "react-router";
 
 import { TaskDetailRoute } from "./TaskDetailRoute";
 import { checklistStep, task } from "../../test/fixtures";
@@ -34,10 +34,15 @@ function taskDetailData(overrides: Record<string, unknown> = {}) {
 }
 
 function renderAt(taskId: string) {
+  // Mirrors main.tsx: retry off, everything else left at TanStack's defaults.
+  // The default staleTime of 0 is what makes a background refetch possible at
+  // all, so pinning it here would prove nothing about the real app.
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
-  return render(
+  return {
+    queryClient,
+    ...render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter initialEntries={[`/tasks/${taskId}`]}>
         <Routes>
@@ -46,7 +51,8 @@ function renderAt(taskId: string) {
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
-  );
+    ),
+  };
 }
 
 describe("TaskDetailRoute", () => {
@@ -478,6 +484,95 @@ describe("TaskDetailRoute", () => {
     await waitFor(() => {
       expect(screen.getByText("Area page")).toBeInTheDocument();
     });
+  });
+
+  it("seeds the second task when navigating straight from one to another", async () => {
+    // The guard above is keyed on the task id, not a bare boolean, and this
+    // is what needs it: React Router reuses the mounted component when only
+    // the :taskId param changes, so a boolean would leave the first task's
+    // text sitting in the form over the second task's data.
+    const user = userEvent.setup();
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = typeof input === "string" ? input : (input as Request).url;
+      if (url.includes("/api/v1/tasks/2")) {
+        return jsonResponse(
+          taskDetailData({ task: task({ id: 2, text: "Renew passport" }) }),
+        );
+      }
+      return jsonResponse(taskDetailData());
+    });
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={["/tasks/1"]}>
+          {/* Outside Routes, so following it swaps the param without
+              unmounting the route -- which is the case under test. */}
+          <Link to="/tasks/2">Open the next task</Link>
+          <Routes>
+            <Route path="/tasks/:taskId" element={<TaskDetailRoute />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    await screen.findByDisplayValue("Write tests");
+
+    await user.click(screen.getByRole("link", { name: "Open the next task" }));
+
+    expect(await screen.findByDisplayValue("Renew passport")).toBeInTheDocument();
+  });
+
+  it("keeps unsaved notes when the query refetches underneath them", async () => {
+    // The reported bug, and the third time this project has fixed it:
+    // PreferencesRoute and DayRoute already carry the same guard. Seeding
+    // form state from inside the queryFn means the setters re-run on every
+    // refetch, and refetchOnWindowFocus is on -- so alt-tabbing away from a
+    // half-written note and back replaced every character with the server's
+    // value. No message, no undo, and the save that followed would then
+    // report success having written the old value back.
+    const user = userEvent.setup();
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(taskDetailData()),
+    );
+
+    const { queryClient } = renderAt("1");
+    await screen.findByDisplayValue("Write tests");
+
+    await user.type(screen.getByLabelText("Notes"), "Bring the receipt");
+    // Wrapped in act so the refetch's state update is flushed before the
+    // assertion. Without it the update is still pending, the DOM still shows
+    // the edit, and the test passes over a value that is already lost.
+    await act(async () => {
+      await queryClient.refetchQueries({ queryKey: ["task", 1] });
+    });
+
+    expect(screen.getByLabelText("Notes")).toHaveValue("Bring the receipt");
+  });
+
+  it("keeps an unsaved task title and tags across a refetch", async () => {
+    // Same guard, the other two editable fields on this page. Tags matter
+    // separately: the draft is a comma-joined string, so a reseed does not
+    // merely revert it, it discards a tag that was mid-word.
+    const user = userEvent.setup();
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(taskDetailData({ task: task({ tags: ["work"] }) })),
+    );
+
+    const { queryClient } = renderAt("1");
+    await screen.findByDisplayValue("Write tests");
+
+    await user.clear(screen.getByLabelText("Task"));
+    await user.type(screen.getByLabelText("Task"), "Write more tests");
+    await user.type(screen.getByLabelText("Tags"), ", urgent");
+
+    await act(async () => {
+      await queryClient.refetchQueries({ queryKey: ["task", 1] });
+    });
+
+    expect(screen.getByLabelText("Task")).toHaveValue("Write more tests");
+    expect(screen.getByLabelText("Tags")).toHaveValue("work, urgent");
   });
 
   it("has no per-task project control", async () => {

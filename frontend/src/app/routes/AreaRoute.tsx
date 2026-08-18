@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -35,10 +35,24 @@ export function AreaRoute() {
         params: { path: { area_id: id } },
       });
       if (!response.ok || !data) throw new RequestFailed(response.status);
-      setTitle(data.area.title);
       return data;
     },
   });
+
+  // Seeded once per area, not on every settle of the query.
+  //
+  // This setter used to live inside the queryFn, so it re-ran on every
+  // refetch. That is not only the alt-tab case: joining a project calls
+  // refetch() directly, so renaming an area and then adding it to a project
+  // silently reverted the rename. PreferencesRoute and DayRoute already
+  // carry this guard; the ref holds *which* area was seeded so navigating
+  // between two of them still loads the second.
+  const seededFor = useRef<number | null>(null);
+  useEffect(() => {
+    if (!data || seededFor.current === id) return;
+    seededFor.current = id;
+    setTitle(data.area.title);
+  }, [data, id]);
 
   const renameMutation = useMutation({
     mutationFn: async (newTitle: string) => {

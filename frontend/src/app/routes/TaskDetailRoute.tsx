@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 
@@ -75,24 +75,43 @@ export function TaskDetailRoute() {
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const { isPending, isError, error: loadError, refetch } = useQuery({
+  const { data, isPending, isError, error: loadError, refetch } = useQuery({
     queryKey: ["task", id],
     queryFn: async () => {
       const { data, response } = await apiV1.GET("/api/v1/tasks/{item_id}", {
         params: { path: { item_id: id } },
       });
       if (!response.ok || !data) throw new RequestFailed(response.status);
-      setTask(data.task as Task);
-      setCadenceMode(data.cadence_mode ?? null);
-      setAreaRef(data.area);
-      setText(data.task.text);
-      setTagsDraft(data.task.tags.join(", "));
-      setNotesDraft(data.task.notes);
-      setChecklistSteps((data.checklist_steps ?? []) as ChecklistStep[]);
-      setCreateStepUrl(data.create_checklist_step_url ?? "");
       return data;
     },
   });
+
+  // Seeded once per task, not on every settle of the query.
+  //
+  // These setters used to live inside the queryFn, so they re-ran on every
+  // refetch -- and refetchOnWindowFocus is on with staleTime at 0, so an
+  // alt-tab away from a half-written note and back replaced every character
+  // with the server's value, with no message and no undo. PreferencesRoute
+  // and DayRoute already carry this guard for the same reason; the ref holds
+  // *which* task was seeded so navigating between two of them still loads
+  // the second.
+  //
+  // Everything below is safe to freeze: each mutation writes its own result
+  // back through setTask/setChecklistSteps rather than waiting for a
+  // refetch, so nothing here depends on the query re-seeding it.
+  const seededFor = useRef<number | null>(null);
+  useEffect(() => {
+    if (!data || seededFor.current === id) return;
+    seededFor.current = id;
+    setTask(data.task as Task);
+    setCadenceMode(data.cadence_mode ?? null);
+    setAreaRef(data.area);
+    setText(data.task.text);
+    setTagsDraft(data.task.tags.join(", "));
+    setNotesDraft(data.task.notes);
+    setChecklistSteps((data.checklist_steps ?? []) as ChecklistStep[]);
+    setCreateStepUrl(data.create_checklist_step_url ?? "");
+  }, [data, id]);
 
   async function handleSaveText(event: FormEvent) {
     event.preventDefault();
@@ -345,7 +364,12 @@ export function TaskDetailRoute() {
   }
 
   if (isPending) return <p className="p-6">Loading…</p>;
-  if (isError || !task || !areaRef) return <RouteFailure status={statusOf(loadError)} onRetry={() => refetch()} />;
+  if (isError || !data) return <RouteFailure status={statusOf(loadError)} onRetry={() => refetch()} />;
+  // One render sits between the data arriving and the effect above seeding
+  // from it. That gap is a load, not a failure -- guarding it with
+  // RouteFailure, as this line used to, would flash an error page over a
+  // request that had just succeeded.
+  if (!task || !areaRef) return <p className="p-6">Loading…</p>;
 
   // Whether "does this subtask come back next time?" is a question worth
   // asking at all. The flag exists on every subtask regardless; this only

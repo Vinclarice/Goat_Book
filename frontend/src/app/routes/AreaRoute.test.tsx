@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router";
@@ -52,10 +52,15 @@ function areaPageFetch(data: object = listDetailData()) {
 }
 
 function renderAt(areaId: string) {
+  // Mirrors main.tsx: retry off, everything else at TanStack's defaults. The
+  // default staleTime of 0 is what makes a background refetch possible at
+  // all, so pinning it here would prove nothing about the real app.
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
-  return render(
+  return {
+    queryClient,
+    ...render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter initialEntries={[`/areas/${areaId}`]}>
         <Routes>
@@ -64,7 +69,8 @@ function renderAt(areaId: string) {
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
-  );
+    ),
+  };
 }
 
 describe("AreaRoute", () => {
@@ -209,5 +215,29 @@ describe("AreaRoute", () => {
     expect(deleteCall?.[0]).toEqual(
       expect.objectContaining({ url: expect.stringContaining("/api/v1/areas/7") }),
     );
+  });
+
+  it("keeps an unsaved area name when the query refetches underneath it", async () => {
+    // Same bug PreferencesRoute already fixed, in a route that never got the
+    // guard: the queryFn seeded `title`, so it re-ran on every refetch.
+    // Joining a project calls refetch() directly, so this does not even need
+    // an alt-tab -- renaming an area and then adding it to a project
+    // silently reverted the rename.
+    const user = userEvent.setup();
+    vi.spyOn(globalThis, "fetch").mockImplementation(areaPageFetch());
+
+    const { queryClient } = renderAt("7");
+    await screen.findByDisplayValue("Programming");
+
+    await user.clear(screen.getByLabelText("Area name"));
+    await user.type(screen.getByLabelText("Area name"), "Deep work");
+    // Wrapped in act so the refetch's state update is flushed before the
+    // assertion -- without it the update is still pending and the test
+    // passes over a value that is already lost.
+    await act(async () => {
+      await queryClient.refetchQueries({ queryKey: ["area", 7] });
+    });
+
+    expect(screen.getByLabelText("Area name")).toHaveValue("Deep work");
   });
 });

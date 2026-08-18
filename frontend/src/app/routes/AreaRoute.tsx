@@ -20,6 +20,37 @@ import { RequestFailed, statusOf } from "../../api/failure";
 import { RouteFailure } from "./RouteFailure";
 import { TaskWorkspace } from "../../TaskWorkspace";
 
+/**
+ * What deleting an Area would actually destroy, by state.
+ *
+ * `Item.list` is CASCADE with no status filter and `services.delete_list` has
+ * no archive step, so completed and archived work goes with the active work.
+ * The dialog used to say "all of its tasks", which is true and withholds the
+ * one number that decides whether this is a tidy-up or a loss.
+ *
+ * Archived tasks are counted separately because `area_detail` excludes them
+ * from `items` and sends `archived_count` instead — they are not in the list
+ * the person is looking at, which is exactly why they are the easiest to
+ * forget.
+ */
+function whatWouldBeDestroyed(
+  items: { status: string }[],
+  archivedCount: number,
+) {
+  const active = items.filter((item) => item.status === "active").length;
+  const completed = items.filter((item) => item.status === "completed").length;
+  return {
+    active,
+    completed,
+    archived: archivedCount,
+    total: active + completed + archivedCount,
+    // Whether anything would leave a past week. Drives the review paragraph:
+    // an area of purely active work loses no history, and a warning shown
+    // there is noise that teaches people to skip the dialog.
+    hasHistory: completed + archivedCount > 0,
+  };
+}
+
 export function AreaRoute() {
   const { areaId } = useParams();
   const id = Number(areaId);
@@ -132,6 +163,7 @@ export function AreaRoute() {
   // differs says there's nothing to save yet, rather than reading as a
   // live field with an inert button sitting beside it.
   const titleChanged = title.trim() !== data.area.title;
+  const destroyed = whatWouldBeDestroyed(data.items, data.archived_count);
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
@@ -241,8 +273,25 @@ export function AreaRoute() {
             <AlertDialogHeader>
               <AlertDialogTitle>Delete this area?</AlertDialogTitle>
               <AlertDialogDescription>
-                <strong>{data.area.title}</strong> and all of its tasks will be permanently
-                removed. This cannot be undone.
+                <strong>{data.area.title}</strong> and its {destroyed.total}{" "}
+                {destroyed.total === 1 ? "task" : "tasks"} will be permanently
+                removed
+                {/* The breakdown only where it says something. On an area of
+                    purely active work it would read "0 completed, 0 archived",
+                    which is noise -- and a dialog padded with noise is one
+                    people learn to dismiss, which costs exactly the day it
+                    matters. */}
+                {destroyed.hasHistory ? (
+                  <>
+                    : {destroyed.active} active, {destroyed.completed} completed,{" "}
+                    {destroyed.archived} archived. Completed tasks count toward
+                    past weeks. Reviews you have already finished keep their
+                    stamped figures, but weeks you never reviewed will change.
+                  </>
+                ) : (
+                  "."
+                )}{" "}
+                This cannot be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

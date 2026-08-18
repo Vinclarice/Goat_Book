@@ -187,6 +187,90 @@ describe("AreaRoute", () => {
     ).toBeTruthy();
   });
 
+  it("counts what deleting the area would destroy, by state", async () => {
+    // The dialog said "all of its tasks" and nothing about how many, so the
+    // one number that decides whether this is a tidy-up or a loss was the one
+    // it withheld. Item.list is CASCADE with no status filter and delete_list
+    // has no archive step, so completed and archived work goes too.
+    const user = userEvent.setup();
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      areaPageFetch(
+        listDetailData({
+          items: [
+            task({ id: 1, text: "Write tests" }),
+            task({ id: 2, text: "Read the docs" }),
+            task({ id: 3, text: "Ship it", status: "completed" }),
+          ],
+          archived_count: 4,
+        }),
+      ),
+    );
+
+    renderAt("7");
+    await screen.findByText("Write tests");
+
+    await user.click(screen.getByRole("button", { name: "Delete area" }));
+
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog).toHaveTextContent("7 tasks");
+    expect(dialog).toHaveTextContent("2 active");
+    expect(dialog).toHaveTextContent("1 completed");
+    expect(dialog).toHaveTextContent("4 archived");
+  });
+
+  it("says that past weeks change, and that finished reviews do not", async () => {
+    // The other half of what was withheld. completed_in_week queries live
+    // with no snapshot, so a hard-deleted task leaves a past week's completed
+    // list retroactively -- but recent_weeks prefers the stamped
+    // recorded_planned_met/_total for a week whose review was completed, so a
+    // finished week's headline holds. Both halves are true and saying only
+    // the alarming one would be its own kind of wrong.
+    const user = userEvent.setup();
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      areaPageFetch(
+        listDetailData({
+          items: [task({ id: 3, text: "Ship it", status: "completed" })],
+        }),
+      ),
+    );
+
+    renderAt("7");
+    await screen.findByText("Ship it");
+
+    await user.click(screen.getByRole("button", { name: "Delete area" }));
+
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog).toHaveTextContent(/past weeks|weeks you never reviewed/i);
+    expect(dialog).toHaveTextContent(/already finished|stamped/i);
+  });
+
+  it("does not talk about history when there is none to lose", async () => {
+    // An area of purely active work is the ordinary case, and a paragraph
+    // about weekly reviews there is noise that trains people to skip the
+    // dialog -- which is what makes the warning worthless on the day it
+    // matters.
+    const user = userEvent.setup();
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      areaPageFetch(
+        listDetailData({
+          items: [task({ id: 1, text: "Write tests" })],
+          archived_count: 0,
+        }),
+      ),
+    );
+
+    renderAt("7");
+    await screen.findByText("Write tests");
+
+    await user.click(screen.getByRole("button", { name: "Delete area" }));
+
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog).toHaveTextContent("1 task");
+    expect(dialog).not.toHaveTextContent(/review/i);
+    // And no breakdown of zeroes, which is the other half of the same point.
+    expect(dialog).not.toHaveTextContent(/0 completed/);
+  });
+
   it("deletes the list and returns to the agenda after confirming", async () => {
     const user = userEvent.setup();
     // openapi-fetch calls fetch(request) with a single Request object,

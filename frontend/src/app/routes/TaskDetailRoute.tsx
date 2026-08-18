@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -56,6 +56,21 @@ function parseTagInput(value: string): string[] {
 }
 
 export function TaskDetailRoute() {
+  // SideNav is mounted once in AppLayout, outside the <Outlet/>, so it does not
+  // remount when a route changes and its query is the only thing that refreshes
+  // it. Every write below moves at least one number it shows -- an area's
+  // open_count or overdue_count, a project's open_task_count, the archive badge.
+  //
+  // Invalidated after *every* write rather than only the ones whose counts
+  // obviously move. Picking is how this happened: seven other files got it
+  // right and these three were missed, and a rule that has to be re-derived per
+  // handler will be missed again the next time one is added. The nav payload is
+  // small and this is one extra request after a write somebody just waited for.
+  const queryClient = useQueryClient();
+  const refreshNav = () =>
+    queryClient.invalidateQueries({ queryKey: ["nav"] });
+
+
   const { taskId } = useParams();
   const id = Number(taskId);
   const navigate = useNavigate();
@@ -123,6 +138,7 @@ export function TaskDetailRoute() {
       const updated = await updateTaskText(task, text);
       setTask(updated);
       setNotice("Task updated.");
+      refreshNav();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to save task.");
     } finally {
@@ -139,6 +155,7 @@ export function TaskDetailRoute() {
       const updated = await updateTaskDueDate(task, dueDate);
       setTask(updated);
       setNotice(dueDate ? "Due date updated." : "Due date cleared.");
+      refreshNav();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to update due date.");
     } finally {
@@ -161,6 +178,7 @@ export function TaskDetailRoute() {
       setTask(updated);
       setTagsDraft(updated.tags.join(", "));
       setNotice("Tags updated.");
+      refreshNav();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to update tags.");
     } finally {
@@ -182,6 +200,7 @@ export function TaskDetailRoute() {
       setTask(updated);
       setNotesDraft(updated.notes);
       setNotice(updated.notes ? "Notes saved." : "Notes cleared.");
+      refreshNav();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to save notes.");
     } finally {
@@ -209,6 +228,7 @@ export function TaskDetailRoute() {
       // mode you stay in for everything you add next.
       setStepCarriesForward(true);
       setNotice("Checklist step added.");
+      refreshNav();
     } catch (caught) {
       setError(
         caught instanceof Error ? caught.message : "Unable to add checklist step.",
@@ -227,6 +247,7 @@ export function TaskDetailRoute() {
       setChecklistSteps((current) =>
         current.map((each) => (each.id === updated.id ? updated : each)),
       );
+      refreshNav();
     } catch (caught) {
       setError(
         caught instanceof Error ? caught.message : "Unable to update checklist step.",
@@ -248,6 +269,7 @@ export function TaskDetailRoute() {
       setChecklistSteps((current) =>
         current.map((each) => (each.id === updated.id ? updated : each)),
       );
+      refreshNav();
     } catch (caught) {
       setError(
         caught instanceof Error ? caught.message : "Unable to update checklist step.",
@@ -266,6 +288,7 @@ export function TaskDetailRoute() {
       // It is a task in its own right now, so it leaves the checklist.
       setChecklistSteps((current) => current.filter((each) => each.id !== step.id));
       setNotice(`"${step.text}" is now a task of its own.`);
+      refreshNav();
     } catch (caught) {
       setError(
         caught instanceof Error ? caught.message : "Unable to promote checklist step.",
@@ -282,6 +305,7 @@ export function TaskDetailRoute() {
     try {
       await deleteChecklistStep(step);
       setChecklistSteps((current) => current.filter((each) => each.id !== step.id));
+      refreshNav();
     } catch (caught) {
       setError(
         caught instanceof Error ? caught.message : "Unable to remove checklist step.",
@@ -300,6 +324,7 @@ export function TaskDetailRoute() {
       const updated = await updateTaskRecurrence(task, recurrence);
       setTask(updated);
       setNotice("Recurrence updated.");
+      refreshNav();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to update recurrence.");
     } finally {
@@ -317,6 +342,7 @@ export function TaskDetailRoute() {
       setTask(updated);
       setCadenceMode(mode);
       setNotice("Schedule updated.");
+      refreshNav();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to update schedule.");
     } finally {
@@ -342,6 +368,7 @@ export function TaskDetailRoute() {
       }
       setTask(updated);
       setNotice(updated.status === "active" ? "Task reopened." : "Task completed.");
+      refreshNav();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to update task.");
     } finally {
@@ -357,6 +384,7 @@ export function TaskDetailRoute() {
     try {
       await updateTaskStatus(task, "archived");
       navigate(areaRef ? `/areas/${areaRef.id}` : "/agenda");
+      refreshNav();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to archive task.");
       setBusy(false);

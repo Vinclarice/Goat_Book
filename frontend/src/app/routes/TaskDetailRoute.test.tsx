@@ -524,6 +524,30 @@ describe("TaskDetailRoute", () => {
     expect(await screen.findByDisplayValue("Renew passport")).toBeInTheDocument();
   });
 
+  it("tells the side nav its counts have moved", async () => {
+    // Completing from the detail page moves the same counts completing from
+    // the workspace does, and this route invalidated nothing either.
+    const user = userEvent.setup();
+    // The detail read goes through openapi-fetch (a Request object); the
+    // status write goes through the legacy api layer, which calls
+    // fetch(url, init) with a string. Splitting on that is the idiom the
+    // recurring-task test above already uses.
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      if (typeof input !== "string") return jsonResponse(taskDetailData());
+      return jsonResponse({ data: task({ status: "completed" }) });
+    });
+
+    const { queryClient } = renderAt("1");
+    await screen.findByDisplayValue("Write tests");
+    queryClient.setQueryData(["nav"], { areas: [], projects: [], archived_count: 0 });
+
+    await user.click(screen.getByRole("button", { name: "Mark complete" }));
+
+    await waitFor(() =>
+      expect(queryClient.getQueryState(["nav"])?.isInvalidated).toBe(true),
+    );
+  });
+
   it("keeps unsaved notes when the query refetches underneath them", async () => {
     // The reported bug, and the third time this project has fixed it:
     // PreferencesRoute and DayRoute already carry the same guard. Seeding

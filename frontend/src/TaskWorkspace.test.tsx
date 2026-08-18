@@ -1,7 +1,9 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { TaskWorkspace } from "./TaskWorkspace";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+import { TaskWorkspace as BareTaskWorkspace } from "./TaskWorkspace";
 import { task } from "./test/fixtures";
 import type { Task } from "./types";
 
@@ -11,6 +13,28 @@ function jsonResponse(data: object, ok = true) {
     status: ok ? 200 : 400,
     json: () => Promise.resolve(data),
   } as Response);
+}
+
+const NAV_SEED = {
+  areas: [],
+  projects: [],
+  archived_count: 0,
+  settings_url: "/accounts/settings/",
+};
+
+/** Every test renders through a provider, because a write here invalidates the
+ *  side nav's `["nav"]` query — its counts are what the write just moved.
+ *  Shadowing the import keeps the twenty existing render calls untouched;
+ *  a test that needs to assert on the client builds its own below. */
+function TaskWorkspace(props: React.ComponentProps<typeof BareTaskWorkspace>) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return (
+    <QueryClientProvider client={queryClient}>
+      <BareTaskWorkspace {...props} />
+    </QueryClientProvider>
+  );
 }
 
 describe("TaskWorkspace", () => {
@@ -115,6 +139,47 @@ describe("TaskWorkspace", () => {
     expect(screen.getByText("Review migrations")).toBeInTheDocument();
     expect(screen.queryByText("Write tests")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /All 2/ })).toBeInTheDocument();
+  });
+
+  it("tells the side nav its counts have moved", async () => {
+    // SideNav is mounted once in AppLayout, outside the <Outlet/>, so it does
+    // not remount when a route does. Its query is the only thing that refreshes
+    // it, and completing a task here moves open_count, overdue_count and the
+    // archive badge without touching that query -- so the numbers beside every
+    // area stayed wrong for as long as somebody kept working in the tab.
+    // Seven other files already invalidate ["nav"] after a write; these three
+    // were the ones that did not.
+    const user = userEvent.setup();
+    vi.spyOn(globalThis, "fetch").mockReturnValue(
+      jsonResponse({ data: task({ status: "completed" }) }),
+    );
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    queryClient.setQueryData(["nav"], NAV_SEED);
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <BareTaskWorkspace
+          initialData={{
+            area: {
+              id: 1,
+              title: "Programming",
+              create_item_url: "/api/areas/1/items/",
+              reorder_url: "/api/areas/1/items/reorder/",
+            },
+            project: null,
+            items: [task()],
+          }}
+        />
+      </QueryClientProvider>,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Mark complete" }));
+
+    await waitFor(() =>
+      expect(queryClient.getQueryState(["nav"])?.isInvalidated).toBe(true),
+    );
   });
 
   it("waits for the server before marking a task complete", async () => {

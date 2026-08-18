@@ -1,7 +1,9 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { ArchiveManager } from "./ArchiveManager";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+import { ArchiveManager as BareArchiveManager } from "./ArchiveManager";
 import { task } from "./test/fixtures";
 
 function jsonResponse(data: object) {
@@ -12,10 +14,68 @@ function jsonResponse(data: object) {
   } as Response);
 }
 
+const NAV_SEED = {
+  areas: [],
+  projects: [],
+  archived_count: 1,
+  settings_url: "/accounts/settings/",
+};
+
+/** As in TaskWorkspace.test: restoring or deleting moves the archive badge and
+ *  an area's open count, so these render through a provider. Shadowing the
+ *  import leaves the existing render calls alone. */
+function ArchiveManager(props: React.ComponentProps<typeof BareArchiveManager>) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return (
+    <QueryClientProvider client={queryClient}>
+      <BareArchiveManager {...props} />
+    </QueryClientProvider>
+  );
+}
+
 describe("ArchiveManager", () => {
   beforeEach(() => {
     document.cookie = "csrftoken=test-token";
     vi.restoreAllMocks();
+  });
+
+  it("tells the side nav the archive badge has moved", async () => {
+    // Restoring drops archived_count and raises an area's open_count, and the
+    // badge is rendered by a SideNav that never remounts.
+    const user = userEvent.setup();
+    vi.spyOn(globalThis, "fetch").mockReturnValue(
+      jsonResponse({ data: task({ status: "completed", archived_at: null }) }),
+    );
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    queryClient.setQueryData(["nav"], NAV_SEED);
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <BareArchiveManager
+          initialData={{
+            items: [
+              task({
+                status: "archived",
+                completed_at: "2026-07-24T12:20:00-04:00",
+                archived_at: "2026-07-24T12:30:00-04:00",
+              }),
+            ],
+            areas: [{ id: 1, title: "Programming", url: "/areas/1/" }],
+            projects: [],
+          }}
+        />
+      </QueryClientProvider>,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Restore" }));
+
+    await waitFor(() =>
+      expect(queryClient.getQueryState(["nav"])?.isInvalidated).toBe(true),
+    );
   });
 
   it("restores an archived task after server confirmation", async () => {

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 
@@ -11,6 +12,21 @@ interface Props {
 }
 
 export function ArchiveManager({ initialData }: Props) {
+  // SideNav is mounted once in AppLayout, outside the <Outlet/>, so it does not
+  // remount when a route changes and its query is the only thing that refreshes
+  // it. Every write below moves at least one number it shows -- an area's
+  // open_count or overdue_count, a project's open_task_count, the archive badge.
+  //
+  // Invalidated after *every* write rather than only the ones whose counts
+  // obviously move. Picking is how this happened: seven other files got it
+  // right and these three were missed, and a rule that has to be re-derived per
+  // handler will be missed again the next time one is added. The nav payload is
+  // small and this is one extra request after a write somebody just waited for.
+  const queryClient = useQueryClient();
+  const refreshNav = () =>
+    queryClient.invalidateQueries({ queryKey: ["nav"] });
+
+
   const [items, setItems] = useState(initialData.items);
   // Tasks only carry an area_id -- title/url live once in `areas`.
   const areaById = useMemo(
@@ -73,6 +89,7 @@ export function ArchiveManager({ initialData }: Props) {
       // An unfiled task has nowhere to be restored *to*, so it is not named.
       setNotice(areaTitle ? `Task restored to ${areaTitle}.` : "Task restored.");
       focusWorkspace();
+      refreshNav();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to restore task.");
     } finally {
@@ -93,6 +110,7 @@ export function ArchiveManager({ initialData }: Props) {
       setNotice("Task permanently deleted.");
       setPendingDelete(null);
       focusWorkspace();
+      refreshNav();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to delete task.");
     } finally {

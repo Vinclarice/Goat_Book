@@ -1,4 +1,5 @@
 import { FormEvent, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 
@@ -114,6 +115,21 @@ interface Props {
 }
 
 export function TaskWorkspace({ initialData }: Props) {
+  // SideNav is mounted once in AppLayout, outside the <Outlet/>, so it does not
+  // remount when a route changes and its query is the only thing that refreshes
+  // it. Every write below moves at least one number it shows -- an area's
+  // open_count or overdue_count, a project's open_task_count, the archive badge.
+  //
+  // Invalidated after *every* write rather than only the ones whose counts
+  // obviously move. Picking is how this happened: seven other files got it
+  // right and these three were missed, and a rule that has to be re-derived per
+  // handler will be missed again the next time one is added. The nav payload is
+  // small and this is one extra request after a write somebody just waited for.
+  const queryClient = useQueryClient();
+  const refreshNav = () =>
+    queryClient.invalidateQueries({ queryKey: ["nav"] });
+
+
   const [items, setItems] = useState(initialData.items);
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
@@ -197,6 +213,7 @@ export function TaskWorkspace({ initialData }: Props) {
       setNewTags("");
       setNewRecurrence("none");
       setNotice("Task added.");
+      refreshNav();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to add task.");
     } finally {
@@ -235,6 +252,7 @@ export function TaskWorkspace({ initialData }: Props) {
       } else {
         setNotice(status === "active" ? "Task reopened." : "Task completed.");
       }
+      refreshNav();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to update task.");
     } finally {
@@ -274,6 +292,7 @@ export function TaskWorkspace({ initialData }: Props) {
           : `${targets.length} task${targets.length === 1 ? "" : "s"} archived.`,
       );
       setSelectedIds([]);
+      refreshNav();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to update tasks.");
     } finally {
@@ -289,6 +308,7 @@ export function TaskWorkspace({ initialData }: Props) {
       const updated = await updateTaskRecurrence(task, recurrence);
       replaceItem(updated);
       setNotice("Recurrence updated.");
+      refreshNav();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to update recurrence.");
     } finally {
@@ -304,6 +324,7 @@ export function TaskWorkspace({ initialData }: Props) {
       const updated = await updateTaskDueDate(task, dueDate);
       replaceItem(updated);
       setNotice(dueDate ? "Due date updated." : "Due date cleared.");
+      refreshNav();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to update due date.");
     } finally {
@@ -322,6 +343,7 @@ export function TaskWorkspace({ initialData }: Props) {
       if (tagFilter && !updated.tags.includes(tagFilter)) {
         setTagFilter(null);
       }
+      refreshNav();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to update tags.");
     } finally {
@@ -355,6 +377,7 @@ export function TaskWorkspace({ initialData }: Props) {
         initialData.area.reorder_url,
         nextItems.map((item) => item.id),
       );
+      refreshNav();
     } catch (caught) {
       setItems(previous);
       setError(caught instanceof Error ? caught.message : "Unable to reorder tasks.");
@@ -396,6 +419,7 @@ export function TaskWorkspace({ initialData }: Props) {
       replaceItem(updated);
       setEditingId(null);
       setNotice("Task updated.");
+      refreshNav();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to edit task.");
     } finally {

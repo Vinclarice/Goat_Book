@@ -57,6 +57,7 @@ a finding remains a separate decision.
 |---|---|---|
 | D1 | CRITICAL — unsaved edits destroyed by a background refetch, in three routes | `4bf8bc9` |
 | D2 | HIGH — one nullable column, four broken surfaces | `4e89675` |
+| D3 | HIGH — Sentry shipped raw request bodies despite `send_default_pii=False` | `dedc23d` |
 
 ### D1 — the refetch clobber
 
@@ -103,14 +104,35 @@ state that 500s the week — `archive_item(complete_item(self.unfiled))` — and
 asserted only `/api/v1/archive`. One more line would have caught this the day it
 shipped.
 
-### What the two have in common
+### D3 — the same trap, one option over
+
+`send_default_pii=False` gates **cookies**. In `_wsgi_common.extract_into_event`,
+`should_send_default_pii()` guards the cookie line while `request_info["data"]`
+is set unconditionally; the only thing between a request body and Sentry is
+`max_request_body_size`, never passed, defaulting to `"medium"` — ten kilobytes.
+Every captured thought, every day's intentions and every task note is far under
+that, so a 500 on a capture or day write sent the writing itself.
+
+**This is defect 10 a second time.** That fix's comment drew the rule — *"the
+default belongs to a dependency: silence here is a decision made by whoever last
+released the SDK"* — and the option beside it was left silent. Two comments and a
+test docstring asserted the opposite of the truth in between, which is what let
+the second one sit unnoticed after the first was found.
+
+### What these have in common
 
 - **A fix applied only where the bug was reported is not a fix.** D1 was guarded
-  in two of five stateful routes; D2 in five of nine sites. Both survived a fully
-  green suite because the unguarded places were the untested ones.
+  in two of five stateful routes; D2 in five of nine sites; D3 was the option
+  beside the one defect 10 had just fixed. All three survived a fully green suite
+  because the unguarded places were the untested ones.
 - **The idiom was always already present.** `PreferencesRoute`'s `seeded` ref for
-  D1; `optIntOrNull("project_id")` one line below `getInt("area_id")` for D2.
-  Neither needed a design decision, only a sweep.
+  D1; `optIntOrNull("project_id")` one line below `getInt("area_id")` for D2;
+  defect 10's own "pass it explicitly" comment for D3. None needed a design
+  decision, only a sweep.
+
+- **A comment that is wrong hides the next defect.** D3 sat behind three
+  assertions that `send_default_pii` covered request bodies — in the module, in a
+  test comment and in a test docstring. The first fix read them and stopped.
 - **A regression guard that passes on its first run has to be probed.** The
   seeding ref is keyed on the record id rather than a boolean; degrading it to a
   boolean kills that test and only it, which is what makes it worth keeping.

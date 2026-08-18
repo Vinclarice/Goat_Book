@@ -169,6 +169,42 @@ class SendDueDigestTest(TestCase):
 
         self.assertIn("vince", str(raised.exception))
 
+    def test_a_failed_send_is_logged_where_sentry_can_see_it(self):
+        """Catching the exception must not cost the report of it.
+
+        Before the loop was guarded, a send that raised crashed the command and
+        Sentry caught the traceback -- which is how the 2026-08-16 SMTP
+        connection timeout was found at all. Guarding it turned that into a
+        CommandError, and `BaseCommand.run_from_argv` catches CommandError,
+        writes to stderr and exits: it never propagates, so Sentry never sees
+        it. Cron has no MAILTO and the host has no MTA, so stderr goes nowhere
+        either, and the fix for D6 would have made the next outage silent.
+
+        `logger.exception` is what puts it back: sentry-sdk installs
+        LoggingIntegration by default with an event level of ERROR, so this
+        becomes an event without the command importing the SDK.
+        """
+        from smtplib import SMTPRecipientsRefused
+
+        self.make("Ship the fix", due_offset=0)
+
+        with patch(
+            "lists.management.commands.send_due_digest.send_mail",
+            side_effect=SMTPRecipientsRefused({"vince@example.com": (550, b"nope")}),
+        ):
+            with self.assertLogs(
+                "lists.management.commands.send_due_digest", level="ERROR"
+            ) as logged:
+                with self.assertRaises(CommandError):
+                    self.run_command()
+
+        [record] = logged.records
+        self.assertEqual(record.levelname, "ERROR")
+        # exc_info is what carries the traceback into the Sentry event. Without
+        # it the event says a digest failed and not what it failed on.
+        self.assertIsNotNone(record.exc_info)
+        self.assertIn("vince", record.getMessage())
+
     def test_says_how_overdue_each_task_is(self):
         self.make("Renew insurance", due_offset=-3)
         self.make("Call back", due_offset=-1)

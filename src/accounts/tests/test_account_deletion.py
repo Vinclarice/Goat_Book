@@ -449,9 +449,15 @@ class PurgeCommandTest(TestCase):
             return real(user, **kwargs)
 
         with patch.object(services, "purge_account", side_effect=fail_for_alice):
-            with self.assertRaises(CommandError) as raised:
-                self.run_command()
+            # Logged as well as caught -- see the note at the command's logger.
+            # A guarded loop reports through logging or it reports nowhere.
+            with self.assertLogs(
+                "accounts.management.commands.purge_deleted_accounts", level="ERROR"
+            ) as logged:
+                with self.assertRaises(CommandError) as raised:
+                    self.run_command()
 
+        self.assertIsNotNone(logged.records[0].exc_info)
         self.assertTrue(User.objects.filter(username="alice").exists())
         self.assertFalse(User.objects.filter(username="bob").exists())
         self.assertIn("alice", str(raised.exception))

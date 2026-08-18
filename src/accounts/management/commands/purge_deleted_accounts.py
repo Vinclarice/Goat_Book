@@ -14,11 +14,26 @@ nothing to do is indistinguishable from a command that did not run, which is how
 a cron job stops being noticed at all.
 """
 
+import logging
+
 from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 
 from accounts import services
 
+
+# Logged, not only written to stderr. Guarding these loops (D6/D11) stopped
+# the exception propagating, and `BaseCommand.run_from_argv` catches the
+# CommandError we raise instead -- so nothing reaches Sentry by exception any
+# more, and cron has no MAILTO and the host no MTA, so stderr reaches nobody
+# either. sentry-sdk installs LoggingIntegration by default at event level
+# ERROR, so `logger.exception` restores the report without this command
+# importing the SDK.
+#
+# Found from a real one: a 2026-08-16 SMTP connection timeout in production,
+# which is the incident that proved the guard was needed and would have been
+# the last one anybody heard about.
+logger = logging.getLogger(__name__)
 
 class Command(BaseCommand):
     help = "Erase accounts whose deletion grace period has passed."
@@ -57,6 +72,7 @@ class Command(BaseCommand):
                 removed = services.purge_account(user, now=now)
             except Exception as error:
                 failed.append(username)
+                logger.exception("erasure failed for %s", username)
                 self.stderr.write(self.style.ERROR(f"  {username}: {error}"))
                 continue
             total = sum(removed.values())

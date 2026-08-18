@@ -23,6 +23,8 @@ failing here, which is the honest arrangement while that dependency stays out of
 the production image.
 """
 
+import logging
+
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from django.core.management.base import BaseCommand, CommandError
@@ -31,6 +33,19 @@ from django.utils import timezone
 from mind import services
 from mind.models import Node
 
+
+# Logged, not only written to stderr. Guarding these loops (D6/D11) stopped
+# the exception propagating, and `BaseCommand.run_from_argv` catches the
+# CommandError we raise instead -- so nothing reaches Sentry by exception any
+# more, and cron has no MAILTO and the host no MTA, so stderr reaches nobody
+# either. sentry-sdk installs LoggingIntegration by default at event level
+# ERROR, so `logger.exception` restores the report without this command
+# importing the SDK.
+#
+# Found from a real one: a 2026-08-16 SMTP connection timeout in production,
+# which is the incident that proved the guard was needed and would have been
+# the last one anybody heard about.
+logger = logging.getLogger(__name__)
 
 class Command(BaseCommand):
     help = "Run the scheduled extraction and detection pass."
@@ -97,6 +112,7 @@ class Command(BaseCommand):
                 )
             except Exception as error:
                 failed.append(username)
+                logger.exception("maintenance failed for %s", username)
                 self.stderr.write(self.style.ERROR(f"  {username}: {error}"))
                 continue
             # Last, and only on the way out: the record says a pass *completed*.

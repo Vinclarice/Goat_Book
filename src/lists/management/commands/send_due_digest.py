@@ -13,6 +13,7 @@ correctly, since nothing then has to stay correct.
 
 Users with nothing to report are skipped, so a quiet day stays quiet.
 """
+import logging
 from zoneinfo import ZoneInfo
 
 from django.conf import settings
@@ -88,6 +89,19 @@ def build_subject(items, today):
         parts.append(f"{remaining} due today")
     return f"Clarice · {date_format(today, 'M j')} · " + ", ".join(parts)
 
+
+# Logged, not only written to stderr. Guarding these loops (D6/D11) stopped
+# the exception propagating, and `BaseCommand.run_from_argv` catches the
+# CommandError we raise instead -- so nothing reaches Sentry by exception any
+# more, and cron has no MAILTO and the host no MTA, so stderr reaches nobody
+# either. sentry-sdk installs LoggingIntegration by default at event level
+# ERROR, so `logger.exception` restores the report without this command
+# importing the SDK.
+#
+# Found from a real one: a 2026-08-16 SMTP connection timeout in production,
+# which is the incident that proved the guard was needed and would have been
+# the last one anybody heard about.
+logger = logging.getLogger(__name__)
 
 class Command(BaseCommand):
     help = "Email opted-in users a summary of overdue and due-today tasks."
@@ -199,6 +213,7 @@ class Command(BaseCommand):
                 # Broad on purpose: the mail backend's failure modes are not
                 # ours to enumerate, and any of them costs the same thing.
                 failed.append(user.get_username())
+                logger.exception("digest failed for %s", user.get_username())
                 self.stderr.write(
                     self.style.ERROR(f"  {user.get_username()}: {error}")
                 )

@@ -17,6 +17,7 @@ that it ran, because "ran and found nothing" and "never ran" are the distinction
 the whole numbers page exists to draw.
 """
 
+import logging
 from datetime import timedelta
 from unittest import mock
 
@@ -75,7 +76,9 @@ def test_one_person_can_be_named(owner, other_owner):
     ).exists()
 
 
-def test_one_owners_failure_does_not_cost_everybody_after_them_a_pass(owner, other_owner):
+def test_one_owners_failure_does_not_cost_everybody_after_them_a_pass(
+    owner, other_owner, caplog
+):
     """The third loop of this shape, after the digest's and the purge's.
     `run_detectors` catches `Unavailable` and nothing else, so anything the
     extraction or detection of one corpus raised aborted the command -- and
@@ -98,7 +101,14 @@ def test_one_owners_failure_does_not_cost_everybody_after_them_a_pass(owner, oth
 
     with mock.patch.object(command_module, "call_command", side_effect=fail_for_one):
         with pytest.raises(CommandError) as raised:
-            call_command("run_mind_maintenance")
+            with caplog.at_level(logging.ERROR):
+                call_command("run_mind_maintenance")
+
+    # Logged as well as caught -- see the note at the command's logger. A
+    # guarded loop reports through logging or it reports nowhere: the
+    # CommandError we raise is swallowed by BaseCommand.run_from_argv.
+    [failure] = [r for r in caplog.records if r.levelname == "ERROR"]
+    assert failure.exc_info is not None
 
     assert ActivityEvent.objects.filter(
         owner=other_owner, event_type=EventType.MAINTENANCE_RAN

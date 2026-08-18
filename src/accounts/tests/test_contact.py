@@ -10,11 +10,15 @@ domain with a life cycle and earns its own app.
 
 See design/bittern-plan.md, B3.
 """
+from unittest.mock import patch
+
 from django.conf import settings
 from django.core import mail
 from django.core.cache import cache
 from django.test import TestCase
 from django.urls import reverse
+
+from accounts.views import _contact_sends_key
 
 
 VALID = {
@@ -84,6 +88,75 @@ class ContactValidationTest(TestCase):
         return self.client.post(
             reverse("contact"), data={**VALID, **overrides}, follow=follow
         )
+
+    def test_an_unreachable_relay_does_not_lose_what_they_typed(self):
+        """Production, 2026-08-18: an SMTP connection timeout on this view.
+
+        There is no model behind this page -- its docstring says so, and that
+        is a deliberate choice -- so a failed send means the message exists
+        nowhere. Unguarded, the visitor got a 500 and their text was gone with
+        it. A stranger with a question is exactly the person least able to
+        recover from that.
+        """
+        from smtplib import SMTPException
+
+        with patch(
+            "accounts.views.send_support_message",
+            side_effect=SMTPException("relay unreachable"),
+        ):
+            response = self.submit()
+
+        # 503, matching the 429 the rate-limit branch returns: the page
+        # rendered and the thing behind it did not.
+        self.assertEqual(response.status_code, 503)
+        self.assertContains(
+            response, "Does Clarice do recurring subtasks?", status_code=503
+        )
+
+    def test_it_says_the_message_did_not_go_and_offers_another_way(self):
+        """Not "on its way", which is what a success page would claim, and not
+        a bare error either: the one thing a person needs here is an address
+        that does not depend on the thing that just failed."""
+        from smtplib import SMTPException
+
+        with patch(
+            "accounts.views.send_support_message",
+            side_effect=SMTPException("relay unreachable"),
+        ):
+            response = self.submit()
+
+        self.assertNotContains(response, "on its way", status_code=503)
+        self.assertContains(response, settings.SUPPORT_EMAIL, status_code=503)
+
+    def test_a_failed_send_is_reported_where_sentry_can_see_it(self):
+        """Caught, so the visitor is served; logged, so it is still an event.
+        The same trade the digest's guarded loop makes -- catching an exception
+        moves the decision about who hears about it to us, and the default
+        answer becomes nobody."""
+        from smtplib import SMTPException
+
+        with patch(
+            "accounts.views.send_support_message",
+            side_effect=SMTPException("relay unreachable"),
+        ):
+            with self.assertLogs("accounts.views", level="ERROR") as logged:
+                self.submit()
+
+        self.assertIsNotNone(logged.records[0].exc_info)
+
+    def test_a_failed_send_does_not_spend_the_visitors_allowance(self):
+        """Already true -- _record_contact_send runs after the send -- and
+        pinned here because a relay outage charging people for messages that
+        never left is the kind of thing a later refactor restores."""
+        from smtplib import SMTPException
+
+        with patch(
+            "accounts.views.send_support_message",
+            side_effect=SMTPException("relay unreachable"),
+        ):
+            self.submit()
+
+        self.assertEqual(cache.get(_contact_sends_key("127.0.0.1"), 0), 0)
 
     def test_an_invalid_address_sends_nothing_and_says_so(self):
         response = self.submit(email="not-an-address")

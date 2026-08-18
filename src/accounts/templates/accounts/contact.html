@@ -15,6 +15,20 @@
         </p>
       </div>
 
+      {% if send_failed %}
+        {% comment %}
+        The message exists nowhere at this point, so the only useful thing this
+        page can do is say so plainly and give an address that does not depend
+        on what just failed. Their text is still in the form below.
+        {% endcomment %}
+        <div class="rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+          We couldn't send that just now — your message has not reached us.
+          It's still in the form below, so you can try again in a minute.
+          If it keeps failing, email us directly at
+          <a href="mailto:{{ support_email }}" class="underline">{{ support_email }}</a>.
+        </div>
+      {% endif %}
+
       {% if rate_limited %}
         <div class="rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
           That's too many messages in a short time. Please try again later.

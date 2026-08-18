@@ -1,4 +1,6 @@
 from axes.utils import reset as axes_reset
+import logging
+
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import update_session_auth_hash
@@ -51,7 +53,25 @@ def signup(request):
     form = SignUpForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
         user = form.save()
-        notify_admins_of_pending_signup(user)
+        try:
+            notify_admins_of_pending_signup(user)
+        except Exception:
+            # The account is already created, so a raise here left a real
+            # account behind a 500: the person never sees "pending approval",
+            # never learns whether it worked, and a second attempt fails on a
+            # duplicate username. Two ways to be stuck, in somebody's first
+            # minute with the product.
+            #
+            # Deliberately *not* rolled back, unlike services.request_deletion
+            # where the email is the protection and a timestamp without one is
+            # a silent loss. Signing up is this person's own action and it
+            # succeeded; undoing it because an admin notification bounced would
+            # trade a missing email for the thing the email was about.
+            #
+            # Logged, because an admin who never hears about a pending signup
+            # leaves somebody waiting indefinitely -- the account sits
+            # is_active=False and nothing else will mention it.
+            logger.exception("pending-signup notification failed for %s", user.pk)
         return render(request, "accounts/signup_pending.html", {"user": user})
 
     return render(request, "accounts/signup.html", {"form": form})
@@ -156,6 +176,8 @@ def visitor_ip(request):
     return request.headers.get("X-Real-IP") or request.META.get("REMOTE_ADDR", "")
 
 
+logger = logging.getLogger(__name__)
+
 def _contact_sends_key(ip):
     return f"contact-form-sends:{ip}"
 
@@ -201,11 +223,40 @@ def contact(request):
             # tripped the honeypot" only tells whoever wrote it which field
             # to leave alone next time.
             if not form.looks_automated:
-                send_support_message(
-                    name=form.cleaned_data["name"],
-                    email=form.cleaned_data["email"],
-                    message=form.cleaned_data["message"],
-                )
+                try:
+                    send_support_message(
+                        name=form.cleaned_data["name"],
+                        email=form.cleaned_data["email"],
+                        message=form.cleaned_data["message"],
+                    )
+                except Exception:
+                    # There is no model behind this page -- see the docstring,
+                    # and it is a deliberate choice -- so a failed send means
+                    # the message exists nowhere. Unguarded, the visitor got a
+                    # 500 and their text went with it, which happened in
+                    # production on 2026-08-18 when the relay stopped
+                    # answering. A stranger with a question is the person least
+                    # able to recover from that.
+                    #
+                    # Logged rather than only caught: sentry-sdk's
+                    # LoggingIntegration turns this into an event, and without
+                    # it catching the exception would take away the only reason
+                    # anybody knew.
+                    #
+                    # 503 rather than 200, matching the 429 above: the page
+                    # rendered fine and the thing behind it did not, and this
+                    # is the one status that says so.
+                    logger.exception("contact form send failed")
+                    return render(
+                        request,
+                        "accounts/contact.html",
+                        {
+                            "form": form,
+                            "send_failed": True,
+                            "support_email": settings.SUPPORT_EMAIL,
+                        },
+                        status=503,
+                    )
                 _record_contact_send(ip)
 
             messages.success(

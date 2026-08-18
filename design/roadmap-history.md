@@ -65,6 +65,7 @@ a finding remains a separate decision.
 | D8 | MEDIUM — area deletion destroyed completed and archived work with no count | `23a47e1` |
 | D9 | MEDIUM — routine progress was an unlocked read-modify-write | `c9be0ec` |
 | D10 | MEDIUM — a deletion could be scheduled with its warning never sent | `4d4a225` |
+| — | A production incident, and what guarding these loops had cost | `0a87f91` |
 
 ### D1 — the refetch clobber
 
@@ -319,6 +320,35 @@ divergence bit `pause_routine` during D9, one finding earlier.
 cancellation back because its receipt bounced would leave an account scheduled
 for erasure after the person asked to keep it — trading a missing email for the
 outcome the email was about.
+
+### The August 16 SMTP timeout — the fix that would have hidden the next one
+
+Not a review finding. A real Sentry report, arriving mid-series: a connection
+timeout at `send_due_digest`'s `send_mail`, 13:00 UTC on August 16 — D6 in
+production, on the deployed code, before any of this landed.
+
+**It confirmed two committed fixes and broke a third.** The breadcrumbs run
+13:00:03 to 13:04:35: four and a half minutes inside `socket.create_connection`,
+Linux retrying SYNs across both of the relay's addresses with no timeout set.
+D10's `EMAIL_TIMEOUT` bounds exactly that, and Django's SMTP backend does read it
+through to `create_connection`. And the failure was the *relay being
+unreachable*, not one rejected recipient — so it failed identically for
+everybody, and unguarded it cost every user that hour rather than the ones
+sorting after a bad address.
+
+**The third is the one worth keeping.** The only reason anybody knew about this
+is that the exception propagated and Sentry caught it. Guarding the loop took
+that away: `BaseCommand.run_from_argv` catches the `CommandError` the guard
+raises, writes it to stderr and exits, so it never propagates — and cron has no
+`MAILTO` and the host no MTA, so stderr reaches nobody. **The fix for D6 would
+have made the next outage completely silent, which is worse than the crash it
+replaced.** All three guarded loops now `logger.exception` the caught error;
+sentry-sdk installs `LoggingIntegration` at event level ERROR by default, so that
+is an event without any command importing the SDK.
+
+Generalise it: **a guarded loop reports through logging or it reports nowhere.**
+Catching an exception moves the decision about who hears about it from the
+runtime to you, and the default answer becomes nobody.
 
 ### What these have in common
 

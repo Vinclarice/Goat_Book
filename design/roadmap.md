@@ -86,9 +86,14 @@ Fourteen items came out of Bittern; eleven closed through Crane and Dunlin.
 `crane-plan.md` §2 stays the authority on the full checklist. These three
 remain, and none of them is a task:
 
-- **A real production 500 reaching Sentry**, rather than only the controlled
-  probe. Needs an actual incident — the same reasoning that rejected a
-  permanent `/sentry-debug/`-style route as a verification method.
+- **A real production 500 reaching Sentry.** ~~Needs an actual incident~~ —
+  one arrived on **August 16, 2026**: an SMTP connection timeout in
+  `send_due_digest`, with breadcrumbs, and one query breadcrumb reading
+  `[Filtered]`, which is the `EventScrubber` working on live data. So the
+  pipeline is proven end to end for an **uncaught exception in a management
+  command**. Still unproven for a *web* 500, which is a different path — the
+  WSGI integration rather than the excepthook — and the item stays open for
+  that half only.
 - **No Android emulator run.** This SDK install has no AVD and no way to build
   one without a multi-gigabyte download better done through Android Studio.
   Low priority: everything M4 wanted a device for is answered twice over on

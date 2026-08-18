@@ -57,6 +57,14 @@ re-add it here.
   `clarice/tests/test_unauthenticated_endpoints_are_throttled.py` reads the
   template and the API together, so the *next* `auth=None` endpoint cannot ship
   unthrottled the way this one did.
+- **No mail leaves production at all.** DigitalOcean blocks outbound 25, 465 and
+  587 on every Droplet; measured August 18, with ordinary outbound fine. Not the
+  flaky relay three Sentry reports looked like — the digest, the contact form,
+  password reset, and account deletion and erasure all depend on a port that is
+  dropped. Password reset is an unguarded 500 on a public page, and deletion and
+  erasure now roll back rather than half-complete, which is safe and unusable.
+  Designed in [`mail-transport-plan.md`](mail-transport-plan.md): send over
+  Resend's HTTPS API, which is reachable from that host.
 - **Terms of service and a privacy policy.** Writing, not code.
 - **Removing user data from Sentry and Resend when an account goes.** An
   account-level action in each, outside this application. Deletion and export

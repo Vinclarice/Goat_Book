@@ -62,6 +62,7 @@ a finding remains a separate decision.
 | D5 | HIGH — `open_question` filtered on `dormant_thread`'s name | `c9ac698` |
 | D6, D11 | HIGH / MEDIUM — three scheduled loops where one account blocked the rest | `70f27b1` |
 | D7 | HIGH — note text in the nginx access log and in Sentry's `query_string` | `faf55dd` |
+| D8 | MEDIUM — area deletion destroyed completed and archived work with no count | `23a47e1` |
 
 ### D1 — the refetch clobber
 
@@ -234,6 +235,32 @@ before and after: `"GET /mind/search/?q=therapy%20notes%20about%20my%20marriage"
 became `"GET /mind/search/"`. The template tests that now guard it were written
 afterwards and passed immediately — regression guards, and said to be.
 
+### D8 — the finding was the disclosure, not the behaviour
+
+The first of these that turned out to be a product decision rather than a defect,
+and the verifier who narrowed it was right. Deleting an Area does hard-delete
+completed and archived tasks, and `completed_in_week` has no snapshot so they
+leave past weeks retroactively — but the UI already warned, and `reads.py`
+already documents the consequence by name, calling it the reason §8 has a
+completed review stamp its figure. A reasoned trade, not a missed case.
+
+**So the fix is disclosure and the behaviour stands** — Vince's call, asked
+rather than assumed. The dialog now names the counts, archived separately
+because `area_detail` sends `archived_count` rather than including those tasks in
+`items`: they are not in the list the person is looking at, which is why they are
+easiest to forget.
+
+**Detaching had become newly possible in the meantime, and was not taken.** D2's
+nullable `Item.list` made an unfiled task first-class, so `SET_NULL` would work
+now where it would not have when this was designed. Recorded because the option
+changed without anyone deciding it had.
+
+**Both halves of the consequence are stated.** Weeks never reviewed change; weeks
+whose review was completed keep their stamped figures. Saying only the alarming
+half would be its own kind of wrong, and the breakdown is shown only where it
+says something — "0 completed, 0 archived" is the padding that teaches people to
+dismiss the dialog.
+
 ### What these have in common
 
 - **A fix applied only where the bug was reported is not a fix.** D1 was guarded
@@ -273,6 +300,12 @@ afterwards and passed immediately — regression guards, and said to be.
   already worked around it. Each time the near-miss was written down and the
   neighbour was not checked. The sweep is the cheap part; remembering to run it
   is the whole discipline.
+
+- **Not every finding is a defect, and the difference is who decides.** D8's
+  mechanism was real and its framing was not: the behaviour was a documented
+  trade and only the disclosure was missing. A review can establish that
+  something happens; whether it should is the product's question, and the fix
+  that changes behaviour needs an answer rather than an assumption.
 
 - **Three of these were about what leaves the server, and only one had a
   setting.** Defect 10 had `include_local_variables`, D3 had

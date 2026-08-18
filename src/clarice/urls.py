@@ -21,7 +21,7 @@ from accounts.views import LandingLoginView, contact
 from lists import views as list_views
 
 from clarice.api import api as api_v1
-from clarice.health import healthz
+from clarice.health import healthz, healthz_scheduled
 
 
 urlpatterns = [
@@ -31,6 +31,10 @@ urlpatterns = [
     # services record as a failure. See clarice/health.py for what it checks
     # and why it says so little.
     path("healthz", healthz, name="healthz"),
+    # A second monitor, not a second reason for the first one to go red. See
+    # the view: a late cron job is not the website being down, and a check that
+    # conflates them is a check somebody learns to ignore.
+    path("healthz/scheduled", healthz_scheduled, name="healthz_scheduled"),
     # Public and unauthenticated, hence the root rather than under
     # accounts/: a stranger with a question does not have an account.
     path("contact/", contact, name="contact"),

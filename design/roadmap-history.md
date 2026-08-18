@@ -63,6 +63,7 @@ a finding remains a separate decision.
 | D6, D11 | HIGH / MEDIUM — three scheduled loops where one account blocked the rest | `70f27b1` |
 | D7 | HIGH — note text in the nginx access log and in Sentry's `query_string` | `faf55dd` |
 | D8 | MEDIUM — area deletion destroyed completed and archived work with no count | `23a47e1` |
+| D9 | MEDIUM — routine progress was an unlocked read-modify-write | `c9be0ec` |
 
 ### D1 — the refetch clobber
 
@@ -261,6 +262,35 @@ half would be its own kind of wrong, and the breakdown is shown only where it
 says something — "0 completed, 0 archived" is the padding that teaches people to
 dismiss the dialog.
 
+### D9 — the count that cannot be reconstructed
+
+`log_progress` read `progress`, added in Python and saved: no
+`select_for_update`, no `F()`. Two taps read the same number and wrote the same
+number. It matters more here than the shape suggests because **the log is the
+count** — nothing else records the increment, so if the loss is what makes a
+period miss its target, `habits_met` is wrong for that week and no record
+disagrees. `lists/services.py` opens every mutation with a lock; this module
+opened none.
+
+**Proved with two threads on two connections.** A test inside one transaction
+cannot see this and would pass against the broken version. Before the fix,
+`2 != 3`; after, `3`, five runs running. The occurrence is created and committed
+before the threads start, or both race `get_or_create`'s INSERT instead — which
+Postgres serialises on the unique index, a different mechanism that would mask
+the one under test.
+
+**The sweep found three more and one of them bit back.** `call_it_enough` is the
+same defect on the same row; `pause_routine` and `resume_routine` are the same
+shape on `Routine`, costing a duplicated `RoutinePause`. Rebinding `routine` to
+the locked row stopped those functions mutating the instance the caller handed
+them — so a test that paused a routine and then logged against that object found
+`is_active` still true. **A concurrency fix quietly reopened the hole pausing
+exists to close**, and three existing tests caught it. Locked and refreshed in
+place instead.
+
+Only `log_progress` has a concurrency test; the other three carry the idiom and
+their behavioural tests. Said here rather than left to look like full coverage.
+
 ### What these have in common
 
 - **A fix applied only where the bug was reported is not a fix.** D1 was guarded
@@ -300,6 +330,12 @@ dismiss the dialog.
   already worked around it. Each time the near-miss was written down and the
   neighbour was not checked. The sweep is the cheap part; remembering to run it
   is the whole discipline.
+
+- **A fix is a change, and changes have their own blast radius.** D9's sweep
+  reintroduced a defect while removing one, because rebinding a variable
+  silently dropped an in-place mutation three tests depended on. The suite
+  caught it; the point is that the sweep these lessons keep asking for is not
+  free, and the tests are what make it affordable.
 
 - **Not every finding is a defect, and the difference is who decides.** D8's
   mechanism was real and its framing was not: the behaviour was a documented

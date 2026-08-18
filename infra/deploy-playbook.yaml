@@ -13,12 +13,19 @@
     # ALLOW_REMOTE_DB_RESET=<exact-host> in the client running the tests.
     deployment_environment: production
     allow_database_flush: "0"
-    # Outbound mail goes through Resend, whose SMTP username is the literal
-    # string "resend" -- it is not an address, and nothing a recipient sees
-    # is derived from it. The API key that serves as its password lives in
-    # ~/.resend-api-key on the server (see the task below) rather than here,
-    # since it shouldn't be committed or passed on the CLI.
-    email_backend: smtp
+    # Outbound mail goes through Resend, over its HTTPS API rather than SMTP:
+    # DigitalOcean drops outbound 25, 465 and 587 on every Droplet, so no mail
+    # could leave this host at all. Measured August 18, 2026 --
+    # design/mail-transport-plan.md carries the numbers and what it cost.
+    #
+    # The same ~/.resend-api-key file serves both arms; it is a bearer token
+    # here and was the SMTP password before. `smtp` is still a valid value, so
+    # rolling back is this variable and a redeploy.
+    #
+    # email_host_user is the literal string "resend" and is only read by the
+    # SMTP arm -- it is not an address, and nothing a recipient sees derives
+    # from it.
+    email_backend: resend
     email_host_user: resend
     # Where internal signup/lockout notices land. Deliberately still a
     # personal inbox: it is the developer's, not a product address, and it
@@ -46,6 +53,13 @@
       DJANGO_EMAIL_HOST_PASSWORD: >-
         {{ (email_password.content | b64decode)
            if email_backend == 'smtp'
+           else '' }}
+      # The same key, named for what it is on this arm: a bearer token, not a
+      # password. Trimmed, because a trailing newline in an Authorization
+      # header is a 403 that looks like a bad key.
+      DJANGO_RESEND_API_KEY: >-
+        {{ (email_password.content | b64decode | trim)
+           if email_backend == 'resend'
            else '' }}
       DJANGO_ADMIN_EMAIL: "{{ admin_email }}"
       DJANGO_SENTRY_DSN: >-
@@ -242,7 +256,7 @@
       ansible.builtin.stat:
         path: ~/.resend-api-key
       register: email_password_file
-      when: email_backend == 'smtp'
+      when: email_backend in ['smtp', 'resend']
 
     - name: Fail with instructions if the Resend API key file is missing
       ansible.builtin.fail:
@@ -252,13 +266,13 @@
           umask 077 && echo -n 're_your-api-key' > ~/.resend-api-key
           The older ~/.email-app-password held a Gmail app password and is
           no longer read; delete it once this deploy succeeds.
-      when: email_backend == 'smtp' and not email_password_file.stat.exists
+      when: email_backend in ['smtp', 'resend'] and not email_password_file.stat.exists
 
     - name: Read Resend API key back from file
       ansible.builtin.slurp:
         src: ~/.resend-api-key
       register: email_password
-      when: email_backend == 'smtp'
+      when: email_backend in ['smtp', 'resend']
 
     - name: Check whether the database connection URL file exists
       ansible.builtin.stat:

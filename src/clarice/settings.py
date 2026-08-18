@@ -71,9 +71,28 @@ else:
 
 email_delivery = os.environ.get(
     "DJANGO_EMAIL_BACKEND",
-    "smtp" if not DEBUG else "console",
+    # `resend` rather than `smtp` since August 18, 2026: DigitalOcean drops
+    # outbound 25, 465 and 587 on every Droplet, so SMTP cannot leave the host
+    # this deploys to. See design/mail-transport-plan.md for the measurement.
+    # The SMTP arm is kept rather than deleted -- it is deselected, so reverting
+    # is a variable and a redeploy, and the day those ports open nothing has to
+    # be rewritten to use them.
+    "resend" if not DEBUG else "console",
 )
-if email_delivery == "smtp":
+if email_delivery == "resend":
+    EMAIL_BACKEND = "clarice.mail.ResendBackend"
+    # Required *and* non-empty, which os.environ[...] alone does not give:
+    # the playbook templates this variable to '' on the other arms, so a
+    # misconfiguration reaches the container as present-and-blank rather than
+    # absent. Left at a bare lookup, that boots cleanly and fails on the first
+    # password reset -- which is the whole failure mode being fixed here.
+    RESEND_API_KEY = os.environ.get("DJANGO_RESEND_API_KEY", "")
+    if not RESEND_API_KEY:
+        raise ImproperlyConfigured(
+            "DJANGO_RESEND_API_KEY is required when DJANGO_EMAIL_BACKEND is "
+            "'resend'."
+        )
+elif email_delivery == "smtp":
     EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
     # Resend authenticates with the literal username "resend" and an API
     # key as the password; the host is only overridable so that a future
@@ -87,7 +106,7 @@ elif email_delivery == "console":
     EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 else:
     raise ImproperlyConfigured(
-        "DJANGO_EMAIL_BACKEND must be either 'smtp' or 'console'."
+        "DJANGO_EMAIL_BACKEND must be 'resend', 'smtp' or 'console'."
     )
 
 # Sender identity, deliberately outside the branch above. These are what a

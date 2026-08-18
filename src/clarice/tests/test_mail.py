@@ -17,10 +17,16 @@ arriving diminished, that a non-2xx is a failure rather than a success, and that
 returned success for a message it had discarded; a backend that treats 403 as
 sent would be the same evening again.
 """
+import pathlib
 from unittest.mock import patch
 
 from django.conf import settings
-from django.core.mail import EmailMessage, EmailMultiAlternatives
+from django.core.mail import (
+    EmailMessage,
+    EmailMultiAlternatives,
+    get_connection,
+    send_mail,
+)
 from django.test import SimpleTestCase, override_settings
 
 from clarice.mail import ENDPOINT, ResendBackend, ResendError, resend_transport
@@ -306,6 +312,157 @@ class RetryingDoesNotSendTwiceTest(SimpleTestCase):
 
     def test_the_key_fits_inside_the_documented_limit(self):
         self.assertLessEqual(len(self.key_for(a_message())), 256)
+
+
+class WiredThroughDjangoTest(SimpleTestCase):
+    """The path `settings.py` names, resolved the way Django resolves it.
+
+    `EMAIL_BACKEND` is a dotted string imported at send time, so a typo in it is
+    not a boot failure -- it is a failure on the first message somebody sends,
+    which on this deployment would be a password reset. Nothing else in the
+    suite would notice, because every other test either uses locmem or injects
+    a backend directly.
+    """
+
+    def test_the_dotted_path_resolves_to_this_backend(self):
+        connection = get_connection("clarice.mail.ResendBackend")
+
+        self.assertIsInstance(connection, ResendBackend)
+
+    def test_the_constructor_takes_what_get_connection_passes_it(self):
+        """`get_connection` forwards `fail_silently` and any extra keywords, so
+        the signature has to accept them rather than only Django's own."""
+        transport = FakeTransport()
+
+        connection = get_connection(
+            "clarice.mail.ResendBackend", fail_silently=True, transport=transport
+        )
+
+        self.assertTrue(connection.fail_silently)
+        self.assertIs(connection.transport, transport)
+
+    @override_settings(
+        EMAIL_BACKEND="clarice.mail.ResendBackend",
+        RESEND_API_KEY=API_KEY,
+        EMAIL_TIMEOUT=10,
+    )
+    def test_an_ordinary_send_mail_goes_out_over_https(self):
+        """End to end through Django's own entry point, with `urlopen` patched
+        at the last moment: this is what every caller in the tree does, and it
+        is the one assertion that covers the setting, the path, the backend and
+        the request together."""
+        reached = {}
+
+        class FakeResponse:
+            status = 200
+
+            def read(self):
+                return b'{"id": "x"}'
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc):
+                return False
+
+        def fake_urlopen(request, timeout=None):
+            reached["url"] = request.full_url
+            reached["body"] = request.data
+            return FakeResponse()
+
+        with patch("clarice.mail.urlopen", fake_urlopen):
+            sent = send_mail(
+                "Good morning",
+                "  - Renew insurance (Home, due today)",
+                "Clarice <accounts@vinclarice.com>",
+                ["vince@example.com"],
+            )
+
+        self.assertEqual(sent, 1)
+        self.assertEqual(reached["url"], ENDPOINT)
+        self.assertIn(b"Renew insurance", reached["body"])
+
+
+class SettingsSelectItTest(SimpleTestCase):
+    """`settings.py`'s own branch, run rather than read.
+
+    Every other test here names `clarice.mail.ResendBackend` as a literal --
+    the same string `settings.py` names, written twice. A typo in *its* copy
+    would leave all of them green and every message undeliverable, so this
+    imports the settings module in a fresh interpreter with the environment set
+    and asks what it actually resolved.
+
+    A subprocess because Django settings are import-once per process, and
+    reloading them under a running suite is the kind of clever that produces a
+    test which passes for a reason nobody can name.
+    """
+
+    def resolve(self, **env):
+        import os
+        import subprocess
+        import sys
+
+        code = (
+            "import django; django.setup();"
+            "from django.conf import settings;"
+            "print(settings.EMAIL_BACKEND)"
+        )
+        environment = {
+            **os.environ,
+            "DJANGO_SETTINGS_MODULE": "clarice.settings",
+            "PYTHONPATH": str(pathlib.Path(__file__).resolve().parents[2]),
+            **env,
+        }
+        return subprocess.run(
+            [sys.executable, "-c", code],
+            capture_output=True,
+            text=True,
+            env=environment,
+        )
+
+    def test_resend_selects_this_backend(self):
+        result = self.resolve(
+            DJANGO_EMAIL_BACKEND="resend", DJANGO_RESEND_API_KEY=API_KEY
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip(), "clarice.mail.ResendBackend")
+
+    def test_selecting_it_with_a_blank_key_refuses_to_boot(self):
+        """Blank, not merely absent, and that distinction is the point: the
+        playbook templates this variable to '' on the other arms, so a
+        misconfiguration arrives present-and-empty. A bare os.environ lookup
+        would accept it, boot cleanly, and fail on the first password reset."""
+        result = self.resolve(DJANGO_EMAIL_BACKEND="resend", DJANGO_RESEND_API_KEY="")
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("DJANGO_RESEND_API_KEY", result.stderr)
+
+    def test_selecting_it_with_no_key_at_all_refuses_to_boot(self):
+        """The absent case, alongside the blank one above. `resolve` inherits
+        this shell's environment, so skip rather than assert a falsehood if the
+        variable happens to be set here."""
+        import os
+
+        if os.environ.get("DJANGO_RESEND_API_KEY"):
+            self.skipTest("DJANGO_RESEND_API_KEY is set in this shell")
+
+        result = self.resolve(DJANGO_EMAIL_BACKEND="resend")
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("DJANGO_RESEND_API_KEY", result.stderr)
+
+    def test_console_still_works_for_development(self):
+        result = self.resolve(DJANGO_EMAIL_BACKEND="console")
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("console", result.stdout)
+
+    def test_an_unknown_value_is_still_refused(self):
+        result = self.resolve(DJANGO_EMAIL_BACKEND="carrier-pigeon")
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("DJANGO_EMAIL_BACKEND", result.stderr)
 
 
 class TheRealTransportTest(SimpleTestCase):

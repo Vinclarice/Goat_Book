@@ -134,9 +134,24 @@ doctl databases firewalls append <new-id> --rule ip_addr:<your-ip>
 # 4. Compare row counts per table and django_migrations against step 1,
 #    connecting to Clarice_todo (not defaultdb) on the restored cluster.
 
-# 5. Tear it down. It bills by the hour.
+# 5. Then check what the restore still *enforces*, which step 4 cannot see.
+#    Row counts and django_migrations are data; the append-only trigger, the
+#    depth-one triggers, the vector extension and mention_unique's NULLS NOT
+#    DISTINCT are DDL. A restore missing all of them passes step 4 exactly,
+#    because the migration rows say the migration ran and the trigger it
+#    created is not a row.
+infra/check-restore-integrity.sh   'postgresql://user:pass@<new-host>:<port>/Clarice_todo?sslmode=require'
+
+# 6. Tear it down. It bills by the hour.
 doctl databases delete <new-id> --force
 ```
+
+**Step 5 checks behaviour, not just presence.** A trigger can be in
+`pg_trigger` and disabled, which enforces nothing — verified by disabling
+`mind_activity_event_no_update` on a local database and watching the name check
+pass while the UPDATE it should refuse was accepted. The script writes nothing:
+its one write is inside a transaction it rolls back, so it is safe to point at
+production if you want to prove the check itself works.
 
 **Run August 1, 2026 (roadmap item A2). Result: passed.** All 18 tables
 matched the live cluster exactly — `lists_item` 24, `lists_list` 17,

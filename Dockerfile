@@ -24,12 +24,25 @@ COPY --from=frontend /src/lists/static/frontend /src/lists/static/frontend
 
 WORKDIR /src
 
+# collectstatic runs settings.py's *production* branch, so every variable
+# that branch requires has to be here -- as placeholders, since none is used
+# for anything but getting the module imported.
+#
+# DJANGO_EMAIL_BACKEND=console is the load-bearing one. The default when
+# DEBUG is off became `resend` on 2026-08-18, and that backend refuses to
+# boot without a key, so this step began demanding a credential the build has
+# no business holding. collectstatic sends no mail; console needs nothing. It
+# replaces the two SMTP placeholders, which existed only to satisfy a branch
+# this no longer takes.
+#
+# clarice/tests/test_build_environment.py reads these back out and boots
+# Django with exactly them, so the next required setting fails a test rather
+# than a thirteen-second image build in the middle of a deploy.
 RUN DJANGO_ENVIRONMENT=production \
     DJANGO_SECRET_KEY=build-only-secret \
     DJANGO_ALLOWED_HOST=localhost \
     DJANGO_DATABASE_URL=sqlite:////tmp/build.sqlite3 \
-    DJANGO_EMAIL_HOST_USER=build-only@example.com \
-    DJANGO_EMAIL_HOST_PASSWORD=build-only-secret \
+    DJANGO_EMAIL_BACKEND=console \
     python manage.py collectstatic --noinput
 
 ENV DJANGO_ENVIRONMENT=production

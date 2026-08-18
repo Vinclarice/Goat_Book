@@ -54,6 +54,18 @@ def pause_routine(owner, routine):
     when the routine was put down, not when somebody last said so.
     """
     _own_routine(owner, routine)
+    # Locked before the is_active check, not after: two pauses arriving
+    # together would both read active and both write a RoutinePause, and that
+    # row is the durable half -- "what weeks was it down for" is the thing no
+    # later migration could reconstruct.
+    #
+    # Locked, then refreshed in place rather than rebound to the fetched row.
+    # These functions mutate the instance the caller handed them and callers
+    # rely on it -- three tests pause a routine and then assert that logging
+    # against *that object* is refused. Rebinding left the caller holding a
+    # stale is_active and quietly reopened the hole pausing exists to close.
+    Routine.objects.select_for_update().filter(pk=routine.pk).first()
+    routine.refresh_from_db()
     if not routine.is_active:
         return routine
     now = timezone.now()
@@ -78,6 +90,10 @@ def resume_routine(owner, routine):
     not missing data.
     """
     _own_routine(owner, routine)
+    # Locked and refreshed in place, like pause_routine above and for the same
+    # reason about the caller's instance.
+    Routine.objects.select_for_update().filter(pk=routine.pk).first()
+    routine.refresh_from_db()
     routine.is_active = True
     routine.paused_at = None
     routine.save(update_fields=["is_active", "paused_at"])
@@ -118,9 +134,17 @@ def log_progress(owner, routine, day, amount=1):
     """
     _active_routine(owner, routine)
     if amount <= 0:
-        occurrence = RoutineOccurrence.objects.filter(
-            routine=routine, period_start=period_start_for(routine.cadence, day)
-        ).first()
+        # Locked like the creating path above: a correction is the same
+        # read-modify-write with a different sign, and racing one against a tap
+        # loses exactly as much.
+        occurrence = (
+            RoutineOccurrence.objects.select_for_update()
+            .filter(
+                routine=routine,
+                period_start=period_start_for(routine.cadence, day),
+            )
+            .first()
+        )
         if occurrence is None:
             return None
     else:
@@ -181,9 +205,17 @@ def close_period_as_enough(owner, routine, day):
     something already there.
     """
     _active_routine(owner, routine)
-    occurrence = RoutineOccurrence.objects.filter(
-        routine=routine, period_start=period_start_for(routine.cadence, day)
-    ).first()
+    # Locked for the same reason log_progress is: this reads `progress`, makes
+    # two decisions from it and writes -- so a tap landing between the read and
+    # the write would leave an outcome settled against a count that is no
+    # longer true.
+    occurrence = (
+        RoutineOccurrence.objects.select_for_update()
+        .filter(
+            routine=routine, period_start=period_start_for(routine.cadence, day)
+        )
+        .first()
+    )
     if occurrence is None or occurrence.progress == 0:
         raise RoutineError("Nothing has been logged for that period yet.")
     if occurrence.progress >= occurrence.target_quantity:
@@ -211,7 +243,14 @@ def _occurrence_for_writing(owner, routine, day):
             "unit": routine.unit,
         },
     )
-    return occurrence
+    # Locked before anybody reads a count they intend to add to.
+    # `get_or_create` settles which row exists; it says nothing about who may
+    # change it, and `log_progress` is a read-modify-write. Two taps used to
+    # read the same number and write the same number, so one of them was lost
+    # -- and the log *is* the count here, so nothing else disagrees afterwards.
+    # `lists/services.py` opens every mutation this way; this module opened
+    # none of them.
+    return RoutineOccurrence.objects.select_for_update().get(pk=occurrence.pk)
 
 
 def _settle_outcome(occurrence):

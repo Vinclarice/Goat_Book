@@ -21,25 +21,46 @@ from mind.api_v1 import router as capture_router
 from review.api_v1 import router as review_router
 from routines.api_v1 import router as routines_router
 
+# `django_auth` is the *default*, not the rule. Operations override it
+# per-operation, and fourteen of them do -- across `lists`, `mind`, `daily`,
+# `accounts` and `routines` -- because the phone holds a bearer token and
+# cannot carry a session cookie.
+#
+# **These notes said "session-only" for three of those routers and were wrong.**
+# They were true when the phone only captured; slices 1 and 2 gave it the Day
+# and the Agenda, and nothing checked a comment. So the surface is pinned in
+# `clarice/tests/test_api_auth_surface.py`, which fails if an operation gains
+# or loses token auth -- and the point of it is that widening what a token
+# reaches takes a deliberate edit, since a bearer sits in an Android keystore
+# and outlives a session by ninety days.
+#
+# Read that test for the list. What follows is only what is worth knowing per
+# router, and the test is the authority.
 api = NinjaAPI(auth=django_auth, urls_namespace="v1")
+# `GET /agenda` takes a token; every write to a task and everything about
+# areas and projects stays session-only. The phone reads the agenda and acts on
+# individual tasks through their own URLs.
 api.add_router("", lists_router)
+# `GET /me` takes a token -- the one endpoint a freshly pasted token can call
+# before anything else works, which is what the Connect screen needs. The rest
+# of the account surface, including deletion and export, is session-only.
 api.add_router("", accounts_router)
-# The capture router overrides this default auth per-operation: it also
-# accepts a bearer token, since a phone client can't carry a session
-# cookie. Everything else here stays session-only.
+# Capture, and the original reason a token exists.
 #
 # It comes from `mind` rather than `capture` since Heron 4a. The URL, the token
 # and the scope are unchanged -- what changed is that it writes a Node. That is
 # what leaves the `capture` app with nothing on this API, so 4b can delete it.
 api.add_router("", capture_router)
-# Session-only, like lists and accounts: a day is written from the browser.
+# Token *and* session, on all five operations: the phone reads the Day and
+# writes it, pinning a focus and saving the day's own words. This said "a day
+# is written from the browser", which stopped being the only way in slice 1.
 api.add_router("", daily_router)
-# Session-only too. Logging from the Android client would need the
-# token-authenticated zone activation per-user-time-zones-plan.md flags, and
-# has no product trigger yet.
+# Every routine write takes a token; `GET /routines` does not, which is worth
+# noticing rather than assuming symmetric. This said logging from Android
+# "has no product trigger yet" -- it has one, and it shipped.
 api.add_router("", routines_router)
-# Session-only as well. The review reads everything and writes nothing until
-# slice 4, and what it writes then is a person's own reflection.
+# The one router with no token operations at all, reads included. Nothing on
+# the phone shows a weekly review, so nothing here has needed widening.
 api.add_router("", review_router)
 
 

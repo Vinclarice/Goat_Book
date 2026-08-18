@@ -1,0 +1,65 @@
+name: Backup freshness
+
+# `infra/check-backup-freshness.sh` has existed and been scheduled nowhere.
+# Its own header says the exit status is the point, "so this drops straight
+# into cron or a CI schedule without anyone reading the output" -- this is
+# that schedule.
+#
+# **Here rather than on the droplet**, and that is a decision about a
+# credential rather than about convenience. The script needs `doctl`
+# authenticated against the DigitalOcean account, and putting an API token with
+# database-read scope on the box that serves the site widens what a compromise
+# of that box reaches. A repository secret is already the kind of place this
+# belongs, and the runner is thrown away afterwards.
+#
+# **A separate workflow, not a job in ci.yml**, which runs on every push and
+# pull request. This asks a question about production that has nothing to do
+# with the commit being tested, and a pull request from a fork cannot see the
+# secret anyway.
+#
+# **What reads the result**: GitHub emails the repository owner when a
+# scheduled workflow fails, which is the one notification path here that does
+# not need anything new set up. That is the whole point -- the check has always
+# worked, and nothing has ever run it.
+
+on:
+  schedule:
+    # 09:15 UTC daily. Deliberately not on the hour: shared-runner queues are
+    # worst at :00, and this is not urgent to the minute. After DigitalOcean's
+    # daily backup window rather than during it, so a run in progress does not
+    # read as a missing one.
+    - cron: "15 9 * * *"
+  # So the check can be proved to work without waiting a day, and re-run by
+  # hand the moment somebody suspects it.
+  workflow_dispatch:
+
+jobs:
+  freshness:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fail early and clearly if the token is missing
+        # Without this, `doctl databases list` returns nothing on an
+        # unauthenticated account and the script reports "no cluster named ..."
+        # -- which reads as a deleted cluster rather than an unset secret, and
+        # is exactly the wrong thing to be woken up by.
+        env:
+          TOKEN: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "DIGITALOCEAN_ACCESS_TOKEN is not set on this repository." >&2
+            echo "Create a read-scoped token at cloud.digitalocean.com/account/api" >&2
+            echo "and add it under Settings -> Secrets and variables -> Actions." >&2
+            exit 1
+          fi
+
+      - uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+
+      - name: Check that the cluster backed up recently
+        # Defaults live in the script: the live cluster, and a 48-hour
+        # threshold, which is one missed daily backup plus room for the window
+        # drifting.
+        run: ./infra/check-backup-freshness.sh

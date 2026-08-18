@@ -59,6 +59,7 @@ a finding remains a separate decision.
 | D2 | HIGH — one nullable column, four broken surfaces | `4e89675` |
 | D3 | HIGH — Sentry shipped raw request bodies despite `send_default_pii=False` | `dedc23d` |
 | D4 | HIGH — `/api/v1/login` unthrottled at every layer | `9eb9eea` |
+| D5 | HIGH — `open_question` filtered on `dormant_thread`'s name | `c9ac698` |
 
 ### D1 — the refetch clobber
 
@@ -150,6 +151,28 @@ gave six then two, and eight GETs to `/api/v1/agenda` all returned 200 — the
 half that matters second, since a rate limit that reached the authenticated API
 would be a worse defect than the one being fixed.
 
+### D5 — a workaround that hid the defect it worked around
+
+`open_question` imported `_previously_proposed_ids` from `dormant_thread`, and
+Python binds a function's globals to its *defining* module — so the filter
+queried `detector="dormant_thread"`. Its own `DETECTOR` sat one line below the
+import, consulted by nothing. A dismissed answer came back every night forever,
+and every pair `dormant_thread` had already proposed was permanently invisible
+to it — the directional finding this detector exists for, unreachable on exactly
+the pairs most likely to have one.
+
+**`semantic_echo` and `shared_referent` had each already worked around it**, by
+keeping an identical private copy of the body. That is what kept it hidden: with
+two of three detectors carrying their own, the one that did not looked like the
+pattern rather than the exception. A fourth copy would have left the trap for the
+fifth detector, so the fix passes the detector as an argument and there is one
+body again.
+
+**The refactor proved itself mid-change.** Between changing the signature and
+changing the body, `shared_referent`'s own dismissal tests failed — evidence
+both that the collapsed function is the one all four use, and that those tests
+reach the filter rather than the fingerprint constraint that would mask it.
+
 ### What these have in common
 
 - **A fix applied only where the bug was reported is not a fix.** D1 was guarded
@@ -176,6 +199,12 @@ would be a worse defect than the one being fixed.
   Where a guarantee spans two languages or two tools, the only thing that holds
   it is a test that reads both — which is what D2's and D4's fixes each left
   behind.
+
+- **A local workaround hides the defect it works around.** Two detectors kept a
+  private copy of D5's filter rather than fixing why the shared one was wrong,
+  and that made the broken caller look like the ordinary case. Copying to avoid
+  a bug is a decision worth writing down, because the next person reads the
+  copies as the pattern.
 
 D1b — `AddRoutine` clearing before its request resolves, and expired-session 401s
 handled on reads but not writes — is D1's class and is **not** fixed.

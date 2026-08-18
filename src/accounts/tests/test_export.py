@@ -26,7 +26,7 @@ from django.utils import timezone
 
 from accounts import export
 from accounts.models import SCOPE_CAPTURE_WRITE, PersonalAccessToken, User
-from lists.models import Item, List
+from lists.models import Item, List, RecurringCommitment, Tag
 from mind import services as mind_services
 from mind.models import NodeSource
 
@@ -104,6 +104,77 @@ class ExportTest(TestCase):
         )
 
     # -- what is not ------------------------------------------------------
+
+    def test_a_tagged_task_records_which_tags_were_on_it(self):
+        """`_rows` iterates `_meta.concrete_fields`, which by definition
+        excludes many-to-many -- so tags exported as a list of names with
+        nothing saying which task carried which. The export is the only thing
+        standing before irreversible erasure, so an association lost here is
+        lost permanently."""
+        task = Item.objects.get(owner=self.alice)
+        errand = Tag.objects.create(owner=self.alice, name="errand")
+        urgent = Tag.objects.create(owner=self.alice, name="urgent")
+        task.tags.set([errand, urgent])
+
+        payload = json.loads(self.read(self.alice, "clarice.json"))
+
+        [exported] = payload["tasks"]["items"]
+        self.assertEqual(sorted(exported["tag_ids"]), sorted([errand.id, urgent.id]))
+
+    def test_a_commitments_tags_travel_too(self):
+        """The other many-to-many on the same model family."""
+        commitment = RecurringCommitment.objects.create(owner=self.alice)
+        weekly = Tag.objects.create(owner=self.alice, name="weekly")
+        commitment.tags.set([weekly])
+
+        payload = json.loads(self.read(self.alice, "clarice.json"))
+
+        [exported] = payload["tasks"]["commitments"]
+        self.assertEqual(exported["tag_ids"], [weekly.id])
+
+    def test_the_evidence_behind_a_hypothesis_travels_with_it(self):
+        """`HypothesisMember` carries the span citations, which are a
+        hypothesis's entire evidence: without them a proposal exports as a
+        confidence score and a label with nothing behind it."""
+        payload = json.loads(self.read(self.alice, "clarice.json"))
+
+        self.assertIn("hypothesis_members", payload["knowledge"])
+
+    def test_attachments_and_embeddings_are_not_left_behind(self):
+        """Both hang off Node and neither was queried. The module docstring
+        claims every row of every owned model across both cores."""
+        payload = json.loads(self.read(self.alice, "clarice.json"))
+
+        self.assertIn("attachments", payload["knowledge"])
+        self.assertIn("sentence_embeddings", payload["knowledge"])
+
+    def test_every_owned_model_is_named_somewhere_in_the_export(self):
+        """The guard for the class rather than for these four.
+
+        The docstring's claim is checkable: walk every model in the apps this
+        account owns data in, and assert each one is reachable from the
+        payload. A model added later without an export line fails here rather
+        than being discovered by somebody who has already deleted their
+        account.
+        """
+        payload = json.loads(self.read(self.alice, "clarice.json"))
+
+        # The payload's own two levels, and deliberately no deeper. Recursing
+        # into the rows made this pass by coincidence: ActivityEvent carries a
+        # JSON payload, `walk` descended into it, and a key that happened to
+        # appear in somebody's activity data counted as proof that a model was
+        # exported. It reported the export complete with `attachments` removed.
+        exported_keys = set(payload)
+        for value in payload.values():
+            if isinstance(value, dict):
+                exported_keys.update(value)
+
+        for model in export.owned_models():
+            self.assertIn(
+                export.export_key(model),
+                exported_keys,
+                f"{model.__name__} is owned but never exported",
+            )
 
     def test_no_secret_is_anywhere_in_the_archive(self):
         """Named field by field rather than eyeballed. `dumpdata` would have

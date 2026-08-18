@@ -23,19 +23,23 @@ from decimal import Decimal
 from io import BytesIO
 from uuid import UUID
 
+from accounts.models import PersonalAccessToken, User
 from daily.models import DailyEntry, DailyFocus
 from lists.models import ChecklistStep, Item, List, Project, RecurringCommitment, Tag
 from mind import queries as mind_queries
 from mind.models import (
     ActivityEvent,
+    Attachment,
     ConceptCandidate,
     ConnectionHypothesis,
     Edge,
     Facet,
+    HypothesisMember,
     Mention,
     Node,
     RetrievalMiss,
     Revision,
+    SentenceEmbedding,
 )
 from review.models import WeeklyReview
 from routines.models import Routine, RoutineOccurrence, RoutinePause
@@ -44,6 +48,73 @@ from routines.models import Routine, RoutineOccurrence, RoutinePause
 # hand somebody a credential-shaped string that is useless to them and useful to
 # anyone who steals the file.
 SECRETS = frozenset({"password", "token_hash"})
+
+
+# Every model that can hold one account's data, and the key it travels under.
+#
+# This exists to be checked rather than to be read: `test_export.py` asserts
+# that every owned model in the tree appears here and that every key here
+# appears in the payload. D12 was three models nobody had noticed were missing
+# -- HypothesisMember, Attachment and SentenceEmbedding -- against a docstring
+# promising "every row of every owned model across both cores". The promise was
+# not checkable, so it was not true, and the person who would find out is
+# somebody who has already deleted their account.
+EXPORT_KEYS = {
+    User: "account",
+    PersonalAccessToken: "tokens",
+    List: "areas",
+    Project: "projects",
+    Item: "items",
+    ChecklistStep: "checklist_steps",
+    Tag: "tags",
+    RecurringCommitment: "commitments",
+    DailyEntry: "entries",
+    DailyFocus: "focus",
+    Routine: "routines",
+    RoutineOccurrence: "occurrences",
+    RoutinePause: "pauses",
+    WeeklyReview: "reviews",
+    Node: "nodes",
+    Revision: "revisions",
+    Facet: "facets",
+    Attachment: "attachments",
+    ConceptCandidate: "concepts",
+    Mention: "mentions",
+    Edge: "edges",
+    ConnectionHypothesis: "hypotheses",
+    HypothesisMember: "hypothesis_members",
+    SentenceEmbedding: "sentence_embeddings",
+    RetrievalMiss: "retrieval_misses",
+    ActivityEvent: "events",
+}
+
+# The apps whose rows belong to an account. `mind` and the task core both, which
+# is the whole point of the promise -- an export that covered one core would be
+# half a departure.
+OWNED_APPS = ("accounts", "lists", "daily", "routines", "review", "mind")
+
+
+def owned_models():
+    """Every concrete model in this account's apps, minus what nobody owns.
+
+    Auto-created many-to-many through tables are excluded: their contents leave
+    as the `_ids` lists on either side, so exporting the join as well would say
+    the same thing twice.
+    """
+    from django.apps import apps
+
+    found = []
+    for label in OWNED_APPS:
+        for model in apps.get_app_config(label).get_models():
+            if model._meta.auto_created:
+                continue
+            found.append(model)
+    return found
+
+
+def export_key(model):
+    """The payload key this model's rows travel under."""
+    return EXPORT_KEYS[model]
 
 
 def _value(value):
@@ -57,22 +128,37 @@ def _value(value):
     return value
 
 
-def _rows(queryset):
+def _rows(queryset, *, many_to_many=()):
     """Every concrete field of every row, minus the secrets.
 
     `attname` rather than `name`, so a foreign key exports as `owner_id` — a
     plain integer that survives leaving this application, rather than a nested
     object or a broken reference.
+
+    **`concrete_fields` excludes many-to-many by definition**, which is why
+    `many_to_many` is a separate argument rather than something this works out.
+    Tags exported as a list of names with nothing recording which tag was on
+    which task, and an export is the only thing standing before irreversible
+    erasure — so an association missing here is not missing, it is destroyed.
+    Named per call so adding a relation to a model is a decision about the
+    export rather than a silent omission.
     """
     out = []
     for obj in queryset:
-        out.append(
-            {
-                field.attname: _value(getattr(obj, field.attname))
-                for field in obj._meta.concrete_fields
-                if field.name not in SECRETS and field.attname not in SECRETS
-            }
-        )
+        row = {
+            field.attname: _value(getattr(obj, field.attname))
+            for field in obj._meta.concrete_fields
+            if field.name not in SECRETS and field.attname not in SECRETS
+        }
+        for name in many_to_many:
+            # Ids, matching the foreign-key convention above: the related rows
+            # are exported in full under their own key, so repeating them here
+            # would say the same thing twice and disagree the first time one
+            # changed.
+            row[f"{name[:-1]}_ids"] = sorted(
+                getattr(obj, name).values_list("pk", flat=True)
+            )
+        out.append(row)
     return out
 
 
@@ -92,10 +178,13 @@ def _payload(user, *, now):
         "tasks": {
             "areas": _rows(List.objects.filter(owner=user)),
             "projects": _rows(Project.objects.filter(owner=user)),
-            "items": _rows(Item.objects.filter(owner=user)),
+            "items": _rows(Item.objects.filter(owner=user), many_to_many=("tags",)),
             "checklist_steps": _rows(ChecklistStep.objects.filter(owner=user)),
             "tags": _rows(Tag.objects.filter(owner=user)),
-            "commitments": _rows(RecurringCommitment.objects.filter(owner=user)),
+            "commitments": _rows(
+                RecurringCommitment.objects.filter(owner=user),
+                many_to_many=("tags",),
+            ),
         },
         "days": {
             "entries": _rows(DailyEntry.objects.filter(owner=user)),
@@ -115,6 +204,19 @@ def _payload(user, *, now):
             "mentions": _rows(Mention.objects.filter(node__owner=user)),
             "edges": _rows(Edge.objects.filter(owner=user)),
             "hypotheses": _rows(ConnectionHypothesis.objects.filter(owner=user)),
+            # The span citations, which are a hypothesis's entire evidence:
+            # without them a proposal exports as a confidence score and a label
+            # with nothing behind it.
+            "hypothesis_members": _rows(
+                HypothesisMember.objects.filter(hypothesis__owner=user)
+            ),
+            "attachments": _rows(Attachment.objects.filter(node__owner=user)),
+            # Large and machine-only, and exported anyway: the promise is every
+            # row of every owned model, and a vector somebody paid for with
+            # their own material is theirs whether or not they can read it.
+            "sentence_embeddings": _rows(
+                SentenceEmbedding.objects.filter(node__owner=user)
+            ),
             "retrieval_misses": _rows(RetrievalMiss.objects.filter(owner=user)),
             # Included deliberately. It is a record of what this person did,
             # which is theirs; and since erasure deletes it rather than keeping

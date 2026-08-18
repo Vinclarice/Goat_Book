@@ -70,6 +70,9 @@ a finding remains a separate decision.
 | D16 | LOW-MED — corrected the false hourly-cap claim (behaviour unchanged) | `0476bb3` |
 | D13 | MEDIUM — side-nav counts went stale on every task write | `9631e32` |
 | D14 | MEDIUM — search truncated by recency, silently, beside a miss button | `6e280ba` |
+| — | Two more production incidents, and the mail paths they exposed | `0cf8803` |
+| D15 | MEDIUM — dead `/capture/` links in the Agenda sidebar | `2e6cd1c` |
+| D17 | MEDIUM — commitment parser fires on prose; **gate deferred**, recorded | `1d09220` |
 
 ### D1 — the refetch clobber
 
@@ -431,6 +434,47 @@ somebody edited out returned the note and rendered a body without that word —
 baffling, but the match is right: `original_content` is never mutated precisely
 so what was first said survives. The missing part was the sentence explaining it.
 
+### The mail outages — three incidents, two more defects
+
+August 16 through 18, and every one of them arrived from production rather than
+from the review. The August 18 pair mattered most: the nullable-Area
+`AttributeError` in `send_due_digest` was **D2 exactly**, already fixed and
+undeployed; and an SMTP connect timeout on `POST /contact/` was a defect nobody
+had found.
+
+**The contact form had no guard and no model.** Its docstring says the message
+*"only exists in the support inbox it was sent to"* — a deliberate choice — so a
+failed send meant the message existed nowhere, and the visitor got a 500 with
+their own text inside it. A stranger with a question is the person least able to
+recover from that. It now keeps their text, says the message has not arrived, and
+offers an address that does not depend on what just failed.
+
+**The sweep found the same shape one function away.** `signup` sends the admin
+notification *after* `form.save()`, so the same outage left a real account behind
+a 500: no "pending approval" page, no way to know it worked, and a retry failing
+on a duplicate username. Caught and deliberately **not** rolled back — the
+asymmetry `request_deletion` settled two days earlier, from the other side.
+
+**`roadmap.md`'s "a real production 500 reaching Sentry" closed here**, having
+been narrowed two days before to the web half specifically. A management command
+reaches Sentry through the excepthook; a view reaches it through the WSGI
+integration. This was the view.
+
+### D15 and D17 — a dead link, and a decision left open
+
+D15 was two hardcoded `/capture/` links Heron 4b orphaned, in a block no test
+looked at. **Its tests failed the first time for the wrong reason** — a fixture
+string borrowed from the Android suite — so the green run afterwards proved
+nothing until the dead link was put back and they failed on the assertion.
+
+D17 is the first finding closed **without a fix, on purpose.** The parser proposes
+a commitment for prose that names a day, including one ten months out. But the
+false positives are structurally identical to the true ones, a past-tense rule
+reaches three of five while silencing a real commitment, and `cold-start.md` says
+these thresholds get set by accept-rate data rather than guessed at. The five
+strings are a strict `xfail`: the expectation is recorded, the suite stays green,
+and the day something makes one pass, it says so.
+
 ### What these have in common
 
 - **A fix applied only where the bug was reported is not a fix.** D1 was guarded
@@ -479,6 +523,12 @@ so what was first said survives. The missing part was the sentence explaining it
   between a row and the object holding it, both times caught by a test. The
   sweep these lessons keep asking for is not free; the tests are what make it
   affordable.
+
+- **Not fixing is a result, if it is written down where the next person looks.**
+  D17 closed with no behaviour change and a strict `xfail` carrying the evidence,
+  because the gate needs data nobody has yet. A deferred decision with its
+  reasoning attached is a different object from an unnoticed defect, and only one
+  of them rots.
 
 - **An instrument fed by a broken path measures the path, not the thing.** D14's
   truncation manufactured retrieval misses, and retrieval misses are what the

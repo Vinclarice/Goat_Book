@@ -24,6 +24,7 @@ from mind.models import ActivityEvent
 ACCOUNT_DELETION_GRACE = timedelta(days=30)
 
 
+@transaction.atomic
 def request_deletion(user, *, now):
     """Schedule an account for erasure. Reversible until the grace period ends.
 
@@ -41,14 +42,49 @@ def request_deletion(user, *, now):
     if user.deletion_requested_at is not None:
         return user
 
-    user.deletion_requested_at = now
-    user.save(update_fields=["deletion_requested_at"])
-    emails.confirm_deletion_scheduled(user, purge_at=purge_at(user))
+    # The whole body is one unit: the timestamp must not outlive the warning
+    # it depends on. A send that failed used to leave the account scheduled
+    # with nobody told -- and the guard above then made that permanent,
+    # because the retry took the early return and sent nothing. The guard is
+    # right; what was missing is its precondition, that the message went out
+    # when the timestamp was written.
+    #
+    # Sending inside the transaction puts an SMTP round trip between BEGIN and
+    # COMMIT, which is why settings.py sets EMAIL_TIMEOUT: unbounded, a hung
+    # relay would hold this open for as long as it liked.
+    #
+    # The `except` restores the *instance*, which the rollback cannot reach.
+    # It is provably None here given the guard above, and named rather than
+    # written as None so that removing the guard cannot silently make this
+    # wrong. Without it the caller's user goes on claiming a timestamp the
+    # database no longer has, and the retry takes the early return again --
+    # the very defect being fixed. The same divergence bit `pause_routine`
+    # during D9.
+    previously_requested_at = user.deletion_requested_at
+    try:
+        user.deletion_requested_at = now
+        user.save(update_fields=["deletion_requested_at"])
+        emails.confirm_deletion_scheduled(user, purge_at=purge_at(user))
+    except Exception:
+        user.deletion_requested_at = previously_requested_at
+        raise
     return user
 
 
 def cancel_deletion(user):
-    """Change your mind. Nothing has been touched, so nothing is restored."""
+    """Change your mind. Nothing has been touched, so nothing is restored.
+
+    **Deliberately not atomic, unlike `request_deletion` above**, and the
+    asymmetry is the point rather than an oversight. There the email *is* the
+    protection, so a timestamp without one is a silent loss and rolling back is
+    correct. Here the person is at the screen having just asked to keep their
+    account: rolling the cancellation back because its receipt bounced would
+    leave the account scheduled for erasure, trading a missing confirmation for
+    exactly the outcome the confirmation was about.
+
+    So the cancellation stands and the send may fail loudly on top of it.
+    `test_cancelling_survives_a_failed_confirmation` pins this.
+    """
     if user.deletion_requested_at is None:
         return user
 

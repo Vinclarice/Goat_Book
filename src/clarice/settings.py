@@ -111,6 +111,18 @@ SERVER_EMAIL = os.environ.get(
 # mail_admins() prefixes every subject with this. Django's default is
 # "[Django] ", which labelled Clarice's own notices with the framework they
 # were built in -- caught by reading a real one, not by a test.
+# A send that never returns is a transaction that never closes.
+# accounts.services.request_deletion sends *inside* its atomic block --
+# deliberately, so the scheduled-for-deletion timestamp cannot outlive the
+# warning that makes the grace period a real protection -- which puts an SMTP
+# round trip between BEGIN and COMMIT. Unset, smtplib inherits the global
+# default socket timeout, which is also unset, so a hung relay would hold that
+# transaction open with no bound at all, on one worker with four threads.
+#
+# Ten seconds: far longer than Resend's API needs and far shorter than a
+# person will wait on a form that is already doing something irreversible.
+EMAIL_TIMEOUT = 10
+
 EMAIL_SUBJECT_PREFIX = "[Clarice] "
 
 # Where the public contact form delivers. A real mailbox rather than a

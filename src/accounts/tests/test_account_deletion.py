@@ -18,9 +18,11 @@ from datetime import timedelta
 
 from django.core import mail
 from django.core.management import call_command
-from django.test import TestCase
+from django.conf import settings
+from django.test import SimpleTestCase, TestCase
 from django.utils import timezone
 from io import StringIO
+from smtplib import SMTPException
 from unittest.mock import patch
 
 from accounts import services
@@ -104,6 +106,90 @@ class RequestingDeletionTest(TestCase):
         self.user.refresh_from_db()
         self.assertIsNone(self.user.deletion_requested_at)
         self.assertTrue(List.objects.filter(owner=self.user).exists())
+
+
+class TheWarningAndTheTimestampGoTogetherTest(TestCase):
+    """The email is the protection, so the timestamp must not outlive it.
+
+    `request_deletion` wrote `deletion_requested_at`, committed, and *then*
+    sent. A send that failed left the account scheduled with no warning issued
+    -- and the idempotency guard, which is right on its own terms, then made
+    that permanent: the retry took the early return and sent nothing, forever.
+
+    The guard is not the bug. Its precondition is: that the email went out when
+    the timestamp was written. Nothing enforced it.
+    """
+
+    def setUp(self):
+        self.user = User.objects.create_user("alice", "alice@example.com", PASSWORD)
+        self.now = timezone.now()
+
+    def test_a_failed_warning_leaves_the_account_unscheduled(self):
+        with patch.object(
+            services.emails,
+            "confirm_deletion_scheduled",
+            side_effect=SMTPException("relay refused"),
+        ):
+            with self.assertRaises(SMTPException):
+                services.request_deletion(self.user, now=self.now)
+
+        self.user.refresh_from_db()
+        self.assertIsNone(self.user.deletion_requested_at)
+
+    def test_the_retry_actually_warns_rather_than_taking_the_early_return(self):
+        """The half that made it permanent. With the timestamp persisted, a
+        second attempt hit `if user.deletion_requested_at is not None: return`
+        and sent nothing -- so the one message protecting somebody who did not
+        do this was suppressed for good by a transient relay failure."""
+        with patch.object(
+            services.emails,
+            "confirm_deletion_scheduled",
+            side_effect=SMTPException("relay refused"),
+        ):
+            with self.assertRaises(SMTPException):
+                services.request_deletion(self.user, now=self.now)
+
+        services.request_deletion(self.user, now=self.now + timedelta(minutes=5))
+
+        self.assertEqual(len(mail.outbox), 1)
+        self.user.refresh_from_db()
+        self.assertIsNotNone(self.user.deletion_requested_at)
+
+    def test_cancelling_survives_a_failed_confirmation(self):
+        """Deliberately *not* symmetrical with the above, and the asymmetry is
+        the point. Rolling a cancellation back because its receipt bounced
+        would leave an account scheduled for erasure after the person asked to
+        keep it -- trading a missing email for the outcome the email was about.
+        The request path rolls back because the message *is* the protection;
+        this one does not because the person is right there, having just acted.
+        """
+        services.request_deletion(self.user, now=self.now)
+
+        with patch.object(
+            services.emails,
+            "confirm_deletion_cancelled",
+            side_effect=SMTPException("relay refused"),
+        ):
+            with self.assertRaises(SMTPException):
+                services.cancel_deletion(self.user)
+
+        self.user.refresh_from_db()
+        self.assertIsNone(self.user.deletion_requested_at)
+
+
+class MailCannotHangForeverTest(SimpleTestCase):
+    """A transaction is only as short as the slowest thing inside it.
+
+    Sending inside the atomic block is what makes the rollback above possible,
+    and it puts an SMTP round trip between BEGIN and COMMIT. `EMAIL_TIMEOUT`
+    was unset, so smtplib inherited the global default socket timeout -- also
+    unset -- and a hung relay would have held the transaction open with no
+    bound at all, on one worker with four threads.
+    """
+
+    def test_a_send_cannot_block_indefinitely(self):
+        self.assertIsNotNone(settings.EMAIL_TIMEOUT)
+        self.assertLessEqual(settings.EMAIL_TIMEOUT, 30)
 
 
 class LeavingIsAnnouncedByEmailTest(TestCase):

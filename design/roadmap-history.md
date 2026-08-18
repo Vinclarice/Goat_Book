@@ -69,6 +69,7 @@ a finding remains a separate decision.
 | D12 | MEDIUM — the export dropped every tag association and three models | `79d2816` |
 | D16 | LOW-MED — corrected the false hourly-cap claim (behaviour unchanged) | `0476bb3` |
 | D13 | MEDIUM — side-nav counts went stale on every task write | `9631e32` |
+| D14 | MEDIUM — search truncated by recency, silently, beside a miss button | `6e280ba` |
 
 ### D1 — the refetch clobber
 
@@ -408,6 +409,28 @@ that worker, so ordinary browsing resets it. Corrected in both places that
 claimed it; the behaviour fix needs a shared cache, which is infrastructure
 nobody has decided to add.
 
+### D14 — the truncation that fed the instrument measuring it
+
+`SearchRank` appeared nowhere, so search took the first thirty of a
+`-captured_at` ordering: the newest matches rather than the best, with no count
+and no pagination to make the cut visible. Run against the tree: 35 matches, 30
+returned, 5 dropped in silence.
+
+**The button underneath is what turns this from untidy into corrupting.** "I know
+I wrote this and can't find it" sits directly below the results, so the person
+whose note was number thirty-one presses it and a *truncation* is recorded as a
+retrieval failure — in the one signal the product has where the right answer is
+already known.
+
+**Fixed by ranking and by saying the number**, and the number only when it says
+something: "showing 3 of 3" on every search is noise, and noise above a button
+about failure is how the button stops being read.
+
+**A match in superseded text is labelled, not removed.** Searching a word
+somebody edited out returned the note and rendered a body without that word —
+baffling, but the match is right: `original_content` is never mutated precisely
+so what was first said survives. The missing part was the sentence explaining it.
+
 ### What these have in common
 
 - **A fix applied only where the bug was reported is not a fix.** D1 was guarded
@@ -456,6 +479,12 @@ nobody has decided to add.
   between a row and the object holding it, both times caught by a test. The
   sweep these lessons keep asking for is not free; the tests are what make it
   affordable.
+
+- **An instrument fed by a broken path measures the path, not the thing.** D14's
+  truncation manufactured retrieval misses, and retrieval misses are what the
+  product uses to judge retrieval. A measurement is only as trustworthy as the
+  road its data travelled, and that road is worth checking before the number is
+  believed.
 
 - **Editing around a known untruth preserves it.** D16's false comment survived
   a rewrite of the very lines it sat in, because the edit was about rate limits

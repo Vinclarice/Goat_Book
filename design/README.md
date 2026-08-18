@@ -35,6 +35,7 @@ file has to resolve; its three hundred lines do not. 11,002 lines became roughly
 | [`staging-environment-plan.md`](staging-environment-plan.md) | Designed Aug 11, **deliberately deferred** Aug 12. The `is_debug()` fix shipped; the droplet waits for the trigger the plan names |
 | [`android-release-signing-plan.md`](android-release-signing-plan.md) | Build is wired; **the keystore is Vince's to generate by hand**, with the `keytool` command the plan carries |
 | [`mail-transport-plan.md`](mail-transport-plan.md) | Written Aug 18 after three production incidents. **No mail can leave the droplet** — DigitalOcean blocks 25/465/587 — so the transport moves to Resend's HTTPS API |
+| [`mirrored-rules-brief.md`](mirrored-rules-brief.md) | Written Aug 18 **for the redesign, not for now.** Eight rules hand-ported across three languages; the divergence is demonstrated, and `bucket_for` turns out to be a payload gap rather than an architecture |
 
 ## The rest of `design/` — one record, the stubs, and the mockups
 

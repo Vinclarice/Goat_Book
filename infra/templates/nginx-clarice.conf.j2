@@ -7,12 +7,32 @@
 # after repeated failures regardless of which IP they come from.
 limit_req_zone $binary_remote_addr zone=clarice_auth:10m rate=5r/m;
 
-# The contact form is the one page a stranger can POST to, so it gets the
-# same two-layer treatment. This throttles *requests*; accounts.views.contact
+# The two places a stranger can make the server send mail: the contact form
+# and the password reset. This throttles *requests*; accounts.views.contact
 # separately caps how many messages actually leave per hour. Different jobs:
 # this stops a flood, that stops a patient script sending five valid
-# messages and waiting.
+# messages and waiting. The reset has no such second cap, which is the
+# argument for it sharing this zone rather than sitting behind nothing --
+# it sends its mail synchronously, on the request thread.
 limit_req_zone $binary_remote_addr zone=clarice_contact:10m rate=10r/m;
+
+# POST /api/v1/login trades a password for a 90-day, all-scopes bearer
+# token, and is `auth=None` by design -- the only operation on /api/v1/ a
+# stranger can call. It matched nothing but the catch-all until now, while
+# this file's own header claimed nginx was the first line of defense for
+# exactly this, and settings.py said the same. Both were false for the one
+# route where it mattered most. architecture-trajectory.md 6 records closing
+# this same hole for /; the API login shipped three days later without a
+# matching rule.
+#
+# Its own budget rather than clarice_auth's, following the landing rule
+# below: a phone connecting is not competing with a browser at
+# /accounts/login/, and behind home NAT the two share an address. Five a
+# minute is generous for an endpoint the client calls once per connection.
+#
+# Not keyed on method: unlike /, this path has no GET worth serving -- a
+# GET returns 405, so throttling every method costs nothing real.
+limit_req_zone $binary_remote_addr zone=clarice_api_login:10m rate=5r/m;
 
 # The landing page is also a login form: accounts.views.LandingLoginView is a
 # LoginView, so POST / authenticates exactly as POST /accounts/login/ does.
@@ -93,6 +113,36 @@ server {
     # proxy for everyone. nginx overwrites any client-supplied value, which
     # is what makes it trustworthy.
     location = /contact/ {
+        limit_req zone=clarice_contact burst=5 nodelay;
+        limit_req_status 429;
+
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Exact match and no trailing slash: the Ninja route is /api/v1/login and
+    # that is the literal path ClariceApi.kt posts to. An exact match also
+    # cannot be shadowed by a later prefix or regex block, which is what
+    # makes this safe to leave alone.
+    location = /api/v1/login {
+        limit_req zone=clarice_api_login burst=3 nodelay;
+        limit_req_status 429;
+
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Reachable without an account and sends its mail on the request thread,
+    # so a flood costs worker time as well as messages. Same shape as the
+    # login hole above, lower severity -- recorded in the review that found
+    # that one and closed with it.
+    location = /accounts/password/reset/ {
         limit_req zone=clarice_contact burst=5 nodelay;
         limit_req_status 429;
 

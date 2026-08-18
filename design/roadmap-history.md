@@ -66,6 +66,7 @@ a finding remains a separate decision.
 | D9 | MEDIUM — routine progress was an unlocked read-modify-write | `c9be0ec` |
 | D10 | MEDIUM — a deletion could be scheduled with its warning never sent | `4d4a225` |
 | — | A production incident, and what guarding these loops had cost | `0a87f91` |
+| D12 | MEDIUM — the export dropped every tag association and three models | `79d2816` |
 
 ### D1 — the refetch clobber
 
@@ -350,6 +351,32 @@ Generalise it: **a guarded loop reports through logging or it reports nowhere.**
 Catching an exception moves the decision about who hears about it from the
 runtime to you, and the default answer becomes nobody.
 
+### D12 — a promise nothing could check
+
+`_rows` iterates `_meta.concrete_fields`, which excludes many-to-many by
+definition, so tags left as a list of names with nothing saying which tag was on
+which task. Three models were never queried: `HypothesisMember` — the span
+citations that are a hypothesis's whole evidence — plus `Attachment` and
+`SentenceEmbedding`. The module docstring promised *"every row of every owned
+model across both cores"*.
+
+**The stakes are what make it more than untidy.** This file is what stands
+between somebody and irreversible erasure. Export, then delete, and an
+association missing here is not missing — it is destroyed, with no other copy.
+`product-stories.md` scores leaving with your data as one of only three journeys
+that work.
+
+**The promise was not checkable, so it was not true.** `EXPORT_KEYS` now exists
+to be checked rather than read: a test walks every concrete model in the six
+owning apps and fails if one has no export line. A model added later is caught by
+the suite instead of by somebody who has already deleted their account.
+
+**The guard passed by coincidence, and the probe is the only reason that is
+known.** Walking the payload recursively descended into `ActivityEvent`'s JSON,
+so a key appearing in somebody's activity data counted as proof a model was
+exported — it reported the export complete with `Attachment` removed. It reads
+the payload's own two levels now and fails on that same mutation.
+
 ### What these have in common
 
 - **A fix applied only where the bug was reported is not a fix.** D1 was guarded
@@ -398,6 +425,13 @@ runtime to you, and the default answer becomes nobody.
   between a row and the object holding it, both times caught by a test. The
   sweep these lessons keep asking for is not free; the tests are what make it
   affordable.
+
+- **A test written after the fix has to be attacked before it is trusted.** D12's
+  coverage guard passed on its first run and was worthless: it descended into a
+  JSON blob and found the key it was looking for by accident. Two of these
+  regression guards have now been probed by breaking the code they guard, and
+  one of them failed that check. The first run proves nothing; the mutation is
+  the test of the test.
 
 - **Symmetry is not a reason.** D10's two halves look identical and must behave
   differently: the request rolls back because the email *is* the protection, the

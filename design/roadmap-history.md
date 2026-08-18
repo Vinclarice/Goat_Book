@@ -64,6 +64,7 @@ a finding remains a separate decision.
 | D7 | HIGH — note text in the nginx access log and in Sentry's `query_string` | `faf55dd` |
 | D8 | MEDIUM — area deletion destroyed completed and archived work with no count | `23a47e1` |
 | D9 | MEDIUM — routine progress was an unlocked read-modify-write | `c9be0ec` |
+| D10 | MEDIUM — a deletion could be scheduled with its warning never sent | `4d4a225` |
 
 ### D1 — the refetch clobber
 
@@ -291,6 +292,34 @@ place instead.
 Only `log_progress` has a concurrency test; the other three carry the idiom and
 their behavioural tests. Said here rather than left to look like full coverage.
 
+### D10 — the guard was right and its precondition was not
+
+`request_deletion` wrote the timestamp, committed, then sent the email. A failed
+send left the account scheduled with nobody told — and the idempotency guard made
+that **permanent**, because the retry took the early return. The guard is
+correct: a doubled click is not a second decision. What nothing enforced was its
+precondition, that the message went out when the timestamp was written.
+
+**`purge_account` already had this right, twenty lines below**, and says so in
+its own comment: *"a receipt for an erasure that did not happen is worse than no
+receipt."* Reasoned once, in the same file, and not applied to its neighbour.
+
+**`EMAIL_TIMEOUT` is part of the fix, not beside it.** Sending inside the atomic
+block puts an SMTP round trip between BEGIN and COMMIT; unset, smtplib inherits
+the global default socket timeout — also unset — so a hung relay would hold that
+transaction open unboundedly, on one worker with four threads.
+
+**The rollback was not enough, and the test caught why.** A transaction undoes
+the row and cannot undo an attribute on the caller's instance, so the user object
+kept claiming a timestamp the database no longer had — and the guard took the
+early return again. *The defect, reintroduced by its own fix.* The same
+divergence bit `pause_routine` during D9, one finding earlier.
+
+**`cancel_deletion` is deliberately asymmetric and now says so.** Rolling a
+cancellation back because its receipt bounced would leave an account scheduled
+for erasure after the person asked to keep it — trading a missing email for the
+outcome the email was about.
+
 ### What these have in common
 
 - **A fix applied only where the bug was reported is not a fix.** D1 was guarded
@@ -333,9 +362,18 @@ their behavioural tests. Said here rather than left to look like full coverage.
 
 - **A fix is a change, and changes have their own blast radius.** D9's sweep
   reintroduced a defect while removing one, because rebinding a variable
-  silently dropped an in-place mutation three tests depended on. The suite
-  caught it; the point is that the sweep these lessons keep asking for is not
-  free, and the tests are what make it affordable.
+  silently dropped an in-place mutation three tests depended on. D10's fix
+  reintroduced *its own* defect, because a rollback cannot reach an attribute
+  on the caller's instance. Twice in two findings, both times the divergence
+  between a row and the object holding it, both times caught by a test. The
+  sweep these lessons keep asking for is not free; the tests are what make it
+  affordable.
+
+- **Symmetry is not a reason.** D10's two halves look identical and must behave
+  differently: the request rolls back because the email *is* the protection, the
+  cancellation must not because rolling back would schedule an erasure the
+  person just declined. Written down at the function, because the next person to
+  notice the asymmetry will otherwise fix it.
 
 - **Not every finding is a defect, and the difference is who decides.** D8's
   mechanism was real and its framing was not: the behaviour was a documented

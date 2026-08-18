@@ -61,6 +61,7 @@ a finding remains a separate decision.
 | D4 | HIGH — `/api/v1/login` unthrottled at every layer | `9eb9eea` |
 | D5 | HIGH — `open_question` filtered on `dormant_thread`'s name | `c9ac698` |
 | D6, D11 | HIGH / MEDIUM — three scheduled loops where one account blocked the rest | `70f27b1` |
+| D7 | HIGH — note text in the nginx access log and in Sentry's `query_string` | `faf55dd` |
 
 ### D1 — the refetch clobber
 
@@ -204,6 +205,35 @@ success.
 pass. Its blast radius is now one owner, reported and exiting non-zero, instead
 of everybody after them.
 
+### D7 — the words were in the URL by design
+
+`manifest.json` declares the share target `"method": "GET"`, which is what lets a
+share work with no service worker, so a shared passage reaches `/mind/share/` as
+`?text=`. `/mind/search/` takes `?q=`. That is a good design decision and it put
+somebody's own words in the request line, where two separate things wrote them
+down.
+
+**The disk half was unconditional and is the larger one.** No `access_log`
+anywhere in the template and the playbook never templates `nginx.conf`, so the
+distro default applied — `combined`, whose `$request` is the verbatim request
+line. Every search and every share, on every request, in plaintext, for as long
+as rotation keeps it. The fix logs `$uri` instead, keeping every other field, so
+the log holds its operational value and not the query. The port-80 block needed
+it too: it only redirects, but `return 301 https://$host$request_uri` carries the
+query onto that hop.
+
+**The Sentry half is narrower, and the review was right to separate them.**
+`query_string` is set unconditionally and the default `EventScrubber` never
+touches it — but with no `traces_sample_rate` there are no transaction events, so
+it travels only when an error is captured. On error, not on every request. No
+option covers it, so it takes a `before_send`; `request.url` is left alone
+because `get_request_url` excludes the query already.
+
+**Observed, not reasoned.** nginx 1.31.3 was run against the rendered template
+before and after: `"GET /mind/search/?q=therapy%20notes%20about%20my%20marriage"`
+became `"GET /mind/search/"`. The template tests that now guard it were written
+afterwards and passed immediately — regression guards, and said to be.
+
 ### What these have in common
 
 - **A fix applied only where the bug was reported is not a fix.** D1 was guarded
@@ -243,6 +273,13 @@ of everybody after them.
   already worked around it. Each time the near-miss was written down and the
   neighbour was not checked. The sweep is the cheap part; remembering to run it
   is the whole discipline.
+
+- **Three of these were about what leaves the server, and only one had a
+  setting.** Defect 10 had `include_local_variables`, D3 had
+  `max_request_body_size`, D7 had nothing and needed a hook. A dependency's
+  options are a list of what it thought to make configurable, not a list of what
+  it sends — so the question to ask of a monitoring SDK is what the payload
+  contains, not which switches are off.
 
 D1b — `AddRoutine` clearing before its request resolves, and expired-session 401s
 handled on reads but not writes — is D1's class and is **not** fixed.

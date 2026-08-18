@@ -60,6 +60,7 @@ a finding remains a separate decision.
 | D3 | HIGH — Sentry shipped raw request bodies despite `send_default_pii=False` | `dedc23d` |
 | D4 | HIGH — `/api/v1/login` unthrottled at every layer | `9eb9eea` |
 | D5 | HIGH — `open_question` filtered on `dormant_thread`'s name | `c9ac698` |
+| D6, D11 | HIGH / MEDIUM — three scheduled loops where one account blocked the rest | `70f27b1` |
 
 ### D1 — the refetch clobber
 
@@ -173,6 +174,36 @@ changing the body, `shared_referent`'s own dismissal tests failed — evidence
 both that the collapsed function is the one all four use, and that those tests
 reach the filter rather than the fingerprint constraint that would mask it.
 
+### D6 and D11 — three loops, one shape
+
+Taken together because they are one defect in three files. Every scheduled
+command that loops over accounts ended its run on the first failure.
+
+**The digest was the worst of them.** The loop orders by username, so an
+unguarded raise did not *delay* everyone sorting after the failing recipient —
+it never delivered to them, and the write-off path stamped `last_digest_date`
+anyway, recording the day as decided. Daily, and leaving no trace in the data.
+`purge_deleted_accounts` held every remaining erasure open on one bad address;
+`run_mind_maintenance` lost the pass *and the marker* for every owner after a
+failure, which `/numbers/` then reports as never maintained — true, and silent
+about why.
+
+**The digest already guarded the other instance of this exact class**, two lines
+above the one that was missed: `resolve_time_zone(...) or ZoneInfo(...)` exists
+so one bad time zone cannot stop the run. The class was recognised and the
+likelier case left open.
+
+**A failed iteration is deliberately not marked done.** The digest does not stamp
+a day it did not decide, so the next hourly run retries and the existing
+`until_hour` write-off still closes it out; maintenance writes no marker for a
+corpus it did not finish. Catching an exception must not turn into recording
+success.
+
+**One narrower instance is left open on purpose.** `run_detectors` catches only
+`Unavailable` per node, so a single malformed note still costs one owner their
+pass. Its blast radius is now one owner, reported and exiting non-zero, instead
+of everybody after them.
+
 ### What these have in common
 
 - **A fix applied only where the bug was reported is not a fix.** D1 was guarded
@@ -205,6 +236,13 @@ reach the filter rather than the fingerprint constraint that would mask it.
   and that made the broken caller look like the ordinary case. Copying to avoid
   a bug is a decision worth writing down, because the next person reads the
   copies as the pattern.
+
+- **Guarding one instance of a class is where the class stops being looked
+  for.** D6 sat two lines below a guard against the same failure, D3 one option
+  below a fix for the same trap, and D5 one import from two detectors that had
+  already worked around it. Each time the near-miss was written down and the
+  neighbour was not checked. The sweep is the cheap part; remembering to run it
+  is the whole discipline.
 
 D1b — `AddRoutine` clearing before its request resolves, and expired-session 401s
 handled on reads but not writes — is D1's class and is **not** fixed.

@@ -31,7 +31,7 @@ from django.db.models import Q
 
 from .. import services
 from ..models import ConceptCandidate, ConnectionHypothesis, Edge, Mention, Node
-from .dormant_thread import _already_connected_ids
+from .dormant_thread import _already_connected_ids, _previously_proposed_ids
 
 logger = logging.getLogger(__name__)
 
@@ -118,7 +118,11 @@ def find_shared_referents(
     if not source_mentions:
         return []
 
-    excluded = {node.pk} | _already_connected_ids(node) | _previously_proposed_ids(node)
+    excluded = (
+        {node.pk}
+        | _already_connected_ids(node)
+        | _previously_proposed_ids(node, DETECTOR)
+    )
 
     findings: list[Finding] = []
     seen_nodes: set[int] = set()
@@ -163,27 +167,6 @@ def find_shared_referents(
                 return findings
 
     return findings
-
-
-def _previously_proposed_ids(node: Node) -> set[int]:
-    """Nodes already put forward alongside this one by this detector.
-
-    Two queries rather than a chained exclude, for the same reason as in
-    dormant_thread: each lookup on a multi-valued relation gets its own join, so
-    `.filter(members__node=n).exclude(members__node=n)` discards everything the
-    filter selected and quietly returns nothing.
-    """
-    from ..models import HypothesisMember
-
-    hypothesis_ids = ConnectionHypothesis.objects.filter(
-        owner=node.owner, detector=DETECTOR, members__node=node
-    ).values_list("pk", flat=True)
-
-    return set(
-        HypothesisMember.objects.filter(hypothesis_id__in=list(hypothesis_ids))
-        .exclude(node=node)
-        .values_list("node_id", flat=True)
-    )
 
 
 def propose_shared_referents(

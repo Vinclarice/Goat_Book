@@ -130,7 +130,11 @@ def find_open_questions(
     if looks_like_a_question(body):
         return []
 
-    excluded = {node.pk} | _already_connected_ids(node) | _previously_proposed_ids(node)
+    excluded = (
+        {node.pk}
+        | _already_connected_ids(node)
+        | _previously_proposed_ids(node, DETECTOR)
+    )
     matches = index.similar_to(
         body,
         owner=node.owner,

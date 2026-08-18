@@ -37,7 +37,7 @@ from django.db.models import Q
 from .. import services
 from ..embeddings import INDEX_VERSION, PostgresSentenceIndex, SentenceMatch
 from ..models import ConnectionHypothesis, HypothesisMember, Node, SentenceEmbedding
-from .dormant_thread import _already_connected_ids
+from .dormant_thread import _already_connected_ids, _previously_proposed_ids
 
 logger = logging.getLogger(__name__)
 
@@ -110,19 +110,6 @@ def available(index_version: str = INDEX_VERSION) -> bool:
     return SentenceEmbedding.objects.filter(index_version=index_version).exists()
 
 
-def _previously_proposed_ids(node: Node) -> set[int]:
-    """Two queries, not a chained exclude — see dormant_thread for why the obvious
-    one-liner silently returns nothing."""
-    hypothesis_ids = ConnectionHypothesis.objects.filter(
-        owner=node.owner, detector=DETECTOR, members__node=node
-    ).values_list("pk", flat=True)
-    return set(
-        HypothesisMember.objects.filter(hypothesis_id__in=list(hypothesis_ids))
-        .exclude(node=node)
-        .values_list("node_id", flat=True)
-    )
-
-
 def find_semantic_echoes(
     node: Node,
     *,
@@ -156,7 +143,11 @@ def find_semantic_echoes(
     # dormant. Same correction as in dormant_thread.
     anchor = node.captured_at
     cutoff = anchor - min_dormancy
-    excluded = {node.pk} | _already_connected_ids(node) | _previously_proposed_ids(node)
+    excluded = (
+        {node.pk}
+        | _already_connected_ids(node)
+        | _previously_proposed_ids(node, DETECTOR)
+    )
 
     matches = index.similar_to(
         node,

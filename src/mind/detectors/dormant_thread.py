@@ -124,8 +124,17 @@ def _already_connected_ids(node: Node) -> set[int]:
     return connected
 
 
-def _previously_proposed_ids(node: Node) -> set[int]:
-    """Nodes already put forward alongside this one by this detector.
+def _previously_proposed_ids(node: Node, detector: str) -> set[int]:
+    """Nodes already put forward alongside this one by the named detector.
+
+    **The detector is a parameter rather than this module's `DETECTOR`, and that
+    is the whole point.** It used to read the global, which is correct for every
+    caller defined here and silently wrong for one that is not: Python binds a
+    function's globals to its *defining* module, so `open_question` importing
+    this got a filter querying `detector="dormant_thread"`. Its own `DETECTOR`
+    sat one line below the import, consulted by nothing. Two detectors had
+    already worked around it by keeping an identical private copy; passing the
+    name makes the coupling visible instead, and there is one body again.
 
     Includes resolved hypotheses, so a dismissal is permanent here too. The
     fingerprint constraint would collapse the duplicate anyway, but
@@ -140,7 +149,7 @@ def _previously_proposed_ids(node: Node) -> set[int]:
     always empty. Resolving the ids first, then filtering members, avoids it.
     """
     hypothesis_ids = ConnectionHypothesis.objects.filter(
-        owner=node.owner, detector=DETECTOR, members__node=node
+        owner=node.owner, detector=detector, members__node=node
     ).values_list("pk", flat=True)
 
     return set(
@@ -184,7 +193,11 @@ def find_dormant_threads(
     # is the main source of material, so that is the common case, not the corner.
     anchor = node.captured_at
     cutoff = anchor - min_dormancy
-    excluded = {node.pk} | _already_connected_ids(node) | _previously_proposed_ids(node)
+    excluded = (
+        {node.pk}
+        | _already_connected_ids(node)
+        | _previously_proposed_ids(node, DETECTOR)
+    )
 
     matches = index.similar_to(
         body,

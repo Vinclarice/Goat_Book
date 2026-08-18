@@ -209,6 +209,65 @@ def test_rerunning_proposes_nothing_new(owner):
     assert ConnectionHypothesis.objects.filter(detector=DETECTOR).count() == 1
 
 
+def test_a_dismissed_proposal_is_not_offered_again(owner):
+    """The sibling test every other detector has, and the one this detector was
+    missing.
+
+    `_previously_proposed_ids` was imported from `dormant_thread`, and Python
+    binds a function's globals to its *defining* module -- so the filter queried
+    `detector="dormant_thread"` and found nothing of this detector's. A dismissed
+    answer was therefore re-derived every night, forever, crowding a genuinely
+    new finding out of the top three.
+
+    `test_rerunning_proposes_nothing_new` above cannot catch this: it asserts a
+    row count, which the fingerprint constraint guarantees on its own. The
+    dismissal is what separates the two -- `propose_hypothesis` returns the
+    *existing* row rather than raising, so a caller trying to surface it hits
+    `AlreadyResolved`.
+    """
+    _capture(owner, QUESTION, days_ago=20)
+    answered = _capture(owner, ANSWER, days_ago=1)
+
+    [hypothesis] = propose_open_questions(answered, now=NOW)
+    services.dismiss_hypothesis(hypothesis, now=NOW, actor="vince")
+
+    assert propose_open_questions(answered, now=NOW) == []
+    assert ConnectionHypothesis.objects.filter(detector=DETECTOR).count() == 1
+
+
+def test_a_pair_another_detector_proposed_is_still_a_candidate_here(owner):
+    """The same defect from the other side, and the more damaging half.
+
+    Borrowing `dormant_thread`'s filter meant every pair *that* detector had
+    already proposed was permanently invisible to this one -- so the directional
+    "answers" finding, which the module docstring calls the whole content of the
+    detector, was unreachable for exactly the pairs most likely to have it. Two
+    notes far enough apart to be a dormant thread are two notes far enough apart
+    for a question to have been forgotten.
+    """
+    question = _capture(owner, QUESTION, days_ago=20)
+    answered = _capture(owner, ANSWER, days_ago=1)
+
+    services.propose_hypothesis(
+        owner,
+        detector="dormant_thread",
+        citations=[
+            services.Citation(node=answered, reason="the note just captured"),
+            services.Citation(node=question, reason="an older thread"),
+        ],
+        confidence=0.5,
+        label="an unrelated dormant-thread proposal",
+        index_version="fts-v1",
+        relation=EdgeRelation.RELATES_TO,
+        now=NOW,
+        actor="system",
+    )
+
+    [proposal] = propose_open_questions(answered, now=NOW)
+
+    assert proposal.relation == EdgeRelation.ANSWERS
+
+
 def test_a_proposal_starts_unsurfaced(owner):
     """Silence is not consent: the review window cannot start before somebody
     has actually been shown it."""

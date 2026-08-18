@@ -41,6 +41,46 @@ outliving its work.
   the Tailwind pair. If a list like this exists again, check the code before
   believing it.
 
+## The refetch clobber — D1, fixed August 18, 2026
+
+`4bf8bc9`. The first finding from
+[`code-review-2026-08-16.md`](code-review-2026-08-16.md) to be acted on, and the
+only one rated critical. `TaskDetailRoute`, `AreaRoute` and `ProjectRoute` each
+seeded form state from inside the `queryFn`, so the setters re-ran on every
+settle of the query; with `refetchOnWindowFocus` on and `staleTime` at 0, an
+alt-tab away from a half-written note and back restored the server's value over
+it. It violated the product's own core promise, and it was the **third** time
+the project had fixed this exact bug — `PreferencesRoute` and `DayRoute` already
+carried the guard.
+
+**It was never only the alt-tab, which the review did not say.** Four of
+`ProjectRoute`'s own mutations call `refresh()`, which invalidates the very query
+that seeds the title; `AreaRoute` reaches it through `projectMutation`'s direct
+`refetch()`. Renaming a project and then adding an area to it lost the rename
+with the area's success message beside it — no window focus involved. That is
+the path a person actually walks, and it is the one the review missed by
+reasoning from the mechanism rather than from the page.
+
+**Three lessons.**
+
+- **A fix applied to the route that reported the bug is not a fix.** Both prior
+  rounds stopped at the file in hand. Guarded in two of five stateful routes,
+  and the three unguarded ones were exactly the three with no refetch test —
+  which is how it survived a fully green suite twice.
+- **Moving a side effect out of a render path opens a gap.** With the setters in
+  an effect, one render has `data` and no seeded state; `TaskDetailRoute` guarded
+  on `!task || !areaRef` and would have flashed `RouteFailure` over a request
+  that had just succeeded. `!data` is a failure, `!task` is a load, and the two
+  are not the same guard.
+- **A regression guard has to be probed, not just written.** The seeding ref is
+  keyed on the record id rather than a boolean, because React Router reuses the
+  mounted component when only the param changes. That test passed on its first
+  run, which says nothing on its own; degrading the ref to a boolean kills it and
+  only it, which does.
+
+D1b — `AddRoutine` clearing before its request resolves, and expired-session
+401s handled on reads but not writes — is the same class and is **not** fixed.
+
 ## Account deletion and data export — August 16, 2026
 
 The first piece of the commercial substrate, and the one that did not wait on

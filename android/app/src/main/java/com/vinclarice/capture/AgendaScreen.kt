@@ -194,7 +194,7 @@ private fun AgendaContent(
                             TaskRow(
                                 task = task,
                                 today = agenda.today,
-                                area = areasById[task.areaId],
+                                area = task.areaId?.let { areasById[it] },
                                 project = task.projectId?.let { projectsById[it] },
                                 busy = state.busy,
                                 onComplete = { scope.launch { model.completeTask(task) } },

@@ -28,7 +28,9 @@ data class AgendaTaskEntry(
     val text: String,
     val dueDate: String?,
     val tags: List<String>,
-    val areaId: Int,
+    // Nullable like `projectId` beside it: a task can stand on its own
+    // since `Item.list` was widened on August 14. See AgendaApi.taskEntryFrom.
+    val areaId: Int?,
     val projectId: Int?,
     val url: String,
 )

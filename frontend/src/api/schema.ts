@@ -1436,7 +1436,7 @@ export interface components {
              */
             completed_on: string;
             /** Area Id */
-            area_id: number;
+            area_id: number | null;
         };
         /**
          * HabitOut

@@ -189,7 +189,7 @@ class OkHttpAgendaApi(
         text = json.getString("text"),
         dueDate = json.optStringOrNull("due_date"),
         tags = json.getJSONArray("tags").let { tags -> (0 until tags.length()).map(tags::getString) },
-        areaId = json.getInt("area_id"),
+        areaId = json.optIntOrNull("area_id"),
         projectId = json.optIntOrNull("project_id"),
         url = json.getString("url"),
     )

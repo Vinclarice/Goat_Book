@@ -57,6 +57,25 @@ class AgendaApiTest {
     }
 
     @Test
+    fun `a task with no area parses instead of discarding the whole agenda`() = runTest {
+        // `Item.list` went nullable on the server on August 14; this parser
+        // kept reading area_id with getInt, which throws. The catch sits at
+        // payload level, so one unfiled task did not lose its own row -- it
+        // emptied the Agenda tab and reported a wrong server address. An
+        // unfiled task is one tap away in the knowledge core.
+        //
+        // The idiom was already here: project_id on the very next line.
+        val unfiledBody = agendaBody.replace("\"area_id\": 3", "\"area_id\": null")
+        server.server.enqueue(MockResponse(code = 200, body = unfiledBody))
+
+        val result = api().getAgenda("tok_abc") as AgendaLoaded
+
+        assertEquals(1, result.agenda.items.size)
+        assertEquals("Pay tmobile bill", result.agenda.items[0].text)
+        assertEquals(null, result.agenda.items[0].areaId)
+    }
+
+    @Test
     fun `the token travels as a bearer credential to agenda`() = runTest {
         server.server.enqueue(MockResponse(code = 200, body = agendaBody))
 

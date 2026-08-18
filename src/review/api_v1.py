@@ -44,7 +44,12 @@ class CompletedTaskOut(Schema):
     # The owner's local date, computed here rather than in the browser,
     # whose zone is not the account's.
     completed_on: date
-    area_id: int
+    # Nullable since `Item.list` was widened on August 14 (`0857835`), and
+    # this schema was missed. Ninja validates responses, so a non-optional
+    # int here did not degrade one row -- it 500d the whole week, for good:
+    # `reads.completed_in_week` filters on `completed_at` alone, so archiving
+    # the task does not clear it and only setting an Area by hand ever did.
+    area_id: int | None
 
 
 class PlannedTaskOut(Schema):

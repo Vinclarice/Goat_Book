@@ -88,3 +88,37 @@ class UnfiledTaskIsReadableTest(TestCase):
         response = self.client.get("/api/v1/archive")
 
         self.assertEqual(response.status_code, 200)
+
+    def test_the_week_still_loads_with_an_unfiled_task_finished_in_it(self):
+        """The archive test above builds exactly this state and asks only the
+        archive. `CompletedTaskOut.area_id` was typed non-optional, and Ninja
+        validates responses, so the week 500d for anyone who finished an
+        unfiled task in it -- permanently, since `completed_in_week` filters on
+        `completed_at` alone and archiving does not clear that."""
+        services.complete_item(self.unfiled)
+
+        response = self.client.get("/api/v1/review")
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_the_week_still_loads_once_that_task_is_archived(self):
+        """Filing it away is not a way out, which is what makes it permanent:
+        only setting an Area by hand ever cleared it."""
+        services.archive_item(services.complete_item(self.unfiled))
+
+        response = self.client.get("/api/v1/review")
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_the_week_reports_the_unfiled_task_with_no_area(self):
+        """Absent rather than borrowed. `0857835` settled that an unfiled task
+        gets the absence of the signal -- grey, no restore destination named --
+        rather than another Area's value."""
+        services.complete_item(self.unfiled)
+
+        response = self.client.get("/api/v1/review")
+
+        completed = response.json()["completed"]
+        unfiled = [task for task in completed if task["text"] == "Dentist on the 24th"]
+        self.assertEqual(len(unfiled), 1)
+        self.assertIsNone(unfiled[0]["area_id"])

@@ -3182,8 +3182,15 @@
             "type": "string"
           },
           "area_id": {
-            "title": "Area Id",
-            "type": "integer"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Area Id"
           }
         },
         "required": [

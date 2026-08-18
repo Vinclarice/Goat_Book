@@ -68,6 +68,37 @@ class SendDueDigestTest(TestCase):
         self.assertNotIn("Next week", message.body)
         self.assertNotIn("No deadline", message.body)
 
+    def test_sends_a_digest_when_a_due_task_has_no_area(self):
+        """`Item.list` went nullable on August 14 and `_describe` still reached
+        through it, so a single unfiled due task raised and the digest was
+        never sent -- not degraded, not partial, absent. An unfiled task is one
+        tap from the knowledge core's `confirm_actionable`, and the send loop
+        orders by username, so this starved every recipient sorting after the
+        affected one as well."""
+        self.make("Renew insurance", due_offset=-3)
+        Item.objects.create(
+            list=None, owner=self.user, text="Dentist", due_date=self.today
+        )
+
+        self.run_command()
+
+        [message] = mail.outbox
+        self.assertIn("Dentist", message.body)
+        self.assertIn("Renew insurance", message.body)
+
+    def test_names_no_area_for_an_unfiled_task(self):
+        """Absent rather than borrowed or invented, following `0857835`: an
+        unfiled task gets the absence of the signal, so the line carries its
+        timing and nothing where the Area would be."""
+        Item.objects.create(
+            list=None, owner=self.user, text="Dentist", due_date=self.today
+        )
+
+        self.run_command()
+
+        body = mail.outbox[0].body
+        self.assertIn("  - Dentist (due today)", body)
+
     def test_says_how_overdue_each_task_is(self):
         self.make("Renew insurance", due_offset=-3)
         self.make("Call back", due_offset=-1)

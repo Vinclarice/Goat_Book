@@ -341,7 +341,7 @@ private fun ActionItemRow(
                     )
                 }
             }
-            val area = areasById[item.areaId]
+            val area = item.areaId?.let { areasById[it] }
             val project = item.projectId?.let { projectsById[it] }
             if (area != null || project != null) {
                 Text(

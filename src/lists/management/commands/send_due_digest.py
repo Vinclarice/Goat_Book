@@ -45,7 +45,12 @@ def _describe(item, today):
         when = "due yesterday" if days == 1 else f"{days} days overdue"
     else:
         when = "due today"
-    return f"  - {item.text} ({item.list.title}, {when})"
+    # Named only when there is one. An unfiled task borrows no Area here for
+    # the same reason it borrows no colour and no restore destination
+    # (`0857835`): the absence of the signal rather than another value of it.
+    # `list_id`, not `list`, so a task without one costs no query.
+    where = f"{item.list.title}, " if item.list_id else ""
+    return f"  - {item.text} ({where}{when})"
 
 
 def build_message(user, items, today):

@@ -13,7 +13,10 @@ type CompletedTask = {
   task_id: number;
   text: string;
   completed_on: string;
-  area_id: number;
+  // Null for a task standing on its own — see CompletedTaskOut in
+  // review/api_v1.py. Nothing on this page reads it yet; it is here because
+  // this type mirrors the contract by hand.
+  area_id: number | null;
 };
 
 /** "27 July" — the half of a date a week's title needs. */

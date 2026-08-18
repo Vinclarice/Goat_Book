@@ -53,6 +53,22 @@ class DailyApiTest {
     """.trimIndent()
 
     @Test
+    fun `an action item with no area parses instead of blanking the day`() = runTest {
+        // Same defect as AgendaApi's, same cause, same one-line-away idiom:
+        // getInt("area_id") directly above optIntOrNull("project_id"). The
+        // catch is at payload level, so one unfiled task emptied the Today
+        // tab rather than its own row.
+        val unfiledBody = fullDayBody.replace("\"area_id\": 3", "\"area_id\": null")
+        server.server.enqueue(MockResponse(code = 200, body = unfiledBody))
+
+        val result = api().getToday("tok_abc") as DayLoaded
+
+        assertEquals(1, result.day.actionItems.size)
+        assertEquals("Write the plan doc", result.day.actionItems[0].text)
+        assertEquals(null, result.day.actionItems[0].areaId)
+    }
+
+    @Test
     fun `a successful response parses the whole day`() = runTest {
         server.server.enqueue(MockResponse(code = 200, body = fullDayBody))
 

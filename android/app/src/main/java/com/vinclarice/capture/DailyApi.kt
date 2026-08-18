@@ -256,7 +256,7 @@ class OkHttpDailyApi(
         text = json.getString("text"),
         dueDate = json.optStringOrNull("due_date"),
         ageInDays = json.getInt("age_in_days"),
-        areaId = json.getInt("area_id"),
+        areaId = json.optIntOrNull("area_id"),
         projectId = json.optIntOrNull("project_id"),
     )
 

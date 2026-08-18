@@ -69,9 +69,9 @@ class InitialisationTest(SimpleTestCase):
 
     def test_personal_data_is_not_sent(self):
         # principles.md: send the minimum data needed to support and
-        # monitoring. Sentry attaches usernames, cookies and request bodies
-        # when send_default_pii is on, which is a lot of somebody's private
-        # task list leaving the server to answer "what broke".
+        # monitoring. Sentry attaches usernames and cookies when this is on.
+        # Request bodies it does *not* attach or withhold -- they have their
+        # own option, and RequestBodiesStayOnTheServerTest below covers it.
         self.start()
 
         self.assertFalse(self.calls[0]["send_default_pii"])
@@ -89,6 +89,74 @@ class RealSdkTest(SimpleTestCase):
 
         self.assertIs(sentry_initialiser(), sentry_sdk.init)
 
+    def test_the_installed_sdk_refuses_a_body_under_the_option_we_pass(self):
+        """Asserting the kwarg proves we said something; this proves the SDK
+        acts on it. `request_body_within_bounds` is the whole gate, and it
+        reads `max_request_body_size` alone -- so this fails if a future SDK
+        renames the option out from under us, which the kwarg test cannot.
+        """
+        from sentry_sdk.integrations._wsgi_common import request_body_within_bounds
+
+        calls = []
+        initialise(
+            dsn=DSN,
+            environment="production",
+            release="abc1234",
+            initialiser=lambda **kwargs: calls.append(kwargs),
+        )
+
+        class ClientWithOurOptions:
+            options = {
+                "max_request_body_size": calls[0]["max_request_body_size"]
+            }
+
+        # The length of a short captured thought, well inside the default
+        # "medium" allowance of ten kilobytes.
+        self.assertFalse(
+            request_body_within_bounds(ClientWithOurOptions(), 200)
+        )
+
+    def test_the_sdk_default_would_have_sent_one(self):
+        """Why the option is passed at all. Left alone, a capture-sized body
+        is within bounds and goes."""
+        from sentry_sdk.consts import DEFAULT_OPTIONS
+        from sentry_sdk.integrations._wsgi_common import request_body_within_bounds
+
+        class ClientWithSdkDefaults:
+            options = {
+                "max_request_body_size": DEFAULT_OPTIONS["max_request_body_size"]
+            }
+
+        self.assertTrue(
+            request_body_within_bounds(ClientWithSdkDefaults(), 200)
+        )
+
+
+class RequestBodiesStayOnTheServerTest(InitialisationTest):
+    """The same trap as defect 10, one option over, and the comments asserted
+    the opposite of the truth again.
+
+    `send_default_pii` gates **cookies** and nothing else —
+    `_wsgi_common.py`'s `extract_into_event` sets `request_info["data"]`
+    unconditionally, and the only thing standing between a request body and
+    Sentry is `max_request_body_size`, which defaults to `"medium"`: bodies up
+    to ten kilobytes are sent. A captured thought, a day's intentions and a
+    task's notes are all far under that, so a 500 on `POST /api/v1/capture`,
+    `POST /mind/` or `POST /api/v1/day` shipped the text itself to a third
+    party.
+    """
+
+    def test_request_bodies_are_never_sent(self):
+        self.start()
+
+        self.assertEqual(self.calls[0]["max_request_body_size"], "never")
+
+    def test_it_is_passed_explicitly_rather_than_left_to_the_default(self):
+        """The default is "medium" and belongs to a dependency. Naming it is
+        what makes the guarantee ours rather than whoever last released the
+        SDK's."""
+        self.assertIn("max_request_body_size", self.start() and self.calls[0])
+
 
 class TestEnvironmentTest(SimpleTestCase):
     def test_running_the_suite_does_not_enable_monitoring(self):
@@ -102,9 +170,8 @@ class PrivateTextStaysOnTheServerTest(InitialisationTest):
     """`commercial-blueprint.md` defect 10, and the comments asserted the
     opposite of the truth.
 
-    `send_default_pii=False` withholds usernames, cookies and request bodies.
-    It says nothing about local variables, which are a separate option
-    defaulting to **on** — so every stack frame in a 500 shipped its locals to
+    `send_default_pii=False` withholds usernames and cookies. It says nothing
+    about local variables, which are a separate option defaulting to **on** — so every stack frame in a 500 shipped its locals to
     a third party, and on a capture or daily-entry path those locals are
     `text`, `intentions` and `notes`. Somebody's unfiltered thinking, sent
     abroad to answer "what broke", by the code that documented itself as not

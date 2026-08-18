@@ -42,9 +42,11 @@ def initialise(*, dsn, environment, release, initialiser=None):
         # Without a release an event says something broke but not in which
         # deploy, which is most of what makes it actionable.
         release=release,
-        # Sentry attaches usernames, cookies and request bodies when this is
-        # on. That is somebody's private task list leaving the server to
-        # answer "what broke" -- more than the question needs.
+        # Usernames and cookies. It does **not** cover request bodies, which
+        # the comment here used to claim it did -- see max_request_body_size
+        # below, and read `should_send_default_pii()` in the SDK's
+        # `_wsgi_common.extract_into_event`, where it gates the cookie line
+        # and nothing else.
         send_default_pii=False,
         # And this is the one the line above does not cover, which the
         # comment here used to claim it did. `include_local_variables` is
@@ -63,5 +65,18 @@ def initialise(*, dsn, environment, release, initialiser=None):
         # but not what value caused it. The material this application holds
         # is worth more than the shorter investigation.
         include_local_variables=False,
+        # The third one, and the same trap a second time: an option the line
+        # above was documented as covering and does not. `request_info["data"]`
+        # is set unconditionally in `extract_into_event`; the only thing
+        # standing between a request body and a third party is this, and it
+        # defaults to "medium" -- ten kilobytes, which is every captured
+        # thought, every day's intentions and every task note this
+        # application holds. A 500 on POST /api/v1/capture, POST /mind/ or
+        # POST /api/v1/day sent the text itself.
+        #
+        # "never" rather than "small": there is no size at which somebody's
+        # writing becomes safe to forward, and the debugging value of a body
+        # we already refuse to keep locals for is not worth the trade.
+        max_request_body_size="never",
     )
     return True

@@ -41,45 +41,85 @@ outliving its work.
   the Tailwind pair. If a list like this exists again, check the code before
   believing it.
 
-## The refetch clobber — D1, fixed August 18, 2026
+## Code review findings — closed from August 18, 2026
 
-`4bf8bc9`. The first finding from
-[`code-review-2026-08-16.md`](code-review-2026-08-16.md) to be acted on, and the
-only one rated critical. `TaskDetailRoute`, `AreaRoute` and `ProjectRoute` each
-seeded form state from inside the `queryFn`, so the setters re-ran on every
-settle of the query; with `refetchOnWindowFocus` on and `staleTime` at 0, an
-alt-tab away from a half-written note and back restored the server's value over
-it. It violated the product's own core promise, and it was the **third** time
-the project had fixed this exact bug — `PreferencesRoute` and `DayRoute` already
-carried the guard.
+Findings from [`code-review-2026-08-16.md`](code-review-2026-08-16.md), taken in
+the order that review ranked them. **The review itself gets no status lines** —
+it is a record of one review at one commit, and annotating it with what happened
+afterwards is the drift [`README.md`](README.md)'s rule exists to stop. What
+happened to its findings lives here instead.
+
+`commercial-blueprint.md` Part 1 stays closed and empty throughout. None of these
+was ever promoted to it, so there is no defect-list entry to close, and promoting
+a finding remains a separate decision.
+
+| # | Finding | Closed by |
+|---|---|---|
+| D1 | CRITICAL — unsaved edits destroyed by a background refetch, in three routes | `4bf8bc9` |
+| D2 | HIGH — one nullable column, four broken surfaces | `4e89675` |
+
+### D1 — the refetch clobber
+
+`TaskDetailRoute`, `AreaRoute` and `ProjectRoute` each seeded form state from
+inside the `queryFn`, so the setters re-ran on every settle of the query. With
+`refetchOnWindowFocus` on and `staleTime` at 0, alt-tabbing away from a
+half-written note and back restored the server's value over it. It broke the
+product's own core promise, and it was the **third** time the project had fixed
+this bug — `PreferencesRoute` and `DayRoute` already carried the guard.
 
 **It was never only the alt-tab, which the review did not say.** Four of
 `ProjectRoute`'s own mutations call `refresh()`, which invalidates the very query
 that seeds the title; `AreaRoute` reaches it through `projectMutation`'s direct
-`refetch()`. Renaming a project and then adding an area to it lost the rename
+`refetch()`. Renaming a project and then adding an area to it lost the rename,
 with the area's success message beside it — no window focus involved. That is
-the path a person actually walks, and it is the one the review missed by
-reasoning from the mechanism rather than from the page.
+the path a person actually walks, and the review missed it by reasoning from the
+mechanism rather than from the page.
 
-**Three lessons.**
+**Moving a side effect out of a render path opens a gap.** With the setters in an
+effect, one render has `data` and no seeded state; `TaskDetailRoute` guarded on
+`!task || !areaRef` and would have flashed `RouteFailure` over a request that had
+just succeeded. `!data` is a failure, `!task` is a load, and they are not the
+same guard.
 
-- **A fix applied to the route that reported the bug is not a fix.** Both prior
-  rounds stopped at the file in hand. Guarded in two of five stateful routes,
-  and the three unguarded ones were exactly the three with no refetch test —
-  which is how it survived a fully green suite twice.
-- **Moving a side effect out of a render path opens a gap.** With the setters in
-  an effect, one render has `data` and no seeded state; `TaskDetailRoute` guarded
-  on `!task || !areaRef` and would have flashed `RouteFailure` over a request
-  that had just succeeded. `!data` is a failure, `!task` is a load, and the two
-  are not the same guard.
-- **A regression guard has to be probed, not just written.** The seeding ref is
-  keyed on the record id rather than a boolean, because React Router reuses the
-  mounted component when only the param changes. That test passed on its first
-  run, which says nothing on its own; degrading the ref to a boolean kills it and
-  only it, which does.
+### D2 — the half-introduced nullable column
 
-D1b — `AddRoutine` clearing before its request resolves, and expired-session
-401s handled on reads but not writes — is the same class and is **not** fixed.
+`Item.list` went nullable on August 14 (`0857835`). That commit fixed five sites
+and drew the rule in its own message — *"a nullable column is only
+half-introduced until both directions are covered"* — then did not touch
+`src/review/` or `android/`. Four surfaces still read the column as non-null,
+every one of them one tap from `/mind/`'s `confirm_actionable`.
+
+`/api/v1/review` **500d permanently**, because Ninja validates responses and
+`CompletedTaskOut.area_id` was `int`. There was no way out from inside the
+product: `completed_in_week` filters on `completed_at` alone, so archiving the
+task does not clear it and only setting an Area by hand ever did. The digest
+**crashed rather than degraded**, and its loop orders by username, so one
+affected account starved every recipient sorting after it. Both Android read tabs
+**blanked**, because the payload-level catch discards the whole response.
+
+**The near-miss is the finding.**
+`test_a_task_without_an_area_is_readable.py` already constructed exactly the
+state that 500s the week — `archive_item(complete_item(self.unfiled))` — and
+asserted only `/api/v1/archive`. One more line would have caught this the day it
+shipped.
+
+### What the two have in common
+
+- **A fix applied only where the bug was reported is not a fix.** D1 was guarded
+  in two of five stateful routes; D2 in five of nine sites. Both survived a fully
+  green suite because the unguarded places were the untested ones.
+- **The idiom was always already present.** `PreferencesRoute`'s `seeded` ref for
+  D1; `optIntOrNull("project_id")` one line below `getInt("area_id")` for D2.
+  Neither needed a design decision, only a sweep.
+- **A regression guard that passes on its first run has to be probed.** The
+  seeding ref is keyed on the record id rather than a boolean; degrading it to a
+  boolean kills that test and only it, which is what makes it worth keeping.
+- **The type check earns its place at a schema change.** Regenerating the
+  contract after D2 named `ReviewRoute`'s hand-written mirror type immediately —
+  the same way `0857835` found seven.
+
+D1b — `AddRoutine` clearing before its request resolves, and expired-session 401s
+handled on reads but not writes — is D1's class and is **not** fixed.
 
 ## Account deletion and data export — August 16, 2026
 

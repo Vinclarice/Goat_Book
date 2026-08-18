@@ -182,6 +182,24 @@ including on jobs that never touch the knowledge core.
 
 Never `npx tsc`; the build's `tsc --noEmit` is the type check.
 
+**Writing a file from Python here produces CRLF, and git will hide it.**
+`pathlib.write_text` and `open(...,'w')` default to `newline=None`, which
+translates `
+` to `os.linesep` on Windows. `.gitattributes` normalises the blob
+on commit, so `git status` stays clean and review sees nothing — while the
+working copy is corrupt. For `.py` and `.ts` that is harmless; for anything a
+shell parses it is fatal, and the documented restore drill runs from WSL against
+*this* checkout. It cost `check-restore-integrity.sh` exactly that way: written,
+run against a live database, then edited and silently broken.
+
+Pass `newline="
+"` when writing, and if a script starts failing with
+``syntax error near unexpected token `$'{'``, the fix is
+`rm <file> && git checkout -- <file>` — a plain checkout will not do it, because
+git sees no difference to restore. `clarice/tests/test_executable_line_endings.py`
+fails locally when this happens; CI cannot catch it, since a fresh Linux checkout
+is always LF.
+
 ## Android
 
 Neither `JAVA_HOME` nor `ANDROID_HOME` is set globally, and the `java` on

@@ -44,6 +44,7 @@ function dayData(overrides: Record<string, unknown> = {}) {
     compass_purpose: "",
     compass_question: "",
     week_intention: "",
+    typical_day: null,
     routines: [],
     routines_are_loggable: true,
     paused_routines: [],
@@ -608,6 +609,101 @@ describe("DayRoute", () => {
     expect(
       screen.getByRole("link", { name: /Edit your compass/ }),
     ).toBeInTheDocument();
+  });
+
+  it("says what a typical day holds while the day is still being planned", async () => {
+    // product-stories.md S3, at the grain the story asks for: "the day says so
+    // while he is still planning". kestrel shipped this a week wide and on the
+    // review; D2's worked example was always a Tuesday.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        dayData({
+          typical_day: 3,
+          focus: [
+            focusRow(),
+            focusRow({ task_id: 2, text: "Call the bank" }),
+            focusRow({ task_id: 3, text: "Book the dentist" }),
+            focusRow({ task_id: 4, text: "Email the builder" }),
+            focusRow({ task_id: 5, text: "Renew the parking permit" }),
+          ],
+        }),
+      ),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    expect(
+      await screen.findByText(/You have finished 3 on a typical day/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/more than the day usually holds/),
+    ).toBeInTheDocument();
+  });
+
+  it("states capacity without grading the person", async () => {
+    // The assertion that matters is the *absence*. "You only finish three" is
+    // a verdict about a person where "you have finished three" is a fact about
+    // the days, and daily-operating-system-vision.md asks that history be
+    // useful without making missed work punishing -- a planner being the
+    // surface most able to break that. The week-grain signal carries the same
+    // test for the same reason.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        dayData({ typical_day: 3, focus: [focusRow(), focusRow({ task_id: 2 })] }),
+      ),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    await screen.findByText(/You have finished 3 on a typical day/);
+    expect(screen.queryByText(/only finish/)).toBeNull();
+    expect(screen.queryByText(/too many/)).toBeNull();
+  });
+
+  it("says nothing about capacity when there is too little history", async () => {
+    // Null is not zero. A day that rendered "you have finished 0 on a typical
+    // day" would be making a claim about a person that no evidence supports.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(dayData({ typical_day: null, focus: [focusRow()] })),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    await screen.findByRole("heading", { level: 1 });
+    expect(screen.queryByText(/on a typical day/)).toBeNull();
+  });
+
+  it("says nothing about capacity on a day already lived", async () => {
+    // Planning is the point of it. On a past day the same sentence is a
+    // verdict on a day that cannot be changed, and the page already holds
+    // that only today is actionable -- shows_action_items is day == today.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        dayData({
+          date: "2026-07-30",
+          today: "2026-08-03",
+          shows_action_items: false,
+          typical_day: 3,
+          focus: [focusRow(), focusRow({ task_id: 2 })],
+        }),
+      ),
+    );
+
+    renderAt("/day/2026-07-30");
+
+    await screen.findByRole("heading", { level: 1 });
+    expect(screen.queryByText(/on a typical day/)).toBeNull();
+  });
+
+  it("says nothing about capacity before anything is pinned", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(dayData({ typical_day: 3, focus: [] })),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    await screen.findByRole("heading", { level: 1 });
+    expect(screen.queryByText(/on a typical day/)).toBeNull();
   });
 
   it("shows what the week is for, on a Wednesday", async () => {

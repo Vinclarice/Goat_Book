@@ -6,6 +6,8 @@ one charter rule that is about where code goes rather than what a table
 holds -- and the reason it is a rule is that `lists` got this right and it
 has stayed right.
 """
+from datetime import timedelta
+
 from daily.models import DailyEntry, DailyFocus
 from lists import agenda
 
@@ -64,3 +66,68 @@ def focus_for(owner, day):
             owner=owner, entry__date=day, released_at__isnull=True
         ).select_related("task", "task__list")
     )
+
+
+# How far back a day's capacity looks, and how little evidence is too little.
+# Thirty days is D2's own window; five planned days is a working week's worth
+# of practice, and fewer than that is not a pattern.
+#
+# Deliberately not derived from review.reads' week-grain constants. Those
+# answer "how many weeks make a habit"; these answer "how many days make one",
+# and tying them together would mean a change to the review's planner silently
+# redesigning the Daily Page -- the same reasoning DAY_BUCKETS gives above for
+# not reusing DIGEST_BUCKETS.
+TYPICAL_DAY_LOOKBACK = 30
+TYPICAL_DAY_MINIMUM_SAMPLE = 5
+
+
+def typical_day_for(owner, before):
+    """How much this person finishes on a day they planned, or None — S3.
+
+    **The rule underneath is borrowed and not re-decided.** What counts as
+    finished, what a released pin means, and the judging-at-the-window's-end
+    discipline are all `review.reads.planned_in_week`'s, asked here for a
+    single day. D2 is explicit that the daily grain is the same computation as
+    the weekly one and that two definitions of "what I got through" would
+    drift; this is that instruction, so the only thing decided here is the
+    window.
+
+    **Days nobody planned are skipped, not counted as zero.** A day with no
+    plan is not a day that finished nothing, and averaging it in would drag
+    the figure toward a number nobody lived. Thirty days will contain plenty
+    of them — weekends, days off, days that got away — which is exactly why
+    this iterates days rather than running one query over a range.
+
+    **The median, not the mean.** One heroic Thursday and one lost to flu
+    should not move what a typical day looks like, and a planner is where an
+    outlier would do the most damage. Its convention matches
+    `typical_week_for`'s — the upper of the two middles on an even sample —
+    because two capacity figures on one product rounding different ways is a
+    difference somebody would eventually have to explain.
+
+    **None below the sample floor**, never zero: "no evidence yet" and "you
+    have room" call for opposite responses, and only one of them is honest
+    with a fortnight of history.
+
+    Strictly before ``before``, so the day being planned is never its own
+    evidence — a figure that moved as somebody pinned would be measuring the
+    plan rather than the person.
+    """
+    # Imported here rather than at module scope: review.reads imports
+    # daily.models, and a module-level import back would make the two packages
+    # import-order dependent for no gain. The same shape mind.queries uses for
+    # its detector import.
+    from review.reads import planned_in_week
+
+    met_counts = []
+    for index in range(1, TYPICAL_DAY_LOOKBACK + 1):
+        day = before - timedelta(days=index)
+        planned = planned_in_week(owner, day, day)
+        if planned.total == 0:
+            continue
+        met_counts.append(len(planned.met))
+
+    if len(met_counts) < TYPICAL_DAY_MINIMUM_SAMPLE:
+        return None
+    met_counts.sort()
+    return met_counts[len(met_counts) // 2]

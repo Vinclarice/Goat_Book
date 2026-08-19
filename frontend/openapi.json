@@ -3145,6 +3145,17 @@
             "title": "Week Intention",
             "type": "string"
           },
+          "typical_day": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Typical Day"
+          },
           "compass_purpose": {
             "title": "Compass Purpose",
             "type": "string"
@@ -3186,6 +3197,7 @@
           "new_area_url",
           "focus",
           "week_intention",
+          "typical_day",
           "compass_purpose",
           "compass_question",
           "routines",

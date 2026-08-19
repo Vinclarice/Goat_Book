@@ -945,6 +945,33 @@ export function DayRoute() {
           onUnpin={(taskId) => focusMutation.mutate({ taskId, pin: false })}
           busy={focusMutation.isPending}
         />
+        {/* What the day actually holds — product-stories.md S3, whose
+            done-means is "the day says so while he is still planning". The
+            week-grain version of this sentence lives on the review's draft;
+            D2's worked example was always a Tuesday, and this is that.
+
+            **Stated, never graded.** "You have finished three on a typical
+            day" is a fact about the days; "you only finish three" is a verdict
+            about the person, and daily-operating-system-vision.md asks that
+            history be useful without making missed work punishing — a planner
+            being the surface most able to break it. A test asserts the second
+            phrasing is *absent*, not merely that the first is present.
+
+            Three conditions, each for its own reason. Absent below the
+            evidence floor, because null is not zero and a zero would read as
+            reassurance nobody earned. Absent before anything is pinned, since
+            there is nothing to compare. And absent on a day already lived: the
+            point is planning, the same distinction shows_action_items already
+            makes at day == today, and on a past day this sentence is a verdict
+            on something that cannot be changed. */}
+        {isToday && data.typical_day !== null && data.focus.length > 0 && (
+          <p className="text-sm text-muted-foreground">
+            {data.focus.length} pinned for today. You have finished{" "}
+            {data.typical_day} on a typical day.
+            {data.focus.length > data.typical_day &&
+              " That is more than the day usually holds."}
+          </p>
+        )}
         {focusMutation.isError && (
           <p className="text-sm text-destructive">
             {focusMutation.error.message}

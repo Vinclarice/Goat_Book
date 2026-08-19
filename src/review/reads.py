@@ -730,8 +730,13 @@ class WeekDraft:
 
 
 # How far back to look for a typical week, and how little evidence is too
-# little. Four weeks is a month of practice: fewer than two of them with a plan
-# in is not a pattern, it is a fortnight.
+# little. Eight weeks is two months of practice: fewer than two of them with a
+# plan in is not a pattern, it is a fortnight.
+#
+# The first sentence said "four weeks is a month" beside a constant of eight
+# from the day this landed (`ab0c7ab`) -- born mismatched rather than drifted,
+# and corrected in favour of the code, which is the half that was doing
+# anything. The second sentence is about the sample floor and was always right.
 TYPICAL_WEEK_LOOKBACK = 8
 TYPICAL_WEEK_MINIMUM_SAMPLE = 2
 

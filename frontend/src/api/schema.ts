@@ -1457,6 +1457,8 @@ export interface components {
             focus: components["schemas"]["FocusOut"][];
             /** Week Intention */
             week_intention: string;
+            /** Typical Day */
+            typical_day: number | null;
             /** Compass Purpose */
             compass_purpose: string;
             /** Compass Question */

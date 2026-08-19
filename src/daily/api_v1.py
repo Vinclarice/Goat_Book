@@ -126,6 +126,16 @@ class DayOut(Schema):
     # is context a day is meant to be read *in*, not a thing the day owns. The
     # day displays it and holds no copy that could drift -- charter rule 5.
     week_intention: str
+    # How much this person finishes on a day they planned — product-stories.md
+    # S3, at the grain that story asks for. `kestrel` shipped this a week wide
+    # and on the review; D2's worked example was always a Tuesday.
+    #
+    # **Null rather than zero below the evidence floor**, and the contract says
+    # so rather than leaving a client to infer it. "No evidence yet" and "you
+    # have room" call for opposite responses, and a client handed 0 would
+    # render the second — the same reason `WeekDraftOut.typical_week` is
+    # nullable.
+    typical_day: int | None
     compass_purpose: str
     compass_question: str
     # Where each routine stands in the period this day falls in, read live
@@ -282,6 +292,18 @@ def _day_out(owner, day):
         "new_area_url": reverse("new_list"),
         "focus": [_focus_out(focus) for focus in reads.focus_for(owner, day)],
         "week_intention": _week_intention_for(owner, day),
+        # Asked of the day being shown, so a past day reports what was typical
+        # *before it*, not what is typical now. A capacity figure that moved
+        # under a day already lived would be the mutable denominator the whole
+        # focus model exists to avoid.
+        #
+        # Computed for every day and not only for today, even though only today
+        # renders it. Skipping it would make null mean two things -- "too little
+        # history" and "not today" -- and the day payload already refuses that
+        # conflation once, at `shows_action_items`. What it costs is measured
+        # rather than guessed: `daily/tests/test_typical_day.py` pins it at one
+        # query per day looked back, and says what the cheaper shape would be.
+        "typical_day": reads.typical_day_for(owner, day),
         "compass_purpose": owner.compass_purpose,
         "compass_question": owner.compass_question,
         "routines": [

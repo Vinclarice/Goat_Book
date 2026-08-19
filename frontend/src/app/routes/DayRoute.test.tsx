@@ -30,8 +30,14 @@ function dayData(overrides: Record<string, unknown> = {}) {
     happenings: "",
     today: "2026-08-03",
     action_items: [],
-    areas: [],
+    // An area by default, because every other test here is about an account
+    // that has started. A task belongs to a List and list_summaries filters
+    // nothing, so "action items but no areas" -- what this fixture used to
+    // say -- is a state the database cannot produce. The empty-areas case is
+    // now its own thing: see the first-run tests.
+    areas: [dayArea()],
     projects: [],
+    new_area_url: "/areas/new",
     shows_action_items: true,
     focus: [],
     compass_purpose: "",
@@ -379,6 +385,56 @@ describe("DayRoute", () => {
     expect(
       screen.getByText(/not into this day/i),
     ).toBeInTheDocument();
+  });
+
+  it("teaches a brand-new account instead of showing it three empty boxes", async () => {
+    // product-stories.md S1: the first screen must offer one obvious thing to
+    // do rather than six concepts. What it found was Focus saying "choose from
+    // your action items below", Action items saying "nothing due today", and
+    // Routines explaining what a routine is -- to somebody with none of the
+    // three, and no way to act on any of them.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(dayData({ areas: [] })),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    expect(
+      await screen.findByRole("heading", { name: /Start with one thing/ }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Nothing pinned yet/)).toBeNull();
+    expect(screen.queryByText(/Nothing due today/)).toBeNull();
+    expect(screen.queryByText(/No routines yet/)).toBeNull();
+  });
+
+  it("offers one action, and it makes a real task", async () => {
+    // Not "name your first area": a container is not a thing anyone wants to
+    // make. new_list takes the task and the area together, so the one form
+    // leaves somebody with something they actually wrote down.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(dayData({ areas: [] })),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    const field = await screen.findByLabelText(/first thing on your plate/i);
+    expect(field).toBeRequired();
+    expect(field.closest("form")).toHaveAttribute("action", "/areas/new");
+    expect(screen.getByLabelText(/area it belongs to/i)).not.toBeRequired();
+  });
+
+  it("leaves an established account's quiet day alone", async () => {
+    // The signal is areas, not emptiness. Somebody with an area and nothing
+    // due has an empty day too, and showing them onboarding would be worse
+    // than showing them nothing.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(dayData({ areas: [dayArea()], action_items: [], focus: [] })),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    expect(await screen.findByText(/Nothing pinned yet/)).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /Start with one thing/ })).toBeNull();
   });
 
   it("invites you to pin something when nothing is chosen yet", async () => {

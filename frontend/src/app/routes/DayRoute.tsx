@@ -8,6 +8,7 @@ import { ageLabel, colorForKey, dueLabel } from "../../agenda";
 import { apiV1 } from "../../api/client";
 import { RequestFailed, statusOf } from "../../api/failure";
 import type { AreaColorKey } from "../../types";
+import { FirstRun } from "./FirstRun";
 import { RouteFailure } from "./RouteFailure";
 
 const SECTIONS = [
@@ -860,6 +861,8 @@ export function DayRoute() {
   const isToday = data.date === data.today;
   // Derived rather than stored: what is pinned is the focus list's answer,
   // and an action-item row asking "am I in it" must not be able to disagree.
+  // Areas rather than emptiness: see the comment at the render below.
+  const firstRun = data.areas.length === 0;
   const pinnedIds = new Set(
     data.focus
       .map((item) => item.task_id)
@@ -895,6 +898,15 @@ export function DayRoute() {
         </section>
       )}
 
+      {/* Nobody can have a task without an area, so no areas means nobody has
+          started -- a fact about the account, not about the date being looked
+          at, which is what keeps this away from an established person's quiet
+          Tuesday. See FirstRun and product-stories.md S1: three empty states
+          that cannot be acted on are the "six concepts" that story refuses. */}
+      {firstRun ? (
+        <FirstRun newAreaUrl={data.new_area_url} />
+      ) : (
+        <>
       <section className="space-y-2">
         <h2 className="text-sm font-bold">Focus</h2>
         <FocusList
@@ -983,6 +995,8 @@ export function DayRoute() {
           </p>
         )}
       </section>
+        </>
+      )}
 
       <CaptureBox />
 

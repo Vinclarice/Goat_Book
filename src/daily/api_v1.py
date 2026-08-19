@@ -8,6 +8,7 @@ has to decide what day it is -- that is a per-user time-zone question, and
 from datetime import date
 
 from django.shortcuts import get_object_or_404
+from django.urls import reverse
 from django.utils import timezone
 from ninja import Router, Schema
 from ninja.errors import HttpError
@@ -68,6 +69,16 @@ class DayOut(Schema):
     # and empty-because-not-today are different, and only one of them
     # deserves "nothing due today".
     shows_action_items: bool
+    # Where a brand-new account makes its first area, and with it its first
+    # task. Additive, and sent on every day rather than only an empty one:
+    # deciding here that a client "needs" it would be the server guessing at
+    # a rendering question, and the field is a string.
+    #
+    # The URL rather than a client-side "/areas/new": the same reasoning
+    # AgendaOut already carries this field for. Creating an area is a plain
+    # Django form post that navigates to the new area, so there is nothing
+    # for the SPA layer to do and no second spelling of the route.
+    new_area_url: str
     # What was deliberately chosen for this day, in the order it was chosen.
     # Released pins are absent -- they are Crane 3's history, not today's
     # work.
@@ -229,6 +240,7 @@ def _day_out(owner, day):
             project_ref_for(each) for each in project_reader.projects_for(owner)
         ],
         "shows_action_items": shows_action_items,
+        "new_area_url": reverse("new_list"),
         "focus": [_focus_out(focus) for focus in reads.focus_for(owner, day)],
         "compass_purpose": owner.compass_purpose,
         "compass_question": owner.compass_question,

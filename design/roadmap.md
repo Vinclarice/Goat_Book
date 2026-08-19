@@ -111,9 +111,15 @@ re-add it here.
   [`product-stories.md`](product-stories.md) S1's four requires that this plan
   owns, and the task core finally has a favicon, a touch icon, a manifest and
   Open Graph tags — `/mind/` had all four and the main application had none.
-  **Step 6 is the only one open**, and it is the first-run empty state: a
-  stranger who now understands the product still arrives at `/app/day` and is
-  told to "choose from your action items below", of which they have none. The three direction decisions it rests on — full re-theme,
+  **Step 6 is done, so all six are: the plan is built and not yet deployed.**
+  A brand-new account now gets one thing to do on `/app/day` rather than three
+  empty boxes it cannot act on, and the S1 journey — sign in with nothing,
+  write the first thing on your plate, land on an area holding it — is asserted
+  end to end in a browser. **What it does not close is S1 itself**, which also
+  requires self-service signup with email verification; approval is still an
+  admin checkbox and `accounts/emails.py` still has no message telling the
+  applicant it happened. `product-stories.md` owns that score and this file
+  does not restate it. The three direction decisions it rests on — full re-theme,
   the A+B wedge for the signed-out page's positioning, one app bar over three
   reconciled navs — are Vince's, taken the same day; **Part 9 #1, whether this
   is a business, stays open and still gates Phases 3–5.** Its step 1 is also

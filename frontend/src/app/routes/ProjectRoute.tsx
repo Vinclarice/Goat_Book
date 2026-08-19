@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { colorForKey } from "../../agenda";
 import { apiV1 } from "../../api/client";
 import { RequestFailed, statusOf } from "../../api/failure";
+import { ProjectBrief } from "./ProjectBrief";
 import { ProjectComposition } from "./ProjectComposition";
 import { RouteFailure } from "./RouteFailure";
 
@@ -388,6 +389,12 @@ export function ProjectRoute() {
               means more open work there.
             </p>
           </div>
+
+          {/* Reads the live field rather than `data.purpose`, so writing a
+              purpose and asking for a brief in the same visit stops offering
+              the "needs a purpose" explanation the moment it stops being
+              true. */}
+          <ProjectBrief projectId={id} hasPurpose={Boolean(purpose.trim())} />
         </div>
         <Button
           size="sm"

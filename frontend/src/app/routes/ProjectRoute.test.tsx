@@ -188,6 +188,126 @@ describe("ProjectRoute", () => {
     expect(screen.getByRole("button", { name: "Save purpose" })).toBeDisabled();
   });
 
+  /* The brief -- planning-assistant-plan.md increment 4.
+
+     Asked for, never implied. That is not a performance preference dressed up:
+     the Attention Policy permits a queue only inside a ritual the person chose
+     to open, and a panel that retrieved on every render of a page that mostly
+     wants a title would be the unsolicited one. */
+  const BRIEF = {
+    material: [
+      {
+        id: "11111111-1111-1111-1111-111111111111",
+        text: "The booking form should collect the venue and the enquiries contact.",
+        captured_at: "2026-08-01T09:00:00-04:00",
+        reason: "3 of 5 shared terms appear in almost none of your other notes: booking, venue, enquiries",
+        distinctive_terms: ["booking", "venue", "enquiries"],
+      },
+    ],
+    questions: [
+      {
+        id: "22222222-2222-2222-2222-222222222222",
+        text: "Which payment provider should we use?",
+        captured_at: "2026-07-20T09:00:00-04:00",
+        reason: "2 of 4 shared terms appear in almost none of your other notes: payment, provider",
+        distinctive_terms: ["payment", "provider"],
+      },
+    ],
+    commitments: [{ id: 7, text: "Draft the booking form copy", due_date: "2026-09-01" }],
+  };
+
+  function briefPageFetch(brief: object = BRIEF, detail: object = projectDetailData()) {
+    return (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : (input as Request).url;
+      if (url.includes("/api/v1/nav")) return jsonResponse(NAV);
+      if (url.includes("/brief")) return jsonResponse(brief);
+      return jsonResponse(detail);
+    };
+  }
+
+  it("does not fetch a brief until it is asked for", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(briefPageFetch());
+
+    renderAt("3");
+    await screen.findByDisplayValue("Website Relaunch");
+
+    expect(
+      fetchMock.mock.calls.some(([request]) => {
+        const url = typeof request === "string" ? request : (request as Request).url;
+        return url.includes("/brief");
+      }),
+    ).toBe(false);
+  });
+
+  it("shows prior material, loose ends and dated work when asked", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(globalThis, "fetch").mockImplementation(briefPageFetch());
+
+    renderAt("3");
+    await screen.findByDisplayValue("Website Relaunch");
+    await user.click(screen.getByRole("button", { name: /what bears on this/i }));
+
+    expect(
+      await screen.findByText(/booking form should collect the venue/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/which payment provider/i)).toBeInTheDocument();
+    expect(screen.getByText(/draft the booking form copy/i)).toBeInTheDocument();
+  });
+
+  it("shows the evidence that selected each item", async () => {
+    /* The reason is the whole mechanic. Without it the panel can only say
+       "related", which is the unfalsifiable label precision.md exists to
+       avoid -- a person can check "these share three words appearing in none
+       of your other notes" and cannot check a score. */
+    const user = userEvent.setup();
+    vi.spyOn(globalThis, "fetch").mockImplementation(briefPageFetch());
+
+    renderAt("3");
+    await screen.findByDisplayValue("Website Relaunch");
+    await user.click(screen.getByRole("button", { name: /what bears on this/i }));
+
+    // Both retrieved sections carry it, not just the first -- asserted as a
+    // count because the singular form passed on one and would have gone on
+    // passing if the other had quietly stopped showing its evidence.
+    const reasons = await screen.findAllByText(
+      /appear in almost none of your other notes/i,
+    );
+    expect(reasons).toHaveLength(2);
+    expect(reasons[0]).toHaveTextContent("payment, provider");
+  });
+
+  it("says why a brief is empty when the project has no purpose", async () => {
+    /* An empty brief and an unanchored one look identical and mean opposite
+       things: "nothing of yours bears on this" versus "you have not told me
+       what this is". */
+    const user = userEvent.setup();
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      briefPageFetch({ material: [], questions: [], commitments: [] }),
+    );
+
+    renderAt("3");
+    await screen.findByDisplayValue("Website Relaunch");
+    await user.click(screen.getByRole("button", { name: /what bears on this/i }));
+
+    expect(await screen.findByText(/needs a purpose/i)).toBeInTheDocument();
+  });
+
+  it("says nothing was found when the project does have a purpose", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      briefPageFetch(
+        { material: [], questions: [], commitments: [] },
+        projectDetailData({ purpose: "Ship the booking form." }),
+      ),
+    );
+
+    renderAt("3");
+    await screen.findByDisplayValue("Website Relaunch");
+    await user.click(screen.getByRole("button", { name: /what bears on this/i }));
+
+    expect(await screen.findByText(/nothing you have written/i)).toBeInTheDocument();
+  });
+
   it("explains what the composition bar shows", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(projectPageFetch());
 

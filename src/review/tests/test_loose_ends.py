@@ -118,6 +118,54 @@ class LooseEndsTest(TestCase):
 
         self.assertIn(facet, list(ends.unanswered_commitments))
 
+    def test_a_commitment_read_out_of_a_journal_entry_is_a_loose_end(self):
+        """The reader has to see both sources or it silently sees half.
+
+        `Facet` learned to cite a `DailyEntry` in increment 2; this read was
+        written a commit earlier and filters on `node__owner`, which excludes
+        every entry-backed facet without failing anything. Written now, before
+        a producer exists to create them, because a filter that quietly drops
+        half its domain is not a bug anybody notices later -- it is a section
+        that looks empty and is trusted.
+        """
+        from daily.models import DailyEntry
+        from mind.models import Facet, InferenceOrigin
+
+        entry = DailyEntry.objects.create(
+            owner=self.user,
+            date=MONDAY,
+            happenings="I still need to ask Maya about the venue.",
+        )
+        facet = Facet.objects.create(
+            entry=entry,
+            kind=FacetKind.ACTIONABLE,
+            origin=InferenceOrigin.INFERRED,
+            reason="commitment language",
+            fingerprint="journal-1",
+        )
+
+        ends = reads.loose_ends(self.user, today=MONDAY + timedelta(days=2))
+
+        self.assertIn(facet, list(ends.unanswered_commitments))
+
+    def test_another_person_s_journal_commitment_is_invisible(self):
+        from daily.models import DailyEntry
+        from mind.models import Facet, InferenceOrigin
+
+        entry = DailyEntry.objects.create(
+            owner=self.other, date=MONDAY, happenings="I must call the bank."
+        )
+        Facet.objects.create(
+            entry=entry,
+            kind=FacetKind.ACTIONABLE,
+            origin=InferenceOrigin.INFERRED,
+            fingerprint="theirs-1",
+        )
+
+        ends = reads.loose_ends(self.user, today=MONDAY + timedelta(days=2))
+
+        self.assertEqual(list(ends.unanswered_commitments), [])
+
     def test_an_accepted_commitment_is_not_a_loose_end(self):
         node = self.capture("I must ring the venue on Thursday.")
         facet = node.facets.filter(kind=FacetKind.ACTIONABLE).first()

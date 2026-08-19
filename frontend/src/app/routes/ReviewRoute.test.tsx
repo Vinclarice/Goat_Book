@@ -874,8 +874,9 @@ describe("ReviewRoute", () => {
             unanswered: [],
             unanswered_commitments: [
               {
-                public_id: "22222222-2222-2222-2222-222222222222",
+                id: 12,
                 text: "I must ring the venue on Thursday.",
+                source: "journal",
                 proposed_on: "2026-07-25",
               },
             ],

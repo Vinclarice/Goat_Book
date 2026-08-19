@@ -158,8 +158,12 @@ class UnansweredCommitmentOut(Schema):
     why it belongs in a review rather than in a notification.
     """
 
-    public_id: str
+    id: int
     text: str
+    # Which surface it was read out of, so the review can say where to answer
+    # it. The two are answered in different places and look identical without
+    # this.
+    source: str
     proposed_on: date
 
 
@@ -516,10 +520,17 @@ def _loose_ends_out(owner, today):
         ],
         "unanswered_commitments": [
             {
-                "public_id": str(facet.node.public_id),
-                # The note the commitment was read out of, which is the
-                # evidence for the proposal rather than decoration.
-                "text": facet.node.original_content,
+                # The facet's own id, not the source's. The facet *is* the
+                # proposal, it is what a confirm or dismiss will name, and it
+                # is the only identifier that exists for both sources -- a
+                # `DailyEntry` has no public id and reaching through
+                # `facet.node` would 500 on every journal-backed one.
+                "id": facet.id,
+                # The cited passage, which is the evidence for the proposal
+                # rather than decoration, and falls back to the whole source
+                # when nothing narrower was recorded.
+                "text": facet.cited_text,
+                "source": "journal" if facet.entry_id else "capture",
                 "proposed_on": timezone.localtime(facet.created_at).date(),
             }
             for facet in ends.unanswered_commitments

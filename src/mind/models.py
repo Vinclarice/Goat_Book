@@ -303,9 +303,48 @@ class Facet(models.Model):
     recording whether a thing is done is how they come to disagree.
     """
 
-    node = models.ForeignKey(Node, on_delete=models.CASCADE, related_name="facets")
+    # Exactly one of these two, enforced below. A facet cites the thing it was
+    # read out of, and until August 19, 2026 that could only be a Node --
+    # which meant the journal, where most writing in this product actually
+    # happens, could not carry a proposal at all.
+    #
+    # The alternative was minting a Node from a `DailyEntry` on confirmation,
+    # and it was refused: the same sentence would live in two places and the
+    # journal would quietly become a second capture surface, which is the
+    # thing Heron deleted. `task` below already crosses into `lists`, so
+    # crossing into `daily` is the same move rather than a new kind of one.
+    # `planning-assistant-plan.md` increment 2.
+    node = models.ForeignKey(
+        Node, null=True, blank=True, on_delete=models.CASCADE, related_name="facets"
+    )
+    entry = models.ForeignKey(
+        "daily.DailyEntry",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="facets",
+    )
     kind = models.CharField(max_length=16, choices=FacetKind)
     data = models.JSONField(default=dict, blank=True)
+
+    # The cited passage, as offsets into the source's text. `reason` says why
+    # this was proposed; these say *where*, which is what makes the claim
+    # checkable rather than merely explained -- the same span-level citation
+    # `HypothesisMember` has carried from the start, arriving here as the
+    # contract's cited-evidence field.
+    span_start = models.PositiveIntegerField(null=True, blank=True)
+    span_end = models.PositiveIntegerField(null=True, blank=True)
+
+    # Stable hash of the source, span and text. Unique per entry across *every*
+    # state including retired, because a journal entry is edited all day: a
+    # fingerprint that only excluded live facets would re-propose on each save
+    # the thing dismissed an hour earlier, which is precisely how a surface
+    # teaches somebody to skim it. `ConnectionHypothesis.fingerprint` follows
+    # the same rule for the same reason.
+    #
+    # Null for node-backed facets, which have the one-per-kind constraint below
+    # instead: a capture is one thought, so it cannot carry two of a kind.
+    fingerprint = models.CharField(max_length=64, null=True, blank=True)
 
     # The same provenance columns every proposal in this system carries. A facet
     # with origin=inferred and confirmed_at NULL is soft-applied: visible,
@@ -350,11 +389,73 @@ class Facet(models.Model):
                 condition=models.Q(retired_at__isnull=True),
                 name="facet_one_live_per_kind",
             ),
+            # Exactly one source. A facet citing neither is evidence for
+            # nothing; one citing both makes "where did this come from"
+            # ambiguous at the moment somebody is deciding whether to trust it.
+            models.CheckConstraint(
+                condition=(
+                    models.Q(node__isnull=False, entry__isnull=True)
+                    | models.Q(node__isnull=True, entry__isnull=False)
+                ),
+                name="facet_cites_exactly_one_source",
+            ),
+            # **Not** one per (entry, kind): a capture is one thought, but a
+            # day's writing may carry three separate promises, and copying the
+            # node rule across would let a Tuesday propose one of them and drop
+            # the rest silently.
+            models.UniqueConstraint(
+                fields=["entry", "fingerprint"],
+                name="facet_entry_fingerprint_unique",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(span_start__isnull=True, span_end__isnull=True)
+                | models.Q(span_start__isnull=False, span_end__isnull=False),
+                name="facet_span_paired",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(span_start__isnull=True)
+                | models.Q(span_end__gt=models.F("span_start")),
+                name="facet_span_ordered",
+            ),
         ]
-        indexes = [models.Index(fields=["node", "kind"])]
+        indexes = [
+            models.Index(fields=["node", "kind"]),
+            models.Index(fields=["entry", "kind"], name="facet_by_entry"),
+        ]
 
     def __str__(self):
-        return f"{self.kind} on {self.node_id}"
+        return f"{self.kind} on {self.node_id or self.entry_id}"
+
+    @property
+    def owner(self):
+        """Whose facet this is, whichever source it cites.
+
+        One accessor because every existing caller reaches through
+        `facet.node.owner`, and every one of them would break on an
+        entry-backed facet. Resolving it here is cheaper and safer than
+        teaching each call site which kind it is holding.
+        """
+        return self.node.owner if self.node_id else self.entry.owner
+
+    @property
+    def cited_text(self) -> str:
+        """The passage this was read out of, or the whole source if unspanned.
+
+        The evidence itself rather than a description of it. A proposal that
+        cannot show its own sentence is asking to be trusted, which is the one
+        thing every other producer here refuses to do.
+        """
+        if self.node_id:
+            body = self.node.original_content
+        else:
+            entry = self.entry
+            body = "\n".join(
+                part for part in (entry.intentions, entry.gratitude, entry.happenings)
+                if part
+            )
+        if self.span_start is None:
+            return body
+        return body[self.span_start : self.span_end]
 
 
 class Mention(models.Model):

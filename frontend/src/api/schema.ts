@@ -1709,10 +1709,12 @@ export interface components {
          *     why it belongs in a review rather than in a notification.
          */
         UnansweredCommitmentOut: {
-            /** Public Id */
-            public_id: string;
+            /** Id */
+            id: number;
             /** Text */
             text: string;
+            /** Source */
+            source: string;
             /**
              * Proposed On
              * Format: date

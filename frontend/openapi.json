@@ -3744,12 +3744,16 @@
       "UnansweredCommitmentOut": {
         "description": "A commitment proposed from a capture and never accepted or dismissed.\n\n`text` is the note it was read out of, which is the evidence for the\nproposal. The actionable facet is the one proposal type with no expiry, so\nthis backlog can only shrink by somebody answering it -- which is exactly\nwhy it belongs in a review rather than in a notification.",
         "properties": {
-          "public_id": {
-            "title": "Public Id",
-            "type": "string"
+          "id": {
+            "title": "Id",
+            "type": "integer"
           },
           "text": {
             "title": "Text",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
             "type": "string"
           },
           "proposed_on": {
@@ -3759,8 +3763,9 @@
           }
         },
         "required": [
-          "public_id",
+          "id",
           "text",
+          "source",
           "proposed_on"
         ],
         "title": "UnansweredCommitmentOut",

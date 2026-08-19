@@ -871,7 +871,7 @@ export function ReviewRoute() {
               </h3>
               <ul className="mt-1 space-y-1">
                 {looseEnds.unanswered_commitments.map((commitment) => (
-                  <li key={commitment.public_id} className="text-sm">
+                  <li key={commitment.id} className="text-sm">
                     {commitment.text}{" "}
                     <span className="text-muted-foreground">
                       — proposed {commitment.proposed_on}

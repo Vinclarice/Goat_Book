@@ -13,7 +13,7 @@ about executed SQL rather than about intent.
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
-from django.db.models import F
+from django.db.models import F, Q
 from django.utils import timezone
 
 from daily.models import DailyEntry, DailyFocus
@@ -605,16 +605,29 @@ def loose_ends(owner, *, today, question_limit=5):
     # forever, costing nothing, and has appeared nowhere until now.
     # `services.commitments_without_tasks` counts a broken invariant, not an
     # unanswered question, so this is not that number by another name.
+    # Both sources, or this sees half its domain and looks empty rather than
+    # wrong. A facet cites a node *or* a journal entry since increment 2, and
+    # filtering on `node__owner` alone silently drops every entry-backed one --
+    # ownership therefore has to be asked of whichever source is set.
+    #
+    # Only the node branch carries liveness: a `DailyEntry` has no deleted or
+    # archived state, deliberately, because "I wrote nothing on the 3rd" and "I
+    # have never opened the 3rd" are different facts and neither is a deletion.
     commitments = (
         Facet.objects.filter(
-            node__owner=owner,
             kind=FacetKind.ACTIONABLE,
             confirmed_at__isnull=True,
             retired_at__isnull=True,
-            node__deleted_at__isnull=True,
-            node__archived_at__isnull=True,
         )
-        .select_related("node")
+        .filter(
+            Q(
+                node__owner=owner,
+                node__deleted_at__isnull=True,
+                node__archived_at__isnull=True,
+            )
+            | Q(entry__owner=owner)
+        )
+        .select_related("node", "entry")
         .order_by("created_at", "id")
     )
 

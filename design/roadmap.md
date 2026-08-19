@@ -22,11 +22,12 @@ not**. `C:\dev\Clarice_secondmind` survives as documents only, and
 
 ## Where things stand — August 16, 2026
 
-**Superseded on August 19, 2026, and kept as a dated snapshot rather than
-rewritten** — the baseline below is still exactly right, and only the first
-sentence went stale. Ibis, Jackdaw and the navigation work have all shipped
-since, and the planning assistant is active with the next codename held for it;
-*Open now* carries the current state, as it is supposed to.
+**Kept as a dated snapshot rather than rewritten**, because the baseline below
+is still exactly right and only its first sentence went stale. Since August 16
+the releases have been Ibis, Jackdaw, the navigation and identity work, signup
+with the legal documents, and `kestrel` — the planning assistant, August 19,
+which spent the letter K and left **no active release again**. *Open now*
+carries the current state, as it is supposed to.
 
 **There is no active release.** Heron was the last, verified in production
 August 15. What it leaves is a baseline rather than a backlog:
@@ -69,42 +70,27 @@ re-add it here.
   moved to Resend's HTTPS API. The proof kept deliberately: SMTP is **still**
   blocked from that host and mail goes anyway, so the fix is not coincident with
   anything DigitalOcean did.
-- **The planning assistant is the active work**, and this file had not claimed
-  it. Designed and being built to
-  [`planning-assistant-plan.md`](planning-assistant-plan.md): an evidence-backed
-  proposal inbox rather than a chatbot, in six increments, every proposal
-  showing its evidence and requiring confirmation. **The next codename is held
-  for it** — see the navigation entry below, which held it deliberately.
+- ~~**The planning assistant.**~~ **Closed August 19, 2026**, shipped and
+  verified in production as `kestrel` (`DEPLOYED-2026-08-19/1339`). All six
+  increments: commitments read out of the journal, unresolved questions with
+  the notes that came back to them, a project that can say what it is for and a
+  brief that retrieves what bears on it, the weekly review's loose ends, and
+  next week drafted against observed capacity. Every proposal cites the passage
+  that caused it and nothing is created without a confirmation.
 
-  **Five of the six are complete, on `main` and undeployed.** Commitments read
-  out of the journal and answered beside the writing (2); a project that can say
-  what it is for (3); a brief that retrieves what bears on it, citing the words
-  that selected each item (4); and a weekly review that finally names what is
-  still open and what arrives next (5). **Increment 1 is the exception** — its
-  read shipped, its section on `/mind/review/` waits on two design questions the
-  plan names: how "answered" is recorded when nothing is named as the answer,
-  and where "not a question" persists.
+  **`v1 shipped no generation at all`**, which is `design-concept.md`'s ML
+  policy holding rather than a corner cut — D1 deferred generated prose with two
+  firing conditions written down rather than a someday.
 
-  The presentation hold that shaped 1, 3 and 4 has expired; the navigation work
-  owned that layer while their server halves were written, which is why they
-  landed without an interface and why 3 and 4 were finished afterwards.
+  Two of `product-stories.md`'s target-model items moved as prerequisites rather
+  than as features: **S9's weekly intention** exists, and **S3 no longer
+  requires `Item.effort`** — capacity is derived from `DailyFocus` history, so
+  there are no estimates to go unentered. Neither story's verdict moved, and
+  that file owns whether they ever do.
 
-  **Increment 6, the weekly-plan draft, is all that is left**, and S9 —
-  intentions above the day — is its one prerequisite.
-
-  **All four of the plan's decisions are answered**, three on August 18 and one
-  just after midnight on the 19th: no generated prose yet and the condition that
-  would change it; `sentence-transformers` into test requirements but not the
-  image, which took 25 permanently-skipped tests to 0; the attention caps
-  ratified with the review's five slots to be rationed by accept rate rather
-  than by cross-detector confidence that means different things; and capacity
-  derived from `DailyFocus` history rather than from effort estimates nobody
-  would enter. **Nothing in the plan waits on a decision.** Its one external
-  prerequisite is S9, intentions above the day, which increment 6 needs and
-  nothing else does.
-
-  **`v1 ships no generation at all`** — this is retrieval, rules and confirmation
-  gates, and the ML policy in `design-concept.md` is the authority for why.
+  The narrative, the four decisions and the three silent-nothings the build
+  turned up are in [`roadmap-history.md`](roadmap-history.md); the plan is a
+  stub.
 
 - ~~**Terms of service and a privacy policy.**~~ **Written and published
   August 19, 2026**, at `/privacy/` and `/terms/`, linked from a footer on
@@ -150,7 +136,7 @@ re-add it here.
   page rather than the login form. The narrative and its six lessons are in
   [`roadmap-history.md`](roadmap-history.md); the plan is a stub.
   **The codename was deliberately held** to ship with the planning-assistant
-  work. **What this did *not* close is S1**, which also wants self-service
+  work, and was spent on `kestrel` on August 19. **What this did *not* close is S1**, which also wants self-service
   signup with email verification — still an admin checkbox, and
   `accounts/emails.py` still has no message telling the applicant it happened.
   [`product-stories.md`](product-stories.md) owns that score.

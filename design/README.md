@@ -37,12 +37,11 @@ file has to resolve; its three hundred lines do not. 11,002 lines became roughly
 | [`mirrored-rules-brief.md`](mirrored-rules-brief.md) | Written Aug 18 **for the redesign, not for now.** Eight rules hand-ported across three languages; the divergence is demonstrated, and `bucket_for` turns out to be a payload gap rather than an architecture |
 | [`security-and-resilience-plan.md`](security-and-resilience-plan.md) | Written Aug 19, **not started and not claimed by `roadmap.md`.** Sorts the surface into what nobody named, what has ripened, and what is settled — rather than a checklist. **Adding the adversary lens reordered it: MFA on the admin outranks the restore drill**, which is second and confirmed in scope. Five decisions open; nothing in it waits on staging |
 | [`admin-mfa-plan.md`](admin-mfa-plan.md) | Written Aug 19, **not started.** The focused spec for that plan's §1.5. Shaped by four interactions a stock recipe gets wrong, chiefly that **`/api/v1/login` trades a password for a 90-day token and starts no session**, so a session-based gate misses it — and the Android keystore blocks the obvious fix. Four increments; **enrol before enforcing** is the ordering that matters |
-| [`planning-assistant-plan.md`](planning-assistant-plan.md) | Written Aug 18, **active** and open in `roadmap.md`. Six increments in a confirmed order; **five are complete** — journal commitments, project purpose, project briefs and the review's loose ends, all end to end. **Increment 1 is the exception**: its read shipped and its section waits on two design questions the plan names. **All four decisions are answered** (D1, D4, D3 on the 18th; D2 just after midnight on the 19th). Increment 6 is all that remains, and S9 is its one prerequisite |
 
-**This table is the one place a document can be *active* rather than merely
-open.** Everything above it is designed-and-waiting; the planning assistant is
-designed-and-underway, and its row says which parts. When it finishes it becomes
-a stub like the twenty-four below, and the distinction disappears with it.
+**Nothing here is *active* right now**, only designed-and-waiting. The planning
+assistant briefly was, and its row said which parts had shipped; it became a
+stub on August 19 and the distinction went with it, which is the point of
+stubs.
 
 ## The rest of `design/` — one record, the stubs, and the mockups
 
@@ -51,7 +50,7 @@ risk-based review at `305d1e7` with the suite counts actually run. Explicitly
 about the past, so it cannot go stale; its findings are **not** production
 defects until someone promotes them to `commercial-blueprint.md` Part 1.
 
-**Twenty-four stubs**, each four lines pointing at
+**Twenty-five stubs**, each a few lines pointing at
 [`roadmap-history.md`](roadmap-history.md), which holds the narrative. Not
 listed individually — that list is the second copy this rewrite removed, and
 `ls design/*.md` gives it.

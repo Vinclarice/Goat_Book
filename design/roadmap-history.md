@@ -7,6 +7,109 @@ The reasoning, deployment record and lessons behind completed work, kept out of
 the active plan so that plan stays scannable. The active plan is
 [`roadmap.md`](roadmap.md).
 
+## The planning assistant — August 18–19, 2026, `kestrel`
+
+An evidence-backed proposal inbox rather than a chatbot, in six increments, all
+shipped and deployed on August 19 (`DEPLOYED-2026-08-19/1339`). The plan is a
+stub; this is what it was and what it taught.
+
+**The finding that shaped the whole thing came before any code.** The first
+draft of the plan claimed the project already had "one proposal surface with
+five producers" and that the confirmation rules were therefore universal. Vince
+corrected it: there were **three** proposal systems with three record types,
+three lifecycles, three surfaces, and measurement on one of them. That changed
+the work from "add producers" to "build the contract those producers were
+supposed to share", and the contract's six fields — producer, cited evidence,
+proposed action, confirmation state, fingerprint, measurement — became the
+spine of every increment.
+
+**What shipped**
+
+1. **Unresolved questions.** A *view* of the corpus rather than a claim about
+   it, so it carries no fingerprint, no review window and no confirm gate — it
+   cannot be wrong the way a proposal can, only stale. It reports how long each
+   question has been open and which later notes came back to it, and answering
+   is an epistemic facet: *"I settled this"* and *"this was never a question"*
+   stay distinct because the second is the only correction the question
+   heuristic will ever get.
+2. **Commitments read out of the journal.** Per sentence, cited at the span,
+   idempotent under editing, and confirmed into a real task.
+3. **`Project.purpose`**, model to text area.
+4. **Project briefs** — what bears on a project, each item carrying the terms
+   that selected it, asked for and never pushed.
+5. **The weekly review's loose ends** and what arrives before the next one.
+6. **Next week drafted** against observed capacity.
+
+**Four decisions, and two of them dissolved their own question.**
+
+- **D1, generated prose: not yet**, with two firing conditions rather than a
+  someday. Its useful output was noticing the plan had lumped three sites
+  together: explaining one brief item hands over a purpose and a few spans, the
+  weekly summary hands over everything written that week and recurs. The site
+  that motivated the question fits the ML policy's carve-out worst.
+- **D2, does S3 get built: the appetite test was declined rather than taken.**
+  `product-stories.md` called S3 the sharpest test of appetite in the set — if
+  estimates go unentered the story dies. Capacity now comes from `DailyFocus`
+  history, so there are no estimates to go unentered. S3's `Requires` line lost
+  `Item.effort` entirely; its verdict did not move, because nothing had been
+  built yet, and saying so was the honest re-score.
+- **D3, attention budgets: the question was posed wrongly.** Six caps already
+  existed. What was broken was the *ordering* — confidence is not comparable
+  across detectors (a flat 0.9, a flat 0.55, a computed `shared_count / 8`),
+  so the review's five slots were rationed by whichever constants somebody
+  picked while accept rate fed into nothing.
+- **D4, `sentence-transformers`: tests yes, production no.** Two decisions
+  wearing one number. It took **25 permanently skipped tests to zero** without
+  changing the image.
+
+**The lesson worth carrying: three silent-nothings in one day, all the same
+shape.**
+
+- `reads.loose_ends` filtered `node__owner` and went blind to every
+  entry-backed facet — a section that would have looked empty and been trusted.
+  Caught by a test written *before* a producer existed to expose it.
+- `_table()` in `test_pages.py` found the accept-rate table by heading and, on
+  a miss, fell back to the first table on the page. Renaming the heading
+  silently redirected two tests to measure the readiness table. Its own
+  docstring warned about exactly that failure and then implemented one.
+- `material_bearing_on` was called without `source_node_id`, so a question
+  counted toward its own document frequencies and the rare-term gate rejected
+  every match. Two wrong diagnoses preceded the right one; a probe printing
+  what the index actually returned found it in a minute.
+
+Each kept working instead of complaining, and each produced a plausible empty
+answer. **A value that degrades gracefully is a value that hides a bug**, and
+in a system whose whole output is "here is what I found", finding nothing is
+indistinguishable from working correctly.
+
+**Two more things the build corrected in itself.** The journal producer was
+written date-first, like capture's — and prose is full of dates that promise
+nothing, while the canonical example (*"I still need to ask Maya about the
+venue"*) carries none. The trigger became an undertaking, which is what the
+plan's own card had said all along. And measurement covering only detectors had
+left `retirement_gate` computing a worst accept rate from a population that
+excluded the commitment parsers, so a parser accepting nothing could not lower
+it — the gate could report health for a system half of which was unmeasured.
+
+**Deployed twice, and the first one shipped nothing.** The playbook builds from
+the working tree (`delegate_to: 127.0.0.1`), not from a git ref. The tree had
+not been pulled, so the image was the code already running and no migration ran.
+Harmless, and worth recording: pushing to `origin/main` is not the same as
+updating the tree the image is built from, and nothing in the play output says
+which commit it built.
+
+**Verified before the deploy:** knowledge core 758 passed and 0 skipped, task
+core 1222 OK including the browser suite against the built bundle, 325 frontend
+tests across 21 files, build clean. Four additive migrations: `lists/0038`,
+`mind/0016`, `mind/0017`, `review/0002`.
+
+**What it deliberately did not do.** No generation anywhere — `v1 ships no
+generation at all` is the ML policy holding rather than a corner cut. No second
+review surface. No notifications. `semantic_echo` stays dark in production by
+D4's decision. And S9 and S3 both moved as prerequisites rather than as
+features, which is why `product-stories.md` gained a `WeeklyIntention` and lost
+an `Item.effort` in the same day.
+
 ## Signing up, and the documents that let it be public — August 19, 2026
 
 **Somebody could create an account and be told nothing at all.** Signup set

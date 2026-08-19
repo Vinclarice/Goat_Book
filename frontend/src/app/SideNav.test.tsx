@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router";
@@ -149,24 +149,23 @@ describe("SideNav", () => {
     expect(await screen.findByText("Area page")).toBeInTheDocument();
   });
 
-  it("offers the weekly review from every page", async () => {
-    // In this slice rather than a later one. The Daily Page spent five
-    // slices reachable only by typing its URL and routine creation had no
-    // surface at all until Crane 2 slice 3; a review nobody can open is
-    // the same gap a third time.
-    const user = userEvent.setup();
+  it("no longer offers the core's surfaces, because ViewNav does", async () => {
+    // Today, Agenda, Review and Archive were a "Views" group in here, which is
+    // what forced this rail to mean two things at once -- somewhere to switch
+    // surface and a list of what the core holds. They are a sub-nav under the
+    // app bar now, and ViewNav.test.tsx covers them there.
     renderNav();
+    await screen.findByText("Programming");
 
-    await user.click(await screen.findByRole("link", { name: "Review" }));
+    // Scoped to the rail, because AppLayout renders ViewNav too and these
+    // links are very much on the page -- the claim is about where they are,
+    // not whether they exist. An unscoped query here would fail for the right
+    // reason today and pass for the wrong one the moment ViewNav moved.
+    const rail = within(screen.getByRole("navigation", { name: "Contents" }));
 
-    expect(await screen.findByText("Review page")).toBeInTheDocument();
-  });
-
-  it("marks the current view as active", async () => {
-    renderNav("/archive");
-
-    const archive = await screen.findByRole("link", { name: /Archive/ });
-    expect(archive.className).toMatch(/active/);
+    expect(rail.queryByRole("link", { name: "Review" })).toBeNull();
+    expect(rail.queryByRole("link", { name: /Archive/ })).toBeNull();
+    expect(rail.queryByRole("link", { name: "Today" })).toBeNull();
   });
 
   it("carries no account controls, because the app bar does", async () => {
@@ -209,8 +208,12 @@ describe("SideNav", () => {
     // like a layout shift, so the shell renders immediately.
     renderNav();
 
-    expect(screen.getByRole("navigation", { name: "Main" })).toBeInTheDocument();
-    expect(screen.getByText("Agenda")).toBeInTheDocument();
+    // "Contents" rather than "Main": there is no single main navigation now,
+    // which is the point of the split.
+    expect(
+      screen.getByRole("navigation", { name: "Contents" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Areas")).toBeInTheDocument();
   });
 
   it("closes the narrow-screen disclosure after navigating", async () => {

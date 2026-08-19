@@ -33,45 +33,17 @@ export function SideNav() {
   const projects = data?.projects ?? [];
 
   return (
-    <nav className={styles.nav} aria-label="Main">
-      <div className={styles.group}>
-        <h3>Views</h3>
-        {/* First, because Crane makes the day the home surface -- and
-            present at all, which until slice 6 it was not: slices 1 to 5
-            built a page reachable only by typing its URL. Undated on
-            purpose, so the link always means "today" rather than whichever
-            day was current when the nav rendered. */}
-        <NavLink to="/day" className={navLinkClass}>
-          Today
-        </NavLink>
-        <NavLink to="/agenda" className={navLinkClass}>
-          Agenda
-        </NavLink>
-        {/* Beside the day rather than under Account, because a review is a
-            view of the work and not a setting -- and present in the slice
-            that builds it, since a surface nobody can reach has now been
-            shipped twice. Undated, so the link always means the week you
-            are in rather than whichever one the nav last rendered. */}
-        <NavLink to="/review" className={navLinkClass}>
-          Review
-        </NavLink>
-        {/* Second Mind stood here and now lives in the app bar, which is
-            server-rendered and therefore present at /mind/ too -- so crossing
-            into the knowledge core is no longer a one-way door. The rule that
-            travelled with it still holds and is restated where it applies now:
-            that entry must never grow a count.
+    <nav className={styles.nav} aria-label="Contents">
+      {/* The Views group stood here -- Today, Agenda, Review, Archive -- and is
+          now ViewNav, a sub-nav under the app bar. Second Mind went to the bar
+          itself in the step before. What is left is what this rail was always
+          best at and could never say plainly while it also held navigation:
+          the things the task core *contains*.
 
-            `mind_url` stays on the /api/v1/nav payload. Nothing here reads it
-            any more, but the phone may, and removing a response field is a
-            contract change rather than a tidy-up. */}
-        <NavLink to="/archive" className={navLinkClass}>
-          Archive
-          {data && data.archived_count > 0 && (
-            <span className={styles.count}>{data.archived_count}</span>
-          )}
-        </NavLink>
-      </div>
-
+          That is why the landmark is "Contents" and not "Main". There is no
+          single main navigation any more, which is the point -- there is a bar
+          that says which core, a sub-nav that says which surface, and this,
+          which says what is in here. */}
       <div className={styles.group}>
         <h3>Areas</h3>
         {areas.length === 0 && <p className={styles.empty}>No areas yet.</p>}

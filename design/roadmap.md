@@ -97,13 +97,17 @@ re-add it here.
   August 18, 2026 in
   [`navigation-and-identity-plan.md`](navigation-and-identity-plan.md), which
   owns the sequence and carries its design in two comps rather than in prose.
-  **Steps 1 to 3 are done** — the ledger palette in both themes, the three
+  **Steps 1 to 4 are done** — the ledger palette in both themes, the three
   typefaces self-hosted, a 44px touch target that grows the hit area rather
   than the button, `/mind/` reading the same tokens and the same theme
-  script as everything else, and one server-rendered app bar replacing the
-  three navigations, which closes the one-way door into the knowledge core
-  and leaves the application with one logout instead of two; **steps 4 to 6
-  are open.** The three direction decisions it rests on — full re-theme,
+  script as everything else, one server-rendered app bar replacing the
+  three navigations, and the rail demoted to contents beneath a per-core
+  sub-nav. That closes the one-way door into the knowledge core, leaves the
+  application with one logout instead of two, and **retires this file's
+  "two layout breakpoints that should agree and do not"** — they are both
+  Tailwind's `md` now, guarded by a test rather than by a comment asking
+  the next person to remember. **Steps 5 and 6 are open**, and they are the
+  signed-out page and the first-run empty state. The three direction decisions it rests on — full re-theme,
   the A+B wedge for the signed-out page's positioning, one app bar over three
   reconciled navs — are Vince's, taken the same day; **Part 9 #1, whether this
   is a business, stays open and still gates Phases 3–5.** Its step 1 is also
@@ -243,10 +247,14 @@ beyond capture and the two shipped Android slices happens in the browser, and
 phone. It is not really.
 
 **Measured, not guessed.** Both shells set
-`<meta name="viewport" content="width=device-width, initial-scale=1">`. Beyond
-that there are exactly two layout breakpoints — side navigation collapses at
-760px, the workspace input row stacks at 768px. Those two numbers should agree
-and do not. Everything else is desktop-first.
+`<meta name="viewport" content="width=device-width, initial-scale=1">`.
+~~Beyond that there are exactly two layout breakpoints — side navigation
+collapses at 760px, the workspace input row stacks at 768px. Those two numbers
+should agree and do not.~~ **Fixed August 18, 2026** by
+`navigation-and-identity-plan.md` step 4: the rail's collapse is Tailwind's
+`md` on both sides now, and `test_frontend_style_contract.py` fails if the CSS
+and the JavaScript drift apart, which is what the comment asking the next
+person to remember was standing in for. Everything else is still desktop-first.
 
 **Touch targets are the largest thing in this entry**, found with numbers
 attached during Crane 1 slice 7's phone pass. At 375px the Daily Page itself is

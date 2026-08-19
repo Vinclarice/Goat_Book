@@ -43,7 +43,10 @@ class LandingSurfaceTest(BrowserTest):
         user = self.make_user()
         self.log_in(user)
 
-        nav = self.page.get_by_role("navigation", name="Main")
+        # The task core's sub-nav, under the app bar. These two were in the
+        # side rail until the rail became contents; the landmark moved with
+        # them rather than the assertion being loosened to find them anywhere.
+        nav = self.page.get_by_role("navigation", name="Views")
 
         expect(nav.get_by_role("link", name="Today")).to_be_visible()
         expect(nav.get_by_role("link", name="Agenda")).to_be_visible()
@@ -294,7 +297,9 @@ class ContentSecurityPolicyTest(BrowserTest):
         self.log_in(user)
 
         # The shell, its bundle, and the theme script that needs the nonce.
-        expect(self.page.get_by_role("navigation", name="Main")).to_be_visible()
+        # "Cores" rather than the rail: it is the server-rendered bar, so it
+        # proves the page arrived even if the bundle had not yet booted.
+        expect(self.page.get_by_role("navigation", name="Cores")).to_be_visible()
         self.assertEqual(self.violations, [])
 
     def test_the_theme_script_actually_ran(self):
@@ -418,11 +423,14 @@ class MobileNavigationTest(BrowserTest):
         self.page.set_viewport_size(self.WIDE)
         self.visit("/app/agenda")
 
-        # No clicking. On a wide screen the navigation is not something you
-        # open, it is something that is there.
-        nav = self.page.get_by_role("navigation", name="Main")
-        expect(nav.get_by_role("link", name="Archive")).to_be_visible()
-        expect(nav.get_by_role("link", name="Agenda")).to_be_visible()
+        # No clicking. On a wide screen the rail is not something you open,
+        # it is something that is there.
+        #
+        # Asserted on an area rather than on Archive, which now lives in the
+        # sub-nav above and is visible at every width -- it would have made
+        # this vacuous, which is the exact failure mode B0 slipped through.
+        rail = self.page.get_by_role("navigation", name="Contents")
+        expect(rail.get_by_role("link", name="Work")).to_be_visible()
 
     def test_the_disclosure_opens_navigates_and_closes(self):
         user = self.make_user()
@@ -431,21 +439,22 @@ class MobileNavigationTest(BrowserTest):
         self.page.set_viewport_size(self.NARROW)
         self.visit("/app/agenda")
 
-        # Scoped to the nav: the agenda body has its own Archive link,
-        # which is visible at every width and would make this vacuous.
-        nav = self.page.get_by_role("navigation", name="Main")
-        archive = nav.get_by_role("link", name="Archive")
+        # Scoped to the rail, and to an area: Archive used to be the subject
+        # here and is now in the sub-nav, visible at every width, which would
+        # have quietly turned this into a test of nothing.
+        rail = self.page.get_by_role("navigation", name="Contents")
+        area = rail.get_by_role("link", name="Work")
 
-        # Closed to begin with: the nav is not simply always on screen at
+        # Closed to begin with: the rail is not simply always on screen at
         # this width, which is what makes the rest of this meaningful.
-        expect(archive).not_to_be_visible()
+        expect(area).not_to_be_visible()
 
         self.page.get_by_label("Menu").click()
-        expect(archive).to_be_visible()
+        expect(area).to_be_visible()
 
-        archive.click()
+        area.click()
 
         # Navigating has to close it. Leaving it open covers the page you
         # just asked for with the menu you used to ask.
-        expect(self.page).to_have_url(f"{self.live_server_url}/app/archive")
-        expect(archive).not_to_be_visible()
+        expect(self.page).to_have_url(re.compile(r"/app/areas/\d+$"))
+        expect(area).not_to_be_visible()

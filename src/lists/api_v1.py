@@ -357,9 +357,17 @@ class ProjectOut(Schema):
     # keeps that, so a client has one representation of "nothing written"
     # rather than two to coerce.
     purpose: str
+    # Same blank-not-null contract as `purpose` above, and for the same reason.
+    desired_outcome: str
     due_date: str | None
     is_completed: bool
     completed_at: str | None
+    # **Only the timestamp, where completion sends a flag and a stamp.** That
+    # pair exists because `is_completed` predates `completed_at` and a check
+    # constraint keeps them honest; there is nothing to keep honest here, and
+    # `paused_at !== null` is a client-side expression rather than a second
+    # field free to disagree with the first.
+    paused_at: str | None
     created_at: str
     open_task_count: int
     areas: list["ProjectAreaOut"]
@@ -403,8 +411,15 @@ class ProjectUpdateIn(Schema):
 
     title: str | None = None
     purpose: str | None = None
+    # Same shape as `purpose`, same reason: "" is its cleared state, so None
+    # means only "not mentioned".
+    desired_outcome: str | None = None
     due_date: str | None = None
     is_completed: bool | None = None
+    # A boolean like `is_completed` rather than a verb route, because both
+    # answer "which state is this project in" and two spellings of one idea is
+    # the near-identical-controls problem C2 found in the task UI.
+    is_paused: bool | None = None
 
 
 class AreaProjectIn(Schema):
@@ -435,6 +450,10 @@ def _project_out(project, areas=None):
         "id": project.id,
         "title": project.title,
         "purpose": project.purpose,
+        "desired_outcome": project.desired_outcome,
+        "paused_at": (
+            project.paused_at.isoformat() if project.paused_at else None
+        ),
         "due_date": project.due_date.isoformat() if project.due_date else None,
         # A finished project is never overdue regardless of due_date -- the
         # same rule tasks and areas already apply, extended here rather than
@@ -579,6 +598,14 @@ def update_project(request, project_id: int, payload: ProjectUpdateIn):
             services.complete_project(project)
         else:
             services.reopen_project(project)
+    # After completion, deliberately. `complete_project` clears the pause, so a
+    # request that finished and paused in one call would otherwise depend on
+    # the order these branches happen to be written in.
+    if payload.is_paused is not None:
+        if payload.is_paused:
+            services.pause_project(project)
+        else:
+            services.resume_project(project)
 
     fields = []
     if payload.title is not None:
@@ -592,6 +619,9 @@ def update_project(request, project_id: int, payload: ProjectUpdateIn):
         # means only "not mentioned". See ProjectUpdateIn.
         project.purpose = payload.purpose.strip()
         fields.append("purpose")
+    if payload.desired_outcome is not None:
+        project.desired_outcome = payload.desired_outcome.strip()
+        fields.append("desired_outcome")
     if "due_date" in payload.dict(exclude_unset=True):
         project.due_date = _parse_date(payload.due_date)
         fields.append("due_date")

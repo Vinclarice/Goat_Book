@@ -97,12 +97,24 @@ def brief_for(owner, project) -> ProjectBrief:
     first -- showing it in both would be one item counted twice, which is how a
     surface stops being trustworthy about its own contents.
 
-    `material_bearing_on` returns nothing for a project with no purpose, so
+    `material_bearing_on` returns nothing for a project with no anchor, so
     both retrieval sections are empty for one. That is deliberate and is not a
     special case here: an unanchored query is the ranked-by-coincidence panel
     the detector registry rejects.
+
+    **Two anchors joined rather than two retrievals** — v2 increment 3. The
+    purpose says why and the outcome says what done looks like, and the second
+    supplies the concrete nouns the first usually does not: *"the booking form
+    is live"* against *"stop enquiries going to email"*. Running them
+    separately would mean merging and de-duplicating two ranked lists whose
+    scores are not comparable, where one query over both simply has more terms
+    to select on — and the rare-term gate is what stops the extra words
+    widening this into a vaguely-on-topic panel.
     """
-    material = mind_queries.material_bearing_on(owner, project.purpose or "")
+    anchor = "\n".join(
+        part for part in (project.purpose, project.desired_outcome) if part
+    )
+    material = mind_queries.material_bearing_on(owner, anchor)
     open_question_ids = {
         node.pk for node in mind_queries.unresolved_questions(owner)
     }

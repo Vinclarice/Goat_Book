@@ -29,6 +29,8 @@ function projectDetailData(overrides: Record<string, unknown> = {}) {
     due_date: null,
     is_completed: false,
     completed_at: null,
+    desired_outcome: "",
+    paused_at: null,
     created_at: "2026-08-10T09:00:00-04:00",
     open_task_count: 0,
     areas: [],
@@ -171,6 +173,99 @@ describe("ProjectRoute", () => {
         }),
       ).toBe(true);
     });
+  });
+
+  /* The desired outcome and the pause -- planning-assistant-v2-plan.md
+     increment 3. The outcome is a second anchor for the brief's retrieval; the
+     pause is what lets a weekly check-in confirm what is active rather than
+     ask. */
+  it("shows a project's desired outcome", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      projectPageFetch(
+        projectDetailData({ desired_outcome: "The booking form is live." }),
+      ),
+    );
+
+    renderAt("3");
+
+    expect(
+      await screen.findByDisplayValue("The booking form is live."),
+    ).toBeInTheDocument();
+  });
+
+  it("saves a desired outcome", async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const request = input as Request;
+      const url = typeof input === "string" ? input : request.url;
+      if (url.includes("/api/v1/nav")) return jsonResponse(NAV);
+      if (request.method === "PATCH") {
+        return jsonResponse(
+          projectDetailData({ desired_outcome: "The booking form is live." }),
+        );
+      }
+      return jsonResponse(projectDetailData());
+    });
+
+    renderAt("3");
+    await screen.findByDisplayValue("Website Relaunch");
+
+    await user.type(
+      screen.getByLabelText("What done looks like"),
+      "The booking form is live.",
+    );
+    await user.click(screen.getByRole("button", { name: "Save outcome" }));
+
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.some(([request]) => {
+          const req = request as Request;
+          return req.method === "PATCH" && req.url.includes("/api/v1/projects/3");
+        }),
+      ).toBe(true);
+    });
+  });
+
+  it("parks a project without finishing it", async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const request = input as Request;
+      const url = typeof input === "string" ? input : request.url;
+      if (url.includes("/api/v1/nav")) return jsonResponse(NAV);
+      if (request.method === "PATCH") {
+        return jsonResponse(
+          projectDetailData({ paused_at: "2026-08-19T09:00:00-04:00" }),
+        );
+      }
+      return jsonResponse(projectDetailData());
+    });
+
+    renderAt("3");
+    await screen.findByDisplayValue("Website Relaunch");
+
+    await user.click(screen.getByRole("button", { name: "Pause" }));
+
+    await waitFor(() => {
+      const patched = fetchMock.mock.calls
+        .map(([request]) => request as Request)
+        .filter((req) => req.method === "PATCH");
+      expect(patched).toHaveLength(1);
+    });
+  });
+
+  it("says a project is paused, and offers to pick it back up", async () => {
+    /* Paused is not finished, and the page has to say which. A parked project
+       that looked identical to an active one would make the state cosmetic. */
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      projectPageFetch(
+        projectDetailData({ paused_at: "2026-08-19T09:00:00-04:00" }),
+      ),
+    );
+
+    renderAt("3");
+
+    expect(await screen.findByText("Paused")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Resume" })).toBeInTheDocument();
   });
 
   it("will not save a purpose that has not changed", async () => {

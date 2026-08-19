@@ -2308,6 +2308,10 @@
             "title": "Purpose",
             "type": "string"
           },
+          "desired_outcome": {
+            "title": "Desired Outcome",
+            "type": "string"
+          },
           "due_date": {
             "anyOf": [
               {
@@ -2334,6 +2338,17 @@
             ],
             "title": "Completed At"
           },
+          "paused_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paused At"
+          },
           "created_at": {
             "title": "Created At",
             "type": "string"
@@ -2358,9 +2373,11 @@
           "id",
           "title",
           "purpose",
+          "desired_outcome",
           "due_date",
           "is_completed",
           "completed_at",
+          "paused_at",
           "created_at",
           "open_task_count",
           "areas",
@@ -2429,6 +2446,17 @@
             ],
             "title": "Purpose"
           },
+          "desired_outcome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Desired Outcome"
+          },
           "due_date": {
             "anyOf": [
               {
@@ -2450,6 +2478,17 @@
               }
             ],
             "title": "Is Completed"
+          },
+          "is_paused": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Paused"
           }
         },
         "title": "ProjectUpdateIn",

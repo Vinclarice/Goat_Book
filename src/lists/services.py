@@ -783,16 +783,55 @@ def complete_project(project):
         return project
     project.is_completed = True
     project.completed_at = timezone.now()
-    project.save(update_fields=("is_completed", "completed_at"))
+    # Finishing a paused project is finishing it. Clearing the pause here is
+    # what keeps "completed wins" a property of the data rather than a rule
+    # every reader has to remember -- no row is ever both.
+    project.paused_at = None
+    project.save(update_fields=("is_completed", "completed_at", "paused_at"))
     return project
 
 
 @transaction.atomic
 def reopen_project(project):
+    """Un-finish it. It comes back open, never paused.
+
+    Reopening says the work is not done; it does not say it was parked. A
+    project that should be parked is paused explicitly, which keeps that a
+    decision somebody made rather than one this function guessed at.
+    """
     project = Project.objects.select_for_update().get(pk=project.pk)
     project.is_completed = False
     project.completed_at = None
     project.save(update_fields=("is_completed", "completed_at"))
+    return project
+
+
+@transaction.atomic
+def pause_project(project):
+    """Park it: not finished, and not being worked on either.
+
+    **Idempotent, and the date is why.** How long something has been sitting is
+    the only thing this timestamp is for, so a second pause must not re-stamp
+    it -- the same call `complete_project` makes above for the same reason.
+
+    Touches no task. A decision about a container is not a decision about the
+    work inside it, and a pause that quietly unpinned or re-dated things would
+    be a destructive action wearing a soft word.
+    """
+    project = Project.objects.select_for_update().get(pk=project.pk)
+    if project.paused_at is not None:
+        return project
+    project.paused_at = timezone.now()
+    project.save(update_fields=("paused_at",))
+    return project
+
+
+@transaction.atomic
+def resume_project(project):
+    """Pick it back up. Clears the pause and nothing else."""
+    project = Project.objects.select_for_update().get(pk=project.pk)
+    project.paused_at = None
+    project.save(update_fields=("paused_at",))
     return project
 
 

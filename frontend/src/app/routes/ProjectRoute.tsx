@@ -42,6 +42,7 @@ export function ProjectRoute() {
   // would put a writing task in front of somebody who wants to group three
   // areas.
   const [purpose, setPurpose] = useState("");
+  const [outcome, setOutcome] = useState("");
 
   const queryKey = ["project", id];
 
@@ -78,6 +79,7 @@ export function ProjectRoute() {
     // through, so the server never sends null. A textarea given undefined
     // would go uncontrolled and React would warn on the first keystroke.
     setPurpose(data.purpose ?? "");
+    setOutcome(data.desired_outcome ?? "");
   }, [data, id]);
 
   // Only fetched for the "add an area" picker.
@@ -161,6 +163,49 @@ export function ProjectRoute() {
       );
     },
     onError: () => setError("Couldn't save that purpose."),
+  });
+
+  // What done looks like — v2 increment 3. Its own field and its own control,
+  // mirroring the purpose above rather than sharing its save: they are two
+  // answers a person gives at different moments, and one button writing both
+  // would make "save" mean whichever box was touched last.
+  const updateOutcome = useMutation({
+    mutationFn: async (newOutcome: string) => {
+      const { data, error } = await apiV1.PATCH("/api/v1/projects/{project_id}", {
+        params: { path: { project_id: id } },
+        body: { desired_outcome: newOutcome },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (updated) => {
+      setError(null);
+      if (updated) setOutcome(updated.desired_outcome);
+      queryClient.setQueryData(queryKey, (current: typeof data) =>
+        current && updated
+          ? { ...current, desired_outcome: updated.desired_outcome }
+          : current,
+      );
+    },
+    onError: () => setError("Couldn't save that outcome."),
+  });
+
+  // Parked, not finished. A boolean on the same PATCH as `is_completed`,
+  // because both answer "which state is this project in".
+  const setPaused = useMutation({
+    mutationFn: async (isPaused: boolean) => {
+      const { data, error } = await apiV1.PATCH("/api/v1/projects/{project_id}", {
+        params: { path: { project_id: id } },
+        body: { is_paused: isPaused },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      setError(null);
+      queryClient.invalidateQueries({ queryKey });
+    },
+    onError: () => setError("Couldn't change that."),
   });
 
   const setCompleted = useMutation({
@@ -271,6 +316,11 @@ export function ProjectRoute() {
     updatePurpose.mutate(purpose);
   }
 
+  function handleSaveOutcome(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    updateOutcome.mutate(outcome);
+  }
+
   if (isPending) return <p className="p-6">Loading…</p>;
   if (loadError || !data) return <RouteFailure status={statusOf(loadError)} onRetry={() => refetch()} />;
 
@@ -285,6 +335,7 @@ export function ProjectRoute() {
   // Trimmed on both sides, matching the server, so trailing whitespace alone
   // never enables the button and never writes.
   const purposeChanged = purpose.trim() !== (data.purpose ?? "").trim();
+  const outcomeChanged = outcome.trim() !== (data.desired_outcome ?? "").trim();
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
@@ -380,6 +431,48 @@ export function ProjectRoute() {
             </div>
           </form>
 
+          {/* What done looks like -- v2 increment 3. Beside the purpose rather
+              than inside it: "why I am doing this" and "what would be true
+              when it is finished" are different answers, and a person asked
+              for both in one box writes one of them.
+
+              It is also the second thing the brief retrieves against, and the
+              more useful of the two for that — an outcome names concrete
+              things ("the booking form is live") where a purpose names
+              abstract ones, and concrete nouns are what the rare-term gate can
+              select on.
+
+              **S10's abandonment condition still has no box of its own** and
+              is still invited into the purpose above. Whether it earns one is
+              D4 in `planning-assistant-v2-plan.md`, and adding this field does
+              not answer it. */}
+          <form onSubmit={handleSaveOutcome} className="mt-3">
+            <label
+              htmlFor="project-outcome"
+              className="block text-sm text-muted-foreground"
+            >
+              What done looks like
+            </label>
+            <textarea
+              id="project-outcome"
+              rows={2}
+              value={outcome}
+              onChange={(event) => setOutcome(event.target.value)}
+              placeholder="What would be true when this is finished?"
+              className="mt-1 w-full rounded-lg border border-border bg-input px-2 py-1 text-sm"
+            />
+            <div className="flex flex-wrap items-center gap-2 mt-1">
+              <Button
+                type="submit"
+                size="sm"
+                variant="secondary"
+                disabled={updateOutcome.isPending || !outcomeChanged}
+              >
+                Save outcome
+              </Button>
+            </div>
+          </form>
+
           <p className="text-sm text-muted-foreground mt-2">{data.open_task_count} open</p>
 
           <div className="mt-3 max-w-xs">
@@ -396,14 +489,36 @@ export function ProjectRoute() {
               true. */}
           <ProjectBrief projectId={id} hasPurpose={Boolean(purpose.trim())} />
         </div>
-        <Button
-          size="sm"
-          variant="secondary"
-          disabled={setCompleted.isPending}
-          onClick={() => setCompleted.mutate(!data.is_completed)}
-        >
-          {data.is_completed ? "Reopen" : "Mark complete"}
-        </Button>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          {/* Said on the page, because a parked project that looked identical
+              to an active one would make the state cosmetic. Not shown on a
+              completed one: `complete_project` clears the pause, so the two
+              can never both be true and only one of them is worth saying. */}
+          {data.paused_at && !data.is_completed && (
+            <span className="text-sm text-muted-foreground">Paused</span>
+          )}
+          {/* Offered only while the project is open. Pausing something already
+              finished is a state with no meaning, and hiding the control is
+              cheaper than a rule explaining why it does nothing. */}
+          {!data.is_completed && (
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={setPaused.isPending}
+              onClick={() => setPaused.mutate(!data.paused_at)}
+            >
+              {data.paused_at ? "Resume" : "Pause"}
+            </Button>
+          )}
+          <Button
+            size="sm"
+            variant="secondary"
+            disabled={setCompleted.isPending}
+            onClick={() => setCompleted.mutate(!data.is_completed)}
+          >
+            {data.is_completed ? "Reopen" : "Mark complete"}
+          </Button>
+        </div>
       </div>
 
       {error && <p className="text-sm text-destructive">{error}</p>}

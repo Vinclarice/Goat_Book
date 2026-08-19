@@ -1114,12 +1114,16 @@ export interface components {
             title: string;
             /** Purpose */
             purpose: string;
+            /** Desired Outcome */
+            desired_outcome: string;
             /** Due Date */
             due_date: string | null;
             /** Is Completed */
             is_completed: boolean;
             /** Completed At */
             completed_at: string | null;
+            /** Paused At */
+            paused_at: string | null;
             /** Created At */
             created_at: string;
             /** Open Task Count */
@@ -1157,10 +1161,14 @@ export interface components {
             title?: string | null;
             /** Purpose */
             purpose?: string | null;
+            /** Desired Outcome */
+            desired_outcome?: string | null;
             /** Due Date */
             due_date?: string | null;
             /** Is Completed */
             is_completed?: boolean | null;
+            /** Is Paused */
+            is_paused?: boolean | null;
         };
         /** BriefCommitmentOut */
         BriefCommitmentOut: {

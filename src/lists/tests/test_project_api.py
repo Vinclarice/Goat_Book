@@ -535,3 +535,163 @@ class ProjectBriefEndpointTest(TestCase):
             self.client.get(f"/api/v1/projects/{self.project.id}/brief").status_code,
             200,
         )
+
+
+class ProjectDesiredOutcomeEndpointTest(TestCase):
+    """The HTTP half of the outcome field — v2 increment 3.
+
+    Model behaviour lives in `test_projects.py`, per this file's split. What is
+    here is what a client can read and write, plus the isolation case every
+    owner-scoped, ID-taking route gets.
+    """
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            "alice", "alice@example.com", "a secure password"
+        )
+        self.other = User.objects.create_user(
+            "bob", "bob@example.com", "another secure password"
+        )
+        self.client.force_login(self.user)
+
+    def patch(self, path, body):
+        return self.client.patch(
+            path, data=json.dumps(body), content_type="application/json",
+        )
+
+    def test_a_project_reports_its_outcome(self):
+        project = services.create_project(self.user, "Website launch")
+        project.desired_outcome = "The booking form is live."
+        project.save(update_fields=["desired_outcome"])
+
+        response = self.client.get(f"/api/v1/projects/{project.pk}")
+
+        self.assertEqual(
+            response.json()["desired_outcome"], "The booking form is live."
+        )
+
+    def test_a_project_with_none_reports_an_empty_string(self):
+        """Never null over the wire, so a client renders text either way."""
+        project = services.create_project(self.user, "Website launch")
+
+        response = self.client.get(f"/api/v1/projects/{project.pk}")
+
+        self.assertEqual(response.json()["desired_outcome"], "")
+
+    def test_an_outcome_can_be_written(self):
+        project = services.create_project(self.user, "Website launch")
+
+        response = self.patch(
+            f"/api/v1/projects/{project.pk}",
+            {"desired_outcome": "  The booking form is live.  "},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        project.refresh_from_db()
+        self.assertEqual(project.desired_outcome, "The booking form is live.")
+
+    def test_an_outcome_can_be_cleared(self):
+        project = services.create_project(self.user, "Website launch")
+        project.desired_outcome = "Something"
+        project.save(update_fields=["desired_outcome"])
+
+        self.patch(f"/api/v1/projects/{project.pk}", {"desired_outcome": ""})
+
+        project.refresh_from_db()
+        self.assertEqual(project.desired_outcome, "")
+
+    def test_not_mentioning_it_leaves_it_alone(self):
+        project = services.create_project(self.user, "Website launch")
+        project.desired_outcome = "The booking form is live."
+        project.save(update_fields=["desired_outcome"])
+
+        self.patch(f"/api/v1/projects/{project.pk}", {"title": "Site launch"})
+
+        project.refresh_from_db()
+        self.assertEqual(project.desired_outcome, "The booking form is live.")
+
+    def test_one_person_cannot_write_another_s_outcome(self):
+        project = services.create_project(self.other, "Bob's project")
+
+        response = self.patch(
+            f"/api/v1/projects/{project.pk}", {"desired_outcome": "Mine now."},
+        )
+
+        self.assertEqual(response.status_code, 404)
+        project.refresh_from_db()
+        self.assertEqual(project.desired_outcome, "")
+
+
+class ProjectPauseEndpointTest(TestCase):
+    """Parking a project over HTTP — v2 increment 3.
+
+    `is_paused` on the update payload rather than its own route, mirroring
+    `is_completed` exactly: both are "which of this project's states is it in",
+    and giving one a boolean and the other a verb would make two spellings of
+    one idea.
+    """
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            "alice", "alice@example.com", "a secure password"
+        )
+        self.other = User.objects.create_user(
+            "bob", "bob@example.com", "another secure password"
+        )
+        self.client.force_login(self.user)
+
+    def patch(self, path, body):
+        return self.client.patch(
+            path, data=json.dumps(body), content_type="application/json",
+        )
+
+    def test_a_new_project_reports_no_pause(self):
+        project = services.create_project(self.user, "Website launch")
+
+        response = self.client.get(f"/api/v1/projects/{project.pk}")
+
+        self.assertIsNone(response.json()["paused_at"])
+
+    def test_a_project_can_be_paused_and_says_when(self):
+        project = services.create_project(self.user, "Website launch")
+
+        response = self.patch(
+            f"/api/v1/projects/{project.pk}", {"is_paused": True}
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNotNone(response.json()["paused_at"])
+        project.refresh_from_db()
+        self.assertIsNotNone(project.paused_at)
+
+    def test_a_project_can_be_resumed(self):
+        project = services.create_project(self.user, "Website launch")
+        services.pause_project(project)
+
+        response = self.patch(
+            f"/api/v1/projects/{project.pk}", {"is_paused": False}
+        )
+
+        self.assertIsNone(response.json()["paused_at"])
+        project.refresh_from_db()
+        self.assertIsNone(project.paused_at)
+
+    def test_not_mentioning_it_leaves_the_pause_alone(self):
+        project = services.create_project(self.user, "Website launch")
+        services.pause_project(project)
+
+        self.patch(f"/api/v1/projects/{project.pk}", {"title": "Site launch"})
+
+        project.refresh_from_db()
+        self.assertIsNotNone(project.paused_at)
+
+    def test_one_person_cannot_pause_another_s_project(self):
+        project = services.create_project(self.other, "Bob's project")
+
+        response = self.patch(
+            f"/api/v1/projects/{project.pk}", {"is_paused": True}
+        )
+
+        self.assertEqual(response.status_code, 404)
+        project.refresh_from_db()
+        self.assertIsNone(project.paused_at)

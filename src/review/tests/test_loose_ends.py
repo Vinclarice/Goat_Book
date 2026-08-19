@@ -23,6 +23,7 @@ from django.test import TestCase
 from django.utils import timezone
 
 from accounts.models import User
+from lists import services as list_services
 from lists.models import Item, List, Project
 from lists import services as list_services
 from mind import services as mind_services
@@ -236,6 +237,36 @@ class UpcomingTest(TestCase):
         upcoming = reads.upcoming_constraints(self.user, week_end=SUNDAY)
 
         self.assertEqual(list(upcoming.tasks), [soon])
+
+    def test_a_paused_project_is_not_a_constraint(self):
+        """Parking a project is exactly a statement that it is not pressing.
+
+        A review that still counted its deadline "before the next review"
+        would make the pause cosmetic -- and a pause that changes nothing is
+        not a pause. `planning-assistant-v2-plan.md` increment 3.
+        """
+        project = Project.objects.create(
+            owner=self.user,
+            title="Website launch",
+            due_date=SUNDAY + timedelta(days=2),
+        )
+        list_services.pause_project(project)
+
+        upcoming = reads.upcoming_constraints(self.user, week_end=SUNDAY)
+
+        self.assertEqual(list(upcoming.projects), [])
+
+    def test_an_active_project_due_soon_still_is_one(self):
+        """The other half, so the test above cannot pass by breaking the read."""
+        project = Project.objects.create(
+            owner=self.user,
+            title="Website launch",
+            due_date=SUNDAY + timedelta(days=2),
+        )
+
+        upcoming = reads.upcoming_constraints(self.user, week_end=SUNDAY)
+
+        self.assertEqual(list(upcoming.projects), [project])
 
     def test_work_beyond_the_coming_week_is_not_yet_a_constraint(self):
         """A review looks one week forward, not into the whole backlog.

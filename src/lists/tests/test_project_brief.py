@@ -109,7 +109,28 @@ class ProjectBriefTest(TestCase):
 
         self.assertTrue(brief.material[0].reason)
 
-    def test_a_project_with_no_purpose_offers_no_material(self):
+    def test_the_desired_outcome_anchors_retrieval_too(self):
+        """Two anchors, not one — v2 increment 3.
+
+        An outcome carries the concrete nouns a purpose usually does not, and
+        the rare-term gate behind `material_bearing_on` feeds on exactly those.
+        A project that says what done looks like and nothing else should still
+        retrieve.
+        """
+        outcome_only = services.create_project(self.user, "Unnamed intent")
+        outcome_only.desired_outcome = (
+            "The booking form is live and collecting the venue and enquiries."
+        )
+        outcome_only.save(update_fields=["desired_outcome"])
+        note = self.capture(
+            "The booking form should collect the venue and the enquiries contact."
+        )
+
+        brief = project_reader.brief_for(self.user, outcome_only)
+
+        self.assertEqual([each.node for each in brief.material], [note])
+
+    def test_a_project_with_neither_offers_no_material(self):
         """The anchor is the whole permission to retrieve.
 
         Without one this would be `precision.md`'s Tier 3 -- the corpus sorted

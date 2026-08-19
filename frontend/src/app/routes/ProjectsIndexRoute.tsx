@@ -67,8 +67,19 @@ export function ProjectsIndexRoute() {
   // The API already orders open before completed (Project.Meta.ordering) --
   // this only splits that single list into the two sections below, it
   // doesn't re-sort anything.
-  const open = data.filter((project) => !project.is_completed);
+  // Three groups, not two -- v2 increment 3. A parked project is neither
+  // finished nor being worked on, and leaving it among the open ones would
+  // make the pause cosmetic exactly where somebody scans for what is active.
+  //
+  // Completed is tested first because `complete_project` clears the pause, so
+  // the two can never both hold; the order is stated rather than relied on.
   const completed = data.filter((project) => project.is_completed);
+  const paused = data.filter(
+    (project) => !project.is_completed && project.paused_at,
+  );
+  const open = data.filter(
+    (project) => !project.is_completed && !project.paused_at,
+  );
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
@@ -121,6 +132,19 @@ export function ProjectsIndexRoute() {
           </p>
 
           <ProjectGrid projects={open} />
+
+          {paused.length > 0 && (
+            <div className="space-y-3">
+              <h2 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                Paused
+              </h2>
+              {/* Dimmed like the completed group, because both are "not the
+                  work in front of you" -- but kept above it, since a paused
+                  project is one decision away from being active again and a
+                  finished one is not. */}
+              <ProjectGrid projects={paused} dimmed />
+            </div>
+          )}
 
           {completed.length > 0 && (
             <div className="space-y-3">

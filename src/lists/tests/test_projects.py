@@ -355,3 +355,143 @@ class ProjectPurposeTest(TestCase):
 
         self.assertEqual(project.purpose, "")
         self.assertTrue(Project.objects.filter(pk=project.pk).exists())
+
+
+class ProjectDesiredOutcomeTest(TestCase):
+    """What *done* would look like, beside what the project is for.
+
+    `purpose` answers *why*; this answers *what would be true when it is
+    finished*. Two fields rather than one because a person asked to write both
+    in one box writes one of them, and increment 4's retrieval wants both --
+    an outcome carries concrete nouns ("the booking form is live") where a
+    purpose carries abstract ones ("stop enquiries going to email"), and the
+    rare-term gate behind `material_bearing_on` feeds on the concrete kind.
+
+    **Blank, never null**, exactly as `purpose` and `DailyEntry`'s three text
+    fields are. Optional for the same reason too: a project that groups three
+    areas owes nobody an essay.
+
+    **This does not settle D4.** `planning-assistant-v2-plan.md` asks whether
+    the *abandonment condition* -- S10's third -- is this field or its own, and
+    that stays open. What is decided here is only that "why" and "what done
+    looks like" are different questions.
+    """
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            "alice", "alice@example.com", "a secure password"
+        )
+
+    def test_a_new_project_has_an_empty_outcome_rather_than_none(self):
+        project = services.create_project(self.user, "Website launch")
+
+        self.assertEqual(project.desired_outcome, "")
+
+    def test_an_outcome_can_be_written_and_read_back(self):
+        project = services.create_project(self.user, "Website launch")
+
+        project.desired_outcome = "The booking form is live and taking bookings."
+        project.save(update_fields=["desired_outcome"])
+
+        project.refresh_from_db()
+        self.assertEqual(
+            project.desired_outcome,
+            "The booking form is live and taking bookings.",
+        )
+
+    def test_a_project_with_no_outcome_is_still_valid(self):
+        project = services.create_project(self.user, "Website launch")
+
+        self.assertEqual(project.desired_outcome, "")
+        self.assertTrue(Project.objects.filter(pk=project.pk).exists())
+
+
+class ProjectPauseTest(TestCase):
+    """Paused: not finished, and not being worked on either.
+
+    `planning-assistant-v2-plan.md` increment 3 -- so that a weekly check-in
+    can *confirm* what is active rather than ask. Two states were reachable
+    before this and three are wanted: a project you have finished and a project
+    you have parked are different facts, and a todo application that can only
+    say "open" makes the second one look like neglect.
+
+    **A nullable timestamp rather than a status enum**, following
+    `DailyFocus.released_at` and `Item.completed_at`: when a state began is
+    strictly more than that it holds, it is additive against the existing
+    `valid_project_completion` constraint, and it leaves room for a
+    `ProjectPause` model later without rewriting anything -- which is what the
+    charter's asymmetry argument asks for. `architecture-trajectory.md` §4's
+    test says a paused project has a project's life cycle, so this is a field.
+
+    **Completed wins.** Finishing a paused project is finishing it, so
+    `complete_project` clears the pause rather than leaving a row that is both.
+    """
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            "alice", "alice@example.com", "a secure password"
+        )
+        self.project = services.create_project(self.user, "Website launch")
+
+    def test_a_new_project_is_not_paused(self):
+        self.assertIsNone(self.project.paused_at)
+
+    def test_pausing_records_when(self):
+        services.pause_project(self.project)
+
+        self.project.refresh_from_db()
+        self.assertIsNotNone(self.project.paused_at)
+
+    def test_resuming_clears_it(self):
+        services.pause_project(self.project)
+
+        services.resume_project(self.project)
+
+        self.project.refresh_from_db()
+        self.assertIsNone(self.project.paused_at)
+
+    def test_pausing_twice_does_not_move_the_date(self):
+        """When it was parked is the fact worth keeping. A second pause that
+        re-stamped it would quietly rewrite how long it had been sitting --
+        which is the only thing this timestamp is for."""
+        services.pause_project(self.project)
+        self.project.refresh_from_db()
+        first = self.project.paused_at
+
+        services.pause_project(self.project)
+
+        self.project.refresh_from_db()
+        self.assertEqual(self.project.paused_at, first)
+
+    def test_finishing_a_paused_project_clears_the_pause(self):
+        services.pause_project(self.project)
+
+        services.complete_project(self.project)
+
+        self.project.refresh_from_db()
+        self.assertTrue(self.project.is_completed)
+        self.assertIsNone(self.project.paused_at)
+
+    def test_reopening_does_not_invent_a_pause(self):
+        services.complete_project(self.project)
+
+        services.reopen_project(self.project)
+
+        self.project.refresh_from_db()
+        self.assertFalse(self.project.is_completed)
+        self.assertIsNone(self.project.paused_at)
+
+    def test_pausing_touches_no_task(self):
+        """The same rule the review holds: a decision about a container is not
+        a decision about the work inside it. Parking a project must not
+        silently unpin, re-date or close anything, or the pause becomes a
+        destructive action wearing a soft word."""
+        area = List.objects.create(
+            owner=self.user, title="Site", project=self.project
+        )
+        task = services.create_item(area, "Write the copy")
+
+        services.pause_project(self.project)
+
+        task.refresh_from_db()
+        self.assertEqual(task.status, Item.Status.ACTIVE)

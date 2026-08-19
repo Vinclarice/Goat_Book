@@ -448,9 +448,43 @@ class Project(models.Model):
     # TextField rather than a capped CharField: "short" is guidance to the
     # person, not an invariant worth a validation error mid-thought.
     purpose = models.TextField(blank=True, default="")
+    # What *done* would look like, beside what the project is for --
+    # planning-assistant-v2-plan.md increment 3. Purpose answers *why*; this
+    # answers *what would be true when it is finished*, and they are different
+    # enough that somebody asked for both in one box writes only one.
+    #
+    # It also earns its keep in retrieval. `brief_for` anchors on the project's
+    # own words, and an outcome supplies the concrete nouns a purpose usually
+    # does not -- "the booking form is live" against "stop enquiries going to
+    # email" -- which is the kind of term the rare-term gate behind
+    # `material_bearing_on` can actually select on.
+    #
+    # Blank rather than null and optional, for `purpose`'s reasons exactly.
+    #
+    # **Not S10's abandonment condition**, which is still unbuilt and whose
+    # relationship to this field is D4 in that plan. Both describe how a
+    # project ends; deciding them apart risks two text areas nobody fills, and
+    # that decision is not made here.
+    desired_outcome = models.TextField(blank=True, default="")
     due_date = models.DateField(blank=True, null=True)
     is_completed = models.BooleanField(default=False)
     completed_at = models.DateTimeField(blank=True, null=True)
+    # Parked: not finished, and not being worked on either. A todo application
+    # that can only say "open" makes a deliberately shelved project look like
+    # neglect, and a weekly check-in that has to *ask* which projects are
+    # active is asking for something the system could know.
+    #
+    # **A nullable timestamp rather than a status enum**, following
+    # `DailyFocus.released_at` and `completed_at` above: when a state began is
+    # strictly more than the fact that it holds, it is additive against
+    # `valid_project_completion` rather than a rewrite of it, and it leaves
+    # room for a `ProjectPause` model later without touching what is here --
+    # the charter's asymmetry argument. §4's test says a paused project has a
+    # project's life cycle, so this is a field and not a model.
+    #
+    # Completed wins over paused: `complete_project` clears this, so no row is
+    # ever both and no reader has to decide which state to believe.
+    paused_at = models.DateTimeField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router";
@@ -28,6 +28,7 @@ function project(overrides: Record<string, unknown> = {}) {
     title: "Website Relaunch",
     due_date: null,
     is_completed: false,
+    paused_at: null,
     completed_at: null,
     created_at: "2026-08-10T09:00:00-04:00",
     open_task_count: 0,
@@ -148,5 +149,32 @@ describe("ProjectsIndexRoute", () => {
     expect(
       await screen.findByText(/colored strip shows how its open work is split/i),
     ).toBeInTheDocument();
+  });
+
+  it("files a paused project apart from the active ones", async () => {
+    /* The index is where a person scans "what am I actually working on", so a
+       parked project sitting silently among the open ones would make the
+       pause cosmetic exactly where it matters most --
+       planning-assistant-v2-plan.md increment 3. */
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse([
+        project({ id: 1, title: "Website launch" }),
+        project({
+          id: 2,
+          title: "Newsletter",
+          paused_at: "2026-08-19T09:00:00-04:00",
+        }),
+      ]),
+    );
+
+    render_();
+
+    expect(await screen.findByText("Paused")).toBeInTheDocument();
+    const paused = screen.getByRole("heading", { name: "Paused" }).parentElement;
+    expect(paused).not.toBeNull();
+    expect(within(paused as HTMLElement).getByText("Newsletter")).toBeInTheDocument();
+    expect(
+      within(paused as HTMLElement).queryByText("Website launch"),
+    ).toBeNull();
   });
 });

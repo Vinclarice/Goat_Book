@@ -684,9 +684,14 @@ def upcoming_constraints(owner, *, week_end, horizon_days=DAYS_IN_WEEK):
         .order_by("due_date", "id")
     )
 
+    # Paused projects are excluded, not only completed ones. Parking a project
+    # *is* the statement that it is not pressing, so a section headed "before
+    # the next review" that still counted its deadline would make the pause
+    # cosmetic — and a pause that changes nothing is not a pause.
     projects = Project.objects.filter(
         owner=owner,
         is_completed=False,
+        paused_at__isnull=True,
         due_date__gt=week_end,
         due_date__lte=horizon,
     ).order_by("due_date", "id")

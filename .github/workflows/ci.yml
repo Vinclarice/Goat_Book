@@ -87,11 +87,41 @@ jobs:
         with:
           python-version: "3.14"
           cache: pip
-          cache-dependency-path: requirements-dev.txt
+          # Both files, because `requirements-dev.txt` now only *references*
+          # the embeddings pin -- keyed on the referrer alone, changing the
+          # encoder version would restore a cache that predates it.
+          cache-dependency-path: |
+            requirements-dev.txt
+            requirements-embeddings.txt
+      # CPU-only torch, before the requirements that would otherwise pull the
+      # default wheel. On Linux that default is the CUDA build: gigabytes of
+      # GPU runtime for an encoder that runs on CPU, on a runner with no GPU.
+      # Done as its own step rather than in requirements-embeddings.txt because
+      # an `--index-url` line there would redirect every package in the file.
+      - run: pip install --disable-pip-version-check --index-url https://download.pytorch.org/whl/cpu torch
       - run: pip install --disable-pip-version-check -r requirements-dev.txt
+      # The model, cached between runs. `test_semantic_echo.py` sets
+      # `HF_HUB_OFFLINE=1` because it assumes a warm cache, which a fresh
+      # runner is not -- and `encoder_available()` catches every exception and
+      # returns False, so without this the 25 semantic-echo tests would go on
+      # skipping while reporting the dependency as "not installed". A silent
+      # false skip is worse than the honest one it replaced.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: hf-all-MiniLM-L6-v2
+      - name: Fetch the encoder model
+        env:
+          HF_HUB_OFFLINE: "0"
+        run: |
+          python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')"
       # Config lives in pytest.ini, including the testpaths that scope this to
       # src/mind -- passing the path again here would be a second place to
       # forget.
+      #
+      # `-p no:randomly` is not set and no marker is skipped: the point of D4 is
+      # that these run. If semantic-echo tests ever skip here again, the cause
+      # is this job, not the detector.
       - run: pytest
 
   # A separate job because it is the only one needing both toolchains at

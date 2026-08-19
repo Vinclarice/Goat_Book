@@ -303,7 +303,9 @@ week I rejected"* is a signal about the planner.
 ## Open decisions — Vince's, not this document's
 
 **Increments 1, 2 and 3 depend on none of these and can start now.** The
-decisions gate 4, 5's successor, and 6. **D1 is answered; three remain.**
+decisions gate 4, 5's successor, and 6. **D1 and D4 are answered, both on
+August 18, 2026; D2 and D3 remain** — and both of those are appetite questions
+rather than factual ones, which is why they were always the harder pair.
 
 1. ~~**D1. Is generated prose ever allowed?**~~ **Answered August 18, 2026:
    not yet, and the trigger is written below.** See *D1, decided* after this
@@ -314,10 +316,24 @@ decisions gate 4, 5's successor, and 6. **D1 is answered; three remain.**
 3. **D3. What is each surface's budget?** Proposals per week per surface that a
    person will actually adjudicate. Without numbers, "gets quieter" has no
    threshold to fire at.
-4. **D4. Does `sentence-transformers` enter the production image and the test
-   requirements?** One producer is unrun and unmeasured today, so every
-   accept-rate reading describes four producers while naming five. Fix the two
-   dead `requirements-embeddings.txt` citations with whichever way it goes.
+4. ~~**D4. Does `sentence-transformers` enter the production image and the test
+   requirements?**~~ **Answered August 18, 2026: test requirements yes,
+   production image no.** It was two decisions wearing one number — installing
+   it in tests makes the detector *measured* and costs CI time; installing it in
+   the image makes it *run* and costs deploy size on every build plus droplet
+   disk across the four images kept for rollback. The first is paid, the second
+   waits for a corpus with something for the detector to say.
+
+   **Verified, not assumed: 25 skipped became 0, and the knowledge core went
+   from 652 passed to 677.** The naive version of this change would not have
+   done that — `test_semantic_echo.py` sets `HF_HUB_OFFLINE=1` assuming a warm
+   cache, and `encoder_available()` swallows every exception, so adding the
+   package alone leaves the tests skipping while reporting the dependency
+   "not installed". CI therefore fetches and caches the model before `pytest`,
+   and installs CPU-only torch first, because the default Linux wheel is the
+   CUDA build. `requirements-embeddings.txt` now exists, which resolves the two
+   citations that had pointed at it for weeks — including an error message
+   telling a person to install a file that was not there.
 
 ## D1, decided — not yet, and here is what would change it
 
@@ -375,6 +391,49 @@ commits to a plain statement of what AI processing does with your material, and
 the terms and privacy policy that statement belongs in are still unwritten
 (`roadmap.md`, *Open now*). Answering "yes, hosted" makes a document that does
 not exist harder to write.
+
+**Hardware recorded against the local side, August 18, 2026.** The argument
+against local was that small models reach for unsupported generalities — exactly
+what the assertion rule forbids — so privacy protection bought an accuracy risk.
+Two machines change that, and the second changes it more than the first:
+
+- The development laptop has an **RTX 4080 Laptop, 12 GB** (`nvidia-smi`, driver
+  596.08). Runs a quantised 7–8B model, which is already not the class of model
+  the concern was about.
+- There is also an **RTX 3090, 24 GB, on a home desktop Vince could leave running
+  at weekends**. That is a different proposition: 24 GB comfortably holds models
+  well past the size where "reaches for unsupported generalities" was the
+  objection, and *a machine that can be left running on a schedule is a batch
+  host*.
+
+**This fits the path the design document already permits, not the carve-out.**
+The articulation carve-out is a *serving* path — user-initiated, on demand, with
+a spinner — and production is a Droplet with no GPU, so no laptop or desktop can
+serve it. But `design-concept.md` explicitly allows a heavier model **confined to
+the batch job**, "invoked only by the periodic consolidation job", and puts that
+job's cadence at nightly *or weekly*. A weekend run is inside the design as
+written. In this configuration the privacy objection to local disappears
+entirely: the payload — which is selected for being the most charged material in
+the corpus — never leaves hardware Vince owns.
+
+**So if D1 fires, "local" means batch and not on-demand**, which is a different
+product decision rather than a smaller version of the same one. Proposals would
+arrive weekly and be read in a ritual, which is what the Attention Policy asks
+for anyway.
+
+**The blocker moves rather than disappearing.** It is no longer "can a local
+model be good enough" but **"how does a machine outside the deployment write to
+it safely"** — production Postgres is not reachable from a home IP by design, so
+this needs either an authenticated batch endpoint on `/api/v1/` or a deliberate
+network decision, and it needs a visible failure mode: a desktop that is switched
+off is a batch job that silently does not run, which is this repository's
+most-repeated failure. `instrumentation.last_maintenance_run` already exists and
+reports exactly that, which is the hook to use rather than a new one.
+
+**None of this touches the encoder.** `all-MiniLM-L6-v2` is ~22M parameters and
+the whole corpus encodes in seconds on CPU; no GPU accelerates anything that is
+slow today. Recorded under D1 rather than D4 precisely because it is irrelevant
+to D4 and would otherwise be filed against the wrong decision.
 
 ## Relationship to other documents
 

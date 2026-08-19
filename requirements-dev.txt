@@ -19,3 +19,15 @@ playwright==1.62.0
 pytest==9.1.1
 pytest-django==4.14.0
 hypothesis==6.165.5
+
+# The semantic-echo detector's encoder, so its 25 tests stop skipping -- D4 in
+# `design/planning-assistant-plan.md`. Included *here* and pointedly not in
+# `requirements.txt`: the detector becomes measured without becoming deployed,
+# and the file explains why those are different decisions.
+#
+# Installing this is necessary and not sufficient. `test_semantic_echo.py` sets
+# `HF_HUB_OFFLINE=1` on the assumption the model is already cached, which is
+# false on a fresh runner -- and `encoder_available()` swallows every exception,
+# so the tests would skip anyway while reporting the dependency "not installed".
+# CI therefore fetches the model before running pytest; see the `mind` job.
+-r requirements-embeddings.txt

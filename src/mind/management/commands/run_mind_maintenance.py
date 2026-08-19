@@ -21,6 +21,17 @@ see `requirements-embeddings.txt` and `mind.embeddings.encoder_available`. The
 semantic-echo detector reports itself unavailable on `/numbers/` rather than
 failing here, which is the honest arrangement while that dependency stays out of
 the production image.
+
+**It is in `requirements-dev.txt` and not in `requirements.txt`, and that
+asymmetry is a decision rather than an oversight** — D4 in
+`design/planning-assistant-plan.md`, August 18, 2026. Installing it in test
+requirements makes the detector *measured*, which costs CI time; installing it
+in the image makes it *run*, which costs deploy size on every build and droplet
+disk across the four images kept for rollback. The second waits for a corpus
+large enough for the detector to have something to say. So: do not "fix" this by
+adding the package to `requirements.txt`, and if you deliberately decide to,
+this call needs adding too — embeddings that are never generated make the
+detector unavailable just as thoroughly as a missing dependency does.
 """
 
 import logging

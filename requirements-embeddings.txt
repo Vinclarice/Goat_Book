@@ -1,0 +1,27 @@
+# The semantic-echo detector's encoder. Optional, and deliberately not in
+# `requirements.txt`.
+#
+# **This file was cited before it existed.** `mind/embeddings.py` tells a person
+# to `pip install -r requirements-embeddings.txt` in an error message, and
+# `run_mind_maintenance.py` names it in a docstring, and for weeks neither
+# resolved — the error message asked somebody to install a file that was not
+# there. Creating it is half of D4 (`design/planning-assistant-plan.md`).
+#
+# **Test requirements only, not the production image — Vince, August 18, 2026.**
+# `sentence-transformers` pulls in torch, and the two halves of that decision
+# have different prices: installing it here makes the detector *measured*, which
+# costs CI time; installing it in the image makes the detector *run*, which
+# costs deploy size on every build and droplet disk across the four images kept
+# for rollback. The second waits for a corpus large enough for the detector to
+# have something to say — 19 notes are visible to it today.
+#
+# So `requirements.txt` still does not reference this, on purpose, and
+# `run_mind_maintenance` still does not call `embed_nodes`. A detector that is
+# tested and dormant is an honest state; one that is neither was not.
+#
+# On Linux the default torch wheel is the CUDA build, which is enormous and
+# useless here — the encoder runs on CPU. CI installs torch from PyTorch's
+# CPU-only index before this file, which is why that step exists separately in
+# `.github/workflows/ci.yml` rather than being expressed here: an `--index-url`
+# line would redirect every package in this file, not just torch.
+sentence-transformers==6.0.0

@@ -9,6 +9,7 @@ import { apiV1 } from "../../api/client";
 import { RequestFailed, statusOf } from "../../api/failure";
 import type { AreaColorKey } from "../../types";
 import { FirstRun } from "./FirstRun";
+import { JournalSuggestions } from "./JournalSuggestions";
 import { RouteFailure } from "./RouteFailure";
 
 const SECTIONS = [
@@ -877,6 +878,12 @@ export function DayRoute() {
         </p>
         <h1 className="text-2xl font-bold">{longDate(data.date)}</h1>
       </div>
+
+      {/* What the day's writing read as a commitment — increment 2 slice D.
+          Below the compass and above the work, because it is about the
+          writing rather than about the plan, and because nothing here happens
+          until it is answered. */}
+      <JournalSuggestions day={date ?? "today"} suggestions={data.suggestions} />
 
       {/* Above everything, and quiet. It is the thing you re-read rather
           than the thing you do -- and it is the same on every day's page,

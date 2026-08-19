@@ -29,6 +29,7 @@ function dayData(overrides: Record<string, unknown> = {}) {
     gratitude: "",
     happenings: "",
     today: "2026-08-03",
+    suggestions: [],
     action_items: [],
     // An area by default, because every other test here is about an account
     // that has started. A task belongs to a List and list_summaries filters
@@ -1052,5 +1053,114 @@ describe("DayRoute", () => {
     expect(
       await screen.findByRole("button", { name: /try again/i }),
     ).toBeInTheDocument();
+  });
+
+  /* Suggestions read out of the writing -- planning-assistant-plan.md
+     increment 2, slice D. The card answers five questions, and the fourth
+     is the one no surface in this application has ever answered. */
+  const SUGGESTION = {
+    id: 7,
+    text: "I still need to ask Maya about the venue.",
+    reason: "reads as a commitment",
+    effect: "Creates a task with no due date",
+  };
+
+  it("offers what it read as a commitment, with the sentence it read", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(dayData({ suggestions: [SUGGESTION] })),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    expect(
+      await screen.findByText(/still need to ask Maya about the venue/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/reads as a commitment/i)).toBeInTheDocument();
+  });
+
+  it("says what confirming will do before you confirm it", async () => {
+    /* The Effect field. "Creates a task" and "creates a task due 4 June" are
+       different things to agree to, and a person told neither is approving
+       something they were not shown. */
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(dayData({ suggestions: [SUGGESTION] })),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    expect(
+      await screen.findByText("Creates a task with no due date"),
+    ).toBeInTheDocument();
+  });
+
+  it("creates the task when you accept", async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const request = input as Request;
+      const url = typeof input === "string" ? input : request.url;
+      if (request.method === "POST" && url.includes("/confirm")) {
+        return jsonResponse(dayData({ suggestions: [] }));
+      }
+      return jsonResponse(dayData({ suggestions: [SUGGESTION] }));
+    });
+
+    renderAt("/day/2026-08-03");
+    await screen.findByText(/still need to ask Maya/i);
+    await user.click(screen.getByRole("button", { name: /add to tasks/i }));
+
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.some(([request]) => {
+          const req = request as Request;
+          return (
+            req.method === "POST" &&
+            req.url.includes("/api/v1/suggestions/7/confirm")
+          );
+        }),
+      ).toBe(true);
+    });
+  });
+
+  it("says no without creating anything", async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const request = input as Request;
+      const url = typeof input === "string" ? input : request.url;
+      if (request.method === "POST" && url.includes("/dismiss")) {
+        return jsonResponse(dayData({ suggestions: [] }));
+      }
+      return jsonResponse(dayData({ suggestions: [SUGGESTION] }));
+    });
+
+    renderAt("/day/2026-08-03");
+    await screen.findByText(/still need to ask Maya/i);
+    await user.click(screen.getByRole("button", { name: /not a task/i }));
+
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.some(([request]) => {
+          const req = request as Request;
+          return (
+            req.method === "POST" &&
+            req.url.includes("/api/v1/suggestions/7/dismiss")
+          );
+        }),
+      ).toBe(true);
+    });
+  });
+
+  it("shows nothing at all when it read nothing", async () => {
+    /* No empty heading. "Nothing was read as a commitment" and "this section
+       failed to load" look identical as a blank panel, and a day that always
+       carries an empty box teaches you to stop seeing the box. */
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(dayData()),
+    );
+
+    renderAt("/day/2026-08-03");
+    await screen.findByRole("heading", { level: 1 });
+
+    expect(screen.queryByText(/reads as a commitment/i)).toBeNull();
+    expect(screen.queryByRole("button", { name: /add to tasks/i })).toBeNull();
   });
 });

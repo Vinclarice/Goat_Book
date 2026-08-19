@@ -3,25 +3,26 @@
 Vince · plan · written August 18, 2026 · **revised the same day after review,
 and its six increments confirmed as the product the same day**
 
-**Two increments are part-shipped, August 18, 2026, on `main` and undeployed.**
-Both stop at the same line, and for the same reason: the navigation-and-identity
-work owns the presentation layer this week.
+**Five of the six increments are complete, August 18–19, 2026, on `main` and
+undeployed.** Only the weekly-plan draft remains, and S9 is its one blocker.
 
-- **Increment 1's read half** — `a302dee`, `queries.unresolved_questions` and
-  thirteen tests. The section belongs on `/mind/review/`, and `mind/` templates
-  were being re-themed the same afternoon, so it waits rather than being written
-  twice.
-- **Increment 3's model and API** — `0fc78d9`, `Project.purpose` with migration
-  `0038`, twelve tests, contract and client regenerated. **No React text area**,
-  so nothing can write a purpose yet except the API.
-- **Increment 4's retrieval** — `9cfc16e`, `queries.material_bearing_on` and ten
-  tests. Text-anchored, so this half needed no way to *write* a purpose; the
-  blocker recorded above was about real use, and fixtures answer a test. What
-  it still needs is the caller that turns a project into a statement, and an
-  endpoint.
+| # | State |
+|---|---|
+| 1 | **Read half only.** `queries.unresolved_questions` and thirteen tests. Its section on `/mind/review/` waits on the two design questions §1 names — how "answered" is recorded with no target node, and where "not a question" persists |
+| 2 | **Complete**, in four slices: `Facet` cites an entry, the journal producer, confirmation, and the card |
+| 3 | **Complete.** `Project.purpose` end to end, model to text area |
+| 4 | **Complete.** Retrieval, assembly, endpoint and the on-demand panel |
+| 5 | **Complete.** Loose ends and upcoming constraints, read and rendered |
+| 6 | Not started. Waits on S9 |
 
-Increment 2 has not started and still waits on the design question its own
-section names.
+**All four decisions are answered** — D1, D4 and D3 on the 18th, D2 just after
+midnight on the 19th. Nothing in this plan waits on one.
+
+**The hold that shaped increments 1, 3 and 4 has expired.** Their server halves
+were written while the navigation-and-identity work owned the presentation
+layer, which is why each shipped without an interface and why 3 and 4 were
+finished afterwards. Increment 1's is the only one still outstanding, and it
+waits on design rather than on scheduling.
 
 ## What was asked for
 

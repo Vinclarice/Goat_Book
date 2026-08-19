@@ -526,6 +526,55 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/suggestions/{suggestion_id}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm Suggestion
+         * @description Accept a commitment the journal offered, making it a real task.
+         *
+         *     Answers with the whole day rather than the facet: every other write on this
+         *     surface does, and a client reconciling its own state after a decision is a
+         *     client that can disagree with the server about what just happened.
+         */
+        post: operations["daily_api_v1_confirm_suggestion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/suggestions/{suggestion_id}/dismiss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Dismiss Suggestion
+         * @description Say no, and have it stay said.
+         *
+         *     Retired rather than deleted, so the fingerprint keeps matching and the next
+         *     save does not offer it again — dismissing and then typing another word is
+         *     the ordinary case, and a suggestion that came back would make this button
+         *     meaningless.
+         */
+        post: operations["daily_api_v1_dismiss_suggestion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/routines": {
         parameters: {
             query?: never;
@@ -1351,6 +1400,8 @@ export interface components {
             gratitude: string;
             /** Happenings */
             happenings: string;
+            /** Suggestions */
+            suggestions: components["schemas"]["SuggestionOut"][];
             /** Today */
             today: string;
             /** Action Items */
@@ -1439,6 +1490,34 @@ export interface components {
             outcome: string;
             /** Is Met */
             is_met: boolean;
+        };
+        /**
+         * SuggestionOut
+         * @description One commitment read out of this day's writing, as a card to answer.
+         *
+         *     `planning-assistant-plan.md` increment 2. Five fields, and the fourth had
+         *     no implementation anywhere in this application until now.
+         *
+         *     `text` is the **cited sentence**, not the whole day -- the evidence, so the
+         *     claim can be checked against the passage that caused it rather than taken
+         *     on trust. `reason` says why it was read as a commitment.
+         *
+         *     **`effect` says what confirming will do**, and it is computed here rather
+         *     than phrased by the client. "Creates a task" and "creates a task due 4
+         *     June" are different things to agree to; slice C decided a promise with no
+         *     date makes a task with none, and somebody approving one should be told that
+         *     rather than discover it in their agenda. One wording, server-side, so two
+         *     clients cannot describe the same button differently.
+         */
+        SuggestionOut: {
+            /** Id */
+            id: number;
+            /** Text */
+            text: string;
+            /** Reason */
+            reason: string;
+            /** Effect */
+            effect: string;
         };
         /**
          * DayIn
@@ -2532,6 +2611,50 @@ export interface operations {
             path: {
                 day: string;
                 task_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DayOut"];
+                };
+            };
+        };
+    };
+    daily_api_v1_confirm_suggestion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                suggestion_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DayOut"];
+                };
+            };
+        };
+    };
+    daily_api_v1_dismiss_suggestion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                suggestion_id: number;
             };
             cookie?: never;
         };

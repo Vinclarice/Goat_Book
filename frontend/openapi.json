@@ -1005,6 +1005,76 @@
         ]
       }
     },
+    "/api/v1/suggestions/{suggestion_id}/confirm": {
+      "post": {
+        "operationId": "daily_api_v1_confirm_suggestion",
+        "summary": "Confirm Suggestion",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "suggestion_id",
+            "schema": {
+              "title": "Suggestion Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DayOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Accept a commitment the journal offered, making it a real task.\n\nAnswers with the whole day rather than the facet: every other write on this\nsurface does, and a client reconciling its own state after a decision is a\nclient that can disagree with the server about what just happened.",
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/suggestions/{suggestion_id}/dismiss": {
+      "post": {
+        "operationId": "daily_api_v1_dismiss_suggestion",
+        "summary": "Dismiss Suggestion",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "suggestion_id",
+            "schema": {
+              "title": "Suggestion Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DayOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Say no, and have it stay said.\n\nRetired rather than deleted, so the fingerprint keeps matching and the next\nsave does not offer it again \u2014 dismissing and then typing another word is\nthe ordinary case, and a suggestion that came back would make this button\nmeaningless.",
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/routines": {
       "get": {
         "operationId": "routines_api_v1_routine_standings",
@@ -2978,6 +3048,13 @@
             "title": "Happenings",
             "type": "string"
           },
+          "suggestions": {
+            "items": {
+              "$ref": "#/components/schemas/SuggestionOut"
+            },
+            "title": "Suggestions",
+            "type": "array"
+          },
           "today": {
             "title": "Today",
             "type": "string"
@@ -3050,6 +3127,7 @@
           "intentions",
           "gratitude",
           "happenings",
+          "suggestions",
           "today",
           "action_items",
           "areas",
@@ -3207,6 +3285,35 @@
           "is_met"
         ],
         "title": "StandingOut",
+        "type": "object"
+      },
+      "SuggestionOut": {
+        "description": "One commitment read out of this day's writing, as a card to answer.\n\n`planning-assistant-plan.md` increment 2. Five fields, and the fourth had\nno implementation anywhere in this application until now.\n\n`text` is the **cited sentence**, not the whole day -- the evidence, so the\nclaim can be checked against the passage that caused it rather than taken\non trust. `reason` says why it was read as a commitment.\n\n**`effect` says what confirming will do**, and it is computed here rather\nthan phrased by the client. \"Creates a task\" and \"creates a task due 4\nJune\" are different things to agree to; slice C decided a promise with no\ndate makes a task with none, and somebody approving one should be told that\nrather than discover it in their agenda. One wording, server-side, so two\nclients cannot describe the same button differently.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "effect": {
+            "title": "Effect",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "reason",
+          "effect"
+        ],
+        "title": "SuggestionOut",
         "type": "object"
       },
       "DayIn": {

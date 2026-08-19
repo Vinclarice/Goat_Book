@@ -21,6 +21,8 @@ from lists import projects as project_reader
 from lists.api_v1 import AgendaProjectSummaryOut, AreaColorKey, TaskOut
 from lists.models import Item
 from lists.serializers import project_ref_for, serialize_item
+from mind import services as mind_services
+from mind.models import Facet, FacetKind
 from routines import reads as routine_reads
 from routines.api_v1 import PausedRoutineOut, StandingOut
 
@@ -40,11 +42,39 @@ class DayAreaSummaryOut(Schema):
     color_key: AreaColorKey
 
 
+class SuggestionOut(Schema):
+    """One commitment read out of this day's writing, as a card to answer.
+
+    `planning-assistant-plan.md` increment 2. Five fields, and the fourth had
+    no implementation anywhere in this application until now.
+
+    `text` is the **cited sentence**, not the whole day -- the evidence, so the
+    claim can be checked against the passage that caused it rather than taken
+    on trust. `reason` says why it was read as a commitment.
+
+    **`effect` says what confirming will do**, and it is computed here rather
+    than phrased by the client. "Creates a task" and "creates a task due 4
+    June" are different things to agree to; slice C decided a promise with no
+    date makes a task with none, and somebody approving one should be told that
+    rather than discover it in their agenda. One wording, server-side, so two
+    clients cannot describe the same button differently.
+    """
+
+    id: int
+    text: str
+    reason: str
+    effect: str
+
+
 class DayOut(Schema):
     date: str
     intentions: str
     gratitude: str
     happenings: str
+    # Carried on the day rather than fetched separately: a suggestion belongs
+    # beside the writing that caused it, and two requests would let the two
+    # arrive apart.
+    suggestions: list[SuggestionOut]
     # Carried on every response so a page for the 3rd can tell whether the
     # 3rd is today, and offer yesterday/tomorrow, without a second request
     # or a client-side guess at the owner's zone.
@@ -219,6 +249,7 @@ def _day_out(owner, day):
         "gratitude": entry.gratitude if entry else "",
         "happenings": entry.happenings if entry else "",
         "today": today.isoformat(),
+        "suggestions": _suggestions_out(entry),
         "action_items": (
             [
                 _action_item_out(item, today)
@@ -348,3 +379,86 @@ def write_day(request, day: date, payload: DayIn):
         },
     )
     return _day_out(request.user, day)
+
+
+def _effect_of(facet):
+    """What confirming this will do, in one sentence the server owns.
+
+    Phrased here rather than in the client so two clients cannot describe the
+    same button differently — and because the wording depends on a decision
+    the server made: slice C settled that a promise with no date makes a task
+    with none, and that is exactly what a person is being asked to approve.
+    """
+    due = facet.data.get("due_date")
+    return f"Creates a task due {due}" if due else "Creates a task with no due date"
+
+
+def _suggestions_out(entry):
+    """This day's unanswered commitments, oldest first.
+
+    Answered ones are gone from here by construction: confirming stamps
+    `confirmed_at` and dismissing stamps `retired_at`, so a decided card
+    disappears without anything having to remember to remove it.
+    """
+    if entry is None:
+        return []
+    return [
+        {
+            "id": facet.id,
+            # The cited sentence, which is the evidence. A card quoting the
+            # whole day would make the reader find the promise themselves.
+            "text": facet.cited_text.strip(),
+            "reason": facet.reason or "",
+            "effect": _effect_of(facet),
+        }
+        for facet in entry.facets.filter(
+            kind=FacetKind.ACTIONABLE,
+            confirmed_at__isnull=True,
+            retired_at__isnull=True,
+        ).order_by("span_start", "id")
+    ]
+
+
+def _own_suggestion_or_404(user, suggestion_id):
+    """Owner-scoped in the query, so a caller cannot forget the second half.
+
+    `principles.md`: guards fail closed. The route addresses facets by id, and
+    this is what stops one person answering another's suggestion.
+    """
+    facet = Facet.objects.filter(
+        id=suggestion_id, kind=FacetKind.ACTIONABLE, entry__owner=user
+    ).select_related("entry").first()
+    if facet is None:
+        raise HttpError(404, "Suggestion not found.")
+    return facet
+
+
+@router.post("/suggestions/{suggestion_id}/confirm", response=DayOut)
+def confirm_suggestion(request, suggestion_id: int):
+    """Accept a commitment the journal offered, making it a real task.
+
+    Answers with the whole day rather than the facet: every other write on this
+    surface does, and a client reconciling its own state after a decision is a
+    client that can disagree with the server about what just happened.
+    """
+    facet = _own_suggestion_or_404(request.user, suggestion_id)
+    mind_services.confirm_actionable(
+        facet, now=timezone.now(), actor=request.user.get_username()
+    )
+    return _day_out(request.user, facet.entry.date)
+
+
+@router.post("/suggestions/{suggestion_id}/dismiss", response=DayOut)
+def dismiss_suggestion(request, suggestion_id: int):
+    """Say no, and have it stay said.
+
+    Retired rather than deleted, so the fingerprint keeps matching and the next
+    save does not offer it again — dismissing and then typing another word is
+    the ordinary case, and a suggestion that came back would make this button
+    meaningless.
+    """
+    facet = _own_suggestion_or_404(request.user, suggestion_id)
+    mind_services.dismiss_facet(
+        facet, now=timezone.now(), actor=request.user.get_username()
+    )
+    return _day_out(request.user, facet.entry.date)

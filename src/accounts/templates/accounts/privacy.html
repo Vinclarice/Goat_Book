@@ -10,6 +10,9 @@ see the Sentry and Resend paragraph under "What leaving looks like".
 If you change what the application collects, sends or keeps, this file is part
 of that change. The specific things it asserts:
 
+**One exception, marked at the paragraph:** the hosting region is a fact about
+the DigitalOcean account, not about this repository, so no test can hold it.
+
 - `clarice/monitoring.py` — every Sentry exclusion named below
 - `accounts/emails.py` — the messages that exist
 - `accounts/services.py` — ACCOUNT_DELETION_GRACE, and purge_account
@@ -119,9 +122,27 @@ of that change. The specific things it asserts:
       <p class="text-muted-foreground">
         Three companies, each doing one job.
       </p>
+      {% comment %}
+      **The region is the one claim on this page that no code can confirm.**
+      Everything else is checkable against the source; this comes from the
+      DigitalOcean account, so it is recorded here as what it is rather than
+      being allowed to look like the others. If the droplet or the database
+      cluster ever moves, nothing in this repository will fail — somebody has
+      to remember, and this comment is the reminder.
+      {% endcomment %}
       <p class="text-muted-foreground">
         <strong class="text-text">DigitalOcean</strong> hosts the server and
-        the database. Everything Clarice stores lives there.
+        the database, both in their <strong class="text-text">New York
+        region, in the United States</strong>. That is where everything
+        Clarice stores lives, and there is one of each — no copies in other
+        regions, and nothing replicated abroad.
+      </p>
+      <p class="text-muted-foreground">
+        The database is a managed one, so its backups are taken and held by
+        DigitalOcean alongside it rather than shipped somewhere else.
+        <strong class="text-text">If you are outside the United States, using
+        Clarice means your data is stored there</strong> — worth knowing
+        before you sign up rather than after.
       </p>
       <p class="text-muted-foreground">
         <strong class="text-text">Resend</strong> delivers email — confirming

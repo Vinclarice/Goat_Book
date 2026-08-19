@@ -381,6 +381,41 @@
         ]
       }
     },
+    "/api/v1/projects/{project_id}/brief": {
+      "get": {
+        "operationId": "lists_api_v1_project_brief",
+        "summary": "Project Brief",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectBriefOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "What bears on this project, asked for rather than implied.\n\n**Its own route rather than a fatter `ProjectOut`.** A brief runs a\nfull-text retrieval and a project detail is fetched on every render of a\npage that mostly wants a title; paying for the search each time would be\nthe wrong default. It also matches what this is -- a briefing somebody\nopens, which is the Attention Policy's condition for showing a queue at\nall.\n\nReads only, and records nothing. See `projects.ProjectBrief` for why that\ndiffers from `/mind/review/`, which records being opened on purpose.",
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/areas/{area_id}/project": {
       "patch": {
         "operationId": "lists_api_v1_assign_area_project",
@@ -2302,6 +2337,105 @@
           }
         },
         "title": "ProjectUpdateIn",
+        "type": "object"
+      },
+      "BriefCommitmentOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "due_date"
+        ],
+        "title": "BriefCommitmentOut",
+        "type": "object"
+      },
+      "BriefItemOut": {
+        "description": "One retrieved note, with the evidence that selected it.\n\n`reason` is not decoration. Without it the interface can only say\n\"related\", which is the unfalsifiable label this whole mechanic exists to\navoid -- `precision.md`'s point is that a person can check \"these share\nthree words appearing in none of your other notes\" and cannot check a\nscore.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "captured_at": {
+            "title": "Captured At",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "distinctive_terms": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Distinctive Terms",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "captured_at",
+          "reason",
+          "distinctive_terms"
+        ],
+        "title": "BriefItemOut",
+        "type": "object"
+      },
+      "ProjectBriefOut": {
+        "properties": {
+          "material": {
+            "items": {
+              "$ref": "#/components/schemas/BriefItemOut"
+            },
+            "title": "Material",
+            "type": "array"
+          },
+          "questions": {
+            "items": {
+              "$ref": "#/components/schemas/BriefItemOut"
+            },
+            "title": "Questions",
+            "type": "array"
+          },
+          "commitments": {
+            "items": {
+              "$ref": "#/components/schemas/BriefCommitmentOut"
+            },
+            "title": "Commitments",
+            "type": "array"
+          }
+        },
+        "required": [
+          "material",
+          "questions",
+          "commitments"
+        ],
+        "title": "ProjectBriefOut",
         "type": "object"
       },
       "AreaProjectIn": {

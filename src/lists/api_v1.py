@@ -482,6 +482,78 @@ def project_detail(request, project_id: int):
     return _project_out(project)
 
 
+class BriefItemOut(Schema):
+    """One retrieved note, with the evidence that selected it.
+
+    `reason` is not decoration. Without it the interface can only say
+    "related", which is the unfalsifiable label this whole mechanic exists to
+    avoid -- `precision.md`'s point is that a person can check "these share
+    three words appearing in none of your other notes" and cannot check a
+    score.
+    """
+
+    id: str
+    text: str
+    captured_at: str
+    reason: str
+    distinctive_terms: list[str]
+
+
+class BriefCommitmentOut(Schema):
+    id: int
+    text: str
+    due_date: str | None
+
+
+class ProjectBriefOut(Schema):
+    material: list[BriefItemOut]
+    questions: list[BriefItemOut]
+    commitments: list[BriefCommitmentOut]
+
+
+def _brief_item_out(item):
+    return {
+        "id": str(item.node.public_id),
+        "text": item.node.original_content,
+        "captured_at": item.node.captured_at.isoformat(),
+        "reason": item.reason,
+        "distinctive_terms": list(item.distinctive_terms),
+    }
+
+
+@router.get("/projects/{project_id}/brief", response=ProjectBriefOut)
+def project_brief(request, project_id: int):
+    """What bears on this project, asked for rather than implied.
+
+    **Its own route rather than a fatter `ProjectOut`.** A brief runs a
+    full-text retrieval and a project detail is fetched on every render of a
+    page that mostly wants a title; paying for the search each time would be
+    the wrong default. It also matches what this is -- a briefing somebody
+    opens, which is the Attention Policy's condition for showing a queue at
+    all.
+
+    Reads only, and records nothing. See `projects.ProjectBrief` for why that
+    differs from `/mind/review/`, which records being opened on purpose.
+    """
+    project = project_reader.project_for(request.user, project_id)
+    if project is None:
+        raise HttpError(404, "Project not found.")
+
+    brief = project_reader.brief_for(request.user, project)
+    return {
+        "material": [_brief_item_out(each) for each in brief.material],
+        "questions": [_brief_item_out(each) for each in brief.questions],
+        "commitments": [
+            {
+                "id": task.id,
+                "text": task.text,
+                "due_date": task.due_date.isoformat() if task.due_date else None,
+            }
+            for task in brief.commitments
+        ],
+    }
+
+
 @router.post("/projects", response=ProjectOut)
 def create_project(request, payload: ProjectCreateIn):
     try:

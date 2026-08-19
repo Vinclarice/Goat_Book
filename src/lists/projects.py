@@ -9,9 +9,15 @@ Deliberately thin. Slice 7 is the model and the API; what the interface
 actually needs to ask is slice 8's question, and inventing reads for it now
 would be optimising an imagined workflow.
 """
+from dataclasses import dataclass
+
 from django.db.models import Count, Q
 
 from lists.models import Item, Project
+# The task core reading the knowledge core, which is the direction the
+# dependency has to run: `mind.queries` is text-anchored and does not know what
+# a Project is. `review/reads.py` already imports it the same way.
+from mind import queries as mind_queries
 
 
 def projects_for(owner):
@@ -53,3 +59,83 @@ def project_for(owner, project_id):
     closed.
     """
     return projects_for(owner).filter(id=project_id).first()
+
+
+@dataclass(frozen=True)
+class ProjectBrief:
+    """What a project page can offer when somebody opens it, in three sections.
+
+    Three because a piece of prior thinking, a loose end and a dated commitment
+    are three different things to do something about, and a single ranked list
+    would ask the reader to work out which is which.
+
+    Nothing here is a proposal. Every item already exists and already belongs to
+    the person, so there is no confirm gate: a brief assembles what is already
+    theirs rather than claiming anything new about it. That is also why reading
+    one records nothing -- contrast `services.open_review`, which stamps
+    `first_surfaced_at` precisely because a *proposal* shown without starting
+    its window makes silence meaningless.
+    """
+
+    project: Project
+    material: list
+    questions: list
+    commitments: object
+
+
+def brief_for(owner, project) -> ProjectBrief:
+    """Assemble a project's brief -- planning-assistant-plan.md increment 4.
+
+    **This is the half that knows what a Project is.** `mind.queries` stays
+    text-anchored and answers only "what bears on this statement"; the caller
+    supplies the statement. Keeping the dependency pointing this way is what
+    lets the knowledge core remain ignorant of the task core, and it is the
+    same direction `review/reads.py` already reads in.
+
+    The first two sections **partition one retrieval** rather than running two.
+    A note that is both an open question and topically relevant is a loose end
+    first -- showing it in both would be one item counted twice, which is how a
+    surface stops being trustworthy about its own contents.
+
+    `material_bearing_on` returns nothing for a project with no purpose, so
+    both retrieval sections are empty for one. That is deliberate and is not a
+    special case here: an unanchored query is the ranked-by-coincidence panel
+    the detector registry rejects.
+    """
+    material = mind_queries.material_bearing_on(owner, project.purpose or "")
+    open_question_ids = {
+        node.pk for node in mind_queries.unresolved_questions(owner)
+    }
+
+    questions = [each for each in material if each.node.pk in open_question_ids]
+    rest = [each for each in material if each.node.pk not in open_question_ids]
+
+    return ProjectBrief(
+        project=project,
+        material=rest,
+        questions=questions,
+        commitments=commitments_for(owner, project),
+    )
+
+
+def commitments_for(owner, project):
+    """This project's open tasks, those already dated for it soonest first.
+
+    Two hops, like `projects_for`: a project has areas and areas have tasks.
+
+    **A project with no due date is not a project with no commitments.**
+    Filtering on `due_date__lte=None` would return nothing and read as "no work
+    here", which is a different claim from "this has no deadline" -- so the
+    horizon only applies when there is one.
+
+    Undated tasks are left out when a horizon exists, which `due_date__lte`
+    would do anyway by dropping NULLs. Stated rather than inherited, because a
+    behaviour that is correct by accident survives a rewrite that makes it
+    wrong.
+    """
+    tasks = Item.objects.filter(
+        owner=owner, list__project=project, status=Item.Status.ACTIVE,
+    )
+    if project.due_date is not None:
+        tasks = tasks.filter(due_date__isnull=False, due_date__lte=project.due_date)
+    return tasks.order_by("due_date", "id")

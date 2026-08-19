@@ -136,6 +136,36 @@ export interface paths {
         patch: operations["lists_api_v1_update_project"];
         trace?: never;
     };
+    "/api/v1/projects/{project_id}/brief": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Project Brief
+         * @description What bears on this project, asked for rather than implied.
+         *
+         *     **Its own route rather than a fatter `ProjectOut`.** A brief runs a
+         *     full-text retrieval and a project detail is fetched on every render of a
+         *     page that mostly wants a title; paying for the search each time would be
+         *     the wrong default. It also matches what this is -- a briefing somebody
+         *     opens, which is the Attention Policy's condition for showing a queue at
+         *     all.
+         *
+         *     Reads only, and records nothing. See `projects.ProjectBrief` for why that
+         *     differs from `/mind/review/`, which records being opened on purpose.
+         */
+        get: operations["lists_api_v1_project_brief"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/areas/{area_id}/project": {
         parameters: {
             query?: never;
@@ -1043,6 +1073,46 @@ export interface components {
             due_date?: string | null;
             /** Is Completed */
             is_completed?: boolean | null;
+        };
+        /** BriefCommitmentOut */
+        BriefCommitmentOut: {
+            /** Id */
+            id: number;
+            /** Text */
+            text: string;
+            /** Due Date */
+            due_date: string | null;
+        };
+        /**
+         * BriefItemOut
+         * @description One retrieved note, with the evidence that selected it.
+         *
+         *     `reason` is not decoration. Without it the interface can only say
+         *     "related", which is the unfalsifiable label this whole mechanic exists to
+         *     avoid -- `precision.md`'s point is that a person can check "these share
+         *     three words appearing in none of your other notes" and cannot check a
+         *     score.
+         */
+        BriefItemOut: {
+            /** Id */
+            id: string;
+            /** Text */
+            text: string;
+            /** Captured At */
+            captured_at: string;
+            /** Reason */
+            reason: string;
+            /** Distinctive Terms */
+            distinctive_terms: string[];
+        };
+        /** ProjectBriefOut */
+        ProjectBriefOut: {
+            /** Material */
+            material: components["schemas"]["BriefItemOut"][];
+            /** Questions */
+            questions: components["schemas"]["BriefItemOut"][];
+            /** Commitments */
+            commitments: components["schemas"]["BriefCommitmentOut"][];
         };
         /** AreaProjectIn */
         AreaProjectIn: {
@@ -1984,6 +2054,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProjectOut"];
+                };
+            };
+        };
+    };
+    lists_api_v1_project_brief: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectBriefOut"];
                 };
             };
         };

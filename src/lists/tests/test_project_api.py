@@ -10,9 +10,12 @@ from datetime import timedelta
 from django.test import TestCase
 from django.utils import timezone
 
+from django.utils import timezone
+
 from accounts.models import User
 from lists.models import Item, List, Project
 from lists import services
+from mind import services as mind_services
 
 
 class ProjectEndpointTest(TestCase):
@@ -450,3 +453,85 @@ class ProjectPurposeEndpointTest(TestCase):
         self.assertEqual(response.status_code, 404)
         theirs.refresh_from_db()
         self.assertEqual(theirs.purpose, "")
+
+
+class ProjectBriefEndpointTest(TestCase):
+    """The HTTP contract for a project's brief.
+
+    Assembly is tested in test_project_brief.py; this is only what a client
+    sees. A separate route rather than a fatter `ProjectOut`, because a brief
+    runs a full-text retrieval and a project detail is fetched constantly --
+    paying for the search on every render of a page that mostly wants a title
+    would be the wrong default, and it is a *briefing*: asked for, not implied.
+    """
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            "alice", "alice@example.com", "a secure password"
+        )
+        self.other = User.objects.create_user(
+            "bob", "bob@example.com", "another secure password"
+        )
+        self.project = services.create_project(
+            self.user,
+            "Website launch",
+            purpose=(
+                "Replace the enquiries inbox with a booking form so the venue "
+                "stops losing bookings to email."
+            ),
+        )
+        self.client.force_login(self.user)
+
+    def test_rejects_anonymous_requests(self):
+        self.client.logout()
+
+        response = self.client.get(f"/api/v1/projects/{self.project.id}/brief")
+
+        self.assertEqual(response.status_code, 401)
+
+    def test_returns_three_sections(self):
+        response = self.client.get(f"/api/v1/projects/{self.project.id}/brief")
+
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertIn("material", body)
+        self.assertIn("questions", body)
+        self.assertIn("commitments", body)
+
+    def test_material_carries_its_evidence(self):
+        """The reason travels to the client, or the client invents one.
+
+        A brief whose items arrive without the terms that selected them leaves
+        the interface to say "related", which is the unfalsifiable label this
+        whole mechanic exists to avoid.
+        """
+        mind_services.capture(
+            self.user,
+            content=(
+                "The booking form should collect the venue and the enquiries "
+                "contact."
+            ),
+            captured_at=timezone.now() - timedelta(days=30),
+            source="web",
+            actor="alice",
+        )
+
+        body = self.client.get(f"/api/v1/projects/{self.project.id}/brief").json()
+
+        self.assertTrue(body["material"])
+        self.assertTrue(body["material"][0]["reason"])
+        self.assertTrue(body["material"][0]["text"])
+
+    def test_a_brief_for_someone_else_s_project_is_not_found(self):
+        theirs = services.create_project(self.other, "Their launch")
+
+        response = self.client.get(f"/api/v1/projects/{theirs.id}/brief")
+
+        self.assertEqual(response.status_code, 404)
+        # And 404 because it is theirs, not because the route is missing --
+        # an absent route answers 404 too, so without this the isolation case
+        # would pass against no implementation at all.
+        self.assertEqual(
+            self.client.get(f"/api/v1/projects/{self.project.id}/brief").status_code,
+            200,
+        )

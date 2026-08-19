@@ -144,7 +144,9 @@ generative *explainer*, over evidence already retrieved, is not.
 `design-concept.md` §*Machine Learning & LLM Usage Policy* is the authority: no
 LLM in the interactive path, local embeddings the only ML dependency, and one
 narrow carve-out — user-initiated, non-durable, entity-checked, event-logged.
-Its v1 ships no generation at all, and so does increment 1 through 5 below.
+Its v1 ships no generation at all, and **so do all six increments below** —
+settled as D1 on August 18, 2026, with a firing condition rather than a
+someday. See *D1, decided*.
 
 **The assistant never silently:** creates a task · marks a question answered ·
 alters a project · schedules calendar time · converts silence into approval ·
@@ -301,13 +303,12 @@ week I rejected"* is a signal about the planner.
 ## Open decisions — Vince's, not this document's
 
 **Increments 1, 2 and 3 depend on none of these and can start now.** The
-decisions gate 4, 5's successor, and 6.
+decisions gate 4, 5's successor, and 6. **D1 is answered; three remain.**
 
-1. **D1. Is generated prose ever allowed — for the summary, or to explain a
-   connection in a brief?** Nothing before increment 5 needs an answer. If yes,
-   it is `design-concept.md`'s carve-out and forces the local-versus-hosted
-   question, noting a summary payload is biased toward the most charged material
-   in the corpus, which is meaningfully worse than a random sample of notes.
+1. ~~**D1. Is generated prose ever allowed?**~~ **Answered August 18, 2026:
+   not yet, and the trigger is written below.** See *D1, decided* after this
+   list — it is long enough to be its own section, and a deferral without a
+   firing condition is the thing this document would be worst at.
 2. **D2. Does S3 get built?** Gates increment 6, and the answer is about
    appetite for entering estimates, not about code.
 3. **D3. What is each surface's budget?** Proposals per week per surface that a
@@ -317,6 +318,63 @@ decisions gate 4, 5's successor, and 6.
    requirements?** One producer is unrun and unmeasured today, so every
    accept-rate reading describes four producers while naming five. Fix the two
    dead `requirements-embeddings.txt` citations with whichever way it goes.
+
+## D1, decided — not yet, and here is what would change it
+
+**Vince, August 18, 2026. This is a deferral, not a refusal**, and the
+distinction is load-bearing: refusals live in
+[`architecture-trajectory.md`](architecture-trajectory.md) §7 and this does not
+go there. Nothing is closed. What is decided is that **the assistant ships
+extractive first and generation waits for evidence it is needed.**
+
+**Cost was never the constraint.** `design-concept.md` priced the carve-out at a
+few hundred calls a year against the eleven thousand it rejected, and a weekly
+summary is fifty-two. Privacy and fidelity decide this, and they pull opposite
+ways: a hosted model receives a payload selected for being the most charged
+material in the corpus, and a local one trades that for small models reaching
+for unsupported generalities — which is exactly the failure the assertion rule
+forbids, so the privacy protection buys an accuracy risk rather than being free.
+
+**The three candidate sites are not one question, and the plan had lumped
+them.** In increasing order of what they hand a model:
+
+| Site | Payload | Fit with the carve-out |
+|---|---|---|
+| Explaining one brief item | a purpose and a few cited spans | closest — per-item, bounded, on demand |
+| Thread articulation | a handful of spans, selected for recurrence | the original carve-out itself |
+| The weekly summary | **everything written that week** | **worst** — recurring, and arguably a standing pipeline stage wearing an on-demand coat |
+
+The site that motivated D1 is the one that fits least. If this is ever reopened,
+**the brief explanation is the defensible first site and the summary is not
+carried along with it.**
+
+### The trigger
+
+Either condition fires it, and both are observable rather than felt:
+
+1. **The extractive label degenerates.** A summary or brief section whose
+   connection has no mediating concept and no distinguishing terms — the
+   motif-mediated case `design-concept.md` says prose is *structurally*
+   necessary for, since everything entity-mediated names itself. This is
+   checkable in code: the extractive labeller returns nothing to show.
+2. **A named miss.** After at least eight weekly summaries — a quarter's worth
+   — **one specific week** where the citations were all present and it still was
+   not possible to tell what had happened. Recorded as that week, not as an
+   impression. Fewer than eight and there is no evidence, only impatience.
+
+**Neither can fire before increment 5 exists**, which is the point: the carve-out
+was designed to measure its own necessity, and an extractive summary nobody has
+read yet cannot have failed anybody.
+
+### What is still open if it fires
+
+Local versus hosted stays deferred to implementation time on
+`design-concept.md`'s own terms — evaluated against real material, not chosen in
+advance. And **hosted has a dependency nobody has paid yet**: this project
+commits to a plain statement of what AI processing does with your material, and
+the terms and privacy policy that statement belongs in are still unwritten
+(`roadmap.md`, *Open now*). Answering "yes, hosted" makes a document that does
+not exist harder to write.
 
 ## Relationship to other documents
 

@@ -166,12 +166,22 @@ in the codebase, enforced by a test that asserts against *executed SQL*.
 
 Three real gaps, all boundary problems rather than pattern problems.
 
-**A rule mirrored into three languages with no conformance test.** `bucket_for`
-lives in `src/lists/agenda.py`, `frontend/src/agenda.ts` and
-`android/.../AgendaFormatting.kt`; `WEEK_HORIZON_DAYS` likewise. Each has its own
-tests; none tests the others, and the duplication grows once per client. The
-cause is a contract decision: `/api/v1/agenda` ships every task unbucketed, so
-the server owns the *rule* on paper and ships *inputs* in practice.
+**A rule mirrored into three languages, now with a constants test and still no
+conformance test.** `bucket_for` lives in `src/lists/agenda.py`,
+`frontend/src/agenda.ts` and `android/.../AgendaFormatting.kt`;
+`WEEK_HORIZON_DAYS` likewise. Since August 18, 2026
+`lists/tests/test_mirrored_business_rules.py` fails when a mirrored *constant*
+disagrees — demonstrated first by setting the horizon to 14 in Python and
+TypeScript and watching all three suites stay green. **Behaviour is still
+unchecked**: three implementations can hold the same constant and disagree about
+a boundary.
+
+This section's diagnosis of the cause was right and is sharper than it knew.
+`/api/v1/agenda` ships every task unbucketed, so the server owns the rule on
+paper and ships inputs in practice — and it turns out the server already
+computes buckets at four call sites, with `BucketKey` already in the contract.
+That makes it a payload gap rather than an architecture, which
+[`mirrored-rules-brief.md`](mirrored-rules-brief.md) works out for the redesign.
 
 **No enforced module boundaries, so a comment can stand in for an invariant.**
 The `lists`/`capture` instance was resolved by deleting every file involved,
@@ -236,16 +246,20 @@ rate, which is the metric the differentiation rests on.
 `restart_policy: unless-stopped` shipped — the largest risk reduction per hour in
 the whole audit. Still open, in this order:
 
-- **SHA-tagged images and a rollback path.** The playbook deploys `image: clarice`
-  untagged, so there is no previous version to roll back *to*. A 502 maintenance
-  page belongs with it.
+- ~~**SHA-tagged images and a rollback path.**~~ Done August 18, 2026: the image
+  carries the commit's abbreviated SHA and four are kept on the host, so a bad
+  deploy has something to go back to. **A 502 maintenance page is still open**,
+  and so is the limit worth remembering — rolling the image back does not roll
+  the database back, so a deploy that migrated is undone by the restore drill or
+  not at all.
 - **Logs off the host.** `recreate: true` destroys the container **and its logs**
   every deploy, and gunicorn has no `--access-logfile`, so there are no HTTP
   access logs at all.
-- **A scheduled backup-freshness check.** 24-hour RPO with 7-day retention, and
-  the freshness check exists but is scheduled nowhere — the playbook's three cron
-  entries are the mind-maintenance pass, the due digest and the erasure sweep.
-  `~/.secret-key` also lives on exactly one filesystem; losing it invalidates
+- ~~**A scheduled backup-freshness check.**~~ Done August 18, 2026, in CI rather
+  than on the droplet: it needs `doctl` authenticated, so scheduling it on the
+  box meant putting a DigitalOcean token there. Run against production while
+  wiring it — backups were 16 hours old and current. **Still open beside it:**
+  `~/.secret-key` lives on exactly one filesystem, and losing it invalidates
   every session and outstanding reset token.
 
 **Scale — measured August 12, and half of it is now obsolete.** `/api/v1/agenda`

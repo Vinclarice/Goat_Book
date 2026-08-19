@@ -2,6 +2,10 @@
 
 Vince · the target these stories describe is the two-year product, not the next
 release. Written August 12, 2026; **score re-checked August 16, 2026.**
+**Two verdicts corrected August 18** — S13's cited the absence of ranking that
+now exists, and S17's had scored an export that was silently dropping data. The
+table itself is unchanged: both still land where they did, for different
+reasons. This was not a re-score, and the other seventeen were not re-read.
 
 ## The score
 
@@ -304,13 +308,18 @@ see what else was happening.
 `search_original` `SearchVectorField` with a GIN index and revisions a
 `search_body`, and `/mind/` has a search page over both.
 
-What it does not do is what this story asks for. It searches **notes only** —
-tasks, days and reviews are outside it — and it filters rather than ranks
-(`SearchQuery` without `SearchRank`). Reaching the day a note was written still
-means clicking back a week at a time.
+**Ranking shipped August 18, 2026** (`jackdaw`, D14) and this verdict used to
+cite its absence. `queries.search_ranked` scores on the better of the two
+vectors, and the page says when it is showing 30 of N rather than truncating in
+silence — which mattered because the "I know I wrote this" button sits directly
+beneath the results, so a truncation was being recorded as a retrieval failure.
 
-**Requires:** ranking, and reach across content. The index this was waiting for
-exists; the query does not.
+What still bends is reach. It searches **notes only** — tasks, days and reviews
+are outside it — and reaching the day a note was written still means clicking
+back a week at a time.
+
+**Requires:** reach across content, and a way to land on a date. Ranking is no
+longer on this list.
 
 ### S14. A note knows when it was written
 
@@ -383,7 +392,13 @@ feel like one, and it is worthless before the corpus exists.
 readable format, she can delete the account herself, and she is told plainly what
 happens to the copy.
 
-**Verdict: works.** Preferences carries a download of everything the account owns
+**Verdict: works** — and it was scored that way while the export silently
+dropped every tag association and three whole models, fixed August 18, 2026
+(D12). Recorded rather than quietly corrected: a verdict of "works" on a file
+nobody had checked against the models it claimed to cover is the failure mode
+this document's own citation rule exists to catch.
+
+Preferences carries a download of everything the account owns
 (JSON plus Markdown a person can actually read) and a self-service deletion with
 a thirty-day grace period, an acknowledgement, a password re-entry and three
 emails — `src/accounts/export.py`, `src/accounts/services.py:ACCOUNT_DELETION_GRACE`.

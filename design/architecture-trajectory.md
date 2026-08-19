@@ -221,9 +221,14 @@ derivation code answers questions; service code enforces invariants and mutates.
 What this rule may **not** claim is that a shared definition prevents drift. The
 counter-example is in this repository: `frontend/src/agenda.ts` once documented
 two exports as mirroring Python authorities that did not exist. `principles.md`
-allows a named mirror provided tests protect it, and the real mirrors —
-`WEEK_HORIZON_DAYS`, `bucket_for`, `next_weekday`, `snooze_presets`, the weekday
-constants — are still protected by matching comments rather than a test. See §6.
+allows a named mirror provided tests protect it. Since August 18, 2026 the
+mirrored *constants* — `WEEK_HORIZON_DAYS`, `AGE_WORTH_MENTIONING` — are
+protected by `lists/tests/test_mirrored_business_rules.py`, which reads all three
+languages. The mirrored *logic* — `bucket_for`, `next_weekday`, `snooze_presets`,
+the weekday constants — is still protected by matching comments rather than a
+test, so this rule is half satisfied and the half that is missing is the harder
+one. See §6, and `mirrored-rules-brief.md` for why deleting two of the three
+copies would be worth more than testing them.
 
 **5. Reference, never copy.** A surface displays a record; it does not own a
 duplicate that can drift. *Precedent:* the Daily Page embeds the agenda query

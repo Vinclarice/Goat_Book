@@ -283,7 +283,7 @@ accepted, edited or dismissed independently when they arrive.
 week holds*.** A draft that cannot say that is a list, and the product has
 lists.
 
-**Half of that blocker is gone — D2, August 18, 2026.** Capacity comes from
+**Half of that blocker is gone — D2, August 19, 2026.** Capacity comes from
 observed throughput rather than from entered estimates, so this no longer waits
 on `Item.effort` or on anybody's appetite for filling one in. What remains is
 S9: intentions above the day, snapshotted the way `DailyFocus` snapshots a
@@ -310,8 +310,8 @@ week I rejected"* is a signal about the planner.
 ## Open decisions — Vince's, not this document's
 
 **Increments 1, 2 and 3 depend on none of these and can start now.** The
-decisions gate 4, 5's successor, and 6. **All four were answered on August 18,
-2026** — the sections below record each one and why. Nothing in this plan is
+decisions gate 4, 5's successor, and 6. **All four are answered — D1, D4 and D3
+on August 18, 2026 and D2 just after midnight on the 19th** — the sections below record each one and why. Nothing in this plan is
 now waiting on a decision; what remains is work, and S9 is its only external
 prerequisite.
 
@@ -319,7 +319,7 @@ prerequisite.
    not yet, and the trigger is written below.** See *D1, decided* after this
    list — it is long enough to be its own section, and a deferral without a
    firing condition is the thing this document would be worst at.
-2. ~~**D2. Does S3 get built?**~~ **Answered August 18, 2026: capacity yes,
+2. ~~**D2. Does S3 get built?**~~ **Answered August 19, 2026: capacity yes,
    estimates no.** See *D2, decided* — the appetite question was dissolved
    rather than answered.
 3. ~~**D3. What is each surface's budget?**~~ **Answered August 18, 2026: the
@@ -346,7 +346,8 @@ prerequisite.
 
 ## D2, decided — capacity without estimates
 
-**Vince, August 18, 2026.** D2 asked whether S3 gets built, and
+**Vince, August 19, 2026** — just after midnight, where D1, D3 and D4 all landed
+on the 18th. Dated from the commit rather than from the sitting. D2 asked whether S3 gets built, and
 [`product-stories.md`](product-stories.md) framed it as the sharpest test of
 appetite in the whole set: *if estimates would go unentered, this story dies and
 takes the capacity model with it.* **The answer dissolves the test rather than

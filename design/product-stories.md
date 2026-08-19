@@ -7,6 +7,15 @@ now exists, and S17's had scored an export that was silently dropping data. The
 table itself is unchanged: both still land where they did, for different
 reasons. This was not a re-score, and the other seventeen were not re-read.
 
+**S3 re-scored August 19, 2026, and it did not move.** Still *impossible*, so
+the table below is again unchanged — nothing has been built, and the definition
+of that verdict is *no path exists at any cost short of new code*. What changed
+is its `Requires` line, which shrank from a model field, a capacity concept and a
+signal to **a read and a signal, with no new field at all**; and its appetite
+warning, which is withdrawn. Recorded here because "re-scored" and "re-ranked"
+are different claims and only the first happened. The other eighteen were not
+re-read.
+
 ## The score
 
 **3 work · 6 bend · 10 impossible** — from 2 · 2 · 15 on August 12, and the
@@ -116,16 +125,40 @@ a decided client strategy so "on a phone" has one answer.
 > Vince pins five things to Tuesday. Four hours are already committed. He wants
 > to know he is lying to himself on Monday, not at Friday's review.
 
-**Done means:** tasks carry effort estimates and the day declares its free time,
-so when the pinned total exceeds what the day can hold the day says so while he
-is still planning — and the weekly review can separate *over-committed* from
-*under-delivered*.
+**Done means:** the day says so while he is still planning, when what he has
+pinned exceeds what his days actually hold — and the weekly review can separate
+*over-committed* from *under-delivered*. **Rewritten August 18, 2026 to describe
+the outcome rather than one mechanism**; it previously specified effort estimates
+and a declared free-time budget, which is an implementation and not a journey.
 
-**Verdict: impossible.** No effort field, no capacity concept.
+**Verdict: impossible**, unchanged. Nothing has been built: no reader computes
+what a day holds, and `Item` still has no effort field. *"No path exists at any
+cost short of new code"* is exactly as true as it was on August 12.
 
-**Requires:** `Item.effort`, a per-day capacity, and a planning-time signal.
-This is the sharpest test of appetite in the whole set — if estimates would go
-unentered, this story dies and takes the capacity model with it.
+**Requires:** a throughput read and a planning-time signal — **and no new field
+at all.** This is much cheaper than it was, which is the whole of what changed.
+`DailyFocus` (`src/daily/models.py:72`) already records what was pinned to a day
+and whether it was released, and `daily-operating-system-vision.md` requires that
+denominator be captured at the moment of choosing precisely because it cannot be
+reconstructed afterwards. `review/reads.py:102` already computes planned against
+completed for a week; a day is the same computation at a finer grain.
+
+**The appetite test this story carried is withdrawn.** It read *"the sharpest
+test of appetite in the whole set — if estimates would go unentered, this story
+dies and takes the capacity model with it."* That was true of the mechanism and
+not of the journey. **D2, August 19, 2026** chose capacity derived from history
+over capacity entered by hand, so there are no estimates to go unentered and
+nothing here rests on anybody's willingness to maintain them. Dated August 19
+because the decision landed just after midnight; the reasoning is in
+[`planning-assistant-plan.md`](planning-assistant-plan.md) §*D2, decided*. The
+cost of being wrong about this fell with it: a throughput read that nobody finds
+useful is a read to delete, where an abandoned estimate field is a column and a
+migration.
+
+**What the cheaper route does not buy**, recorded so the next reader does not
+assume this story got easier than it did: throughput is count-based, so nine
+small things read the same as nine large ones. Distinguishing them still wants
+the effort field this no longer requires.
 
 ### S4. Priya captures a thought in a supermarket queue
 
@@ -474,7 +507,11 @@ the note half. What is missing:
 
 **Productivity**
 
-- `Item.effort` and per-day capacity *(S3)*
+- ~~`Item.effort` and per-day capacity~~ — **no longer a model change** *(S3)*.
+  Capacity is a read over `DailyFocus`, decided as D2 on August 19, 2026. It is
+  struck here rather than deleted because the target model is an argument, and
+  an item leaving it by getting cheaper is the most useful thing that can happen
+  to one
 - Deferral distinct from `due_date`, so snooze stops erasing the commitment
 - A someday state, so non-committed work stops masquerading as something else
 - `Project` as a workspace: purpose, notes, abandonment condition,

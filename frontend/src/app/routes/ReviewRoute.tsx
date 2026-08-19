@@ -623,6 +623,9 @@ export function ReviewRoute() {
   const queryClient = useQueryClient();
   const queryKey = ["review", week ?? "current"];
   const [draft, setDraft] = useState({ reflections: "", plan: "" });
+  const [weekIntention, setWeekIntention] = useState("");
+  const [intentionError, setIntentionError] = useState<string | null>(null);
+  const [intentionSaved, setIntentionSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
@@ -652,6 +655,10 @@ export function ReviewRoute() {
       reflections: data.review.reflections,
       plan: data.review.plan,
     });
+    // Seeded from the same effect and on the same key, so navigating to
+    // another week reloads all three together. Separate state because it is a
+    // separate record with a separate endpoint -- see the mutation below.
+    setWeekIntention(data.draft.intention);
     setSaved(false);
   }, [data]);
 
@@ -676,6 +683,47 @@ export function ReviewRoute() {
     onError: (caught: Error) => {
       setSaved(false);
       setSaveError(caught.message);
+    },
+  });
+
+  // What next week is for — product-stories.md S9. Its own mutation, its own
+  // endpoint and its own control, for the reason the model is its own model:
+  // an intention must not be able to invent a `WeeklyReview` row, because that
+  // row's existence is the only evidence of whether reviewing is happening.
+  // Folding this into the save above would put that risk one refactor away.
+  //
+  // It writes the week being *drafted*, not the week on screen. Both are on
+  // the payload and confusing them would set an intention for a week that has
+  // already happened.
+  const intentionMutation = useMutation({
+    mutationFn: async () => {
+      const day = data?.draft.week_start;
+      if (!day) throw new Error("Couldn't save what next week is for.");
+      const { data: updated, error } = await apiV1.PUT(
+        "/api/v1/weeks/{day}/intention",
+        { params: { path: { day } }, body: { text: weekIntention } },
+      );
+      if (error) throw new Error("Couldn't save what next week is for.");
+      return updated;
+    },
+    onSuccess: (updated) => {
+      setIntentionError(null);
+      setIntentionSaved(true);
+      // Patched into the cached week rather than invalidated. The response is
+      // the intention and not the week, and a refetch would cost the whole
+      // review to carry one string back.
+      // `typeof data` rather than a named type: the payload's shape comes
+      // from the generated contract, and naming a local copy would be a
+      // second definition to keep in step with it.
+      queryClient.setQueryData(queryKey, (cached: typeof data) =>
+        cached
+          ? { ...cached, draft: { ...cached.draft, intention: updated.text } }
+          : cached,
+      );
+    },
+    onError: (caught: Error) => {
+      setIntentionSaved(false);
+      setIntentionError(caught.message);
     },
   });
 
@@ -941,12 +989,63 @@ export function ReviewRoute() {
           their dates. Acting on one happens through the task itself, and
           ignoring the whole thing costs nothing, which is what keeps it a
           proposal rather than a plan somebody has to undo. */}
-      {(weekDraft.proposed.length > 0 || weekDraft.routines.length > 0) && (
-        <section className="space-y-2">
+      {/* The section is no longer gated on there being proposals, and the
+          guard moved down to the list instead -- see below. The comment above
+          argues an empty planner reads as one that failed, which is true of a
+          *proposal* and not of a writing prompt: an empty box asking what next
+          week is for is an invitation, the same as the review's own two
+          textareas, and a week with nothing scheduled in it is exactly when
+          saying what it is for is worth most. */}
+      <section className="space-y-2">
           <h2 className="text-sm font-bold">Next week</h2>
-          {weekDraft.intention && (
-            <p className="text-sm">{weekDraft.intention}</p>
-          )}
+
+          {/* product-stories.md S9 -- "on Sunday she decides what the week is
+              about". Written here because this is the moment somebody is
+              already looking forwards, and read on the Day page, which is
+              where "on Wednesday the day knows" is answered.
+
+              Its own control rather than a field on "Save the review": two
+              records, two endpoints, and one button that meant both would be
+              the near-identical-controls problem C2 found in the task UI. */}
+          <div className="space-y-1">
+            <label htmlFor="week-intention" className="text-sm text-muted-foreground">
+              What is next week for?
+            </label>
+            <textarea
+              id="week-intention"
+              rows={2}
+              value={weekIntention}
+              onChange={(event) => {
+                setWeekIntention(event.target.value);
+                setIntentionSaved(false);
+              }}
+              className="w-full rounded-lg border border-border bg-input/40 px-3 py-2 text-sm"
+            />
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => intentionMutation.mutate()}
+                disabled={intentionMutation.isPending}
+              >
+                Save
+              </Button>
+              {/* Not the bare "Saved." the review's own save uses, and the
+                  difference is deliberate. Two controls on one page
+                  confirming with the same string is how `test_pages.py`'s
+                  `_table()` came to measure the wrong table: a query that
+                  matches two things silently picks one. Distinct text keeps
+                  "which save worked?" answerable by reading the page. */}
+              {intentionSaved && (
+                <span className="text-sm text-muted-foreground">
+                  Saved what next week is for.
+                </span>
+              )}
+              {intentionError && (
+                <span className="text-sm text-destructive">{intentionError}</span>
+              )}
+            </div>
+          </div>
 
           {/* Capacity, stated. Never "you only finish four" -- that is a
               verdict about the person where this is a fact about the weeks,
@@ -991,8 +1090,7 @@ export function ReviewRoute() {
               </ul>
             </div>
           )}
-        </section>
-      )}
+      </section>
 
       {data.names_to_confirm.length > 0 && (
         <section className="space-y-2">

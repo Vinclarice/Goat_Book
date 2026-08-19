@@ -377,6 +377,79 @@ describe("ReviewRoute", () => {
     expect(patched).toHaveLength(1);
   });
 
+  it("lets a person say what next week is for", async () => {
+    // product-stories.md S9's missing half. `WeeklyIntention` has had a model,
+    // a service, a read and a Day payload since 8b02c1b, and no way in --
+    // `set_intention` had no caller outside its own tests.
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const request = input as Request;
+      if (request.method === "PUT") {
+        return jsonResponse({ week_start: "2026-08-03", text: "Ship the booking form" });
+      }
+      return jsonResponse(weekData());
+    });
+
+    renderAt("/review");
+    await userEvent.type(
+      await screen.findByLabelText("What is next week for?"),
+      "Ship the booking form",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() =>
+      expect(screen.getByText("Saved what next week is for.")).toBeInTheDocument(),
+    );
+    // Deliberately not the bare "Saved." the review's own save shows: two
+    // controls confirming with one string makes a passing query ambiguous.
+    const written = fetchSpy.mock.calls
+      .map(([request]) => request as Request)
+      .filter((request) => request.method === "PUT");
+    expect(written).toHaveLength(1);
+    // Addressed to the week being drafted, which is the week *after* the one
+    // on screen -- drafting the reviewed week would plan a week that has
+    // already happened.
+    expect(written[0].url).toContain("/api/v1/weeks/2026-08-03/intention");
+  });
+
+  it("offers the intention even when nothing is dated into next week", async () => {
+    // The proposal list is hidden when empty, because an empty planner reads
+    // as one that failed. A writing prompt is not an empty state, and a week
+    // with nothing scheduled is exactly when saying what it is for matters.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() => jsonResponse(weekData()));
+
+    renderAt("/review");
+
+    expect(
+      await screen.findByLabelText("What is next week for?"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Also running")).toBeNull();
+  });
+
+  it("seeds the field with what the week already says", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        weekData({
+          draft: {
+            week_start: "2026-08-03",
+            intention: "Get the launch review done",
+            proposed: [],
+            routines: [],
+            typical_week: null,
+            over_committed: false,
+          },
+        }),
+      ),
+    );
+
+    renderAt("/review");
+
+    await waitFor(() =>
+      expect(screen.getByLabelText("What is next week for?")).toHaveValue(
+        "Get the launch review done",
+      ),
+    );
+  });
+
   it("shows the figure the review recorded rather than a live recount", async () => {
     // The whole reason for stamping: a task deleted from the archive
     // afterwards moves the live number, and a conclusion drawn on a Sunday
@@ -1031,9 +1104,18 @@ describe("ReviewRoute", () => {
     renderAt("/review");
     await screen.findByRole("heading", { level: 1 });
 
+    // **Narrowed rather than deleted when S9's field arrived.** This asserted
+    // that the whole "Next week" heading was absent, on the argument that an
+    // empty planner reads as one that failed. The section now always carries
+    // a box asking what next week is for, so the heading is no longer over
+    // nothing and that assertion was wrong about the new contract -- but what
+    // it was protecting is unchanged, and is what this now checks: nothing
+    // *proposed* is shown when there is nothing to propose.
+    expect(screen.queryByText(/dated for next week/)).toBeNull();
+    expect(screen.queryByText("Also running")).toBeNull();
     // Scoped to this section's heading. The review already carries a "Plan
     // for next week" field of the person's own words, which is a different
     // thing living happily beside the proposal and must not be asserted away.
-    expect(screen.queryByRole("heading", { name: "Next week" })).toBeNull();
+    expect(screen.getByRole("heading", { name: "Next week" })).toBeInTheDocument();
   });
 });

@@ -905,6 +905,29 @@ export function DayRoute() {
         </section>
       )}
 
+      {/* What the week is for — product-stories.md S9, "on Wednesday the day
+          knows". Beside the compass and for the compass's reason: context a
+          day is meant to be read *in*, displayed and never owned here, with
+          no copy that could drift from the week that holds it.
+
+          Narrower than the compass and placed under it deliberately. The
+          compass is stored on the person and is the same on every day's page;
+          this changes every Monday, so the order is permanent, then weekly,
+          then the day itself.
+
+          Absent when blank rather than shown empty. Blank is a value — "I set
+          none this week" is a real answer — and a heading over nothing is the
+          empty frame that teaches you to scroll past the section on the weeks
+          it does have something to say. */}
+      {data.week_intention && (
+        <section className="space-y-1 rounded-lg border border-border bg-input/40 px-4 py-3">
+          <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+            This week
+          </p>
+          <p className="text-sm">{data.week_intention}</p>
+        </section>
+      )}
+
       {/* Nobody can have a task without an area, so no areas means nobody has
           started -- a fact about the account, not about the date being looked
           at, which is what keeps this away from an established person's quiet

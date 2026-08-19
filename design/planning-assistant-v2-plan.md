@@ -390,6 +390,25 @@ Local and explainable, in the vision's own phrasing —
    **This is the decision that most changes increment 6**, and it is a design
    question spanning both cores — so `design-concept.md`'s account of the review
    ritual is a party to it, not just this file.
+7. **Does the weekly intention duplicate the review's own "Next week" field?**
+   **Found by building increment 1, not by planning it.** `WeeklyReview.plan`
+   has always carried *"plan for next week"* in the person's own words, and the
+   intention now sits on the same page asking a question a person could answer
+   the same way twice. Two free-text boxes about next week, a few hundred pixels
+   apart, is the near-identical-controls problem C2 found in the task UI — and
+   the increment shipped both because collapsing them is a product decision and
+   not a refactor.
+
+   The distinction that would justify keeping both: an intention is *what the
+   week is for* and survives into the week, where the plan is *what I said on
+   Sunday* and stays part of the review's record of that Sunday. **If that
+   distinction cannot be written on the page in a sentence, there is one field
+   here and not two** — and the intention is the one with the life cycle, since
+   the Day page reads it and nothing reads the plan.
+
+   Bears directly on D3: if the intention and the review's plan collapse into
+   one, an outcome is much more clearly a separate record than a rival phrasing
+   of the same one.
 
 ## Increments, in order
 

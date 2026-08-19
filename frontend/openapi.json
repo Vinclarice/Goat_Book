@@ -1508,6 +1508,52 @@
           }
         ]
       }
+    },
+    "/api/v1/weeks/{day}/intention": {
+      "put": {
+        "operationId": "review_api_v1_write_week_intention",
+        "summary": "Write Week Intention",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "day",
+            "schema": {
+              "format": "date",
+              "title": "Day",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeekIntentionOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Say what the week containing ``day`` is for \u2014 S9's missing half.\n\n**`/weeks/` rather than `/review/{day}/intention`**, and the URL is doing\nreal work here. `WeeklyIntention` is its own model precisely so that\nwriting one cannot invent a `WeeklyReview` row, since that row's existence\nis the only evidence of whether the practice is happening. Addressing the\nintention through the review's path would put the confusion the model\nexists to prevent into the contract, where the next person adding a field\nhas to rediscover it. The week is the resource; the review is a different\nrecord about the same seven days.\n\n**PUT rather than PATCH**, because the body is the whole resource. Sending\nit twice leaves the same state, and sending it empty clears the text\nwithout deleting the record \u2014 \"I set none this week\" and \"I never opened\nit\" stay different facts.\n\nThere is no ownership check to forget: the record is addressed by\n(`request.user`, the week containing `day`), so the path names a date and\nnever a record \u2014 the same shape `write_review` uses, and a smaller surface\nthan an id would be.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WeekIntentionIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -4275,6 +4321,40 @@
           }
         },
         "title": "ReviewIn",
+        "type": "object"
+      },
+      "WeekIntentionOut": {
+        "description": "The week that was written, named rather than implied.\n\n`week_start` is returned because the request addresses a week by *any* of\nits days, and a client that resolved the Monday itself would be the second\ndefinition of \"this week\" \u2014 the drift `crane-plan.md` \u00a76 names and the\nreason `set_intention` normalises rather than demanding a Monday.",
+        "properties": {
+          "week_start": {
+            "format": "date",
+            "title": "Week Start",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "week_start",
+          "text"
+        ],
+        "title": "WeekIntentionOut",
+        "type": "object"
+      },
+      "WeekIntentionIn": {
+        "description": "One field, and blank is a value.\n\nNot optional the way `ReviewIn`'s two are. That payload is partial because\nthe review page may save reflections without carrying the plan; this\nresource *is* the text, so absent and empty would be the same request\nwearing two shapes.",
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "WeekIntentionIn",
         "type": "object"
       }
     },

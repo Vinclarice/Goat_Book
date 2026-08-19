@@ -134,9 +134,24 @@ class TheReviewDecidesNothingTest(TestCase):
 
     def test_the_review_offers_no_endpoint_that_touches_more_than_one_thing(self):
         """A structural guard rather than a behavioural one: the routes
-        this app serves are two reads and three writes, and every write
+        this app serves are two reads and four writes, and every write
         addresses one week's own record. If a bulk route is ever added this
-        fails, which is the point."""
+        fails, which is the point.
+
+        **It fired when S9's write path was added, and the list was widened
+        deliberately.** `PUT /weeks/{day}/intention` is the fourth write, and
+        it meets this guard's actual criterion rather than being excused from
+        it: it addresses one week's own `WeeklyIntention` by the requesting
+        owner and the week containing a date, touches no task, and cannot
+        name a record belonging to anyone else. The guard is doing its job
+        here -- a route arrived and a person had to say why -- which is
+        exactly the transaction it exists for.
+
+        Its path is `/weeks/` and not `/review/` on purpose. An intention is
+        not part of the review record; writing one must not invent a
+        `WeeklyReview`, whose existence is the only evidence of whether
+        reviewing is happening at all.
+        """
         from review.api_v1 import router
 
         paths = sorted(
@@ -152,5 +167,6 @@ class TheReviewDecidesNothingTest(TestCase):
                 "PATCH /review/{day}",
                 "POST /review/{day}/complete",
                 "POST /review/{day}/reopen",
+                "PUT /weeks/{day}/intention",
             ],
         )

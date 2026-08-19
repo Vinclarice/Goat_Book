@@ -174,12 +174,22 @@ class ReviewOnAPhoneTest(BrowserTest):
             "In your own words",
             "Thoughts you captured",
             "Names worth confirming",
+            # Always on the page since S9's field arrived. It used to render
+            # only when something was dated into the coming week; a box asking
+            # what next week is for is a prompt rather than an empty state.
+            "Next week",
         ):
             expect(
                 self.page.get_by_role("heading", level=2, name=heading)
             ).to_be_visible()
         expect(self.page.get_by_label("Reflections")).to_be_visible()
-        expect(self.page.get_by_label("Next week")).to_be_visible()
+        # `exact` because two labels on this page now contain "Next week", and
+        # Playwright's get_by_label matches substrings where the component
+        # tests' getByLabelText matches whole strings -- so this read as
+        # unambiguous in one suite and resolved to two elements in the other.
+        # The review's own plan field is the one labelled exactly that.
+        expect(self.page.get_by_label("Next week", exact=True)).to_be_visible()
+        expect(self.page.get_by_label("What is next week for?")).to_be_visible()
 
     def test_no_control_is_clipped_off_the_right_edge(self):
         """Visible is not the same as reachable: an element can be visible
@@ -207,10 +217,33 @@ class ReviewOnAPhoneTest(BrowserTest):
         self.log_in(self.user)
         self.visit("/app/review")
 
-        self.page.get_by_label("Next week").fill("Two mornings on the review")
+        self.page.get_by_label("Next week", exact=True).fill(
+            "Two mornings on the review"
+        )
         self.page.get_by_role("button", name="Save the review").click()
 
         expect(self.page.get_by_text("Saved.")).to_be_visible()
+
+    def test_what_the_week_is_for_can_be_written_on_a_phone(self):
+        """S9's other half, through a real browser at 375px.
+
+        The write path and the review's own save are separate records behind
+        separate buttons, so this is a separate journey rather than another
+        assertion on the one above -- and the two confirmations say different
+        things precisely so a person can tell which of them worked.
+        """
+        self.a_full_week()
+        self.log_in(self.user)
+        self.visit("/app/review")
+
+        self.page.get_by_label("What is next week for?").fill(
+            "Get the booking form shipped"
+        )
+        self.page.get_by_role("button", name="Save", exact=True).click()
+
+        expect(
+            self.page.get_by_text("Saved what next week is for.")
+        ).to_be_visible()
 
     def test_the_review_needs_no_menu_on_a_phone(self):
         """The gap this sequence has shipped twice, checked at the width where

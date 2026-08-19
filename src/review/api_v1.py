@@ -533,6 +533,58 @@ def reopen_review(request, day: date):
     return _week_out(request.user, day)
 
 
+class WeekIntentionIn(Schema):
+    """One field, and blank is a value.
+
+    Not optional the way `ReviewIn`'s two are. That payload is partial because
+    the review page may save reflections without carrying the plan; this
+    resource *is* the text, so absent and empty would be the same request
+    wearing two shapes.
+    """
+
+    text: str
+
+
+class WeekIntentionOut(Schema):
+    """The week that was written, named rather than implied.
+
+    `week_start` is returned because the request addresses a week by *any* of
+    its days, and a client that resolved the Monday itself would be the second
+    definition of "this week" — the drift `crane-plan.md` §6 names and the
+    reason `set_intention` normalises rather than demanding a Monday.
+    """
+
+    week_start: date
+    text: str
+
+
+@router.put("/weeks/{day}/intention", response=WeekIntentionOut)
+def write_week_intention(request, day: date, payload: WeekIntentionIn):
+    """Say what the week containing ``day`` is for — S9's missing half.
+
+    **`/weeks/` rather than `/review/{day}/intention`**, and the URL is doing
+    real work here. `WeeklyIntention` is its own model precisely so that
+    writing one cannot invent a `WeeklyReview` row, since that row's existence
+    is the only evidence of whether the practice is happening. Addressing the
+    intention through the review's path would put the confusion the model
+    exists to prevent into the contract, where the next person adding a field
+    has to rediscover it. The week is the resource; the review is a different
+    record about the same seven days.
+
+    **PUT rather than PATCH**, because the body is the whole resource. Sending
+    it twice leaves the same state, and sending it empty clears the text
+    without deleting the record — "I set none this week" and "I never opened
+    it" stay different facts.
+
+    There is no ownership check to forget: the record is addressed by
+    (`request.user`, the week containing `day`), so the path names a date and
+    never a record — the same shape `write_review` uses, and a smaller surface
+    than an id would be.
+    """
+    intention = services.set_intention(request.user, day, payload.text)
+    return {"week_start": intention.week_start, "text": intention.text}
+
+
 def _draft_out(owner, week_start, today):
     """Next week's draft, from the week being reviewed.
 

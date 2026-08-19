@@ -43,6 +43,7 @@ function dayData(overrides: Record<string, unknown> = {}) {
     focus: [],
     compass_purpose: "",
     compass_question: "",
+    week_intention: "",
     routines: [],
     routines_are_loggable: true,
     paused_routines: [],
@@ -607,6 +608,35 @@ describe("DayRoute", () => {
     expect(
       screen.getByRole("link", { name: /Edit your compass/ }),
     ).toBeInTheDocument();
+  });
+
+  it("shows what the week is for, on a Wednesday", async () => {
+    // S9's sentence, asserted on the page rather than on the payload. The
+    // API has carried `week_intention` since 8b02c1b and no component read
+    // it, so "on Wednesday the day knows" was true of the response and false
+    // of the thing a person looks at.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(dayData({ week_intention: "Get the booking form shipped." })),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    expect(
+      await screen.findByText("Get the booking form shipped."),
+    ).toBeInTheDocument();
+  });
+
+  it("says nothing at all when the week has no intention", async () => {
+    // Blank is a value, so this is not an error state and gets no empty
+    // frame -- a heading over nothing teaches you to scroll past it.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(dayData({ week_intention: "" })),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    await screen.findByRole("heading", { level: 1 });
+    expect(screen.queryByText("This week")).toBeNull();
   });
 
   it("shows the same compass on a past day", async () => {

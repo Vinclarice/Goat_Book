@@ -163,3 +163,95 @@ class WednesdayKnowsTest(TestCase):
         """Never null over the wire, so the client renders text either way and
         has one representation of "nothing set" rather than two."""
         self.assertEqual(self.day(WEDNESDAY)["week_intention"], "")
+
+
+class SundayDecidesTest(TestCase):
+    """The other half of S9's sentence, and the half that was missing.
+
+    Everything above this could be exercised only from a Django shell:
+    `services.set_intention` had no caller outside these tests, no endpoint,
+    and no form, so *"on Sunday she decides what the week is about"* could not
+    happen from any client. `product-stories.md` scored S9 impossible on
+    exactly that -- a feature otherwise finished, held up by an absence.
+
+    **Its own path rather than a field on the review's PATCH.** The model is
+    deliberately not the review's, and a write addressed to `/review/{day}`
+    would put that confusion in the contract -- where the next person to add a
+    field has to rediscover why an intention must not create a review row.
+    """
+
+    def setUp(self):
+        self.alice = User.objects.create_user(
+            "alice", "alice@example.com", "a secure password"
+        )
+        self.bob = User.objects.create_user(
+            "bob", "bob@example.com", "another secure password"
+        )
+        self.client.force_login(self.alice)
+
+    def put(self, on, text):
+        return self.client.put(
+            f"/api/v1/weeks/{on.isoformat()}/intention",
+            data={"text": text},
+            content_type="application/json",
+        )
+
+    def test_a_person_can_say_what_the_week_is_for(self):
+        response = self.put(SUNDAY, "Get the booking form shipped.")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            reads.intention_for(self.alice, SUNDAY).text,
+            "Get the booking form shipped.",
+        )
+
+    def test_the_response_names_the_week_it_wrote(self):
+        """A Sunday addresses the week containing it, and the client is told
+        which one rather than resolving a Monday of its own -- the second
+        definition of "this week" that `crane-plan.md` §6 warns about."""
+        response = self.put(WEDNESDAY, "Ship it.")
+
+        self.assertEqual(
+            response.json(), {"week_start": MONDAY.isoformat(), "text": "Ship it."}
+        )
+
+    def test_any_day_of_the_week_writes_the_same_intention(self):
+        self.put(MONDAY, "First thought.")
+        self.put(WEDNESDAY, "Second thought.")
+
+        self.assertEqual(WeeklyIntention.objects.filter(owner=self.alice).count(), 1)
+        self.assertEqual(reads.intention_for(self.alice, SUNDAY).text, "Second thought.")
+
+    def test_writing_one_invents_no_review(self):
+        """The invariant the model exists for, asserted at the new caller.
+
+        It is already true of the service; a second way in is a second way to
+        break it, and this is the one that would be reached by a client.
+        """
+        self.put(MONDAY, "Get the booking form shipped.")
+
+        self.assertFalse(WeeklyReview.objects.filter(owner=self.alice).exists())
+
+    def test_blank_is_a_value_and_not_a_delete(self):
+        """"I set none this week" and "I never opened it" stay different
+        facts, which is the same call `DailyEntry` and `WeeklyReview` make."""
+        self.put(MONDAY, "Something.")
+        self.put(MONDAY, "")
+
+        self.assertEqual(reads.intention_for(self.alice, MONDAY).text, "")
+
+    def test_one_person_cannot_write_another_s_week(self):
+        """There is no id to forge -- the record is addressed by (requesting
+        user, the week containing day) -- and this proves the path carries no
+        way to name someone else's."""
+        self.put(MONDAY, "Alice's week.")
+
+        self.assertIsNone(reads.intention_for(self.bob, MONDAY))
+
+    def test_a_stranger_is_refused(self):
+        self.client.logout()
+
+        response = self.put(MONDAY, "Not mine.")
+
+        self.assertEqual(response.status_code, 401)
+        self.assertFalse(WeeklyIntention.objects.exists())

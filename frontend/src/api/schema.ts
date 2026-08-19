@@ -804,6 +804,45 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/weeks/{day}/intention": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Write Week Intention
+         * @description Say what the week containing ``day`` is for — S9's missing half.
+         *
+         *     **`/weeks/` rather than `/review/{day}/intention`**, and the URL is doing
+         *     real work here. `WeeklyIntention` is its own model precisely so that
+         *     writing one cannot invent a `WeeklyReview` row, since that row's existence
+         *     is the only evidence of whether the practice is happening. Addressing the
+         *     intention through the review's path would put the confusion the model
+         *     exists to prevent into the contract, where the next person adding a field
+         *     has to rediscover it. The week is the resource; the review is a different
+         *     record about the same seven days.
+         *
+         *     **PUT rather than PATCH**, because the body is the whole resource. Sending
+         *     it twice leaves the same state, and sending it empty clears the text
+         *     without deleting the record — "I set none this week" and "I never opened
+         *     it" stay different facts.
+         *
+         *     There is no ownership check to forget: the record is addressed by
+         *     (`request.user`, the week containing `day`), so the path names a date and
+         *     never a record — the same shape `write_review` uses, and a smaller surface
+         *     than an id would be.
+         */
+        put: operations["review_api_v1_write_week_intention"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1984,6 +2023,37 @@ export interface components {
             /** Plan */
             plan?: string | null;
         };
+        /**
+         * WeekIntentionOut
+         * @description The week that was written, named rather than implied.
+         *
+         *     `week_start` is returned because the request addresses a week by *any* of
+         *     its days, and a client that resolved the Monday itself would be the second
+         *     definition of "this week" — the drift `crane-plan.md` §6 names and the
+         *     reason `set_intention` normalises rather than demanding a Monday.
+         */
+        WeekIntentionOut: {
+            /**
+             * Week Start
+             * Format: date
+             */
+            week_start: string;
+            /** Text */
+            text: string;
+        };
+        /**
+         * WeekIntentionIn
+         * @description One field, and blank is a value.
+         *
+         *     Not optional the way `ReviewIn`'s two are. That payload is partial because
+         *     the review page may save reflections without carrying the plan; this
+         *     resource *is* the text, so absent and empty would be the same request
+         *     wearing two shapes.
+         */
+        WeekIntentionIn: {
+            /** Text */
+            text: string;
+        };
     };
     responses: never;
     parameters: never;
@@ -2979,6 +3049,32 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WeekOut"];
+                };
+            };
+        };
+    };
+    review_api_v1_write_week_intention: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                day: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WeekIntentionIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeekIntentionOut"];
                 };
             };
         };

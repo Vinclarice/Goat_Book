@@ -10,8 +10,10 @@ from datetime import datetime, timedelta
 
 from django.contrib.postgres.search import SearchRank
 from django.db.models import (
+    Case,
     Count,
     Exists,
+    IntegerField,
     F,
     FloatField,
     Max,
@@ -21,6 +23,7 @@ from django.db.models import (
     QuerySet,
     Subquery,
     Value,
+    When,
 )
 from django.db.models.functions import Coalesce, Greatest
 from django.utils import timezone
@@ -291,9 +294,62 @@ def pending_hypotheses(owner) -> QuerySet[ConnectionHypothesis]:
     """
     return (
         ConnectionHypothesis.objects.filter(owner=owner, resolved_at__isnull=True)
-        .order_by("-confidence", "created_at")
+        .annotate(unearned=_demotion_case(owner))
+        .order_by("unearned", "-confidence", "created_at")
         .prefetch_related("members__node")
         .select_related("concept")
+    )
+
+
+# `retirement_gate`'s number, not a second one. Two readings of one threshold is
+# how a rule comes to mean two things.
+EARNED_ACCEPT_RATE = 0.5
+
+
+def _demotion_case(owner):
+    """0 for a detector that has earned its slots, 1 for one that has not.
+
+    **This is D3, and it replaces a comparison that never meant anything.**
+    Ordering was `-confidence` alone, and confidence is not comparable across
+    detectors: `shared_referent` emits a flat 0.9, `open_question` a flat 0.55,
+    `dormant_thread` a computed `shared_count / 8`. One states an evidence
+    *class*, another normalises a term count — so the five slots were rationed
+    by whichever constants somebody chose, while accept rate, the measurement of
+    what is actually useful, fed into nothing.
+
+    **Two tiers, not a score.** Blending an accept rate into the sort key would
+    invent a second incomparable number to fix the first. A detector has either
+    earned an equal claim on the slots or it has not, and inside a tier
+    confidence still orders — there it means what its author meant, and it is
+    the best signal available.
+
+    **A detector with no decisions is not demoted.** No evidence is not bad
+    evidence, and starting a newcomer in the penalty tier would keep it from
+    being seen enough to be judged — the same reason `accept_rate` returns None
+    rather than zero.
+
+    **Demotion is not starvation.** A demoted detector still fills slots nothing
+    else claims, because the alternative is self-confirming: no slots means no
+    decisions means the rate never recovers, and one unlucky early dismissal
+    would bury a producer permanently. *Quieter, never silent* is the rule, and
+    this is the mechanism that keeps the second half true.
+
+    Rates are per person. "Distinctive to them" is the premise every producer
+    here rests on, so one person's dismissals cannot ration another's slots.
+    """
+    from .instrumentation import detector_performance
+
+    unearned = [
+        row.detector
+        for row in detector_performance(owner)
+        if row.accept_rate is not None and row.accept_rate < EARNED_ACCEPT_RATE
+    ]
+    if not unearned:
+        return Value(0)
+    return Case(
+        When(detector__in=unearned, then=Value(1)),
+        default=Value(0),
+        output_field=IntegerField(),
     )
 
 

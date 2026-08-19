@@ -218,8 +218,11 @@ Two colours, four outcomes, one rule — and the rule is the product's own.
 
 ## What is not decided
 
-- **Whether this becomes an active roadmap item**, and against what priority.
-  `roadmap.md` owns that; this file does not claim it.
+- ~~**Whether this becomes an active roadmap item.**~~ Open in
+  [`roadmap.md`](roadmap.md) as of August 18, 2026. **Open is not scheduled**:
+  that file still owns the priority, and `CLAUDE.md`'s rule holds — the
+  knowledge core and the commercial substrate are where work goes, and the
+  signed-out page is the part of this that is substrate rather than polish.
 - **Whether signup gets built before or after the landing page** (see above).
 - **Whether the three-mark vocabulary reaches the application's own surfaces**,
   or only the marketing page. The comps show it on both, which is a proposal.

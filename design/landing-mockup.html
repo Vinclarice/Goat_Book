@@ -579,10 +579,14 @@ a { color: inherit; }
 
   <section class="close">
     <h2>Find out what your week actually looks like.</h2>
-    <!-- The copy here cannot promise an email until the Resend transport
-         ships: no mail leaves production at all today, because DigitalOcean
-         blocks outbound 25, 465 and 587. See design/mail-transport-plan.md.
-         Until then this says how to get in touch, not what we will send. -->
+    <!-- Mail is no longer the blocker: the Resend transport shipped as jackdaw
+         on August 18, and this comment said otherwise for about two hours.
+         What still blocks the promise is that nothing would send it. Signup
+         sets is_active=False (accounts/forms.py:81) and none of
+         accounts/emails.py's six functions tells an applicant they were
+         approved -- notify_admins_of_pending_signup tells us, not them. So
+         this says how to reach a person instead of promising a message no
+         code sends. One function closes the gap; see product-stories.md S1. -->
     <p>
       Clarice is invitation-only while it's still being built. Write to
       <a href="#">hello@vinclarice.com</a> and say what you'd use it for.

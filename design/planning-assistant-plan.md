@@ -121,6 +121,10 @@ Two rules that do apply per surface today:
    tuned.** `retirement_gate` computes that number for hypotheses already.
    Nothing acts on it, and for two producers nothing can.
 
+**Each surface's size is settled — see *D3, decided*.** The caps were never
+missing; what was missing was anything acting on them, and a correct statement
+of what each surface is actually rationing.
+
 ## Where AI belongs, and where it does not
 
 The division of responsibility, which is the useful form of the answer:
@@ -303,9 +307,10 @@ week I rejected"* is a signal about the planner.
 ## Open decisions — Vince's, not this document's
 
 **Increments 1, 2 and 3 depend on none of these and can start now.** The
-decisions gate 4, 5's successor, and 6. **D1 and D4 are answered, both on
-August 18, 2026; D2 and D3 remain** — and both of those are appetite questions
-rather than factual ones, which is why they were always the harder pair.
+decisions gate 4, 5's successor, and 6. **D1, D3 and D4 were all answered on
+August 18, 2026. Only D2 remains**, and it is the one nothing here can help
+with: whether estimates would actually get entered is a fact about Vince, not
+about the code.
 
 1. ~~**D1. Is generated prose ever allowed?**~~ **Answered August 18, 2026:
    not yet, and the trigger is written below.** See *D1, decided* after this
@@ -313,9 +318,9 @@ rather than factual ones, which is why they were always the harder pair.
    firing condition is the thing this document would be worst at.
 2. **D2. Does S3 get built?** Gates increment 6, and the answer is about
    appetite for entering estimates, not about code.
-3. **D3. What is each surface's budget?** Proposals per week per surface that a
-   person will actually adjudicate. Without numbers, "gets quieter" has no
-   threshold to fire at.
+3. ~~**D3. What is each surface's budget?**~~ **Answered August 18, 2026: the
+   caps stand, and the slots get rationed by accept rate.** The question was
+   posed wrongly — see *D3, decided*.
 4. ~~**D4. Does `sentence-transformers` enter the production image and the test
    requirements?**~~ **Answered August 18, 2026: test requirements yes,
    production image no.** It was two decisions wearing one number — installing
@@ -334,6 +339,65 @@ rather than factual ones, which is why they were always the harder pair.
    CUDA build. `requirements-embeddings.txt` now exists, which resolves the two
    citations that had pointed at it for weeks — including an error message
    telling a person to install a file that was not there.
+
+## D3, decided — the caps stand; the slots get earned
+
+**Vince, August 18, 2026.** D3 asked what each surface's weekly budget should
+be, and both halves of that question were wrong.
+
+**The numbers were never missing.** Six caps already exist, each chosen with its
+reason written beside it:
+
+| Cap | Value | Where |
+|---|---|---|
+| `REVIEW_LIMIT` | 5 | `mind/views.py` — proposals per visit to the review |
+| `COMMITMENT_LIMIT` | 3 | `mind/views.py` — "the one kind that asks for a decision rather than offering a label" |
+| `CANDIDATE_LIMIT` | 8 | `mind/views.py` — concept candidates |
+| `BRIEF_LIMIT` | 8 | `mind/queries.py` — items in a project brief |
+| `DEFAULT_MAX_PROPOSALS` | 3 | each detector — per node, per run |
+| `open_review(limit=)` | 5 | `mind/services.py` |
+
+**All six are ratified as they stand.** None was picked carelessly and none has
+evidence against it yet.
+
+**"Proposals per week per surface" is the wrong unit for two of the three.**
+Only a queue is measured in throughput:
+
+- **The review is a queue**, and the scarce thing is *five slots per visit*.
+  How often it is opened is the person's business, not a quota.
+- **The writing surface is inline, not a queue** — its unit is *per entry*, and
+  three is already that number.
+- **The brief spends no budget at all**, because it is asked for. A thing you
+  opened deliberately cannot interrupt you, which is the Attention Policy's own
+  test.
+
+### What was actually broken
+
+**Confidence is not comparable across detectors, and the queue is ordered by
+it.** `shared_referent` emits a flat `0.9`, `open_question` a flat `0.55`,
+`dormant_thread` a computed `shared_count / 8`. Those are not the same
+quantity — one states an evidence *class*, another normalises a term count. Since
+`queries.pending_hypotheses` and the `hypothesis_open` index both order by
+`-confidence`, **the five slots are rationed by whichever constants somebody
+picked**, while the measurement of what is actually useful — per-detector accept
+rate, already computed in `instrumentation.detector_performance` — feeds into
+nothing at all.
+
+That is the real content of rule 2 above. "Gets quieter" now means something
+specific: **a producer below 50% accept rate over a decided sample loses
+priority for the five slots**, rather than being tuned, and rather than keeping
+its claim on them because its author chose a high constant.
+
+### What this waits on
+
+**Two of the three producers still cannot be measured**, so this is specified
+now and built with the shared contract in increment 2. Ordering by accept rate
+before facets and mentions have decision records would ration the slots on one
+producer's evidence and two producers' silence, which is worse than the constants
+it replaces.
+
+Not a threshold to invent later: 50% is already `retirement_gate`'s number, and
+reusing it beats choosing a second one.
 
 ## D1, decided — not yet, and here is what would change it
 

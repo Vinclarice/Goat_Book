@@ -29,6 +29,11 @@ from django.core.mail.backends.base import BaseEmailBackend
 
 ENDPOINT = "https://api.resend.com/emails"
 
+# Identifies this application to Resend, and gets past the edge in front of it.
+# Anything that is not urllib's default would do; saying who is calling is the
+# more useful of the two reasons.
+USER_AGENT = "Clarice/1.0 (+https://vinclarice.com)"
+
 
 class ResendError(Exception):
     """A message did not go, whatever the reason.
@@ -64,6 +69,14 @@ def resend_transport():
                 # Resend dedupes on this for 24 hours. See the backend's
                 # `_idempotency_key` for why it is worth taking.
                 "Idempotency-Key": idempotency_key,
+                # Named, because urllib's default is refused at the edge.
+                # Cloudflare fronts api.resend.com and blocks `Python-urllib`
+                # by signature -- HTTP 403 with a body of "error code: 1010",
+                # which is Cloudflare's, not Resend's, and never reaches them.
+                # Verified from production on 2026-08-18: that agent 403s while
+                # every other value, including no User-Agent at all, gets a
+                # normal 422 for the same malformed payload.
+                "User-Agent": USER_AGENT,
             },
             method="POST",
         )

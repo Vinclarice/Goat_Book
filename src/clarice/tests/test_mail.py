@@ -543,6 +543,14 @@ class TheRealTransportTest(SimpleTestCase):
         self.assertEqual(captured["method"], "POST")
         self.assertEqual(captured["headers"]["authorization"], f"Bearer {API_KEY}")
         self.assertEqual(captured["headers"]["content-type"], "application/json")
+        # Cloudflare fronts api.resend.com and blocks `Python-urllib` by
+        # signature -- error 1010, a 403 that never reaches Resend. Found on
+        # the 2026-08-18 deploy, because every test here either injects a
+        # transport or patches urlopen, so none of them had ever made a real
+        # request. Any other agent gets through; urllib's default does not.
+        self.assertIn("user-agent", captured["headers"])
+        self.assertNotIn("urllib", captured["headers"]["user-agent"].lower())
+        self.assertIn("Clarice", captured["headers"]["user-agent"])
         self.assertEqual(captured["headers"]["idempotency-key"], "deadbeef")
         self.assertEqual(captured["timeout"], 10)
         self.assertIn(b'"subject": "s"', captured["body"])

@@ -7,6 +7,92 @@ The reasoning, deployment record and lessons behind completed work, kept out of
 the active plan so that plan stays scannable. The active plan is
 [`roadmap.md`](roadmap.md).
 
+## Navigation and identity — August 18, 2026
+
+**Three navigations that disagreed, three visual identities, and a home page
+that was the login form.** "Review" named the weekly review *and* the knowledge
+core's pending queue. "Today" resolved to two different destinations depending
+on which nav you clicked. `/mind/` was a one-way door: both other navs linked
+into it and its own had no link out. Designed in
+[`navigation-and-identity-plan.md`](navigation-and-identity-plan.md), which is
+now a stub; the design itself is in `landing-mockup.html` and
+`shell-mockup.html`, kept for the same reason the other comps are.
+
+**One bar, server-rendered, on all three surfaces.** It had to be Django rather
+than React because `/mind/` carries no JavaScript at all and a React bar would
+either not reach that core or cost it the instant load that is its whole point.
+Below it a per-core sub-nav; beside that a rail demoted to *contents*, which is
+what it was always best at and could never say plainly while it also held
+navigation. The knowledge core's Review became Pending, and Things became
+Concepts — which is what its view, URL and template had always called it.
+
+**The palette was measured rather than chosen by eye, and two values moved
+because of it.** Slate "released" sat at 4.35:1 on paper, under AA. The hairline
+was 1.30:1, fine for a border nobody looks at and not for a design where ruled
+lines are the whole visual language. `--color-border-strong` exists because one
+token was doing two jobs and WCAG 1.4.11 asks 3:1 of the second.
+
+**The area dots had been invisible and nobody had checked.** All eight measured
+1.11:1 to 1.77:1 against the light background — not weak labels, unreadable
+ones — under a comment asserting one palette could serve both themes. True
+before this work; the paper ground only made it obvious.
+
+**`--font-sans` named Inter and nothing loaded it.** One declaration in the
+tree, no `@font-face`, no link tag, so every page had rendered in the system
+fallback while the stack claimed otherwise. Archivo, Spectral and IBM Plex Mono
+are self-hosted now, and the split is a rule rather than a palette: sans is
+machinery, serif is the record, mono is anything that has to add up.
+
+**The signed-out page stopped being a login form**, which is
+[`product-stories.md`](product-stories.md) S1's fourth requires. Its hero is a
+real week — eight commitments chosen, five kept, one released, two open — with
+the arithmetic done in front of the reader. And a brand-new account now gets one
+thing to do on the Day page instead of three empty boxes it cannot act on.
+
+### The deployment
+
+Two events, both recorded. `DEPLOYED-2026-08-18/2230` shipped the work and
+`DEPLOYED-2026-08-18/2244` shipped the CSS fix below; `LIVE` moved from
+`a0fc6f1` to the second. **The bird codename was deliberately held** — Vince's
+call — to ship with the planning-assistant work rather than being spent here.
+
+### What it taught
+
+- **The page about honest numbers divided by the wrong denominator.** The first
+  draft of the landing mockup read 5/8, counting the released commitment as a
+  failure three inches under a note saying it is not — and `review/reads.py`
+  is explicit that `set_aside` is outside the denominator entirely. It was
+  caught by checking the page's claims against the code rather than against the
+  design document, which is the only check that could have found it. Every other
+  claim on that page survived the same audit; two were understated.
+- **A production defect that no suite could see, and it was older than the work
+  that revealed it.** The Dockerfile's frontend stage copied `frontend/` and
+  nothing else, so tailwind.css's `@source` globs reaching `../../../src/`
+  matched an empty directory and every Django-only utility was silently dropped
+  from the built CSS. It had been true since the Tailwind migration; nothing
+  noticed because `base.html`'s classes are all *also* used in some `.tsx` file.
+  `text-kept` and `text-released` were simply the first two that nothing else
+  used. **Every suite builds in this tree, which has always had the templates —
+  which is exactly why none of them could fail.** Found by looking at
+  production.
+- **Three tests would have gone on passing while testing nothing.** Archive moved
+  into an always-visible sub-nav, and two smoke tests plus a Vitest one asserted
+  its visibility through a disclosure. Their own comments had already named that
+  hazard about a different Archive link on the same page. Re-pointed at an area,
+  which is genuinely behind the drawer.
+- **A fixture described a state the database cannot produce.** Twenty DayRoute
+  tests went red on a correct check, because their day payload carried action
+  items with no areas — and an `Item` belongs to a `List`. The fixture was
+  wrong, not the gate, and the temptation was to loosen the gate.
+- **A comment saying "if one moves, the other has to" is a hope.** The rail's
+  collapse was declared at 760px in CSS and 761px in JavaScript, two hand-picked
+  numbers agreeing with nothing but each other. Both are Tailwind's `md` now and
+  a test fails if they drift — watched failing first, reporting the 132px band
+  where the rail is collapsed and the disclosure cannot be opened, which is B0
+  with a smaller viewport.
+- **Naming a typeface you do not serve is worse than naming none.** It reads as
+  a decision in review and is a no-op in the browser.
+
 ## Production defects — Part 1, opened August 12 and closed August 15, 2026
 
 Ten defects found by the commercial audit. All closed; `commercial-blueprint.md`

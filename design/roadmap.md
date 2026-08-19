@@ -85,47 +85,18 @@ re-add it here.
   anchored-only, because Clarice has one cadence field and cannot say which
   mode a commitment is, while `design-concept.md` calls the distinction
   load-bearing. Deliberate, and recorded at the function.
-- **Three navigations, three identities, and a login form for a home page.**
-  "Review" names two unrelated things, "Today" resolves to two different
-  destinations depending on which nav was clicked, and `/mind/` is a one-way
-  door — both other navs link in and its own has no link out. Alongside that,
-  **no `mind/` template calls `theme_resolution_script`** (zero of eight), so
-  the theme toggle silently does not apply to a third of the application, and
-  `--font-sans` names Inter while nothing loads it. And `/` is still
-  `LandingLoginView`, which is [`product-stories.md`](product-stories.md)'s S1
-  verdict in one line: *a landing page that is not a login form.* Designed
-  August 18, 2026 in
-  [`navigation-and-identity-plan.md`](navigation-and-identity-plan.md), which
-  owns the sequence and carries its design in two comps rather than in prose.
-  **Steps 1 to 4 are done** — the ledger palette in both themes, the three
-  typefaces self-hosted, a 44px touch target that grows the hit area rather
-  than the button, `/mind/` reading the same tokens and the same theme
-  script as everything else, one server-rendered app bar replacing the
-  three navigations, and the rail demoted to contents beneath a per-core
-  sub-nav. That closes the one-way door into the knowledge core, leaves the
-  application with one logout instead of two, and **retires this file's
-  "two layout breakpoints that should agree and do not"** — they are both
-  Tailwind's `md` now, guarded by a test rather than by a comment asking
-  the next person to remember. **Step 5 is done too**: `/` is a landing page
-  rather than the login form, which closes the last of
-  [`product-stories.md`](product-stories.md) S1's four requires that this plan
-  owns, and the task core finally has a favicon, a touch icon, a manifest and
-  Open Graph tags — `/mind/` had all four and the main application had none.
-  **Step 6 is done, so all six are: the plan is built and not yet deployed.**
-  A brand-new account now gets one thing to do on `/app/day` rather than three
-  empty boxes it cannot act on, and the S1 journey — sign in with nothing,
-  write the first thing on your plate, land on an area holding it — is asserted
-  end to end in a browser. **What it does not close is S1 itself**, which also
-  requires self-service signup with email verification; approval is still an
-  admin checkbox and `accounts/emails.py` still has no message telling the
-  applicant it happened. `product-stories.md` owns that score and this file
-  does not restate it. The three direction decisions it rests on — full re-theme,
-  the A+B wedge for the signed-out page's positioning, one app bar over three
-  reconciled navs — are Vince's, taken the same day; **Part 9 #1, whether this
-  is a business, stays open and still gates Phases 3–5.** Its step 1 is also
-  where **Mobile web experience** below gets its largest item cheaply: that
-  entry has been waiting on `Button`'s height because changing it "restyles
-  every page in the application", and a re-theme restyles every page anyway.
+- ~~**Three navigations, three identities, and a login form for a home page.**~~
+  **Closed August 18, 2026**, shipped in two deploys and verified in
+  production. What replaced it: one server-rendered app bar on all three
+  surfaces, a per-core sub-nav, the rail demoted to contents, the ledger
+  palette and three self-hosted typefaces in both cores, and `/` as a landing
+  page rather than the login form. The narrative and its six lessons are in
+  [`roadmap-history.md`](roadmap-history.md); the plan is a stub.
+  **The codename was deliberately held** to ship with the planning-assistant
+  work. **What this did *not* close is S1**, which also wants self-service
+  signup with email verification — still an admin checkbox, and
+  `accounts/emails.py` still has no message telling the applicant it happened.
+  [`product-stories.md`](product-stories.md) owns that score.
 
 ## Carried in from B / C / D — not schedulable work
 
@@ -273,13 +244,18 @@ attached during Crane 1 slice 7's phone pass. At 375px the Daily Page itself is
 sound — no horizontal overflow, everything works — but its buttons measure
 32px and its "Edit your compass" link 20px, against the ~44px both platform
 guidelines and WCAG 2.5.8 ask for; the Agenda, untouched by Crane, is worse at
-19–31px. The height lives on the shared `Button` primitive, which is still
-`h-8`: the 44px fixes made during the Tailwind arc were applied per call site,
-not to the primitive. Changing it restyles every page in the application —
-which is why `navigation-and-identity-plan.md` puts it in the step that
-restyles every page anyway, rather than leaving it here waiting for a pass of
-its own. The two disagreeing breakpoints are in that plan's blast radius too:
-its step 3 rewrites the machinery that holds them.
+19–31px. ~~The height lives on the shared `Button` primitive, which is still `h-8`.~~
+**Half-closed August 18, 2026.** The primitive now carries a `touch-target`
+utility that grows the *hit area* to 44px under a coarse pointer while leaving
+the drawn control where it is — raising the real height would have fixed phones
+and wrecked the dense desktop layouts this is mostly used in. So every button
+in the application clears the floor, and every new call site inherits it rather
+than needing its own override.
+
+**What remains is the links.** "Edit your compass" is still a 20px anchor, and
+the utility is available to it — this was a fix to the primitive, not a sweep
+of every control. The overlap tradeoff is recorded at the utility: two controls
+closer than ~12px apart now overlap targets on touch and the later one wins.
 
 **One responsive application, not a mobile site.** No `m.` host, no second
 codebase, no divergent templates. One API, one SPA. Said once so it is not

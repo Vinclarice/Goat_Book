@@ -5,10 +5,41 @@
     <title>{% block title %}Clarice{% endblock %}</title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta
-      name="description"
-      content="A simple, private home for the areas that keep life moving."
-    >
+    <meta name="description" content="{% block description %}Clarice records what you chose to do on the morning you chose it, so the number at the end of your week is one you can believe.{% endblock %}">
+
+    {% comment %}
+    The task core has never had any of this. `/mind/` -- the smaller half of
+    the application -- has carried an icon, an apple-touch-icon, a manifest and
+    a theme colour since it arrived, while the main application and its public
+    landing page had none, so a link to this site previewed as a bare URL and
+    a bookmark got a blank page glyph.
+
+    `color-scheme` is what stops the browser painting a white frame around a
+    dark page before the stylesheet lands; the theme-colour pair is the same
+    idea for mobile browser chrome, and the values are the two grounds from
+    tailwind.css.
+    {% endcomment %}
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="#eaeee6" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#141712" media="(prefers-color-scheme: dark)">
+    <link rel="icon" type="image/svg+xml" href="{% static 'clarice/icon.svg' %}">
+    <link rel="apple-touch-icon" href="{% static 'clarice/icon.svg' %}">
+    <link rel="manifest" href="{% static 'clarice/site.webmanifest' %}">
+
+    {% comment %}
+    Open Graph, so a shared link carries a title and a sentence instead of the
+    URL. No og:image: an image tag pointing at something that will not render
+    is worse than its absence, and the SVG icon above is not a social card --
+    most platforms decline to render SVG there. Worth adding when there is a
+    real one.
+    {% endcomment %}
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Clarice">
+    <meta property="og:title" content="{% block og_title %}Clarice{% endblock %}">
+    <meta property="og:description" content="{% block og_description %}Clarice records what you chose to do on the morning you chose it, so the number at the end of your week is one you can believe.{% endblock %}">
+    <meta property="og:url" content="{{ request.build_absolute_uri }}">
+    <meta name="twitter:card" content="summary">
+
     {% theme_resolution_script user.theme %}
     {% token_styles %}
   </head>

@@ -106,8 +106,14 @@ re-add it here.
   application with one logout instead of two, and **retires this file's
   "two layout breakpoints that should agree and do not"** — they are both
   Tailwind's `md` now, guarded by a test rather than by a comment asking
-  the next person to remember. **Steps 5 and 6 are open**, and they are the
-  signed-out page and the first-run empty state. The three direction decisions it rests on — full re-theme,
+  the next person to remember. **Step 5 is done too**: `/` is a landing page
+  rather than the login form, which closes the last of
+  [`product-stories.md`](product-stories.md) S1's four requires that this plan
+  owns, and the task core finally has a favicon, a touch icon, a manifest and
+  Open Graph tags — `/mind/` had all four and the main application had none.
+  **Step 6 is the only one open**, and it is the first-run empty state: a
+  stranger who now understands the product still arrives at `/app/day` and is
+  told to "choose from your action items below", of which they have none. The three direction decisions it rests on — full re-theme,
   the A+B wedge for the signed-out page's positioning, one app bar over three
   reconciled navs — are Vince's, taken the same day; **Part 9 #1, whether this
   is a business, stays open and still gates Phases 3–5.** Its step 1 is also

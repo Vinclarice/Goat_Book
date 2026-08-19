@@ -287,8 +287,14 @@ class ContentSecurityPolicyTest(BrowserTest):
     def test_the_landing_page_reports_no_violations(self):
         self.visit("/")
 
+        # Waited on so the assertion below is about a page that rendered
+        # rather than one that never arrived. This was the login button until
+        # "/" stopped being the login form; the heading is the more durable
+        # anchor, being the thing the page exists to say.
         expect(
-            self.page.get_by_role("button", name="Continue to my areas")
+            self.page.get_by_role(
+                "heading", name="Most task apps forget what you promised."
+            )
         ).to_be_visible()
         self.assertEqual(self.violations, [])
 

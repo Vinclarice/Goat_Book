@@ -1,4 +1,5 @@
 from django.test import TestCase
+from django.urls import reverse
 from django.utils import html
 
 from accounts.models import User
@@ -7,14 +8,29 @@ from lists.models import Item, List
 
 
 class LandingPageTest(TestCase):
-    def test_renders_welcome_page_with_login(self):
+    def test_renders_a_landing_page_that_is_not_the_login_form(self):
+        """product-stories.md S1, in one assertion.
+
+        Its requires line ends "a landing page that is not a login form", and
+        the page it scored greeted a stranger with a username field under the
+        words "Welcome back". The form still exists at /accounts/login/; what
+        must not be here is a password field, because its presence is the whole
+        defect.
+        """
         response = self.client.get("/")
 
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, "accounts/login.html")
-        self.assertContains(response, "Welcome back to what matters.")
-        self.assertContains(response, 'name="username"')
-        self.assertNotContains(response, 'name="text"')
+        self.assertTemplateUsed(response, "accounts/landing.html")
+        self.assertNotContains(response, 'type="password"')
+        self.assertContains(response, "Most task apps forget what you promised.")
+
+    def test_the_landing_page_says_how_to_ask_for_an_account(self):
+        """A page that explains the product and offers no way in is a
+        different failure from the one above, and just as complete."""
+        response = self.client.get("/")
+
+        self.assertContains(response, reverse("signup"))
+        self.assertContains(response, reverse("login"))
 
     def test_authenticated_user_is_sent_to_dashboard(self):
         user = User.objects.create_user(

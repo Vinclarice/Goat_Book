@@ -197,6 +197,17 @@ server {
 
     # Exact match, so only the landing page itself is covered and every other
     # path still falls through to the catch-all below.
+    #
+    # **This limiter is now inert, and is kept deliberately.** "/" stopped
+    # accepting login POSTs in August 2026 when the landing page stopped being
+    # the login form -- the form moved to /accounts/login/, which has carried
+    # its own `clarice_auth` limit in the location above all along, so nothing
+    # became unthrottled. The map below keys on POST, so a page that only
+    # answers GET never spends the budget.
+    #
+    # Kept rather than deleted because it costs nothing and it is the rule that
+    # would matter again the moment "/" grew a form, which is exactly the kind
+    # of change nobody remembers to pair with an nginx edit.
     location = / {
         limit_req zone=clarice_landing burst=3 nodelay;
         limit_req_status 429;

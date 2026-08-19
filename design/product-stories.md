@@ -6,6 +6,9 @@ release. Written August 12, 2026; **score re-checked August 16, 2026.**
 now exists, and S17's had scored an export that was silently dropping data. The
 table itself is unchanged: both still land where they did, for different
 reasons. This was not a re-score, and the other seventeen were not re-read.
+**S1 re-checked the same day**, after three of its four requires shipped: it
+stays impossible on the fourth, and its verdict now says which one rather than
+describing a flow that no longer exists.
 
 ## The score
 
@@ -79,19 +82,31 @@ Design personas, not descriptions of the real people using Clarice.
 first screen offers one obvious thing to do rather than six concepts, and within
 four minutes he has captured a thought and planned a day.
 
-**Verdict: impossible.** `src/accounts/forms.py:81` creates the account
-`is_active=False`; approval is a checkbox in `src/accounts/admin.py`
-(`list_filter` at `:24`); and `src/accounts/emails.py` has **six** functions,
-three of them added on August 16 for account deletion, and still none of them
-tells him he was approved. Past that gate, `LOGIN_REDIRECT_URL` lands him on
-`/app/day`, which has no affordance that creates anything.
+**Verdict: still impossible, and now for one reason instead of four.**
+Re-checked August 18, 2026, after three of its four requires shipped.
 
-That the email module tripled in size without gaining the one message this story
-needs is the sharpest evidence in the set that nobody has been building toward
-these journeys.
+**Closed:** the landing page is no longer a login form; `/app/day` teaches a
+brand-new account instead of showing it three empty states it cannot act on;
+and signup verifies an address — `accounts/tokens.py` signs a single-use link,
+`emails.send_activation_email` is the message this module never had, and the
+two waits are told apart at the login form rather than blurred into one.
 
-**Requires:** self-service signup with email verification, a first-run path, an
-empty state that teaches, and a landing page that is not a login form.
+**Open, and load-bearing:** `is_active` is still approval and approval is still
+a person. Vince's call, August 18, and a defensible one while the site is
+invitation-only and `roadmap.md` still lists a privacy policy as unwritten — but
+this story's done-means says *without waiting for a human*, so it cannot be
+scored on anything else. `email_confirmed_at` now carries confirmation so the
+two facts are separable, which is what makes closing this later a change of
+policy rather than of design.
+
+**What the shipped half is worth**, since "impossible" now hides it: he learns
+the form worked, learns what he is waiting for, and can recover a lost
+confirmation email himself. Before, he signed up and was told nothing at all.
+
+**Requires:** ~~self-service signup with email verification~~, ~~a first-run
+path~~, ~~an empty state that teaches~~, ~~a landing page that is not a login
+form~~ — and the one that remains: **approval that is not a person**, or a
+decision that this story is not the target after all.
 
 ### S2. Priya's morning, on a phone
 

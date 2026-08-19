@@ -173,7 +173,15 @@ sharing work.
 
 ### Remaining public-readiness work
 
-- Self-service signup with email verification.
+- ~~Self-service signup with email verification.~~ **Shipped August 18, 2026,
+  and it does not close S1.** Confirming an address is self-service now — a
+  single-use signed link, the applicant finally told something, a resend for
+  when the mail is lost, and the two waits told apart at the login form. What
+  stays is approval, which is still a person: `is_active` is approval and
+  `email_confirmed_at` is confirmation, kept separate so opening the doors is
+  later a policy change rather than a redesign. **Deliberate** — the site is
+  invitation-only and the privacy policy above is unwritten.
+  [`product-stories.md`](product-stories.md) owns the score.
 - Rate limiting for capture. `/api/v1/capture` falls through nginx's catch-all;
   signup and login are throttled at 5r/m and this is not.
 - ~~Account export and deletion.~~ **Shipped August 16, 2026** — self-service,

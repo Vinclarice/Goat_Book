@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% comment %}
+The first gate, cleared. Not the last.
+
+Deliberately not a login: approval is still a person's decision, so this page
+has to say what happens next without pretending the wait is over. The failure
+this avoids is the one the old flow had in full — somebody doing everything
+asked of them and being told nothing at all.
+
+Seen once. Confirming is signed into the token, so a second click on the same
+link cannot reach this page -- it lands on activation_failed.html, which says
+there is nothing more to do rather than treating a person who clicked twice as
+having done something wrong.
+{% endcomment %}
+
+{% block title %}Email confirmed · Clarice{% endblock %}
+
+{% block content %}
+  <section class="mx-auto max-w-md py-10">
+    <div class="rounded-sm border border-border bg-card p-6 sm:p-8 space-y-5">
+      <h1 class="font-sans text-2xl font-bold tracking-tight">Your email is confirmed</h1>
+      <p class="text-muted-foreground">
+        Thanks, {{ applicant.username }} — <strong class="text-text">{{ applicant.email }}</strong>
+        is confirmed. Clarice is invitation-only while it's being built, so the
+        last step is ours: we review each account by hand.
+      </p>
+      <p class="text-muted-foreground">
+        We'll write to that address once yours is open. Nothing else is needed
+        from you.
+      </p>
+      <p class="text-sm text-muted-foreground">
+        Already approved? <a class="text-accent hover:underline" href="{% url 'login' %}">Log in</a>.
+      </p>
+    </div>
+  </section>
+{% endblock %}

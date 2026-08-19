@@ -22,21 +22,33 @@ from accounts.models import (
 
 
 class LoginForm(AuthenticationForm):
-    """Distinguishes "wrong password" from "correct password, but the
-    account is still pending admin approval" -- without leaking whether a
-    username exists to anyone who doesn't already know its password.
+    """Distinguishes "wrong password" from "correct password, but this address
+    has not been confirmed yet" -- without leaking whether a username exists to
+    anyone who doesn't already know its password.
 
     Django's ModelBackend never returns inactive users from authenticate(),
     so the normal AuthenticationForm.confirm_login_allowed() hook (which is
     where the built-in "inactive" message lives) never actually runs for
     them; this overrides clean() to check for that case directly instead.
+
+    **The message names the way out.** It used to say an admin would approve
+    the account, which stopped being true when confirming an address became the
+    only gate -- and the older wording had no next step in it at all, so
+    somebody whose mail never arrived was told to wait for something that was
+    never going to happen. The template turns `unconfirmed` into a link to
+    `resend_activation`.
     """
 
     error_messages = {
         **AuthenticationForm.error_messages,
-        "pending_approval": (
-            "This account hasn't been approved yet. You'll be able to log "
-            "in once an admin approves it."
+        "unconfirmed": (
+            "This account's email address hasn't been confirmed yet. Check "
+            "your inbox for the confirmation link, or ask for a new one."
+        ),
+        "awaiting_approval": (
+            "Thanks for confirming your email. Clarice is invitation-only "
+            "while it's being built, so your account is waiting to be "
+            "approved — we'll write to you when it's ready."
         ),
     }
 
@@ -56,9 +68,19 @@ class LoginForm(AuthenticationForm):
                     .first()
                 )
                 if pending_user and pending_user.check_password(password):
+                    # Two different waits, and telling somebody the wrong one
+                    # is the whole complaint about the flow this replaced:
+                    # "confirm your email" to a person who already did sends
+                    # them hunting for a link that will not work, and "we are
+                    # reviewing it" to a person who never confirmed leaves them
+                    # waiting on a queue they are not in.
+                    code = (
+                        "awaiting_approval"
+                        if pending_user.email_confirmed_at is not None
+                        else "unconfirmed"
+                    )
                     raise forms.ValidationError(
-                        self.error_messages["pending_approval"],
-                        code="pending_approval",
+                        self.error_messages[code], code=code
                     )
                 raise self.get_invalid_login_error()
             self.confirm_login_allowed(self.user_cache)
@@ -75,8 +97,10 @@ class SignUpForm(UserCreationForm):
         return self.cleaned_data["email"].strip().lower()
 
     def save(self, commit=True):
-        # Self-service signups start inactive; an admin approves them from
-        # /admin/ (see accounts.views.signup and accounts.emails).
+        # Inactive until the address is confirmed. `is_active` means
+        # "verified" now rather than "approved" -- there is no admin step --
+        # and it stays the field the login form checks because it is still
+        # exactly the question being asked: may this account be used yet.
         user = super().save(commit=False)
         user.is_active = False
         if commit:
@@ -85,8 +109,8 @@ class SignUpForm(UserCreationForm):
 
 
 class AdminUserCreationForm(UserCreationForm):
-    """Like SignUpForm, but for admins adding accounts directly: those
-    accounts don't need approval, so is_active keeps its normal default.
+    """Like SignUpForm, but for admins adding accounts directly: an address an
+    admin typed needs no confirming, so is_active keeps its normal default.
     """
 
     class Meta(UserCreationForm.Meta):

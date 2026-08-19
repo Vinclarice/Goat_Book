@@ -19,6 +19,7 @@ from django.core import mail
 from django.test import TestCase
 from django.urls import reverse
 
+from accounts.emails import notify_admins_of_lockout
 from accounts.models import User
 
 
@@ -72,22 +73,26 @@ class OutboundSenderTest(TestCase):
 
 
 class AdminNoticeTest(TestCase):
-    """Internal notices: a private recipient, but still a sendable sender."""
+    """Internal notices: a private recipient, but still a sendable sender.
 
-    def signup(self):
-        self.client.post(
-            reverse("signup"),
-            data={
-                "username": "edith",
-                "email": "edith@example.com",
-                "password1": PASSWORD,
-                "password2": PASSWORD,
-            },
-        )
+    Driven through the lockout notice rather than a signup. These three used
+    signup as their vehicle because it was once the other `mail_admins()`
+    caller -- and when confirming an address replaced admin approval, that
+    notice went. Two of them failed, correctly. **The third passed**, because
+    the activation email it started reading instead is also sent from a Clarice
+    address, so it went on asserting the right thing about the wrong message.
+
+    The lockout notice is now the only `mail_admins()` caller, which makes it
+    the honest subject, and it is the one the From-address comment below was
+    always really about.
+    """
+
+    def notice(self):
+        notify_admins_of_lockout(username="edith", ip_address="203.0.113.7")
         return mail.outbox[-1]
 
-    def test_a_pending_signup_notice_reaches_the_admin_and_nobody_else(self):
-        message = self.signup()
+    def test_a_lockout_notice_reaches_the_admin_and_nobody_else(self):
+        message = self.notice()
 
         self.assertEqual(message.to, [settings.ADMINS[0][1]])
 
@@ -95,7 +100,7 @@ class AdminNoticeTest(TestCase):
         # mail_admins() prefixes the subject with EMAIL_SUBJECT_PREFIX,
         # whose Django default is "[Django] ". Left unset, every notice
         # Clarice sends is labelled with the framework it was built in.
-        message = self.signup()
+        message = self.notice()
 
         self.assertTrue(message.subject.startswith("[Clarice] "))
         self.assertNotIn("Django", message.subject)
@@ -105,6 +110,6 @@ class AdminNoticeTest(TestCase):
         # root@localhost. Left alone that is not a cosmetic problem: Resend
         # rejects it outright, so the first production lockout would fail
         # to report itself and nothing would say why.
-        message = self.signup()
+        message = self.notice()
 
         self.assertIn(f"@{SENDING_DOMAIN}", message.from_email)

@@ -1,0 +1,17 @@
+{% comment %}
+A row of the legend. Ruled like the entries above it on purpose, so the key
+reads as part of the same sheet rather than as a card sitting beside it.
+
+This section replaced three columns of prose, one of which described the three
+marks in a paragraph — which is the templated move: explaining a vocabulary the
+page could simply show.
+{% endcomment %}
+<div class="grid sm:grid-cols-[11rem_minmax(0,1fr)] items-baseline gap-x-9 gap-y-1 py-4 border-b border-border">
+  <dt class="flex items-baseline gap-4 m-0">
+    <span class="font-mono text-xl leading-none w-4 text-center shrink-0
+      {% if tone == 'kept' %}text-kept{% elif tone == 'released' %}text-released{% else %}text-muted-foreground{% endif %}"
+      aria-hidden="true">{{ glyph }}</span>
+    <span class="font-sans font-semibold text-[0.98rem]">{{ term }}</span>
+  </dt>
+  <dd class="m-0 text-muted-foreground">{{ meaning }}</dd>
+</div>

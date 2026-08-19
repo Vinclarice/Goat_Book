@@ -120,26 +120,29 @@ class DailyPageOnAPhoneTest(BrowserTest):
 
         self.assertEqual(clipped, [], f"Controls past the {width}px edge: {clipped}")
 
-    def test_the_home_surface_is_reachable_from_the_phone_menu(self):
+    def test_the_home_surface_needs_no_menu_on_a_phone(self):
         """A front door nobody can find is not a front door.
 
-        At this width the nav is behind a disclosure, so slice 6's Today
-        link being present in the DOM is not the same as being reachable.
+        This used to require opening the disclosure, because Today lived in
+        the side rail with everything else. It is in the sub-nav under the app
+        bar now, which does not collapse -- so on a phone the core's surfaces
+        are reachable without opening anything, and the drawer holds only the
+        areas and projects it was always better suited to.
+
+        Still asserted at this width rather than assumed: "in the DOM" and
+        "reachable with a thumb" are the distinction this test exists for, and
+        that has not changed just because the answer got easier.
         """
         self.log_in(self.user)
         self.visit("/app/agenda")
-        nav = self.page.get_by_role("navigation", name="Main")
-        today = nav.get_by_role("link", name="Today")
+        views = self.page.get_by_role("navigation", name="Views")
+        today = views.get_by_role("link", name="Today")
 
-        expect(today).not_to_be_visible()
-        self.page.get_by_label("Menu").click()
         expect(today).to_be_visible()
 
         today.click()
 
         expect(self.page).to_have_url(f"{self.live_server_url}/app/day")
-        # Navigating closes it, or the menu covers the page it just opened.
-        expect(today).not_to_be_visible()
 
     def test_the_day_can_still_be_written_and_saved_on_a_phone(self):
         """Fits is necessary and not sufficient -- the point is using it."""

@@ -1,11 +1,28 @@
-{% load static %}<!doctype html>
+{% load static frontend_tags %}<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
-<meta name="theme-color" content="#2f5d50">
+<meta name="theme-color" content="#eaeee6">
 <title>{% block title %}Second Mind{% endblock %}</title>
+
+{% comment %}
+**This is the fix for a third of the application ignoring the theme toggle.**
+None of these templates ever called theme_resolution_script -- zero of eight --
+so this core read prefers-color-scheme and nothing else, and somebody who
+explicitly chose light still got a dark Second Mind at night. The script has to
+stay a blocking, inline, pre-paint script; token_styles then supplies the same
+compiled --color-* variables the task core reads, so there is one palette in
+this application rather than two that agree by hand until they don't.
+
+The cost is one stylesheet request on a page whose whole virtue is loading
+instantly. Taken deliberately: it is ~10kB gzipped, it is the same file every
+other page already caches, and the alternative was a second copy of twenty
+colour values maintained by remembering to.
+{% endcomment %}
+{% theme_resolution_script user.theme %}
+{% token_styles %}
 
 {% comment %}
 Enough for a home-screen icon that behaves like an app. apple-* are what iOS reads —
@@ -19,64 +36,99 @@ share target that lets any app hand text straight to the capture box.
 <meta name="apple-mobile-web-app-title" content="Mind">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>
-  /* One small stylesheet, no build step. The binding constraint is capture volume
-     from a phone, so what counts is a page that loads instantly and is comfortable
-     to type into with a thumb. */
-  :root {
-    --bg: #fbfaf8; --fg: #1b1a18; --muted: #6d6a65;
-    --line: #e2ded7; --card: #ffffff; --accent: #2f5d50;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #17181a; --fg: #e9e7e3; --muted: #9b968e;
-      --line: #2c2e31; --card: #1e2022; --accent: #7fb3a2;
-    }
-  }
+  /* Layout only now. The palette moved out to tailwind.css's @theme, which
+     token_styles links above -- this file used to carry its own six colours
+     and its own dark-mode media query, which is exactly how the two cores
+     came to look like two products.
+
+     Still no build step and still one small stylesheet: what is here is
+     geometry and component shape, and the binding constraint it serves is
+     unchanged. Capture volume comes from a phone, so what counts is a page
+     that is comfortable to type into with a thumb.
+
+     Type follows the application's rule rather than restating it: the serif
+     is inherited from html for everything a person wrote, and the machinery
+     below opts into the sans. A captured thought reads in the same face on
+     this page as it does on the Day page, which is the point. */
   * { box-sizing: border-box; }
   body {
-    margin: 0; background: var(--bg); color: var(--fg);
-    font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    margin: 0;
+    font-size: 16px;
+    line-height: 1.55;
     -webkit-text-size-adjust: 100%;
+  }
+  /* Restoring what the reset took, and only that.
+     tokens.css brings Tailwind's preflight with it, which zeroes paragraph
+     margins and strips lists. These pages never set either -- they were
+     written against browser defaults and had no reset to survive -- so
+     without this the Numbers page runs six paragraphs together. 1em top and
+     bottom is exactly the default being replaced, chosen so the page it
+     renders is the page that was there yesterday.
+
+     `.plain` is the odder half. It is on the confirmed-concepts list, no
+     stylesheet has ever defined it, and the list has therefore always
+     rendered bulleted and indented while its class said otherwise.
+     Preflight happens to grant the wish -- but a rule that only holds while
+     somebody else's reset is loaded is not a rule, so it says so here. */
+  p { margin: 1em 0; }
+  .plain { list-style: none; margin: 0; padding: 0; }
+
+  /* Machinery: navigation, controls and labels. Everything else inherits
+     the serif that html sets. */
+  nav, button, .btn, .chip, label, input, th {
+    font-family: var(--font-sans);
+  }
+  /* Anything that has to add up. The Numbers page is a table of figures and
+     wants its columns to line up, which is the whole reason the mono is in
+     this design. */
+  td, .badge {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
   }
   .wrap { max-width: 44rem; margin: 0 auto; padding: 1rem 1rem 4rem; }
   nav { display: flex; gap: 1rem; align-items: baseline; flex-wrap: wrap;
-        border-bottom: 1px solid var(--line); padding-bottom: .6rem; margin-bottom: 1.2rem; }
-  nav a { color: var(--muted); text-decoration: none; font-size: .95rem; }
-  nav a.here { color: var(--fg); font-weight: 600; }
-  nav .badge { background: var(--accent); color: var(--bg); border-radius: 999px;
+        border-bottom: 1px solid var(--color-border); padding-bottom: .6rem; margin-bottom: 1.2rem; }
+  nav a { color: var(--color-muted-foreground); text-decoration: none; font-size: .95rem; }
+  nav a.here { color: var(--color-text); font-weight: 600; }
+  nav .badge { background: var(--color-accent); color: var(--color-accent-foreground); border-radius: 999px;
                padding: 0 .45rem; font-size: .78rem; font-weight: 600; }
   h1 { font-size: 1.15rem; margin: 0 0 .8rem; font-weight: 600; }
   textarea {
     width: 100%; min-height: 7.5rem; padding: .8rem; font: inherit;
-    background: var(--card); color: var(--fg);
-    border: 1px solid var(--line); border-radius: .5rem; resize: vertical;
+    background: var(--color-surface); color: var(--color-text);
+    border: 1px solid var(--color-border); border-radius: .5rem; resize: vertical;
   }
-  textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  textarea:focus { outline: 2px solid var(--color-accent); outline-offset: 1px; }
   button, .btn {
-    font: inherit; padding: .55rem 1rem; border-radius: .45rem; cursor: pointer;
-    border: 1px solid var(--line); background: var(--card); color: var(--fg);
+    /* font-size/line-height, not the `font` shorthand: that resets
+       font-family too and would hand these controls back the serif the
+       machinery rule above deliberately opted them out of. */
+    font-size: inherit; line-height: inherit; padding: .55rem 1rem; border-radius: .45rem; cursor: pointer;
+    border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-text);
   }
-  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.primary { background: var(--color-accent); border-color: var(--color-accent);
+                   color: var(--color-accent-foreground); }
   .row { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; margin-top: .6rem; }
-  .card { background: var(--card); border: 1px solid var(--line);
+  .card { background: var(--color-surface); border: 1px solid var(--color-border);
           border-radius: .55rem; padding: .85rem 1rem; margin: .7rem 0; }
-  .meta { color: var(--muted); font-size: .82rem; }
-  .quote { border-left: 3px solid var(--accent); padding: .1rem 0 .1rem .75rem;
+  .meta { color: var(--color-muted-foreground); font-size: .82rem; }
+  .quote { border-left: 3px solid var(--color-accent); padding: .1rem 0 .1rem .75rem;
            margin: .5rem 0; white-space: pre-wrap; }
   .body { white-space: pre-wrap; overflow-wrap: anywhere; }
-  .empty { color: var(--muted); padding: 2rem 0; text-align: center; }
-  input[type=search] { width: 100%; padding: .6rem .8rem; font: inherit;
-    background: var(--card); color: var(--fg);
-    border: 1px solid var(--line); border-radius: .45rem; }
+  .empty { color: var(--color-muted-foreground); padding: 2rem 0; text-align: center; }
+  input[type=search] { width: 100%; padding: .6rem .8rem;
+    font-size: inherit; line-height: inherit;
+    background: var(--color-surface); color: var(--color-text);
+    border: 1px solid var(--color-border); border-radius: .45rem; }
   /* Quieter than the textarea it sits under, on purpose: the thought is the
      point and the label is an afterthought somebody may never reach for.
      Same width so the form still reads as one thing rather than two. */
   input.tags { width: 100%; margin-top: .45rem; padding: .45rem .8rem;
-    font: inherit; font-size: .9rem;
-    background: transparent; color: var(--fg);
-    border: 1px dashed var(--line); border-radius: .45rem; }
-  input.tags:focus { outline: 2px solid var(--accent); outline-offset: 1px;
-    background: var(--card); border-style: solid; }
+    line-height: inherit; font-size: .9rem;
+    background: transparent; color: var(--color-text);
+    border: 1px dashed var(--color-border); border-radius: .45rem; }
+  input.tags:focus { outline: 2px solid var(--color-accent); outline-offset: 1px;
+    background: var(--color-surface); border-style: solid; }
   /* On a card the affordance shrinks again: a note nobody wants to name should
      show almost nothing, so this is a short box that grows on focus. */
   .tag-row { display: flex; gap: .35rem; align-items: center;
@@ -85,15 +137,16 @@ share target that lets any app hand text straight to the capture box.
                   font-size: .8rem; }
   input.tag-add:focus { width: 100%; }
   .chip { font-size: .78rem; padding: .1rem .5rem; border-radius: 999px;
-          background: var(--card); border: 1px solid var(--line);
-          color: var(--muted); }
+          background: var(--color-surface); border: 1px solid var(--color-border);
+          color: var(--color-muted-foreground); }
   table { width: 100%; border-collapse: collapse; font-size: .9rem; }
-  th, td { text-align: left; padding: .4rem .5rem; border-bottom: 1px solid var(--line); }
-  th { color: var(--muted); font-weight: 600; }
+  th, td { text-align: left; padding: .4rem .5rem; border-bottom: 1px solid var(--color-border); }
+  th { color: var(--color-muted-foreground); font-weight: 600; }
   code { font-size: .85em; }
 </style>
 </head>
 <body>
+{% include "_app_bar.html" with core="mind" %}
 <div class="wrap">
   {% comment %}
   Marked from the resolved route rather than a `page` variable. It used to read
@@ -105,8 +158,22 @@ share target that lets any app hand text straight to the capture box.
   {% with here=request.resolver_match.url_name %}
   <nav>
     <a href="{% url 'capture' %}" {% if here == 'capture' %}class="here"{% endif %}>Capture</a>
-    <a href="{% url 'concepts' %}" {% if here == 'concepts' or here == 'concept' %}class="here"{% endif %}>Things</a>
-    <a href="{% url 'review' %}" {% if here == 'review' %}class="here"{% endif %}>Review{% if pending %} <span class="badge">{{ pending }}</span>{% endif %}</a>
+    {% comment %}
+    Two renames, both removing a collision rather than improving a word.
+
+    "Things" is the odd one out: the view, the URL name and the template have
+    always been `concepts`, and only the label disagreed.
+
+    "Review" is the sharper one. The task core has a Review -- the weekly one --
+    and these two named unrelated things in one application, which is the single
+    worst thing the old three navigations did. This queue is a set of proposals
+    waiting on a decision, so it says so. The badge is unchanged and still
+    appears on Capture alone, because only `_capture_context` supplies `pending`;
+    making it persistent is a separate decision about what this core is allowed
+    to nag about.
+    {% endcomment %}
+    <a href="{% url 'concepts' %}" {% if here == 'concepts' or here == 'concept' %}class="here"{% endif %}>Concepts</a>
+    <a href="{% url 'review' %}" {% if here == 'review' %}class="here"{% endif %}>Pending{% if pending %} <span class="badge">{{ pending }}</span>{% endif %}</a>
     <a href="{% url 'search' %}" {% if here == 'search' %}class="here"{% endif %}>Search</a>
     <a href="{% url 'summary' %}" {% if here == 'summary' %}class="here"{% endif %}>Numbers</a>
   </nav>

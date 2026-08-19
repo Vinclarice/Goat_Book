@@ -1,0 +1,18 @@
+{
+  "name": "Clarice",
+  "short_name": "Clarice",
+  "description": "Track the past, order the present, design the future.",
+  "start_url": "/app/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#eaeee6",
+  "theme_color": "#eaeee6",
+  "icons": [
+    {
+      "src": "/static/clarice/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

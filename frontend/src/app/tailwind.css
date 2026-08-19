@@ -2,6 +2,26 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/* Self-hosted through fontsource rather than linked from Google, because
+   this stylesheet is served to signed-out visitors and a font request to a
+   third party is a request we did not have to make on their behalf.
+   `--font-sans` named Inter for months and loaded nothing; these are the
+   files that make the stack true.
+
+   Every entry point is latin-only except Archivo's, whose variable build
+   ships one file per subset behind `unicode-range` -- so a browser still
+   fetches only the latin one, and only the build directory carries the
+   rest. Weights are the ones actually used: Archivo is a single variable
+   file covering 100-900, Spectral is regular, italic and semibold, and
+   the mono is regular and medium. Adding a weight means adding an import;
+   that friction is deliberate. */
+@import "@fontsource-variable/archivo/wght.css";
+@import "@fontsource/spectral/latin-400.css";
+@import "@fontsource/spectral/latin-400-italic.css";
+@import "@fontsource/spectral/latin-600.css";
+@import "@fontsource/ibm-plex-mono/latin-400.css";
+@import "@fontsource/ibm-plex-mono/latin-500.css";
+
 /* Tailwind's dark: variant keys off our own theme-resolution script's
    attribute, not the .dark class shadcn's CLI assumes by default -- see
    frontend_tags.theme_resolution_script(). */
@@ -13,32 +33,86 @@
    base_legacy.html and Bootstrap are gone as of Step 5 (final-cutover's
    redirects left it with nothing to render), so every surviving Django
    template now needs to be covered here. */
-@source "../../../src/lists/templates/base.html";
-@source "../../../src/lists/templates/app_shell.html";
+/* A glob rather than a file list. The list had to be extended by hand for
+   every new template, and had already missed one: new_list_form.html uses
+   `text-accent` and was never listed, so those utilities have never been
+   generated and that page has been rendering them as nothing. _app_bar.html
+   would have been the second miss.
+
+   Only `lists/` needs the glob -- mind/ templates carry their own stylesheet
+   and use no utilities, and the bar they include lives here. */
+@source "../../../src/lists/templates/**/*.html";
 @source "../../../src/accounts/templates/**/*.html";
 
-/* Dark values match the shipped --sl-* tokens in src/static/site.css
-   exactly -- this is Clarice's existing identity, not a redesign. Light
-   values are the palette approved in the Step 1 visual-foundation review.
-   Named --color-muted-foreground (not --color-muted) from the start so it
-   can't collide with shadcn's own --muted, which means a background. */
+/* The ledger palette -- navigation-and-identity-plan.md step 1, replacing
+   the navy-and-mint identity that shipped with site.css.
+
+   Paper, not cream. Accounting stock was tinted to cut glare, and the
+   green cast is the one warm neutral that is not the cream every other
+   product currently uses. Dark is the same desk under a lamp: the same
+   hues relit, not a second design.
+
+   **--color-accent is the marking ink, and its rule is about size rather
+   than meaning.** Red in a ledger marks and annotates -- so links, active
+   markers and the honest figure all take it, and it is never spread across
+   a large fill. The two `bg-accent` surfaces left in the tree (base.html's
+   wordmark tile and the signup button) are small enough to be exactly the
+   marks this describes.
+
+   **Every value below was measured, not chosen by eye.** Text, muted,
+   accent and all four status colours clear 4.5:1 against their own
+   background in both themes; --color-border-strong exists because
+   --color-border is a hairline at ~1.6:1 and an input boundary owes 3:1
+   under WCAG 1.4.11. Those are two different jobs and one token was doing
+   both.
+
+   Named --color-muted-foreground (not --color-muted) so it can't collide
+   with shadcn's own --muted, which means a background. */
 @theme {
-  --color-bg: #08111f;
-  --color-surface: rgba(18, 31, 49, 0.82);
-  --color-surface-strong: #132237;
-  --color-text: #f5f7fb;
-  --color-muted-foreground: #a6b2c3;
-  --color-accent: #7be0b8;
-  --color-accent-hover: #98e9c9;
-  --color-accent-active: #64cba4;
-  --color-accent-foreground: #08111f;
-  --color-border: rgba(255, 255, 255, 0.1);
-  --color-input: rgba(4, 10, 19, 0.62);
-  --color-nav: rgba(8, 17, 31, 0.72);
-  --color-status-overdue: #ffb8b8;
-  --color-status-today: #ffcf7a;
-  --color-status-week: #9ab6e0;
-  --color-destructive-foreground: #08111f;
+  --color-bg: #141712;
+  --color-surface: #1d211c;
+  --color-surface-strong: #232722;
+  --color-text: #e7ebe3;
+  --color-muted-foreground: #9aa295;
+  --color-accent: #e75d43;
+  --color-accent-hover: #f07a63;
+  --color-accent-active: #d14a32;
+  --color-accent-foreground: #141712;
+  --color-border: #343b31;
+  --color-border-strong: #626c5d;
+  --color-input: #1d211c;
+  --color-nav: rgba(20, 23, 18, 0.86);
+  /* The outcome marks. Two colours for four outcomes, because the rule
+     review/reads.py states is not "how did it end" but "did you decide, or
+     did it merely run out" -- a release, a skip and an "that was enough"
+     are all decisions and all leave the denominator. Green is met, slate
+     is decided, unmarked is elapsed. */
+  --color-kept: #74b18e;
+  --color-released: #93a7bb;
+  --color-status-overdue: #e88b78;
+  --color-status-today: #d9a441;
+  --color-status-week: #93a7bb;
+  --color-destructive-foreground: #141712;
+
+  /* Three roles, and the split is a rule rather than a palette.
+     **Sans is machinery** -- controls, labels, navigation, headings; the
+     equipment you operate. **Serif is the record** -- anything a person
+     wrote or is being told, which in this application is most of the
+     content. **Mono is anything that has to add up**, and it is
+     load-bearing rather than decorative: the identity rests on figures
+     lining up, and a denominator you cannot scan is the one thing this
+     product cannot afford.
+
+     Declared here and not in `@theme inline` on purpose. That block is for
+     values referencing other values, and these are literal stacks -- but
+     the operative reason is that test_frontend_style_contract.py reads the
+     first `@theme` block only, so a token declared in the inline one is
+     invisible to it and a CSS module naming it would fail silently in
+     exactly the way that test exists to prevent. */
+  --font-sans: "Archivo Variable", ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-serif: Spectral, Georgia, "Times New Roman", serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 @layer base {
@@ -48,22 +122,25 @@
 
   @media (prefers-color-scheme: light) {
     :root {
-      --color-bg: #f1f6f4;
-      --color-surface: #ffffff;
+      --color-bg: #eaeee6;
+      --color-surface: #f6f8f3;
       --color-surface-strong: #ffffff;
-      --color-text: #101c26;
-      --color-muted-foreground: #55697a;
-      --color-accent: #1c8f66;
-      --color-accent-hover: #17754f;
-      --color-accent-active: #125f40;
-      --color-accent-foreground: #ffffff;
-      --color-border: rgba(15, 23, 32, 0.1);
-      --color-input: #ffffff;
-      --color-nav: rgba(255, 255, 255, 0.82);
-      --color-status-overdue: #b23434;
-      --color-status-today: #9a640a;
-      --color-status-week: #35618f;
-      --color-destructive-foreground: #ffffff;
+      --color-text: #191d19;
+      --color-muted-foreground: #5d645b;
+      --color-accent: #c0301c;
+      --color-accent-hover: #a52817;
+      --color-accent-active: #8d2013;
+      --color-accent-foreground: #f6f8f3;
+      --color-border: #b9c2b1;
+      --color-border-strong: #7f877c;
+      --color-input: #f6f8f3;
+      --color-nav: rgba(246, 248, 243, 0.86);
+      --color-kept: #2f5b43;
+      --color-released: #51637a;
+      --color-status-overdue: #a8331f;
+      --color-status-today: #8a5a12;
+      --color-status-week: #3d5a7a;
+      --color-destructive-foreground: #f6f8f3;
       color-scheme: light;
     }
   }
@@ -71,42 +148,48 @@
   /* The viewer's explicit choice always wins over the OS preference --
      see the theme-resolution script that stamps this attribute. */
   :root[data-theme="dark"] {
-    --color-bg: #08111f;
-    --color-surface: rgba(18, 31, 49, 0.82);
-    --color-surface-strong: #132237;
-    --color-text: #f5f7fb;
-    --color-muted-foreground: #a6b2c3;
-    --color-accent: #7be0b8;
-    --color-accent-hover: #98e9c9;
-    --color-accent-active: #64cba4;
-    --color-accent-foreground: #08111f;
-    --color-border: rgba(255, 255, 255, 0.1);
-    --color-input: rgba(4, 10, 19, 0.62);
-    --color-nav: rgba(8, 17, 31, 0.72);
-    --color-status-overdue: #ffb8b8;
-    --color-status-today: #ffcf7a;
-    --color-status-week: #9ab6e0;
-    --color-destructive-foreground: #08111f;
+    --color-bg: #141712;
+    --color-surface: #1d211c;
+    --color-surface-strong: #232722;
+    --color-text: #e7ebe3;
+    --color-muted-foreground: #9aa295;
+    --color-accent: #e75d43;
+    --color-accent-hover: #f07a63;
+    --color-accent-active: #d14a32;
+    --color-accent-foreground: #141712;
+    --color-border: #343b31;
+    --color-border-strong: #626c5d;
+    --color-input: #1d211c;
+    --color-nav: rgba(20, 23, 18, 0.86);
+    --color-kept: #74b18e;
+    --color-released: #93a7bb;
+    --color-status-overdue: #e88b78;
+    --color-status-today: #d9a441;
+    --color-status-week: #93a7bb;
+    --color-destructive-foreground: #141712;
     color-scheme: dark;
   }
 
   :root[data-theme="light"] {
-    --color-bg: #f1f6f4;
-    --color-surface: #ffffff;
+    --color-bg: #eaeee6;
+    --color-surface: #f6f8f3;
     --color-surface-strong: #ffffff;
-    --color-text: #101c26;
-    --color-muted-foreground: #55697a;
-    --color-accent: #1c8f66;
-    --color-accent-hover: #17754f;
-    --color-accent-active: #125f40;
-    --color-accent-foreground: #ffffff;
-    --color-border: rgba(15, 23, 32, 0.1);
-    --color-input: #ffffff;
-    --color-nav: rgba(255, 255, 255, 0.82);
-    --color-status-overdue: #b23434;
-    --color-status-today: #9a640a;
-    --color-status-week: #35618f;
-    --color-destructive-foreground: #ffffff;
+    --color-text: #191d19;
+    --color-muted-foreground: #5d645b;
+    --color-accent: #c0301c;
+    --color-accent-hover: #a52817;
+    --color-accent-active: #8d2013;
+    --color-accent-foreground: #f6f8f3;
+    --color-border: #b9c2b1;
+    --color-border-strong: #7f877c;
+    --color-input: #f6f8f3;
+    --color-nav: rgba(246, 248, 243, 0.86);
+    --color-kept: #2f5b43;
+    --color-released: #51637a;
+    --color-status-overdue: #a8331f;
+    --color-status-today: #8a5a12;
+    --color-status-week: #3d5a7a;
+    --color-destructive-foreground: #f6f8f3;
     color-scheme: light;
   }
 
@@ -116,8 +199,65 @@
   * {
     @apply border-border outline-ring/50;
   }
+  /* The page reads in the serif, because most of what is on it is the
+     record: a task somebody wrote, a reflection, a captured thought. The
+     sans is then applied to the machinery around it rather than the other
+     way round -- which is the honest ratio, and also the safer edit, since
+     an element that slips through the list below renders as content rather
+     than as a control that forgot its typeface. */
   html {
+    @apply font-serif;
+  }
+
+  /* Machinery. Form controls need re-asserting because Tailwind's preflight
+     sets them to `inherit`, which now means the serif. */
+  h1, h2, h3, h4, h5, h6,
+  button, input, select, textarea, optgroup, label, legend {
     @apply font-sans;
+  }
+
+  /* Anything that has to add up. `<code>` and `<pre>` already default to a
+     mono stack; naming ours keeps them from being the one place the old
+     system font survives. */
+  code, kbd, samp, pre {
+    @apply font-mono;
+  }
+}
+
+/* A 44px hit area without a 44px button.
+ *
+ * roadmap.md's Mobile web experience entry measured the problem: at 375px
+ * the Daily Page's buttons are 32px and one link is 20px, against the ~44px
+ * platform guidelines ask for. The height lives on the shared primitive,
+ * and every fix so far was applied per call site -- so each new call site
+ * starts at 32px again.
+ *
+ * Raising the primitive's actual height would fix phones and wreck the
+ * dense desktop layouts the application is mostly used in. This expands the
+ * *target* instead and leaves the drawn control exactly where it was, so
+ * "nothing moves" stays true of the re-theme while the defect closes.
+ *
+ * Coarse pointers only: on a mouse a 44px invisible box around every small
+ * control would make adjacent controls fight over the gap between them.
+ * That fight is still possible on touch where two controls sit closer than
+ * ~12px apart, and there the later one in the DOM wins the overlap --
+ * accepted, because losing an overlap is a better failure than a target
+ * nobody can hit.
+ */
+@utility touch-target {
+  position: relative;
+
+  @media (pointer: coarse) {
+    &::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      translate: -50% -50%;
+      height: 44px;
+      width: 100%;
+      min-width: 44px;
+    }
   }
 }
 
@@ -133,8 +273,9 @@
    simplification for now. Revisit if a component that leans on it for
    passive hover states (DropdownMenu, Command) reads as too loud. */
 @theme inline {
-  --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
-    "Segoe UI", sans-serif;
+  /* --font-sans, --font-serif and --font-mono are declared in the @theme
+     block above rather than here; see the note there for why. Inter used
+     to sit at this line naming a face nothing served. */
   --color-background: var(--color-bg);
   --color-foreground: var(--color-text);
   --color-card: var(--color-surface);
@@ -162,11 +303,18 @@
 
   /* List-Color Contract: the server assigns each list one of these
      semantic keys (lists.agenda.LIST_COLOR_KEYS); this is the only place
-     that says what each one actually looks like. Same values in both
-     themes for now -- these were designed as small identifying dots
-     ("read as labels rather than status"), not large fills, so the
-     existing dark-only palette's contrast on light backgrounds hasn't
-     needed revisiting. Revisit if that changes. */
+     that says what each one actually looks like. Resolved through
+     agenda.ts's colorForKey(), which returns `var(--list-color-<key>)`,
+     so these names are a live contract with that function.
+
+     **They are per-theme now, and the note they replace was wrong.** It
+     said one palette could serve both because these are small identifying
+     dots rather than large fills -- but measured against the light
+     background these eight ran 1.11:1 to 1.77:1, which is not a weak
+     label, it is an invisible one. That was already true of the light
+     theme this replaces; the paper ground only makes it easier to see
+     that nobody had checked. The deep set below clears 3:1, which is what
+     WCAG 1.4.11 asks of a non-text element carrying meaning. */
   --list-color-sky: #8fc7d6;
   --list-color-sage: #a8dba8;
   --list-color-amber: #f4c98a;
@@ -175,4 +323,31 @@
   --list-color-azure: #9ab6e0;
   --list-color-blush: #e5a8c4;
   --list-color-straw: #f1e394;
+}
+
+/* The same eight hues, weighted for paper. Kept beside the dark set rather
+   than in @layer base, because these are one contract and reading half of
+   it in another block is how the pair drifts. */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --list-color-sky: #2f7386;
+    --list-color-sage: #3f7a3f;
+    --list-color-amber: #8a6210;
+    --list-color-lilac: #6f4a85;
+    --list-color-coral: #a54444;
+    --list-color-azure: #41628f;
+    --list-color-blush: #94476d;
+    --list-color-straw: #74650f;
+  }
+}
+
+:root[data-theme="light"] {
+  --list-color-sky: #2f7386;
+  --list-color-sage: #3f7a3f;
+  --list-color-amber: #8a6210;
+  --list-color-lilac: #6f4a85;
+  --list-color-coral: #a54444;
+  --list-color-azure: #41628f;
+  --list-color-blush: #94476d;
+  --list-color-straw: #74650f;
 }

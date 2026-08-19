@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+
+{% comment %}
+The signed-out home page, and the first one that is not a login form.
+
+`product-stories.md` S1 scored that arrangement impossible and its requires
+line ended "a landing page that is not a login form": a stranger's first screen
+was a username field under the words "Welcome back". The login form still
+exists, at /accounts/login/, which is where it was always also reachable.
+
+Built from design/landing-mockup.html, which carries the reasoning. The short
+version is that the hero is a real week rather than a claim about one --
+8 commitments chosen, 5 kept, 1 released, 2 still open -- with the arithmetic
+done in front of the reader.
+
+**The numbers here are a claim about the code and have to agree with it.**
+review/reads.py's `Planned.total` is `met + unfinished`; `set_aside` is outside
+the denominator entirely, because counting a decommitment as a failure would be
+the product disagreeing with a decision somebody made deliberately. So the
+figure is 5/7 and not 5/8, and the released line sits visibly outside the sum.
+An earlier draft of the mockup got this wrong in the one place it could not
+afford to.
+{% endcomment %}
+
+{% block title %}Clarice — the week you can't flatter{% endblock %}
+{% block og_title %}Clarice — the week you can't flatter{% endblock %}
+
+{% block content %}
+  <div class="py-6 sm:py-10">
+
+    <div class="max-w-3xl">
+      <h1 class="font-sans font-bold text-4xl sm:text-5xl lg:text-6xl leading-[1.03] tracking-[-0.028em] text-pretty">
+        Most task apps forget what you promised.
+      </h1>
+      <p class="mt-6 max-w-xl text-lg sm:text-xl leading-snug text-muted-foreground">
+        Clarice writes down what you chose on the morning you chose it, and
+        never edits that line. So the number at the end of the week is one you
+        can believe.
+      </p>
+    </div>
+
+    {# The sheet: margin notes, the red margin rule ruled paper actually has, #}
+    {# and the week itself. #}
+    <section class="mt-12 grid gap-x-9 md:grid-cols-[15rem_1px_minmax(0,1fr)]" aria-label="A week in Clarice">
+
+      <div class="order-3 md:order-1 pt-7 md:pt-11 space-y-6">
+        <p class="italic text-[0.94rem] leading-relaxed text-muted-foreground">
+          Eight commitments, pinned across the week. The date is when each was
+          <b class="not-italic font-semibold text-text">chosen</b> — not when it
+          was due, and not when it was last touched.
+        </p>
+        <p class="italic text-[0.94rem] leading-relaxed text-muted-foreground">
+          <b class="not-italic font-semibold text-text">Released is not missed.</b>
+          On Wednesday you decided the terms could wait. Clarice records that as
+          a decision — and takes it out of the sum entirely, because counting a
+          decommitment as a failure would be the product disagreeing with you.
+        </p>
+        <p class="italic text-[0.94rem] leading-relaxed text-muted-foreground">
+          Two are still open. They stay open. Nothing rolls forward at midnight,
+          and no due date is quietly rewritten to keep a streak alive.
+        </p>
+      </div>
+
+      <div class="order-2 bg-accent/55 h-px md:h-auto md:w-px my-8 md:my-0" aria-hidden="true"></div>
+
+      <div class="order-1 md:order-3">
+        <div class="flex items-baseline justify-between gap-4 border-b-2 border-border pb-2">
+          <span class="font-mono text-xs uppercase tracking-[0.16em] text-muted-foreground">Week of 11 August</span>
+          <span class="font-mono text-xs uppercase tracking-[0.16em] text-muted-foreground">8 chosen</span>
+        </div>
+
+        {% comment %}
+        Written out rather than looped over a context list. It is a fixed
+        illustration on a public page, not data, and a loop would invite
+        somebody to wire it to a real account -- at which point the landing
+        page starts making a claim about whoever is looking at it.
+        {% endcomment %}
+        {% include "accounts/_ledger_line.html" with when="Mon 11" what="Ship the deploy rollback fix" mark="kept" %}
+        {% include "accounts/_ledger_line.html" with when="Mon 11" what="Call the accountant back" mark="kept" %}
+        {% include "accounts/_ledger_line.html" with when="Mon 11" what="Renew the certificate" mark="kept" %}
+        {% include "accounts/_ledger_line.html" with when="Tue 12" what="Draft the terms of service" mark="released" %}
+        {% include "accounts/_ledger_line.html" with when="Tue 12" what="Thirty minutes of Spanish" mark="kept" %}
+        {% include "accounts/_ledger_line.html" with when="Wed 13" what="Write the privacy policy" mark="open" %}
+        {% include "accounts/_ledger_line.html" with when="Thu 14" what="Book the dentist" mark="kept" %}
+        {% include "accounts/_ledger_line.html" with when="Thu 14" what="Read the pension letter" mark="open" %}
+
+        <div class="flex flex-wrap gap-x-5 py-3.5 border-b border-border font-mono text-[0.78rem] uppercase tracking-wider text-muted-foreground">
+          <span><b class="font-medium text-text/80">5</b> kept</span>
+          <span><b class="font-medium text-text/80">2</b> open</span>
+          {# Set apart because it is not part of the arithmetic beside it. #}
+          <span class="ml-auto text-released"><b class="font-medium">1</b> released — outside the sum</span>
+        </div>
+
+        <div class="pt-9">
+          <div class="font-mono text-5xl sm:text-6xl font-medium leading-none tracking-tight text-accent tabular-nums">5 / 7</div>
+          <div class="mt-3 font-mono text-xs uppercase tracking-[0.12em] text-muted-foreground">
+            Chosen as the week ran · judged when it closed · never revised
+          </div>
+          <p class="mt-6 max-w-xl leading-relaxed text-muted-foreground">
+            A conventional task app would show you
+            <b class="font-semibold text-text">100%</b>. Not by lying — by
+            dividing by what was still due on Friday. Move two due dates during
+            the week, which every one of them lets you do silently, and the
+            denominator moves with them. Clarice can't, because it kept the line
+            you wrote on the morning you wrote it.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    {# The marks, shown rather than described. #}
+    <section class="mt-16 border-t-2 border-border pt-14">
+      <p class="font-mono text-xs uppercase tracking-[0.18em] text-muted-foreground">The marks</p>
+      <dl class="mt-6 border-t border-border">
+        {% include "accounts/_mark_key.html" with glyph="✓" tone="kept" term="Kept" meaning="You finished what you said you would." %}
+        {% include "accounts/_mark_key.html" with glyph="—" tone="released" term="Released" meaning="You decided against it. It leaves the sum entirely, because a decommitment is a decision and not a failure." %}
+        {% include "accounts/_mark_key.html" with glyph="○" tone="open" term="Open" meaning="Still standing. Nothing rolled it forward at midnight and nothing rewrote its date." %}
+      </dl>
+      <p class="mt-9 max-w-2xl text-lg leading-snug">
+        Every other tool has the first and the last. The middle one is the whole
+        difference between a record and a scoreboard.
+      </p>
+    </section>
+
+    <section class="mt-14 border-t-2 border-border pt-14">
+      <h2 class="font-sans font-semibold text-2xl tracking-tight max-w-xl">
+        The same rule turns up twice more.
+      </h2>
+      <div class="mt-10 grid gap-12 md:grid-cols-2">
+        <article>
+          <h3 class="font-sans text-[0.78rem] font-semibold uppercase tracking-[0.13em] text-muted-foreground border-b border-border pb-2.5">
+            Practice, not checkboxes
+          </h3>
+          <p class="mt-3.5 leading-relaxed text-muted-foreground">
+            “Five lessons this week” is not five tasks. It's one commitment
+            measured toward a number.
+          </p>
+          <p class="mt-3 leading-relaxed text-muted-foreground">
+            So it takes <b class="font-semibold text-text">partial credit</b>, a
+            deliberate skip, and a pause — and the history survives you changing
+            the routine, because what happened isn't stored in the plan.
+          </p>
+        </article>
+        <article>
+          <h3 class="font-sans text-[0.78rem] font-semibold uppercase tracking-[0.13em] text-muted-foreground border-b border-border pb-2.5">
+            The record is append-only
+          </h3>
+          <p class="mt-3.5 leading-relaxed text-muted-foreground">
+            Not as a policy. The activity log is append-only
+            <b class="font-semibold text-text">at the database</b>, with one
+            documented exception that exists so account deletion can work at all.
+          </p>
+          <p class="mt-3 leading-relaxed text-muted-foreground">
+            Your data exports in full, and deleting your account removes it from
+            Clarice.
+          </p>
+        </article>
+      </div>
+    </section>
+
+    <section class="mt-14 border-t-2 border-border pt-14 pb-4">
+      <h2 class="font-sans font-bold text-3xl sm:text-4xl tracking-tight max-w-lg text-pretty">
+        Find out what your week actually looks like.
+      </h2>
+      {% comment %}
+      No promise of an email. Signup creates the account inactive and an admin
+      approves it -- accounts/forms.py -- and none of accounts/emails.py's six
+      functions tells the applicant that happened; the one that fires tells us.
+      So this says what the flow actually does, and signup_pending.html says the
+      same thing again on the other side of the form. When that email exists
+      this copy can promise it.
+      {% endcomment %}
+      <p class="mt-4 max-w-xl text-muted-foreground">
+        Clarice is invitation-only while it's still being built. Ask for an
+        account and we'll review it by hand.
+      </p>
+      <div class="mt-8 flex flex-wrap items-center gap-4">
+        <a class="touch-target font-sans font-semibold text-[0.95rem] inline-flex items-center rounded-sm border border-text bg-text text-bg px-6 min-h-11 hover:bg-transparent hover:text-text transition-colors"
+           href="{% url 'signup' %}">Request an account</a>
+        <a class="touch-target font-sans font-semibold text-[0.95rem] inline-flex items-center rounded-sm border border-border px-6 min-h-11 hover:border-text transition-colors"
+           href="{% url 'login' %}">Log in</a>
+      </div>
+    </section>
+
+  </div>
+{% endblock %}

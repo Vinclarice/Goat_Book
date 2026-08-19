@@ -24,7 +24,35 @@ from accounts.models import PersonalAccessToken
 CONTACT_WINDOW_SECONDS = 60 * 60
 
 
-class LandingLoginView(LoginView):
+def home(request):
+    """The signed-out home page, which is no longer the login form.
+
+    `product-stories.md` S1 scored the old arrangement impossible, and its
+    requires line ended "a landing page that is not a login form": a stranger
+    following a link got a username field under the words "Welcome back".
+
+    Signed-in visitors never see it. That is not only tidiness -- it is the
+    behaviour `redirect_authenticated_user` gave the view this replaces, and
+    dropping it would put a marketing page in front of somebody who has
+    already bought.
+
+    Nothing about the throttling moved with the form. /accounts/login/ has
+    carried its own nginx limit all along (`clarice_auth`, in the
+    accounts/login|signup location), so taking POSTs off "/" opens no hole; the
+    `location = /` rule is now inert rather than wrong, and says so.
+    """
+    if request.user.is_authenticated:
+        return redirect("dashboard")
+    return render(request, "accounts/landing.html")
+
+
+class ClariceLoginView(LoginView):
+    """The login form, at /accounts/login/ and nowhere else now.
+
+    Was `LandingLoginView`, and served "/" as well -- which is what made the
+    landing page a login form. The name went with the responsibility.
+    """
+
     template_name = "accounts/login.html"
     authentication_form = LoginForm
     redirect_authenticated_user = True

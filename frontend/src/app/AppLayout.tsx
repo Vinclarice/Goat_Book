@@ -3,12 +3,21 @@ import { Outlet, useLocation } from "react-router";
 
 import { DeletionBanner } from "./DeletionBanner";
 import { SideNav } from "./SideNav";
+import { ViewNav } from "./ViewNav";
 import styles from "./sidenav.module.css";
 
-// Matches sidenav.module.css's breakpoint from the other side: the CSS
-// collapses the nav at max-width 760px, so "wide" starts one pixel above.
-// If one moves, the other has to.
-const WIDE = "(min-width: 761px)";
+// Matches sidenav.module.css's breakpoint from the other side, and the two
+// have to agree: the CSS collapses the rail below this width and hides the
+// <summary> above it, so a disagreement leaves a band where the disclosure is
+// both closed and unopenable -- which is the B0 bug with a smaller viewport.
+//
+// 768px because that is Tailwind's `md`, which the rest of the application
+// already uses. It was 760/761, a pair of hand-picked numbers agreeing with
+// nothing else in the tree and only with each other, by hand.
+//
+// test_frontend_style_contract.py now fails if these two drift apart, which is
+// what the comment saying "if one moves, the other has to" was standing in for.
+const WIDE = "(min-width: 768px)";
 
 /** Wraps every SPA route so the nav is genuinely persistent -- it stays
  * mounted across navigations rather than being re-rendered per page, which
@@ -49,19 +58,26 @@ export function AppLayout() {
   }, [location.pathname]);
 
   return (
-    <div className={styles.shell}>
-      <details className={styles.disclosure} ref={disclosure}>
-        <summary aria-label="Menu">☰ Menu</summary>
-        <SideNav />
-      </details>
-      <main>
-        {/* Above the outlet, so it is the first thing on every route rather
-            than something a page can scroll past. See DeletionBanner: a
-            scheduled erasure visible only where it was scheduled is one
-            somebody can forget for thirty days. */}
-        <DeletionBanner />
-        <Outlet />
-      </main>
-    </div>
+    <>
+      {/* Full width, directly under the server-rendered bar, in the same place
+          the knowledge core's own sub-nav sits. The two levels read the same
+          on both cores, which is the whole reason for splitting them out of
+          the rail. */}
+      <ViewNav />
+      <div className={styles.shell}>
+        <details className={styles.disclosure} ref={disclosure}>
+          <summary aria-label="Menu">☰ Menu</summary>
+          <SideNav />
+        </details>
+        <main>
+          {/* Above the outlet, so it is the first thing on every route rather
+              than something a page can scroll past. See DeletionBanner: a
+              scheduled erasure visible only where it was scheduled is one
+              somebody can forget for thirty days. */}
+          <DeletionBanner />
+          <Outlet />
+        </main>
+      </div>
+    </>
   );
 }

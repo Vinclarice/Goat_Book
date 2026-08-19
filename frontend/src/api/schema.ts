@@ -1291,6 +1291,8 @@ export interface components {
             projects: components["schemas"]["AgendaProjectSummaryOut"][];
             /** Shows Action Items */
             shows_action_items: boolean;
+            /** New Area Url */
+            new_area_url: string;
             /** Focus */
             focus: components["schemas"]["FocusOut"][];
             /** Compass Purpose */

@@ -98,6 +98,43 @@ class CssModuleTokenTest(SimpleTestCase):
             "Use the --color-* names declared in app/tailwind.css.",
         )
 
+    def test_the_layouts_two_breakpoints_still_describe_the_same_width(self):
+        """The rail's collapse is declared twice, in two languages.
+
+        `sidenav.module.css` collapses the rail and reveals the disclosure's
+        <summary> below a width; `AppLayout.tsx` forces the disclosure open
+        above one. They are the same edge seen from either side, and a
+        disagreement is not cosmetic -- it leaves a band of widths where the
+        summary is hidden *and* the disclosure is shut, which is B0 exactly:
+        a navigation sealed inside a control with no handle.
+
+        The comment that used to guard this said "if one moves, the other has
+        to". That is a hope. This is the check.
+        """
+        css = (FRONTEND_SRC / "app" / "sidenav.module.css").read_text(
+            encoding="utf-8"
+        )
+        layout = (FRONTEND_SRC / "app" / "AppLayout.tsx").read_text(encoding="utf-8")
+
+        collapse = re.search(r"@media \(max-width:\s*([\d.]+)px\)", css)
+        wide = re.search(r"\(min-width:\s*([\d.]+)px\)", layout)
+        self.assertIsNotNone(collapse, "No max-width breakpoint in sidenav.module.css")
+        self.assertIsNotNone(wide, "No min-width breakpoint in AppLayout.tsx")
+
+        # Adjacent, not equal: the CSS stops one hair below where the JS
+        # starts, so no width falls through both.
+        self.assertLess(
+            float(collapse.group(1)),
+            float(wide.group(1)),
+            "The CSS collapse must end below where the layout calls it wide.",
+        )
+        self.assertLess(
+            float(wide.group(1)) - float(collapse.group(1)),
+            1.0,
+            "A gap wider than a pixel leaves widths where the rail is "
+            "collapsed and the disclosure cannot be opened.",
+        )
+
     def test_the_theme_block_actually_parses(self):
         # Two positive controls. An unparseable @theme would yield an empty
         # set and fail every module instead of passing them, but an empty

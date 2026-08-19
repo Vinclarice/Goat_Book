@@ -14,6 +14,17 @@
   grid-template-columns: 210px minmax(0, 1fr);
   gap: 1.5rem;
   align-items: start;
+  /* Matches _app_bar.html's px-4 sm:px-6 so the rail starts on the same
+     vertical line as the wordmark above it. The shell used to sit flush
+     against the viewport edge, which read as an accident once there was a
+     bar with padding directly above it. */
+  padding-inline: 1rem;
+}
+
+@media (min-width: 640px) {
+  .shell {
+    padding-inline: 1.5rem;
+  }
 }
 
 .nav {
@@ -24,6 +35,10 @@
   gap: 1.1rem;
   padding-right: 1rem;
   border-right: 1px solid var(--color-border);
+  /* Navigation is machinery, and this is a CSS module -- outside the reach
+     of the element selectors in tailwind.css's base layer, which is why it
+     has to say so itself rather than inheriting the serif from html. */
+  font-family: var(--font-sans);
 }
 
 .group h3 {
@@ -90,10 +105,15 @@
   white-space: nowrap;
 }
 
+/* A count is a figure, so it takes the figure face and its tabular
+   digits -- otherwise a column of area counts fails to line up, which is
+   the one thing the mono is in this design to prevent. */
 .count {
   margin-left: auto;
   font-size: 0.75rem;
   color: var(--color-muted-foreground);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
 }
 
 /* This marks an area's overdue count, so it is the overdue token rather
@@ -117,7 +137,12 @@
   display: none;
 }
 
-@media (max-width: 760px) {
+/* 767.98 rather than 767: paired with AppLayout's `(min-width: 768px)` so
+   there is no fractional width where neither rule applies. 768px is
+   Tailwind's `md`, which the rest of the application already uses -- the
+   760/761 pair it replaces agreed with nothing but each other.
+   test_frontend_style_contract.py fails if the two drift apart. */
+@media (max-width: 767.98px) {
   .shell {
     grid-template-columns: minmax(0, 1fr);
     gap: 0.75rem;

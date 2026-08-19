@@ -212,17 +212,19 @@ class ReviewOnAPhoneTest(BrowserTest):
 
         expect(self.page.get_by_text("Saved.")).to_be_visible()
 
-    def test_the_review_is_reachable_from_the_phone_menu(self):
-        """The gap this sequence has shipped twice, checked at the width
-        where a nav link is hidden behind a disclosure rather than simply
-        present in the DOM."""
+    def test_the_review_needs_no_menu_on_a_phone(self):
+        """The gap this sequence has shipped twice, checked at the width where
+        a link can be present in the DOM and still not reachable.
+
+        It used to be behind the disclosure. The sub-nav under the app bar does
+        not collapse, so the review is now one tap from any surface at this
+        width -- which is what "reachable" was always asking for.
+        """
         self.log_in(self.user)
         self.visit("/app/day")
-        nav = self.page.get_by_role("navigation", name="Main")
-        review = nav.get_by_role("link", name="Review")
+        views = self.page.get_by_role("navigation", name="Views")
+        review = views.get_by_role("link", name="Review")
 
-        expect(review).not_to_be_visible()
-        self.page.get_by_label("Menu").click()
         expect(review).to_be_visible()
 
         review.click()

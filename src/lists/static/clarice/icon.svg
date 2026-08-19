@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Clarice">
+  <!--
+    A ruled page with its margin line. The whole identity in three shapes,
+    because a favicon is read at 16px: paper, the red margin rule that ruled
+    paper actually has, and two ink lines for what is written on it.
+
+    Deliberately not theme-aware. A favicon is composited by the browser
+    against its own chrome rather than against the page, so it has to carry
+    its own ground -- and the paper is the half of this identity that is
+    recognisable at that size.
+  -->
+  <rect width="64" height="64" rx="10" fill="#eaeee6"/>
+  <rect x="17" y="10" width="3" height="44" fill="#c0301c"/>
+  <rect x="27" y="21" width="22" height="3.5" rx="1.75" fill="#191d19"/>
+  <rect x="27" y="32" width="22" height="3.5" rx="1.75" fill="#191d19"/>
+  <rect x="27" y="43" width="13" height="3.5" rx="1.75" fill="#5d645b"/>
+</svg>

@@ -17,7 +17,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import include, path
 from django.views.generic import RedirectView
-from accounts.views import LandingLoginView, contact
+from accounts.views import contact, home
 from lists import views as list_views
 
 from clarice.api import api as api_v1
@@ -25,7 +25,10 @@ from clarice.health import healthz, healthz_scheduled
 
 
 urlpatterns = [
-    path("", LandingLoginView.as_view(), name="home"),
+    # A landing page, not the login form. See accounts.views.home and
+    # product-stories.md S1; the form is at /accounts/login/, which is where it
+    # was always also reachable and where its rate limit already lived.
+    path("", home, name="home"),
     # No trailing slash, and no login. An uptime monitor has no account, and
     # APPEND_SLASH would answer a polled `/healthz` with a 301 that several
     # services record as a failure. See clarice/health.py for what it checks
@@ -59,7 +62,7 @@ urlpatterns = [
     #
     # The prefix was called temporary for a year's worth of reasons that all
     # expired within a day. Second Mind's pages sat at the root in their own
-    # project and could not here, because "/" is this site's landing login and
+    # project and could not here, because "/" is this site's front door and
     # /api/v1/capture was defined by both cores; 4a made that endpoint the
     # application's one endpoint and 4b freed /capture/ by deleting the Inbox.
     #

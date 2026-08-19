@@ -1,0 +1,19 @@
+{% comment %}
+One line of the landing page's week: what was written, and the mark made
+against it later. Both on the same baseline, because the claim the page makes
+is that the plan and the outcome sit on one line and neither was rewritten.
+
+`mark` is one of kept, released, open. Open is deliberately the quiet one --
+an unmarked line is the honest rendering of a decision nobody has made yet.
+{% endcomment %}
+<div class="grid grid-cols-[4.5rem_minmax(0,1fr)_1.75rem] sm:grid-cols-[5.5rem_minmax(0,1fr)_2rem] items-baseline gap-x-3 py-3 border-b border-border">
+  <span class="font-mono text-xs uppercase tracking-wider text-muted-foreground">{{ when }}</span>
+  <span class="{% if mark != 'kept' %}text-muted-foreground{% endif %}">{{ what }}</span>
+  {% if mark == "kept" %}
+    <span class="justify-self-end font-mono text-kept" title="Kept">✓</span>
+  {% elif mark == "released" %}
+    <span class="justify-self-end font-mono text-released" title="Released on Wednesday">—</span>
+  {% else %}
+    <span class="justify-self-end font-mono text-muted-foreground" title="Still open">○</span>
+  {% endif %}
+</div>

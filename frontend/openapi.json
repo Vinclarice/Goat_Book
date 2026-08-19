@@ -2873,6 +2873,10 @@
             "title": "Shows Action Items",
             "type": "boolean"
           },
+          "new_area_url": {
+            "title": "New Area Url",
+            "type": "string"
+          },
           "focus": {
             "items": {
               "$ref": "#/components/schemas/FocusOut"
@@ -2917,6 +2921,7 @@
           "areas",
           "projects",
           "shows_action_items",
+          "new_area_url",
           "focus",
           "compass_purpose",
           "compass_question",

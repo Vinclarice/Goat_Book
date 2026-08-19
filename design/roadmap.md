@@ -85,6 +85,18 @@ re-add it here.
   anchored-only, because Clarice has one cadence field and cannot say which
   mode a commitment is, while `design-concept.md` calls the distinction
   load-bearing. Deliberate, and recorded at the function.
+- ~~**Three navigations, three identities, and a login form for a home page.**~~
+  **Closed August 18, 2026**, shipped in two deploys and verified in
+  production. What replaced it: one server-rendered app bar on all three
+  surfaces, a per-core sub-nav, the rail demoted to contents, the ledger
+  palette and three self-hosted typefaces in both cores, and `/` as a landing
+  page rather than the login form. The narrative and its six lessons are in
+  [`roadmap-history.md`](roadmap-history.md); the plan is a stub.
+  **The codename was deliberately held** to ship with the planning-assistant
+  work. **What this did *not* close is S1**, which also wants self-service
+  signup with email verification — still an admin checkbox, and
+  `accounts/emails.py` still has no message telling the applicant it happened.
+  [`product-stories.md`](product-stories.md) owns that score.
 
 ## Carried in from B / C / D — not schedulable work
 
@@ -218,19 +230,32 @@ beyond capture and the two shipped Android slices happens in the browser, and
 phone. It is not really.
 
 **Measured, not guessed.** Both shells set
-`<meta name="viewport" content="width=device-width, initial-scale=1">`. Beyond
-that there are exactly two layout breakpoints — side navigation collapses at
-760px, the workspace input row stacks at 768px. Those two numbers should agree
-and do not. Everything else is desktop-first.
+`<meta name="viewport" content="width=device-width, initial-scale=1">`.
+~~Beyond that there are exactly two layout breakpoints — side navigation
+collapses at 760px, the workspace input row stacks at 768px. Those two numbers
+should agree and do not.~~ **Fixed August 18, 2026** by
+`navigation-and-identity-plan.md` step 4: the rail's collapse is Tailwind's
+`md` on both sides now, and `test_frontend_style_contract.py` fails if the CSS
+and the JavaScript drift apart, which is what the comment asking the next
+person to remember was standing in for. Everything else is still desktop-first.
 
 **Touch targets are the largest thing in this entry**, found with numbers
 attached during Crane 1 slice 7's phone pass. At 375px the Daily Page itself is
 sound — no horizontal overflow, everything works — but its buttons measure
 32px and its "Edit your compass" link 20px, against the ~44px both platform
 guidelines and WCAG 2.5.8 ask for; the Agenda, untouched by Crane, is worse at
-19–31px. The height lives on the shared `Button` primitive, which is still
-`h-8`: the 44px fixes made during the Tailwind arc were applied per call site,
-not to the primitive. Changing it restyles every page in the application.
+19–31px. ~~The height lives on the shared `Button` primitive, which is still `h-8`.~~
+**Half-closed August 18, 2026.** The primitive now carries a `touch-target`
+utility that grows the *hit area* to 44px under a coarse pointer while leaving
+the drawn control where it is — raising the real height would have fixed phones
+and wrecked the dense desktop layouts this is mostly used in. So every button
+in the application clears the floor, and every new call site inherits it rather
+than needing its own override.
+
+**What remains is the links.** "Edit your compass" is still a 20px anchor, and
+the utility is available to it — this was a fix to the primitive, not a sweep
+of every control. The overlap tradeoff is recorded at the utility: two controls
+closer than ~12px apart now overlap targets on touch and the later one wins.
 
 **One responsive application, not a mobile site.** No `m.` host, no second
 codebase, no divergent templates. One API, one SPA. Said once so it is not

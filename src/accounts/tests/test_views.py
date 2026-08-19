@@ -158,14 +158,22 @@ class LoginViewTest(TestCase):
         self.assertRedirects(response, "/dashboard/", target_status_code=302)
         self.assertEqual(auth.get_user(self.client), self.user)
 
-    def test_welcome_page_form_logs_in_with_valid_credentials(self):
+    def test_the_landing_page_no_longer_authenticates_anybody(self):
+        """"/" served the login form until August 2026 and accepted its POST.
+
+        It is a landing page now, and this is the half of that change worth a
+        test: credentials posted there must not log anyone in. nginx still
+        carries a POST-keyed limiter on "/" precisely because a form could
+        come back, so the assertion is that the view does not quietly still
+        be one.
+        """
         response = self.client.post(
             "/",
             data={"username": "edith", "password": PASSWORD},
         )
 
-        self.assertRedirects(response, "/dashboard/", target_status_code=302)
-        self.assertEqual(auth.get_user(self.client), self.user)
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(auth.get_user(self.client).is_authenticated)
 
     def test_rejects_invalid_credentials(self):
         response = self.client.post(

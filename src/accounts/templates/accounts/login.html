@@ -1,35 +1,32 @@
 {% extends "base.html" %}
 {% load frontend_tags %}
 
-{% block title %}Welcome · Clarice{% endblock %}
+{% comment %}
+Just the form now.
+
+This template used to serve "/" as well, and carried a two-column marketing
+hero to fill it -- an eyebrow, a headline reading "Welcome back to what
+matters", and three floating adjectives, all of which a stranger met before
+anything explained what the product was. The landing page took that job, and
+took the copy with it; a page whose only purpose is to accept a username and a
+password should look like one.
+
+"Welcome back" is now true, because the only people who reach this page are the
+ones coming back.
+{% endcomment %}
+
+{% block title %}Log in · Clarice{% endblock %}
 
 {% block content %}
-  <section class="grid gap-10 items-center py-8 lg:grid-cols-2 lg:py-16">
-    <div class="space-y-6">
-      <p class="text-xs font-bold uppercase tracking-wide text-accent">
-        A quieter way to stay on track
-      </p>
-      <h1 class="text-4xl font-bold leading-tight">Welcome back to what matters.</h1>
-      <p class="text-lg text-muted-foreground">
-        Capture what is on your mind, return to active areas, and make room for
-        everything else.
-      </p>
-      <div class="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground" aria-label="Product qualities">
-        <span>Private by default</span>
-        <span>Simple on purpose</span>
-        <span>Ready anywhere</span>
-      </div>
-    </div>
-
-    <div class="rounded-xl border border-border bg-card p-6 sm:p-8 space-y-6">
+  <section class="mx-auto max-w-md py-10">
+    <div class="rounded-sm border border-border bg-card p-6 sm:p-8 space-y-6">
       <div class="space-y-1">
-        <p class="text-xs font-bold uppercase tracking-wide text-accent">Your space</p>
-        <h2 class="text-2xl font-bold">Log in</h2>
-        <p class="text-sm text-muted-foreground">Continue to your personal areas.</p>
+        <h1 class="font-sans text-2xl font-bold tracking-tight">Welcome back</h1>
+        <p class="text-sm text-muted-foreground">Log in to pick up where you left off.</p>
       </div>
 
       {% if form.non_field_errors %}
-        <div class="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-2 text-sm text-destructive" role="alert">
+        <div class="rounded-sm border border-destructive/40 bg-destructive/10 px-4 py-2 text-sm text-destructive" role="alert">
           {{ form.non_field_errors.0 }}
         </div>
       {% endif %}
@@ -38,23 +35,23 @@
         {% csrf_token %}
 
         <div class="space-y-1">
-          <label for="{{ form.username.id_for_label }}" class="text-sm font-bold">Username</label>
-          {{ form.username|add_class:"w-full rounded-lg border border-border bg-input px-3 py-1.5" }}
+          <label for="{{ form.username.id_for_label }}" class="text-sm font-semibold">Username</label>
+          {{ form.username|add_class:"w-full rounded-sm border border-border-strong bg-input px-3 py-2" }}
           {% if form.username.errors %}
             <div class="text-sm text-destructive">{{ form.username.errors.0 }}</div>
           {% endif %}
         </div>
 
         <div class="space-y-1">
-          <label for="{{ form.password.id_for_label }}" class="text-sm font-bold">Password</label>
-          {{ form.password|add_class:"w-full rounded-lg border border-border bg-input px-3 py-1.5" }}
+          <label for="{{ form.password.id_for_label }}" class="text-sm font-semibold">Password</label>
+          {{ form.password|add_class:"w-full rounded-sm border border-border-strong bg-input px-3 py-2" }}
           {% if form.password.errors %}
             <div class="text-sm text-destructive">{{ form.password.errors.0 }}</div>
           {% endif %}
         </div>
 
         <div class="flex justify-end">
-          <a class="text-sm text-accent hover:underline" href="{% url 'password_reset' %}">Forgot your password?</a>
+          <a class="touch-target text-sm text-accent hover:underline" href="{% url 'password_reset' %}">Forgot your password?</a>
         </div>
 
         {% if next %}
@@ -62,15 +59,15 @@
         {% endif %}
 
         <button
-          class="w-full h-10 rounded-lg bg-primary text-primary-foreground hover:bg-primary/80 font-bold text-sm transition-colors"
+          class="touch-target w-full min-h-11 rounded-sm border border-text bg-text text-bg font-sans font-semibold text-sm hover:bg-transparent hover:text-text transition-colors"
           type="submit"
         >
-          Continue to my areas
+          Log in
         </button>
       </form>
 
       <p class="text-sm text-muted-foreground">
-        New here? <a class="text-accent hover:underline" href="{% url 'signup' %}">Create your account</a>
+        No account yet? <a class="text-accent hover:underline" href="{% url 'signup' %}">Ask for one</a>
       </p>
     </div>
   </section>

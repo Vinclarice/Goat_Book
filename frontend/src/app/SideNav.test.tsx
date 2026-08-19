@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router";
@@ -149,37 +149,36 @@ describe("SideNav", () => {
     expect(await screen.findByText("Area page")).toBeInTheDocument();
   });
 
-  it("offers the weekly review from every page", async () => {
-    // In this slice rather than a later one. The Daily Page spent five
-    // slices reachable only by typing its URL and routine creation had no
-    // surface at all until Crane 2 slice 3; a review nobody can open is
-    // the same gap a third time.
-    const user = userEvent.setup();
-    renderNav();
-
-    await user.click(await screen.findByRole("link", { name: "Review" }));
-
-    expect(await screen.findByText("Review page")).toBeInTheDocument();
-  });
-
-  it("marks the current view as active", async () => {
-    renderNav("/archive");
-
-    const archive = await screen.findByRole("link", { name: /Archive/ });
-    expect(archive.className).toMatch(/active/);
-  });
-
-  it("offers one way to the account page, not two", async () => {
-    // "Settings" sat beside "Preferences" and linked to /accounts/settings/,
-    // which is a two-line view that redirects to the /preferences route -- two
-    // names for one screen, the second taking a round trip through the server
-    // to reach the first. The URL still exists and is still bookmarkable; what
-    // went is the duplicate way in.
+  it("no longer offers the core's surfaces, because ViewNav does", async () => {
+    // Today, Agenda, Review and Archive were a "Views" group in here, which is
+    // what forced this rail to mean two things at once -- somewhere to switch
+    // surface and a list of what the core holds. They are a sub-nav under the
+    // app bar now, and ViewNav.test.tsx covers them there.
     renderNav();
     await screen.findByText("Programming");
 
-    expect(screen.getByRole("link", { name: "Preferences" })).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Settings" })).toBeNull();
+    // Scoped to the rail, because AppLayout renders ViewNav too and these
+    // links are very much on the page -- the claim is about where they are,
+    // not whether they exist. An unscoped query here would fail for the right
+    // reason today and pass for the wrong one the moment ViewNav moved.
+    const rail = within(screen.getByRole("navigation", { name: "Contents" }));
+
+    expect(rail.queryByRole("link", { name: "Review" })).toBeNull();
+    expect(rail.queryByRole("link", { name: /Archive/ })).toBeNull();
+    expect(rail.queryByRole("link", { name: "Today" })).toBeNull();
+  });
+
+  it("carries no account controls, because the app bar does", async () => {
+    // Preferences and Log out both moved to the server-rendered app bar, which
+    // reaches the Django pages and /mind/ as well as this shell. Asserted as an
+    // absence rather than deleted quietly: two logout controls with different
+    // mechanics is the defect that forced the move, and a second one reappearing
+    // here would be the same defect returning.
+    renderNav();
+    await screen.findByText("Programming");
+
+    expect(screen.queryByRole("link", { name: "Preferences" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Log out" })).toBeNull();
   });
 
   it("no longer offers the Inbox or Ideas at all", async () => {
@@ -193,31 +192,15 @@ describe("SideNav", () => {
     expect(screen.queryByRole("link", { name: "Ideas" })).toBeNull();
   });
 
-  it("reaches the knowledge core, at the url the server gives it", async () => {
-    // The merger put that core in this application and nothing in the nav
-    // could open it -- typing /mind/ was the only way in. The href comes from
-    // the payload: that began as a hedge against a temporary prefix, and after
-    // Heron step 5 made /mind/ permanent it is still right, because pinning a
-    // server route here would spell it out in two languages.
+  it("does not switch cores, because that is the app bar's job", async () => {
+    // Second Mind stood in this group. It moved to the bar, which is
+    // server-rendered and therefore present at /mind/ too -- so the crossing is
+    // no longer one-way. The rule that travelled with it is asserted where it
+    // now applies, in test_app_bar.py: that entry must never grow a count.
     renderNav();
     await screen.findByText("Programming");
 
-    const mind = screen.getByRole("link", { name: /Second Mind/ });
-    expect(mind).toHaveAttribute("href", "/mind/");
-  });
-
-  it("does not put a count on it", async () => {
-    // The knowledge core is quiet by design, and a number beside it would turn
-    // resurfacing into a backlog -- the one thing the attention policy refuses
-    // to be. This mattered less when the Inbox carried the only count in the
-    // nav; now that this is the only place a thought lives, it is the entry
-    // somebody would think to add one to.
-    renderNav();
-    await screen.findByText("Programming");
-
-    expect(screen.getByRole("link", { name: /Second Mind/ })).toHaveTextContent(
-      /^Second Mind$/,
-    );
+    expect(screen.queryByRole("link", { name: /Second Mind/ })).toBeNull();
   });
 
   it("renders the nav before its data arrives", () => {
@@ -225,80 +208,12 @@ describe("SideNav", () => {
     // like a layout shift, so the shell renders immediately.
     renderNav();
 
-    expect(screen.getByRole("navigation", { name: "Main" })).toBeInTheDocument();
-    expect(screen.getByText("Agenda")).toBeInTheDocument();
-  });
-
-  it("offers a way out of the session", async () => {
-    // Before B2 the only logout lived in a Django template the SPA never
-    // renders, so every /app route was a place you could not leave.
-    renderNav();
-
+    // "Contents" rather than "Main": there is no single main navigation now,
+    // which is the point of the split.
     expect(
-      await screen.findByRole("button", { name: "Log out" }),
+      screen.getByRole("navigation", { name: "Contents" }),
     ).toBeInTheDocument();
-  });
-
-  it("posts to the logout endpoint and then leaves the app", async () => {
-    const user = userEvent.setup();
-    const assign = vi.fn();
-    vi.spyOn(window, "location", "get").mockReturnValue({
-      ...window.location,
-      assign,
-    } as unknown as Location);
-    const fetchMock = vi
-      .spyOn(globalThis, "fetch")
-      .mockImplementation((input) => {
-        const request = input as Request;
-        if (request.url.includes("/me/logout")) {
-          return Promise.resolve({
-            ok: true,
-            status: 204,
-            headers: new Headers(),
-            text: () => Promise.resolve(""),
-            json: () => Promise.resolve(null),
-            clone() {
-              return this;
-            },
-          } as unknown as Response);
-        }
-        return jsonResponse(NAV);
-      });
-    renderNav();
-
-    await user.click(await screen.findByRole("button", { name: "Log out" }));
-
-    await waitFor(() => expect(assign).toHaveBeenCalledWith("/"));
-    const logoutCalls = fetchMock.mock.calls.filter(([request]) =>
-      (request as Request).url.includes("/me/logout"),
-    );
-    // Exactly once: a double-submit would race two session invalidations.
-    expect(logoutCalls).toHaveLength(1);
-    expect((logoutCalls[0][0] as Request).method).toBe("POST");
-  });
-
-  it("keeps you where you are when logging out fails", async () => {
-    // A failed logout means the session is still alive. Navigating anyway
-    // would look like it worked and leave the session open behind you.
-    const user = userEvent.setup();
-    const assign = vi.fn();
-    vi.spyOn(window, "location", "get").mockReturnValue({
-      ...window.location,
-      assign,
-    } as unknown as Location);
-    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
-      const request = input as Request;
-      if (request.url.includes("/me/logout")) {
-        return jsonResponse({ detail: "nope" }, false);
-      }
-      return jsonResponse(NAV);
-    });
-    renderNav();
-
-    await user.click(await screen.findByRole("button", { name: "Log out" }));
-
-    expect(await screen.findByText(/Couldn't log out/)).toBeInTheDocument();
-    expect(assign).not.toHaveBeenCalled();
+    expect(screen.getByText("Areas")).toBeInTheDocument();
   });
 
   it("closes the narrow-screen disclosure after navigating", async () => {

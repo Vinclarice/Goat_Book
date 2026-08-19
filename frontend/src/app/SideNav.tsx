@@ -1,6 +1,5 @@
-import { useState } from "react";
 import { Link, NavLink, useLocation } from "react-router";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 
 import { colorForKey } from "../agenda";
 import { apiV1 } from "../api/client";
@@ -18,8 +17,6 @@ import styles from "./sidenav.module.css";
  */
 export function SideNav() {
   const location = useLocation();
-  const queryClient = useQueryClient();
-  const [logoutError, setLogoutError] = useState("");
   const { data } = useQuery({
     queryKey: ["nav"],
     queryFn: async () => {
@@ -35,73 +32,18 @@ export function SideNav() {
   const areas = data?.areas ?? [];
   const projects = data?.projects ?? [];
 
-  const logout = useMutation({
-    mutationFn: async () => {
-      const { error } = await apiV1.POST("/api/v1/me/logout", {});
-      if (error) throw new Error("Couldn't log out. Please try again.");
-    },
-    onSuccess: () => {
-      // A full navigation, not a router push: the session backing every
-      // query is gone, so continuing to render an authenticated SPA would
-      // only produce a screenful of 401s. Clearing the cache first stops
-      // anything refetching on the way out.
-      queryClient.clear();
-      window.location.assign("/");
-    },
-    onError: (caught: Error) => setLogoutError(caught.message),
-  });
-
   return (
-    <nav className={styles.nav} aria-label="Main">
-      <div className={styles.group}>
-        <h3>Views</h3>
-        {/* First, because Crane makes the day the home surface -- and
-            present at all, which until slice 6 it was not: slices 1 to 5
-            built a page reachable only by typing its URL. Undated on
-            purpose, so the link always means "today" rather than whichever
-            day was current when the nav rendered. */}
-        <NavLink to="/day" className={navLinkClass}>
-          Today
-        </NavLink>
-        <NavLink to="/agenda" className={navLinkClass}>
-          Agenda
-        </NavLink>
-        {/* Beside the day rather than under Account, because a review is a
-            view of the work and not a setting -- and present in the slice
-            that builds it, since a surface nobody can reach has now been
-            shipped twice. Undated, so the link always means the week you
-            are in rather than whichever one the nav last rendered. */}
-        <NavLink to="/review" className={navLinkClass}>
-          Review
-        </NavLink>
-        {/* Where a thought lives, and since Heron 4b the only such place.
-            Inbox and Ideas sat above this until 4b deleted them; it was put
-            here beside them deliberately, so that when they went this would
-            already be where the eye looks.
+    <nav className={styles.nav} aria-label="Contents">
+      {/* The Views group stood here -- Today, Agenda, Review, Archive -- and is
+          now ViewNav, a sub-nav under the app bar. Second Mind went to the bar
+          itself in the step before. What is left is what this rail was always
+          best at and could never say plainly while it also held navigation:
+          the things the task core *contains*.
 
-            A Django page, not an SPA route, so a plain anchor: React Router
-            would try to handle /mind/ itself and 404 inside the shell.
-
-            The href comes from the payload. That began as a hedge against a
-            temporary prefix; Heron step 5 made /mind/ permanent and it is
-            still right, because the server owns its own URLs and a route
-            spelled out in two languages is one that can disagree with itself.
-
-            No count, and this is the one nav entry that must never grow one:
-            the Inbox's number measured a backlog, and this core is quiet by
-            design. A number here would turn resurfacing into the thing the
-            attention policy exists to refuse. */}
-        <a className={styles.link} href={data?.mind_url ?? "/mind/"}>
-          Second Mind
-        </a>
-        <NavLink to="/archive" className={navLinkClass}>
-          Archive
-          {data && data.archived_count > 0 && (
-            <span className={styles.count}>{data.archived_count}</span>
-          )}
-        </NavLink>
-      </div>
-
+          That is why the landmark is "Contents" and not "Main". There is no
+          single main navigation any more, which is the point -- there is a bar
+          that says which core, a sub-nav that says which surface, and this,
+          which says what is in here. */}
       <div className={styles.group}>
         <h3>Areas</h3>
         {areas.length === 0 && <p className={styles.empty}>No areas yet.</p>}
@@ -159,34 +101,17 @@ export function SideNav() {
         ))}
       </div>
 
-      <div className={styles.group}>
-        <h3>Account</h3>
-        {/* One entry, because there was only ever one page.
-            "Settings" sat here as a second link to /accounts/settings/, which
-            is a two-line view that redirects to this exact route -- so the nav
-            offered two names for one screen and the second took a round trip
-            through the server to arrive at the first.
-            The URL stays: it is bookmarkable and `change_password` redirects to
-            it. What went is the duplicate way in. */}
-        <NavLink to="/preferences" className={navLinkClass}>
-          Preferences
-        </NavLink>
-        {/* In the nav rather than on a preferences page, so it is reachable
-            from every SPA route -- including the mobile disclosure, which
-            renders this same markup. */}
-        <button
-          type="button"
-          className={styles.link}
-          onClick={() => {
-            setLogoutError("");
-            logout.mutate();
-          }}
-          disabled={logout.isPending}
-        >
-          Log out
-        </button>
-        {logoutError && <p className={styles.empty}>{logoutError}</p>}
-      </div>
+      {/* The Account group stood here -- Preferences and Log out -- and both
+          moved into the app bar, which reaches the Django pages and /mind/ as
+          well as this shell. Logout in particular had to move rather than be
+          duplicated: there were two of them with different mechanics, this
+          button posting to /api/v1/me/logout and base.html posting a form, and
+          a control that ends a session is the last one that should have two
+          implementations. The form won because it needs no client code to work
+          on all three surfaces.
+
+          What is left in here is contents rather than navigation: the views
+          this core offers, and the areas and projects it holds. */}
 
       {/* Keyed on the path so navigating closes the disclosure: on a phone
           the menu covering the page you just asked for is the whole

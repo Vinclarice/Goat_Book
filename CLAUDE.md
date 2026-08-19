@@ -220,7 +220,16 @@ git update-index --chmod=+x <file>   # chmod alone does nothing, core.fileMode i
 ```
 
 **Unlike the CRLF case, CI can catch this**, because `git ls-files -s` reports
-the recorded mode on any platform. Nothing checks it yet.
+the recorded mode on any platform.
+`clarice/tests/test_executable_file_modes.py` does, and it reads the index
+rather than the filesystem on purpose: the playbook builds the image from WSL
+over `/mnt/c`, which mounts `drvfs` with no `metadata` option and reports every
+file `-rwxrwxrwx` whatever git recorded. Windows answers much the same, so
+`os.access(..., X_OK)` is green on both machines this is worked on and means
+nothing. **That is also why `./manage.py migrate` has worked in production for
+months while `src/manage.py` was `100644`** — fixed when the test was written,
+and the reason §6's CI-built images would have broken the first thing a deploy
+does.
 
 ## Android
 

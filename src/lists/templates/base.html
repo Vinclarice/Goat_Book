@@ -65,5 +65,26 @@
 
       {% block content %}{% endblock %}
     </main>
+
+    {% comment %}
+    On every Django-rendered page, which is every page a signed-out visitor can
+    reach -- the landing page, login, signup, contact, the reset flow and the
+    legal pages themselves. That is where these links matter: somebody deciding
+    whether to hand over an email address has to be able to find them without
+    an account.
+
+    Not in the app bar. The bar says where you can *go* in the product, and a
+    privacy policy is not a destination in that sense; a footer is where people
+    look for it, and putting it in the bar would make it compete with the two
+    cores for attention it does not need.
+    {% endcomment %}
+    <footer class="border-t border-border mt-12">
+      <div class="mx-auto max-w-5xl flex flex-wrap items-center gap-x-6 gap-y-2 px-4 py-6 font-mono text-xs tracking-wide text-muted-foreground">
+        <span>Clarice</span>
+        <a class="touch-target inline-flex items-center hover:text-text" href="{% url 'contact' %}">Contact</a>
+        <a class="touch-target inline-flex items-center hover:text-text" href="{% url 'privacy' %}">Privacy</a>
+        <a class="touch-target inline-flex items-center hover:text-text" href="{% url 'terms' %}">Terms</a>
+      </div>
+    </footer>
   </body>
 </html>

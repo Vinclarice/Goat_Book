@@ -33,6 +33,28 @@ from accounts.tokens import activation_token
 CONTACT_WINDOW_SECONDS = 60 * 60
 
 
+def privacy(request):
+    """Public, and reachable without an account on purpose.
+
+    Somebody deciding whether to sign up needs to read this *before* there is
+    an account to read it from, which is also why it is at the site root rather
+    than under accounts/ -- the same reasoning the contact form carries.
+
+    The support address comes from settings rather than being typed into the
+    template, so there is one place it can be wrong.
+    """
+    return render(
+        request, "accounts/privacy.html", {"support_email": settings.SUPPORT_EMAIL}
+    )
+
+
+def terms(request):
+    """Public, for the reason given in privacy() above."""
+    return render(
+        request, "accounts/terms.html", {"support_email": settings.SUPPORT_EMAIL}
+    )
+
+
 def home(request):
     """The signed-out home page, which is no longer the login form.
 

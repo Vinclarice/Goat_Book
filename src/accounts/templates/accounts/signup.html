@@ -28,11 +28,27 @@
           </div>
         {% endfor %}
 
+        {% comment %}
+        Above the button, not below it, and not a tick-box. It is a statement
+        of what pressing the button means, so it belongs where somebody reads
+        before pressing rather than under their thumb afterwards — and an extra
+        checkbox on a three-field form buys a click and no more understanding.
+        Both links open the real pages, which are public and readable without
+        an account for exactly this moment.
+        {% endcomment %}
+        <p class="text-sm text-muted-foreground">
+          Creating an account means agreeing to the
+          <a class="text-accent hover:underline" href="{% url 'terms' %}">terms of use</a>
+          and the
+          <a class="text-accent hover:underline" href="{% url 'privacy' %}">privacy policy</a>.
+          Clarice is invitation-only for now, so we review each account by hand.
+        </p>
+
         <button
-          class="w-full h-10 rounded-lg bg-primary text-primary-foreground hover:bg-primary/80 font-bold text-sm transition-colors"
+          class="touch-target w-full min-h-11 rounded-sm border border-text bg-text font-sans text-sm font-semibold text-bg transition-colors hover:bg-transparent hover:text-text"
           type="submit"
         >
-          Create account
+          Request an account
         </button>
       </form>
 

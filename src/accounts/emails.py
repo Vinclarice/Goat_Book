@@ -28,15 +28,85 @@ def send_support_message(*, name, email, message):
 
 
 def notify_admins_of_pending_signup(user):
+    """Sent when the address is confirmed, not when the form is submitted.
+
+    That is a better moment on both counts. The review is of somebody who read
+    their mail rather than of whatever a form-filler typed, and the inbox never
+    hears about a signup that was abandoned or invented — which, on a public
+    form, is most of them.
+    """
     mail_admins(
-        subject=f"New Clarice signup pending approval: {user.username}",
+        subject=f"Clarice signup awaiting approval: {user.username}",
         message=(
-            f"{user.username} ({user.email}) just signed up and is waiting "
-            "for approval.\n\n"
+            f"{user.username} ({user.email}) confirmed their email address "
+            "and is waiting for approval.\n\n"
             "Approve them from /admin/ by opening their account and "
             "ticking \"Active\"."
         ),
     )
+
+
+def send_activation_email(user, *, activation_url):
+    """The message this flow spent its whole life missing.
+
+    **The applicant is the recipient who was always absent**: six functions
+    lived in this module and not one of them ever wrote to the person doing the
+    waiting. They signed up, and then nothing — no confirmation that the form
+    worked, no way to tell a minute's wait from a permanent one.
+
+    It confirms an address and nothing more. Approval is still a person's
+    decision and comes after, which is why the body says a review follows
+    rather than promising access.
+
+    Plain text like every other message here, with the URL alone on its line so
+    a client that linkifies gets all of it and one that does not leaves
+    something selectable.
+    """
+    EmailMessage(
+        subject="Confirm your email address for Clarice",
+        body=(
+            f"Hello {user.username},\n\n"
+            "Confirm this address to finish signing up for Clarice:\n\n"
+            f"{activation_url}\n\n"
+            "The link works once and expires in a few days. If it has expired, "
+            "ask for a new one from the login page.\n\n"
+            "Clarice is invitation-only while it is being built, so confirming "
+            "is not the last step: we review each account by hand and will "
+            "write to you once yours is open.\n\n"
+            "If you did not sign up for Clarice, ignore this message — the "
+            "account cannot be used until somebody confirms this address.\n"
+        ),
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        to=[user.email],
+    ).send()
+
+
+def send_account_approved(user, *, login_url):
+    """The end of the wait, and the message three surfaces were promising.
+
+    `activation_confirmed.html`, the confirmation email and the login form all
+    say some version of "we'll write to you once yours is open". When the
+    two-gate flow shipped, nothing did — which is the same defect the flow was
+    built to remove, moved one step later: somebody does everything asked and
+    then waits on a message nobody sends.
+
+    Carries the login URL because this arrives days after signing up, by which
+    time "go to the site" is a small piece of work rather than an obvious one.
+    """
+    EmailMessage(
+        subject="Your Clarice account is open",
+        body=(
+            f"Hello {user.username},\n\n"
+            "Your account has been approved and is ready to use. Sign in "
+            "here:\n\n"
+            f"{login_url}\n\n"
+            "Use the username and password you chose when you signed up. If "
+            "you have forgotten the password, the login page will send you a "
+            "reset link.\n"
+        ),
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        to=[user.email],
+    ).send()
 
 
 def confirm_deletion_scheduled(user, *, purge_at):

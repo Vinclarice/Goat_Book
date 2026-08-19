@@ -14,14 +14,45 @@ from django.contrib.auth.views import (
 )
 from django.core.cache import cache
 from django.shortcuts import get_object_or_404, redirect, render
-from django.views.decorators.http import require_POST
+from django.urls import reverse
+from django.utils import timezone
+from django.utils.encoding import force_bytes
+from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
+from django.views.decorators.http import require_http_methods, require_POST
 
-from accounts.emails import notify_admins_of_pending_signup, send_support_message
+from accounts.emails import (
+    notify_admins_of_pending_signup,
+    send_activation_email,
+    send_support_message,
+)
 from accounts.forms import ContactForm, LoginForm, SignUpForm, TokenForm
-from accounts.models import PersonalAccessToken
+from accounts.models import PersonalAccessToken, User
+from accounts.tokens import activation_token
 
 
 CONTACT_WINDOW_SECONDS = 60 * 60
+
+
+def privacy(request):
+    """Public, and reachable without an account on purpose.
+
+    Somebody deciding whether to sign up needs to read this *before* there is
+    an account to read it from, which is also why it is at the site root rather
+    than under accounts/ -- the same reasoning the contact form carries.
+
+    The support address comes from settings rather than being typed into the
+    template, so there is one place it can be wrong.
+    """
+    return render(
+        request, "accounts/privacy.html", {"support_email": settings.SUPPORT_EMAIL}
+    )
+
+
+def terms(request):
+    """Public, for the reason given in privacy() above."""
+    return render(
+        request, "accounts/terms.html", {"support_email": settings.SUPPORT_EMAIL}
+    )
 
 
 def home(request):
@@ -116,6 +147,42 @@ class ClearLockoutPasswordResetConfirmView(PasswordResetConfirmView):
         return response
 
 
+def _send_activation(request, user):
+    """Mail the link, and never let a failed send become the person's problem.
+
+    The account exists by the time this runs, so an unguarded raise leaves a
+    real one behind an error page: they never learn whether it worked, and a
+    second attempt fails on a duplicate username. That is the shape of the
+    August 18 contact-form outage, and the answer is the same one — the page
+    that follows names the resend path, so a failed send is a detour rather
+    than a dead end.
+
+    Deliberately *not* rolled back, unlike `services.request_deletion` where
+    the email **is** the protection. Signing up is this person's own action and
+    it succeeded; deleting the account because the mail bounced would destroy
+    the thing the mail was about.
+    """
+    try:
+        send_activation_email(
+            user,
+            activation_url=request.build_absolute_uri(
+                reverse(
+                    "activate",
+                    kwargs={
+                        "uidb64": urlsafe_base64_encode(force_bytes(user.pk)),
+                        "token": activation_token.make_token(user),
+                    },
+                )
+            ),
+        )
+        return True
+    except Exception:
+        # An event, not a log line: somebody is sitting in front of a page
+        # telling them to check an inbox that will stay empty.
+        logger.exception("activation email failed for %s", user.pk)
+        return False
+
+
 def signup(request):
     if request.user.is_authenticated:
         return redirect("dashboard")
@@ -123,28 +190,90 @@ def signup(request):
     form = SignUpForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
         user = form.save()
+        return render(
+            request,
+            "accounts/signup_pending.html",
+            # `applicant`, never `user`: that name is the context processor's,
+            # and shadowing it renders the signed-in app bar -- username and a
+            # Log out button -- for somebody who has no session at all.
+            # `AbstractBaseUser.is_authenticated` is True on any real instance,
+            # so the bar cannot tell the difference.
+            {"applicant": user, "sent": _send_activation(request, user)},
+        )
+
+    return render(request, "accounts/signup.html", {"form": form})
+
+
+def activate(request, uidb64, token):
+    """Confirming the address — the first of two gates, not the last.
+
+    **It does not sign anybody in, and it does not set `is_active`.** Approval
+    is still a person's decision, so what this earns is a place in the queue
+    rather than a session. Signing them in here would be a way past approval
+    entirely; `ModelBackend` would refuse the inactive account anyway, so the
+    only thing a login attempt could produce is a confusing failure.
+
+    **Admins hear about it here rather than at signup**, which is the better
+    moment on both counts: a confirmed address means the review is of a person
+    who read their mail rather than of whatever a form-filler typed, and it
+    keeps the noise of unconfirmed signups out of the inbox entirely.
+
+    **Every failure renders the same page.** A bad token, an expired one, a
+    used one and an id that matches no account are four different things to us
+    and must be one thing to a stranger, or the response answers "is there an
+    account at this id" for anybody who walks the range.
+    """
+    try:
+        user = User.objects.get(pk=urlsafe_base64_decode(uidb64).decode())
+    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+        user = None
+
+    if user is None or not activation_token.check_token(user, token):
+        return render(request, "accounts/activation_failed.html")
+
+    if user.email_confirmed_at is None:
+        user.email_confirmed_at = timezone.now()
+        user.save(update_fields=["email_confirmed_at"])
         try:
             notify_admins_of_pending_signup(user)
         except Exception:
-            # The account is already created, so a raise here left a real
-            # account behind a 500: the person never sees "pending approval",
-            # never learns whether it worked, and a second attempt fails on a
-            # duplicate username. Two ways to be stuck, in somebody's first
-            # minute with the product.
-            #
-            # Deliberately *not* rolled back, unlike services.request_deletion
-            # where the email is the protection and a timestamp without one is
-            # a silent loss. Signing up is this person's own action and it
-            # succeeded; undoing it because an admin notification bounced would
-            # trade a missing email for the thing the email was about.
-            #
-            # Logged, because an admin who never hears about a pending signup
-            # leaves somebody waiting indefinitely -- the account sits
-            # is_active=False and nothing else will mention it.
+            # Not the applicant's problem and not worth failing their
+            # confirmation over -- the account is confirmed either way and the
+            # admin can see it in /admin/. Reported because an admin who never
+            # hears leaves somebody waiting on a queue nobody is reading.
             logger.exception("pending-signup notification failed for %s", user.pk)
-        return render(request, "accounts/signup_pending.html", {"user": user})
 
-    return render(request, "accounts/signup.html", {"form": form})
+    # `applicant` rather than `user`, for the reason given in signup().
+    return render(request, "accounts/activation_confirmed.html", {"applicant": user})
+
+
+@require_http_methods(["GET", "POST"])
+def resend_activation(request):
+    """A second copy of the link, because one lost email is otherwise the end.
+
+    Without this the failure is unrecoverable in a way few are: the username is
+    taken, the account cannot log in, and the address is spoken for — so the
+    person can neither get in nor start again.
+
+    **The response never varies.** Sent, not sent because no such address, and
+    not sent because that address is already confirmed all render the same page,
+    for the reason `password_reset_done.html` states about its own: a page that
+    differs tells a stranger which addresses hold accounts.
+
+    Keyed on `email_confirmed_at` rather than `is_active`: an account that is
+    confirmed and waiting for approval has nothing to re-send, and a second
+    link would only invite somebody to click a thing that changes nothing.
+    """
+    if request.method == "POST":
+        email = (request.POST.get("email") or "").strip().lower()
+        user = User.objects.filter(
+            email=email, email_confirmed_at__isnull=True
+        ).first()
+        if user is not None:
+            _send_activation(request, user)
+        return render(request, "accounts/activation_sent.html")
+
+    return render(request, "accounts/resend_activation.html")
 
 
 @login_required

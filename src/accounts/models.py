@@ -89,6 +89,22 @@ class User(AbstractBaseUser, PermissionsMixin):
     # `accounts.services.ACCOUNT_DELETION_GRACE` turns this into a date; nothing
     # is destroyed until `purge_deleted_accounts` reaches it.
     deletion_requested_at = models.DateTimeField(null=True, blank=True)
+    # **Two gates, and one flag cannot hold both.** Confirming an address and
+    # being approved are separate facts: a confirmed stranger is still a
+    # stranger, and an account approved before anyone proved they own the
+    # address is approved on the strength of something typed into a form.
+    # `is_active` answers "may this account be used", which is approval; this
+    # answers "did somebody prove they read mail at that address".
+    #
+    # A timestamp rather than a boolean, for the same reason as the field
+    # above: the *when* is the durable record, and "confirmed" is derivable
+    # from it while the reverse is not. It is also what tells an admin looking
+    # at a pending account whether the person confirmed a minute or a month
+    # ago.
+    #
+    # Signed into the activation token (accounts.tokens), which is what makes
+    # a confirmation link single-use.
+    email_confirmed_at = models.DateTimeField(null=True, blank=True)
 
     daily_digest = models.BooleanField(
         default=True,
@@ -172,6 +188,25 @@ class User(AbstractBaseUser, PermissionsMixin):
     objects = UserManager()
 
     REQUIRED_FIELDS = ["email"]
+
+    @classmethod
+    def from_db(cls, db, field_names, values):
+        """Remember whether this account was active when it was loaded.
+
+        Approval is a transition, not a state: `is_active` stays True for the
+        rest of an account's life and `last_login` is written on every sign-in,
+        so "saved and active" fires forever. Recording the loaded value here is
+        what lets accounts.apps tell the one save that opened the account from
+        the thousands that follow it, and it costs nothing -- no extra query,
+        just the value the row already carried.
+
+        Absent on an instance that was never loaded from the database, which is
+        why the reader uses getattr with a default rather than trusting it.
+        """
+        instance = super().from_db(db, field_names, values)
+        instance._loaded_is_active = instance.is_active
+        return instance
+
     USERNAME_FIELD = "username"
 
     def __str__(self):

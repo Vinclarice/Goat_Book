@@ -1,23 +1,48 @@
 {% extends "base.html" %}
 
-{% block title %}Account pending approval · Clarice{% endblock %}
+{% comment %}
+Was "an admin needs to approve your account", which was true and useless: it
+named a step and gave the person nothing to do. There are two gates now and this
+page is about the first, which is theirs to clear.
+
+**Approval is still a person's decision**, so this deliberately does not promise
+access -- see accounts/activation_confirmed.html, which is where the second wait
+is explained, and note that `product-stories.md` S1 stays open because of it.
+
+`sent` is False when the mail failed. The page still says the account exists --
+it does -- but it says plainly that nothing was sent rather than pointing at an
+inbox that will stay empty, and it names the resend path either way. A failed
+send is a detour here; before this flow it was the end of the road.
+{% endcomment %}
+
+{% block title %}Confirm your email · Clarice{% endblock %}
 
 {% block content %}
-  <section class="mx-auto max-w-md py-8">
-    <div class="rounded-xl border border-border bg-card p-6 sm:p-8 space-y-6">
-      <div class="space-y-1">
-        <p class="text-xs font-bold uppercase tracking-wide text-accent">Almost there</p>
-        <h1 class="text-2xl font-bold">Your account is pending approval</h1>
-        <p class="text-sm text-muted-foreground">
-          Thanks for signing up, {{ user.username }}. An admin needs to
-          approve your account before you can log in. You'll be able to
-          sign in as soon as that happens.
+  <section class="mx-auto max-w-md py-10">
+    <div class="rounded-sm border border-border bg-card p-6 sm:p-8 space-y-5">
+      {% if sent %}
+        <h1 class="font-sans text-2xl font-bold tracking-tight">Check your email</h1>
+        <p class="text-muted-foreground">
+          Your account is made, {{ applicant.username }}. We've sent a confirmation
+          link to <strong class="text-text">{{ applicant.email }}</strong> — open it
+          to confirm the address. It works once and expires after a few days.
         </p>
-      </div>
-
-      <p class="text-sm text-muted-foreground">
-        Already approved? <a class="text-accent hover:underline" href="{% url 'login' %}">Log in</a>
-      </p>
+        <p class="text-sm text-muted-foreground">
+          Nothing arrived? Check the spam folder, or
+          <a class="text-accent hover:underline" href="{% url 'resend_activation' %}">ask for a new link</a>.
+        </p>
+      {% else %}
+        <h1 class="font-sans text-2xl font-bold tracking-tight">Your account is made</h1>
+        {# Said rather than hidden: sending the person to an inbox we know is #}
+        {# empty is how a recoverable failure becomes an abandoned account. #}
+        <p class="text-muted-foreground">
+          We couldn't send the confirmation email to
+          <strong class="text-text">{{ applicant.email }}</strong> just now. Nothing
+          is lost — the account is there and waiting on that one step.
+        </p>
+        <a class="touch-target inline-flex min-h-11 items-center rounded-sm border border-text bg-text px-5 font-sans text-sm font-semibold text-bg transition-colors hover:bg-transparent hover:text-text"
+           href="{% url 'resend_activation' %}">Try sending it again</a>
+      {% endif %}
     </div>
   </section>
 {% endblock %}

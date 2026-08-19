@@ -17,7 +17,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import include, path
 from django.views.generic import RedirectView
-from accounts.views import contact, home
+from accounts.views import contact, home, privacy, terms
 from lists import views as list_views
 
 from clarice.api import api as api_v1
@@ -41,6 +41,11 @@ urlpatterns = [
     # Public and unauthenticated, hence the root rather than under
     # accounts/: a stranger with a question does not have an account.
     path("contact/", contact, name="contact"),
+    # Public and at the root for the same reason the contact form is: somebody
+    # deciding whether to sign up has to be able to read these first, and the
+    # signup form links to both.
+    path("privacy/", privacy, name="privacy"),
+    path("terms/", terms, name="terms"),
     path("dashboard/", list_views.dashboard, name="dashboard"),
     path("archive/", list_views.archive, name="archive"),
     path("app/", list_views.spa_shell, name="app_shell"),

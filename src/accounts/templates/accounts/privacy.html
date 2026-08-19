@@ -1,0 +1,264 @@
+{% extends "base.html" %}
+
+{% comment %}
+**Every claim here is checkable against the code, and was checked when it was
+written.** That is the only property that makes a privacy policy worth having:
+one that describes a system nobody verified is a liability with a reassuring
+tone. Where something is not done, it says so rather than going unmentioned —
+see the Sentry and Resend paragraph under "What leaving looks like".
+
+If you change what the application collects, sends or keeps, this file is part
+of that change. The specific things it asserts:
+
+**One exception, marked at the paragraph:** the hosting region is a fact about
+the DigitalOcean account, not about this repository, so no test can hold it.
+
+- `clarice/monitoring.py` — every Sentry exclusion named below
+- `accounts/emails.py` — the messages that exist
+- `accounts/services.py` — ACCOUNT_DELETION_GRACE, and purge_account
+- `accounts/export.py` — owned_models(), which is why "everything" is true
+- `accounts/models.py` — daily_digest defaults to True
+- `lists/templatetags/frontend_tags.py` — the theme cookie
+{% endcomment %}
+
+{% block title %}Privacy · Clarice{% endblock %}
+{% block description %}What Clarice collects, what it sends elsewhere, and what happens when you leave.{% endblock %}
+
+{% block content %}
+  <article class="mx-auto max-w-2xl py-10 space-y-8">
+
+    <header class="space-y-3">
+      <h1 class="font-sans text-3xl font-bold tracking-tight">Privacy</h1>
+      {% comment %}
+      Ownership and operation are two facts and the page states both. The
+      company is who is *responsible* for the material described here — the
+      thing a privacy policy exists to name. "One person, day to day" is the
+      operational reality and stays, because it is what makes the limits
+      further down honest rather than modest.
+      {% endcomment %}
+      <p class="text-muted-foreground">
+        Last updated 19 August 2026. Clarice is owned and operated by
+        <strong class="text-text">Vinclarice, LLC</strong>, which is
+        responsible for the data described on this page. It is run day to day
+        by one person, who you can reach at
+        <a class="text-accent hover:underline" href="mailto:{{ support_email }}">{{ support_email }}</a>.
+      </p>
+      <p class="text-muted-foreground">
+        The short version: Clarice holds what you write, shows it to nobody,
+        and has no analytics of any kind. There is no advertising, no tracking,
+        and nothing here is sold or shared. The rest of this page is the detail
+        behind that, including the parts that are still imperfect.
+      </p>
+    </header>
+
+    <section class="space-y-3">
+      <h2 class="font-sans text-xl font-bold tracking-tight">What Clarice stores</h2>
+      <p class="text-muted-foreground">
+        <strong class="text-text">Your account:</strong> a username, an email
+        address, and a password. The password is stored only as a hash — it
+        cannot be read back, by us or by anyone with the database.
+      </p>
+      <p class="text-muted-foreground">
+        <strong class="text-text">What you write:</strong> tasks and their
+        notes, checklist steps, tags, areas and projects, recurring
+        commitments, routines and what you logged against them, each day's
+        intentions, gratitude and happenings, weekly reviews, and everything
+        captured into Second Mind. This is the point of the product, and it is
+        the material everything below is about.
+      </p>
+      <p class="text-muted-foreground">
+        <strong class="text-text">A record of what happened:</strong> Clarice
+        keeps an append-only activity log so a completed week can be explained
+        later. It records your own actions in your own account.
+      </p>
+      <p class="text-muted-foreground">
+        <strong class="text-text">Access tokens,</strong> if you create any for
+        a phone or another client. Each one is scoped to what you allowed it to
+        do and can be revoked from your preferences.
+      </p>
+    </section>
+
+    <section class="space-y-3">
+      <h2 class="font-sans text-xl font-bold tracking-tight">What Clarice does not do</h2>
+      <p class="text-muted-foreground">
+        There is <strong class="text-text">no analytics</strong> — no Google
+        Analytics, no product analytics, no session recording, no heatmaps, no
+        pixels. Nobody is measuring how you use it. There is no advertising and
+        no profiling, and your material is never sold, rented or shared with
+        anyone.
+      </p>
+      <p class="text-muted-foreground">
+        Pages load no third-party scripts, and the typefaces are served from
+        Clarice's own server rather than a font network — so simply reading a
+        page does not tell anyone else that you did.
+      </p>
+      <p class="text-muted-foreground">
+        Nobody reads your material as a matter of course. In practice the
+        person who runs Clarice on behalf of Vinclarice, LLC has database
+        access, as the operator of any self-hosted service does; it is looked
+        at only when you ask for help with something specific, or where the law
+        requires it.
+      </p>
+    </section>
+
+    <section class="space-y-3">
+      <h2 class="font-sans text-xl font-bold tracking-tight">Cookies</h2>
+      <p class="text-muted-foreground">
+        Three, all set by Clarice itself and none of them used for tracking:
+      </p>
+      <ul class="space-y-2 text-muted-foreground">
+        <li><code class="font-mono text-sm text-text">sessionid</code> — keeps you signed in.</li>
+        <li><code class="font-mono text-sm text-text">csrftoken</code> — stops other sites submitting forms as you.</li>
+        <li><code class="font-mono text-sm text-text">clarice_theme</code> — remembers whether you chose light or dark.</li>
+      </ul>
+      <p class="text-muted-foreground">
+        There is no cookie banner because there is nothing to consent to: all
+        three are needed for the site to work or to honour a choice you made.
+      </p>
+    </section>
+
+    <section class="space-y-3">
+      <h2 class="font-sans text-xl font-bold tracking-tight">Who else sees anything</h2>
+      <p class="text-muted-foreground">
+        Three companies, each doing one job.
+      </p>
+      {% comment %}
+      **The region is the one claim on this page that no code can confirm.**
+      Everything else is checkable against the source; this comes from the
+      DigitalOcean account, so it is recorded here as what it is rather than
+      being allowed to look like the others. If the droplet or the database
+      cluster ever moves, nothing in this repository will fail — somebody has
+      to remember, and this comment is the reminder.
+      {% endcomment %}
+      <p class="text-muted-foreground">
+        <strong class="text-text">DigitalOcean</strong> hosts the server and
+        the database, both in their <strong class="text-text">New York
+        region, in the United States</strong>. That is where everything
+        Clarice stores lives, and there is one of each — no copies in other
+        regions, and nothing replicated abroad.
+      </p>
+      <p class="text-muted-foreground">
+        The database is a managed one, so its backups are taken and held by
+        DigitalOcean alongside it rather than shipped somewhere else.
+        <strong class="text-text">If you are outside the United States, using
+        Clarice means your data is stored there</strong> — worth knowing
+        before you sign up rather than after.
+      </p>
+      <p class="text-muted-foreground">
+        <strong class="text-text">Resend</strong> delivers email — confirming
+        your address, resetting a password, the daily summary if you have it
+        on, and anything you send through the contact form. They receive the
+        address the message goes to and the message itself.
+      </p>
+      <p class="text-muted-foreground">
+        <strong class="text-text">Sentry</strong> receives error reports when
+        something breaks in production, and this one is worth being precise
+        about because error reporting is a common way for private material to
+        leak by accident. Clarice deliberately does not send:
+      </p>
+      <ul class="space-y-2 text-muted-foreground">
+        <li>your username, or your cookies;</li>
+        <li>the body of any request — so a failure while saving a note does not send the note;</li>
+        <li>the local variables in the code where the error happened, which is where that text would otherwise appear;</li>
+        <li>the query string — searches and shared text arrive that way, so it is dropped before the report leaves;</li>
+        <li>performance traces, which are switched off entirely.</li>
+      </ul>
+      <p class="text-muted-foreground">
+        What a report does contain is the kind of error, where in the code it
+        happened, and the path of the page — enough to fix it, and none of what
+        you wrote. Error reporting is off outside production.
+      </p>
+    </section>
+
+    <section class="space-y-3">
+      <h2 class="font-sans text-xl font-bold tracking-tight">Email you receive</h2>
+      <p class="text-muted-foreground">
+        Only about your own account: confirming your address, password resets,
+        notice that an account is scheduled for deletion or that it was
+        cancelled, and a receipt when it is erased. There is no marketing and
+        no newsletter.
+      </p>
+      <p class="text-muted-foreground">
+        The one recurring message is the <strong class="text-text">daily
+        summary</strong>, a morning email listing what is overdue or due today.
+        <strong class="text-text">It is on by default</strong> and you can turn
+        it off at any time on your preferences page.
+      </p>
+    </section>
+
+    <section class="space-y-3">
+      <h2 class="font-sans text-xl font-bold tracking-tight">Keeping it safe</h2>
+      <p class="text-muted-foreground">
+        Traffic is encrypted in transit and the site refuses to serve anything
+        over plain HTTP. Passwords are hashed. Repeated failed sign-ins lock an
+        account temporarily. Every part of Clarice that takes an identifier
+        checks who owns the record before answering, and that isolation is
+        tested rather than assumed. On Android, anything waiting to be uploaded
+        is encrypted on the device.
+      </p>
+      <p class="text-muted-foreground">
+        No system is perfect and it would be dishonest to imply otherwise. If
+        something involving your data goes wrong, you will be told what
+        happened.
+      </p>
+    </section>
+
+    <section class="space-y-3">
+      <h2 class="font-sans text-xl font-bold tracking-tight">Taking it with you, and leaving</h2>
+      <p class="text-muted-foreground">
+        You can <strong class="text-text">download everything</strong> in your
+        account at any time, from your preferences page, as a single archive.
+        It is built from the models the application actually has rather than a
+        hand-kept list, so it does not quietly miss things.
+      </p>
+      <p class="text-muted-foreground">
+        You can <strong class="text-text">delete your account</strong> from the
+        same page. Deletion is scheduled 30 days ahead and can be cancelled by
+        signing in during that window — a banner appears on every page so it is
+        hard to forget. When the 30 days run out, everything is destroyed:
+        every task, note, routine, review and the activity log with them. It
+        cannot be undone, and the export is worth taking first.
+      </p>
+      <p class="text-muted-foreground">
+        <strong class="text-text">One honest limitation.</strong> Deleting your
+        account removes your data from Clarice. It does not yet reach anything
+        already sent to Sentry or Resend — an error report from months ago, or
+        a delivery record of an email. Those are account-level actions at those
+        two companies and are not automated here yet. If you want them cleared,
+        write to
+        <a class="text-accent hover:underline" href="mailto:{{ support_email }}">{{ support_email }}</a>
+        and it will be done by hand.
+      </p>
+    </section>
+
+    <section class="space-y-3">
+      <h2 class="font-sans text-xl font-bold tracking-tight">Your rights, and asking</h2>
+      <p class="text-muted-foreground">
+        You can see what is held, correct it, take a copy, or have it deleted.
+        Most of that is self-service on your preferences page and needs nobody's
+        permission. For anything the interface does not cover, write to
+        <a class="text-accent hover:underline" href="mailto:{{ support_email }}">{{ support_email }}</a>
+        and expect a real answer.
+      </p>
+      <p class="text-muted-foreground">
+        Clarice is not built for children and accounts are not knowingly
+        created for anyone under 16.
+      </p>
+    </section>
+
+    <section class="space-y-3">
+      <h2 class="font-sans text-xl font-bold tracking-tight">Changes</h2>
+      <p class="text-muted-foreground">
+        If this changes in a way that affects what is collected, where it goes,
+        or who is responsible for it, the date at the top changes and anyone
+        with an account is emailed before it takes effect. Small corrections — clearer wording, a fixed
+        mistake — just change the date.
+      </p>
+    </section>
+
+    <p class="text-sm text-muted-foreground border-t border-border pt-6">
+      See also the <a class="text-accent hover:underline" href="{% url 'terms' %}">terms of use</a>.
+    </p>
+
+  </article>
+{% endblock %}

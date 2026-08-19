@@ -28,6 +28,14 @@ ones coming back.
       {% if form.non_field_errors %}
         <div class="rounded-sm border border-destructive/40 bg-destructive/10 px-4 py-2 text-sm text-destructive" role="alert">
           {{ form.non_field_errors.0 }}
+          {% comment %}
+          An unconfirmed account is the one login failure with a next step, and
+          the step is not "try again". Offered only for that code: on a wrong
+          password this link would be a hint that the username exists.
+          {% endcomment %}
+          {% if "unconfirmed" in form.non_field_errors.as_data.0.code %}
+            <a class="font-semibold underline" href="{% url 'resend_activation' %}">Send a new confirmation link</a>
+          {% endif %}
         </div>
       {% endif %}
 

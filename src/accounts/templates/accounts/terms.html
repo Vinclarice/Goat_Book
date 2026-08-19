@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+
+{% comment %}
+Written to be true rather than to be maximally protective, which is the same
+standard the privacy policy is held to. Two things it deliberately does not do:
+
+- It does not claim ownership of anything you write. Several clauses that
+  appear as boilerplate elsewhere ("perpetual, worldwide, royalty-free licence
+  to use your content") would contradict the product's whole premise.
+- It does not promise uptime, support response times or that the service will
+  continue. One person runs this on one server; a promise nobody can keep is
+  worse than an honest limit.
+
+What it asserts about the system is checkable: invitation-only signup
+(accounts/views.py), the 30-day deletion window (accounts/services.py), export
+(accounts/export.py), and scoped tokens (accounts/models.py).
+{% endcomment %}
+
+{% block title %}Terms · Clarice{% endblock %}
+{% block description %}The agreement for using Clarice: what you get, what is expected, and what is not promised.{% endblock %}
+
+{% block content %}
+  <article class="mx-auto max-w-2xl py-10 space-y-8">
+
+    <header class="space-y-3">
+      <h1 class="font-sans text-3xl font-bold tracking-tight">Terms of use</h1>
+      <p class="text-muted-foreground">
+        Last updated 19 August 2026. This is an agreement between you and
+        <strong class="text-text">Vinclarice, LLC</strong>, which owns and
+        operates Clarice. Using Clarice means agreeing to it. It is meant to be
+        read, so it is short.
+      </p>
+    </header>
+
+    <section class="space-y-3">
+      <h2 class="font-sans text-xl font-bold tracking-tight">What Clarice is</h2>
+      <p class="text-muted-foreground">
+        A personal system for planning days, keeping commitments and retaining
+        what you write. It is owned by Vinclarice, LLC, run day to day by one
+        person, and
+        <strong class="text-text">invitation-only while it is being built</strong>:
+        anyone can ask for an account, and each one is reviewed by hand before
+        it opens. Confirming your email address is your step; approving the
+        account is ours, and we may decline without giving a reason.
+      </p>
+    </section>
+
+    <section class="space-y-3">
+      <h2 class="font-sans text-xl font-bold tracking-tight">Your account</h2>
+      <p class="text-muted-foreground">
+        Keep your password to yourself and keep it good. You are responsible
+        for what happens under your account, so tell us at
+        <a class="text-accent hover:underline" href="mailto:{{ support_email }}">{{ support_email }}</a>
+        if you think somebody else has got into it.
+      </p>
+      <p class="text-muted-foreground">
+        If you create access tokens for a phone or another client, they act as
+        you within the permissions you gave them. Revoke any you are not using.
+      </p>
+      <p class="text-muted-foreground">
+        One account per person, and give a real email address — it is the only
+        way to confirm the account, reset a password, or warn you that
+        something is about to be deleted.
+      </p>
+    </section>
+
+    <section class="space-y-3">
+      <h2 class="font-sans text-xl font-bold tracking-tight">What you write stays yours</h2>
+      <p class="text-muted-foreground">
+        Everything you put into Clarice belongs to you. Using the service grants
+        no licence to it beyond what running the service requires: storing it,
+        showing it back to you, backing it up, and emailing you the summaries
+        you asked for.
+      </p>
+      <p class="text-muted-foreground">
+        It is not used to train anything, not published, and not shown to other
+        users — there is no sharing feature, so there is no accidental way for
+        your material to reach anyone else.
+      </p>
+      <p class="text-muted-foreground">
+        You can take a full copy at any time from your preferences page, and
+        you do not need to ask.
+      </p>
+    </section>
+
+    <section class="space-y-3">
+      <h2 class="font-sans text-xl font-bold tracking-tight">Reasonable use</h2>
+      <p class="text-muted-foreground">
+        Do not use Clarice to break the law, to store material you have no
+        right to hold, to attack or overload the service, or to get at anyone
+        else's account. Automated access is fine through the documented API
+        with your own token, at a sensible rate; scraping and load-testing
+        somebody else's server are not.
+      </p>
+      <p class="text-muted-foreground">
+        Accounts doing any of that can be suspended, and where it is serious,
+        removed.
+      </p>
+    </section>
+
+    <section class="space-y-3">
+      <h2 class="font-sans text-xl font-bold tracking-tight">Ending it</h2>
+      <p class="text-muted-foreground">
+        You can delete your account whenever you like, from your preferences
+        page. It is scheduled 30 days ahead and cancellable by signing in
+        during that time; after that everything is destroyed permanently. Take
+        the export first.
+      </p>
+      <p class="text-muted-foreground">
+        Vinclarice, LLC can close an account for the reasons above. If Clarice
+        itself is ever shut down, anyone with an account gets
+        <strong class="text-text">at least 30 days' notice by email</strong> and
+        the export keeps working for the whole of it. Nothing disappears without
+        warning.
+      </p>
+    </section>
+
+    <section class="space-y-3">
+      <h2 class="font-sans text-xl font-bold tracking-tight">What is not promised</h2>
+      <p class="text-muted-foreground">
+        Clarice is provided as it is. There is no guaranteed uptime, no
+        guaranteed support response, and no promise that a feature will keep
+        working the way it does today. One person runs this on one server, and
+        pretending otherwise would be the dishonest part.
+      </p>
+      <p class="text-muted-foreground">
+        <strong class="text-text">Keep your own copy of anything you cannot
+        afford to lose.</strong> Backups exist and are exercised, but the export
+        button is there precisely so that your data's survival does not depend
+        on ours.
+      </p>
+      <p class="text-muted-foreground">
+        To the extent the law allows, the liability of Vinclarice, LLC for any
+        loss arising from using Clarice is limited to what you have paid for it
+        — which, while it is free, is nothing. That is not a trick: it is the
+        honest size of a promise a one-person project can back.
+      </p>
+    </section>
+
+    <section class="space-y-3">
+      <h2 class="font-sans text-xl font-bold tracking-tight">If this changes</h2>
+      <p class="text-muted-foreground">
+        The date at the top changes, and anything that materially affects you —
+        a charge, a reduction in what you get, a change in who holds your data —
+        is emailed to account holders before it takes effect. Carrying on using
+        Clarice after that means accepting it; if you would rather not, export
+        and delete.
+      </p>
+      <p class="text-muted-foreground">
+        Clarice is free while it is being built. If it ever costs money, that
+        is a material change and gets its own email, with notice.
+      </p>
+    </section>
+
+    <p class="text-sm text-muted-foreground border-t border-border pt-6">
+      See also the <a class="text-accent hover:underline" href="{% url 'privacy' %}">privacy policy</a>,
+      or write to <a class="text-accent hover:underline" href="mailto:{{ support_email }}">{{ support_email }}</a>.
+    </p>
+
+  </article>
+{% endblock %}

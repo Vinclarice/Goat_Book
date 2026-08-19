@@ -6,6 +6,20 @@ from . import views
 
 urlpatterns = [
     path("signup/", views.signup, name="signup"),
+    # Confirming the address is what activates an account now; there is no
+    # admin step. See accounts.views.activate and accounts.tokens.
+    path(
+        "activate/<uidb64>/<token>/",
+        views.activate,
+        name="activate",
+    ),
+    # One lost email is otherwise unrecoverable: the username is taken, the
+    # account cannot log in, and the address is spoken for.
+    path(
+        "activate/resend/",
+        views.resend_activation,
+        name="resend_activation",
+    ),
     path("login/", views.ClariceLoginView.as_view(), name="login"),
     path("logout/", auth_views.LogoutView.as_view(), name="logout"),
     path("settings/", views.account_settings, name="account_settings"),

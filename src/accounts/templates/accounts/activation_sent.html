@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% comment %}
+Rendered whether or not anything was sent -- address unknown, and address known
+but already confirmed, both arrive here too. The wording therefore never claims
+a message went out to *this* address, only what to do if one did. Same rule
+`password_reset_done.html` follows, for the same reason: a page that differs
+tells a stranger which addresses hold accounts.
+{% endcomment %}
+
+{% block title %}Check your email · Clarice{% endblock %}
+
+{% block content %}
+  <section class="mx-auto max-w-md py-10">
+    <div class="rounded-sm border border-border bg-card p-6 sm:p-8 space-y-5">
+      <h1 class="font-sans text-2xl font-bold tracking-tight">Check your email</h1>
+      <p class="text-muted-foreground">
+        If that address has an account waiting to be confirmed, a new link is on
+        its way. It works once and expires after a few days.
+      </p>
+      <p class="text-sm text-muted-foreground">
+        Nothing arrived? It may be in a spam folder, or the address may already
+        be confirmed — in which case the account is waiting on approval and
+        there is nothing more to do.
+      </p>
+    </div>
+  </section>
+{% endblock %}

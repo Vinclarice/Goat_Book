@@ -97,7 +97,21 @@ re-add it here.
   **`v1 ships no generation at all`** — this is retrieval, rules and confirmation
   gates, and the ML policy in `design-concept.md` is the authority for why.
 
-- **Terms of service and a privacy policy.** Writing, not code.
+- ~~**Terms of service and a privacy policy.**~~ **Written and published
+  August 19, 2026**, at `/privacy/` and `/terms/`, linked from a footer on
+  every signed-out page and from the signup form. Owned by Vinclarice, LLC;
+  hosting named as DigitalOcean's New York region. Every claim was checked
+  against the source and a dozen tests hold the ones with a mechanical
+  counterpart — the deletion window, the digest default, the four Sentry
+  exclusions, the absence of analytics — so the code cannot drift away from a
+  published promise silently. **The one claim no test can hold is the hosting
+  region**, and the template says so at the paragraph.
+  **Deliberately not lawyer-reviewed, and the trigger for changing that is
+  named: broader beta testing.** Vince's call, August 19 — proportionate while
+  the site is privately owned and invitation-only. What a professional read
+  would want, and what is therefore still absent: the LLC's state of formation
+  and business address, a governing-law clause, and a considered answer on the
+  minimum age (16 is asserted).
 - **Removing user data from Sentry and Resend when an account goes.** An
   account-level action in each, outside this application. Deletion and export
   inside Clarice shipped August 16.
@@ -207,7 +221,18 @@ sharing work.
 
 ### Remaining public-readiness work
 
-- Self-service signup with email verification.
+- ~~Self-service signup with email verification.~~ **Shipped and deployed
+  August 19, 2026, and it does not close S1.** Confirming an address is
+  self-service now — a single-use signed link, the applicant finally told
+  something, a resend for when the mail is lost, and the two waits told apart
+  at the login form. An account being approved now writes to the person too,
+  which three surfaces had been promising for a day before anything sent it.
+  What stays is approval, which is still a person: `is_active` is approval and
+  `email_confirmed_at` is confirmation, kept separate so opening the doors is
+  later a policy change rather than a redesign. **Deliberate** — the site is
+  invitation-only, and the privacy policy that made this publishable is the
+  item struck above. [`product-stories.md`](product-stories.md) owns the score;
+  [`roadmap-history.md`](roadmap-history.md) has the narrative.
 - Rate limiting for capture. `/api/v1/capture` falls through nginx's catch-all;
   signup and login are throttled at 5r/m and this is not.
 - ~~Account export and deletion.~~ **Shipped August 16, 2026** — self-service,

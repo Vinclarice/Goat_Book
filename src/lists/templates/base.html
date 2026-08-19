@@ -80,7 +80,8 @@
     {% endcomment %}
     <footer class="border-t border-border mt-12">
       <div class="mx-auto max-w-5xl flex flex-wrap items-center gap-x-6 gap-y-2 px-4 py-6 font-mono text-xs tracking-wide text-muted-foreground">
-        <span>Clarice</span>
+        {# The owning entity, named where a footer conventionally names it. #}
+        <span>© {% now "Y" %} Vinclarice, LLC</span>
         <a class="touch-target inline-flex items-center hover:text-text" href="{% url 'contact' %}">Contact</a>
         <a class="touch-target inline-flex items-center hover:text-text" href="{% url 'privacy' %}">Privacy</a>
         <a class="touch-target inline-flex items-center hover:text-text" href="{% url 'terms' %}">Terms</a>

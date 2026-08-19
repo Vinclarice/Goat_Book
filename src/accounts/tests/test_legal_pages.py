@@ -51,6 +51,35 @@ class ReachableWithoutAnAccountTest(TestCase):
         self.assertContains(self.client.get(reverse("terms")), reverse("privacy"))
 
 
+class OwnerIsNamedTest(TestCase):
+    """Who is responsible is the one thing a policy exists to establish.
+
+    Held as a test because it is the claim most likely to be quietly outgrown:
+    an entity name changes, or a document gets rewritten from a template that
+    does not know about it, and a policy naming nobody is a policy nobody is
+    bound by.
+    """
+
+    OWNER = "Vinclarice, LLC"
+
+    def test_both_documents_name_the_owner(self):
+        for name in ("privacy", "terms"):
+            with self.subTest(page=name):
+                self.assertContains(self.client.get(reverse(name)), self.OWNER)
+
+    def test_the_terms_say_who_the_agreement_is_with(self):
+        """"An agreement between you and ..." is the sentence that makes the
+        rest of the document mean anything."""
+        response = self.client.get(reverse("terms"))
+
+        self.assertContains(response, "agreement between you and")
+
+    def test_the_footer_names_the_owner_on_every_page(self):
+        response = self.client.get(reverse("home"))
+
+        self.assertContains(response, self.OWNER)
+
+
 class ContactAddressIsRealTest(TestCase):
     """Both documents tell people to write to somebody.
 

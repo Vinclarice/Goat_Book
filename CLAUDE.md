@@ -194,7 +194,7 @@ run against a live database, then edited and silently broken.
 
 Pass `newline="
 "` when writing, and if a script starts failing with
-``syntax error near unexpected token `$'{'``, the fix is
+``syntax error near unexpected token `$'{\r'``, the fix is
 `rm <file> && git checkout -- <file>` — a plain checkout will not do it, because
 git sees no difference to restore. `clarice/tests/test_executable_line_endings.py`
 fails locally when this happens; CI cannot catch it, since a fresh Linux checkout

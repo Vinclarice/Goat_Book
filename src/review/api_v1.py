@@ -131,6 +131,55 @@ class NameToConfirmOut(Schema):
     mentions: int
 
 
+class LooseEndTaskOut(Schema):
+    id: int
+    text: str
+    due_date: date | None
+
+
+class UnansweredQuestionOut(Schema):
+    """A question nothing has answered, with the date that makes it a loose end.
+
+    `asked_on` is the evidence: "you asked this" is a fact, "twelve days ago" is
+    what makes it worth showing. Neither is a claim about the question.
+    """
+
+    public_id: str
+    text: str
+    asked_on: date
+
+
+class UnansweredCommitmentOut(Schema):
+    """A commitment proposed from a capture and never accepted or dismissed.
+
+    `text` is the note it was read out of, which is the evidence for the
+    proposal. The actionable facet is the one proposal type with no expiry, so
+    this backlog can only shrink by somebody answering it -- which is exactly
+    why it belongs in a review rather than in a notification.
+    """
+
+    public_id: str
+    text: str
+    proposed_on: date
+
+
+class LooseEndsOut(Schema):
+    unanswered: list[UnansweredQuestionOut]
+    unanswered_commitments: list[UnansweredCommitmentOut]
+    overdue: list[LooseEndTaskOut]
+
+
+class UpcomingProjectOut(Schema):
+    id: int
+    title: str
+    due_date: date | None
+
+
+class UpcomingOut(Schema):
+    tasks: list[LooseEndTaskOut]
+    projects: list[UpcomingProjectOut]
+
+
 class HabitPeriodOut(Schema):
     """One period of one routine, described and not judged.
 
@@ -246,6 +295,12 @@ class WeekOut(Schema):
     # Not week-scoped, and named so that is visible in the contract rather
     # than only in the read: an Inbox is a backlog, not seven days.
     names_to_confirm: list[NameToConfirmOut]
+    # Neither is week-scoped, and both are named here so the contract says so.
+    # A loose end does not become tidy because a Monday passed, and a
+    # constraint is what arrives before the *next* review -- so one looks
+    # backwards without a bound and the other looks exactly one week forward.
+    loose_ends: LooseEndsOut
+    upcoming: UpcomingOut
     habits: list[HabitOut]
     # The shown week and the four before it. Not an analytics surface: the
     # six questions architecture-trajectory.md §4 names are release F's, and
@@ -336,6 +391,8 @@ def _week_out(owner, day):
             {"label": candidate.label, "mentions": candidate.mention_count}
             for candidate in reads.names_worth_confirming(owner)
         ],
+        "loose_ends": _loose_ends_out(owner, today),
+        "upcoming": _upcoming_out(owner, week_end),
         "habits": [
             {
                 "routine_id": habit.routine.id,
@@ -438,3 +495,51 @@ def reopen_review(request, day: date):
     """Un-finish it, dropping the recorded figure with it."""
     services.reopen_review(request.user, day)
     return _week_out(request.user, day)
+
+
+def _loose_ends_out(owner, today):
+    """Serialise what is still hanging — planning-assistant-plan.md increment 5.
+
+    Dates travel as the person's own local dates, matching every other date on
+    this response. `captured_at` is an instant, and reading it on the client
+    would file a late-evening question into tomorrow for anybody west of UTC.
+    """
+    ends = reads.loose_ends(owner, today=today)
+    return {
+        "unanswered": [
+            {
+                "public_id": str(node.public_id),
+                "text": node.original_content,
+                "asked_on": timezone.localtime(node.captured_at).date(),
+            }
+            for node in ends.unanswered
+        ],
+        "unanswered_commitments": [
+            {
+                "public_id": str(facet.node.public_id),
+                # The note the commitment was read out of, which is the
+                # evidence for the proposal rather than decoration.
+                "text": facet.node.original_content,
+                "proposed_on": timezone.localtime(facet.created_at).date(),
+            }
+            for facet in ends.unanswered_commitments
+        ],
+        "overdue": [
+            {"id": task.id, "text": task.text, "due_date": task.due_date}
+            for task in ends.overdue
+        ],
+    }
+
+
+def _upcoming_out(owner, week_end):
+    upcoming = reads.upcoming_constraints(owner, week_end=week_end)
+    return {
+        "tasks": [
+            {"id": task.id, "text": task.text, "due_date": task.due_date}
+            for task in upcoming.tasks
+        ],
+        "projects": [
+            {"id": project.id, "title": project.title, "due_date": project.due_date}
+            for project in upcoming.projects
+        ],
+    }

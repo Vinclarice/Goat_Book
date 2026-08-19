@@ -1577,6 +1577,24 @@ export interface components {
             /** Target */
             target: number;
         };
+        /** LooseEndTaskOut */
+        LooseEndTaskOut: {
+            /** Id */
+            id: number;
+            /** Text */
+            text: string;
+            /** Due Date */
+            due_date: string | null;
+        };
+        /** LooseEndsOut */
+        LooseEndsOut: {
+            /** Unanswered */
+            unanswered: components["schemas"]["UnansweredQuestionOut"][];
+            /** Unanswered Commitments */
+            unanswered_commitments: components["schemas"]["UnansweredCommitmentOut"][];
+            /** Overdue */
+            overdue: components["schemas"]["LooseEndTaskOut"][];
+        };
         /**
          * NameToConfirmOut
          * @description A name that has recurred enough to be worth a question.
@@ -1681,6 +1699,60 @@ export interface components {
              */
             captured_on: string;
         };
+        /**
+         * UnansweredCommitmentOut
+         * @description A commitment proposed from a capture and never accepted or dismissed.
+         *
+         *     `text` is the note it was read out of, which is the evidence for the
+         *     proposal. The actionable facet is the one proposal type with no expiry, so
+         *     this backlog can only shrink by somebody answering it -- which is exactly
+         *     why it belongs in a review rather than in a notification.
+         */
+        UnansweredCommitmentOut: {
+            /** Public Id */
+            public_id: string;
+            /** Text */
+            text: string;
+            /**
+             * Proposed On
+             * Format: date
+             */
+            proposed_on: string;
+        };
+        /**
+         * UnansweredQuestionOut
+         * @description A question nothing has answered, with the date that makes it a loose end.
+         *
+         *     `asked_on` is the evidence: "you asked this" is a fact, "twelve days ago" is
+         *     what makes it worth showing. Neither is a claim about the question.
+         */
+        UnansweredQuestionOut: {
+            /** Public Id */
+            public_id: string;
+            /** Text */
+            text: string;
+            /**
+             * Asked On
+             * Format: date
+             */
+            asked_on: string;
+        };
+        /** UpcomingOut */
+        UpcomingOut: {
+            /** Tasks */
+            tasks: components["schemas"]["LooseEndTaskOut"][];
+            /** Projects */
+            projects: components["schemas"]["UpcomingProjectOut"][];
+        };
+        /** UpcomingProjectOut */
+        UpcomingProjectOut: {
+            /** Id */
+            id: number;
+            /** Title */
+            title: string;
+            /** Due Date */
+            due_date: string | null;
+        };
         /** WeekOut */
         WeekOut: {
             /**
@@ -1719,6 +1791,8 @@ export interface components {
             thoughts: components["schemas"]["ThoughtOut"][];
             /** Names To Confirm */
             names_to_confirm: components["schemas"]["NameToConfirmOut"][];
+            loose_ends: components["schemas"]["LooseEndsOut"];
+            upcoming: components["schemas"]["UpcomingOut"];
             /** Habits */
             habits: components["schemas"]["HabitOut"][];
             /** Recent Weeks */

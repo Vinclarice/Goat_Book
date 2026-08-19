@@ -18,8 +18,8 @@ from django.utils import timezone
 
 from daily.models import DailyEntry, DailyFocus
 from mind import queries as mind_queries
-from mind.models import Node
-from lists.models import Item
+from mind.models import Facet, FacetKind, Node
+from lists.models import Item, Project
 from review.models import WeeklyReview
 from review.weeks import DAYS_IN_WEEK, days_in, week_end_for, week_start_for
 from routines.models import Routine, RoutineOccurrence, RoutinePause
@@ -561,3 +561,120 @@ def recent_weeks(owner, shown_week_start, today):
             )
         )
     return summaries
+
+
+@dataclass(frozen=True)
+class LooseEnds:
+    """What is still hanging, in the three ways a thing can hang.
+
+    The review has always answered *what happened* -- completed work, planned
+    against met, what was written and captured. It has never answered *what is
+    still open*, which is half of what a review is for.
+
+    Three kinds, because they are answered differently: a question wants an
+    answer, a proposed commitment wants a yes or a no, and overdue work wants
+    doing or dropping.
+
+    Extractive. Every item already exists and already belongs to the person;
+    nothing here is proposed and nothing is generated.
+    """
+
+    unanswered: list
+    unanswered_commitments: object
+    overdue: object
+
+
+def loose_ends(owner, *, today, question_limit=5):
+    """Questions, undecided commitments and overdue work — planning-assistant-plan.md 5.
+
+    **Not week-scoped, deliberately**, and the same call `names_worth_confirming`
+    already made: a loose end does not become tidy because a Monday passed. What
+    is scoped is the count -- `question_limit` keeps the oldest few rather than a
+    backlog, since a review that opens with forty questions is the inbox this
+    design refuses to be.
+
+    Every definition here is borrowed rather than restated. Unanswered is
+    `mind.queries.unresolved_questions`; overdue is `agenda.bucket_for`'s
+    boundary, which is strictly *before* today and so excludes work due now.
+    Three ideas of "overdue" in one application is how a review comes to
+    disagree with the page it summarises.
+    """
+    unanswered = mind_queries.unresolved_questions(owner)[:question_limit]
+
+    # The one proposal type with no review window and no expiry: it sits
+    # forever, costing nothing, and has appeared nowhere until now.
+    # `services.commitments_without_tasks` counts a broken invariant, not an
+    # unanswered question, so this is not that number by another name.
+    commitments = (
+        Facet.objects.filter(
+            node__owner=owner,
+            kind=FacetKind.ACTIONABLE,
+            confirmed_at__isnull=True,
+            retired_at__isnull=True,
+            node__deleted_at__isnull=True,
+            node__archived_at__isnull=True,
+        )
+        .select_related("node")
+        .order_by("created_at", "id")
+    )
+
+    overdue = (
+        Item.objects.filter(
+            owner=owner,
+            status=Item.Status.ACTIVE,
+            due_date__isnull=False,
+            due_date__lt=today,
+        )
+        .select_related("list")
+        .order_by("due_date", "id")
+    )
+
+    return LooseEnds(
+        unanswered=list(unanswered),
+        unanswered_commitments=commitments,
+        overdue=overdue,
+    )
+
+
+@dataclass(frozen=True)
+class Upcoming:
+    """What arrives before the next review does."""
+
+    tasks: object
+    projects: object
+
+
+def upcoming_constraints(owner, *, week_end, horizon_days=DAYS_IN_WEEK):
+    """Dated work and project deadlines in the week after this one.
+
+    **One week forward, not the whole backlog.** Everything with a date
+    eventually arrives; a constraint is what arrives before the next review
+    does, and a list that reached further would be a second agenda rather than
+    a review section.
+
+    Strictly after `week_end` at the near edge, so nothing already overdue
+    appears here -- that is a loose end, and one item belongs in one section.
+    The project brief follows the same rule for the same reason: a thing shown
+    twice makes a surface untrustworthy about its own contents.
+    """
+    horizon = week_end + timedelta(days=horizon_days)
+
+    tasks = (
+        Item.objects.filter(
+            owner=owner,
+            status=Item.Status.ACTIVE,
+            due_date__gt=week_end,
+            due_date__lte=horizon,
+        )
+        .select_related("list")
+        .order_by("due_date", "id")
+    )
+
+    projects = Project.objects.filter(
+        owner=owner,
+        is_completed=False,
+        due_date__gt=week_end,
+        due_date__lte=horizon,
+    ).order_by("due_date", "id")
+
+    return Upcoming(tasks=tasks, projects=projects)

@@ -3473,6 +3473,69 @@
         "title": "HabitPeriodOut",
         "type": "object"
       },
+      "LooseEndTaskOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "due_date"
+        ],
+        "title": "LooseEndTaskOut",
+        "type": "object"
+      },
+      "LooseEndsOut": {
+        "properties": {
+          "unanswered": {
+            "items": {
+              "$ref": "#/components/schemas/UnansweredQuestionOut"
+            },
+            "title": "Unanswered",
+            "type": "array"
+          },
+          "unanswered_commitments": {
+            "items": {
+              "$ref": "#/components/schemas/UnansweredCommitmentOut"
+            },
+            "title": "Unanswered Commitments",
+            "type": "array"
+          },
+          "overdue": {
+            "items": {
+              "$ref": "#/components/schemas/LooseEndTaskOut"
+            },
+            "title": "Overdue",
+            "type": "array"
+          }
+        },
+        "required": [
+          "unanswered",
+          "unanswered_commitments",
+          "overdue"
+        ],
+        "title": "LooseEndsOut",
+        "type": "object"
+      },
       "NameToConfirmOut": {
         "description": "A name that has recurred enough to be worth a question.\n\nReplaces the Inbox backlog, which the graph has no equivalent of because\nnothing waits for triage. `mentions` is the evidence and the reason it is\nbeing asked about at all -- a count with no basis is the system asking for\ntrust, which every other proposal here refuses to do.",
         "properties": {
@@ -3678,6 +3741,111 @@
         "title": "ThoughtOut",
         "type": "object"
       },
+      "UnansweredCommitmentOut": {
+        "description": "A commitment proposed from a capture and never accepted or dismissed.\n\n`text` is the note it was read out of, which is the evidence for the\nproposal. The actionable facet is the one proposal type with no expiry, so\nthis backlog can only shrink by somebody answering it -- which is exactly\nwhy it belongs in a review rather than in a notification.",
+        "properties": {
+          "public_id": {
+            "title": "Public Id",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "proposed_on": {
+            "format": "date",
+            "title": "Proposed On",
+            "type": "string"
+          }
+        },
+        "required": [
+          "public_id",
+          "text",
+          "proposed_on"
+        ],
+        "title": "UnansweredCommitmentOut",
+        "type": "object"
+      },
+      "UnansweredQuestionOut": {
+        "description": "A question nothing has answered, with the date that makes it a loose end.\n\n`asked_on` is the evidence: \"you asked this\" is a fact, \"twelve days ago\" is\nwhat makes it worth showing. Neither is a claim about the question.",
+        "properties": {
+          "public_id": {
+            "title": "Public Id",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "asked_on": {
+            "format": "date",
+            "title": "Asked On",
+            "type": "string"
+          }
+        },
+        "required": [
+          "public_id",
+          "text",
+          "asked_on"
+        ],
+        "title": "UnansweredQuestionOut",
+        "type": "object"
+      },
+      "UpcomingOut": {
+        "properties": {
+          "tasks": {
+            "items": {
+              "$ref": "#/components/schemas/LooseEndTaskOut"
+            },
+            "title": "Tasks",
+            "type": "array"
+          },
+          "projects": {
+            "items": {
+              "$ref": "#/components/schemas/UpcomingProjectOut"
+            },
+            "title": "Projects",
+            "type": "array"
+          }
+        },
+        "required": [
+          "tasks",
+          "projects"
+        ],
+        "title": "UpcomingOut",
+        "type": "object"
+      },
+      "UpcomingProjectOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "due_date"
+        ],
+        "title": "UpcomingProjectOut",
+        "type": "object"
+      },
       "WeekOut": {
         "properties": {
           "week_start": {
@@ -3740,6 +3908,12 @@
             "title": "Names To Confirm",
             "type": "array"
           },
+          "loose_ends": {
+            "$ref": "#/components/schemas/LooseEndsOut"
+          },
+          "upcoming": {
+            "$ref": "#/components/schemas/UpcomingOut"
+          },
           "habits": {
             "items": {
               "$ref": "#/components/schemas/HabitOut"
@@ -3770,6 +3944,8 @@
           "written",
           "thoughts",
           "names_to_confirm",
+          "loose_ends",
+          "upcoming",
           "habits",
           "recent_weeks",
           "review"

@@ -116,6 +116,78 @@ describe("ProjectRoute", () => {
     expect(screen.queryByText("No due date set")).not.toBeInTheDocument();
   });
 
+  /* The purpose field -- planning-assistant-plan.md increment 3.
+     Until this exists nothing can write a purpose except the API, and
+     increment 4's brief anchors on exactly this text: a project carrying only
+     a title gives its matcher nothing to work with. */
+  it("shows a project's purpose", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      projectPageFetch(projectDetailData({ purpose: "Stop losing bookings to email." })),
+    );
+
+    renderAt("3");
+
+    expect(await screen.findByLabelText("Purpose")).toHaveValue(
+      "Stop losing bookings to email.",
+    );
+  });
+
+  it("invites one when the project has none", async () => {
+    /* An empty textarea reads the same whether nobody has written a purpose
+       or somebody meant to and didn't -- the same gap the due-date hint
+       fills, and it matters more here because the brief is silent without
+       one and cannot say why. */
+    vi.spyOn(globalThis, "fetch").mockImplementation(projectPageFetch());
+
+    renderAt("3");
+    await screen.findByDisplayValue("Website Relaunch");
+
+    expect(screen.getByText(/no purpose written/i)).toBeInTheDocument();
+  });
+
+  it("saves a purpose", async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const request = input as Request;
+      const url = typeof input === "string" ? input : request.url;
+      if (url.includes("/api/v1/nav")) return jsonResponse(NAV);
+      if (request.method === "PATCH") {
+        return jsonResponse(projectDetailData({ purpose: "Ship the booking form." }));
+      }
+      return jsonResponse(projectDetailData());
+    });
+
+    renderAt("3");
+    await screen.findByDisplayValue("Website Relaunch");
+
+    await user.type(screen.getByLabelText("Purpose"), "Ship the booking form.");
+    await user.click(screen.getByRole("button", { name: "Save purpose" }));
+
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.some(([request]) => {
+          const req = request as Request;
+          return req.method === "PATCH" && req.url.includes("/api/v1/projects/3");
+        }),
+      ).toBe(true);
+    });
+  });
+
+  it("will not save a purpose that has not changed", async () => {
+    /* The same guard the name and date buttons carry. A PATCH that writes
+       what is already there is a write nobody asked for, and on this field
+       it would also be the thing that makes a brief look freshly considered
+       when nothing was reconsidered. */
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      projectPageFetch(projectDetailData({ purpose: "Already written." })),
+    );
+
+    renderAt("3");
+    await screen.findByLabelText("Purpose");
+
+    expect(screen.getByRole("button", { name: "Save purpose" })).toBeDisabled();
+  });
+
   it("explains what the composition bar shows", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(projectPageFetch());
 

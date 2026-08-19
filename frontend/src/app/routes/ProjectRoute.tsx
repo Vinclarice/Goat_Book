@@ -36,6 +36,11 @@ export function ProjectRoute() {
   const [draftArea, setDraftArea] = useState("");
   const [title, setTitle] = useState("");
   const [dueDate, setDueDate] = useState("");
+  // What the project is for, in the person's own words --
+  // planning-assistant-plan.md increment 3. Optional by design: requiring it
+  // would put a writing task in front of somebody who wants to group three
+  // areas.
+  const [purpose, setPurpose] = useState("");
 
   const queryKey = ["project", id];
 
@@ -68,6 +73,10 @@ export function ProjectRoute() {
     seededFor.current = id;
     setTitle(data.title);
     setDueDate(data.due_date ?? "");
+    // `?? ""` is belt and braces: the field is blank-not-null all the way
+    // through, so the server never sends null. A textarea given undefined
+    // would go uncontrolled and React would warn on the first keystroke.
+    setPurpose(data.purpose ?? "");
   }, [data, id]);
 
   // Only fetched for the "add an area" picker.
@@ -129,6 +138,28 @@ export function ProjectRoute() {
       );
     },
     onError: () => setError("Couldn't update that due date."),
+  });
+
+  const updatePurpose = useMutation({
+    mutationFn: async (newPurpose: string) => {
+      const { data, error } = await apiV1.PATCH("/api/v1/projects/{project_id}", {
+        params: { path: { project_id: id } },
+        // "" clears it, and absent means leave alone -- no null dance, unlike
+        // due_date above. The field is blank-not-null, which frees null at the
+        // boundary to mean exactly one thing.
+        body: { purpose: newPurpose },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (updated) => {
+      setError(null);
+      if (updated) setPurpose(updated.purpose);
+      queryClient.setQueryData(queryKey, (current: typeof data) =>
+        current && updated ? { ...current, purpose: updated.purpose } : current,
+      );
+    },
+    onError: () => setError("Couldn't save that purpose."),
   });
 
   const setCompleted = useMutation({
@@ -234,6 +265,11 @@ export function ProjectRoute() {
     updateDueDate.mutate(dueDate);
   }
 
+  function handleSavePurpose(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    updatePurpose.mutate(purpose);
+  }
+
   if (isPending) return <p className="p-6">Loading…</p>;
   if (loadError || !data) return <RouteFailure status={statusOf(loadError)} onRetry={() => refetch()} />;
 
@@ -245,6 +281,9 @@ export function ProjectRoute() {
   // to an inert button.
   const titleChanged = title.trim() !== data.title;
   const dueDateChanged = dueDate !== (data.due_date ?? "");
+  // Trimmed on both sides, matching the server, so trailing whitespace alone
+  // never enables the button and never writes.
+  const purposeChanged = purpose.trim() !== (data.purpose ?? "").trim();
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
@@ -302,6 +341,42 @@ export function ProjectRoute() {
                 set or someone meant to fill it in and didn't -- this says
                 which one it is. */}
             {!dueDate && <span className="text-sm text-muted-foreground">No due date set</span>}
+          </form>
+
+          {/* What this project is for. Optional, and the only field here a
+              matcher reads: planning-assistant-plan.md increment 4 anchors a
+              project's brief on exactly this text, which is why the empty
+              hint says what is lost rather than just noting the blank. */}
+          <form onSubmit={handleSavePurpose} className="mt-3">
+            <label
+              htmlFor="project-purpose"
+              className="block text-sm text-muted-foreground"
+            >
+              Purpose
+            </label>
+            <textarea
+              id="project-purpose"
+              rows={2}
+              value={purpose}
+              onChange={(event) => setPurpose(event.target.value)}
+              placeholder="What is this project for, and what would tell you it went wrong?"
+              className="mt-1 w-full rounded-lg border border-border bg-input px-2 py-1 text-sm"
+            />
+            <div className="flex flex-wrap items-center gap-2 mt-1">
+              <Button
+                type="submit"
+                size="sm"
+                variant="secondary"
+                disabled={updatePurpose.isPending || !purposeChanged}
+              >
+                Save purpose
+              </Button>
+              {!purpose.trim() && (
+                <span className="text-sm text-muted-foreground">
+                  No purpose written — a brief has nothing to work from yet
+                </span>
+              )}
+            </div>
           </form>
 
           <p className="text-sm text-muted-foreground mt-2">{data.open_task_count} open</p>

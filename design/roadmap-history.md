@@ -7,6 +7,89 @@ The reasoning, deployment record and lessons behind completed work, kept out of
 the active plan so that plan stays scannable. The active plan is
 [`roadmap.md`](roadmap.md).
 
+## Signing up, and the documents that let it be public — August 19, 2026
+
+**Somebody could create an account and be told nothing at all.** Signup set
+`is_active=False`, an admin ticked a box, and `accounts/emails.py` had six
+functions of which not one wrote to the person waiting — no confirmation the
+form had worked, no way to tell a minute's wait from a permanent one. Three of
+`product-stories.md` S1's four requires had shipped the day before; this is the
+fourth, and it did not close.
+
+**Two gates, and that is the decision.** Confirming an address is self-service;
+approval stays a person's. Vince's call, taken mid-build after the first half
+was written against "verification replaces approval" — the site is
+invitation-only and the privacy policy was still unwritten, so a stranger who
+finds the form should reach a queue rather than an account. `is_active` is
+approval and `email_confirmed_at` is confirmation, kept as separate fields so
+that opening the doors later is a change of policy rather than of design.
+
+**S1 therefore stays impossible**, on one point instead of four, and its verdict
+now says which. Its done-means asks for a usable workspace *without waiting for
+a human*, and approval is a human. What closed is the complaint underneath: the
+applicant is told what happened, told which of the two waits they are in, and
+can recover a lost confirmation email themselves — without which the failure is
+unrecoverable, because the username is taken, the account cannot log in and the
+address is spoken for.
+
+The token is stateless, so no model: §4 asks a concept to earn one by having a
+life cycle, and "valid until used" has none. It signs `email_confirmed_at`
+rather than `is_active`, which is what makes a link single-use — signing
+approval would leave it live through the whole review window, exactly when it
+is most likely to be sitting unread in an inbox.
+
+**The terms and the privacy policy were written to be checkable rather than
+reassuring.** Every claim was verified against the source, and the checking
+changed the text twice: the daily digest defaults to `True`, so it is described
+as on-by-default rather than opt-in, and the deletion window came from
+`ACCOUNT_DELETION_GRACE` instead of memory. Twelve tests hold the claims with a
+mechanical counterpart, so the code cannot drift away from a published promise
+silently. Where something is not done, they say so — deleting an account does
+not reach data already at Sentry or Resend, which is an open item, so the policy
+states it and offers to do it by hand.
+
+Owned by Vinclarice, LLC; hosted in DigitalOcean's New York region, which is
+**the one claim on that page no test can hold** and is marked as such at the
+paragraph. Not lawyer-reviewed, with the trigger named: broader beta testing.
+
+### The deployment
+
+`DEPLOYED-2026-08-19/0111`, carrying migration `0015_user_email_confirmed_at`.
+The bird was held for the planning-assistant release. The approval email below
+shipped after it and is **not yet deployed**.
+
+### What it taught
+
+- **The product promised an email nothing sent, for a day, in production.**
+  `activation_confirmed.html`, the confirmation email and the login form all
+  said "we'll write to you once yours is open"; no signal, no hook, no
+  function. It is the same defect the flow was built to remove, moved one step
+  later — and it was found while auditing whether the *planning documents* were
+  current, which is not where anybody would look for it. Copy is a claim about
+  behaviour and nothing was checking this one.
+- **A browser found what the whole suite could not.** `signup_pending.html`
+  rendered the signed-in app bar — username and a Log out button — to somebody
+  with no session, because the view passed `{"user": user}` and that name
+  belongs to the context processor; `AbstractBaseUser.is_authenticated` is True
+  on any real instance, so the bar had no way to tell. Every assertion passed
+  throughout, because they all read the copy they expected rather than the
+  chrome around it.
+- **A test passed for the wrong reason and hid it well.** `test_email_identity`
+  drove `mail_admins` *through signup*. When that notice moved to confirmation,
+  two of its three assertions failed correctly and the third passed — reading
+  the activation email instead, and asserting the right thing about the wrong
+  message. All three now drive the lockout notice, the only caller left.
+- **Watching a state instead of a transition emails forever.** `is_active` is
+  True for the rest of an account's life and `last_login` is written on every
+  sign-in, so the first approval hook would have sent on every login. The
+  second version still re-sent on a second save of the same instance, because
+  it never refreshed what it had loaded.
+- **The shared test database interrupted this three times**, and the fix was
+  already written down from August 16 — a private test database via a settings
+  shim. Waiting for another session to finish was the wrong answer twice
+  before the note got read, and one of those waits produced a spurious error in
+  an unrelated migration test that did not reproduce in isolation.
+
 ## Navigation and identity — August 18, 2026
 
 **Three navigations that disagreed, three visual identities, and a home page

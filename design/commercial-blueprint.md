@@ -32,7 +32,8 @@ ownership rejection. Clocks are injected; history is snapshotted so it cannot be
 silently rewritten.
 
 **What is missing is the commercial substrate, and it was missing entirely.** No
-billing, no plan model, no entitlement check. No terms, no privacy policy. No
+billing, no plan model, no entitlement check. ~~No terms, no privacy policy.~~
+**Both published August 19, 2026**, at `/privacy/` and `/terms/`. No
 analytics of any kind, so every product decision to date is n=1 introspection. No
 onboarding, no help, no in-product explanation of six invented concepts. No
 import from any competitor. One outbound channel, a 07:00 email, which contains
@@ -227,15 +228,30 @@ workers to exist first). **Renaming `lists`, `Item`, or the app packages** —
 
 ## Part 5 — The commercial substrate
 
-**Activation.** Remove the admin gate or automate it, and send the user an email
-when their account goes live. Give `/app/day` a first action. Give `/` something
-other than a login form. Explain the six invented concepts — Area, Project,
-Checklist Step, Compass, Focus, "call it enough" — somewhere in the product, once.
+**Activation.** ~~Give `/app/day` a first action. Give `/` something other than
+a login form.~~ **Both shipped August 18, 2026.** ~~Send the user an email when
+their account goes live.~~ **Shipped August 19** — and it was promised by three
+surfaces for a day before anything sent it.
 
-**Lifecycle and legal.** Export and deletion shipped August 16, which also
+**The admin gate stays, deliberately.** This item said "remove it or automate
+it"; Vince's call on August 18 was neither, because the site is invitation-only
+and a stranger who finds the form should reach a queue rather than an account.
+What was removed instead is the *silence*: confirming an address is
+self-service now, and the two waits are told apart. `product-stories.md` owns
+what that costs — S1 stays impossible on this one point, and says so.
+
+Still open here: explain the six invented concepts — Area, Project, Checklist
+Step, Compass, Focus, "call it enough" — somewhere in the product, once.
+
+**Lifecycle and legal.** ~~Export and deletion~~ shipped August 16, which also
 settles the immediate-versus-grace-period question in favour of thirty days.
-Still open: terms, a privacy policy, and a named subprocessor list — Sentry and
-Resend are already processing user data.
+~~Still open: terms, a privacy policy, and a named subprocessor list — Sentry
+and Resend are already processing user data.~~ **All three closed August 19**:
+the privacy policy names DigitalOcean, Resend and Sentry as the three
+processors, says what each receives, and is precise about what Sentry is
+configured *not* to be sent. **Not lawyer-reviewed, and the trigger for
+changing that is broader beta testing** — `roadmap.md` carries the three things
+a professional read would want.
 
 **Instrumentation.** There is no analytics of any kind. Shipping a positioning
 wedge with no way to tell whether it landed is the most expensive mistake

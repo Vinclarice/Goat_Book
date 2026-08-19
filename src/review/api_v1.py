@@ -184,6 +184,33 @@ class UpcomingOut(Schema):
     projects: list[UpcomingProjectOut]
 
 
+class DraftRoutineOut(Schema):
+    id: int
+    title: str
+    cadence: str
+
+
+class WeekDraftOut(Schema):
+    """Next week, proposed — increment 6.
+
+    **Nothing here is committed**, and the shape says so: no ids to confirm, no
+    state to reconcile. A draft is read, edited by acting on the tasks it names
+    through their own endpoints, or ignored — and ignoring it costs nothing,
+    which is what keeps it a proposal rather than a plan somebody has to undo.
+
+    `typical_week` is null rather than zero when there is too little history.
+    "No evidence yet" and "you have room" call for opposite responses, and a
+    client shown zero would render the second.
+    """
+
+    week_start: date
+    intention: str
+    proposed: list[LooseEndTaskOut]
+    routines: list[DraftRoutineOut]
+    typical_week: int | None
+    over_committed: bool
+
+
 class HabitPeriodOut(Schema):
     """One period of one routine, described and not judged.
 
@@ -305,6 +332,10 @@ class WeekOut(Schema):
     # backwards without a bound and the other looks exactly one week forward.
     loose_ends: LooseEndsOut
     upcoming: UpcomingOut
+    # Next week, proposed. Carried on the review because that is when somebody
+    # is already looking backwards and is the one moment they are placed to
+    # look forwards -- `design-concept.md`'s ritual, not a second surface.
+    draft: WeekDraftOut
     habits: list[HabitOut]
     # The shown week and the four before it. Not an analytics surface: the
     # six questions architecture-trajectory.md §4 names are release F's, and
@@ -397,6 +428,7 @@ def _week_out(owner, day):
         ],
         "loose_ends": _loose_ends_out(owner, today),
         "upcoming": _upcoming_out(owner, week_end),
+        "draft": _draft_out(owner, week_start, today),
         "habits": [
             {
                 "routine_id": habit.routine.id,
@@ -499,6 +531,33 @@ def reopen_review(request, day: date):
     """Un-finish it, dropping the recorded figure with it."""
     services.reopen_review(request.user, day)
     return _week_out(request.user, day)
+
+
+def _draft_out(owner, week_start, today):
+    """Next week's draft, from the week being reviewed.
+
+    **The week after the one on screen**, which is the whole point of drafting
+    here: somebody reviewing a week is already looking backwards, and this is
+    the one moment they are placed to look forwards. Drafting the week they are
+    reading about would propose a week that has already happened.
+    """
+    draft = reads.draft_week(
+        owner, week_start + timedelta(days=DAYS_IN_WEEK), today=today
+    )
+    return {
+        "week_start": draft.week_start,
+        "intention": draft.intention,
+        "proposed": [
+            {"id": task.id, "text": task.text, "due_date": task.due_date}
+            for task in draft.proposed
+        ],
+        "routines": [
+            {"id": routine.id, "title": routine.title, "cadence": routine.cadence}
+            for routine in draft.routines
+        ],
+        "typical_week": draft.typical_week,
+        "over_committed": draft.over_committed,
+    }
 
 
 def _loose_ends_out(owner, today):

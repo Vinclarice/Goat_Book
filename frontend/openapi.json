@@ -3480,6 +3480,29 @@
         "title": "CompletedTaskOut",
         "type": "object"
       },
+      "DraftRoutineOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "cadence": {
+            "title": "Cadence",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "cadence"
+        ],
+        "title": "DraftRoutineOut",
+        "type": "object"
+      },
       "HabitOut": {
         "description": "A routine's week.\n\n`expected` is the periods the week actually asked of it -- floored at\nthe routine's own beginning, capped at today, and with skips removed --\nso `met` over `expected` is the vision document's \"4 of 5 planned\nlesson targets met\" rather than a fraction of an arbitrary seven.\n`skipped` rides alongside so the number cannot hide them.",
         "properties": {
@@ -3963,6 +3986,59 @@
         "title": "UpcomingProjectOut",
         "type": "object"
       },
+      "WeekDraftOut": {
+        "description": "Next week, proposed \u2014 increment 6.\n\n**Nothing here is committed**, and the shape says so: no ids to confirm, no\nstate to reconcile. A draft is read, edited by acting on the tasks it names\nthrough their own endpoints, or ignored \u2014 and ignoring it costs nothing,\nwhich is what keeps it a proposal rather than a plan somebody has to undo.\n\n`typical_week` is null rather than zero when there is too little history.\n\"No evidence yet\" and \"you have room\" call for opposite responses, and a\nclient shown zero would render the second.",
+        "properties": {
+          "week_start": {
+            "format": "date",
+            "title": "Week Start",
+            "type": "string"
+          },
+          "intention": {
+            "title": "Intention",
+            "type": "string"
+          },
+          "proposed": {
+            "items": {
+              "$ref": "#/components/schemas/LooseEndTaskOut"
+            },
+            "title": "Proposed",
+            "type": "array"
+          },
+          "routines": {
+            "items": {
+              "$ref": "#/components/schemas/DraftRoutineOut"
+            },
+            "title": "Routines",
+            "type": "array"
+          },
+          "typical_week": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Typical Week"
+          },
+          "over_committed": {
+            "title": "Over Committed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "week_start",
+          "intention",
+          "proposed",
+          "routines",
+          "typical_week",
+          "over_committed"
+        ],
+        "title": "WeekDraftOut",
+        "type": "object"
+      },
       "WeekOut": {
         "properties": {
           "week_start": {
@@ -4031,6 +4107,9 @@
           "upcoming": {
             "$ref": "#/components/schemas/UpcomingOut"
           },
+          "draft": {
+            "$ref": "#/components/schemas/WeekDraftOut"
+          },
           "habits": {
             "items": {
               "$ref": "#/components/schemas/HabitOut"
@@ -4063,6 +4142,7 @@
           "names_to_confirm",
           "loose_ends",
           "upcoming",
+          "draft",
           "habits",
           "recent_weeks",
           "review"

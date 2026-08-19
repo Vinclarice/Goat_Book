@@ -1602,6 +1602,15 @@ export interface components {
             /** Area Id */
             area_id: number | null;
         };
+        /** DraftRoutineOut */
+        DraftRoutineOut: {
+            /** Id */
+            id: number;
+            /** Title */
+            title: string;
+            /** Cadence */
+            cadence: string;
+        };
         /**
          * HabitOut
          * @description A routine's week.
@@ -1836,6 +1845,36 @@ export interface components {
             /** Due Date */
             due_date: string | null;
         };
+        /**
+         * WeekDraftOut
+         * @description Next week, proposed — increment 6.
+         *
+         *     **Nothing here is committed**, and the shape says so: no ids to confirm, no
+         *     state to reconcile. A draft is read, edited by acting on the tasks it names
+         *     through their own endpoints, or ignored — and ignoring it costs nothing,
+         *     which is what keeps it a proposal rather than a plan somebody has to undo.
+         *
+         *     `typical_week` is null rather than zero when there is too little history.
+         *     "No evidence yet" and "you have room" call for opposite responses, and a
+         *     client shown zero would render the second.
+         */
+        WeekDraftOut: {
+            /**
+             * Week Start
+             * Format: date
+             */
+            week_start: string;
+            /** Intention */
+            intention: string;
+            /** Proposed */
+            proposed: components["schemas"]["LooseEndTaskOut"][];
+            /** Routines */
+            routines: components["schemas"]["DraftRoutineOut"][];
+            /** Typical Week */
+            typical_week: number | null;
+            /** Over Committed */
+            over_committed: boolean;
+        };
         /** WeekOut */
         WeekOut: {
             /**
@@ -1876,6 +1915,7 @@ export interface components {
             names_to_confirm: components["schemas"]["NameToConfirmOut"][];
             loose_ends: components["schemas"]["LooseEndsOut"];
             upcoming: components["schemas"]["UpcomingOut"];
+            draft: components["schemas"]["WeekDraftOut"];
             /** Habits */
             habits: components["schemas"]["HabitOut"][];
             /** Recent Weeks */

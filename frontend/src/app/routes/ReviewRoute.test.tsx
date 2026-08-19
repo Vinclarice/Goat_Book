@@ -37,6 +37,14 @@ function weekData(overrides: Record<string, unknown> = {}) {
     names_to_confirm: [],
     loose_ends: { unanswered: [], unanswered_commitments: [], overdue: [] },
     upcoming: { tasks: [], projects: [] },
+    draft: {
+      week_start: "2026-08-03",
+      intention: "",
+      proposed: [],
+      routines: [],
+      typical_week: null,
+      over_committed: false,
+    },
     habits: [],
     recent_weeks: [],
     review: {
@@ -939,5 +947,93 @@ describe("ReviewRoute", () => {
 
     expect(screen.queryByText(/still unanswered/i)).toBeNull();
     expect(screen.queryByText(/before the next review/i)).toBeNull();
+  });
+
+  /* Next week, drafted -- planning-assistant-plan.md increment 6, the last of
+     the six. A proposal: nothing is pinned and ignoring it costs nothing. */
+  it("proposes next week's dated work", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        weekData({
+          draft: {
+            week_start: "2026-08-03",
+            intention: "Ship the booking form.",
+            proposed: [{ id: 3, text: "Chase the invoice", due_date: "2026-07-30" }],
+            routines: [],
+            typical_week: 4,
+            over_committed: false,
+          },
+        }),
+      ),
+    );
+
+    renderAt("/review");
+
+    expect(await screen.findByText("Ship the booking form.")).toBeInTheDocument();
+    expect(screen.getByText("Chase the invoice")).toBeInTheDocument();
+  });
+
+  it("says the week holds less than this, without saying you failed", async () => {
+    /* The vision document asks that history be useful without making missed
+       work feel like punishment, and a planner is the surface most able to
+       break that. The wording states capacity; it does not grade anybody. */
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        weekData({
+          draft: {
+            week_start: "2026-08-03",
+            intention: "",
+            proposed: [
+              { id: 1, text: "One", due_date: "2026-08-04" },
+              { id: 2, text: "Two", due_date: "2026-08-05" },
+            ],
+            routines: [],
+            typical_week: 1,
+            over_committed: true,
+          },
+        }),
+      ),
+    );
+
+    renderAt("/review");
+
+    expect(await screen.findByText(/finished 1 in a typical week/i)).toBeInTheDocument();
+    expect(screen.queryByText(/only finish/i)).toBeNull();
+  });
+
+  it("offers no capacity when there is not enough history", async () => {
+    /* Null, never zero. "No evidence yet" and "you have room" call for
+       opposite responses, and a page rendering 0 would show the second. */
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        weekData({
+          draft: {
+            week_start: "2026-08-03",
+            intention: "",
+            proposed: [{ id: 1, text: "One", due_date: "2026-08-04" }],
+            routines: [],
+            typical_week: null,
+            over_committed: false,
+          },
+        }),
+      ),
+    );
+
+    renderAt("/review");
+    await screen.findByText("One");
+
+    expect(screen.queryByText(/typical week/i)).toBeNull();
+  });
+
+  it("stays quiet when there is nothing to propose", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() => jsonResponse(weekData()));
+
+    renderAt("/review");
+    await screen.findByRole("heading", { level: 1 });
+
+    // Scoped to this section's heading. The review already carries a "Plan
+    // for next week" field of the person's own words, which is a different
+    // thing living happily beside the proposal and must not be asserted away.
+    expect(screen.queryByRole("heading", { name: "Next week" })).toBeNull();
   });
 });

@@ -740,7 +740,10 @@ export function ReviewRoute() {
     return <RouteFailure status={statusOf(error)} onRetry={() => refetch()} />;
   }
 
-  const { loose_ends: looseEnds, upcoming } = data;
+  // `weekDraft`, because `draft` above is the review's own unsaved text. Two
+  // different drafts on one page, and the collision was a build error rather
+  // than a subtle bug only because they share a scope.
+  const { loose_ends: looseEnds, upcoming, draft: weekDraft } = data;
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 space-y-8">
@@ -925,6 +928,69 @@ export function ReviewRoute() {
               </li>
             ))}
           </ul>
+        </section>
+      )}
+
+      {/* Next week, drafted -- planning-assistant-plan.md increment 6, and the
+          last of the six. Rendered only when there is something to propose:
+          an empty planner is indistinguishable from one that failed, and a
+          heading over nothing teaches people to stop reading this far.
+
+          **Nothing here is committed.** No confirm button, because there is
+          nothing to confirm -- these tasks already exist and already carry
+          their dates. Acting on one happens through the task itself, and
+          ignoring the whole thing costs nothing, which is what keeps it a
+          proposal rather than a plan somebody has to undo. */}
+      {(weekDraft.proposed.length > 0 || weekDraft.routines.length > 0) && (
+        <section className="space-y-2">
+          <h2 className="text-sm font-bold">Next week</h2>
+          {weekDraft.intention && (
+            <p className="text-sm">{weekDraft.intention}</p>
+          )}
+
+          {/* Capacity, stated. Never "you only finish four" -- that is a
+              verdict about the person where this is a fact about the weeks,
+              and the vision document asks history to be useful without making
+              missed work punishing. Absent entirely when there is too little
+              history: null is not zero, and a zero would read as reassurance
+              nobody earned. */}
+          {weekDraft.typical_week !== null && (
+            <p className="text-sm text-muted-foreground">
+              {weekDraft.proposed.length} dated for next week. You have finished{" "}
+              {weekDraft.typical_week} in a typical week.
+              {weekDraft.over_committed && " That is more than the week usually holds."}
+            </p>
+          )}
+
+          {weekDraft.proposed.length > 0 && (
+            <ul className="space-y-1">
+              {weekDraft.proposed.map((task) => (
+                <li key={task.id} className="text-sm">
+                  {task.text}
+                  {task.due_date && (
+                    <span className="text-muted-foreground"> — due {task.due_date}</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {weekDraft.routines.length > 0 && (
+            <div>
+              {/* Named apart from the tasks, because they are a different life
+                  cycle -- a routine is measured toward a quantity over a
+                  period and never spawns a task. */}
+              <h3 className="text-sm text-muted-foreground">Also running</h3>
+              <ul className="mt-1 space-y-1">
+                {weekDraft.routines.map((routine) => (
+                  <li key={routine.id} className="text-sm">
+                    {routine.title}{" "}
+                    <span className="text-muted-foreground">— {routine.cadence}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </section>
       )}
 

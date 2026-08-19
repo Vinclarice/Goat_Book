@@ -3,9 +3,9 @@
 Vince · plan · written August 18, 2026 · **revised the same day after review,
 and its six increments confirmed as the product the same day**
 
-**Five of the six increments are complete, August 18–19, 2026, on `main` and
-undeployed** — and increment 1 finished last, having been first to start.
-Only the weekly-plan draft remains, and S9 is its one blocker.
+**All six increments are complete, August 18–19, 2026, on `main` and
+undeployed.** Nothing in this plan is outstanding; what remains is a deploy and
+the codename `roadmap.md` is holding for it.
 
 | # | State |
 |---|---|
@@ -14,7 +14,7 @@ Only the weekly-plan draft remains, and S9 is its one blocker.
 | 3 | **Complete.** `Project.purpose` end to end, model to text area |
 | 4 | **Complete.** Retrieval, assembly, endpoint and the on-demand panel |
 | 5 | **Complete.** Loose ends and upcoming constraints, read and rendered |
-| 6 | Not started. Waits on S9 |
+| 6 | **Complete.** S9's weekly intention, a draft of next week's dated work, and a capacity signal from `DailyFocus` history rather than from estimates |
 
 **All four decisions are answered** — D1, D4 and D3 on the 18th, D2 just after
 midnight on the 19th. Nothing in this plan waits on one.

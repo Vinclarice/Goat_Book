@@ -81,6 +81,34 @@ def send_activation_email(user, *, activation_url):
     ).send()
 
 
+def send_account_approved(user, *, login_url):
+    """The end of the wait, and the message three surfaces were promising.
+
+    `activation_confirmed.html`, the confirmation email and the login form all
+    say some version of "we'll write to you once yours is open". When the
+    two-gate flow shipped, nothing did — which is the same defect the flow was
+    built to remove, moved one step later: somebody does everything asked and
+    then waits on a message nobody sends.
+
+    Carries the login URL because this arrives days after signing up, by which
+    time "go to the site" is a small piece of work rather than an obvious one.
+    """
+    EmailMessage(
+        subject="Your Clarice account is open",
+        body=(
+            f"Hello {user.username},\n\n"
+            "Your account has been approved and is ready to use. Sign in "
+            "here:\n\n"
+            f"{login_url}\n\n"
+            "Use the username and password you chose when you signed up. If "
+            "you have forgotten the password, the login page will send you a "
+            "reset link.\n"
+        ),
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        to=[user.email],
+    ).send()
+
+
 def confirm_deletion_scheduled(user, *, purge_at):
     """Tell somebody their account is on its way out.
 

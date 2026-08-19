@@ -348,3 +348,73 @@ class SignedOutPagesLookSignedOutTest(TestCase):
 
         self.assertNotContains(response, 'id="id_logout"')
         self.assertContains(response, reverse("login"))
+
+
+class ApprovalIsAnnouncedTest(TestCase):
+    """The promise three surfaces make, and nothing was keeping.
+
+    `activation_confirmed.html`, the confirmation email and the login form all
+    say some version of "we'll write to you once yours is open" — and when the
+    two-gate flow shipped, nothing did. No signal, no hook, no function. It is
+    the same defect this whole flow exists to remove, one step further along:
+    somebody does what is asked and then waits on a message that is never sent.
+
+    Approval is an admin ticking `is_active` in `/admin/`, so the transition is
+    what has to be watched rather than any particular view.
+    """
+
+    def setUp(self):
+        self.client.post(reverse("signup"), data=signup_payload())
+        self.user = User.objects.get(username="sam")
+        self.user.email_confirmed_at = timezone.now()
+        self.user.save(update_fields=["email_confirmed_at"])
+        mail.outbox.clear()
+
+    def approve(self):
+        user = User.objects.get(pk=self.user.pk)
+        user.is_active = True
+        user.save()
+        return user
+
+    def test_approving_an_account_writes_to_the_person(self):
+        self.approve()
+
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ["sam@example.com"])
+
+    def test_the_message_says_they_can_now_log_in(self):
+        self.approve()
+
+        self.assertIn(reverse("login"), mail.outbox[0].body)
+
+    def test_saving_an_already_active_account_says_nothing(self):
+        """Every login writes `last_login`, so a naive hook would email on
+        every sign-in for the rest of the account's life."""
+        approved = self.approve()
+        mail.outbox.clear()
+
+        approved.last_login = timezone.now()
+        approved.save()
+
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_an_account_an_admin_creates_outright_is_not_written_to(self):
+        """It never waited for anything, so there is nothing to announce."""
+        mail.outbox.clear()
+
+        User.objects.create_user("edith", "edith@example.com", PASSWORD)
+
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_a_failed_send_does_not_break_the_approval(self):
+        """The admin's tick is the real work and it has already happened. A
+        mail failure must not roll it back or 500 the admin page -- that would
+        turn a missing email into an account nobody can open."""
+        with patch(
+            "accounts.emails.send_account_approved",
+            side_effect=SMTPException("relay unreachable"),
+        ):
+            with self.assertLogs("accounts.apps", level="ERROR"):
+                self.approve()
+
+        self.assertTrue(User.objects.get(pk=self.user.pk).is_active)

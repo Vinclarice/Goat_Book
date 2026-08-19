@@ -148,6 +148,16 @@ EMAIL_SUBJECT_PREFIX = "[Clarice] "
 # send-only address: Resend only sends, so this receives through the IONOS
 # mailboxes the domain's MX records point at.
 SUPPORT_EMAIL = os.environ.get("DJANGO_SUPPORT_EMAIL", f"support@{EMAIL_DOMAIN}")
+
+# Where this site actually is, for the one email that has no request to build a
+# URL from. Every other absolute link in an email comes from
+# `request.build_absolute_uri`; the account-approved message is sent from a
+# post_save signal fired by an admin ticking a box, and a signal has no request.
+#
+# Derived from EMAIL_DOMAIN rather than declared separately, so the address mail
+# comes *from* and the address it points *at* cannot disagree without somebody
+# deliberately overriding this.
+SITE_URL = os.environ.get("DJANGO_SITE_URL", f"https://{EMAIL_DOMAIN}")
 # Successful contact-form sends allowed per client IP, per *worker lifetime*
 # rather than per hour despite the name -- CONTACT_WINDOW_SECONDS sets an hour
 # on the key, but the default cache is LocMemCache and one gunicorn worker

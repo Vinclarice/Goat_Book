@@ -63,7 +63,21 @@ re-add it here.
   moved to Resend's HTTPS API. The proof kept deliberately: SMTP is **still**
   blocked from that host and mail goes anyway, so the fix is not coincident with
   anything DigitalOcean did.
-- **Terms of service and a privacy policy.** Writing, not code.
+- ~~**Terms of service and a privacy policy.**~~ **Written and published
+  August 19, 2026**, at `/privacy/` and `/terms/`, linked from a footer on
+  every signed-out page and from the signup form. Owned by Vinclarice, LLC;
+  hosting named as DigitalOcean's New York region. Every claim was checked
+  against the source and a dozen tests hold the ones with a mechanical
+  counterpart — the deletion window, the digest default, the four Sentry
+  exclusions, the absence of analytics — so the code cannot drift away from a
+  published promise silently. **The one claim no test can hold is the hosting
+  region**, and the template says so at the paragraph.
+  **Deliberately not lawyer-reviewed, and the trigger for changing that is
+  named: broader beta testing.** Vince's call, August 19 — proportionate while
+  the site is privately owned and invitation-only. What a professional read
+  would want, and what is therefore still absent: the LLC's state of formation
+  and business address, a governing-law clause, and a considered answer on the
+  minimum age (16 is asserted).
 - **Removing user data from Sentry and Resend when an account goes.** An
   account-level action in each, outside this application. Deletion and export
   inside Clarice shipped August 16.

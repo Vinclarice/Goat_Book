@@ -22,6 +22,7 @@ from mind.models import Facet, FacetKind, Node
 from lists.models import Item, Project
 from review.models import WeeklyIntention, WeeklyReview
 from review.weeks import DAYS_IN_WEEK, days_in, week_end_for, week_start_for
+from routines import reads as routine_reads
 from routines.models import Routine, RoutineOccurrence, RoutinePause
 
 
@@ -708,3 +709,128 @@ def intention_for(owner, day):
     return WeeklyIntention.objects.filter(
         owner=owner, week_start=week_start_for(day)
     ).first()
+
+
+@dataclass(frozen=True)
+class WeekDraft:
+    """A proposed week, and whether it fits.
+
+    Nothing here is committed. A draft is confirmed, edited or discarded, and
+    until then not one task has been pinned or re-dated -- `planning-assistant-
+    plan.md` increment 6, and the reason `draft_week` lives in this module and
+    not in services.
+    """
+
+    week_start: object
+    intention: str
+    proposed: list
+    routines: list
+    typical_week: int | None
+    over_committed: bool
+
+
+# How far back to look for a typical week, and how little evidence is too
+# little. Four weeks is a month of practice: fewer than two of them with a plan
+# in is not a pattern, it is a fortnight.
+TYPICAL_WEEK_LOOKBACK = 8
+TYPICAL_WEEK_MINIMUM_SAMPLE = 2
+
+
+def typical_week_for(owner, before):
+    """How much this person finishes in a week they planned, or None.
+
+    **D2's decision, computed.** Capacity comes from what already happened
+    rather than from estimates nobody would enter, so there is nothing to
+    maintain and nothing to go unentered. `DailyFocus` records what was pinned
+    and the task records what was finished; the vision document requires that
+    denominator be captured at the moment of choosing precisely because it
+    cannot be reconstructed afterwards.
+
+    **Weeks nobody planned are excluded, not counted as zero.** A week with no
+    plan is not a week that finished nothing, and averaging it in would drag
+    the figure toward a number nobody lived -- the null-not-zero discipline
+    `review/reads.py` already holds everywhere else.
+
+    **The median, not the mean.** One heroic week and one lost to flu should
+    not move what a typical week looks like, and a planner is exactly where an
+    outlier would do damage.
+
+    None below `TYPICAL_WEEK_MINIMUM_SAMPLE` planned weeks. "No evidence yet"
+    and "you have room" call for opposite responses, and only one of them is
+    honest with a fortnight of history.
+    """
+    met_counts = []
+    for index in range(1, TYPICAL_WEEK_LOOKBACK + 1):
+        start = week_start_for(before - timedelta(weeks=index))
+        planned = planned_in_week(owner, start, week_end_for(start))
+        if planned.total == 0:
+            continue
+        met_counts.append(len(planned.met))
+
+    if len(met_counts) < TYPICAL_WEEK_MINIMUM_SAMPLE:
+        return None
+    met_counts.sort()
+    return met_counts[len(met_counts) // 2]
+
+
+def draft_week(owner, week_start, *, today):
+    """What next week could hold, and whether it holds it — increment 6.
+
+    **Deterministic by an explicit trade.** `design-concept.md` chose
+    predictable and unit-testable over adaptive and opaque for exactly this
+    surface: rule-based selection and date arithmetic, no model. D1 settled
+    that this assistant ships no generation, and a planner is where that would
+    have been most tempting.
+
+    **It proposes only work that already carries a date.** Overdue first,
+    because a thing already late is the strongest claim on a week, then what is
+    dated into the week itself. The someday pile is left alone: pulling from it
+    would be the planner deciding something the person has not, which is the
+    one thing every producer in this design refuses to do.
+
+    **Routines are named apart from tasks**, because they are a different life
+    cycle and folding them into one list is the misuse
+    `daily-operating-system-vision.md` calls out by name -- a routine is
+    measured toward a quantity over a period and never spawns a task.
+
+    Writes nothing. A draft is a proposal: nothing is pinned, nothing is
+    re-dated, and opening the planner twice changes nothing either time.
+    """
+    week_end = week_end_for(week_start)
+    intention = intention_for(owner, week_start)
+
+    overdue = list(
+        Item.objects.filter(
+            owner=owner,
+            status=Item.Status.ACTIVE,
+            due_date__isnull=False,
+            due_date__lt=today,
+        ).order_by("due_date", "id")
+    )
+    dated = list(
+        Item.objects.filter(
+            owner=owner,
+            status=Item.Status.ACTIVE,
+            due_date__gte=max(today, week_start),
+            due_date__lte=week_end,
+        ).order_by("due_date", "id")
+    )
+
+    typical = typical_week_for(owner, today)
+    proposed = overdue + dated
+
+    return WeekDraft(
+        week_start=week_start,
+        intention=intention.text if intention else "",
+        proposed=proposed,
+        # `routines.reads`, not a filter written here. "Active" is that
+        # domain's word and it already has one definition; a second would
+        # disagree the first time pausing changed meaning.
+        routines=routine_reads.active_routines_for(owner),
+        typical_week=typical,
+        # Stated, never scolded: this says the week holds less than this, not
+        # that the person is failing. `daily-operating-system-vision.md` asks
+        # that history be useful without making missed work feel punishing, and
+        # a planner is the surface most able to break that.
+        over_committed=typical is not None and len(proposed) > typical,
+    )

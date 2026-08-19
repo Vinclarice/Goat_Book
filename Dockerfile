@@ -8,6 +8,23 @@ COPY frontend/package.json frontend/pnpm-lock.yaml frontend/pnpm-workspace.yaml 
 RUN pnpm install --frozen-lockfile
 
 COPY frontend/ ./
+
+# Tailwind scans the Django templates too -- see the `@source` globs in
+# frontend/src/app/tailwind.css, which reach `../../../src/...` and therefore
+# expect the application tree beside this one.
+#
+# **Without this the build succeeds and quietly ships less CSS.** A utility
+# used only in a template -- `text-kept` and `text-released` on the landing
+# page's marks were the ones that made it visible -- matches nothing at scan
+# time, so no rule is generated, no error is raised, and the class silently
+# falls back to inherited colour in production while every local build is
+# correct. It had been true since the Tailwind migration.
+#
+# `src` whole rather than the two template directories: naming them here would
+# be the same list that already went stale once inside tailwind.css, and a new
+# app's templates would go missing the same silent way.
+COPY src /src
+
 RUN pnpm build
 
 FROM python:3.14-slim

@@ -133,3 +133,78 @@ class TheImageCanImportSettingsTest(SimpleTestCase):
             if "KEY" in key or "PASSWORD" in key or "SECRET" in key:
                 with self.subTest(variable=key):
                     self.assertIn("build-only", value)
+
+
+class TailwindSourcesReachTheImageTest(SimpleTestCase):
+    """Every `@source` Tailwind scans has to exist in the stage that builds it.
+
+    The frontend stage copied `frontend/` and nothing else, so the globs in
+    tailwind.css reaching `../../../src/...` matched an empty directory. A
+    utility used *only* in a Django template therefore generated no rule --
+    silently, because matching nothing is not an error to Tailwind -- and the
+    class fell back to inherited colour in production while every local build,
+    which has the whole tree, was correct.
+
+    It shipped on 2026-08-18: `text-kept` and `text-released` on the landing
+    page's marks rendered as body text, and the deployed tokens.css was 4kB
+    smaller than the one built here. It had been true of every Django-only
+    utility since the Tailwind migration; those marks were simply the first
+    that nothing else in the tree also used.
+
+    Reads both files rather than restating either, in the same spirit as the
+    environment sweep above: adding an `@source` outside what the stage copies
+    fails here rather than in production, where the failure mode is a page that
+    renders and is wrong.
+    """
+
+    TAILWIND = settings.BASE_DIR.parent / "frontend" / "src" / "app" / "tailwind.css"
+
+    def frontend_stage(self):
+        text = DOCKERFILE.read_text(encoding="utf-8")
+        start = text.index("FROM node")
+        end = text.index("FROM ", start + 1)
+        return text[start:end]
+
+    def copied_roots(self):
+        """The repo-relative paths the frontend stage copies in."""
+        return {
+            source.split("/")[0]
+            for line in self.frontend_stage().splitlines()
+            if line.startswith("COPY ")
+            for source in line.split()[1:-1]
+        }
+
+    def external_sources(self):
+        """`@source` targets that reach outside frontend/, repo-relative."""
+        css = self.TAILWIND.read_text(encoding="utf-8")
+        found = set()
+        for raw in re.findall(r'@source\s+"([^"]+)"', css):
+            if not raw.startswith(".."):
+                continue
+            # Relative to frontend/src/app/, which is where tailwind.css sits.
+            resolved = pathlib.PurePosixPath("frontend/src/app") / raw
+            parts = []
+            for part in resolved.parts:
+                if part == "..":
+                    parts.pop()
+                else:
+                    parts.append(part)
+            found.add(parts[0])
+        return found
+
+    def test_the_sweep_actually_finds_both_halves(self):
+        # Positive controls. Either side matching nothing would make the
+        # assertion below pass while comparing two empty sets.
+        self.assertIn("frontend", self.copied_roots())
+        self.assertTrue(self.external_sources())
+
+    def test_every_scanned_directory_is_present_when_the_bundle_is_built(self):
+        missing = self.external_sources() - self.copied_roots()
+
+        self.assertEqual(
+            missing,
+            set(),
+            f"tailwind.css scans {sorted(missing)}, which the Dockerfile's "
+            "frontend stage does not COPY -- those utilities will be missing "
+            "from the built CSS, without any error.",
+        )

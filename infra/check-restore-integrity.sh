@@ -126,6 +126,96 @@ got=$(query "SELECT indnullsnotdistinct FROM pg_index i
 [[ "$got" == "t" ]] && report yes "mention_unique treats NULLs as equal" \
                     || report no  "mention_unique treats NULLs as equal (found: ${got:-error})"
 
+# --- The task core's constraints --------------------------------------------
+# Everything above belongs to the knowledge core. These are the task core's, and
+# until August 19 this script checked none of them -- so a restore that came
+# back having lost every one would have printed "All checked guarantees are
+# intact." That is health.py's own objection turned on this script: a check
+# narrower than the failures it watches for reports healthy through the ones it
+# forgot.
+
+# Two CHECK constraints. `convalidated` is the half a presence check misses: a
+# constraint added NOT VALID is present in the catalogue and does enforce new
+# rows, while silently tolerating every row already there -- which after a
+# restore is all of them.
+for constraint in valid_item_status_timestamps valid_project_completion
+do
+  got=$(query "SELECT count(*) FROM pg_constraint
+               WHERE conname = '$constraint' AND contype = 'c' AND convalidated")
+  [[ "$got" == "1" ]] && report yes "constraint $constraint, validated" \
+                      || report no  "constraint $constraint, validated (found: ${got:-error})"
+done
+
+# Three partial unique constraints -- and they are **not** in pg_constraint with
+# the two above. Django compiles `UniqueConstraint(condition=...)` to a bare
+# partial unique index, so a check that looked for them beside the CHECKs would
+# report all three missing on a perfectly good database.
+#
+# `indpred IS NOT NULL` is the part worth explaining: the WHERE clause *is* the
+# constraint. Rebuilt without it the index is still present, still unique and
+# still valid, while now forbidding a duplicate among archived rows -- which the
+# application deliberately allows, since archiving a task and writing it again
+# is an ordinary thing to do.
+for index in unique_active_item unique_active_arealess_item unique_open_checklist_step_text
+do
+  got=$(query "SELECT count(*) FROM pg_index i JOIN pg_class c ON c.oid = i.indexrelid
+               WHERE c.relname = '$index'
+                 AND i.indisunique AND i.indisvalid AND i.indisready
+                 AND i.indpred IS NOT NULL")
+  [[ "$got" == "1" ]] && report yes "partial unique index $index" \
+                      || report no  "partial unique index $index (found: ${got:-error})"
+done
+
+# --- The duplicate-task guarantee, exercised --------------------------------
+# The catalogue checks above answer presence and validity. This answers whether
+# the thing actually refuses a duplicate on the data that came back, which is
+# the guarantee a person would feel: `unique_active_item` is what stops a phone
+# retrying a share from writing the note twice.
+#
+# The row is cloned through jsonb rather than by naming columns, so adding a
+# column to lists_item does not quietly turn this check into a syntax error --
+# and the clone takes a fresh id so the refusal that matters is the unique
+# violation rather than a primary-key collision.
+#
+# Verified in both directions before being trusted, on a local database inside a
+# transaction that was rolled back: with the index present the insert was
+# refused, and with `DROP INDEX unique_active_item` first it was accepted. A
+# probe that cannot fail proves nothing.
+duplicate=$(psql "$DSN" -tA <<'SQL' 2>&1
+BEGIN;
+DO $$
+DECLARE refused boolean := false; candidates int;
+BEGIN
+    SELECT count(*) INTO candidates
+      FROM lists_item WHERE status <> 'archived' AND list_id IS NOT NULL;
+    IF candidates = 0 THEN
+        RAISE NOTICE 'EMPTY';
+        RETURN;
+    END IF;
+    BEGIN
+        INSERT INTO lists_item
+        SELECT (jsonb_populate_record(
+                   NULL::lists_item,
+                   to_jsonb(t) || jsonb_build_object('id', (SELECT max(id) + 1 FROM lists_item))
+               )).*
+          FROM lists_item t
+         WHERE t.status <> 'archived' AND t.list_id IS NOT NULL
+         LIMIT 1;
+    EXCEPTION WHEN unique_violation THEN
+        refused := true;
+    END;
+    IF refused THEN RAISE NOTICE 'REFUSED'; ELSE RAISE NOTICE 'ACCEPTED'; END IF;
+END $$;
+ROLLBACK;
+SQL
+)
+case "$duplicate" in
+  *REFUSED*)  report yes "a duplicate active task is refused" ;;
+  *EMPTY*)    printf '  skip  no filed active task to duplicate; index checked above, behaviour not\n' ;;
+  *ACCEPTED*) report no  "a duplicate active task is refused (it was ACCEPTED)" ;;
+  *)          report no  "a duplicate active task is refused (check errored)" ;;
+esac
+
 echo
 if [[ "$failures" -gt 0 ]]; then
   # stdout, not stderr: the two interleave unpredictably when this runs under

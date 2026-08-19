@@ -110,15 +110,18 @@ awkward way or don't bother.
 
 ```bash
 # 1. What does the live data look like right now? Read it from the droplet
-#    rather than opening the cluster firewall to do it.
-ssh <user>@<droplet> 'docker exec -i clarice python manage.py shell' <<'EOF'
+#    rather than opening the cluster firewall to do it. The `table|count`
+#    format and the ordering are deliberate: they match infra/table-counts.sh
+#    exactly, so step 4 is a diff rather than a reading exercise.
+ssh <user>@<droplet> 'docker exec -i clarice python manage.py shell' <<'EOF' > live-counts.txt
 from django.db import connection
 with connection.cursor() as c:
     c.execute("SELECT table_name FROM information_schema.tables "
-              "WHERE table_schema='public' ORDER BY table_name")
+              "WHERE table_schema='public' AND table_type='BASE TABLE' "
+              "ORDER BY table_name")
     for (t,) in c.fetchall():
         c.execute(f'SELECT COUNT(*) FROM "{t}"')
-        print(t, c.fetchone()[0])
+        print(f"{t}|{c.fetchone()[0]}")
 EOF
 
 # 2. Restore the whole cluster into a scratch one. Omitting a timestamp
@@ -131,15 +134,20 @@ doctl databases create clarice-restore-drill \
 #    to the internet, which is the exact hole roadmap item A5 closed.
 doctl databases firewalls append <new-id> --rule ip_addr:<your-ip>
 
-# 4. Compare row counts per table and django_migrations against step 1,
-#    connecting to Clarice_todo (not defaultdb) on the restored cluster.
+# 4. Compare every table's row count against step 1. Connect to Clarice_todo,
+#    NOT defaultdb -- that mistake looks exactly like a failed restore.
+#    Empty output is a pass; anything printed is a table that did not come back
+#    whole, and django_migrations is in there with the rest.
+infra/table-counts.sh 'postgresql://user:pass@<new-host>:<port>/Clarice_todo?sslmode=require' \
+  > restored-counts.txt
+diff live-counts.txt restored-counts.txt && echo "row counts match"
 
 # 5. Then check what the restore still *enforces*, which step 4 cannot see.
-#    Row counts and django_migrations are data; the append-only trigger, the
-#    depth-one triggers, the vector extension and mention_unique's NULLS NOT
-#    DISTINCT are DDL. A restore missing all of them passes step 4 exactly,
-#    because the migration rows say the migration ran and the trigger it
-#    created is not a row.
+#    Row counts and django_migrations are data; the extension, the append-only
+#    and depth-one triggers, mention_unique's NULLS NOT DISTINCT and the task
+#    core's five constraints are DDL. A restore missing every one of them
+#    passes step 4 exactly, because the migration rows say the migration ran
+#    and the trigger it created is not a row.
 infra/check-restore-integrity.sh   'postgresql://user:pass@<new-host>:<port>/Clarice_todo?sslmode=require'
 
 # 6. Tear it down. It bills by the hour.
@@ -159,14 +167,32 @@ matched the live cluster exactly — `lists_item` 24, `lists_list` 17,
 from the 2026-07-31 06:56 UTC backup. Provisioning the clone took about
 seven minutes end to end.
 
-**That pass is narrower than it reads, and the schema has moved under it.** Step
-4 compares row counts per table and `django_migrations` — nothing else. Since
-August 1 the database has gained the `vector` extension, `ActivityEvent`'s
-append-only triggers, and the knowledge core's tables; the migration count is 74,
-not 53. A restore that came back without the extension or without the triggers
-would pass this drill exactly as written and then fail on the first write. Before
-calling the next run a pass, add explicit checks for extensions (`\dx`) and
-triggers (`information_schema.triggers`) to step 4.
+**That pass is narrower than it reads, and the schema has moved a long way under
+it.** It compared row counts and `django_migrations` and nothing else, across 18
+tables at 53 migrations. There are 46 tables now. Since August 1 the database has
+gained the `vector` extension, `ActivityEvent`'s append-only triggers, the
+depth-one triggers and the knowledge core's tables — none of which is a row, and
+all of which a count-only drill reports as fine before failing on the first
+write.
+
+**Closed August 19, 2026, and this paragraph's own instruction is superseded
+rather than done.** It asked for `\dx` and `information_schema.triggers` at step
+4. Step 5 answers both, and answers them *behaviourally* — attempting the write
+the guarantee should refuse, rather than reading a name out of a catalogue that
+a disabled trigger satisfies just as well. Do not add the presence checks; they
+would be the weaker half of something already covered.
+
+What did need doing, and was: step 5 checked the knowledge core's DDL and none
+of the task core's, so a restore that lost `unique_active_item`,
+`unique_active_arealess_item`, `unique_open_checklist_step_text`,
+`valid_item_status_timestamps` and `valid_project_completion` printed *"All
+checked guarantees are intact."* All five are checked now, and step 4 is a diff
+rather than a comparison by eye over forty-six tables at the end of a billed
+hour.
+
+**So the next run is the first that can honestly be called a pass**, and what it
+must record is here rather than left to memory: the migration count and engine
+version it ran at, that step 4's diff was empty, and that step 5 exited zero.
 
 Three things worth knowing before the next one:
 

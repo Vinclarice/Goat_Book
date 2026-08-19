@@ -41,6 +41,86 @@ outliving its work.
   the Tailwind pair. If a list like this exists again, check the code before
   believing it.
 
+## The mail transport — August 18, 2026, `jackdaw`
+
+**No mail had left this droplet for at least three days and nothing said so.**
+DigitalOcean blocks outbound 25, 465 and 587 on every Droplet, so the digest,
+password resets, deletion warnings and every contact-form message went into a
+SYN blackhole that took four and a half minutes to give up. Three Sentry reports
+read as a flaky relay. Only three arrived because the digest skips users with
+nothing due and the contact form is rarely used — not because it usually worked.
+
+**The diagnosis is the part worth keeping.** `smtp.resend.com` resolves to two
+IPv4 addresses, and `socket.create_connection` walks them until the kernel
+exhausts its SYN retries at ~127s each: 2 × ~135s is the 271 seconds the August
+16 breadcrumbs span, with `raise exceptions[0]` firing because both failed.
+Resend itself answered an ordinary network in 0.15s throughout.
+
+Sending moved to Resend's HTTPS API — reachable from that host, where an
+unauthenticated POST returns 401 rather than hanging. Refused along the way: a
+support ticket to unblock, which leaves the application one policy decision from
+this again; a queue, which is right at a scale this does not have; and an HTTP
+dependency, when `requirements.txt` has ten entries and this is one POST.
+
+**What the backend refuses to do is most of its design.** Only a 2xx counts as
+sent and Resend's own message is carried into the error, because B4 exists
+precisely because a provider returned success for a message it had discarded. It
+refuses attachments and HTML rather than delivering something diminished,
+honours `fail_silently`, bounds the request with `EMAIL_TIMEOUT`, and keys an
+idempotency header on the whole payload so an hourly digest retry cannot
+double-send.
+
+**Mail failures stopped taking pages with them.** The contact form keeps the
+visitor's text and offers an address that does not depend on what just failed;
+`signup` no longer leaves a real account behind a 500; and the password reset
+stays deliberately indistinguishable between "no such account" and "the send
+failed" — the page that says otherwise is the page that discloses which
+addresses are registered.
+
+### What it taught
+
+- **Two defects were findable only by deploying, and both were mine.** The image
+  build broke because making `resend` the default *and* requiring its key at boot
+  together demanded a variable the Dockerfile does not set. Then the first send
+  failed `403 error code: 1010` — Cloudflare, not Resend, refusing
+  `Python-urllib` by signature. Every test in `test_mail.py` injects a transport
+  or patches `urlopen` so the suite stays offline, which is correct and is
+  exactly why neither could surface there. Both have tests now that would.
+- **A verification that cannot distinguish "we fixed it" from "it started
+  working" is not a verification.** The drill kept deliberately: SMTP is *still*
+  blocked from that host, checked after the deploy, so HTTPS is demonstrably
+  what carries the mail.
+- **Three incidents in three days were all already fixed and undeployed.** The
+  August 18 digest crash was D2, closed twelve days of commits earlier. Work
+  sitting in `main` protects nobody.
+
+## Operational gaps — August 18, 2026
+
+The four the review named, closed together. Each turned out to have something its
+one-line summary did not carry.
+
+- **A rollback path.** The image is tagged by commit and four are kept, so a bad
+  deploy has something to go back to. The identifier is a bare SHA rather than
+  the `git describe` already registered — that resolves to the nearest
+  *annotated* tag, and this repository's own `DEPLOYED-<date>/<time>` convention
+  is full of slashes Docker tags forbid. **Documented with its limit**: rolling
+  the image back does not roll the database back.
+- **Scheduled-job visibility.** `/healthz/scheduled`, watching *outcomes* rather
+  than heartbeats — which catches the job running and failing, or running and
+  skipping somebody, both of which ping identically to a healthy run. No new
+  model, because every signal already existed. Separate from `/healthz` because a
+  late cron job is not the site being down.
+- **The backup check that had never run.** Scheduled in CI, not on the droplet:
+  it needs `doctl` authenticated, and that is a decision about where a
+  DigitalOcean token lives rather than a cron line. Run against production while
+  wiring it — backups were 16 hours old and current, which nothing had
+  established either.
+- **The restore drill.** It compared row counts and `django_migrations`, which
+  are both *data*; every guarantee the schema makes is DDL. A restore missing all
+  of it passed. The new step checks behaviour where it can — proved by disabling
+  the append-only trigger and watching the catalogue check report `ok` while the
+  UPDATE it exists to refuse was accepted.
+
 ## Code review findings — closed from August 18, 2026
 
 Findings from [`code-review-2026-08-16.md`](code-review-2026-08-16.md), taken in

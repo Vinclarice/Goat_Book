@@ -97,9 +97,11 @@ re-add it here.
   August 18, 2026 in
   [`navigation-and-identity-plan.md`](navigation-and-identity-plan.md), which
   owns the sequence and carries its design in two comps rather than in prose.
-  **Step 1 is done** — the ledger palette in both themes, the three typefaces
-  self-hosted, and a 44px touch target that grows the hit area rather than the
-  button; **steps 2 to 6 are open.** The three direction decisions it rests on — full re-theme,
+  **Steps 1 and 2 are done** — the ledger palette in both themes, the three
+  typefaces self-hosted, a 44px touch target that grows the hit area rather
+  than the button, and `/mind/` reading the same tokens and the same theme
+  script as everything else, which closes the third of the application the
+  toggle never reached; **steps 3 to 6 are open.** The three direction decisions it rests on — full re-theme,
   the A+B wedge for the signed-out page's positioning, one app bar over three
   reconciled navs — are Vince's, taken the same day; **Part 9 #1, whether this
   is a business, stays open and still gates Phases 3–5.** Its step 1 is also

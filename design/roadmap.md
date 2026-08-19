@@ -76,12 +76,21 @@ re-add it here.
   showing its evidence and requiring confirmation. **The next codename is held
   for it** — see the navigation entry below, which held it deliberately.
 
-  **Shipped so far, on `main` and undeployed**: unresolved questions as a read
-  (increment 1), `Project.purpose` with its API (increment 3), and project
-  briefs end to end from retrieval to endpoint (increment 4). All three stop at
-  the same line — **server-side done, no interface** — because the navigation
-  work owned the presentation layer while they were written. That hold expired
-  when it shipped.
+  **Five of the six are complete, on `main` and undeployed.** Commitments read
+  out of the journal and answered beside the writing (2); a project that can say
+  what it is for (3); a brief that retrieves what bears on it, citing the words
+  that selected each item (4); and a weekly review that finally names what is
+  still open and what arrives next (5). **Increment 1 is the exception** — its
+  read shipped, its section on `/mind/review/` waits on two design questions the
+  plan names: how "answered" is recorded when nothing is named as the answer,
+  and where "not a question" persists.
+
+  The presentation hold that shaped 1, 3 and 4 has expired; the navigation work
+  owned that layer while their server halves were written, which is why they
+  landed without an interface and why 3 and 4 were finished afterwards.
+
+  **Increment 6, the weekly-plan draft, is all that is left**, and S9 —
+  intentions above the day — is its one prerequisite.
 
   **All four of the plan's decisions are answered**, three on August 18 and one
   just after midnight on the 19th: no generated prose yet and the condition that

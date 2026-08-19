@@ -85,8 +85,14 @@ re-add it here.
   Two of `product-stories.md`'s target-model items moved as prerequisites rather
   than as features: **S9's weekly intention** exists, and **S3 no longer
   requires `Item.effort`** — capacity is derived from `DailyFocus` history, so
-  there are no estimates to go unentered. Neither story's verdict moved, and
-  that file owns whether they ever do.
+  there are no estimates to go unentered. ~~Neither story's verdict moved~~ —
+  **re-scored against this release later the same day, and three verdicts did**;
+  that file owns the score and is not quoted here.
+
+  **What the re-score found and this file has to carry: S9's write path does not
+  exist.** The model, the service, the read and the Day payload all shipped, and
+  nothing — no endpoint, no form — can set a weekly intention, so the draft
+  displays a value no person can produce. Open, unscheduled, and cheap.
 
   The narrative, the four decisions and the three silent-nothings the build
   turned up are in [`roadmap-history.md`](roadmap-history.md); the plan is a
@@ -382,7 +388,8 @@ remain out of scope until the public-readiness bar is genuinely met.
 Production releases use alphabetic bird codenames: `albatross`, `bittern`,
 `crane`, `dunlin`, `fulmar`, `godwit`, `heron`. **Tag only after production is
 verified.** The letter carries; the bird is chosen when the release ships. The
-sequence skips E — Vince's call, August 3, 2026 — and the next release takes I.
+sequence skips E — Vince's call, August 3, 2026. Since then `ibis`, `jackdaw`
+and `kestrel` have taken I, J and K, so **the next release takes L.**
 
 - `LIVE` is a moving tag for the code currently running. It is the only tag
   ever overwritten, which is safe precisely because the position it leaves is

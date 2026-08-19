@@ -13,9 +13,12 @@ work owns the presentation layer this week.
   twice.
 - **Increment 3's model and API** — `0fc78d9`, `Project.purpose` with migration
   `0038`, twelve tests, contract and client regenerated. **No React text area**,
-  so nothing can write a purpose yet except the API — a field no surface can
-  fill is the unswitched seam this repository keeps catching, and **increment 4
-  should not start until one exists.**
+  so nothing can write a purpose yet except the API.
+- **Increment 4's retrieval** — `9cfc16e`, `queries.material_bearing_on` and ten
+  tests. Text-anchored, so this half needed no way to *write* a purpose; the
+  blocker recorded above was about real use, and fixtures answer a test. What
+  it still needs is the caller that turns a project into a statement, and an
+  endpoint.
 
 Increment 2 has not started and still waits on the design question its own
 section names.
@@ -181,7 +184,7 @@ on, not because anybody is undecided about them.
 | 1 | Unresolved-question review with cited passages | nothing — promotable now |
 | 2 | Commitment suggestions from journal entries | one design question, below, answered before code |
 | 3 | A short purpose / desired-outcome field for projects | nothing — task core, charter §4 |
-| 4 | Project preparation briefs that retrieve relevant material | step 3 **including a way to write a purpose**, and a corpus |
+| 4 | Project preparation briefs that retrieve relevant material | step 3; its retrieval needed no way to *write* a purpose, but a brief worth opening does |
 | 5 | Extractive weekly summaries with citations | nothing |
 | 6 | A weekly-plan draft | the product collecting capacity and weekly intentions (S3, S9) |
 

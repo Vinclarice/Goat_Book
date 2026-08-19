@@ -2153,6 +2153,10 @@
             "title": "Title",
             "type": "string"
           },
+          "purpose": {
+            "title": "Purpose",
+            "type": "string"
+          },
           "due_date": {
             "anyOf": [
               {
@@ -2202,6 +2206,7 @@
         "required": [
           "id",
           "title",
+          "purpose",
           "due_date",
           "is_completed",
           "completed_at",
@@ -2218,6 +2223,17 @@
           "title": {
             "title": "Title",
             "type": "string"
+          },
+          "purpose": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Purpose"
           },
           "due_date": {
             "anyOf": [
@@ -2238,7 +2254,7 @@
         "type": "object"
       },
       "ProjectUpdateIn": {
-        "description": "Every field optional; absent means \"leave it alone\".\n\n`due_date` has to distinguish absent from explicitly null, because\nclearing a due date and not mentioning it are different requests and\n`str | None = None` cannot tell them apart on its own. The handler reads\n`exclude_unset` rather than inventing a sentinel default.",
+        "description": "Every field optional; absent means \"leave it alone\".\n\n`due_date` has to distinguish absent from explicitly null, because\nclearing a due date and not mentioning it are different requests and\n`str | None = None` cannot tell them apart on its own. The handler reads\n`exclude_unset` rather than inventing a sentinel default.\n\n**`purpose` needs none of that**, and the asymmetry is worth naming\nbecause it looks like an oversight. Its cleared state is `\"\"`, not null,\nso `None` is free to mean exactly one thing -- the client did not mention\nthe field. That is what blank-not-null buys at the boundary.",
         "properties": {
           "title": {
             "anyOf": [
@@ -2250,6 +2266,17 @@
               }
             ],
             "title": "Title"
+          },
+          "purpose": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Purpose"
           },
           "due_date": {
             "anyOf": [

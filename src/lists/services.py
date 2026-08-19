@@ -741,17 +741,28 @@ FOREIGN_PROJECT_ERROR = "That project isn't yours"
 
 
 @transaction.atomic
-def create_project(owner, title, due_date=None):
+def create_project(owner, title, due_date=None, purpose=""):
     """A new, standalone project -- project-workspace-plan.md 2.
 
     Owner is passed directly rather than derived: a Project has no parent
     record left to borrow it from, the same shape create_list_with_item
     already uses.
+
+    `purpose` is stripped like the title and, unlike it, may end up empty --
+    it is optional by design (see the field). Whitespace-only collapses to
+    "" so that "the person typed spaces" and "the person wrote nothing"
+    are one state rather than two, which is the same reason the field is
+    blank rather than null.
     """
     normalized = (title or "").strip()
     if not normalized:
         raise TaskConflict(EMPTY_PROJECT_TITLE_ERROR)
-    return Project.objects.create(owner=owner, title=normalized, due_date=due_date)
+    return Project.objects.create(
+        owner=owner,
+        title=normalized,
+        due_date=due_date,
+        purpose=(purpose or "").strip(),
+    )
 
 
 @transaction.atomic

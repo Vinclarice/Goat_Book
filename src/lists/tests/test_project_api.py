@@ -337,3 +337,116 @@ class TaskProjectDisplayApiTest(TestCase):
         )
 
         self.assertEqual(response.status_code, 400)
+
+
+class ProjectPurposeEndpointTest(TestCase):
+    """The HTTP half of S10's purpose field.
+
+    Model and service behaviour is in test_projects.py, per this file's own
+    split. What is here is what a client can read and write, plus the isolation
+    case every owner-scoped, ID-taking route gets.
+    """
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            "alice", "alice@example.com", "a secure password"
+        )
+        self.other = User.objects.create_user(
+            "bob", "bob@example.com", "another secure password"
+        )
+        self.client.force_login(self.user)
+
+    def patch(self, path, body):
+        return self.client.patch(
+            path, data=json.dumps(body), content_type="application/json",
+        )
+
+    def post(self, path, body):
+        return self.client.post(
+            path, data=json.dumps(body), content_type="application/json",
+        )
+
+    def test_a_project_reports_its_purpose(self):
+        project = services.create_project(
+            self.user, "Website launch", purpose="Stop enquiries going to email.",
+        )
+
+        response = self.client.get(f"/api/v1/projects/{project.id}")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["purpose"], "Stop enquiries going to email.")
+
+    def test_a_project_without_one_reports_an_empty_string(self):
+        """Never null over the wire.
+
+        The client renders a text area either way, and a `None` it has to
+        coerce is a second representation of "nothing written" reaching
+        JavaScript -- exactly what blank-not-null exists to prevent.
+        """
+        project = services.create_project(self.user, "Website launch")
+
+        response = self.client.get(f"/api/v1/projects/{project.id}")
+
+        self.assertEqual(response.json()["purpose"], "")
+
+    def test_a_project_can_be_created_with_a_purpose(self):
+        response = self.post(
+            "/api/v1/projects",
+            {"title": "Website launch", "purpose": "Stop enquiries going to email."},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["purpose"], "Stop enquiries going to email.")
+
+    def test_a_purpose_can_be_written_after_the_fact(self):
+        project = services.create_project(self.user, "Website launch")
+
+        response = self.patch(
+            f"/api/v1/projects/{project.id}",
+            {"purpose": "Stop enquiries going to email."},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        project.refresh_from_db()
+        self.assertEqual(project.purpose, "Stop enquiries going to email.")
+
+    def test_a_purpose_can_be_cleared(self):
+        """Empty string clears; absent leaves alone.
+
+        Unlike `due_date`, this needs no absent-versus-null dance: "" is the
+        cleared state and `None` only ever means the client did not mention the
+        field. Tested because that asymmetry with the neighbouring field is the
+        kind of thing a later reader would assume away.
+        """
+        project = services.create_project(
+            self.user, "Website launch", purpose="Something I no longer mean.",
+        )
+
+        response = self.patch(f"/api/v1/projects/{project.id}", {"purpose": ""})
+
+        self.assertEqual(response.status_code, 200)
+        project.refresh_from_db()
+        self.assertEqual(project.purpose, "")
+
+    def test_a_patch_that_omits_purpose_leaves_it_alone(self):
+        project = services.create_project(
+            self.user, "Website launch", purpose="Stop enquiries going to email.",
+        )
+
+        response = self.patch(
+            f"/api/v1/projects/{project.id}", {"title": "Website relaunch"}
+        )
+
+        self.assertEqual(response.status_code, 200)
+        project.refresh_from_db()
+        self.assertEqual(project.title, "Website relaunch")
+        self.assertEqual(project.purpose, "Stop enquiries going to email.")
+
+    def test_cannot_write_a_purpose_onto_someone_else_s_project(self):
+        theirs = services.create_project(self.other, "Their launch")
+
+        response = self.patch(f"/api/v1/projects/{theirs.id}", {"purpose": "Mine now."})
+
+        self.assertEqual(response.status_code, 404)
+        theirs.refresh_from_db()
+        self.assertEqual(theirs.purpose, "")

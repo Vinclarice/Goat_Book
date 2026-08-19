@@ -284,3 +284,74 @@ class ProjectReadTest(TestCase):
         found = list(project_reader.projects_for(self.owner))
 
         self.assertEqual(found[0].open_task_count, 0)
+
+
+class ProjectPurposeTest(TestCase):
+    """What the project is *for*, in the person's own words.
+
+    `product-stories.md` S10 wants purpose, notes and an abandonment condition
+    living with the project; this is the first of the three, and it is here
+    before the other two because `planning-assistant-plan.md` increment 4 needs
+    something to anchor retrieval against. A project with only a title gives a
+    matcher nothing -- which is why this field exists now rather than when the
+    workspace is otherwise complete.
+
+    **Blank, never null**, following `DailyEntry`'s three text fields exactly:
+    "wrote nothing" and "cleared it" are the same state, so nothing downstream
+    has to handle both. Plain text, per roadmap.md's settled boundary.
+    """
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            "alice", "alice@example.com", "a secure password"
+        )
+
+    def test_a_new_project_has_an_empty_purpose_rather_than_none(self):
+        project = services.create_project(self.user, "Website launch")
+
+        self.assertEqual(project.purpose, "")
+
+    def test_a_project_can_be_created_with_a_purpose(self):
+        project = services.create_project(
+            self.user,
+            "Website launch",
+            purpose="Ship the new site so enquiries stop going to email.",
+        )
+
+        project.refresh_from_db()
+        self.assertEqual(
+            project.purpose,
+            "Ship the new site so enquiries stop going to email.",
+        )
+
+    def test_a_purpose_is_stripped(self):
+        """The same normalisation the title already gets.
+
+        Leading whitespace is invisible in a text area and would otherwise be
+        the first thing increment 4's matcher reads.
+        """
+        project = services.create_project(
+            self.user, "Website launch", purpose="  Ship the new site.\n\n",
+        )
+
+        self.assertEqual(project.purpose, "Ship the new site.")
+
+    def test_a_purpose_of_only_whitespace_is_stored_as_empty(self):
+        project = services.create_project(
+            self.user, "Website launch", purpose="   \n ",
+        )
+
+        self.assertEqual(project.purpose, "")
+
+    def test_a_project_with_no_purpose_is_still_valid(self):
+        """Optional, and staying optional.
+
+        A required purpose would put a writing task in front of somebody who
+        wants to group three tasks, which is the toll `confirm_actionable`
+        refuses to charge for filing. Increment 4 simply has nothing to say
+        about a project that has not been given one.
+        """
+        project = services.create_project(self.user, "Website launch")
+
+        self.assertEqual(project.purpose, "")
+        self.assertTrue(Project.objects.filter(pk=project.pk).exists())

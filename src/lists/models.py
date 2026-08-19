@@ -427,6 +427,27 @@ class Project(models.Model):
         "accounts.User", related_name="projects", on_delete=models.CASCADE,
     )
     title = models.CharField(max_length=100)
+    # What the project is *for*, in the person's own words. The first of
+    # product-stories.md S10's three (purpose, notes, abandonment condition),
+    # and here before the other two because planning-assistant-plan.md
+    # increment 4 needs something to anchor retrieval against: a project
+    # carrying only a title gives a matcher nothing, which is why S16's
+    # "opening a project surfaces what you learned last time" is currently
+    # impossible for want of a field rather than for want of a mechanic.
+    #
+    # Blank rather than null, exactly as DailyEntry's three text fields are:
+    # "wrote nothing" and "cleared it" are the same state, so nothing
+    # downstream has to handle both, and no client has to coerce a None into
+    # a text area. Plain text, per roadmap.md's settled boundary.
+    #
+    # Optional, and staying optional. Requiring it would put a writing task
+    # in front of somebody who wants to group three areas -- the same toll
+    # confirm_actionable refuses to charge for filing. Increment 4 simply has
+    # nothing to say about a project nobody gave a purpose.
+    #
+    # TextField rather than a capped CharField: "short" is guidance to the
+    # person, not an invariant worth a validation error mid-thought.
+    purpose = models.TextField(blank=True, default="")
     due_date = models.DateField(blank=True, null=True)
     is_completed = models.BooleanField(default=False)
     completed_at = models.DateTimeField(blank=True, null=True)

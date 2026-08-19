@@ -353,6 +353,10 @@ def task_detail(request, item_id: int):
 class ProjectOut(Schema):
     id: int
     title: str
+    # Always a string, never null -- the model is blank-not-null and the wire
+    # keeps that, so a client has one representation of "nothing written"
+    # rather than two to coerce.
+    purpose: str
     due_date: str | None
     is_completed: bool
     completed_at: str | None
@@ -372,6 +376,14 @@ class ProjectAreaOut(Schema):
 
 class ProjectCreateIn(Schema):
     title: str
+    # `str | None = None` rather than `str = ""`, which is the shape the field
+    # actually wants and not what it looks like. A pydantic default reaches the
+    # contract as `"default": ""`, and openapi-typescript 7 emits any property
+    # carrying a default as *required* -- it always has a value, so the
+    # generator says so -- which made `purpose` mandatory at every call site
+    # that creates a project and broke the build. `due_date` above already has
+    # this shape, which is why it did not.
+    purpose: str | None = None
     due_date: str | None = None
 
 
@@ -382,9 +394,15 @@ class ProjectUpdateIn(Schema):
     clearing a due date and not mentioning it are different requests and
     `str | None = None` cannot tell them apart on its own. The handler reads
     `exclude_unset` rather than inventing a sentinel default.
+
+    **`purpose` needs none of that**, and the asymmetry is worth naming
+    because it looks like an oversight. Its cleared state is `""`, not null,
+    so `None` is free to mean exactly one thing -- the client did not mention
+    the field. That is what blank-not-null buys at the boundary.
     """
 
     title: str | None = None
+    purpose: str | None = None
     due_date: str | None = None
     is_completed: bool | None = None
 
@@ -416,6 +434,7 @@ def _project_out(project, areas=None):
     return {
         "id": project.id,
         "title": project.title,
+        "purpose": project.purpose,
         "due_date": project.due_date.isoformat() if project.due_date else None,
         # A finished project is never overdue regardless of due_date -- the
         # same rule tasks and areas already apply, extended here rather than
@@ -467,7 +486,10 @@ def project_detail(request, project_id: int):
 def create_project(request, payload: ProjectCreateIn):
     try:
         project = services.create_project(
-            request.user, payload.title, due_date=_parse_date(payload.due_date),
+            request.user,
+            payload.title,
+            due_date=_parse_date(payload.due_date),
+            purpose=payload.purpose or "",
         )
     except services.TaskConflict as error:
         raise HttpError(409, str(error))
@@ -493,6 +515,11 @@ def update_project(request, project_id: int, payload: ProjectUpdateIn):
             raise HttpError(409, services.EMPTY_PROJECT_TITLE_ERROR)
         project.title = title
         fields.append("title")
+    if payload.purpose is not None:
+        # No exclude_unset dance: "" is the cleared state, so None already
+        # means only "not mentioned". See ProjectUpdateIn.
+        project.purpose = payload.purpose.strip()
+        fields.append("purpose")
     if "due_date" in payload.dict(exclude_unset=True):
         project.due_date = _parse_date(payload.due_date)
         fields.append("due_date")

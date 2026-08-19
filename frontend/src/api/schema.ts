@@ -994,6 +994,8 @@ export interface components {
             id: number;
             /** Title */
             title: string;
+            /** Purpose */
+            purpose: string;
             /** Due Date */
             due_date: string | null;
             /** Is Completed */
@@ -1013,6 +1015,8 @@ export interface components {
         ProjectCreateIn: {
             /** Title */
             title: string;
+            /** Purpose */
+            purpose?: string | null;
             /** Due Date */
             due_date?: string | null;
         };
@@ -1024,10 +1028,17 @@ export interface components {
          *     clearing a due date and not mentioning it are different requests and
          *     `str | None = None` cannot tell them apart on its own. The handler reads
          *     `exclude_unset` rather than inventing a sentinel default.
+         *
+         *     **`purpose` needs none of that**, and the asymmetry is worth naming
+         *     because it looks like an oversight. Its cleared state is `""`, not null,
+         *     so `None` is free to mean exactly one thing -- the client did not mention
+         *     the field. That is what blank-not-null buys at the boundary.
          */
         ProjectUpdateIn: {
             /** Title */
             title?: string | null;
+            /** Purpose */
+            purpose?: string | null;
             /** Due Date */
             due_date?: string | null;
             /** Is Completed */

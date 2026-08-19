@@ -24,6 +24,10 @@
   gap: 1.1rem;
   padding-right: 1rem;
   border-right: 1px solid var(--color-border);
+  /* Navigation is machinery, and this is a CSS module -- outside the reach
+     of the element selectors in tailwind.css's base layer, which is why it
+     has to say so itself rather than inheriting the serif from html. */
+  font-family: var(--font-sans);
 }
 
 .group h3 {
@@ -90,10 +94,15 @@
   white-space: nowrap;
 }
 
+/* A count is a figure, so it takes the figure face and its tabular
+   digits -- otherwise a column of area counts fails to line up, which is
+   the one thing the mono is in this design to prevent. */
 .count {
   margin-left: auto;
   font-size: 0.75rem;
   color: var(--color-muted-foreground);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
 }
 
 /* This marks an area's overdue count, so it is the overdue token rather

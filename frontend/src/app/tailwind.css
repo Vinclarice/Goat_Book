@@ -2,6 +2,26 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/* Self-hosted through fontsource rather than linked from Google, because
+   this stylesheet is served to signed-out visitors and a font request to a
+   third party is a request we did not have to make on their behalf.
+   `--font-sans` named Inter for months and loaded nothing; these are the
+   files that make the stack true.
+
+   Every entry point is latin-only except Archivo's, whose variable build
+   ships one file per subset behind `unicode-range` -- so a browser still
+   fetches only the latin one, and only the build directory carries the
+   rest. Weights are the ones actually used: Archivo is a single variable
+   file covering 100-900, Spectral is regular, italic and semibold, and
+   the mono is regular and medium. Adding a weight means adding an import;
+   that friction is deliberate. */
+@import "@fontsource-variable/archivo/wght.css";
+@import "@fontsource/spectral/latin-400.css";
+@import "@fontsource/spectral/latin-400-italic.css";
+@import "@fontsource/spectral/latin-600.css";
+@import "@fontsource/ibm-plex-mono/latin-400.css";
+@import "@fontsource/ibm-plex-mono/latin-500.css";
+
 /* Tailwind's dark: variant keys off our own theme-resolution script's
    attribute, not the .dark class shadcn's CLI assumes by default -- see
    frontend_tags.theme_resolution_script(). */
@@ -66,6 +86,26 @@
   --color-status-today: #d9a441;
   --color-status-week: #93a7bb;
   --color-destructive-foreground: #141712;
+
+  /* Three roles, and the split is a rule rather than a palette.
+     **Sans is machinery** -- controls, labels, navigation, headings; the
+     equipment you operate. **Serif is the record** -- anything a person
+     wrote or is being told, which in this application is most of the
+     content. **Mono is anything that has to add up**, and it is
+     load-bearing rather than decorative: the identity rests on figures
+     lining up, and a denominator you cannot scan is the one thing this
+     product cannot afford.
+
+     Declared here and not in `@theme inline` on purpose. That block is for
+     values referencing other values, and these are literal stacks -- but
+     the operative reason is that test_frontend_style_contract.py reads the
+     first `@theme` block only, so a token declared in the inline one is
+     invisible to it and a CSS module naming it would fail silently in
+     exactly the way that test exists to prevent. */
+  --font-sans: "Archivo Variable", ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-serif: Spectral, Georgia, "Times New Roman", serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 @layer base {
@@ -152,8 +192,28 @@
   * {
     @apply border-border outline-ring/50;
   }
+  /* The page reads in the serif, because most of what is on it is the
+     record: a task somebody wrote, a reflection, a captured thought. The
+     sans is then applied to the machinery around it rather than the other
+     way round -- which is the honest ratio, and also the safer edit, since
+     an element that slips through the list below renders as content rather
+     than as a control that forgot its typeface. */
   html {
+    @apply font-serif;
+  }
+
+  /* Machinery. Form controls need re-asserting because Tailwind's preflight
+     sets them to `inherit`, which now means the serif. */
+  h1, h2, h3, h4, h5, h6,
+  button, input, select, textarea, optgroup, label, legend {
     @apply font-sans;
+  }
+
+  /* Anything that has to add up. `<code>` and `<pre>` already default to a
+     mono stack; naming ours keeps them from being the one place the old
+     system font survives. */
+  code, kbd, samp, pre {
+    @apply font-mono;
   }
 }
 
@@ -206,18 +266,9 @@
    simplification for now. Revisit if a component that leans on it for
    passive hover states (DropdownMenu, Command) reads as too loud. */
 @theme inline {
-  /* Inter was named here and never loaded -- no @font-face, no link tag,
-     one declaration in the whole tree -- so every page has been rendering
-     in the system fallback while the stack claimed otherwise. Naming a
-     face you do not serve is worse than not naming one: it reads as a
-     decision in review and is a no-op in the browser.
-
-     The stack is honest until the real families are served. The plan's
-     typography (Archivo for machinery, Spectral for the record, IBM Plex
-     Mono for anything that has to add up) lands with the font files, not
-     before. */
-  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
-    "Segoe UI", sans-serif;
+  /* --font-sans, --font-serif and --font-mono are declared in the @theme
+     block above rather than here; see the note there for why. Inter used
+     to sit at this line naming a face nothing served. */
   --color-background: var(--color-bg);
   --color-foreground: var(--color-text);
   --color-card: var(--color-surface);

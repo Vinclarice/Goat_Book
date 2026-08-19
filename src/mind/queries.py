@@ -583,6 +583,8 @@ def material_bearing_on(
     *,
     limit: int = BRIEF_LIMIT,
     min_distinctive_terms: int = BRIEF_MIN_DISTINCTIVE_TERMS,
+    source_node_id: int | None = None,
+    since: datetime | None = None,
     index=None,
 ) -> list[RelevantMaterial]:
     """Notes bearing on a statement the person wrote, strongest first.
@@ -620,14 +622,30 @@ def material_bearing_on(
         owner=owner,
         limit=limit,
         min_distinctive_terms=min_distinctive_terms,
+        # **The source, when the statement came from a stored note.** Two
+        # things depend on it and only one is obvious. It keeps the note from
+        # matching itself, which is the visible half -- and it removes the note
+        # from every document-frequency count, which is the half that decides
+        # whether anything matches at all: the terms carrying the match are
+        # exactly the ones the source contains, so leaving it in inflates each
+        # of their frequencies by one and the rare-term gate rejects the lot.
+        # `similar_to` says so; passing only an exclusion silently found
+        # nothing.
+        #
+        # None for the project brief, whose statement is a purpose rather than
+        # a note, so there is no source to discount.
+        source_node_id=source_node_id,
     )
     if not matches:
         return []
 
-    live = {
-        node.pk: node
-        for node in live_nodes(owner).filter(pk__in=[m.node_id for m in matches])
-    }
+    candidates = live_nodes(owner).filter(pk__in=[m.node_id for m in matches])
+    if since is not None:
+        # Strictly after, for "mentioned again": a recurrence is something that
+        # happened *since* the thing recurred from, and including earlier notes
+        # would quietly turn the count into "related at all".
+        candidates = candidates.filter(captured_at__gt=since)
+    live = {node.pk: node for node in candidates}
     results = []
     for match in matches:
         node = live.get(match.node_id)
@@ -641,3 +659,73 @@ def material_bearing_on(
             )
         )
     return results[:limit]
+
+
+# How many later notes to fetch per question. Small on purpose: the number is
+# the point ("mentioned again in two later entries") and the passages are what
+# make it checkable, but a question that recurred nine times does not need nine
+# quotations to be believed.
+QUESTION_MENTION_LIMIT = 3
+
+
+@dataclass(frozen=True)
+class OpenQuestion:
+    """A question still hanging, with what has happened since.
+
+    `days_open` is the fact that makes it a loose end rather than a note —
+    "you asked this" is unremarkable, "twelve days ago" is not.
+    """
+
+    node: Node
+    days_open: int
+    mentions: list
+
+    @property
+    def mention_count(self) -> int:
+        return len(self.mentions)
+
+
+def unresolved_questions_in_context(
+    owner, *, now: datetime, limit: int = 5
+) -> list[OpenQuestion]:
+    """Open questions, how long they have been open, and whether they came back.
+
+    **A separate read from `unresolved_questions`, and the cost is why.** This
+    runs one full-text retrieval per question; the weekly review's loose-ends
+    list wants the questions cheaply and says nothing about recurrence, so
+    making it pay for context it does not render would be a tax on the surface
+    that shows the most.
+
+    **"Mentioned again" reuses the rare-term gate** rather than inventing a
+    second idea of relatedness. A later note counts when it shares vocabulary
+    appearing in almost none of this person's other notes — the signal measured
+    at 67% precision, and the same one the project brief anchors on. A count
+    built on plain topical similarity would be the vaguely-on-topic panel the
+    detector registry rejects, wearing a number.
+
+    **Later only, and the question is never its own mention.** A recurrence is
+    something that happened *after* the asking; counting earlier notes would
+    quietly turn this into "related at all". And a statement matches its own
+    text perfectly, so the question has to be excluded explicitly —
+    `material_bearing_on` takes text and has no source to know about.
+
+    Every mention carries the terms that matched it. "Mentioned again twice" is
+    a claim, and the words underneath are what let somebody disagree with it —
+    a number nobody can check is exactly what `precision.md` refuses.
+    """
+    found = []
+    for node in unresolved_questions(owner)[:limit]:
+        found.append(
+            OpenQuestion(
+                node=node,
+                days_open=(now - node.captured_at).days,
+                mentions=material_bearing_on(
+                    owner,
+                    node.original_content,
+                    limit=QUESTION_MENTION_LIMIT,
+                    source_node_id=node.pk,
+                    since=node.captured_at,
+                ),
+            )
+        )
+    return found

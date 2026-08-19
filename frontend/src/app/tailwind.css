@@ -33,8 +33,15 @@
    base_legacy.html and Bootstrap are gone as of Step 5 (final-cutover's
    redirects left it with nothing to render), so every surviving Django
    template now needs to be covered here. */
-@source "../../../src/lists/templates/base.html";
-@source "../../../src/lists/templates/app_shell.html";
+/* A glob rather than a file list. The list had to be extended by hand for
+   every new template, and had already missed one: new_list_form.html uses
+   `text-accent` and was never listed, so those utilities have never been
+   generated and that page has been rendering them as nothing. _app_bar.html
+   would have been the second miss.
+
+   Only `lists/` needs the glob -- mind/ templates carry their own stylesheet
+   and use no utilities, and the bar they include lives here. */
+@source "../../../src/lists/templates/**/*.html";
 @source "../../../src/accounts/templates/**/*.html";
 
 /* The ledger palette -- navigation-and-identity-plan.md step 1, replacing

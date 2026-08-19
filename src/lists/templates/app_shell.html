@@ -8,6 +8,14 @@
   {% token_styles %}
 </head>
 <body id="app-body" class="bg-bg text-text min-h-screen">
+  {% comment %}
+  Rendered by Django above the React root rather than by the shell itself, so
+  it is the same markup here as on the account pages and at /mind/ -- which is
+  the whole point of the bar and the one thing about it that cannot be achieved
+  from inside the SPA. It also means the bar is on screen in the first paint,
+  before the bundle has parsed.
+  {% endcomment %}
+  {% include "_app_bar.html" with core="tasks" %}
   <div id="app-root"></div>
   {% app_shell_assets %}
 </body>

@@ -1,0 +1,102 @@
+{% comment %}
+The one navigation, on every surface.
+
+Server-rendered because it has to appear on three things that share no client
+code: the Django account pages, the React shell, and `/mind/`, which carries no
+JavaScript at all and whose whole virtue is loading instantly. A React bar would
+either not reach that core or cost it that property.
+
+**`core` is passed in, not inferred.** Each including template knows which core
+it is; working it out here would mean this partial reading `request.path` and so
+knowing that the knowledge core lives under `/mind/` -- a prefix `clarice/urls.py`
+deliberately keeps to one line so it stays cheap to change. Passing it costs one
+argument and keeps that promise.
+
+What this bar carries is *where you can go*: the two cores, and the account.
+What each core then offers is a sub-nav below it, which is a different question
+and is answered per core. Areas and Projects are neither -- they are things the
+task core holds, and they stay in the rail as contents.
+{% endcomment %}
+<header class="border-b border-border">
+  <div class="flex flex-wrap items-center gap-x-5 gap-y-1 px-4 sm:px-6 min-h-14">
+
+    <a
+      class="touch-target font-sans font-bold text-sm uppercase tracking-[0.14em] inline-flex items-center gap-2"
+      href="{% url 'home' %}"
+    >
+      Clarice
+      {# The marking ink, at the smallest size it is ever used. #}
+      <span class="w-1.5 h-1.5 bg-accent" aria-hidden="true"></span>
+    </a>
+
+    {% if user.is_authenticated %}
+      {% comment %}
+      Two entries, and the label is the core rather than a surface inside it.
+      "Today" used to appear in two navigations meaning two different things --
+      here it went through /dashboard/ and honoured the landing_surface
+      preference, in the side nav it always meant /day. Naming the core removes
+      the collision instead of picking a winner: this goes to the core, the
+      sub-nav goes to the surface.
+      {% endcomment %}
+      <nav class="flex items-center gap-4 mr-auto" aria-label="Cores">
+        <a
+          href="{% url 'dashboard' %}"
+          class="touch-target font-sans text-sm inline-flex items-center border-b-2 py-1 {% if core == 'tasks' %}border-accent font-semibold text-text{% else %}border-transparent text-muted-foreground hover:text-text{% endif %}"
+          {% if core == 'tasks' %}aria-current="page"{% endif %}
+        >Tasks</a>
+        {% comment %}
+        No count, ever. CLAUDE.md is explicit: the Inbox's number measured a
+        backlog and this core is quiet by design, so a number here would turn
+        resurfacing into the thing the attention policy exists to refuse.
+        {% endcomment %}
+        <a
+          href="{% url 'capture' %}"
+          class="touch-target font-sans text-sm inline-flex items-center border-b-2 py-1 {% if core == 'mind' %}border-accent font-semibold text-text{% else %}border-transparent text-muted-foreground hover:text-text{% endif %}"
+          {% if core == 'mind' %}aria-current="page"{% endif %}
+        >Second Mind</a>
+      </nav>
+
+      <div class="flex items-center gap-3">
+        {% comment %}
+        One way in to one screen. This reverses `account_settings`, a two-line
+        view that redirects to /app/preferences -- kept rather than linking the
+        SPA route directly because one href has to work from a Django page, from
+        inside the shell, and from a core that does not know the shell's routes.
+        The redirect is the mechanism that buys that.
+        {% endcomment %}
+        <a
+          class="touch-target font-sans text-sm text-muted-foreground hover:text-text inline-flex items-center"
+          href="{% url 'account_settings' %}"
+        >{{ user.username }}</a>
+
+        {% comment %}
+        The only logout in the application now. There were two, with different
+        mechanics -- this form, and the side nav posting to /api/v1/me/logout --
+        which is one more than a session-ending control should have. The form
+        wins because it works on all three surfaces without client code, and
+        LOGOUT_REDIRECT_URL already sends it to "/".
+        {% endcomment %}
+        <form method="post" action="{% url 'logout' %}">
+          {% csrf_token %}
+          <button
+            id="id_logout"
+            class="touch-target font-sans text-sm rounded-sm border border-border px-3 py-1.5 hover:border-text"
+            type="submit"
+          >Log out</button>
+        </form>
+      </div>
+    {% else %}
+      <div class="flex items-center gap-4 ml-auto">
+        {% comment %}
+        Outside the authenticated branch on purpose: somebody locked out of
+        their account needs the support path more than anyone, and is by
+        definition not signed in when they need it.
+        {% endcomment %}
+        <a class="touch-target font-sans text-sm text-muted-foreground hover:text-text inline-flex items-center" href="{% url 'contact' %}">Contact</a>
+        <a class="touch-target font-sans text-sm text-muted-foreground hover:text-text inline-flex items-center" href="{% url 'login' %}">Log in</a>
+        <a class="touch-target font-sans text-sm font-semibold rounded-sm border border-border px-3 py-1.5 hover:border-text inline-flex items-center" href="{% url 'signup' %}">Create account</a>
+      </div>
+    {% endif %}
+
+  </div>
+</header>

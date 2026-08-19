@@ -146,6 +146,7 @@ share target that lets any app hand text straight to the capture box.
 </style>
 </head>
 <body>
+{% include "_app_bar.html" with core="mind" %}
 <div class="wrap">
   {% comment %}
   Marked from the resolved route rather than a `page` variable. It used to read
@@ -157,8 +158,22 @@ share target that lets any app hand text straight to the capture box.
   {% with here=request.resolver_match.url_name %}
   <nav>
     <a href="{% url 'capture' %}" {% if here == 'capture' %}class="here"{% endif %}>Capture</a>
-    <a href="{% url 'concepts' %}" {% if here == 'concepts' or here == 'concept' %}class="here"{% endif %}>Things</a>
-    <a href="{% url 'review' %}" {% if here == 'review' %}class="here"{% endif %}>Review{% if pending %} <span class="badge">{{ pending }}</span>{% endif %}</a>
+    {% comment %}
+    Two renames, both removing a collision rather than improving a word.
+
+    "Things" is the odd one out: the view, the URL name and the template have
+    always been `concepts`, and only the label disagreed.
+
+    "Review" is the sharper one. The task core has a Review -- the weekly one --
+    and these two named unrelated things in one application, which is the single
+    worst thing the old three navigations did. This queue is a set of proposals
+    waiting on a decision, so it says so. The badge is unchanged and still
+    appears on Capture alone, because only `_capture_context` supplies `pending`;
+    making it persistent is a separate decision about what this core is allowed
+    to nag about.
+    {% endcomment %}
+    <a href="{% url 'concepts' %}" {% if here == 'concepts' or here == 'concept' %}class="here"{% endif %}>Concepts</a>
+    <a href="{% url 'review' %}" {% if here == 'review' %}class="here"{% endif %}>Pending{% if pending %} <span class="badge">{{ pending }}</span>{% endif %}</a>
     <a href="{% url 'search' %}" {% if here == 'search' %}class="here"{% endif %}>Search</a>
     <a href="{% url 'summary' %}" {% if here == 'summary' %}class="here"{% endif %}>Numbers</a>
   </nav>

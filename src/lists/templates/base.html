@@ -14,44 +14,14 @@
   </head>
 
   <body class="bg-bg text-text min-h-screen">
-    <nav class="border-b border-border">
-      <div class="mx-auto max-w-5xl flex items-center justify-between gap-4 px-4 py-3">
-        <a class="flex items-center gap-2 font-bold" href="{% url 'home' %}">
-          <span class="grid place-items-center w-8 h-8 rounded-xl bg-accent text-accent-foreground" aria-hidden="true">✓</span>
-          <span>Clarice</span>
-        </a>
-
-        <div class="flex items-center gap-3 text-sm">
-          {# Outside the branch on purpose: someone locked out of their #}
-          {# account needs the support path more than anyone, and they are #}
-          {# by definition not authenticated when they need it. #}
-          <a class="text-muted-foreground hover:text-text" href="{% url 'contact' %}">Contact</a>
-          {% if user.is_authenticated %}
-            <a class="text-muted-foreground hover:text-text" href="{% url 'dashboard' %}">Today</a>
-            {# Inbox and Ideas stood here until Heron 4b deleted them. This nav #}
-            {# is the Django-rendered half's, and the knowledge core is now the #}
-            {# whole of it -- so it takes their place rather than being added #}
-            {# beside them. Reversed through {% url %} like everything here: #}
-            {# /mind/ is permanent as of step 5, and a reversed URL costs #}
-            {# nothing and survives being wrong about that. #}
-            <a class="text-muted-foreground hover:text-text" href="{% url 'capture' %}">Second Mind</a>
-            <a class="text-muted-foreground hover:text-text" href="{% url 'archive' %}">Archive</a>
-            <a class="text-muted-foreground hover:text-text" href="{% url 'account_settings' %}">{{ user.username }}</a>
-            <form method="post" action="{% url 'logout' %}">
-              {% csrf_token %}
-              <button id="id_logout" class="rounded-lg border border-border px-3 py-1.5" type="submit">
-                Log out
-              </button>
-            </form>
-          {% else %}
-            <a class="text-muted-foreground hover:text-text" href="{% url 'login' %}">Log in</a>
-            <a class="rounded-lg bg-accent text-accent-foreground px-3 py-1.5 font-bold" href="{% url 'signup' %}">
-              Create account
-            </a>
-          {% endif %}
-        </div>
-      </div>
-    </nav>
+    {% comment %}
+    These are account pages -- login, signup, lockout, password reset, contact,
+    403 -- so they belong to the task core for the purposes of the bar and have
+    no sub-nav of their own. Archive used to sit in this nav; it is a surface
+    inside the task core rather than somewhere the bar goes, and it lives in the
+    SPA's own navigation.
+    {% endcomment %}
+    {% include "_app_bar.html" with core="tasks" %}
 
     <main class="mx-auto max-w-5xl px-4 py-8">
       {% if messages %}

@@ -5,6 +5,7 @@ what keeps "reads never write" true by construction rather than by discipline,
 and it is where every detector's candidate query will live.
 """
 
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 from django.contrib.postgres.search import SearchRank
@@ -475,3 +476,101 @@ def unresolved_questions(owner) -> list[Node]:
         .order_by("captured_at", "id")
     )
     return [node for node in candidates if looks_like_a_question(node.body)]
+
+
+@dataclass(frozen=True)
+class RelevantMaterial:
+    """One note a stated purpose reaches, and the evidence for it."""
+
+    node: Node
+    distinctive_terms: tuple[str, ...]
+    shared_count: int
+
+    @property
+    def reason(self) -> str:
+        """A fact the person can check, not a score they must trust.
+
+        The same sentence shape `dormant_thread` uses, and for the same reason:
+        naming the overlap states the dimension of the connection plainly, so
+        the reader can disagree with it.
+        """
+        shown = ", ".join(self.distinctive_terms)
+        return (
+            f"{len(self.distinctive_terms)} of {self.shared_count} shared terms "
+            f"appear in almost none of your other notes: {shown}"
+        )
+
+
+# Three, matching `dormant_thread.DEFAULT_MIN_DISTINCTIVE_TERMS` rather than
+# choosing a second number. That is the gate measured at 67% precision against a
+# corpus with known answers, where every score threshold failed; a brief that
+# relaxed it would become the vaguely-on-topic panel `detectors/__init__`
+# describes as reliably ignored.
+BRIEF_MIN_DISTINCTIVE_TERMS = 3
+BRIEF_LIMIT = 8
+
+
+def material_bearing_on(
+    owner,
+    statement: str,
+    *,
+    limit: int = BRIEF_LIMIT,
+    min_distinctive_terms: int = BRIEF_MIN_DISTINCTIVE_TERMS,
+    index=None,
+) -> list[RelevantMaterial]:
+    """Notes bearing on a statement the person wrote, strongest first.
+
+    The retrieval behind a project brief (`planning-assistant-plan.md`
+    increment 4), kept text-anchored rather than project-anchored so that this
+    module does not have to know what a Project is — the caller supplies the
+    purpose and gets material back.
+
+    **This is deliberately not "show related notes."** That is a named failure
+    (`detectors/__init__`), and three things separate this from it: one end is a
+    statement of intent the person wrote, which is `precision.md`'s Tier 2; the
+    brief is opened rather than pushed; and the gate is the rare-term one that
+    took the lexical detector from 11% to 67%, not a similarity threshold.
+
+    **An empty statement returns nothing**, rather than the corpus sorted by
+    coincidence. Unanchored retrieval is Tier 3, where every measured failure
+    lives, and a project nobody has described has not asked a question yet.
+
+    Writes nothing — including no surfacing record. The neighbouring mechanic
+    does the opposite deliberately (`services.open_review` stamps
+    `first_surfaced_at`, because a proposal shown without starting its window
+    makes silence meaningless), and the difference is that a brief proposes
+    nothing: there is no window to start and no inaction to interpret.
+    """
+    from .similarity import default_index
+
+    statement = (statement or "").strip()
+    if not statement:
+        return []
+
+    index = index or default_index()
+    matches = index.similar_to(
+        statement,
+        owner=owner,
+        limit=limit,
+        min_distinctive_terms=min_distinctive_terms,
+    )
+    if not matches:
+        return []
+
+    live = {
+        node.pk: node
+        for node in live_nodes(owner).filter(pk__in=[m.node_id for m in matches])
+    }
+    results = []
+    for match in matches:
+        node = live.get(match.node_id)
+        if node is None:
+            continue
+        results.append(
+            RelevantMaterial(
+                node=node,
+                distinctive_terms=tuple(match.distinctive_terms),
+                shared_count=match.shared_count,
+            )
+        )
+    return results[:limit]

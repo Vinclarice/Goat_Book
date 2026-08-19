@@ -41,7 +41,7 @@ from mind.models import (
     Revision,
     SentenceEmbedding,
 )
-from review.models import WeeklyReview
+from review.models import WeeklyIntention, WeeklyReview
 from routines.models import Routine, RoutineOccurrence, RoutinePause
 
 # Never leaves the database. Both are one-way hashes, so exporting them would
@@ -74,6 +74,7 @@ EXPORT_KEYS = {
     RoutineOccurrence: "occurrences",
     RoutinePause: "pauses",
     WeeklyReview: "reviews",
+    WeeklyIntention: "week_intentions",
     Node: "nodes",
     Revision: "revisions",
     Facet: "facets",
@@ -196,6 +197,7 @@ def _payload(user, *, now):
             "pauses": _rows(RoutinePause.objects.filter(owner=user)),
         },
         "reviews": _rows(WeeklyReview.objects.filter(owner=user)),
+        "week_intentions": _rows(WeeklyIntention.objects.filter(owner=user)),
         "knowledge": {
             "nodes": _rows(nodes),
             "revisions": _rows(Revision.objects.filter(node__owner=user)),

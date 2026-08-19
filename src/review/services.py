@@ -9,7 +9,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from review import reads
-from review.models import WeeklyReview
+from review.models import WeeklyIntention, WeeklyReview
 from review.weeks import week_start_for
 
 
@@ -112,3 +112,26 @@ def reopen_review(owner, day):
         ]
     )
     return review
+
+
+@transaction.atomic
+def set_intention(owner, day, text):
+    """Say what the week containing ``day`` is for -- S9.
+
+    ``day`` is any day of the week, normalised through `week_start_for`, which
+    is what lets Wednesday rewrite what Sunday decided without making a second
+    row. Two definitions of "this week" is the drift `crane-plan.md` §6 names,
+    so this borrows the one that exists rather than taking a Monday from the
+    caller.
+
+    Blank is a value, not a delete. An intention cleared to empty stays as a
+    row, because "I set none this week" and "I never opened it" are different
+    facts and only one of them says the practice lapsed -- the same call
+    `DailyEntry` and `WeeklyReview` both make.
+    """
+    intention, _ = WeeklyIntention.objects.get_or_create(
+        owner=owner, week_start=week_start_for(day)
+    )
+    intention.text = text or ""
+    intention.save(update_fields=["text", "updated_at"])
+    return intention

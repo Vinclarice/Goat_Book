@@ -20,7 +20,7 @@ from daily.models import DailyEntry, DailyFocus
 from mind import queries as mind_queries
 from mind.models import Facet, FacetKind, Node
 from lists.models import Item, Project
-from review.models import WeeklyReview
+from review.models import WeeklyIntention, WeeklyReview
 from review.weeks import DAYS_IN_WEEK, days_in, week_end_for, week_start_for
 from routines.models import Routine, RoutineOccurrence, RoutinePause
 
@@ -691,3 +691,20 @@ def upcoming_constraints(owner, *, week_end, horizon_days=DAYS_IN_WEEK):
     ).order_by("due_date", "id")
 
     return Upcoming(tasks=tasks, projects=projects)
+
+
+def intention_for(owner, day):
+    """What this owner said the week containing ``day`` is for, or None.
+
+    None rather than a created row, exactly as `review_for` returns: an unset
+    intention is a blank page and not a missing one, and a GET that brought the
+    record into existence would be the page view inventing history this module
+    opens by refusing.
+
+    Any day of the week resolves to the same record -- that is S9's whole
+    point, and the reason `week_start_for` is borrowed rather than a Monday
+    being asked of the caller.
+    """
+    return WeeklyIntention.objects.filter(
+        owner=owner, week_start=week_start_for(day)
+    ).first()

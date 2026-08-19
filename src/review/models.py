@@ -89,3 +89,85 @@ class WeeklyReview(models.Model):
 
     def __str__(self):
         return f"{self.owner}: week of {self.week_start}"
+
+
+class WeeklyIntention(models.Model):
+    """What a person decided a week was *for*, written before or during it.
+
+    S9 -- "On Sunday she decides what the week is about. On Wednesday the day
+    knows." Planning existed only at day scale, which `product-stories.md`
+    calls a hole in a product whose pitch is "design the future", and which
+    `planning-assistant-plan.md` increment 6 cannot draft a week without.
+
+    **Its own model rather than a field on WeeklyReview**, which is keyed
+    identically and would have been the cheap answer. Two reasons, and the
+    second is the one that settles it:
+
+    - **Different life cycles**, which is `architecture-trajectory.md` §4's
+      actual test. An intention is a commitment made before a week; a review is
+      a conclusion drawn after one.
+    - **`WeeklyReview`'s existence is itself a fact.** It has no delete path
+      precisely so "I reviewed that week and had little to say" stays
+      distinguishable from "I never reviewed that week". Writing an intention
+      into it would create rows for weeks nobody reviewed, and that model would
+      stop being able to say whether the practice is happening -- the only
+      thing its row-presence is for.
+
+    **Charter compliance** (architecture-trajectory.md §4):
+
+    - Rule 1, owned at birth: `owner` is non-null in this first migration.
+    - Rule 2, public identifier: none. No client writes a week offline -- the
+      Android app captures and nothing else -- so there is no identity to
+      reconcile. Revisit if one ever does.
+    - Rule 3, snapshot: nothing to snapshot. The text is its own meaning and
+      depends on no other row. Note the contrast with `WeeklyReview`, which
+      records counts precisely because a *conclusion* depends on figures that
+      can move underneath it; an intention concludes nothing.
+    - Rule 5, reference never copy: nothing is duplicated. A day displays this
+      text; it does not own a copy that could drift.
+    - Rule 6, deletion: no delete path, the same call `DailyEntry` and
+      `WeeklyReview` both make. An intention cleared to empty stays as a row,
+      because "I set none this week" and "I never opened it" are different
+      facts and only one of them says the practice lapsed. Deleting an account
+      still cascades.
+    - Rule 7, index the query: the unique constraint below is the index. Every
+      read is "this owner, this week", which it covers exactly.
+    - Rule 8, template and occurrences: does not apply. A week recurs in the
+      calendar sense but holds no rule, and inventing one would be the overload
+      that rule exists to prevent -- the same call `DailyEntry` made.
+
+    Kept in the `review` app because that app already owns what a week *is*
+    (`review/weeks.py`). A second home would mean a second definition of when a
+    week starts, and two answers to that is the drift `crane-plan.md` §6 warns
+    about.
+    """
+
+    owner = models.ForeignKey(
+        "accounts.User",
+        related_name="weekly_intentions",
+        on_delete=models.CASCADE,
+    )
+    # The Monday the week starts on, always from routines.periods
+    # via review.weeks -- never a raw date from a caller. Any day of the week
+    # addresses the same record, which is what lets Wednesday read what Sunday
+    # wrote.
+    week_start = models.DateField()
+    # Plain text, blank rather than null, exactly as the day's three fields
+    # are: "wrote nothing" and "cleared it" are the same state, so nothing
+    # downstream has to handle both. No Markdown, per roadmap.md's settled
+    # boundary.
+    text = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ("-week_start",)
+        constraints = [
+            models.UniqueConstraint(
+                fields=("owner", "week_start"),
+                name="unique_weekly_intention_per_owner_week",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.owner}: intention for week of {self.week_start}"

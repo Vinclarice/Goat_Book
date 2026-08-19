@@ -1416,6 +1416,8 @@ export interface components {
             new_area_url: string;
             /** Focus */
             focus: components["schemas"]["FocusOut"][];
+            /** Week Intention */
+            week_intention: string;
             /** Compass Purpose */
             compass_purpose: string;
             /** Compass Question */

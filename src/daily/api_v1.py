@@ -22,6 +22,7 @@ from lists.api_v1 import AgendaProjectSummaryOut, AreaColorKey, TaskOut
 from lists.models import Item
 from lists.serializers import project_ref_for, serialize_item
 from mind import services as mind_services
+from review import reads as review_reads
 from mind.models import Facet, FacetKind
 from routines import reads as routine_reads
 from routines.api_v1 import PausedRoutineOut, StandingOut
@@ -118,6 +119,13 @@ class DayOut(Schema):
     # page renders in one round trip -- and because a day is exactly the
     # context it is meant to be read in. Editing it changes every day at
     # once, including ones already written, which is the point of it.
+    # What this week is for -- S9. Read from the week containing this day, so
+    # Wednesday shows what Sunday decided, and empty when nothing was set.
+    #
+    # Sent with the day like the Compass above it, and for the same reason: it
+    # is context a day is meant to be read *in*, not a thing the day owns. The
+    # day displays it and holds no copy that could drift -- charter rule 5.
+    week_intention: str
     compass_purpose: str
     compass_question: str
     # Where each routine stands in the period this day falls in, read live
@@ -273,6 +281,7 @@ def _day_out(owner, day):
         "shows_action_items": shows_action_items,
         "new_area_url": reverse("new_list"),
         "focus": [_focus_out(focus) for focus in reads.focus_for(owner, day)],
+        "week_intention": _week_intention_for(owner, day),
         "compass_purpose": owner.compass_purpose,
         "compass_question": owner.compass_question,
         "routines": [
@@ -462,3 +471,19 @@ def dismiss_suggestion(request, suggestion_id: int):
         facet, now=timezone.now(), actor=request.user.get_username()
     )
     return _day_out(request.user, facet.entry.date)
+
+
+def _week_intention_for(owner, day):
+    """The week's intention as a plain string, empty when unset — S9.
+
+    A string rather than an object because the day renders text and nothing
+    else, and blank-not-null the whole way through means a client never has to
+    tell "no intention" from "field absent".
+
+    Read through `review.reads`, which owns what a week is. Resolving the
+    Monday here would be a second definition of "this week" — the drift
+    `crane-plan.md` §6 names, and the reason S9's own model borrows that
+    function rather than taking a date from its caller.
+    """
+    intention = review_reads.intention_for(owner, day)
+    return intention.text if intention else ""

@@ -23,6 +23,7 @@ the trigger is the backstop that closes the race between two concurrent writers.
 from __future__ import annotations
 
 import hashlib
+import re
 import uuid as uuid_module
 from datetime import datetime, timedelta
 from enum import Enum
@@ -36,6 +37,7 @@ from .commitments import find_commitment
 from .models import (
     Facet,
     FacetKind,
+    entry_body,
     ActivityEvent,
     Attachment,
     ConceptCandidate,
@@ -643,12 +645,23 @@ def dismiss_facet(facet: Facet, *, now: datetime, actor: str) -> Facet:
     facet.retired_at = now
     facet.save(update_fields=["retired_at"])
     _record(
-        facet.node.owner,
+        # `facet.owner`, not `facet.node.owner`. A facet may cite a journal
+        # entry instead of a node since increment 2, and reaching through the
+        # node raised on every one of those -- the exact breakage the accessor
+        # was added to prevent, found by the first producer that made one.
+        facet.owner,
         EventType.FACET_DISMISSED,
+        # Still the node where there is one: the log's own column is a node
+        # reference and stays null for an entry-backed facet, whose source is
+        # named in the payload instead.
         node=facet.node,
         occurred_at=now,
         actor=actor,
-        payload={"kind": facet.kind, "reason": facet.reason},
+        payload={
+            "kind": facet.kind,
+            "reason": facet.reason,
+            **({"entry": facet.entry_id} if facet.entry_id else {}),
+        },
     )
     return facet
 
@@ -1508,3 +1521,141 @@ def purge_node(node: Node, *, now: datetime, actor: str) -> list[str]:
         payload={"node": node_pk, "attachments_to_remove": len(storage_keys)},
     )
     return storage_keys
+
+
+# ---------------------------------------------------------------------------
+# Commitments read out of a journal entry — planning-assistant-plan.md 2
+# ---------------------------------------------------------------------------
+
+# Sentence-ish, and deliberately not a parser. What this needs is offsets that
+# fall on plausible boundaries; over-splitting costs a proposal somebody
+# dismisses, while a real NLP dependency costs the determinism the whole live
+# path rests on. Newlines end a sentence because journal writing uses them as
+# punctuation.
+_SENTENCE = re.compile(r"[^.!?\n]+[.!?]*")
+
+# **The journal needs a different signal from capture, and this is it.**
+#
+# `find_commitment` fires on a date, which is right for a capture: somebody
+# typing "dentist tomorrow" into a box has already decided it is a commitment,
+# and the date is the only thing left to read. Journal writing is prose, and
+# prose is full of dates that promise nothing — "nothing else today", "a quiet
+# morning", "saw them on Tuesday" all carry one and commit to none. Proposing
+# from those is the panel that gets ignored.
+#
+# It fails the other way too, and worse: *"I still need to ask Maya about the
+# venue"* is the canonical example this increment was written around, and it
+# has no date at all. Date-only would have missed the thing it is for while
+# firing on the narrative around it.
+#
+# So a journal sentence must read as an undertaking. Deliberately first person
+# and deliberately narrow: "the invoice must be paid" is a fact about the
+# world, "I must pay the invoice" is a promise. Missing one costs a tap;
+# inventing one puts a commitment nobody made into somebody's week, and those
+# two failures are not symmetric.
+_PROMISE = re.compile(
+    r"\bi (?:need|have|want|ought|plan|intend|mean)\b"
+    r"|\bi(?:'ll| will| must| should)\b"
+    r"|\bneed to\b|\bmust\b|\bhave to\b|\bought to\b"
+    r"|\bremember to\b|\bdon't forget\b|\bmake sure\b|\bchase up\b",
+    re.IGNORECASE,
+)
+
+
+def _sentences(text: str):
+    """``(start, end, text)`` per sentence, with offsets into ``text``."""
+    for match in _SENTENCE.finditer(text):
+        if match.group().strip():
+            yield match.start(), match.end(), match.group()
+
+
+def _commitment_fingerprint(text: str) -> str:
+    """Stable over the sentence, and deliberately blind to where it sits.
+
+    Typing a line at the top of an entry shifts every offset below it, so a
+    fingerprint including the span would re-propose the whole day on one
+    insertion — the same failure as not deduping at all. This hashes the words:
+    editing a sentence re-proposes it, which is right, and moving it does not,
+    which is also right.
+
+    Two identical sentences in one entry therefore collide, and that is the
+    correct reading — writing the same promise twice in a day is one promise.
+    """
+    return hashlib.sha256(
+        " ".join(text.split()).casefold().encode("utf-8")
+    ).hexdigest()[:64]
+
+
+@transaction.atomic
+def propose_journal_commitments(entry, *, now: datetime, actor: str) -> list[Facet]:
+    """Offer an actionable facet for each sentence of a day that reads as one.
+
+    **Per sentence, not per entry.** `find_commitment` returns one commitment
+    for one piece of text; a day's writing is several, and running it over a
+    whole field would find the first date in the day, attribute it to the entire
+    page, and look confident doing so.
+
+    **Read against the entry's own date, never the clock.** "Tomorrow" written
+    on Tuesday means Wednesday whenever this runs — the same call
+    `_propose_any_commitment` makes with `captured_at`, and for the same reason:
+    a relative date is exactly the material a wrong "today" ruins.
+
+    Idempotent by fingerprint, which matters more here than anywhere else. An
+    entry is saved on every pause in typing, so a producer proposing afresh each
+    time would make the surface unusable before lunch. Dismissed suggestions
+    stay dismissed, because the constraint spans every state.
+    """
+    body = entry_body(entry)
+    if not body.strip():
+        return []
+
+    proposed: list[Facet] = []
+    for start, end, sentence in _sentences(body):
+        if not _PROMISE.search(sentence):
+            continue
+
+        # The date is enrichment, not the trigger. A promise with one carries
+        # it through to the task; a promise without one is still a promise,
+        # and demanding a date would drop the example this was built for.
+        found = find_commitment(sentence, today=entry.date)
+        reason = (
+            f"reads as a commitment — {found.reason}" if found else "reads as a commitment"
+        )
+
+        facet, created = Facet.objects.get_or_create(
+            entry=entry,
+            fingerprint=_commitment_fingerprint(sentence),
+            defaults={
+                "kind": FacetKind.ACTIONABLE,
+                "origin": InferenceOrigin.INFERRED,
+                "reason": reason,
+                "span_start": start,
+                "span_end": end,
+                "data": {
+                    # Null rather than absent when nothing was read, so a
+                    # consumer never has to tell "no date" from "field missing".
+                    "due_date": found.due_date.isoformat() if found else None,
+                    "recurrence": found.recurrence if found else None,
+                },
+            },
+        )
+        if created:
+            _record(
+                entry.owner,
+                EventType.FACET_PROPOSED,
+                occurred_at=now,
+                actor=actor,
+                payload={
+                    "kind": FacetKind.ACTIONABLE,
+                    "reason": reason,
+                    "entry": entry.pk,
+                },
+            )
+            proposed.append(facet)
+        elif facet.retired_at is None and facet.span_start != start:
+            # The same sentence, moved. Keep the proposal and correct where it
+            # points, so its quote does not drift off the words that caused it.
+            facet.span_start, facet.span_end = start, end
+            facet.save(update_fields=["span_start", "span_end"])
+
+    return proposed

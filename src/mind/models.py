@@ -286,6 +286,27 @@ class FacetKind(models.TextChoices):
     CONCEPT = "concept", "Concept"
 
 
+def entry_body(entry) -> str:
+    """A journal entry's three fields as one string, for spans to index into.
+
+    **Defined once, because two definitions would silently disagree.** The
+    producer computes offsets against this and `Facet.cited_text` reads them
+    back out of it; if the two ever joined the fields differently, every quote
+    would come back shifted from the sentence that actually caused the
+    proposal — and it would look like a parser bug rather than an alignment
+    one.
+
+    Empty fields are dropped rather than joined as blanks, so a day with only
+    happenings has offsets starting at zero instead of after two newlines
+    nobody wrote.
+    """
+    return "\n".join(
+        part
+        for part in (entry.intentions, entry.gratitude, entry.happenings)
+        if part
+    )
+
+
 class Facet(models.Model):
     """A capability a node carries, without being filed as it.
 
@@ -445,14 +466,9 @@ class Facet(models.Model):
         cannot show its own sentence is asking to be trusted, which is the one
         thing every other producer here refuses to do.
         """
-        if self.node_id:
-            body = self.node.original_content
-        else:
-            entry = self.entry
-            body = "\n".join(
-                part for part in (entry.intentions, entry.gratitude, entry.happenings)
-                if part
-            )
+        body = (
+            self.node.original_content if self.node_id else entry_body(self.entry)
+        )
         if self.span_start is None:
             return body
         return body[self.span_start : self.span_end]

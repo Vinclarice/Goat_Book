@@ -7,6 +7,9 @@ from django.db.models import Max
 from django.utils import timezone
 
 from daily.models import DailyEntry, DailyFocus
+# The task core calling the knowledge core, which is the direction that already
+# runs: `review/reads.py` reads nodes, and `Facet.task` points the other way.
+from mind import services as mind_services
 
 
 class FocusError(Exception):
@@ -56,6 +59,28 @@ def write_entry(
         updated.append(field)
     if updated:
         entry.save(update_fields=[*updated, "updated_at"])
+        # The journal's own producer -- planning-assistant-plan.md increment 2.
+        # Only when the writing actually changed: `write_entry` is also how an
+        # entry comes into existence for a pin, and re-reading unchanged prose
+        # there is work nobody asked for.
+        #
+        # **On the live path, and for capture's reason.** The parser is a regex
+        # over a few sentences: no model, no network, no per-call cost. So the
+        # suggestion is ready by the time the page comes back and nothing was
+        # asked at the moment of writing.
+        #
+        # Invoked here rather than left for a batch job, because a producer
+        # nothing calls is not a producer -- the lesson `run_detectors` taught
+        # by being green and uninvoked for weeks.
+        #
+        # The clock is read here rather than injected, which is the one place
+        # this module bends that rule: `now` only stamps the log entry, every
+        # date the parser reads comes from `entry.date`, and threading a
+        # parameter through every caller to timestamp an event would be
+        # ceremony. The proposal itself is reproducible without it.
+        mind_services.propose_journal_commitments(
+            entry, now=timezone.now(), actor=owner.get_username()
+        )
     return entry
 
 

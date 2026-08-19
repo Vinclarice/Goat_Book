@@ -35,6 +35,8 @@ function weekData(overrides: Record<string, unknown> = {}) {
     written: [],
     thoughts: [],
     names_to_confirm: [],
+    loose_ends: { unanswered: [], unanswered_commitments: [], overdue: [] },
+    upcoming: { tasks: [], projects: [] },
     habits: [],
     recent_weeks: [],
     review: {
@@ -832,5 +834,109 @@ describe("ReviewRoute", () => {
     expect(
       await screen.findByRole("link", { name: /week after/i }),
     ).toBeInTheDocument();
+  });
+
+  /* Loose ends and upcoming constraints -- planning-assistant-plan.md
+     increment 5. Extractive: every item already belongs to the person, so
+     these sections show and never propose. */
+  it("shows a question nothing has answered, with when it was asked", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        weekData({
+          loose_ends: {
+            unanswered: [
+              {
+                public_id: "11111111-1111-1111-1111-111111111111",
+                text: "Which payment provider should we use?",
+                asked_on: "2026-07-21",
+              },
+            ],
+            unanswered_commitments: [],
+            overdue: [],
+          },
+        }),
+      ),
+    );
+
+    renderAt("/review");
+
+    expect(await screen.findByText(/which payment provider/i)).toBeInTheDocument();
+    // The date is the evidence: "you asked this" is a fact, "on the 21st" is
+    // what makes it a loose end rather than a note.
+    expect(screen.getByText(/2026-07-21/)).toBeInTheDocument();
+  });
+
+  it("shows a commitment nobody accepted or dismissed", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        weekData({
+          loose_ends: {
+            unanswered: [],
+            unanswered_commitments: [
+              {
+                public_id: "22222222-2222-2222-2222-222222222222",
+                text: "I must ring the venue on Thursday.",
+                proposed_on: "2026-07-25",
+              },
+            ],
+            overdue: [],
+          },
+        }),
+      ),
+    );
+
+    renderAt("/review");
+
+    expect(await screen.findByText(/ring the venue/i)).toBeInTheDocument();
+  });
+
+  it("shows overdue work as a loose end", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        weekData({
+          loose_ends: {
+            unanswered: [],
+            unanswered_commitments: [],
+            overdue: [{ id: 4, text: "Chase the invoice", due_date: "2026-07-20" }],
+          },
+        }),
+      ),
+    );
+
+    renderAt("/review");
+
+    expect(await screen.findByText(/chase the invoice/i)).toBeInTheDocument();
+  });
+
+  it("shows what arrives before the next review", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        weekData({
+          upcoming: {
+            tasks: [{ id: 9, text: "Send the deposit", due_date: "2026-08-05" }],
+            projects: [{ id: 2, title: "Website launch", due_date: "2026-08-07" }],
+          },
+        }),
+      ),
+    );
+
+    renderAt("/review");
+
+    expect(await screen.findByText(/send the deposit/i)).toBeInTheDocument();
+    expect(screen.getByText(/website launch/i)).toBeInTheDocument();
+  });
+
+  it("stays quiet when there is nothing hanging and nothing coming", async () => {
+    /* An empty section is worse than no section here: "you have no loose
+       ends" and "this week had none worth showing" read the same, and a
+       review that renders five empty headings teaches you to scroll past all
+       five. */
+    vi.spyOn(globalThis, "fetch").mockImplementation(() => jsonResponse(weekData()));
+
+    renderAt("/review");
+    await screen.findByRole("heading", { level: 1 });
+
+    expect(screen.queryByText(/still unanswered/i)).toBeNull();
+    expect(screen.queryByText(/before the next review/i)).toBeNull();
   });
 });

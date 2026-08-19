@@ -740,6 +740,8 @@ export function ReviewRoute() {
     return <RouteFailure status={statusOf(error)} onRetry={() => refetch()} />;
   }
 
+  const { loose_ends: looseEnds, upcoming } = data;
+
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 space-y-8">
       <div>
@@ -827,6 +829,102 @@ export function ReviewRoute() {
         <section className="space-y-2">
           <h2 className="text-sm font-bold">Thoughts you captured</h2>
           <Thoughts thoughts={data.thoughts} />
+        </section>
+      )}
+
+      {/* Loose ends and upcoming constraints -- planning-assistant-plan.md
+          increment 5. Rendered only when they have something in them: an
+          empty section reads the same as "you have none", and a review that
+          shows five empty headings teaches you to scroll past all five.
+
+          Extractive, and nothing here proposes. Every item already exists and
+          already belongs to the person, so there is no confirm gate — the
+          same reason the project brief has none. */}
+      {(looseEnds.unanswered.length > 0 ||
+        looseEnds.unanswered_commitments.length > 0 ||
+        looseEnds.overdue.length > 0) && (
+        <section className="space-y-2">
+          <h2 className="text-sm font-bold">Still open</h2>
+
+          {looseEnds.unanswered.length > 0 && (
+            <div>
+              <h3 className="text-sm text-muted-foreground">Unanswered questions</h3>
+              <ul className="mt-1 space-y-1">
+                {looseEnds.unanswered.map((question) => (
+                  <li key={question.public_id} className="text-sm">
+                    {question.text}{" "}
+                    {/* The date is the evidence: "you asked this" is a fact,
+                        and when is what makes it a loose end. */}
+                    <span className="text-muted-foreground">
+                      — asked {question.asked_on}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {looseEnds.unanswered_commitments.length > 0 && (
+            <div>
+              <h3 className="text-sm text-muted-foreground">
+                Commitments you never answered
+              </h3>
+              <ul className="mt-1 space-y-1">
+                {looseEnds.unanswered_commitments.map((commitment) => (
+                  <li key={commitment.public_id} className="text-sm">
+                    {commitment.text}{" "}
+                    <span className="text-muted-foreground">
+                      — proposed {commitment.proposed_on}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Read out of something you captured, and never accepted or
+                dismissed.{" "}
+                <a href="/mind/" className="underline hover:text-foreground">
+                  Decide them in Second Mind
+                </a>
+                .
+              </p>
+            </div>
+          )}
+
+          {looseEnds.overdue.length > 0 && (
+            <div>
+              <h3 className="text-sm text-muted-foreground">Overdue</h3>
+              <ul className="mt-1 space-y-1">
+                {looseEnds.overdue.map((task) => (
+                  <li key={task.id} className="text-sm">
+                    {task.text}{" "}
+                    <span className="text-muted-foreground">— due {task.due_date}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </section>
+      )}
+
+      {(upcoming.tasks.length > 0 || upcoming.projects.length > 0) && (
+        <section className="space-y-2">
+          <h2 className="text-sm font-bold">Before the next review</h2>
+          <ul className="space-y-1">
+            {upcoming.projects.map((project) => (
+              <li key={`project-${project.id}`} className="text-sm">
+                {project.title}{" "}
+                <span className="text-muted-foreground">
+                  — project due {project.due_date}
+                </span>
+              </li>
+            ))}
+            {upcoming.tasks.map((task) => (
+              <li key={`task-${task.id}`} className="text-sm">
+                {task.text}{" "}
+                <span className="text-muted-foreground">— due {task.due_date}</span>
+              </li>
+            ))}
+          </ul>
         </section>
       )}
 

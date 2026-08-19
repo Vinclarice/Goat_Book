@@ -22,6 +22,12 @@ not**. `C:\dev\Clarice_secondmind` survives as documents only, and
 
 ## Where things stand — August 16, 2026
 
+**Superseded on August 19, 2026, and kept as a dated snapshot rather than
+rewritten** — the baseline below is still exactly right, and only the first
+sentence went stale. Ibis, Jackdaw and the navigation work have all shipped
+since, and the planning assistant is active with the next codename held for it;
+*Open now* carries the current state, as it is supposed to.
+
 **There is no active release.** Heron was the last, verified in production
 August 15. What it leaves is a baseline rather than a backlog:
 
@@ -63,6 +69,34 @@ re-add it here.
   moved to Resend's HTTPS API. The proof kept deliberately: SMTP is **still**
   blocked from that host and mail goes anyway, so the fix is not coincident with
   anything DigitalOcean did.
+- **The planning assistant is the active work**, and this file had not claimed
+  it. Designed and being built to
+  [`planning-assistant-plan.md`](planning-assistant-plan.md): an evidence-backed
+  proposal inbox rather than a chatbot, in six increments, every proposal
+  showing its evidence and requiring confirmation. **The next codename is held
+  for it** — see the navigation entry below, which held it deliberately.
+
+  **Shipped so far, on `main` and undeployed**: unresolved questions as a read
+  (increment 1), `Project.purpose` with its API (increment 3), and project
+  briefs end to end from retrieval to endpoint (increment 4). All three stop at
+  the same line — **server-side done, no interface** — because the navigation
+  work owned the presentation layer while they were written. That hold expired
+  when it shipped.
+
+  **All four of the plan's decisions are answered**, three on August 18 and one
+  just after midnight on the 19th: no generated prose yet and the condition that
+  would change it; `sentence-transformers` into test requirements but not the
+  image, which took 25 permanently-skipped tests to 0; the attention caps
+  ratified with the review's five slots to be rationed by accept rate rather
+  than by cross-detector confidence that means different things; and capacity
+  derived from `DailyFocus` history rather than from effort estimates nobody
+  would enter. **Nothing in the plan waits on a decision.** Its one external
+  prerequisite is S9, intentions above the day, which increment 6 needs and
+  nothing else does.
+
+  **`v1 ships no generation at all`** — this is retrieval, rules and confirmation
+  gates, and the ML policy in `design-concept.md` is the authority for why.
+
 - **Terms of service and a privacy policy.** Writing, not code.
 - **Removing user data from Sentry and Resend when an account goes.** An
   account-level action in each, outside this application. Deletion and export

@@ -42,6 +42,15 @@ reading the source, not inferred from the documents:
   not report the website as down.
 - `check-backup-freshness.sh` scheduled in its own workflow, off the droplet,
   because the credential belongs somewhere a host compromise does not reach.
+  **Scheduled is not the same as running, and this list said it was.** Its
+  first firing — 09:47 UTC on August 19, the morning after it was added —
+  failed in ten seconds: `DIGITALOCEAN_ACCESS_TOKEN is not set on this
+  repository`. The guard did precisely its job, refusing loudly with the fix in
+  the message rather than reporting a missing cluster, and the notification
+  went out. **So the backup check has never successfully run**, and backups are
+  unverified by any means since the August 1 drill — which raises 2.1 from
+  important to the only thing that would tell you anything. One repository
+  secret closes it, and it is Vince's to create.
 
 ## Who this is defended against
 

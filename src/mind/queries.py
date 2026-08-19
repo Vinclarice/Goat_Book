@@ -8,16 +8,31 @@ and it is where every detector's candidate query will live.
 from datetime import datetime, timedelta
 
 from django.contrib.postgres.search import SearchRank
-from django.db.models import Count, F, FloatField, Max, Min, Q, QuerySet, Value
+from django.db.models import (
+    Count,
+    Exists,
+    F,
+    FloatField,
+    Max,
+    Min,
+    OuterRef,
+    Q,
+    QuerySet,
+    Subquery,
+    Value,
+)
 from django.db.models.functions import Coalesce, Greatest
 from django.utils import timezone
 
 from .models import (
     ConceptCandidate,
     ConnectionHypothesis,
+    Edge,
+    EdgeRelation,
     EventType,
     Facet,
     FacetKind,
+    HypothesisMember,
     Mention,
     Node,
     Revision,
@@ -384,3 +399,79 @@ def attention_tier(node: Node, *, now: datetime) -> str:
         members__node=node, resolved_at__isnull=True
     ).exists()
     return "review candidate" if cited else "quiet knowledge"
+
+
+def current_body_expression():
+    """`current_body`, as SQL rather than as a Python call.
+
+    The second definition of one rule, which `principles.md` forbids without a
+    reason -- so here is the reason and the guard. `current_body` resolves one
+    node with one query; a read that has to test every live note against a Python
+    predicate would run that query per node, and the whole point of this read is
+    that it scans the corpus. Expressed as a subquery it is one query instead.
+
+    The two must agree, and `test_unresolved_questions.py` asserts they do for
+    both a revised and an unrevised node. If this ever diverges from
+    `current_body`, that test is the thing that says so.
+    """
+    return Coalesce(
+        Subquery(
+            Revision.objects.filter(node=OuterRef("pk"))
+            .order_by("-seq")
+            .values("body")[:1]
+        ),
+        F("original_content"),
+    )
+
+
+def unresolved_questions(owner) -> list[Node]:
+    """Question-shaped notes nothing has answered yet, oldest first.
+
+    **A view, not a proposal.** No hypothesis, no fingerprint, no review window
+    and no confirm gate: "you asked this and nothing has answered it" is a fact
+    about the graph, not a claim about it, so it carries none of the machinery
+    that exists to make a guess accountable. It cannot be wrong the way a
+    proposal can be wrong -- only stale, which the next read fixes.
+
+    Three exclusions, each a different meaning of *resolved*:
+
+    * **An `answers` edge into it.** The typed relation is the answer, and the
+      direction is the whole content of it -- `confirm_hypothesis` links
+      answer -> question, so a question is settled when it is the *target*.
+    * **A pending `answers` proposal citing it.** Already on the review surface
+      with a candidate answer and a confirm gate; listing it here as well is one
+      loose end counted twice in one ritual. Pending only -- a *dismissed*
+      proposal said that candidate was wrong, not that the question is closed,
+      and the detector's fingerprint dedupe means it will never be re-proposed.
+    * **Deleted or archived**, via `live_nodes`.
+
+    Oldest first, inverting `live_nodes`' newest-first default on purpose: a
+    loose end gets worse with age, where a capture gets less interesting.
+
+    **Returns a list, because the predicate is Python.** `looks_like_a_question`
+    is three text signals and no database can express it, so the shape test
+    happens here. That is affordable at this corpus size and is the reason
+    `planning-assistant-plan.md` increment 1 keeps question-shape evaluated on
+    read; the swap to a stored epistemic facet is this function's body and
+    nothing above it.
+    """
+    # Imported here rather than at module scope: `detectors` imports `queries`,
+    # so the reverse at import time is a cycle.
+    from .detectors.open_question import looks_like_a_question
+
+    answered = Edge.objects.filter(
+        to_node=OuterRef("pk"), relation=EdgeRelation.ANSWERS
+    )
+    proposed_against = HypothesisMember.objects.filter(
+        node=OuterRef("pk"),
+        hypothesis__relation=EdgeRelation.ANSWERS,
+        hypothesis__resolved_at__isnull=True,
+    )
+
+    candidates = (
+        live_nodes(owner)
+        .annotate(body=current_body_expression())
+        .filter(~Exists(answered), ~Exists(proposed_against))
+        .order_by("captured_at", "id")
+    )
+    return [node for node in candidates if looks_like_a_question(node.body)]

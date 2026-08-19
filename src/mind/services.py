@@ -342,6 +342,107 @@ def _propose_any_commitment(node: Node, *, now: datetime, actor: str) -> Facet |
     )
 
 
+# The two things a person can say about a note the question heuristic surfaced.
+# Both are *corrections* to a read-time predicate rather than restatements of
+# it, which is why they are stored while question-ness is not: a stored flag
+# would be a second answer to what `looks_like_a_question` already answers, and
+# the two would drift. A decision about one's own note should outlive any
+# predicate; a predicate's own output should not outlive the predicate.
+QUESTION_RESOLVED = "resolved"
+NOT_A_QUESTION = "not_a_question"
+
+
+def _set_epistemic_status(node: Node, status: str, *, now: datetime, actor: str) -> Facet:
+    """Record what a person decided about a note's epistemic standing.
+
+    `FacetKind.EPISTEMIC` has been declared since the merger and nothing ever
+    wrote one. `open_question.py` says its signal *should* have been a
+    `question` epistemic status and settled for reading question-shaped text
+    because "the lab has no facet table" — a substitution to revisit once one
+    existed. It exists; this is the revisit, for the correction half.
+
+    `origin=EXPLICIT`, always. A resolution nobody can tell from a guess is a
+    resolution nobody can argue with later.
+
+    Updates rather than accumulates: one live epistemic facet per node is the
+    constraint, and changing your mind is a change of status, not a second
+    opinion alongside the first.
+    """
+    facet = node.facets.filter(
+        kind=FacetKind.EPISTEMIC, retired_at__isnull=True
+    ).first()
+    if facet is None:
+        facet = Facet.objects.create(
+            node=node,
+            kind=FacetKind.EPISTEMIC,
+            origin=InferenceOrigin.EXPLICIT,
+            data={"status": status},
+        )
+    elif facet.data.get("status") != status:
+        facet.data = {**facet.data, "status": status}
+        facet.origin = InferenceOrigin.EXPLICIT
+        facet.save(update_fields=["data", "origin"])
+
+    _record(
+        node.owner,
+        EventType.FACET_CONFIRMED,
+        node=node,
+        occurred_at=now,
+        actor=actor,
+        payload={"kind": FacetKind.EPISTEMIC, "status": status},
+    )
+    return facet
+
+
+def resolve_question(node: Node, *, now: datetime, actor: str) -> Facet:
+    """"This is settled", with nothing to point at.
+
+    The other route is better where it is available: an `answers` edge names
+    *what* settled it and carries the connection, where this carries only the
+    conclusion. But somebody who simply knows a thing is decided has no node to
+    name, and demanding one would be asking for a citation they do not have —
+    which is how a loose end stays on a list forever.
+    """
+    return _set_epistemic_status(node, QUESTION_RESOLVED, now=now, actor=actor)
+
+
+def dismiss_as_question(node: Node, *, now: datetime, actor: str) -> Facet:
+    """"This was never a question."
+
+    `looks_like_a_question` is three text signals and a rhetorical question is
+    a false positive by construction. This is the correction, and it is the
+    only signal that heuristic will ever get — the count of notes it read as
+    questions and a person did not.
+
+    A different fact from `resolve_question`, deliberately. Collapsing "I
+    settled this" into "this was never asked" would spend the correction signal
+    to save one status value.
+    """
+    return _set_epistemic_status(node, NOT_A_QUESTION, now=now, actor=actor)
+
+
+def reopen_question(node: Node, *, now: datetime, actor: str) -> None:
+    """Undo either statement, keeping the record that it was made.
+
+    Retired rather than deleted, the same call `dismiss_facet` makes: "this was
+    settled and then was not" is a different fact from "this was never
+    settled", and only one of them can tell you somebody changed their mind.
+    """
+    for facet in node.facets.filter(
+        kind=FacetKind.EPISTEMIC, retired_at__isnull=True
+    ):
+        facet.retired_at = now
+        facet.save(update_fields=["retired_at"])
+        _record(
+            node.owner,
+            EventType.FACET_DISMISSED,
+            node=node,
+            occurred_at=now,
+            actor=actor,
+            payload={"kind": FacetKind.EPISTEMIC, "reopened": True},
+        )
+
+
 @transaction.atomic
 def revise(node: Node, *, body: str, actor: str, now: datetime) -> Revision:
     """Add a revision, leaving the original capture untouched.

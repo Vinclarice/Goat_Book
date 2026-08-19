@@ -519,6 +519,17 @@ def unresolved_questions(owner) -> list[Node]:
     answered = Edge.objects.filter(
         to_node=OuterRef("pk"), relation=EdgeRelation.ANSWERS
     )
+    # What a person said about it, which outranks what the predicate reads.
+    # Either statement closes the loose end and they are different facts:
+    # "resolved" means settled with nothing to point at, "not_a_question" means
+    # the heuristic was wrong. Live facets only — reopening retires one rather
+    # than deleting it, so a retired status must stop excluding.
+    decided = Facet.objects.filter(
+        node=OuterRef("pk"),
+        kind=FacetKind.EPISTEMIC,
+        retired_at__isnull=True,
+        data__status__in=["resolved", "not_a_question"],
+    )
     proposed_against = HypothesisMember.objects.filter(
         node=OuterRef("pk"),
         hypothesis__relation=EdgeRelation.ANSWERS,
@@ -528,7 +539,7 @@ def unresolved_questions(owner) -> list[Node]:
     candidates = (
         live_nodes(owner)
         .annotate(body=current_body_expression())
-        .filter(~Exists(answered), ~Exists(proposed_against))
+        .filter(~Exists(answered), ~Exists(proposed_against), ~Exists(decided))
         .order_by("captured_at", "id")
     )
     return [node for node in candidates if looks_like_a_question(node.body)]

@@ -4,11 +4,12 @@ Vince · plan · written August 18, 2026 · **revised the same day after review,
 and its six increments confirmed as the product the same day**
 
 **Five of the six increments are complete, August 18–19, 2026, on `main` and
-undeployed.** Only the weekly-plan draft remains, and S9 is its one blocker.
+undeployed** — and increment 1 finished last, having been first to start.
+Only the weekly-plan draft remains, and S9 is its one blocker.
 
 | # | State |
 |---|---|
-| 1 | **Read half only.** `queries.unresolved_questions` and thirteen tests. Its section on `/mind/review/` waits on the two design questions §1 names — how "answered" is recorded with no target node, and where "not a question" persists |
+| 1 | **Complete.** The read, both decisions as epistemic facets, the age and recurrence context, and the section on `/mind/review/` |
 | 2 | **Complete**, in four slices: `Facet` cites an entry, the journal producer, confirmation, and the card |
 | 3 | **Complete.** `Project.purpose` end to end, model to text area |
 | 4 | **Complete.** Retrieval, assembly, endpoint and the on-demand panel |

@@ -38,6 +38,7 @@ from .models import (
     ConnectionHypothesis,
     Facet,
     FacetKind,
+    Node,
     NodeSource,
 )
 
@@ -253,9 +254,12 @@ def review(request):
     That is the whole design of it — a page that displayed proposals without starting
     their review window would make silence meaningless, so there is no such page.
     """
+    # Read once, so the proposals and the questions describe the same instant.
+    # Two clocks on one page is how "12 days" and "13 days" appear together.
+    now = timezone.now()
     hypotheses = services.open_review(
         request.user,
-        now=timezone.now(),
+        now=now,
         actor=request.user.get_username(),
         limit=REVIEW_LIMIT,
     )
@@ -297,10 +301,25 @@ def review(request):
         .exclude(pk__in=[h.pk for h in hypotheses])
         .count()
     )
+    # Loose ends above proposals, and that is not a layout preference. A
+    # proposal asks *is this connection real?* -- the system claiming
+    # something. A question asks *did you settle this?* -- a fact about the
+    # person's own corpus with no claim in it. The second is cheaper to answer
+    # and more often worth answering, and burying it under a queue of guesses
+    # is how it goes unread.
+    #
+    # **Reading these surfaces nothing.** The call above stamps
+    # `first_surfaced_at` on every proposal it returns, because a proposal
+    # shown without starting its window makes silence meaningless. A question
+    # has no window: nothing expires, nothing ripens, and leaving it alone is a
+    # permanent and costless answer. The two mechanics share this page and must
+    # not share that behaviour.
+    questions = queries.unresolved_questions_in_context(request.user, now=now)
+
     return render(
         request,
         "mind/review.html",
-        {"proposals": proposals, "remaining": remaining},
+        {"proposals": proposals, "remaining": remaining, "questions": questions},
     )
 
 
@@ -325,6 +344,48 @@ def resolve(request, public_id):
         # Already resolved elsewhere, or its evidence has gone. Either way the review
         # continues rather than presenting an error for something already settled.
         pass
+    return redirect("review")
+
+
+def _own_question_or_none(request, public_id):
+    """Owner-scoped in the query, so a caller cannot forget the second half."""
+    return Node.objects.filter(
+        public_id=public_id, owner=request.user, deleted_at__isnull=True
+    ).first()
+
+
+@login_required
+@require_http_methods(["POST"])
+def resolve_question(request, public_id):
+    """"Settled", with nothing to point at.
+
+    The better answer, where it exists, is an `answers` edge naming *what*
+    settled it. This is for the case where nothing can be named — and refusing
+    that case is how a loose end stays on a list forever.
+    """
+    node = _own_question_or_none(request, public_id)
+    if node is not None:
+        services.resolve_question(
+            node, now=timezone.now(), actor=request.user.get_username()
+        )
+    return redirect("review")
+
+
+@login_required
+@require_http_methods(["POST"])
+def dismiss_question(request, public_id):
+    """"This was never a question."
+
+    The correction signal for `looks_like_a_question`, which is three text
+    signals and reads a rhetorical question as a real one by construction.
+    Kept distinct from resolving: collapsing the two would spend the only
+    feedback that heuristic will ever get.
+    """
+    node = _own_question_or_none(request, public_id)
+    if node is not None:
+        services.dismiss_as_question(
+            node, now=timezone.now(), actor=request.user.get_username()
+        )
     return redirect("review")
 
 

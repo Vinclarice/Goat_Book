@@ -33,6 +33,20 @@ urlpatterns = [
     path("manifest.webmanifest", views.manifest, name="manifest"),
     path("review/", views.review, name="review"),
     path("review/<uuid:public_id>/", views.resolve, name="resolve"),
+    # A question is answered, not resolved-as-a-proposal, so it gets its own
+    # routes rather than a mode on the one above. Two decisions that mean
+    # different things sharing an endpoint is how one of them quietly acquires
+    # the other's semantics.
+    path(
+        "questions/<uuid:public_id>/resolve/",
+        views.resolve_question,
+        name="resolve_question",
+    ),
+    path(
+        "questions/<uuid:public_id>/dismiss/",
+        views.dismiss_question,
+        name="dismiss_question",
+    ),
     path("concepts/", views.concepts, name="concepts"),
     path("concepts/<uuid:public_id>/", views.concept, name="concept"),
     path(

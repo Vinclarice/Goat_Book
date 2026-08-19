@@ -52,18 +52,31 @@ the reason somebody does or does not give up on the whole idea.
 <p class="meta">Nothing here is a fault. Most of these wait on material or on a
 decision only you can make, and saying which is the point of the column.</p>
 
-<h1 style="margin-top:1.8rem">Detectors</h1>
+<h1 style="margin-top:1.8rem">Producers</h1>
+{% comment %}
+Producers, not detectors, since August 19, 2026. This table read
+`ConnectionHypothesis` alone, so the commitment parsers -- proposing on every
+capture since the merger, and on every journal entry since increment 2 -- had
+no accept rate anywhere while this page read as though it covered everything.
+Capture and journal are counted apart on purpose: one fires on a date and the
+other on an undertaking, and their false positives look nothing alike.
+
+"Never seen" is blank for a parser rather than zero. An actionable facet has no
+review window -- it is never applied until confirmed, so silence costs nothing
+and there is nothing to expire -- and a zero would read as a measurement that
+was taken.
+{% endcomment %}
 {% if detectors %}
 <table>
-  <tr><th>Detector</th><th>Proposed</th><th>Accepted</th><th>Dismissed</th>
+  <tr><th>Producer</th><th>Proposed</th><th>Accepted</th><th>Dismissed</th>
       <th>Never seen</th><th>Accept rate</th></tr>
   {% for d in detectors %}
   <tr>
-    <td>{{ d.detector }}</td>
+    <td>{{ d.producer }}</td>
     <td>{{ d.proposed }}</td>
     <td>{{ d.confirmed }}</td>
     <td>{{ d.dismissed }}</td>
-    <td>{{ d.expired }}</td>
+    <td>{% if d.unseen_rate is None %}—{% else %}{{ d.expired }}{% endif %}</td>
     {% comment %}
     None, never zero. "No evidence yet" and "wrong every time" call for opposite
     responses, so they must not render the same.

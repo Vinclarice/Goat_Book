@@ -30,6 +30,8 @@ from .models import (
     ConceptCandidate,
     ConnectionHypothesis,
     Edge,
+    Facet,
+    FacetKind,
     EventType,
     HypothesisResolution,
     InferenceOrigin,
@@ -49,6 +51,19 @@ class DetectorPerformance:
     dismissed: int
     expired: int
     pending: int
+
+    @property
+    def producer(self) -> str:
+        """The general name for what `detector` now holds.
+
+        This class was built when every proposal came from a detector. It now
+        also carries commitment parsers, for which "detector" is simply wrong —
+        so the field keeps its historical name, every existing caller and the
+        `/numbers/` template go on working, and the general reading has a word
+        that is true. Renaming the field would be churn across three call sites
+        to say the same thing.
+        """
+        return self.detector
 
     @property
     def decided(self) -> int:
@@ -78,6 +93,62 @@ class DetectorPerformance:
         separating so a neglected surface is not mistaken for a bad mechanic.
         """
         return self.expired / self.proposed if self.proposed else None
+
+
+def producer_performance(owner) -> list[DetectorPerformance]:
+    """Every producer that has ever proposed anything, best accept rate first.
+
+    **One list, deliberately, and it is what D3 needs.** Rationing the review's
+    five slots by accept rate means comparing a detector against a parser; two
+    separate readings would leave that comparison to whoever happened to be
+    looking, which is where a blended number comes from in the first place.
+
+    `detector_performance` reads `ConnectionHypothesis` alone, so the commitment
+    parser — proposing on every capture since the merger — has never had an
+    accept rate at all, and `retirement_gate`'s "worst producer" was computed
+    from a population that silently excluded it. That is the gap the plan
+    recorded and this closes.
+
+    **Facets have no expiry, and that asymmetry is real rather than a hole.** A
+    hypothesis's review window makes silence meaningful; an actionable facet is
+    never applied until confirmed, so silence costs nothing and there is nothing
+    to expire. `expired` is therefore always zero for a parser, and `unseen_rate`
+    means nothing for one — read it only where a window exists.
+
+    Explicitly attached facets are excluded: nothing proposed them, so counting
+    them would credit a producer with a decision no producer made.
+    """
+    rows = [
+        DetectorPerformance(
+            detector=row["producer"],
+            proposed=row["proposed"],
+            confirmed=row["confirmed"],
+            dismissed=row["dismissed"],
+            expired=0,
+            pending=row["pending"],
+        )
+        for row in (
+            Facet.objects.filter(kind=FacetKind.ACTIONABLE)
+            .exclude(producer="")
+            .filter(Q(node__owner=owner) | Q(entry__owner=owner))
+            .values("producer")
+            .annotate(
+                proposed=Count("id"),
+                confirmed=Count("id", filter=Q(confirmed_at__isnull=False)),
+                dismissed=Count("id", filter=Q(retired_at__isnull=False)),
+                pending=Count(
+                    "id",
+                    filter=Q(confirmed_at__isnull=True, retired_at__isnull=True),
+                ),
+            )
+        )
+    ]
+    rows.extend(detector_performance(owner))
+    # Undecided producers sort last, as they do within either half: an accept
+    # rate of None means "no evidence", which should not outrank a measured one
+    # in either direction.
+    rows.sort(key=lambda p: (p.accept_rate is None, -(p.accept_rate or 0)))
+    return rows
 
 
 def detector_performance(owner) -> list[DetectorPerformance]:
@@ -163,7 +234,10 @@ def retirement_gate(owner, *, now: datetime) -> list[GateCondition]:
         resolved_at__gte=recent,
     ).count()
 
-    performances = [p for p in detector_performance(owner) if p.decided]
+    # Every producer, not only the detectors. While this read hypotheses alone,
+    # a commitment parser accepting nothing could not lower the worst rate --
+    # so the gate could report health for a system half of which was unmeasured.
+    performances = [p for p in producer_performance(owner) if p.decided]
     worst = min((p.accept_rate for p in performances), default=None)
 
     trend = retrieval_miss_trend(owner, now=now, periods=6)
@@ -351,7 +425,13 @@ def lab_summary(owner, *, now: datetime) -> dict:
         "explicit_links": Edge.objects.filter(
             owner=owner, origin=InferenceOrigin.EXPLICIT
         ).count(),
-        "detectors": detector_performance(owner),
+        # Every producer, not only the detectors. The template's heading still
+        # says "detectors" and the rows now include the commitment parsers,
+        # which is the point: `/numbers/` was reporting on half the system
+        # while reading as though it covered all of it. A producer that ships
+        # without a row here is the unswitched seam this repository keeps
+        # catching.
+        "detectors": producer_performance(owner),
         # Beside the accept rates on purpose. A detector with no proposals and a
         # detector that cannot run yet produce the same empty row above, and only
         # this distinguishes them.

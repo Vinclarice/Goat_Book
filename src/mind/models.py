@@ -348,6 +348,22 @@ class Facet(models.Model):
     kind = models.CharField(max_length=16, choices=FacetKind)
     data = models.JSONField(default=dict, blank=True)
 
+    # Which producer proposed this — the shared contract's first field, and what
+    # makes its sixth mean anything. A blended "are suggestions good" number
+    # cannot answer the question that matters, which is *which* producer is
+    # worth hearing from; `ConnectionHypothesis.detector` has said so from the
+    # start and facets said nothing at all.
+    #
+    # **Two commitment producers, not one.** Capture fires on a date, the
+    # journal on an undertaking. They read different material with different
+    # signals and their false positives look nothing alike, so averaging them
+    # would hide exactly what attribution exists to show.
+    #
+    # Blank for a facet nothing proposed — an explicitly attached one — rather
+    # than a sentinel producer that would then appear in the readings as though
+    # something had guessed.
+    producer = models.CharField(max_length=48, blank=True, default="")
+
     # The cited passage, as offsets into the source's text. `reason` says why
     # this was proposed; these say *where*, which is what makes the claim
     # checkable rather than merely explained -- the same span-level citation

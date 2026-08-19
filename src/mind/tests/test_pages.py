@@ -401,10 +401,20 @@ def _table(content: str) -> str:
     these tests started reading the wrong one -- a positional assumption that
     held right up until the page changed, which is exactly when a test should
     not quietly start measuring something else.
+
+    **The fallback this used to carry was the bug it warned about.** When the
+    heading moved -- renamed to "Producers" on August 19, 2026, once the
+    commitment parsers joined the table -- `find` returned -1 and the search
+    silently restarted from the top of the page, so these tests read the
+    *readiness* table instead and only failed because an assertion happened to
+    disagree with it. A missing anchor is a broken test, not a reason to
+    measure something else, so it now says so.
     """
-    heading = content.find("Detectors</h1>")
-    start = content.find("<table", heading if heading != -1 else 0)
-    return content[start : content.find("</table>", start)] if start != -1 else ""
+    heading = content.find("Producers</h1>")
+    assert heading != -1, "the accept-rate table's heading has moved"
+    start = content.find("<table", heading)
+    assert start != -1, "no table under the accept-rate heading"
+    return content[start : content.find("</table>", start)]
 
 
 def test_no_decisions_reads_differently_from_a_zero_rate(signed_in, owner):

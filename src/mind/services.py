@@ -34,6 +34,12 @@ from django.db.models import Count, Max, Q
 from django.utils import timezone
 
 from .commitments import find_commitment
+
+# The two commitment producers, named once. Capture reads a date out of a terse
+# note; the journal reads an undertaking out of prose. Separate names because
+# their accept rates are separate questions -- see `Facet.producer`.
+CAPTURE_COMMITMENT = "capture_commitment"
+JOURNAL_COMMITMENT = "journal_commitment"
 from .models import (
     Facet,
     FacetKind,
@@ -332,6 +338,7 @@ def _propose_any_commitment(node: Node, *, now: datetime, actor: str) -> Facet |
         now=now,
         actor=actor,
         reason=found.reason,
+        producer=CAPTURE_COMMITMENT,
     )
 
 
@@ -510,6 +517,7 @@ def propose_facet(
     actor: str,
     reason: str,
     origin: str = InferenceOrigin.INFERRED,
+    producer: str = "",
 ) -> Facet:
     """Offer a node a capability. Soft-applied, except for one kind.
 
@@ -530,7 +538,12 @@ def propose_facet(
         node=node,
         kind=kind,
         retired_at=None,
-        defaults={"data": data, "origin": origin, "reason": reason},
+        defaults={
+            "data": data,
+            "origin": origin,
+            "reason": reason,
+            "producer": producer,
+        },
     )
     if created:
         _record(
@@ -1661,6 +1674,7 @@ def propose_journal_commitments(entry, *, now: datetime, actor: str) -> list[Fac
             defaults={
                 "kind": FacetKind.ACTIONABLE,
                 "origin": InferenceOrigin.INFERRED,
+                "producer": JOURNAL_COMMITMENT,
                 "reason": reason,
                 "span_start": start,
                 "span_end": end,

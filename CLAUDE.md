@@ -200,6 +200,28 @@ git sees no difference to restore. `clarice/tests/test_executable_line_endings.p
 fails locally when this happens; CI cannot catch it, since a fresh Linux checkout
 is always LF.
 
+**The same shape a second time: a new `.sh` here is not executable, and
+everything says it is.** `core.fileMode` is `false` on this checkout, so git has
+no mode to record and writes `100644`; Git Bash's `ls` prints the file with a
+`*` regardless, guessing from the extension; and `git status` has nothing to
+report either way. So a shell script looks executable locally, in review, and in
+every listing, while the blob says otherwise — and the failure appears only on a
+Linux runner or in WSL, as `Permission denied` and exit 126.
+
+It cost all four of `infra/*.sh`, wrong from the day each was written. The
+backup-freshness workflow died on it the first night its token let it get that
+far, and `MIGRATION.md`'s restore drill would have died identically at step 5,
+mid-drill, with a paid scratch cluster running. Neither was noticed because
+neither script had ever actually been run.
+
+```bash
+git ls-files -s infra/*.sh      # 100755 is right; 100644 is the bug
+git update-index --chmod=+x <file>   # chmod alone does nothing, core.fileMode is false
+```
+
+**Unlike the CRLF case, CI can catch this**, because `git ls-files -s` reports
+the recorded mode on any platform. Nothing checks it yet.
+
 ## Android
 
 Neither `JAVA_HOME` nor `ANDROID_HOME` is set globally, and the `java` on

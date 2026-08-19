@@ -3,12 +3,22 @@
 Vince · plan · written August 18, 2026 · **revised the same day after review,
 and its six increments confirmed as the product the same day**
 
-**Increment 1's read half shipped August 18, 2026** — `a302dee` on `main`,
-undeployed: `queries.unresolved_questions` and thirteen tests. Its presentation
-half is **deliberately held**, because the section belongs on `/mind/review/`
-and the navigation-and-identity work was re-theming `mind/` templates the same
-afternoon. Nothing else has started, and increment 2 still waits on the design
-question its own section names.
+**Two increments are part-shipped, August 18, 2026, on `main` and undeployed.**
+Both stop at the same line, and for the same reason: the navigation-and-identity
+work owns the presentation layer this week.
+
+- **Increment 1's read half** — `a302dee`, `queries.unresolved_questions` and
+  thirteen tests. The section belongs on `/mind/review/`, and `mind/` templates
+  were being re-themed the same afternoon, so it waits rather than being written
+  twice.
+- **Increment 3's model and API** — `0fc78d9`, `Project.purpose` with migration
+  `0038`, twelve tests, contract and client regenerated. **No React text area**,
+  so nothing can write a purpose yet except the API — a field no surface can
+  fill is the unswitched seam this repository keeps catching, and **increment 4
+  should not start until one exists.**
+
+Increment 2 has not started and still waits on the design question its own
+section names.
 
 ## What was asked for
 
@@ -171,7 +181,7 @@ on, not because anybody is undecided about them.
 | 1 | Unresolved-question review with cited passages | nothing — promotable now |
 | 2 | Commitment suggestions from journal entries | one design question, below, answered before code |
 | 3 | A short purpose / desired-outcome field for projects | nothing — task core, charter §4 |
-| 4 | Project preparation briefs that retrieve relevant material | step 3, and a corpus |
+| 4 | Project preparation briefs that retrieve relevant material | step 3 **including a way to write a purpose**, and a corpus |
 | 5 | Extractive weekly summaries with citations | nothing |
 | 6 | A weekly-plan draft | the product collecting capacity and weekly intentions (S3, S9) |
 

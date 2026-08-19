@@ -192,7 +192,7 @@ on, not because anybody is undecided about them.
 | 3 | A short purpose / desired-outcome field for projects | nothing — task core, charter §4 |
 | 4 | Project preparation briefs that retrieve relevant material | step 3; its retrieval needed no way to *write* a purpose, but a brief worth opening does |
 | 5 | Extractive weekly summaries with citations | nothing |
-| 6 | A weekly-plan draft | the product collecting capacity and weekly intentions (S3, S9) |
+| 6 | A weekly-plan draft | weekly intentions (S9). Capacity no longer waits on anything — D2 |
 
 **Step 5 is unblocked and holds its place by choice.** It depends on nothing
 above it, so if 3 or 4 stall it can move forward without disturbing the order —
@@ -277,14 +277,17 @@ all.
 **Suggested focus and a draft plan are not in this increment.** Sections are
 accepted, edited or dismissed independently when they arrive.
 
-### 6 — The weekly-plan draft · *waits on capacity and intentions*
+### 6 — The weekly-plan draft · *waits on intentions*
 
-**It cannot be honest before the product collects what it needs.** A draft week
-that cannot say *you have committed more than the week holds* is a list, and the
-product has lists. It needs intentions above the day (S9) and effort/capacity
-(S3) — and [`product-stories.md`](product-stories.md) calls S3 the sharpest test
-of appetite in the whole set: if estimates go unentered, the story dies and takes
-the capacity model with it.
+**It cannot be honest without a way to say *you have committed more than the
+week holds*.** A draft that cannot say that is a list, and the product has
+lists.
+
+**Half of that blocker is gone — D2, August 18, 2026.** Capacity comes from
+observed throughput rather than from entered estimates, so this no longer waits
+on `Item.effort` or on anybody's appetite for filling one in. What remains is
+S9: intentions above the day, snapshotted the way `DailyFocus` snapshots a
+commitment.
 
 Deterministic when it comes: cadence math, milestone pace, overdue and pinned
 work, one discretionary rotation. A drafted week is confirmed, edited or
@@ -307,17 +310,18 @@ week I rejected"* is a signal about the planner.
 ## Open decisions — Vince's, not this document's
 
 **Increments 1, 2 and 3 depend on none of these and can start now.** The
-decisions gate 4, 5's successor, and 6. **D1, D3 and D4 were all answered on
-August 18, 2026. Only D2 remains**, and it is the one nothing here can help
-with: whether estimates would actually get entered is a fact about Vince, not
-about the code.
+decisions gate 4, 5's successor, and 6. **All four were answered on August 18,
+2026** — the sections below record each one and why. Nothing in this plan is
+now waiting on a decision; what remains is work, and S9 is its only external
+prerequisite.
 
 1. ~~**D1. Is generated prose ever allowed?**~~ **Answered August 18, 2026:
    not yet, and the trigger is written below.** See *D1, decided* after this
    list — it is long enough to be its own section, and a deferral without a
    firing condition is the thing this document would be worst at.
-2. **D2. Does S3 get built?** Gates increment 6, and the answer is about
-   appetite for entering estimates, not about code.
+2. ~~**D2. Does S3 get built?**~~ **Answered August 18, 2026: capacity yes,
+   estimates no.** See *D2, decided* — the appetite question was dissolved
+   rather than answered.
 3. ~~**D3. What is each surface's budget?**~~ **Answered August 18, 2026: the
    caps stand, and the slots get rationed by accept rate.** The question was
    posed wrongly — see *D3, decided*.
@@ -339,6 +343,60 @@ about the code.
    CUDA build. `requirements-embeddings.txt` now exists, which resolves the two
    citations that had pointed at it for weeks — including an error message
    telling a person to install a file that was not there.
+
+## D2, decided — capacity without estimates
+
+**Vince, August 18, 2026.** D2 asked whether S3 gets built, and
+[`product-stories.md`](product-stories.md) framed it as the sharpest test of
+appetite in the whole set: *if estimates would go unentered, this story dies and
+takes the capacity model with it.* **The answer dissolves the test rather than
+taking it.** Capacity is derived from what has already happened, so there are no
+estimates to go unentered.
+
+**The data is already there, and was captured on purpose.** `DailyFocus` records
+what was pinned to a day, when it was chosen, and whether it was released;
+completion lives on the task. `daily-operating-system-vision.md` requires that
+denominator be recorded at the moment of choosing precisely because it *"cannot
+be reconstructed after the fact from a mutable due date"* — so the planning-time
+signal this needs is a read over records the product already keeps deliberately.
+
+*"You have pinned nine for Tuesday; you have finished more than five on two of
+the last thirty days"* costs nothing to say and asks nothing of the person.
+
+**Two existing decisions this agrees with.** `design-concept.md` already held
+numeric time and energy estimates back as *"their own source of friction"*, only
+worth adding if a cheaper signal proves insufficient — S3 asked for exactly what
+that paragraph deferred. And the whole product prefers derived history to stored
+state; a capacity number entered by hand would be the mutable field the honest
+denominators exist to avoid.
+
+### What this deliberately does not buy
+
+**It is count-based, so nine small things read the same as nine large ones.**
+That is a real loss against S3 as written and is accepted: a signal that is
+always available beats a better signal that depends on somebody maintaining
+estimates for a year. If the count proves too blunt, `design-concept.md`'s
+context tag is the next cheapest step and numeric estimates remain available
+after that — the order is unchanged, this decision just declines to start at the
+expensive end.
+
+**It must not become a scold.** `daily-operating-system-vision.md` asks that
+history be useful *without making missed work feel like punishment*, and "you
+never finish what you plan" is exactly that failure. The signal states capacity,
+never performance.
+
+**Reuse, do not reimplement.** `review/reads.py` already computes planned
+against completed for a week with the honest-denominator discipline intact. The
+daily grain is the same computation, and two definitions of "what I got through"
+would drift.
+
+### What it does to S3
+
+It delivers S3's *capacity* and its *planning-time signal* by a different route
+than S3's `Requires` line names, and delivers no `Item.effort` at all. **Whether
+that moves S3's verdict is [`product-stories.md`](product-stories.md)'s call and
+not this document's** — that file owns the score and it is quoted nowhere else.
+Recorded here only as the thing that changed underneath it.
 
 ## D3, decided — the caps stand; the slots get earned
 

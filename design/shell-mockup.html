@@ -1,0 +1,538 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clarice — application shell (mockup)</title>
+<!--
+  Design comp for the unified navigation and the re-themed application.
+  Not wired to anything; the two buttons top-right switch the demonstrated
+  core and the theme so both can be inspected without a server.
+
+  The point of this file is the chrome, not the content. Flip between
+  Tasks and Second Mind: the app bar does not move, does not change
+  colour, and does not change typeface. Only the sub-nav's entries change.
+  That is the whole proposal.
+
+  See design/navigation-and-identity-plan.md.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Spectral:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+/* Same tokens as design/landing-mockup.html. One identity, one file's
+   worth of values -- in production these are tailwind.css's @theme block
+   and the Django templates read the same ones. */
+:root {
+  --paper:        #eaeee6;
+  --paper-raised: #f6f8f3;
+  --ink:          #191d19;
+  --ink-soft:     #5d645b;
+  --ink-faint:    #8a9187;
+  --rule:         #ccd3c6;
+  --rule-strong:  #b3bcac;
+  --cinnabar:     #c0301c;
+  --kept:         #2f5b43;
+  --released:     #5c7085;
+  --focus:        #1a4fa0;
+  --overdue:      #a8331f;
+}
+
+:root[data-theme="dark"] {
+  --paper:        #141712;
+  --paper-raised: #1d211c;
+  --ink:          #e7ebe3;
+  --ink-soft:     #9aa295;
+  --ink-faint:    #6d7469;
+  --rule:         #2c3129;
+  --rule-strong:  #3d443a;
+  --cinnabar:     #e75d43;
+  --kept:         #74b18e;
+  --released:     #93a7bb;
+  --focus:        #8ab4f8;
+  --overdue:      #e88b78;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: Spectral, Georgia, serif;
+  font-size: 1rem;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Sans for machinery, serif for the record. Every control, label and
+   nav entry below is sans; every line a person actually wrote is serif.
+   Mono carries anything that has to add up. */
+button, input, textarea, .ui,
+nav a, .subnav a, .rail a, .rail h3, .pagehead .meta {
+  font-family: Archivo, system-ui, sans-serif;
+}
+.data, .count, .when, .figure {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+a { color: inherit; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 2px; }
+
+.frame { max-width: 74rem; margin: 0 auto; padding: 0 1.25rem; }
+
+/* The app bar. Identical on every surface, both cores, signed in.
+   Server-rendered, so it is the same markup inside the SPA shell, on the
+   Django account pages, and at /mind/. ------------------------------- */
+.appbar { border-bottom: 1px solid var(--rule-strong); }
+.appbar .frame {
+  display: flex; align-items: center; gap: 2rem;
+  min-height: 56px;
+}
+.wordmark {
+  font-family: Archivo, system-ui, sans-serif;
+  font-weight: 700; font-size: 0.9rem;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  text-decoration: none; white-space: nowrap;
+}
+.wordmark::after {
+  content: ""; display: inline-block;
+  width: 0.32rem; height: 0.32rem; margin-left: 0.45rem;
+  background: var(--cinnabar); vertical-align: 0.1em;
+}
+
+.cores { display: flex; gap: 0.35rem; margin-right: auto; }
+.cores button {
+  appearance: none; background: none; cursor: pointer;
+  border: 0; border-bottom: 2px solid transparent;
+  color: var(--ink-soft);
+  font-size: 0.9rem; font-weight: 500;
+  padding: 0.5rem 0.7rem;
+  min-height: 44px;
+}
+.cores button:hover { color: var(--ink); }
+.cores button[aria-current="true"] {
+  color: var(--ink); font-weight: 600;
+  border-bottom-color: var(--ink);
+}
+
+.account { display: flex; align-items: center; gap: 0.4rem; }
+.account button {
+  appearance: none; background: none; border: 0; cursor: pointer;
+  color: var(--ink-soft); font-size: 0.85rem;
+  padding: 0.5rem 0.6rem; min-height: 44px;
+  border-radius: 2px;
+}
+.account button:hover { color: var(--ink); }
+
+/* The sub-nav. The one thing that changes between cores. ------------- */
+.subnav { border-bottom: 1px solid var(--rule); }
+.subnav .frame { display: flex; gap: 1.4rem; flex-wrap: wrap; min-height: 44px; align-items: center; }
+.subnav a {
+  text-decoration: none; color: var(--ink-soft);
+  font-size: 0.875rem;
+  padding: 0.55rem 0; min-height: 44px;
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+.subnav a:hover { color: var(--ink); }
+.subnav a.here { color: var(--ink); font-weight: 600; border-bottom-color: var(--cinnabar); }
+.subnav .count { font-size: 0.72rem; color: var(--ink-faint); }
+
+/* Body: contents rail + surface. The rail is contents, not navigation --
+   it lists the things this core holds, and it is absent in the knowledge
+   core, which holds no such list. ------------------------------------ */
+.body { display: grid; grid-template-columns: 13rem minmax(0, 1fr); gap: 2.5rem; padding: 2rem 0 5rem; }
+.body.norail { grid-template-columns: minmax(0, 1fr); }
+
+.rail { display: flex; flex-direction: column; gap: 1.75rem; position: sticky; top: 1.5rem; align-self: start; }
+.rail section { display: flex; flex-direction: column; gap: 0.1rem; }
+.rail h3 {
+  font-size: 0.68rem; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--ink-faint); font-weight: 600;
+  margin: 0 0 0.55rem; padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--rule);
+}
+.rail a {
+  display: flex; align-items: center; gap: 0.5rem;
+  text-decoration: none; font-size: 0.85rem;
+  padding: 0.4rem 0.35rem; border-radius: 2px;
+  color: var(--ink-soft);
+}
+.rail a:hover { background: var(--paper-raised); color: var(--ink); }
+.rail a.here { color: var(--ink); font-weight: 600; background: var(--paper-raised); }
+.rail .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rail .count { margin-left: auto; font-size: 0.72rem; color: var(--ink-faint); }
+.rail .count.warn { color: var(--overdue); }
+.dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+
+/* The surface ------------------------------------------------------- */
+.pagehead {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 1rem; flex-wrap: wrap;
+  padding-bottom: 0.7rem; border-bottom: 2px solid var(--rule-strong);
+}
+.pagehead h1 {
+  font-family: Archivo, system-ui, sans-serif;
+  font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em;
+  margin: 0;
+}
+.pagehead .meta {
+  font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+/* Same ruled-line entry as the landing page, because it is the same
+   object. A commitment and the mark made against it, on one line. */
+.entry {
+  display: grid; grid-template-columns: 4.5rem minmax(0, 1fr) auto 2rem;
+  align-items: baseline; gap: 0.75rem;
+  padding: 0.7rem 0; border-bottom: 1px solid var(--rule);
+}
+.entry .when { font-size: 0.7rem; letter-spacing: 0.07em; text-transform: uppercase; color: var(--ink-faint); }
+.entry .what { font-size: 1rem; }
+.entry .area { font-size: 0.72rem; color: var(--ink-faint); letter-spacing: 0.06em; text-transform: uppercase; }
+.entry .mark {
+  justify-self: end;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 1rem;
+}
+.mark.is-kept { color: var(--kept); }
+/* Released and Enough share a colour on purpose. The rule review/reads.py
+   states is not "how did it end" but "did you decide, or did it merely run
+   out" -- and both a decommitment and an "that was enough" are decisions
+   that leave the denominator. Green is met; slate is decided; unmarked is
+   elapsed. Two colours, four outcomes, one rule. */
+.mark.is-released, .mark.is-enough { color: var(--released); }
+.mark.is-open { color: var(--ink-faint); }
+.entry.released .what, .entry.open .what { color: var(--ink-soft); }
+.entry.overdue .when { color: var(--overdue); }
+
+.section-label {
+  font-family: Archivo, system-ui, sans-serif;
+  font-size: 0.68rem; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--ink-faint); font-weight: 600;
+  margin: 2rem 0 0.5rem;
+}
+
+.figure-row {
+  display: flex; align-items: baseline; gap: 1rem;
+  padding: 1.5rem 0 0;
+}
+.figure { font-size: 2rem; color: var(--cinnabar); }
+.figure-row .provenance {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.7rem; letter-spacing: 0.11em; text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+/* Knowledge core surface -------------------------------------------- */
+.capture textarea {
+  width: 100%; min-height: 9rem; padding: 0.9rem;
+  font-family: Spectral, Georgia, serif; font-size: 1.05rem; line-height: 1.55;
+  background: var(--paper-raised); color: var(--ink);
+  border: 1px solid var(--rule-strong); border-radius: 2px;
+  resize: vertical;
+}
+.capture textarea:focus { outline: 2px solid var(--focus); outline-offset: 1px; }
+.capture .row { display: flex; gap: 0.6rem; align-items: center; margin-top: 0.8rem; flex-wrap: wrap; }
+.capture input.tags {
+  width: 100%; margin-top: 0.45rem; padding: 0.45rem 0.8rem;
+  font-family: Spectral, Georgia, serif; font-size: 0.92rem;
+  background: transparent; color: var(--ink);
+  border: 1px dashed var(--rule-strong); border-radius: 2px;
+}
+.capture input.tags:focus {
+  outline: 2px solid var(--focus); outline-offset: 1px;
+  background: var(--paper-raised); border-style: solid;
+}
+.btn {
+  font-family: Archivo, system-ui, sans-serif;
+  font-size: 0.9rem; font-weight: 600; cursor: pointer;
+  min-height: 44px; display: inline-flex; align-items: center;
+  padding: 0 1.2rem; border-radius: 2px;
+  border: 1px solid var(--ink); background: var(--ink); color: var(--paper);
+}
+.btn.quiet { background: transparent; color: var(--ink); border-color: var(--rule-strong); }
+.btn.quiet:hover { border-color: var(--ink); }
+
+.node {
+  border-bottom: 1px solid var(--rule);
+  padding: 1rem 0;
+}
+.node .when { font-size: 0.7rem; letter-spacing: 0.07em; text-transform: uppercase; color: var(--ink-faint); }
+.node .text { margin: 0.35rem 0 0.5rem; }
+.chips { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+.chip {
+  font-family: Archivo, system-ui, sans-serif;
+  font-size: 0.7rem; letter-spacing: 0.05em;
+  padding: 0.15rem 0.5rem; border-radius: 2px;
+  border: 1px solid var(--rule); color: var(--ink-faint);
+}
+
+.hint {
+  margin: 2.5rem 0 0; padding: 1rem 1.1rem;
+  border-left: 2px solid var(--cinnabar);
+  background: var(--paper-raised);
+  font-style: italic; font-size: 0.92rem; color: var(--ink-soft);
+  max-width: 40rem;
+}
+.hint b { font-style: normal; color: var(--ink); }
+
+@media (max-width: 52rem) {
+  .body { grid-template-columns: minmax(0, 1fr); gap: 1.5rem; }
+  .rail { position: static; flex-direction: row; flex-wrap: wrap; gap: 1.5rem; }
+  .rail section { min-width: 12rem; flex: 1; }
+  .appbar .frame { flex-wrap: wrap; min-height: 0; padding-top: 0.5rem; padding-bottom: 0.5rem; }
+  .entry { grid-template-columns: 4rem minmax(0, 1fr) 1.75rem; }
+  .entry .area { display: none; }
+}
+</style>
+</head>
+<body>
+
+<header class="appbar">
+  <div class="frame">
+    <a class="wordmark" href="#">Clarice</a>
+    <div class="cores" role="group" aria-label="Core">
+      <button type="button" data-core="tasks" aria-current="true">Tasks</button>
+      <button type="button" data-core="mind" aria-current="false">Second Mind</button>
+    </div>
+    <div class="account">
+      <button type="button">Vince</button>
+      <button type="button" id="theme">Dark</button>
+    </div>
+  </div>
+</header>
+
+<!-- Tasks ---------------------------------------------------------- -->
+<div data-pane="tasks">
+  <nav class="subnav" aria-label="Tasks">
+    <div class="frame">
+      <a class="here" href="#">Today</a>
+      <a href="#">Agenda</a>
+      <a href="#">Review</a>
+      <a href="#">Archive <span class="count">12</span></a>
+    </div>
+  </nav>
+
+  <div class="frame">
+    <div class="body">
+      <aside class="rail">
+        <section>
+          <h3>Areas</h3>
+          <a href="#"><span class="dot" style="background:#8fc7d6"></span><span class="name">Home</span><span class="count">3</span></a>
+          <a href="#"><span class="dot" style="background:#a8dba8"></span><span class="name">Work</span><span class="count warn">2 · 7</span></a>
+          <a href="#"><span class="dot" style="background:#f4c98a"></span><span class="name">Admin</span><span class="count">4</span></a>
+          <a href="#"><span class="dot" style="background:#c9a8dc"></span><span class="name">Health</span><span class="count">1</span></a>
+        </section>
+        <section>
+          <h3>Projects</h3>
+          <a href="#"><span class="name">Commercial substrate</span><span class="count">6</span></a>
+          <a href="#"><span class="name">Mail transport</span><span class="count">3</span></a>
+        </section>
+      </aside>
+
+      <main>
+        <div class="pagehead">
+          <h1>Tuesday 18 August</h1>
+          <span class="meta">5 chosen · 1 released</span>
+        </div>
+
+        <!-- Focus and Action items are two sections, not one list.
+             DayRoute.tsx:899 and :914 keep them apart, and DailyFocus's
+             docstring says why: action items are whatever is due, a focus is
+             what the person committed to, and only the second is something a
+             finish rate can honestly divide by. A flat list would imply the
+             figure below divides by everything on screen. It does not. -->
+        <p class="section-label">Focus · what you chose this morning</p>
+        <div class="entry">
+          <span class="when">07:12</span>
+          <span class="what">Move the mail transport onto Resend's API</span>
+          <span class="area">Work</span>
+          <span class="mark is-kept" title="Kept">✓</span>
+        </div>
+        <div class="entry">
+          <span class="when">07:12</span>
+          <span class="what">Tag the deploy that went out last night</span>
+          <span class="area">Work</span>
+          <span class="mark is-kept" title="Kept">✓</span>
+        </div>
+        <div class="entry open">
+          <span class="when">07:12</span>
+          <span class="what">Write the privacy policy</span>
+          <span class="area">Admin</span>
+          <span class="mark is-open" title="Still open">○</span>
+        </div>
+        <div class="entry open">
+          <span class="when">07:12</span>
+          <span class="what">Read the pension letter</span>
+          <span class="area">Home</span>
+          <span class="mark is-open" title="Still open">○</span>
+        </div>
+        <div class="entry released">
+          <span class="when">11:40</span>
+          <span class="what">Rehearse the restore drill</span>
+          <span class="area">Work</span>
+          <span class="mark is-released" title="Released at 11:40">—</span>
+        </div>
+
+        <p class="section-label">Action items · what today asks of you</p>
+        <div class="entry open overdue">
+          <span class="when">3d late</span>
+          <span class="what">Reply to the accountant</span>
+          <span class="area">Admin</span>
+          <span class="mark is-open" title="Not pinned">○</span>
+        </div>
+        <div class="entry open">
+          <span class="when">Due</span>
+          <span class="what">Renew the domain</span>
+          <span class="area">Home</span>
+          <span class="mark is-open" title="Not pinned">○</span>
+        </div>
+
+        <!-- Marks here are the occurrence's outcome, not its progress.
+             RoutineOccurrence.Outcome is COMPLETED / SKIPPED / PARTIAL / OPEN,
+             and review/reads.py's is_met is `outcome == COMPLETED` -- so 4 of 5
+             is still open, however close it looks. PARTIAL ("Enough") is a
+             fourth outcome and needs its own mark; it shares released's slate
+             because the rule is the one review/reads.py states: a decision
+             leaves the denominator, a period that merely elapsed does not. -->
+        <p class="section-label">Routines</p>
+        <div class="entry open">
+          <span class="when">4 / 5</span>
+          <span class="what">Thirty minutes of Spanish</span>
+          <span class="area">Health</span>
+          <span class="mark is-open" title="Open — target not met">○</span>
+        </div>
+        <div class="entry released">
+          <span class="when">2 / 3</span>
+          <span class="what">Walk before lunch</span>
+          <span class="area">Health</span>
+          <span class="mark is-enough" title="Enough — you closed it early">◑</span>
+        </div>
+        <div class="entry">
+          <span class="when">1 / 1</span>
+          <span class="what">Take the tablets</span>
+          <span class="area">Health</span>
+          <span class="mark is-kept" title="Completed">✓</span>
+        </div>
+
+        <!-- 2 kept, 2 open, 1 released. The released pin is NOT in the
+             denominator (review/reads.py: Planned.total is met + unfinished,
+             set_aside is outside it), so this reads 2 / 4 and not 2 / 5.
+             Showing the released row on the Day page at all is a proposal --
+             daily/reads.py:64 filters released pins out of today's list. -->
+        <div class="figure-row">
+          <span class="figure">2 / 4</span>
+          <span class="provenance">Chosen 07:12 · 1 released, outside the sum</span>
+        </div>
+
+        <p class="hint">
+          The rail is <b>contents</b>, not navigation. Areas and Projects are
+          things this core holds; where you can <b>go</b> is the bar at the
+          top, and that bar is identical on every surface. Switch to Second
+          Mind above — nothing in the chrome moves.
+        </p>
+      </main>
+    </div>
+  </div>
+</div>
+
+<!-- Second Mind ---------------------------------------------------- -->
+<div data-pane="mind" hidden>
+  <nav class="subnav" aria-label="Second Mind">
+    <div class="frame">
+      <a class="here" href="#">Capture</a>
+      <a href="#">Concepts</a>
+      <a href="#">Pending <span class="count">3</span></a>
+      <a href="#">Search</a>
+      <a href="#">Numbers</a>
+      <!-- The Pending badge is a PROPOSAL, not current behaviour. mind/base.html
+           renders `{% if pending %}` on every page, but only _capture_context
+           (views.py:125) ever supplies it -- so today the badge appears on
+           Capture alone and is silently absent on the other four. Same class of
+           bug as the `page == 'capture'` marker that template's own comment
+           describes. Making the bar persistent means supplying the count from
+           one place. Note it stays inside the core: the app bar's "Second Mind"
+           has no count, and per CLAUDE.md never gets one. -->
+    </div>
+  </nav>
+
+  <div class="frame">
+    <div class="body norail">
+      <main>
+        <div class="pagehead">
+          <h1>Capture</h1>
+          <span class="meta">Nothing here needs deciding</span>
+        </div>
+
+        <!-- Tags are an input, not a button, and deliberately quieter than the
+             textarea: mind/base.html's own comment says "the thought is the
+             point and the label is an afterthought somebody may never reach
+             for." A button would make it a step. Keeping the shipped
+             affordance and only restyling it. -->
+        <div class="capture" style="padding-top:1.25rem">
+          <textarea placeholder="Anything at all." aria-label="What are you thinking?"></textarea>
+          <input class="tags" type="text" placeholder="Tags, optional — comma separated" aria-label="Tags">
+          <div class="row">
+            <button class="btn" type="button">Keep</button>
+          </div>
+        </div>
+
+        <p class="section-label">Earlier today</p>
+
+        <div class="node">
+          <div class="when">14:22</div>
+          <p class="text">
+            The restore drill is the thing to keep exercised, not the rollback —
+            rolling back code without the database is often worse than the bug.
+          </p>
+          <div class="chips"><span class="chip">deploys</span><span class="chip">infra</span></div>
+        </div>
+        <div class="node">
+          <div class="when">09:40</div>
+          <p class="text">
+            A seam that is not switched on is not a seam. Check the build
+            configuration, not the branch.
+          </p>
+          <div class="chips"><span class="chip">architecture</span></div>
+        </div>
+
+        <p class="hint">
+          Same paper, same ink, same typefaces, same bar. Only the row under it
+          changed. Note the two renames: <b>Review is now Pending</b>, because
+          Tasks already has a Review and they were unrelated things sharing a
+          word — and <b>Things is now Concepts</b>, which is what its URL and
+          its view have always called it.
+        </p>
+      </main>
+    </div>
+  </div>
+</div>
+
+<script>
+  const panes = document.querySelectorAll("[data-pane]");
+  document.querySelectorAll(".cores button").forEach((tab) => {
+    tab.addEventListener("click", () => {
+      document.querySelectorAll(".cores button").forEach((each) => {
+        each.setAttribute("aria-current", String(each === tab));
+      });
+      panes.forEach((pane) => {
+        pane.hidden = pane.dataset.pane !== tab.dataset.core;
+      });
+    });
+  });
+
+  const themeButton = document.getElementById("theme");
+  themeButton.addEventListener("click", () => {
+    const dark = document.documentElement.getAttribute("data-theme") === "dark";
+    document.documentElement.setAttribute("data-theme", dark ? "light" : "dark");
+    themeButton.textContent = dark ? "Dark" : "Light";
+  });
+</script>
+
+</body>
+</html>

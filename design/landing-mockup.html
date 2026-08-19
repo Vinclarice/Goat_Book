@@ -1,0 +1,604 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clarice — signed-out landing (mockup)</title>
+<!--
+  Design comp for the signed-out home page. Not wired to anything.
+  See design/navigation-and-identity-plan.md for the token system and the
+  reasoning; this file is what that plan looks like.
+
+  Fonts load from Google here because this is a comp opened locally.
+  Production self-hosts subsets — see the plan's "What this costs".
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Spectral:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+/* Tokens ------------------------------------------------------------
+   Ledger stock, not cream. The green cast is the point: accounting
+   paper was tinted to cut glare, and it is the one warm neutral that
+   is not the cream every other landing page is currently using.
+
+   Light is primary here; dark is the same desk under a lamp. */
+:root {
+  --paper:        #eaeee6;
+  --paper-raised: #f6f8f3;
+  --ink:          #191d19;
+  --ink-soft:     #5d645b;
+  --ink-faint:    #8a9187;
+  --rule:         #ccd3c6;
+  --rule-strong:  #b3bcac;
+
+  /* The arithmetic ink. Reserved for the margin rule and the figure --
+     never a button, never an outcome. Red in a ledger means "look at
+     this number", and it means nothing else. */
+  --cinnabar:     #c0301c;
+
+  /* Two marks, because only two things happen to a line. Open is
+     unmarked -- the honest rendering of a decision nobody has made. */
+  --kept:         #2f5b43;
+  --released:     #5c7085;
+
+  --focus:        #1a4fa0;
+  --measure: 34rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper:        #141712;
+    --paper-raised: #1d211c;
+    --ink:          #e7ebe3;
+    --ink-soft:     #9aa295;
+    --ink-faint:    #6d7469;
+    --rule:         #2c3129;
+    --rule-strong:  #3d443a;
+    --cinnabar:     #e75d43;
+    --kept:         #74b18e;
+    --released:     #93a7bb;
+    --focus:        #8ab4f8;
+  }
+}
+
+:root[data-theme="dark"] {
+  --paper:        #141712;
+  --paper-raised: #1d211c;
+  --ink:          #e7ebe3;
+  --ink-soft:     #9aa295;
+  --ink-faint:    #6d7469;
+  --rule:         #2c3129;
+  --rule-strong:  #3d443a;
+  --cinnabar:     #e75d43;
+  --kept:         #74b18e;
+  --released:     #93a7bb;
+  --focus:        #8ab4f8;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: Spectral, Georgia, serif;
+  font-size: 1.0625rem;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Sans is machinery: controls, labels, navigation. Serif is the record:
+   anything a person wrote, or is being told. The split is a rule, not a
+   flourish -- see the plan. */
+.ui { font-family: Archivo, system-ui, sans-serif; }
+.data {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+a { color: inherit; }
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+.sheet { max-width: 68rem; margin: 0 auto; padding: 0 1.5rem; }
+
+/* Masthead ---------------------------------------------------------- */
+.masthead {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 1.5rem; flex-wrap: wrap;
+  padding: 1.5rem 0 1.25rem;
+  border-bottom: 1px solid var(--rule);
+}
+.wordmark {
+  font-family: Archivo, system-ui, sans-serif;
+  font-weight: 700; font-size: 1.05rem;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  text-decoration: none;
+}
+.wordmark::after {
+  content: ""; display: inline-block;
+  width: 0.36rem; height: 0.36rem; margin-left: 0.5rem;
+  background: var(--cinnabar); vertical-align: 0.12em;
+}
+.masthead nav { display: flex; align-items: center; gap: 1.5rem; }
+.masthead nav a {
+  font-family: Archivo, system-ui, sans-serif;
+  font-size: 0.875rem; text-decoration: none; color: var(--ink-soft);
+}
+.masthead nav a:hover { color: var(--ink); }
+.masthead nav a.cta {
+  color: var(--ink);
+  border: 1px solid var(--rule-strong);
+  border-radius: 2px;
+  padding: 0.5rem 0.9rem;
+  font-weight: 600;
+  min-height: 44px; display: inline-flex; align-items: center;
+}
+.masthead nav a.cta:hover { border-color: var(--ink); }
+
+/* Headline ---------------------------------------------------------- */
+.lede { padding: 4.5rem 0 3.5rem; max-width: 46rem; }
+.lede h1 {
+  font-family: Archivo, system-ui, sans-serif;
+  font-weight: 700;
+  font-size: clamp(2.4rem, 6vw, 4rem);
+  line-height: 1.02;
+  letter-spacing: -0.028em;
+  margin: 0 0 1.5rem;
+  text-wrap: balance;
+}
+.lede p {
+  margin: 0; max-width: var(--measure);
+  font-size: 1.2rem; line-height: 1.55; color: var(--ink-soft);
+}
+
+/* The ledger: margin copy, red rule, entries ------------------------- */
+.ledger {
+  display: grid;
+  grid-template-columns: 15rem 1px minmax(0, 1fr);
+  gap: 0 2.25rem;
+  padding-bottom: 4rem;
+}
+.marginalia { grid-column: 1; padding-top: 2.9rem; }
+.rule-red {
+  grid-column: 2;
+  background: var(--cinnabar);
+  opacity: 0.55;
+}
+.entries { grid-column: 3; }
+
+.note {
+  font-style: italic;
+  font-size: 0.94rem;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  margin: 0 0 1.75rem;
+}
+.note b { font-style: normal; font-weight: 600; color: var(--ink); }
+
+.ledger-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 2px solid var(--rule-strong);
+}
+.ledger-head .caption {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.72rem; letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+/* One entry = one ruled line. Every part sits on the same baseline,
+   because the whole claim is that the plan and the outcome are on one
+   line and neither was rewritten. */
+.entry {
+  display: grid;
+  grid-template-columns: 5.5rem minmax(0, 1fr) 2rem;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding: 0.72rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+.entry .when {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.entry .what { font-size: 1.02rem; }
+.entry .mark {
+  justify-self: end;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 1.05rem;
+}
+.mark.is-kept,     .glyph.is-kept     { color: var(--kept); }
+.mark.is-released, .glyph.is-released { color: var(--released); }
+.mark.is-open,     .glyph.is-open     { color: var(--ink-faint); }
+
+.entry.released .what { color: var(--ink-soft); }
+.entry.open .what     { color: var(--ink-soft); }
+
+/* The figure. The one loud thing on the page. ------------------------ */
+.tally {
+  display: flex; gap: 1.25rem; flex-wrap: wrap;
+  padding: 0.9rem 0;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.78rem; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--ink-faint);
+  border-bottom: 1px solid var(--rule);
+}
+.tally b { color: var(--ink-soft); font-weight: 500; }
+/* The released count sits visibly apart, because it is not part of the
+   arithmetic beside it -- Planned.total is met + unfinished, and
+   set_aside is outside the denominator entirely. See review/reads.py. */
+.tally .aside { margin-left: auto; color: var(--released); }
+.tally .aside b { color: var(--released); }
+
+.figure { padding: 2.25rem 0 0; }
+.figure .fraction {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: clamp(2.6rem, 7vw, 3.75rem);
+  font-weight: 500;
+  line-height: 1;
+  color: var(--cinnabar);
+  letter-spacing: -0.02em;
+}
+.figure .provenance {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-top: 0.7rem;
+}
+.figure .contrast {
+  margin: 1.5rem 0 0;
+  max-width: var(--measure);
+  font-size: 1rem; line-height: 1.55; color: var(--ink-soft);
+}
+.figure .contrast b { color: var(--ink); font-weight: 600; }
+
+/* The legend -------------------------------------------------------- */
+.key { border-top: 1px solid var(--rule-strong); padding: 3.5rem 0 3.25rem; }
+.eyebrow {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.72rem; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--ink-faint);
+  margin: 0 0 1.5rem;
+}
+.legend { margin: 0; }
+/* Same ruled row as .entry, deliberately: the legend belongs to the sheet
+   above it rather than sitting in a card beside it. */
+.legend-row {
+  display: grid;
+  grid-template-columns: 11rem minmax(0, 1fr);
+  gap: 0.4rem 2.25rem;
+  align-items: baseline;
+  padding: 1.05rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+.legend-row:first-child { border-top: 1px solid var(--rule); }
+.legend dt { display: flex; align-items: baseline; gap: 0.95rem; margin: 0; }
+.glyph {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 1.35rem; line-height: 1;
+  width: 1.1rem; text-align: center; flex: none;
+}
+.term {
+  font-family: Archivo, system-ui, sans-serif;
+  font-weight: 600; font-size: 0.98rem; letter-spacing: 0.005em;
+}
+.legend dd { margin: 0; color: var(--ink-soft); font-size: 1rem; }
+.key-close {
+  margin: 2.25rem 0 0; max-width: 38rem;
+  font-size: 1.15rem; line-height: 1.5;
+}
+
+/* Two grounded sections --------------------------------------------- */
+.plainly { border-top: 1px solid var(--rule-strong); padding: 3.5rem 0; }
+.plainly h2 {
+  font-family: Archivo, system-ui, sans-serif;
+  font-weight: 600; font-size: 1.6rem; letter-spacing: -0.015em;
+  margin: 0 0 2.5rem; max-width: var(--measure);
+}
+/* Two, not three. Three columns of prose under a heading is the shape every
+   landing page defaults to; the third claim became the legend above, which
+   shows the vocabulary instead of describing it. */
+.claims { display: grid; gap: 3rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.claim h3 {
+  font-family: Archivo, system-ui, sans-serif;
+  font-size: 0.78rem; letter-spacing: 0.13em; text-transform: uppercase;
+  font-weight: 600; color: var(--ink-faint);
+  margin: 0 0 0.85rem; padding-bottom: 0.6rem;
+  border-bottom: 1px solid var(--rule);
+}
+.claim p { margin: 0; font-size: 1rem; line-height: 1.6; color: var(--ink-soft); }
+.claim p + p { margin-top: 0.75rem; }
+.claim b { color: var(--ink); font-weight: 600; }
+
+/* Close -------------------------------------------------------------- */
+.close {
+  border-top: 1px solid var(--rule-strong);
+  padding: 3.5rem 0 5rem;
+}
+.close h2 {
+  font-family: Archivo, system-ui, sans-serif;
+  font-weight: 700; font-size: clamp(1.7rem, 4vw, 2.4rem);
+  letter-spacing: -0.022em; margin: 0 0 1rem; max-width: 30rem;
+  text-wrap: balance;
+}
+.close p { margin: 0 0 2rem; max-width: var(--measure); color: var(--ink-soft); }
+.actions { display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; }
+.btn {
+  font-family: Archivo, system-ui, sans-serif;
+  font-size: 0.95rem; font-weight: 600; text-decoration: none;
+  min-height: 44px; display: inline-flex; align-items: center;
+  padding: 0 1.4rem; border-radius: 2px;
+  border: 1px solid var(--ink); background: var(--ink); color: var(--paper);
+}
+.btn:hover { background: transparent; color: var(--ink); }
+.btn.quiet { background: transparent; color: var(--ink); border-color: var(--rule-strong); }
+.btn.quiet:hover { border-color: var(--ink); }
+
+.colophon {
+  border-top: 1px solid var(--rule);
+  padding: 1.5rem 0 3rem;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.74rem; letter-spacing: 0.08em;
+  color: var(--ink-faint);
+  display: flex; gap: 1.5rem; flex-wrap: wrap; justify-content: space-between;
+}
+.colophon a { color: inherit; }
+
+/* The one orchestrated moment ----------------------------------------
+   The lines are set, and the marks arrive after them. Not decoration:
+   it is the product's model of time, which is that a commitment is
+   written at one moment and answered at a later one. */
+@media (prefers-reduced-motion: no-preference) {
+  .entry { animation: set-line 0.5s ease-out backwards; }
+  .entry .mark { animation: make-mark 0.45s ease-out backwards; }
+  @keyframes set-line {
+    from { opacity: 0; transform: translateY(4px); }
+  }
+  @keyframes make-mark {
+    from { opacity: 0; transform: scale(0.8); }
+  }
+  .entry:nth-of-type(1) { animation-delay: 0.05s }
+  .entry:nth-of-type(2) { animation-delay: 0.11s }
+  .entry:nth-of-type(3) { animation-delay: 0.17s }
+  .entry:nth-of-type(4) { animation-delay: 0.23s }
+  .entry:nth-of-type(5) { animation-delay: 0.29s }
+  .entry:nth-of-type(6) { animation-delay: 0.35s }
+  .entry:nth-of-type(7) { animation-delay: 0.41s }
+  .entry:nth-of-type(8) { animation-delay: 0.47s }
+  .entry:nth-of-type(1) .mark { animation-delay: 0.85s }
+  .entry:nth-of-type(2) .mark { animation-delay: 0.93s }
+  .entry:nth-of-type(3) .mark { animation-delay: 1.01s }
+  .entry:nth-of-type(4) .mark { animation-delay: 1.09s }
+  .entry:nth-of-type(5) .mark { animation-delay: 1.17s }
+  .entry:nth-of-type(6) .mark { animation-delay: 1.25s }
+  .entry:nth-of-type(7) .mark { animation-delay: 1.33s }
+  .entry:nth-of-type(8) .mark { animation-delay: 1.41s }
+}
+
+@media (max-width: 62rem) {
+  .claims { grid-template-columns: 1fr; gap: 2rem; }
+}
+
+@media (max-width: 40rem) {
+  /* The term keeps its own line rather than squeezing the definition into a
+     four-word column. The rule between rows still does the separating. */
+  .legend-row { grid-template-columns: minmax(0, 1fr); gap: 0.5rem; }
+}
+
+@media (max-width: 48rem) {
+  /* The margin rule goes horizontal rather than disappearing: it is the
+     one piece of the ledger the page is actually built on. */
+  .ledger { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .marginalia { grid-column: 1; grid-row: 3; padding-top: 1.75rem; }
+  .rule-red { grid-column: 1; grid-row: 2; height: 1px; margin-top: 2rem; }
+  .entries { grid-column: 1; grid-row: 1; }
+  .lede { padding: 3rem 0 2.5rem; }
+  .entry { grid-template-columns: 4.5rem minmax(0, 1fr) 1.75rem; gap: 0.5rem; }
+}
+</style>
+</head>
+<body>
+
+<div class="sheet">
+
+  <header class="masthead">
+    <a class="wordmark" href="#">Clarice</a>
+    <nav aria-label="Account">
+      <a href="#">Log in</a>
+      <a class="cta" href="#">Request access</a>
+    </nav>
+  </header>
+
+  <div class="lede">
+    <h1>Most task apps forget what you promised.</h1>
+    <p>
+      Clarice writes down what you chose on the morning you chose it, and
+      never edits that line. So the number at the end of the week is one
+      you can believe.
+    </p>
+  </div>
+
+  <section class="ledger" aria-label="A week in Clarice">
+
+    <div class="marginalia">
+      <p class="note">
+        Eight commitments, pinned across the week. The date is when each was
+        <b>chosen</b> — not when it was due, and not when it was last touched.
+      </p>
+      <p class="note">
+        <b>Released is not missed.</b> On Wednesday you decided the terms
+        could wait. Clarice records that as a decision — and takes it out of
+        the sum entirely, because counting a decommitment as a failure would
+        be the product disagreeing with you.
+      </p>
+      <p class="note">
+        Two are still open. They stay open. Nothing rolls forward at
+        midnight, and no due date is quietly rewritten to keep a streak
+        alive.
+      </p>
+    </div>
+
+    <div class="rule-red" aria-hidden="true"></div>
+
+    <div class="entries">
+      <div class="ledger-head">
+        <span class="caption">Week of 11 August 2026</span>
+        <span class="caption">8 chosen</span>
+      </div>
+
+      <div class="entry">
+        <span class="when">Mon 11</span>
+        <span class="what">Ship the deploy rollback fix</span>
+        <span class="mark is-kept" title="Kept">✓</span>
+      </div>
+      <div class="entry">
+        <span class="when">Mon 11</span>
+        <span class="what">Call the accountant back</span>
+        <span class="mark is-kept" title="Kept">✓</span>
+      </div>
+      <div class="entry">
+        <span class="when">Mon 11</span>
+        <span class="what">Renew the certificate</span>
+        <span class="mark is-kept" title="Kept">✓</span>
+      </div>
+      <div class="entry released">
+        <span class="when">Tue 12</span>
+        <span class="what">Draft the terms of service</span>
+        <span class="mark is-released" title="Released on Wednesday">—</span>
+      </div>
+      <div class="entry">
+        <span class="when">Tue 12</span>
+        <span class="what">Thirty minutes of Spanish</span>
+        <span class="mark is-kept" title="Kept">✓</span>
+      </div>
+      <div class="entry open">
+        <span class="when">Wed 13</span>
+        <span class="what">Write the privacy policy</span>
+        <span class="mark is-open" title="Still open">○</span>
+      </div>
+      <div class="entry">
+        <span class="when">Thu 14</span>
+        <span class="what">Book the dentist</span>
+        <span class="mark is-kept" title="Kept">✓</span>
+      </div>
+      <div class="entry open">
+        <span class="when">Thu 14</span>
+        <span class="what">Read the pension letter</span>
+        <span class="mark is-open" title="Still open">○</span>
+      </div>
+
+      <div class="tally">
+        <span><b>5</b> kept</span>
+        <span><b>2</b> open</span>
+        <span class="aside"><b>1</b> released — outside the sum</span>
+      </div>
+
+      <div class="figure">
+        <div class="fraction data">5 / 7</div>
+        <div class="provenance">Chosen as the week ran · judged when it closed · never revised</div>
+        <p class="contrast">
+          A conventional task app would show you <b>100%</b>. Not by lying —
+          by dividing by what was still due on Friday. Move two due dates
+          during the week, which every one of them lets you do silently, and
+          the denominator moves with them. Clarice can't, because it kept the
+          line you wrote on the morning you wrote it.
+        </p>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- Was three prose columns. The first of them explained the three marks in
+       a paragraph, which is the templated move: describing a vocabulary the
+       page could simply show. It is now a legend, ruled like the entries above
+       so it reads as part of the same document, and the claim it used to make
+       is carried by the marks themselves. -->
+  <section class="key">
+    <p class="eyebrow">The marks</p>
+    <dl class="legend">
+      <div class="legend-row">
+        <dt><span class="glyph is-kept">✓</span><span class="term">Kept</span></dt>
+        <dd>You finished what you said you would.</dd>
+      </div>
+      <div class="legend-row">
+        <dt><span class="glyph is-released">—</span><span class="term">Released</span></dt>
+        <dd>
+          You decided against it. It leaves the sum entirely, because a
+          decommitment is a decision and not a failure.
+        </dd>
+      </div>
+      <div class="legend-row">
+        <dt><span class="glyph is-open">○</span><span class="term">Open</span></dt>
+        <dd>
+          Still standing. Nothing rolled it forward at midnight and nothing
+          rewrote its date.
+        </dd>
+      </div>
+    </dl>
+    <p class="key-close">
+      Every other tool has the first and the last. The middle one is the whole
+      difference between a record and a scoreboard.
+    </p>
+  </section>
+
+  <section class="plainly">
+    <h2>The same rule turns up twice more.</h2>
+    <div class="claims">
+      <article class="claim">
+        <h3>Practice, not checkboxes</h3>
+        <p>
+          "Five lessons this week" is not five tasks. It's one commitment
+          measured toward a number.
+        </p>
+        <p>
+          So it takes <b>partial credit</b>, a deliberate skip, and a pause —
+          and the history survives you changing the routine, because what
+          happened isn't stored in the plan.
+        </p>
+      </article>
+      <article class="claim">
+        <h3>The record is append-only</h3>
+        <p>
+          Not as a policy. The activity log is append-only <b>at the
+          database</b>, with one documented exception that exists so account
+          deletion can work at all.
+        </p>
+        <p>
+          Your data exports in full, and deleting your account removes it
+          from Clarice.
+        </p>
+      </article>
+    </div>
+  </section>
+
+  <section class="close">
+    <h2>Find out what your week actually looks like.</h2>
+    <!-- The copy here cannot promise an email until the Resend transport
+         ships: no mail leaves production at all today, because DigitalOcean
+         blocks outbound 25, 465 and 587. See design/mail-transport-plan.md.
+         Until then this says how to get in touch, not what we will send. -->
+    <p>
+      Clarice is invitation-only while it's still being built. Write to
+      <a href="#">hello@vinclarice.com</a> and say what you'd use it for.
+    </p>
+    <div class="actions">
+      <a class="btn" href="#">Request access</a>
+      <a class="btn quiet" href="#">Log in</a>
+    </div>
+  </section>
+
+  <footer class="colophon">
+    <span>Clarice — track the past, order the present, design the future</span>
+    <span><a href="#">Contact</a> · <a href="#">Privacy</a> · <a href="#">Terms</a></span>
+  </footer>
+
+</div>
+
+</body>
+</html>

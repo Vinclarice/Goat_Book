@@ -575,8 +575,13 @@ def confirm_actionable(facet: Facet, *, area=None, now: datetime, actor: str) ->
 
     if facet.kind != FacetKind.ACTIONABLE:
         raise MindError(f"{facet.kind!r} is not a commitment")
-    _require_live(facet.node)
-    if area is not None and area.owner_id != facet.node.owner_id:
+    # Liveness is a node's question. A `DailyEntry` has no deleted or archived
+    # state, deliberately -- "I wrote nothing on the 3rd" and "I have never
+    # opened the 3rd" are different facts and neither is a deletion.
+    if facet.node_id:
+        _require_live(facet.node)
+    owner = facet.owner
+    if area is not None and area.owner_id != owner.pk:
         raise MindError("a commitment cannot be filed in somebody else's area")
 
     # Two taps, or a tap against a stale page. Neither should double a
@@ -584,31 +589,59 @@ def confirm_actionable(facet: Facet, *, area=None, now: datetime, actor: str) ->
     if facet.task_id is not None:
         return facet
 
-    due = facet.data.get("due_date") or None
+    # **Text, tags and date all differ by source, and each for its own reason.**
+    #
+    # A node's task says what the note currently says, revisions included. An
+    # entry's says what the *cited sentence* said: a task carrying a paragraph
+    # of Tuesday is a wall of text somebody has to re-read to find the promise
+    # in, and the span exists precisely so it does not have to.
+    #
+    # Tags come from confirmed concepts, which are a property of the graph. A
+    # journal entry is not in the graph, so there are none to carry -- an empty
+    # list rather than a lookup that cannot answer.
+    if facet.node_id:
+        text = queries.current_body(facet.node)
+        tags = queries.confirmed_concept_labels(facet.node)
+    else:
+        text = facet.cited_text.strip()
+        tags = ()
+
+    # **No date by default, and that is the decision rather than a fallback.**
+    # Slice B stopped requiring a date, because a promise without one is still
+    # a promise. So a task made from "I still need to ask Maya about the venue"
+    # has no deadline and lands in the agenda's someday bucket. Inventing one
+    # would be the parser guessing, which it refuses to do everywhere else, and
+    # the person can set a date on a task they can now see.
     task = task_services.create_item(
         area,
-        queries.current_body(facet.node),
-        due_date=due,
+        text,
+        due_date=facet.data.get("due_date") or None,
         recurrence=facet.data.get("recurrence") or None,
-        owner=facet.node.owner,
+        owner=owner,
         # Step 2 of one-capture-surface-plan.md. The Inbox route carried a
         # capture's tags to its task; this route produced an untagged one, which
         # was the last functional gap between them. `lists.Tag` and the concept
         # layer are two vocabularies for the same act, and this is where they
         # meet -- a confirmed concept becomes a tag on the task it produced.
-        tags=queries.confirmed_concept_labels(facet.node),
+        tags=tags,
     )
 
     facet.task = task
     facet.confirmed_at = now
     facet.save(update_fields=["task", "confirmed_at"])
     _record(
-        facet.node.owner,
+        owner,
         EventType.FACET_CONFIRMED,
+        # Null for an entry-backed facet: the log's column is a node reference,
+        # and the source is named in the payload instead.
         node=facet.node,
         occurred_at=now,
         actor=actor,
-        payload={"kind": facet.kind, "task": task.pk},
+        payload={
+            "kind": facet.kind,
+            "task": task.pk,
+            **({"entry": facet.entry_id} if facet.entry_id else {}),
+        },
     )
     return facet
 

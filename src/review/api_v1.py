@@ -90,6 +90,19 @@ class PlannedOut(Schema):
     met_tasks: list[PlannedTaskOut]
     unfinished: list[PlannedTaskOut]
     set_aside: list[PlannedTaskOut]
+    #: What this person's weeks actually hold -- the median finished across up
+    #: to eight prior weeks that had a plan in them, **strictly before this
+    #: one**, so a week is never its own evidence.
+    #:
+    #: **`None` below the sample floor rather than zero.** "No evidence yet"
+    #: and "you committed to more than you can hold" call for opposite
+    #: responses, and a zero would say the second while meaning the first.
+    typical: int | None
+    #: S3's last clause. `met` over `total` is honest as a rate and cannot on
+    #: its own tell *over-committed* from *under-delivered*; this is the same
+    #: comparison `draft_week` already makes for the week ahead, pointed at the
+    #: week being reviewed.
+    over_committed: bool
 
 
 class WrittenDayOut(Schema):
@@ -424,6 +437,7 @@ def _week_out(owner, day):
     week_start, week_end = reads.week_bounds(day)
     today = timezone.localdate()
     planned = reads.planned_in_week(owner, week_start, week_end)
+    typical = reads.typical_week_for(owner, week_start)
     review = reads.review_for(owner, week_start)
     return {
         "week_start": week_start,
@@ -439,6 +453,10 @@ def _week_out(owner, day):
         "planned": {
             "total": planned.total,
             "met": len(planned.met),
+            "typical": typical,
+            # The same expression `draft_week` uses, deliberately -- two
+            # spellings of "more than usual" would eventually disagree.
+            "over_committed": typical is not None and planned.total > typical,
             "met_tasks": [_planned_task_out(each, today) for each in planned.met],
             "unfinished": [
                 _planned_task_out(each, today) for each in planned.unfinished

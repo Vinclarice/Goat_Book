@@ -2171,6 +2171,10 @@ export interface components {
             unfinished: components["schemas"]["PlannedTaskOut"][];
             /** Set Aside */
             set_aside: components["schemas"]["PlannedTaskOut"][];
+            /** Typical */
+            typical: number | null;
+            /** Over Committed */
+            over_committed: boolean;
         };
         /**
          * PlannedTaskOut

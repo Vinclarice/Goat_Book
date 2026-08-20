@@ -4634,6 +4634,21 @@
             },
             "title": "Set Aside",
             "type": "array"
+          },
+          "typical": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Typical"
+          },
+          "over_committed": {
+            "title": "Over Committed",
+            "type": "boolean"
           }
         },
         "required": [
@@ -4641,7 +4656,9 @@
           "met",
           "met_tasks",
           "unfinished",
-          "set_aside"
+          "set_aside",
+          "typical",
+          "over_committed"
         ],
         "title": "PlannedOut",
         "type": "object"

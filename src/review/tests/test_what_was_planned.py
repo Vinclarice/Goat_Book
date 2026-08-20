@@ -30,6 +30,9 @@ PASSWORD = "correct horse battery staple 47!"
 JULY_27 = date(2026, 7, 27)
 JULY_29 = date(2026, 7, 29)
 AUGUST_2 = date(2026, 8, 2)
+# The two Mondays before JULY_27, for building a capacity history.
+JULY_20 = date(2026, 7, 20)
+JULY_13 = date(2026, 7, 13)
 
 
 def instant_on(day, hour=9):
@@ -77,6 +80,57 @@ class PlannedWeekTest(TestCase):
         response = self.client.get(f"/api/v1/review/{week}")
         self.assertEqual(response.status_code, 200)
         return response.json()["planned"]
+
+    def _week_that_finished(self, monday, count):
+        """A prior week with a plan in it, so capacity has evidence."""
+        for index in range(count):
+            task = self.pin(self.alice, monday, f"Done {monday} {index}")
+            self.complete_on(task, monday + timedelta(days=1))
+
+    def test_the_week_says_whether_it_held_more_than_his_weeks_hold(self):
+        """S3's last clause: the review can separate *over-committed* from
+        *under-delivered*.
+
+        Finishing four of nine is honest as a rate, and by itself the two
+        readings of that number are indistinguishable -- which is the exact
+        confusion this story exists to resolve. `typical_week_for` was already
+        computed on every review and pointed **forwards** at the draft; this is
+        the same argument pointed backwards at the week being reviewed.
+
+        It is strictly *before* the reviewed week, so a week is never its own
+        evidence -- the same rule `typical_day_for` states for the day."""
+        self._week_that_finished(JULY_20, 2)
+        self._week_that_finished(JULY_13, 2)
+        for index in range(5):
+            self.pin(self.alice, JULY_27, f"Ambitious {index}")
+
+        planned = self.planned()
+
+        self.assertEqual(planned["typical"], 2)
+        self.assertIs(planned["over_committed"], True)
+
+    def test_a_week_within_its_usual_reach_is_not_called_over_committed(self):
+        self._week_that_finished(JULY_20, 3)
+        self._week_that_finished(JULY_13, 3)
+        self.pin(self.alice, JULY_27, "One thing")
+
+        planned = self.planned()
+
+        self.assertEqual(planned["typical"], 3)
+        self.assertIs(planned["over_committed"], False)
+
+    def test_without_enough_history_capacity_is_absent_rather_than_zero(self):
+        """The null-not-zero discipline, carried up from the read. "No evidence
+        yet" and "you committed to more than you can hold" call for opposite
+        responses, and a zero here would say the second while meaning the
+        first."""
+        for index in range(5):
+            self.pin(self.alice, JULY_27, f"Ambitious {index}")
+
+        planned = self.planned()
+
+        self.assertIsNone(planned["typical"])
+        self.assertIs(planned["over_committed"], False)
 
     def test_a_planned_commitment_that_was_finished_counts_as_met(self):
         task = self.pin(self.alice, JULY_27, "Pay rent")

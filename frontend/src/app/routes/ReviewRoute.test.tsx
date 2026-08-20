@@ -31,7 +31,7 @@ function weekData(overrides: Record<string, unknown> = {}) {
     previous_week: "2026-07-20",
     next_week: "2026-08-03",
     completed: [],
-    planned: { total: 0, met: 0, met_tasks: [], unfinished: [], set_aside: [] },
+    planned: { total: 0, met: 0, met_tasks: [], unfinished: [], set_aside: [], typical: null, over_committed: false },
     written: [],
     thoughts: [],
     names_to_confirm: [],
@@ -185,6 +185,74 @@ describe("ReviewRoute", () => {
     ).toBeInTheDocument();
   });
 
+  it("holds the week's commitments against what its weeks actually hold", async () => {
+    // S3's last clause. "4 of 9" is honest and cannot on its own tell
+    // over-committed from under-delivered -- which is the confusion the
+    // story exists to resolve.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        weekData({
+          planned: {
+            total: 9,
+            met: 4,
+            met_tasks: [],
+            unfinished: [],
+            set_aside: [],
+            typical: 5,
+            over_committed: true,
+          },
+        }),
+      ),
+    );
+
+    renderAt("/review");
+
+    expect(await screen.findByText(/finished 5 in a typical week/i)).toBeInTheDocument();
+    expect(screen.getByText(/more than the week usually holds/i)).toBeInTheDocument();
+  });
+
+  it("states the capacity without grading the person", async () => {
+    // The same refusal the draft's own line carries: a fact about the weeks,
+    // not a verdict about him. Asserts the scolding phrasing is *absent*,
+    // which is the half a positive test would miss.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        weekData({
+          planned: {
+            total: 9, met: 4, met_tasks: [], unfinished: [], set_aside: [],
+            typical: 5, over_committed: true,
+          },
+        }),
+      ),
+    );
+
+    renderAt("/review");
+
+    await screen.findByText(/finished 5 in a typical week/i);
+    expect(screen.queryByText(/too many/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/overcommitted|over-committed/i)).not.toBeInTheDocument();
+  });
+
+  it("says nothing about capacity when there is too little history", async () => {
+    // null is not zero: a zero would read as "your weeks hold nothing",
+    // which is reassurance nobody earned and a verdict nobody evidenced.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        weekData({
+          planned: {
+            total: 9, met: 4, met_tasks: [], unfinished: [], set_aside: [],
+            typical: null, over_committed: false,
+          },
+        }),
+      ),
+    );
+
+    renderAt("/review");
+
+    await screen.findByText(/9/);
+    expect(screen.queryByText(/in a typical week/i)).not.toBeInTheDocument();
+  });
+
   it("reports the finish rate over what was planned, not over the backlog", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(() =>
       jsonResponse(
@@ -198,6 +266,8 @@ describe("ReviewRoute", () => {
             ],
             unfinished: [plannedTask({ task_id: 3, text: "Call the bank" })],
             set_aside: [],
+            typical: null,
+            over_committed: false,
           },
         }),
       ),

@@ -93,6 +93,12 @@ type Planned = {
   met_tasks: PlannedTask[];
   unfinished: PlannedTask[];
   set_aside: PlannedTask[];
+  /** What his weeks actually hold -- median finished across up to eight
+   *  prior weeks with a plan in them, strictly before this one. Null below
+   *  the sample floor, never zero: "no evidence yet" and "you committed to
+   *  more than you can hold" call for opposite responses. */
+  typical: number | null;
+  over_committed: boolean;
 };
 
 /** One commitment, with whatever context the week has about it. */
@@ -217,6 +223,23 @@ function PlannedWork({
               <span>as you recorded it on {shortDate(review.completed_at!)}</span>
             </>
           )}
+        </p>
+      )}
+
+      {/* S3's last clause: "4 of 9" is honest as a rate and cannot on its own
+          tell *over-committed* from *under-delivered*. This is the same
+          comparison the draft below already makes for the week ahead, pointed
+          at the week that just happened.
+
+          Stated, never graded -- a fact about the weeks rather than a verdict
+          about him, which is the draft's own refusal and the vision
+          document's rule that history be useful without making missed work
+          punishing. Absent entirely below the evidence floor: null is not
+          zero, and a zero would read as a verdict nobody evidenced. */}
+      {planned.typical !== null && (
+        <p className="text-sm text-muted-foreground">
+          You have finished {planned.typical} in a typical week.
+          {planned.over_committed && " That is more than the week usually holds."}
         </p>
       )}
 

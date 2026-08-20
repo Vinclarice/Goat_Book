@@ -166,7 +166,7 @@ the release with the least new machinery in it.
 
 The architectural half, and the one everything downstream needs.
 
-- **The temporal substrate**, increments 1–4 of
+- **The temporal substrate**, Track A increments 1–4 of
   [`temporal-substrate-plan.md`](temporal-substrate-plan.md). `EventType` gains
   life-events; `lists`, `daily` and `review` emit facts; backfill takes only
   what carries its own recorded timestamp; `around()` becomes the first read
@@ -189,6 +189,37 @@ The architectural half, and the one everything downstream needs.
 **Acceptance: S13 and S14 reach *works*.** The visible payoff is small on
 purpose — a note that can say which day and which project it belongs to — and
 the invisible payoff is that everything after this becomes possible.
+
+### Contextual retrieval — memory learns why it is being asked
+
+Added to v3 on August 20, 2026, after the retrieval architecture was worked out
+and [`temporal-substrate-plan.md`](temporal-substrate-plan.md) widened to carry
+it. Track B of that brief, and it is the largest single body of design work in
+this plan.
+
+The finding is that Clarice has **several retrieval tricks and no retrieval
+architecture** — lexical search, `material_bearing_on`, `semantic_echo`, the
+concept detectors — each defensible for its original job and sharing no
+understanding of intent. Above them sit two axes that do not exist yet:
+**what kind of memory is this** (fourteen roles, carried as multi-valued facets
+proposed after capture, never asked for) and **what kind of remembering is
+happening now** (lookup, recollection, discovery, planning, reflection,
+resurfacing). The existing indexes become candidate generators rather than final
+judges; eligibility and ranking move above them; every result explains why it
+appeared.
+
+**One prerequisite outside this plan:** unified search finished as scoped.
+Search is not what needs overhauling — it is the correct literal-retrieval
+foundation, and its refusal to merge incomparable document sets is right. This
+sits above it.
+
+**The principle it establishes:** *Clarice may contain anything, but it should
+never retrieve without knowing why the person is asking — or why the system is
+interrupting.*
+
+**Acceptance: S16's underneath.** No verdict moves here on its own, which is
+worth saying plainly — this is the release whose payoff is entirely in the two
+after it.
 
 ### The first question — Clarice starts behaving like an instrument
 
@@ -235,6 +266,14 @@ becomes five features.
   the two cores one product.**
 - **S10's remaining two** — notes, and an abandonment condition as its own
   field unless the outcome absorbs it.
+- **Structured observations** — Track C of the substrate brief, and what makes
+  Reflection mode worth having. Sleep, alcohol, mood, energy and exercise
+  proposed as namespaced facets on the journal entry, explicit statements as
+  facts and parsed ones as inferences until confirmed. It needs **no new
+  model**: `Facet` already attaches to a `DailyEntry`, already has a
+  `JSONField`, already separates `EXPLICIT` from `INFERRED`, and already records
+  its producer. Two refusals travel with it and are not negotiable — **no causal
+  language**, and **an unrecorded night is never a sober one.**
 
 `review/reads.py` is week-grained end to end today, so this is where that
 generalises: `week_bounds`, `completed_in_week`, `planned_in_week`,
@@ -244,7 +283,7 @@ generalises: `week_bounds`, `completed_in_week`, `planned_in_week`,
 
 ### Recollection — the second brain feels like one
 
-- **Substrate increment 5, `since()`** — what developed afterward, gated on its
+- **Substrate Track A increment 5, `since()`** — what developed afterward, gated on its
   D4 bearing rule. **If D4 cannot be answered honestly, stopping at four is the
   correct outcome** rather than shipping a read that pads a recollection with
   everything that happened since.
@@ -289,6 +328,21 @@ features — **the substrate somebody else's month would depend on:**
 The first two are [`security-and-resilience-plan.md`](security-and-resilience-plan.md)'s,
 still unclaimed by `roadmap.md`. Everything else Part 6's Phase 3 wanted has
 either shipped or died with the wedge deferral.
+
+### Intake
+
+Track D of the substrate brief, and orthogonal to every release above — *Clarice
+stores it all* is a claim about getting material **in** before it is a claim
+about finding it again. **Attachments are the smallest real win**: the model
+exists, `capture()` takes them, and `FileField`, `ImageField` and
+`request.FILES` appear nowhere in `src/`, so nothing can make one. URL and email
+intake follow, or are deferred with a trigger.
+
+**It spends a security property deliberately.** The audit lists *"no file
+upload, no SSRF"* as an absence of attack surface rather than an absence of
+bugs, and two of those four positives are what this adds. It also touches
+`/privacy/`'s test-held processor list, and export-every-owned-*row* does not
+cover files — substrate D9.
 
 ### Background repair
 

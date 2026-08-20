@@ -686,6 +686,32 @@ export function ReviewRoute() {
     },
   });
 
+  // Scenario planning — v2 increment 8. A day is taken out and the same draft
+  // is asked again; the answer replaces what is shown until the query settles
+  // again. **Nothing is written**, which is why this is a GET and why the
+  // scenario lives in component state rather than anywhere durable: a what-if
+  // that persisted would be a plan somebody has to undo.
+  const [unavailable, setUnavailable] = useState<string[]>([]);
+  const scenario = useQuery({
+    queryKey: ["week-draft", week ?? "current", unavailable.join(",")],
+    enabled: unavailable.length > 0,
+    queryFn: async () => {
+      const day = data?.week_start;
+      if (!day) throw new Error("Couldn't ask that.");
+      const { data: drafted, error } = await apiV1.GET(
+        "/api/v1/weeks/{day}/draft",
+        {
+          params: {
+            path: { day },
+            query: { unavailable: unavailable.join(",") },
+          },
+        },
+      );
+      if (error) throw new Error("Couldn't ask that.");
+      return drafted;
+    },
+  });
+
   // The check-in — v2 increment 4. Two writes, because starting the ritual and
   // correcting what it believes are different statements: the first records
   // that somebody sat down, the second records what they changed.
@@ -895,7 +921,11 @@ export function ReviewRoute() {
   // `weekDraft`, because `draft` above is the review's own unsaved text. Two
   // different drafts on one page, and the collision was a build error rather
   // than a subtle bug only because they share a scope.
-  const { loose_ends: looseEnds, upcoming, draft: weekDraft, check_in: checkIn } = data;
+  const { loose_ends: looseEnds, upcoming, check_in: checkIn } = data;
+  // The scenario's answer stands in for the draft while one is being asked.
+  // Same shape, same renderer -- a what-if is the same week seen under a
+  // different assumption, not a different kind of thing.
+  const weekDraft = scenario.data ?? data.draft;
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 space-y-8">
@@ -1399,6 +1429,64 @@ export function ReviewRoute() {
               **Stated, never scolded.** "More than a typical day" is a fact
               about the days; "too much" is a verdict about the person, and a
               test asserts the second phrasing is absent. */}
+          {/* Taking a day out -- v2 increment 8. One control per day, and the
+              answer is the same draft asked again. Nothing moves: work due on
+              a day that is gone is reported below as displaced, and where it
+              actually goes stays the person's decision, made through the task.
+
+              The buttons are named for the day so a screen reader hears which
+              one, and so the test can ask for Thursday by name. */}
+          {weekDraft.days.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm text-muted-foreground">What if:</span>
+              {weekDraft.days.map((day) => {
+                const weekdayName = new Intl.DateTimeFormat(undefined, {
+                  weekday: "long",
+                  timeZone: "UTC",
+                }).format(new Date(`${day.date}T00:00:00Z`));
+                const out = unavailable.includes(day.date);
+                return (
+                  <Button
+                    key={`what-if-${day.date}`}
+                    size="sm"
+                    variant={out ? "secondary" : "ghost"}
+                    aria-label={
+                      out ? `Put back ${weekdayName}` : `Take out ${weekdayName}`
+                    }
+                    onClick={() =>
+                      setUnavailable((current) =>
+                        current.includes(day.date)
+                          ? current.filter((each) => each !== day.date)
+                          : [...current, day.date],
+                      )
+                    }
+                  >
+                    {out ? `${weekdayName} is out` : weekdayName}
+                  </Button>
+                );
+              })}
+              {unavailable.length > 0 && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setUnavailable([])}
+                >
+                  Put the week back
+                </Button>
+              )}
+            </div>
+          )}
+
+          {/* What the scenario costs, stated rather than resolved. These have
+              not moved and nothing has been re-dated -- this is the list of
+              decisions the answer hands back to the person. */}
+          {weekDraft.displaced.length > 0 && (
+            <p className="text-sm text-muted-foreground">
+              {weekDraft.displaced.length} dated on a day you have taken out:{" "}
+              {weekDraft.displaced.map((each) => each.text).join(", ")}.
+            </p>
+          )}
+
           {weekDraft.days.some((day) => day.tasks.length > 0) && (
             <ul className="space-y-1">
               {weekDraft.days.map((day) => (

@@ -34,8 +34,10 @@ from django.utils import timezone
 
 from accounts.models import User
 from daily import reads as daily_reads, services as daily_services
+from daily.models import DailyFocus
 from lists.models import Item, List, Project
 from review import reads, services
+from review.weeks import DAYS_IN_WEEK, week_start_for
 
 # A Monday, and the week the draft is for.
 THIS_MONDAY = date(2026, 6, 1)
@@ -370,3 +372,231 @@ class TheDraftIsScopedAndStressTestedTest(TestCase):
             draft.typical_day,
             daily_reads.typical_day_for(self.alice, THIS_MONDAY),
         )
+
+
+class TheDraftUnderAConstraintTest(TestCase):
+    """What-if planning — v2 increment 8.
+
+    *"What if I only have three productive days?"* and *"make Thursday
+    meeting-free"* are the same question with different arguments, and the
+    answer is `draft_week` run again with a set of days removed. **The feature
+    that will feel most like an assistant contains no model at all** — which is
+    precisely why the discipline of a draft that writes nothing was worth
+    keeping through six increments.
+
+    **A scenario cannot move work, and that is the whole design.** Saying
+    Thursday is gone does not re-date what was due on Thursday: the draft says
+    that work is *displaced* and leaves the deciding to the person, through the
+    task's own surface. Anything else would be the planner quietly re-dating
+    things, which is the one move this read has refused since it was written.
+
+    Nothing is stored either. A what-if that persisted would be a plan somebody
+    has to undo.
+    """
+
+    def setUp(self):
+        self.alice = User.objects.create_user(
+            "alice", "alice@example.com", "a secure password"
+        )
+        self.area = List.objects.create(owner=self.alice, title="Work")
+
+    def task(self, text, due_date):
+        return Item.objects.create(
+            owner=self.alice, list=self.area, text=text, due_date=due_date
+        )
+
+    def draft(self, unavailable=()):
+        return reads.draft_week(
+            self.alice, NEXT_MONDAY, today=THIS_MONDAY, unavailable=unavailable
+        )
+
+    def test_with_no_scenario_every_day_is_available(self):
+        self.assertTrue(all(day.available for day in self.draft().days))
+        self.assertEqual(self.draft().displaced, [])
+
+    def test_a_day_can_be_taken_out_of_the_week(self):
+        thursday = NEXT_MONDAY + timedelta(days=3)
+
+        days = {each.date: each for each in self.draft([thursday]).days}
+
+        self.assertFalse(days[thursday].available)
+        self.assertTrue(days[NEXT_MONDAY].available)
+
+    def test_work_on_a_day_that_is_gone_is_displaced(self):
+        thursday = NEXT_MONDAY + timedelta(days=3)
+        self.task("Review the checkout", thursday)
+
+        draft = self.draft([thursday])
+
+        self.assertEqual([t.text for t in draft.displaced], ["Review the checkout"])
+
+    def test_displaced_work_is_not_re_dated(self):
+        """The line this feature exists on. A scenario says what would have to
+        give; it does not decide where anything goes, and the task's own due
+        date is untouched afterwards."""
+        thursday = NEXT_MONDAY + timedelta(days=3)
+        task = self.task("Review the checkout", thursday)
+
+        self.draft([thursday])
+
+        task.refresh_from_db()
+        self.assertEqual(task.due_date, thursday)
+
+    def test_displaced_work_still_appears_on_the_day_it_is_due(self):
+        """It has not moved, so it is still shown where it is. The day being
+        unavailable is the new fact; the date is not."""
+        thursday = NEXT_MONDAY + timedelta(days=3)
+        self.task("Review the checkout", thursday)
+
+        days = {each.date: each for each in self.draft([thursday]).days}
+
+        self.assertEqual(
+            [t.text for t in days[thursday].tasks], ["Review the checkout"]
+        )
+
+    def test_work_on_a_day_that_remains_is_not_displaced(self):
+        thursday = NEXT_MONDAY + timedelta(days=3)
+        self.task("Write the copy", NEXT_MONDAY)
+
+        self.assertEqual(self.draft([thursday]).displaced, [])
+
+    def test_a_day_that_is_gone_is_not_also_called_over_committed(self):
+        """Two different problems, and saying both would be noise. A day
+        somebody has removed is not holding too much; it is not holding
+        anything."""
+        thursday = NEXT_MONDAY + timedelta(days=3)
+        for index in range(9):
+            self.task(f"Thing {index}", thursday)
+
+        days = {each.date: each for each in self.draft([thursday]).days}
+
+        self.assertFalse(days[thursday].over_committed)
+
+    def test_losing_several_days_displaces_all_of_their_work(self):
+        """"What if I only have three productive days" is this, with four
+        days named rather than one."""
+        gone = [NEXT_MONDAY + timedelta(days=offset) for offset in (2, 3, 4, 5)]
+        for day in gone:
+            self.task(f"Due {day}", day)
+        self.task("Write the copy", NEXT_MONDAY)
+
+        draft = self.draft(gone)
+
+        self.assertEqual(len(draft.displaced), 4)
+        self.assertNotIn("Write the copy", [t.text for t in draft.displaced])
+
+    def test_a_scenario_writes_nothing(self):
+        thursday = NEXT_MONDAY + timedelta(days=3)
+        self.task("Review the checkout", thursday)
+        before = Item.objects.values_list("id", "due_date", "status").count()
+
+        self.draft([thursday])
+
+        self.assertEqual(
+            Item.objects.values_list("id", "due_date", "status").count(), before
+        )
+        self.assertFalse(DailyFocus.objects.exists())
+
+
+class ScenariosOverHttpTest(TestCase):
+    """Asking a what-if — the HTTP half of increment 8."""
+
+    def setUp(self):
+        self.alice = User.objects.create_user(
+            "alice", "alice@example.com", "a secure password"
+        )
+        self.bob = User.objects.create_user(
+            "bob", "bob@example.com", "another secure password"
+        )
+        self.area = List.objects.create(owner=self.alice, title="Work")
+        self.client.force_login(self.alice)
+        # Relative to the server's own today, because the endpoint reads the
+        # clock at the edge rather than taking a date -- `principles.md`'s
+        # inject-the-clock rule, which puts the reading at the entry point.
+        # Fixed dates here would draft a week already in the past and quietly
+        # propose nothing.
+        self.this_monday = week_start_for(timezone.localdate())
+        self.next_monday = self.this_monday + timedelta(days=DAYS_IN_WEEK)
+
+    def draft(self, query=""):
+        return self.client.get(
+            f"/api/v1/weeks/{self.this_monday.isoformat()}/draft{query}"
+        )
+
+    def test_the_week_drafts_with_every_day_available(self):
+        response = self.draft()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(all(day["available"] for day in response.json()["days"]))
+
+    def test_a_day_can_be_named_as_gone(self):
+        thursday = self.next_monday + timedelta(days=3)
+        Item.objects.create(
+            owner=self.alice,
+            list=self.area,
+            text="Review the checkout",
+            due_date=thursday,
+        )
+
+        response = self.draft(f"?unavailable={thursday.isoformat()}")
+
+        body = response.json()
+        self.assertEqual(
+            [t["text"] for t in body["displaced"]], ["Review the checkout"]
+        )
+        gone = [day for day in body["days"] if day["date"] == thursday.isoformat()]
+        self.assertFalse(gone[0]["available"])
+
+    def test_several_days_can_be_named_at_once(self):
+        gone = [self.next_monday + timedelta(days=offset) for offset in (2, 3)]
+
+        response = self.draft(
+            "?unavailable=" + ",".join(each.isoformat() for each in gone)
+        )
+
+        unavailable = [
+            day["date"] for day in response.json()["days"] if not day["available"]
+        ]
+        self.assertEqual(unavailable, [each.isoformat() for each in gone])
+
+    def test_something_that_is_not_a_date_is_refused(self):
+        """Refused rather than ignored. A scenario that quietly dropped the day
+        somebody named would answer a different question and look like an
+        answer to theirs."""
+        response = self.draft("?unavailable=thursday")
+
+        self.assertEqual(response.status_code, 422)
+
+    def test_asking_changes_nothing(self):
+        thursday = self.next_monday + timedelta(days=3)
+        task = Item.objects.create(
+            owner=self.alice,
+            list=self.area,
+            text="Review the checkout",
+            due_date=thursday,
+        )
+
+        self.draft(f"?unavailable={thursday.isoformat()}")
+        self.draft(f"?unavailable={thursday.isoformat()}")
+
+        task.refresh_from_db()
+        self.assertEqual(task.due_date, thursday)
+        self.assertFalse(DailyFocus.objects.exists())
+
+    def test_it_drafts_only_the_requesting_person_s_week(self):
+        Item.objects.create(
+            owner=self.bob,
+            list=List.objects.create(owner=self.bob, title="Bob's"),
+            text="Bob's work",
+            due_date=self.next_monday,
+        )
+
+        response = self.draft()
+
+        placed = [t["text"] for day in response.json()["days"] for t in day["tasks"]]
+        self.assertEqual(placed, [])
+
+    def test_a_stranger_is_refused(self):
+        self.client.logout()
+
+        self.assertEqual(self.draft().status_code, 401)

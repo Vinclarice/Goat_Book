@@ -214,6 +214,9 @@ class DraftedDayOut(Schema):
     date: date
     tasks: list[DraftedTaskOut]
     over_committed: bool
+    # False when a scenario has taken this day out of the week. The work due on
+    # it is still listed here, because it has not moved.
+    available: bool
 
 
 class WeekDraftOut(Schema):
@@ -239,6 +242,8 @@ class WeekDraftOut(Schema):
     # `proposed` and on no day at all -- placing a late task onto a weekday
     # would be re-dating it, and nothing here re-dates anything.
     days: list[DraftedDayOut]
+    # Work dated onto days the scenario removed. Named, never re-dated.
+    displaced: list[DraftedTaskOut]
     # Null below the evidence floor, like `typical_week`, and for the same
     # reason: a client handed zero would render "you have room".
     typical_day: int | None
@@ -791,6 +796,42 @@ def _check_in_out(owner, week_start):
     }
 
 
+@router.get("/weeks/{day}/draft", response=WeekDraftOut)
+def draft_under_a_scenario(request, day: date, unavailable: str = ""):
+    """The week drafted again with some days taken out — v2 increment 8.
+
+    **A GET, because a scenario is a question rather than a decision.** Nothing
+    about it is stored: *"what if I only have three productive days"* asks what
+    the week would look like, and a what-if that persisted would be a plan
+    somebody has to undo. Ask it twice and nothing has changed either time.
+
+    Its own route rather than a parameter on the review, so asking a what-if
+    costs one draft rather than the whole week -- the review carries habits,
+    recent weeks, loose ends and a check-in that a scenario does not touch.
+
+    `unavailable` is a comma-separated list of ISO dates. A malformed one is
+    refused rather than ignored, because a scenario silently dropping the day
+    somebody named would answer a different question and look like an answer.
+    """
+    try:
+        gone = [
+            date.fromisoformat(each.strip())
+            for each in unavailable.split(",")
+            if each.strip()
+        ]
+    except ValueError:
+        raise HttpError(422, "Those are not dates.")
+    return _draft_out(
+        request.user,
+        # The path names the week being *reviewed*, exactly as `/review/{day}`
+        # does, and `_draft_out` steps forward to the week being planned. Two
+        # ways of saying which week would be two chances to disagree.
+        week_start_for(day),
+        timezone.localdate(),
+        unavailable=gone,
+    )
+
+
 @router.post("/weeks/{day}/outcomes", response=CheckInOut)
 def choose_outcome(request, day: date, payload: ChooseOutcomeIn):
     """Commit to something being true by the end of this week.
@@ -866,7 +907,16 @@ def correct_planning_session(request, day: date, payload: WeekUnusualIn):
     return _check_in_out(request.user, day)
 
 
-def _draft_out(owner, week_start, today):
+def _drafted_task_out(each):
+    return {
+        "id": each.id,
+        "text": each.text,
+        "due_date": each.due_date,
+        "serves_an_outcome": each.serves_an_outcome,
+    }
+
+
+def _draft_out(owner, week_start, today, *, unavailable=()):
     """Next week's draft, from the week being reviewed.
 
     **The week after the one on screen**, which is the whole point of drafting
@@ -875,7 +925,10 @@ def _draft_out(owner, week_start, today):
     reading about would propose a week that has already happened.
     """
     draft = reads.draft_week(
-        owner, week_start + timedelta(days=DAYS_IN_WEEK), today=today
+        owner,
+        week_start + timedelta(days=DAYS_IN_WEEK),
+        today=today,
+        unavailable=unavailable,
     )
     return {
         "week_start": draft.week_start,
@@ -891,20 +944,14 @@ def _draft_out(owner, week_start, today):
         "days": [
             {
                 "date": day.date,
-                "tasks": [
-                    {
-                        "id": each.id,
-                        "text": each.text,
-                        "due_date": each.due_date,
-                        "serves_an_outcome": each.serves_an_outcome,
-                    }
-                    for each in day.tasks
-                ],
+                "tasks": [_drafted_task_out(each) for each in day.tasks],
                 "over_committed": day.over_committed,
+                "available": day.available,
             }
             for day in draft.days
         ],
         "typical_day": draft.typical_day,
+        "displaced": [_drafted_task_out(each) for each in draft.displaced],
         "typical_week": draft.typical_week,
         "over_committed": draft.over_committed,
     }

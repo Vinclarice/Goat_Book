@@ -46,6 +46,7 @@ function weekData(overrides: Record<string, unknown> = {}) {
       over_committed: false,
             days: [],
             typical_day: null,
+            displaced: [],
     },
     check_in: {
       started: false,
@@ -832,6 +833,7 @@ describe("ReviewRoute", () => {
             typical_week: 4,
             over_committed: false,
             typical_day: 2,
+            displaced: [],
             days: [
               {
                 date: "2026-08-03",
@@ -856,11 +858,13 @@ describe("ReviewRoute", () => {
                   },
                 ],
                 over_committed: true,
+                available: true,
               },
               {
                 date: "2026-08-04",
                 tasks: [],
                 over_committed: false,
+                available: true,
               },
             ],
           },
@@ -890,6 +894,7 @@ describe("ReviewRoute", () => {
             typical_week: 4,
             over_committed: false,
             typical_day: 2,
+            displaced: [],
             days: [
               {
                 date: "2026-08-03",
@@ -902,6 +907,7 @@ describe("ReviewRoute", () => {
                   },
                 ],
                 over_committed: true,
+                available: true,
               },
             ],
           },
@@ -914,6 +920,87 @@ describe("ReviewRoute", () => {
     await screen.findByText("Write the copy");
     expect(screen.queryByText(/too much/i)).toBeNull();
     expect(screen.queryByText(/you only/i)).toBeNull();
+  });
+
+  /* Scenario planning -- increment 8. The feature that feels most like an
+     assistant, containing no model at all: the same draft, asked again with a
+     day removed. */
+  it("asks what the week looks like without a day, and says what is displaced", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const request = input as Request;
+      const url = typeof input === "string" ? input : request.url;
+      if (url.includes("/draft?")) {
+        return jsonResponse({
+          week_start: "2026-08-03",
+          intention: "",
+          proposed: [],
+          routines: [],
+          typical_week: 4,
+          over_committed: false,
+          typical_day: 2,
+          displaced: [
+            {
+              id: 9,
+              text: "Review the checkout",
+              due_date: "2026-08-06",
+              serves_an_outcome: false,
+            },
+          ],
+          days: [
+            {
+              date: "2026-08-06",
+              tasks: [],
+              over_committed: false,
+              available: false,
+            },
+          ],
+        });
+      }
+      return jsonResponse(
+        weekData({
+          draft: {
+            week_start: "2026-08-03",
+            intention: "",
+            proposed: [],
+            routines: [],
+            typical_week: 4,
+            over_committed: false,
+            typical_day: 2,
+            displaced: [],
+            days: [
+              {
+                date: "2026-08-06",
+                tasks: [
+                  {
+                    id: 9,
+                    text: "Review the checkout",
+                    due_date: "2026-08-06",
+                    serves_an_outcome: false,
+                  },
+                ],
+                over_committed: false,
+                available: true,
+              },
+            ],
+          },
+        }),
+      );
+    });
+
+    renderAt("/review");
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Take out Thursday" }),
+    );
+
+    await waitFor(() =>
+      expect(screen.getByText(/1 dated on a day you have taken out/)).toBeInTheDocument(),
+    );
+    const asked = fetchSpy.mock.calls
+      .map(([request]) => request as Request)
+      .filter((req) => req.url.includes("/draft?"));
+    expect(asked).toHaveLength(1);
+    /* A question, never a decision: nothing is written. */
+    expect(asked[0].method).toBe("GET");
   });
 
   it("lets a person say what next week is for", async () => {
@@ -977,6 +1064,7 @@ describe("ReviewRoute", () => {
             over_committed: false,
             days: [],
             typical_day: null,
+            displaced: [],
           },
         }),
       ),
@@ -1578,6 +1666,7 @@ describe("ReviewRoute", () => {
             over_committed: false,
             days: [],
             typical_day: null,
+            displaced: [],
           },
         }),
       ),
@@ -1608,6 +1697,7 @@ describe("ReviewRoute", () => {
             over_committed: true,
             days: [],
             typical_day: null,
+            displaced: [],
           },
         }),
       ),
@@ -1634,6 +1724,7 @@ describe("ReviewRoute", () => {
             over_committed: false,
             days: [],
             typical_day: null,
+            displaced: [],
           },
         }),
       ),

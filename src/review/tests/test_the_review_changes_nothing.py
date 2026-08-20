@@ -177,6 +177,13 @@ class TheReviewDecidesNothingTest(TestCase):
 
         Still no bulk route, which is what this test is actually for: three
         outcomes are three requests.
+
+        **The scenario route is a third read**, and it costs this guard
+        nothing: what the list protects is the set of *writes*, and a what-if
+        that stores nothing cannot grow into a bulk convenience. It is a GET
+        for exactly that reason -- asking what the week would look like without
+        Thursday is a question, and a question that persisted would be a plan
+        somebody has to undo.
         """
         from review.api_v1 import router
 
@@ -191,6 +198,7 @@ class TheReviewDecidesNothingTest(TestCase):
                 "DELETE /weeks/{day}/outcomes/{outcome_id}",
                 "GET /review",
                 "GET /review/{day}",
+                "GET /weeks/{day}/draft",
                 "PATCH /review/{day}",
                 "PATCH /weeks/{day}/outcomes/{outcome_id}",
                 "PATCH /weeks/{day}/planning-session",

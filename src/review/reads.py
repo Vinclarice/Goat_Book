@@ -753,6 +753,10 @@ class DraftedDay:
     date: object
     tasks: list
     over_committed: bool
+    # False when a scenario has taken this day out of the week -- v2 increment
+    # 8. The work due on it stays here, because it has not moved; what changed
+    # is the day, not the date.
+    available: bool = True
 
 
 @dataclass(frozen=True)
@@ -775,6 +779,10 @@ class WeekDraft:
     days: list
     # What a typical day of this person's holds, measured once for the week.
     typical_day: int | None
+    # Work dated onto days a scenario removed -- v2 increment 8. Named rather
+    # than moved: saying "Thursday is gone" is a question about the week, not
+    # permission to re-date what was due on it.
+    displaced: list
     typical_week: int | None
     over_committed: bool
 
@@ -828,7 +836,7 @@ def typical_week_for(owner, before):
     return met_counts[len(met_counts) // 2]
 
 
-def draft_week(owner, week_start, *, today):
+def draft_week(owner, week_start, *, today, unavailable=()):
     """What next week could hold, and whether it holds it — increment 6.
 
     **Deterministic by an explicit trade.** `design-concept.md` chose
@@ -850,6 +858,20 @@ def draft_week(owner, week_start, *, today):
 
     Writes nothing. A draft is a proposal: nothing is pinned, nothing is
     re-dated, and opening the planner twice changes nothing either time.
+
+    **`unavailable` is the whole of scenario planning** — v2 increment 8.
+    *"What if I only have three productive days?"* and *"make Thursday
+    meeting-free"* are the same question with different arguments, and the
+    answer is this function run again with a set of days removed. It contains
+    no model, which is the point: what will feel most like an assistant is a
+    deterministic read taking a parameter, and it is available at all only
+    because this function has never written anything.
+
+    **A scenario cannot move work.** A day being removed does not re-date what
+    was due on it; that work is reported as `displaced` and stays on its own
+    date, and where it actually goes is decided by a person through the task
+    itself. Nothing about a scenario is stored: a what-if that persisted would
+    be a plan somebody has to undo.
     """
     week_end = week_end_for(week_start)
     intention = intention_for(owner, week_start)
@@ -902,22 +924,33 @@ def draft_week(owner, week_start, *, today):
     # All seven days, empty ones included. An empty day is information -- it is
     # where anything being moved would go -- and a week that showed only its
     # busy days would be answering a different question.
+    gone = set(unavailable)
     by_day = {}
     for task in dated:
         by_day.setdefault(task.due_date, []).append(drafted(task))
     days = []
+    displaced = []
     for offset in range(DAYS_IN_WEEK):
         day = week_start + timedelta(days=offset)
         on_it = by_day.get(day, [])
+        available = day not in gone
+        if not available:
+            displaced.extend(on_it)
         days.append(
             DraftedDay(
                 date=day,
                 tasks=on_it,
+                available=available,
                 # Stated, never scolded, and absent entirely without evidence:
                 # null is not zero, and flagging every day from no history
                 # would be a verdict drawn from nothing.
+                # A day somebody has removed is not holding too much; it is
+                # not holding anything. Saying both would be noise about two
+                # different problems.
                 over_committed=(
-                    typical_day is not None and len(on_it) > typical_day
+                    available
+                    and typical_day is not None
+                    and len(on_it) > typical_day
                 ),
             )
         )
@@ -932,6 +965,7 @@ def draft_week(owner, week_start, *, today):
         routines=routine_reads.active_routines_for(owner),
         days=days,
         typical_day=typical_day,
+        displaced=displaced,
         typical_week=typical,
         # Stated, never scolded: this says the week holds less than this, not
         # that the person is failing. `daily-operating-system-vision.md` asks

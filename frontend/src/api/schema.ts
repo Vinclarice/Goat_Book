@@ -891,6 +891,39 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/weeks/{day}/draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Draft Under A Scenario
+         * @description The week drafted again with some days taken out — v2 increment 8.
+         *
+         *     **A GET, because a scenario is a question rather than a decision.** Nothing
+         *     about it is stored: *"what if I only have three productive days"* asks what
+         *     the week would look like, and a what-if that persisted would be a plan
+         *     somebody has to undo. Ask it twice and nothing has changed either time.
+         *
+         *     Its own route rather than a parameter on the review, so asking a what-if
+         *     costs one draft rather than the whole week -- the review carries habits,
+         *     recent weeks, loose ends and a check-in that a scenario does not touch.
+         *
+         *     `unavailable` is a comma-separated list of ISO dates. A malformed one is
+         *     refused rather than ignored, because a scenario silently dropping the day
+         *     somebody named would answer a different question and look like an answer.
+         */
+        get: operations["review_api_v1_draft_under_a_scenario"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/weeks/{day}/outcomes": {
         parameters: {
             query?: never;
@@ -1878,6 +1911,8 @@ export interface components {
             tasks: components["schemas"]["DraftedTaskOut"][];
             /** Over Committed */
             over_committed: boolean;
+            /** Available */
+            available: boolean;
         };
         /** DraftedTaskOut */
         DraftedTaskOut: {
@@ -2196,6 +2231,8 @@ export interface components {
             over_committed: boolean;
             /** Days */
             days: components["schemas"]["DraftedDayOut"][];
+            /** Displaced */
+            displaced: components["schemas"]["DraftedTaskOut"][];
             /** Typical Day */
             typical_day: number | null;
         };
@@ -3422,6 +3459,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WeekIntentionOut"];
+                };
+            };
+        };
+    };
+    review_api_v1_draft_under_a_scenario: {
+        parameters: {
+            query?: {
+                unavailable?: string;
+            };
+            header?: never;
+            path: {
+                day: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeekDraftOut"];
                 };
             };
         };

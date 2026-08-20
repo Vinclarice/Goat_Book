@@ -1627,6 +1627,52 @@
         ]
       }
     },
+    "/api/v1/weeks/{day}/draft": {
+      "get": {
+        "operationId": "review_api_v1_draft_under_a_scenario",
+        "summary": "Draft Under A Scenario",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "day",
+            "schema": {
+              "format": "date",
+              "title": "Day",
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "in": "query",
+            "name": "unavailable",
+            "schema": {
+              "default": "",
+              "title": "Unavailable",
+              "type": "string"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeekDraftOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "The week drafted again with some days taken out \u2014 v2 increment 8.\n\n**A GET, because a scenario is a question rather than a decision.** Nothing\nabout it is stored: *\"what if I only have three productive days\"* asks what\nthe week would look like, and a what-if that persisted would be a plan\nsomebody has to undo. Ask it twice and nothing has changed either time.\n\nIts own route rather than a parameter on the review, so asking a what-if\ncosts one draft rather than the whole week -- the review carries habits,\nrecent weeks, loose ends and a check-in that a scenario does not touch.\n\n`unavailable` is a comma-separated list of ISO dates. A malformed one is\nrefused rather than ignored, because a scenario silently dropping the day\nsomebody named would answer a different question and look like an answer.",
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/weeks/{day}/outcomes": {
       "post": {
         "operationId": "review_api_v1_choose_outcome",
@@ -4056,12 +4102,17 @@
           "over_committed": {
             "title": "Over Committed",
             "type": "boolean"
+          },
+          "available": {
+            "title": "Available",
+            "type": "boolean"
           }
         },
         "required": [
           "date",
           "tasks",
-          "over_committed"
+          "over_committed",
+          "available"
         ],
         "title": "DraftedDayOut",
         "type": "object"
@@ -4728,6 +4779,13 @@
             "title": "Days",
             "type": "array"
           },
+          "displaced": {
+            "items": {
+              "$ref": "#/components/schemas/DraftedTaskOut"
+            },
+            "title": "Displaced",
+            "type": "array"
+          },
           "typical_day": {
             "anyOf": [
               {
@@ -4748,6 +4806,7 @@
           "typical_week",
           "over_committed",
           "days",
+          "displaced",
           "typical_day"
         ],
         "title": "WeekDraftOut",

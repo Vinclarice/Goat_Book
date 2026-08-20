@@ -19,11 +19,16 @@ Two thrusts, in service of one destination.
 **This is deliberately a long planning document.** Vince's call, August 20,
 2026, overriding `commercial-blueprint.md` Part 8's refusal of exactly that.
 The refusal was written for a product whose direction was settled and whose
-remaining questions were commercial; this one's direction changed, and a
-sequence that spans both cores and five releases cannot be carried in a
-roadmap bullet. **It replaces `commercial-blueprint.md` Part 6's phases 2
-through 5.** Part 1 (closed), Part 4 (architecture), Part 7's wedges (deferred,
-not withdrawn) and Part 8's other refusals all stand; that file keeps them.
+remaining questions were commercial; this one's direction changed. **It replaces
+`commercial-blueprint.md` Part 6's phases 2 through 5.** Part 1 (closed), Part 4
+(architecture), Part 7's wedges (deferred, not withdrawn) and Part 8's other
+refusals all stand; that file keeps them.
+
+**This file is comprehensive about the plan and restates no implementation
+detail it does not own.** [`temporal-substrate-plan.md`](temporal-substrate-plan.md)
+is the focused spec for the substrate, contextual retrieval, observations and
+intake; [`search-plan.md`](search-plan.md) owns literal retrieval. Releases
+below name what they contain and link rather than copy.
 
 ## The destination
 
@@ -48,6 +53,10 @@ graph hands the assembly problem back to them, and a system that tells someone
 who they are becomes flattering and self-sealing very quickly. Both remain
 supporting views.
 
+**And memory holds anything** — recipes, dream fragments, birthdays, fears,
+thoughts about people. The heterogeneous memory is not a problem to be managed;
+it is the reason contextual retrieval is the central design problem.
+
 ## What was decided on August 20, 2026
 
 Vince's calls, recorded once because several documents are downstream:
@@ -65,6 +74,9 @@ Vince's calls, recorded once because several documents are downstream:
 5. **`principles.md` was rewritten** (`217243d`): a bend is a defect, the main
    surface can do the main thing, felt friction is evidence, automations act
    reversibly, and a trigger that cannot fire is a refusal.
+6. **A drafted day proposes; it never pins.** The moat is that `DailyFocus`
+   records what a person *chose*, and an auto-pinned focus would quietly change
+   what the finish rate measures.
 
 ## How v3 is scored
 
@@ -79,33 +91,65 @@ and **S19** is billing. v3's reachable ceiling is therefore **17 of 19**.
 
 ## What v3 inherits, and why it is cheaper than it looks
 
-The most important finding of the August 20 planning session: **`kestrel` and
-the planning assistant's v2 already paid for these substrates.** Read the score's
-own `Requires` lines rather than the verdicts:
+**`kestrel` and the planning assistant's v2 already paid for these
+substrates.** Read the score's own `Requires` lines rather than the verdicts:
 
 - **S3** — *"the comparison the draft already makes, applied to the week being
   reviewed. No model, no field, no new read — an argument's difference."*
 - **S9** — *"a retrospective that reads the intention beside the week's own days.
   No model, no service, no field."*
-- **S14** — *"one relationship short rather than a model short"*, and it is
-  **"still the differentiator — the graph accreting from what you were already
-  doing rather than being built by hand."**
+- **S14** — *"one relationship short rather than a model short"*, and **"still
+  the differentiator — the graph accreting from what you were already doing
+  rather than being built by hand."**
 - **S12** — half-built, and **"still the story that makes the two cores one
-  product"**; the link between projects and knowledge records already exists
-  and is in daily use.
-- **S11** — `Decision` as a record, and the story is not hypothetical:
+  product"**.
+- **S11** — `Decision` as a record, and not hypothetical:
   `architecture-trajectory.md` §7 and §8 **are** that practice, kept in Markdown
   because the product cannot hold it.
 
 Four of the ten bends need no new model at all. That is the difference between
 this being a year and being a quarter.
 
+## New models, and what each answers to
+
+`architecture-trajectory.md` §4's test is the strict one — **a concept earns its
+own model when it has a different life cycle, not when it has a different
+name.** Every model v3 proposes is argued against it here, in one place, so the
+charter can be pointed at rather than paraphrased.
+
+| Proposed | Verdict | Why |
+|---|---|---|
+| **`Decision`** | **Earns it** | *decided → held → returns on condition → revisited or superseded* is unlike `Item` (open→done), `Facet` (proposed→confirmed→retired) or `Node`. S11 |
+| **`Event`** (calendar) | **Earns it** | **It happens at a time whether or not you act, and is never completed.** No task has that life cycle |
+| **`CaptureSession`** | **Earns it** | A session has duration, completion state, a budget, prompt provenance and a processing flag. A shared timestamp carries none of them |
+| **`Bill`** | **Fails — sidecar instead** | *arrives → due → paid → next occurrence* **is** a recurring task's life cycle, and `daily-operating-system-vision.md` uses **"pay rent every month"** as its canonical example of one. A one-to-one `Bill(item, amount, currency, payee)` adds attributes without claiming a life cycle, and keeps a column that is null for 99% of rows off the hottest model in the application |
+| **Observations** | **Needs no model** | `Facet` already attaches to a `DailyEntry`, already has a `JSONField`, already separates `EXPLICIT` from `INFERRED`, and already records its producer |
+
+**Not a facet, for the bill amount.** `Facet` carries *inferred capabilities*
+with a confirmation flow; a number a person typed is a fact, and putting it in
+the proposal table muddies both.
+
+## What v3 needs that does not exist at all
+
+Three absences found by checking rather than assuming, each cheap to miss:
+
+- **No lead time, anywhere.** No `days_before`, no `notify_before`. Nothing in
+  Clarice can remind you of anything *in advance* of its due date.
+- **No annual or quarterly recurrence.** `Item.Recurrence` is `WEEKLY` and
+  `MONTHLY` only, so a property tax bill is not expressible.
+  [`lists/models.py:16`](../src/lists/models.py) warns this enum has a known
+  ripple; adding values is not a one-line change.
+- **No notification surface.** The only outbound channel is the 07:00 digest,
+  which *"ends 'Open Clarice to work through them.' with nothing clickable."*
+  **An advance reminder needs somewhere to arrive**, and that is a larger cost
+  than the amount field it serves.
+
 ## The releases
 
 **Named, never lettered in advance.** `roadmap.md` is explicit that letters are
 never reserved for a subject — Vince's call, August 15, 2026, after
 `architecture-trajectory.md` §5 attached commercial readiness to "release G" and
-Godwit spent it on the merger. A letter is claimed by whatever ships next.
+Godwit spent it on the merger.
 
 **Every release ends in something Vince uses daily, or it is wrong.** This is
 the plan's largest risk written as a constraint: the substrate work is three
@@ -116,77 +160,126 @@ machinery shipped while *move a task to another area* did not.
 
 ### Close L — finish what is already open
 
-Release L has been open since August 19 and half-deployed since. Unified search
-is on `main` and **undeployed**; the second factor is installed and enforcing
-nothing.
+Open since August 19 and half-deployed since. Unified search is on `main` and
+**undeployed**; the second factor is installed and enforcing nothing. Deploy,
+verify, tag the deployment, choose the bird. **Nothing new ships.** It is first
+because the letters stopped meaning anything once already — six of seven work
+items shipped outside the release structure between August 6 and 12 — and a
+release that never closes is how that starts.
 
-Deploy, verify in production, tag the deployment, choose the bird. **Nothing new
-ships.** It is first because the letters stopped meaning anything once already —
-six of seven work items shipped outside the release structure between August 6
-and 12 — and a release that never closes is how that starts.
-[`roadmap.md`](roadmap.md) owns what L contains.
-
-### Usable — the bends that need no substrate
+### Usable — the bends
 
 The release that answers *"it serves a purpose but it isn't really useful."*
 Nothing here waits on anything else, and most of it is small.
 
 - **The Day page gets verbs.** [`DayRoute.tsx:120`](../frontend/src/app/routes/DayRoute.tsx)
   declines a Complete button to avoid reimplementing the agenda's mutation
-  beside it. That cost is real and it is not a veto: *one rule, one
-  authoritative definition* says how to pay it. The vision document calls the
-  Daily Page **the main working surface** and it cannot do the main thing.
-- **A closing ritual with a time-aware nudge** — S5's whole requirement.
-- **Date navigation.** `/day/:date` has no UI entry point at all; the review has
-  no week jump. Reaching a day twelve weeks back means clicking "the week
-  before" twelve times.
-- **The weekly retrospective reads the intention beside the week's own days** —
-  S9, no model, no service, no field.
+  beside it. Real cost, not a veto: *one rule, one authoritative definition*
+  says how to pay it. The vision document calls the Daily Page **the main
+  working surface** and it cannot do the main thing.
 - **The draft's own comparison applied to the week being reviewed** — S3, an
   argument's difference.
 - **The other two rows of the review act in place** — S7, through the owning
-  core's services, the shape the questions and pinning already take.
+  core's services.
+- **The weekly retrospective reads the intention beside the week's own days** —
+  S9, no model, no service, no field.
 - **Task priority.** A to-do core with recurrence, routines, pauses and
   snapshot denominators and no priority field is unbalanced.
 - **Moving a task between areas.** [`lists/api.py:197`](../src/lists/api.py)
-  accepts six fields and `list` is not among them, so a misfiled task stays
-  misfiled.
-- **Links in the digest email**, which presently ends "Open Clarice to work
-  through them." with nothing clickable.
-- **The 44px floor into the link primitive**, finishing August 18's half-fix —
-  "Edit your compass" is still a 20px anchor.
-- **The brain dump, and orientation as one of two entrances.** Empty your head
-  into a box, no decisions about what any of it is. **Fragments are atomic** —
-  one *keep and continue*, one node, with a preview-and-ask on multiline paste
-  and no silent splitting. **This is how the six invented concepts get
-  explained**, demonstrated on the person's own material rather than toured, and
-  **only the ones their material actually demonstrates** — explaining a Compass
-  that isn't there turns personalisation back into the tutorial it replaced. It
-  carries the invitation bar's third item. **Quick start stays beside it**,
-  because a dump takes far longer than S1's four minutes.
+  accepts six fields and `list` is not among them.
+- **Links in the digest email.**
+- **The 44px floor into the link primitive**, finishing August 18's half-fix.
 
-  **It ships behind session-aware budgeting or not at all.** `CaptureSession`
-  first, then the surface. Two budgets — what gets materialized, and what gets
-  shown now — covering **every attention-producing mechanism**, because
-  `_propose_any_commitment` runs *synchronously on the live path for every
-  node*, so forty fragments is forty actionable facets before a detector job has
-  run. A cap scoped to the five connection detectors would miss the one that
-  fires first. **No backlog**: a queue slowly releasing session findings is the
-  inbox this design refuses. Substrate D11 and D12.
+**Acceptance: S2, S3, S7 and S9 reach *works*.**
 
-  The ongoing ritual is the same surface, and it is the counterweight to a
-  memory fed only by deliberate capture inheriting the biases of the brain doing
-  the capturing.
+### The day — planning and review stop being manual
 
-**Acceptance: S2, S3, S5, S7 and S9 reach *works*.** Five of the ten bends, in
-the release with the least new machinery in it.
+The daily loop's whole write surface is three functions — `write_entry`,
+`pin_task`, `unpin_task`. **The weekly loop got fourteen increments of assistant
+and the daily loop got a form**, and daily runs seven times as often.
+
+- **`draft_day`.** `typical_day_for`'s docstring settles the shape: *"D2 is
+  explicit that the daily grain is the same computation as the weekly one and
+  that two definitions of 'what I got through' would drift."* So this is
+  `draft_week`'s selection rule at a one-day window — **not a new planner** —
+  including its refusals: dated work only, overdue first, routines named apart
+  because a routine never spawns a task, and the someday pile left alone.
+  - **It proposes; one click accepts the set.** `draft_week` already *"writes
+    nothing… opening the planner twice changes nothing either time."*
+  - **Computed on read, never stored**, following `attention_tier`. The accept
+    therefore **pins what was shown**, carrying the ids it displayed rather than
+    re-deriving — Bittern's `Idempotency-Key` contract is the reference.
+  - **Capacity marks, it does not truncate.** `typical_day_for` returns a median
+    and **`None` below the sample floor rather than zero**, so the draft has
+    three states: bounded by a known capacity, honest about not having one, or
+    marking the overflow.
+  - **Record that a day's set came from an accepted draft.** Without it,
+    rubber-stamping and genuine agreement are indistinguishable, and the finish
+    rate quietly becomes a measure of how good the draft is. It is the same
+    instinct as `typical_day_for` refusing to let a day be its own evidence.
+- **The daily brief.** Two halves with different contracts. **The plan half** is
+  bounded by capacity and ends in the accept. **The awareness half reports
+  change, not state** — *what changed, and does today still make sense?* — which
+  is what keeps seven sections from becoming a dashboard, the thing the
+  destination explicitly refuses. On a quiet day it is two lines, and short is
+  the correct output rather than a failure.
+  - **A someday item may be surfaced, never planned.** *"Take a look at this"*
+    is Resurfacing, a different mode with a different contract, so
+    `draft_week`'s refusal is respected rather than amended.
+  - **No ranking across the sections.** A bill against a routine against a
+    resurfaced note is `SearchRank` across two document sets again, and the
+    failure is silent.
+  - Reading 4 — where intention and attention disagree — **stays absent until
+    the substrate**.
+- **The closing ritual** — S5's entire requirement, *"a closing ritual with a
+  time-aware nudge."* Reachable today: `focus_for` already gives pins with their
+  `released_at`, so it can say *you chose four; two are done, one you released,
+  one is still open.*
+  - **It cannot close days retroactively.** *"I wrote nothing on the 3rd"* and
+    *"I have never opened the 3rd"* are different facts — which is why
+    `DailyEntry` has no deleted or archived state. A day you do not answer
+    closes unclosed, and that is itself a record.
+  - **Nudges do not stack.** Four missed days is one observation in the weekly
+    review through `loose_ends`, not four prompts.
+  - **An unfinished pin gets three legal moves offered**: leave it, release it,
+    or re-pin it when tomorrow is drafted. **Never move its due date.**
+- **Bills.** The sidecar, the two new `Recurrence` values, a lead time, and a
+  dedicated section answering *what is due this month and what it comes to*.
+- **The calendar, size one** — a view over what Clarice already knows: tasks by
+  due date, routines, bills. No new model, and **it closes S13's "a way to land
+  on a date,"** since `/day/:date` has no UI entry point at all. Worth shipping
+  even if events never follow.
+- **A real notification surface**, because an advance reminder needs somewhere
+  to arrive.
+
+**Acceptance: S5 reaches *works*; S13 gets its land-on-a-date half.**
+
+### Capture — the brain dump and what it holds
+
+- **`CaptureSession` and session-aware processing, first.** Two budgets — what
+  gets materialized, and what gets shown now — covering **every
+  attention-producing mechanism**, because `_propose_any_commitment` runs
+  *synchronously on the live path for every node*, so forty fragments is forty
+  actionable facets before a detector job runs. A cap scoped to the five
+  connection detectors would miss the one that fires first. **No backlog**: a
+  queue slowly releasing session findings is the inbox this design refuses.
+- **The brain dump surface.** Fragments are atomic — one *keep and continue*,
+  one node — with a preview-and-ask on multiline paste and **no silent
+  splitting**. The ongoing ritual is the counterweight to a memory fed only by
+  deliberate capture inheriting the biases of the brain doing the capturing.
+- **Orientation as one of two entrances** — *quick start* beside *empty my
+  head*, because a dump takes far longer than S1's four minutes. **This is how
+  the six invented concepts get explained**, demonstrated on the person's own
+  material and **only the ones it actually demonstrates**; explaining a Compass
+  that is not there turns personalisation back into the tutorial it replaced.
+  Carries the invitation bar's third item.
+- **Attachments switched on** — the model exists and nothing can create one.
+
+Detail in [`temporal-substrate-plan.md`](temporal-substrate-plan.md) Part 4.
 
 ### Unify — the two cores become one product
 
-The architectural half, and the one everything downstream needs.
-
-- **The temporal substrate**, Track A increments 1–4 of
-  [`temporal-substrate-plan.md`](temporal-substrate-plan.md). `EventType` gains
+- **The temporal substrate**, Track A increments 1–4. `EventType` gains
   life-events; `lists`, `daily` and `review` emit facts; backfill takes only
   what carries its own recorded timestamp; `around()` becomes the first read
   that crosses. **Facts, not derivations** — nothing may write a row a read
@@ -194,79 +287,48 @@ The architectural half, and the one everything downstream needs.
   standing.
 - **S14's one missing relationship** — typed links from a node into the day and
   project domain objects. The differentiator: a graph that accretes from what
-  you were already doing rather than being built by hand.
-- **`FacetKind.GOAL` wired to `Project.outcome`.** Declared since the merger and
-  inert, exactly as `EPISTEMIC` was until [`mind/services.py:358`](../src/mind/services.py)
-  revisited it. This is how *what you said mattered* reaches memory as a facet
-  and not only as an event.
-- **Search reaches across content** — increment 5 of
-  [`search-plan.md`](search-plan.md), the nine fields deferred by name. With one
-  substrate the sectioning question can finally be re-asked honestly; until
-  then it stays sectioned, because `SearchRank` means nothing across two
-  document sets and the failure is silent.
+  you were already doing.
+- **`FacetKind.GOAL` wired to `Project.outcome`**, as `EPISTEMIC` was.
+- **Search reaches across content** — `search-plan.md` increment 5.
 
-**Acceptance: S13 and S14 reach *works*.** The visible payoff is small on
-purpose — a note that can say which day and which project it belongs to — and
-the invisible payoff is that everything after this becomes possible.
+**Acceptance: S13 and S14 reach *works*.**
 
 ### Contextual retrieval — memory learns why it is being asked
 
-Added to v3 on August 20, 2026, after the retrieval architecture was worked out
-and [`temporal-substrate-plan.md`](temporal-substrate-plan.md) widened to carry
-it. Track B of that brief, and it is the largest single body of design work in
-this plan.
-
-The finding is that Clarice has **several retrieval tricks and no retrieval
-architecture** — lexical search, `material_bearing_on`, `semantic_echo`, the
-concept detectors — each defensible for its original job and sharing no
-understanding of intent. Above them sit two axes that do not exist yet:
-**what kind of memory is this** (fourteen roles, carried as multi-valued facets
-proposed after capture, never asked for) and **what kind of remembering is
-happening now** (lookup, recollection, discovery, planning, reflection,
-resurfacing). The existing indexes become candidate generators rather than final
-judges; eligibility and ranking move above them; every result explains why it
-appeared.
-
-**One prerequisite outside this plan:** unified search finished as scoped.
-Search is not what needs overhauling — it is the correct literal-retrieval
-foundation, and its refusal to merge incomparable document sets is right. This
-sits above it.
+Track B of the substrate brief, and the largest single body of design work here.
+Clarice has **several retrieval tricks and no retrieval architecture**. Above
+them sit two axes that do not exist: **what kind of memory is this** (roles as
+multi-valued facets, proposed after capture, never asked for) and **what kind of
+remembering is happening now** (lookup, recollection, discovery, planning,
+reflection, resurfacing). Existing indexes become candidate generators rather
+than final judges; eligibility and ranking move above them; every result
+explains why it appeared.
 
 **The principle it establishes:** *Clarice may contain anything, but it should
 never retrieve without knowing why the person is asking — or why the system is
 interrupting.*
 
-**Acceptance: S16's underneath.** No verdict moves here on its own, which is
-worth saying plainly — this is the release whose payoff is entirely in the two
-after it.
+**Acceptance: none directly**, which is worth saying plainly — the payoff is
+entirely in the releases after it.
 
 ### The first question — Clarice starts behaving like an instrument
 
 - **The discrepancy reading.** Intention joined to attention across time: *you
   intended these three outcomes; two received attention; one has been displaced
-  for the third week.* This is what `around()` was for, and it is the reading
-  that separates an instrument from a report.
+  for the third week.*
 - **`Decision` earns its own model.** *"The answer becomes part of the evidence
-  available next time"* is the recursion the whole product hangs from, and it
-  needs a durable record of what was asked, what evidence was shown, what was
-  decided, and **under what condition it returns.** It passes
-  `architecture-trajectory.md` §4 on the strict reading — *decided → held →
-  returns on condition → revisited or superseded* is unlike `Item`, unlike
-  `Facet`, unlike `Node`. **It must cite a `Revision`, not a `Node`**, or a note
-  edited in October silently changes what was on screen in August.
+  available next time"* is the recursion the product hangs from. **It must cite
+  a `Revision`, not a `Node`**, or a note edited in October silently changes
+  what was on screen in August.
 - **One weekly briefing that ends in a question**, with real dispositions:
   continue, change, release, investigate, defer until a named condition,
-  schedule a decision. `release` already exists in the model
-  ([`daily/models.py:165`](../src/daily/models.py)); *defer until a named
-  condition* is the reconsideration-trigger idea modelled in code for the first
-  time; *schedule a decision* was deferred by name in `abcfc51`; only
-  *investigate* is new.
+  schedule a decision. `release` already exists in the model; *defer until a
+  named condition* is the reconsideration-trigger idea modelled in code for the
+  first time; only *investigate* is new.
 
 **Predicates before ranking.** "A project paused twice after the same pattern"
 is a rule — enumerable, checkable, arguable. Ranking becomes necessary only when
-more questions qualify than there are slots, and `principles.md`'s narrowed
-*measure behavior* gates it until then. Deliberate staging, and the same
-discipline that made increment 9 refuse to ship.
+more questions qualify than there are slots.
 
 **Acceptance: S11 reaches *works*.**
 
@@ -274,137 +336,100 @@ discipline that made increment 9 refuse to ship.
 
 **One instrument parameterised by horizon, not five instruments.** The readings
 are the same at every cadence; only the window and the threshold for *too
-repeated to call incidental* move. Building it five times is how a product
-becomes five features.
+repeated to call incidental* move.
 
 - **Longer-horizon reviews reusing the weekly model** — S8, and *"the
   null-not-zero discipline already exists in `review/reads.py` and must carry
   up."*
 - **What completing a project produces** — S12: a retrospective read over its
-  life, and somewhere to keep Vince's own account of it. **The story that makes
-  the two cores one product.**
-- **S10's remaining two** — notes, and an abandonment condition as its own
-  field unless the outcome absorbs it.
-- **Structured observations** — Track C of the substrate brief, and what makes
-  Reflection mode worth having. Sleep, alcohol, mood, energy and exercise
-  proposed as namespaced facets on the journal entry, explicit statements as
-  facts and parsed ones as inferences until confirmed. It needs **no new
-  model**: `Facet` already attaches to a `DailyEntry`, already has a
-  `JSONField`, already separates `EXPLICIT` from `INFERRED`, and already records
-  its producer. Two refusals travel with it and are not negotiable — **no causal
-  language**, and **an unrecorded night is never a sober one.**
-
-`review/reads.py` is week-grained end to end today, so this is where that
-generalises: `week_bounds`, `completed_in_week`, `planned_in_week`,
-`habits_in_week`, `recent_weeks`, `typical_week_for`.
+  life, and somewhere to keep Vince's own account of it.
+- **S10's remaining two** — notes, and an abandonment condition.
+- **Structured observations** — Track C, and what makes Reflection worth having.
+  Two refusals travel with it and are not negotiable: **no causal language**,
+  and **an unrecorded night is never a sober one.**
+- **Calendar events**, if scoped — the `Event` model and overlap prevention at
+  the database layer, which suits this codebase's habit of pushing invariants
+  into SQL (`tstzrange` exclusion constraints, needing `btree_gist`).
 
 **Acceptance: S8, S10 and S12 reach *works*.**
 
 ### Recollection — the second brain feels like one
 
-- **Substrate Track A increment 5, `since()`** — what developed afterward, gated on its
-  D4 bearing rule. **If D4 cannot be answered honestly, stopping at four is the
-  correct outcome** rather than shipping a read that pads a recollection with
-  everything that happened since.
+- **Track A increment 5, `since()`**, gated on D4. **If D4 cannot be answered
+  honestly, stopping at four is the correct outcome.**
 - **The recollection surface**: the fragment, its original context, what was
-  nearby, what changed after, present relevance, and a way to resume — add a
-  thought, answer an old question, revise a conclusion, connect current
-  evidence, or close the thread explicitly. Threads already exist as objects:
-  `NodeSource.THREAD`, members joined by `EdgeRelation.MEMBER_OF`.
-- **`Source`, and links from it to what grew out of it** — S15. There is
-  currently nothing to attach an article to.
-- **Prospective recall re-cued.** `dormant_thread` already works and already
-  knows the hard lesson: precision over recall, because "a stream of poor ones
-  teaches the person to skim past the review surface, and no later improvement
-  recovers that." What changes is only its input — today it fires on the
-  sentence just captured, and after the substrate it can fire on a present that
-  includes what you committed to, what is overdue, and what you have open.
-- **Layers, not conclusions.** Earlier beliefs, contradictions, abandoned
-  explanations, changes of mind. `Revision` and append-only `ActivityEvent` are
-  already this codebase's deepest instinct — but **a living summary is derived
-  state**, and must be a read computed from the layers rather than a row that
-  drifts from them.
+  nearby, what changed after, present relevance, and a way to resume.
+- **`Source`, and links from it to what grew out of it** — S15.
+- **Prospective recall re-cued** on a present that includes what you committed
+  to and what is overdue, rather than the sentence just typed.
+- **Layers, not conclusions**, with a living summary as a *read* computed from
+  the layers rather than a row that drifts from them.
 
 **Acceptance: S15 and S16 reach *works*.** S16 is *"the story that makes a
 second brain feel like one, and it is worthless before the corpus exists"* —
-which is precisely why it is last, and why the substrate is what fills the
-corpus rather than more discipline about capturing.
+which is why it is last.
 
 ## Two standing tracks
 
 ### The invitation bar
 
-Vince intends to invite people; an intent needs a bar or it is a someday. Not
-features — **the substrate somebody else's month would depend on:**
+An intent needs a bar or it is a someday. Not features — **the substrate
+somebody else's month would depend on:**
 
 1. **The restore drill run once, end to end.** Never run, and `CLAUDE.md`
-   records that it would have died at step 5 on the executable-bit bug,
-   mid-drill, with a paid scratch cluster running.
-2. **MFA enforced on the admin.** Machinery deployed and inert;
-   [`admin-mfa-plan.md`](admin-mfa-plan.md) is written and not started.
-3. **The six concepts explained** — carried by the *Usable* release.
+   records it would have died at step 5 on the executable-bit bug, mid-drill.
+2. **MFA enforced on the admin.** Machinery deployed and inert.
+3. **The six concepts explained** — carried by *Capture*.
 
 The first two are [`security-and-resilience-plan.md`](security-and-resilience-plan.md)'s,
-still unclaimed by `roadmap.md`. Everything else Part 6's Phase 3 wanted has
-either shipped or died with the wedge deferral.
-
-### Intake
-
-Track D of the substrate brief, and orthogonal to every release above — *Clarice
-stores it all* is a claim about getting material **in** before it is a claim
-about finding it again. **Attachments are the smallest real win**: the model
-exists, `capture()` takes them, and `FileField`, `ImageField` and
-`request.FILES` appear nowhere in `src/`, so nothing can make one. URL and email
-intake follow, or are deferred with a trigger.
-
-**It spends a security property deliberately.** The audit lists *"no file
-upload, no SSRF"* as an absence of attack surface rather than an absence of
-bugs, and two of those four positives are what this adds. It also touches
-`/privacy/`'s test-held processor list, and export-every-owned-*row* does not
-cover files — substrate D9.
+still unclaimed by `roadmap.md`.
 
 ### Background repair
 
-The bends not named in a release above, plus whatever daily use turns up. A bend
-is a defect now; it does not need a release to be fixed in.
+The bends not named in a release, plus whatever daily use turns up. A bend is a
+defect now; it does not need a release to be fixed in.
 
 ## What v3 refuses
 
 - **Billing, pricing, packaging and entitlements**, while the personal-tool
   answer stands. S19 stays impossible and is not a gap.
-- **Removing the approval gate.** Invitation-only is deliberate; S1 stays
-  impossible on that one point and says so.
-- **Analytics.** Its only job was telling whether a wedge landed. For a handful
-  of invited people, ask them.
-- **A rewrite, or merging `Node` into `Item` or the reverse.** Part 8 and
-  `architecture-trajectory.md` §7 both stand. The inversion is conceptual.
+- **Removing the approval gate.** Invitation-only is deliberate.
+- **Analytics.** Its only job was telling whether a wedge landed.
+- **A rewrite, or merging `Node` into `Item` or the reverse.**
 - **An event bus, domain events, or Django signals.** Facts, not derivations.
+- **A `Bill` primitive.** The vision document's own example says a bill is a
+  recurring task.
+- **Auto-pinning a drafted day.** It would change what the finish rate measures,
+  and that is not reconstructible afterwards.
+- **Automatic carry-forward.** *"Never automatically reschedule everything left
+  incomplete"* is a product rule that reversibility does not buy.
+- **Closing a day retroactively**, and stacking nudges.
+- **Asking what a thing is at capture**, silently splitting a submission, and a
+  proposal backlog.
 - **The graph as the primary surface, and generated narrative as the primary
-  voice.** Both are supporting views.
+  voice.**
 - **Building the briefing or the recollection surface before the substrate.**
-  Both would be built on reads that do not exist, and would silently be search
-  results wearing a better layout.
-- **A second event log, and a second API.** `ActivityEvent` gains a vocabulary,
-  not a sibling; a knowledge-core endpoint is a router in `mind/api_v1.py`.
+- **Inbound calendar sync**, for now — OAuth, a new processor in `/privacy/`'s
+  test-held list, and a sync path that fails quietly. The scenario planner
+  already takes `unavailable` as an argument, so *"I have four hours today"* can
+  be told rather than discovered.
 
 ## Three risks with no answer yet
 
-Named because each will look like a bug much later than it starts.
-
 1. **Question quality has no metric, and the machinery that exists will
-   mislead.** `producer_performance` and `retirement_gate` measure accept rates.
-   A question rejected because it stung and a question rejected because it was
-   irrelevant are identical in an accept rate — and the confrontational
-   questions are the valuable ones. This needs a different instrument and
-   nobody has designed it.
-2. **Prospective recall fails silently.** `RetrievalMiss` records *I went
-   looking and did not find*, because you noticed. A bad surfacing is
-   recordable — you dismissed it. **A missed surfacing leaves no trace at all.**
-   The instrumentation is structurally one-sided and will report health.
+   mislead.** A question rejected because it stung and one rejected because it
+   was irrelevant are identical in an accept rate — and the confrontational
+   questions are the valuable ones.
+2. **Prospective recall fails silently.** A bad surfacing is recordable; **a
+   missed surfacing leaves no trace at all.**
 3. **Absence claims.** *"Since then, nothing has been recorded"* cannot
    distinguish *nothing happened* from *I stopped recording*. `MAINTENANCE_RAN`
-   exists because this project has been caught by that twice already; the third
-   time is user-facing. Substrate D5.
+   exists because this project has been caught by that twice.
+
+**And one that is new with the daily loop: accepting is a weaker act than
+choosing.** If the draft is usually right you will stop reading it. The capacity
+bound and the cited reasons are the mitigation; the drafted-versus-composed
+record is what would let you find out rather than assume.
 
 ## Where the facts live
 
@@ -413,8 +438,11 @@ Whether any of this is active, deferred or open is
 shipped and how it was verified is [`roadmap-history.md`](roadmap-history.md)'s.
 How the product scores is [`product-stories.md`](product-stories.md)'s, which
 **corrected its own three-loop model on August 20**: the second brain is not the
-memory of the Decide loop, it is the substrate, and the three loops are tempos of
-reading and writing it. This plan is built on the corrected version. The charter every new model answers to is
-`architecture-trajectory.md` §4, and the knowledge core's design authority
-remains `design-concept.md` in Second Mind's own `docs/`. How work is delivered
-and verified is [`principles.md`](principles.md)'s.
+memory of the Decide loop, it is the substrate, and the loops are tempos of
+reading and writing it. The charter every new model answers to is
+`architecture-trajectory.md` §4 — argued against, above, rather than
+paraphrased. The knowledge core's design authority remains `design-concept.md`
+in Second Mind's own `docs/`. Substrate, retrieval, observations and intake
+detail is [`temporal-substrate-plan.md`](temporal-substrate-plan.md)'s; literal
+retrieval is [`search-plan.md`](search-plan.md)'s. How work is delivered and
+verified is [`principles.md`](principles.md)'s.

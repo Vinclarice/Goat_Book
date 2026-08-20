@@ -205,10 +205,19 @@ feature. **Nothing here needs staging**, and nothing here generates anything.
    search belongs to neither core.
 
    **The trigger that would promote the palette**, named so nobody waits on the
-   wrong signal: observed friction in *reaching or repeating* search now that it
-   is one click away. **`RetrievalMiss` cannot supply it** — it measures whether
-   search succeeded, not how long it took to ask — so watching the miss count
-   for this would be waiting for a signal that cannot arrive.
+   wrong signal: friction in *reaching or repeating* a search, now that one is a
+   click away from both cores. **`RetrievalMiss` cannot supply it** — it
+   measures whether search succeeded, not how long it took to ask — so watching
+   the miss count for this would be waiting for a signal that cannot arrive.
+
+   **This fires on felt friction, and that is deliberate rather than vague.**
+   `principles.md` gained two rules the same day this was decided: *a trigger
+   that cannot fire is a refusal, and should be recorded as one*, and *felt
+   friction is evidence*. Nothing instruments how long it takes to open a search
+   box and nothing should be built to — so if this trigger required a
+   measurement, it could not fire and this entry would be a deferral pretending
+   to be one. Vince noticing that he is going the long way round is the
+   evidence, and it is admissible.
 
 ## What this refuses
 

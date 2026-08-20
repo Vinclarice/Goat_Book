@@ -462,9 +462,13 @@ to Track D, because writing something down is not deciding to build it.
   this section's whole standard.
 
   **The trigger to watch is friction in reaching or repeating a search**, now
-  that one is a click away from both cores. **`RetrievalMiss` cannot supply it**
-  — it measures whether search succeeded, not how long it took to ask — so
-  nobody should watch the miss count for this.
+  that one is a click away from both cores — and it **fires on felt friction**,
+  which `principles.md` makes admissible evidence. That matters: nothing
+  instruments how long it takes to open a search box, so a trigger requiring a
+  measurement could not fire, and this entry would be a deferral pretending to
+  be one. **`RetrievalMiss` cannot supply it** — it measures whether search
+  succeeded, not how long it took to ask — so nobody should watch the miss
+  count for this.
 
 ### Longer-term product direction
 

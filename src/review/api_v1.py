@@ -19,6 +19,7 @@ answering a question nobody asked. The week before is one step away instead,
 which is the same click on the Monday morning a review actually happens.
 """
 from datetime import date, timedelta
+from uuid import UUID
 
 from django.utils import timezone
 from ninja import Router, Schema
@@ -143,6 +144,10 @@ class NameToConfirmOut(Schema):
     trust, which every other proposal here refuses to do.
     """
 
+    #: What a confirm or retire will name. The concept's own public id, for
+    #: the same reason the commitment row carries the facet's: the review can
+    #: only act in place on something it can address.
+    public_id: UUID
     label: str
     mentions: int
 
@@ -497,7 +502,11 @@ def _week_out(owner, day):
             for node in reads.thoughts_captured_in_week(owner, week_start, week_end)
         ],
         "names_to_confirm": [
-            {"label": candidate.label, "mentions": candidate.mention_count}
+            {
+                "public_id": candidate.public_id,
+                "label": candidate.label,
+                "mentions": candidate.mention_count,
+            }
             for candidate in reads.names_worth_confirming(owner)
         ],
         "loose_ends": _loose_ends_out(owner, today),

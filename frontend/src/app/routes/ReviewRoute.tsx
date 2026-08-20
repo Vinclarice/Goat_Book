@@ -314,6 +314,9 @@ type Thought = {
 };
 
 type NameToConfirm = {
+  /** What a confirm or retire names. The review can only act in place on
+   *  something it can address. */
+  public_id: string;
   label: string;
   mentions: number;
 };
@@ -396,17 +399,46 @@ function Thoughts({ thoughts }: { thoughts: Thought[] }) {
  * because it is the reason the question is being asked at all, and a proposal
  * that will not show its evidence is asking for trust.
  */
-function NamesToConfirm({ names }: { names: NameToConfirm[] }) {
+function NamesToConfirm({
+  names,
+  onAnswer,
+  busy,
+}: {
+  names: NameToConfirm[];
+  onAnswer: (publicId: string, disposition: "confirm" | "retire") => void;
+  busy: boolean;
+}) {
   return (
     <ul className="space-y-1">
       {names.map((name) => (
         <li
-          key={name.label}
-          className="flex items-baseline justify-between gap-3 rounded-lg border border-border px-3 py-2"
+          key={name.public_id}
+          className="flex flex-wrap items-baseline justify-between gap-3 rounded-lg border border-border px-3 py-2"
         >
           <span className="min-w-0">{name.label}</span>
-          <span className="shrink-0 text-sm text-muted-foreground">
-            {name.mentions} mentions
+          <span className="flex shrink-0 items-baseline gap-2">
+            {/* The evidence, kept beside the verbs rather than replaced by
+                them: a count with no basis is the system asking for trust,
+                which every other proposal here refuses to do. */}
+            <span className="text-sm text-muted-foreground">
+              {name.mentions} mentions
+            </span>
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={busy}
+              onClick={() => onAnswer(name.public_id, "confirm")}
+            >
+              Confirm
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={busy}
+              onClick={() => onAnswer(name.public_id, "retire")}
+            >
+              Not a thing
+            </Button>
           </span>
         </li>
       ))}
@@ -824,6 +856,60 @@ export function ReviewRoute() {
     onError: (caught: Error) => setSaveError(caught.message),
   });
 
+  // The pile's other two rows, answered in place -- S7's remaining half.
+  //
+  // Safe from a second surface for the same reason the questions above were:
+  // neither a `Facet` nor a `ConceptCandidate` carries a review window.
+  // `first_surfaced_at` belongs to `ConnectionHypothesis` alone, so nothing
+  // here expires or ripens and answering it from the planner cannot disturb
+  // the machinery that interprets silence. D6 stays undisturbed.
+  //
+  // Both call the knowledge core's own services through its router, so the
+  // facet, the concept, the event and the actor are recorded exactly as when
+  // the same decision is made from `/mind/`.
+  const answerCommitment = useMutation({
+    mutationFn: async ({
+      facetId,
+      disposition,
+    }: {
+      facetId: number;
+      disposition: "accept" | "dismiss";
+    }) => {
+      const { error } = await apiV1.POST(
+        disposition === "accept"
+          ? "/api/v1/commitments/{facet_id}/accept"
+          : "/api/v1/commitments/{facet_id}/dismiss",
+        { params: { path: { facet_id: facetId } } },
+      );
+      if (error) throw new Error("Couldn't record that.");
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
+    onError: (caught: Error) => setSaveError(caught.message),
+  });
+
+  // Confirm and retire are different facts, like the questions': retiring is
+  // permanent because extraction runs after every batch of captures, and a
+  // queue that re-asks answered questions is one somebody stops trusting.
+  const answerName = useMutation({
+    mutationFn: async ({
+      publicId,
+      disposition,
+    }: {
+      publicId: string;
+      disposition: "confirm" | "retire";
+    }) => {
+      const { error } = await apiV1.POST(
+        disposition === "confirm"
+          ? "/api/v1/concepts/{public_id}/confirm"
+          : "/api/v1/concepts/{public_id}/retire",
+        { params: { path: { public_id: publicId } } },
+      );
+      if (error) throw new Error("Couldn't record that.");
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
+    onError: (caught: Error) => setSaveError(caught.message),
+  });
+
   // Parking a project from the check-in, through the task core's own endpoint.
   // The review proposes and the service that owns projects still decides --
   // the same shape pinning a task to today already takes, and the reason there
@@ -1094,21 +1180,50 @@ export function ReviewRoute() {
               </h3>
               <ul className="mt-1 space-y-1">
                 {looseEnds.unanswered_commitments.map((commitment) => (
-                  <li key={commitment.id} className="text-sm">
-                    {commitment.text}{" "}
-                    <span className="text-muted-foreground">
-                      — proposed {commitment.proposed_on}
+                  <li
+                    key={commitment.id}
+                    className="flex flex-wrap items-baseline justify-between gap-2 text-sm"
+                  >
+                    <span className="min-w-0">
+                      {commitment.text}{" "}
+                      <span className="text-muted-foreground">
+                        — proposed {commitment.proposed_on}
+                      </span>
+                    </span>
+                    <span className="flex shrink-0 items-baseline gap-2">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        disabled={answerCommitment.isPending}
+                        onClick={() =>
+                          answerCommitment.mutate({
+                            facetId: commitment.id,
+                            disposition: "accept",
+                          })
+                        }
+                      >
+                        Accept
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        disabled={answerCommitment.isPending}
+                        onClick={() =>
+                          answerCommitment.mutate({
+                            facetId: commitment.id,
+                            disposition: "dismiss",
+                          })
+                        }
+                      >
+                        Not a commitment
+                      </Button>
                     </span>
                   </li>
                 ))}
               </ul>
               <p className="mt-1 text-sm text-muted-foreground">
                 Read out of something you captured, and never accepted or
-                dismissed.{" "}
-                <a href="/mind/" className="underline hover:text-foreground">
-                  Decide them in Second Mind
-                </a>
-                .
+                dismissed.
               </p>
             </div>
           )}
@@ -1600,7 +1715,13 @@ export function ReviewRoute() {
       {data.names_to_confirm.length > 0 && (
         <section className="space-y-2">
           <h2 className="text-sm font-bold">Names worth confirming</h2>
-          <NamesToConfirm names={data.names_to_confirm} />
+          <NamesToConfirm
+            names={data.names_to_confirm}
+            busy={answerName.isPending}
+            onAnswer={(publicId, disposition) =>
+              answerName.mutate({ publicId, disposition })
+            }
+          />
           {/* Says why these are here and where they are answered. Like the
               Inbox list it replaces, this is not week-scoped -- a name that
               recurred over a month is exactly the one worth naming, and

@@ -186,6 +186,103 @@ describe("ReviewRoute", () => {
     ).toBeInTheDocument();
   });
 
+  /* S7's remaining half: the pile's other two rows, answerable in place.
+     Increment 6 did the questions and left these pointing at /mind/. */
+  function commitmentRow(overrides: Record<string, unknown> = {}) {
+    return {
+      id: 7,
+      text: "Call the dentist tomorrow",
+      source: "capture",
+      proposed_on: "2026-07-28",
+      ...overrides,
+    };
+  }
+
+  function nameRow(overrides: Record<string, unknown> = {}) {
+    return {
+      public_id: "22222222-2222-2222-2222-222222222222",
+      label: "Maya",
+      mentions: 3,
+      ...overrides,
+    };
+  }
+
+  it.each([
+    ["Accept", "/accept"],
+    ["Not a commitment", "/dismiss"],
+  ])("answers a never-answered commitment in place: %s", async (label, path) => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const request = input as Request;
+      if (request.method === "POST") return jsonResponse({ id: 7 });
+      return jsonResponse(
+        weekData({
+          loose_ends: {
+            unanswered: [],
+            unanswered_commitments: [commitmentRow()],
+            overdue: [],
+          },
+        }),
+      );
+    });
+
+    renderAt("/review");
+    await userEvent.click(await screen.findByRole("button", { name: label }));
+
+    await waitFor(() => {
+      const posted = fetchSpy.mock.calls
+        .map(([request]) => request as Request)
+        .filter((req) => req.url.includes(path));
+      expect(posted).toHaveLength(1);
+    });
+  });
+
+  it("stops sending her to the other core for a commitment", async () => {
+    // The pointer increment 6 removed for questions and left here. The
+    // absence is the assertion -- a positive one would pass while the link
+    // sat beside the new buttons.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        weekData({
+          loose_ends: {
+            unanswered: [],
+            unanswered_commitments: [commitmentRow()],
+            overdue: [],
+          },
+        }),
+      ),
+    );
+
+    renderAt("/review");
+
+    await screen.findByRole("button", { name: "Accept" });
+    expect(
+      screen.queryByRole("link", { name: /Decide them in Second Mind/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ["Confirm", "/confirm"],
+    ["Not a thing", "/retire"],
+  ])("answers a recurring name in place: %s", async (label, path) => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const request = input as Request;
+      if (request.method === "POST") {
+        return jsonResponse({ public_id: nameRow().public_id });
+      }
+      return jsonResponse(weekData({ names_to_confirm: [nameRow()] }));
+    });
+
+    renderAt("/review");
+    await userEvent.click(await screen.findByRole("button", { name: label }));
+
+    await waitFor(() => {
+      const posted = fetchSpy.mock.calls
+        .map(([request]) => request as Request)
+        .filter((req) => req.url.includes(path));
+      expect(posted).toHaveLength(1);
+    });
+  });
+
   it("reads the finished week under what it was for", async () => {
     // S9's second clause. The sentence was shown only while planning the week
     // ahead, so a finished week's numbers were read against nothing.

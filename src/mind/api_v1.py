@@ -41,7 +41,7 @@ from daily import reads as daily_reads
 from lists import search as lists_search
 
 from . import queries, services
-from .models import Node, NodeSource
+from .models import ConceptCandidate, Facet, FacetKind, Node, NodeSource
 
 router = Router()
 
@@ -202,6 +202,99 @@ def mark_not_a_question(request, public_id: uuid.UUID):
         node, now=timezone.now(), actor=request.user.get_username()
     )
     return {"public_id": node.public_id}
+
+
+class CommitmentOut(Schema):
+    id: int
+
+
+class ConceptOut(Schema):
+    public_id: uuid.UUID
+
+
+def _unanswered_commitment_or_404(request, facet_id):
+    """This owner's undecided actionable facet, by id.
+
+    Owner-scoped in the lookup, like `_question_or_404` above and for the
+    identical reason. Also scoped to *undecided*: a facet already confirmed or
+    already retired is not a loose end, and answering one twice from a stale
+    page must not accept a commitment somebody dismissed an hour ago.
+    """
+    facet = Facet.objects.filter(
+        id=facet_id,
+        kind=FacetKind.ACTIONABLE,
+        confirmed_at__isnull=True,
+        retired_at__isnull=True,
+    ).first()
+    # `Facet.owner` is a property over its node or entry, not a column, so the
+    # ownership check cannot go in the filter above -- the one place in this
+    # module where it is after the lookup rather than in it.
+    if facet is None or facet.owner != request.user:
+        raise HttpError(404, "Commitment not found.")
+    return facet
+
+
+def _concept_or_404(request, public_id):
+    concept = ConceptCandidate.objects.filter(
+        owner=request.user, public_id=public_id, retired_at__isnull=True
+    ).first()
+    if concept is None:
+        raise HttpError(404, "Name not found.")
+    return concept
+
+
+@router.post("/commitments/{facet_id}/accept", response=CommitmentOut, auth=SessionAuthIfLoggedIn())
+def accept_commitment(request, facet_id: int):
+    """Turn a proposal the review is showing into a real task.
+
+    **No Area is asked for**, which is `confirm_actionable`'s own decision
+    inherited rather than re-taken: requiring one puts a filing question at
+    exactly the moment somebody has already made a different decision. `Item.owner`
+    is what makes an unfiled task a real task.
+    """
+    facet = _unanswered_commitment_or_404(request, facet_id)
+    services.confirm_actionable(
+        facet, now=timezone.now(), actor=request.user.get_username()
+    )
+    return {"id": facet.id}
+
+
+@router.post("/commitments/{facet_id}/dismiss", response=CommitmentOut, auth=SessionAuthIfLoggedIn())
+def dismiss_commitment(request, facet_id: int):
+    """"This was not a commitment." A different fact from accepting it, and
+    the one signal the commitment parser will ever get about a false positive.
+    """
+    facet = _unanswered_commitment_or_404(request, facet_id)
+    services.dismiss_facet(
+        facet, now=timezone.now(), actor=request.user.get_username()
+    )
+    return {"id": facet.id}
+
+
+@router.post("/concepts/{public_id}/confirm", response=ConceptOut, auth=SessionAuthIfLoggedIn())
+def confirm_name(request, public_id: uuid.UUID):
+    """Admit a recurring name to the trusted corpus -- always a person's
+    decision, which is why it has never had an automatic path."""
+    concept = _concept_or_404(request, public_id)
+    services.confirm_concept(
+        concept, now=timezone.now(), actor=request.user.get_username()
+    )
+    return {"public_id": concept.public_id}
+
+
+@router.post("/concepts/{public_id}/retire", response=ConceptOut, auth=SessionAuthIfLoggedIn())
+def retire_name(request, public_id: uuid.UUID):
+    """"That is not a thing", permanently.
+
+    Permanent because extraction runs again after every batch of captures, so
+    without a record a rejected name would be re-proposed forever -- and a
+    queue that re-asks answered questions is one somebody stops trusting.
+    """
+    concept = _concept_or_404(request, public_id)
+    services.retire_concept(
+        concept, now=timezone.now(), actor=request.user.get_username()
+    )
+    return {"public_id": concept.public_id}
 
 
 # How many results any one section returns. The same number the page uses, so

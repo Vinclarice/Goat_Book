@@ -868,6 +868,148 @@
         ]
       }
     },
+    "/api/v1/commitments/{facet_id}/accept": {
+      "post": {
+        "operationId": "mind_api_v1_accept_commitment",
+        "summary": "Accept Commitment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "facet_id",
+            "schema": {
+              "title": "Facet Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommitmentOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Turn a proposal the review is showing into a real task.\n\n**No Area is asked for**, which is `confirm_actionable`'s own decision\ninherited rather than re-taken: requiring one puts a filing question at\nexactly the moment somebody has already made a different decision. `Item.owner`\nis what makes an unfiled task a real task.",
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      }
+    },
+    "/api/v1/commitments/{facet_id}/dismiss": {
+      "post": {
+        "operationId": "mind_api_v1_dismiss_commitment",
+        "summary": "Dismiss Commitment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "facet_id",
+            "schema": {
+              "title": "Facet Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommitmentOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "\"This was not a commitment.\" A different fact from accepting it, and\nthe one signal the commitment parser will ever get about a false positive.",
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      }
+    },
+    "/api/v1/concepts/{public_id}/confirm": {
+      "post": {
+        "operationId": "mind_api_v1_confirm_name",
+        "summary": "Confirm Name",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "public_id",
+            "schema": {
+              "format": "uuid",
+              "title": "Public Id",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConceptOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Admit a recurring name to the trusted corpus -- always a person's\ndecision, which is why it has never had an automatic path.",
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      }
+    },
+    "/api/v1/concepts/{public_id}/retire": {
+      "post": {
+        "operationId": "mind_api_v1_retire_name",
+        "summary": "Retire Name",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "public_id",
+            "schema": {
+              "format": "uuid",
+              "title": "Public Id",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConceptOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "\"That is not a thing\", permanently.\n\nPermanent because extraction runs again after every batch of captures, so\nwithout a record a rejected name would be re-proposed forever -- and a\nqueue that re-asks answered questions is one somebody stops trusting.",
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      }
+    },
     "/api/v1/search": {
       "get": {
         "operationId": "mind_api_v1_search",
@@ -3324,6 +3466,33 @@
         "title": "QuestionOut",
         "type": "object"
       },
+      "CommitmentOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "title": "CommitmentOut",
+        "type": "object"
+      },
+      "ConceptOut": {
+        "properties": {
+          "public_id": {
+            "format": "uuid",
+            "title": "Public Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "public_id"
+        ],
+        "title": "ConceptOut",
+        "type": "object"
+      },
       "DayResultOut": {
         "properties": {
           "date": {
@@ -4520,6 +4689,11 @@
       "NameToConfirmOut": {
         "description": "A name that has recurred enough to be worth a question.\n\nReplaces the Inbox backlog, which the graph has no equivalent of because\nnothing waits for triage. `mentions` is the evidence and the reason it is\nbeing asked about at all -- a count with no basis is the system asking for\ntrust, which every other proposal here refuses to do.",
         "properties": {
+          "public_id": {
+            "format": "uuid",
+            "title": "Public Id",
+            "type": "string"
+          },
           "label": {
             "title": "Label",
             "type": "string"
@@ -4530,6 +4704,7 @@
           }
         },
         "required": [
+          "public_id",
           "label",
           "mentions"
         ],

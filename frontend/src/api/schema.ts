@@ -487,6 +487,97 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/commitments/{facet_id}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accept Commitment
+         * @description Turn a proposal the review is showing into a real task.
+         *
+         *     **No Area is asked for**, which is `confirm_actionable`'s own decision
+         *     inherited rather than re-taken: requiring one puts a filing question at
+         *     exactly the moment somebody has already made a different decision. `Item.owner`
+         *     is what makes an unfiled task a real task.
+         */
+        post: operations["mind_api_v1_accept_commitment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/commitments/{facet_id}/dismiss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Dismiss Commitment
+         * @description "This was not a commitment." A different fact from accepting it, and
+         *     the one signal the commitment parser will ever get about a false positive.
+         */
+        post: operations["mind_api_v1_dismiss_commitment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/concepts/{public_id}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm Name
+         * @description Admit a recurring name to the trusted corpus -- always a person's
+         *     decision, which is why it has never had an automatic path.
+         */
+        post: operations["mind_api_v1_confirm_name"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/concepts/{public_id}/retire": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Retire Name
+         * @description "That is not a thing", permanently.
+         *
+         *     Permanent because extraction runs again after every batch of captures, so
+         *     without a record a rejected name would be re-proposed forever -- and a
+         *     queue that re-asks answered questions is one somebody stops trusting.
+         */
+        post: operations["mind_api_v1_retire_name"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/search": {
         parameters: {
             query?: never;
@@ -1568,6 +1659,19 @@ export interface components {
              */
             public_id: string;
         };
+        /** CommitmentOut */
+        CommitmentOut: {
+            /** Id */
+            id: number;
+        };
+        /** ConceptOut */
+        ConceptOut: {
+            /**
+             * Public Id
+             * Format: uuid
+             */
+            public_id: string;
+        };
         /** DayResultOut */
         DayResultOut: {
             /**
@@ -2115,6 +2219,11 @@ export interface components {
          *     trust, which every other proposal here refuses to do.
          */
         NameToConfirmOut: {
+            /**
+             * Public Id
+             * Format: uuid
+             */
+            public_id: string;
             /** Label */
             label: string;
             /** Mentions */
@@ -3114,6 +3223,94 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["QuestionOut"];
+                };
+            };
+        };
+    };
+    mind_api_v1_accept_commitment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                facet_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitmentOut"];
+                };
+            };
+        };
+    };
+    mind_api_v1_dismiss_commitment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                facet_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitmentOut"];
+                };
+            };
+        };
+    };
+    mind_api_v1_confirm_name: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                public_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConceptOut"];
+                };
+            };
+        };
+    };
+    mind_api_v1_retire_name: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                public_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConceptOut"];
                 };
             };
         };

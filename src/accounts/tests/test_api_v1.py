@@ -67,6 +67,12 @@ class PreferencesEndpointTest(TestCase):
                 "username": "alice",
                 "email": "alice@example.com",
                 "daily_digest": True,
+                # The evening nudge, added August 20, 2026. False here rather
+                # than absent, and false rather than true, because a second
+                # recurring message is a different thing to agree to --
+                # `/privacy/` says so in published text and a test holds the
+                # two together.
+                "closing_nudge": False,
                 "theme": "system",
                 "time_zone": "America/New_York",
                 # Crane 1 slice 5 added the Personal Compass to this payload.

@@ -206,6 +206,18 @@ def closing_for(owner, day, *, today, hour):
     """
     if day != today or hour < CLOSING_HOUR:
         return None
+    return closing_summary_for(owner, day)
+
+
+def closing_summary_for(owner, day):
+    """What the day held, or None once the record exists.
+
+    Split out of `closing_for` so the evening mail and the page ask the same
+    question. The page's gate is *today, and evening*; the mail's is the
+    scheduler's own window, which has already decided both by the time it
+    composes. What neither may decide twice is what the day held and whether
+    it has already been written -- so that lives here.
+    """
     entry = entry_for(owner, day)
     if entry is not None and entry.happenings.strip():
         return None

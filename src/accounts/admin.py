@@ -33,7 +33,7 @@ class UserAdmin(ModelAdmin, DjangoUserAdmin):
         # something you may need to correct on their behalf.
         (
             "Preferences",
-            {"fields": ("time_zone", "daily_digest", "theme")},
+            {"fields": ("time_zone", "daily_digest", "closing_nudge", "theme")},
         ),
         (
             "Permissions",

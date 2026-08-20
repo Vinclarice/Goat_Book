@@ -27,6 +27,7 @@ function preferencesData(overrides: Record<string, unknown> = {}) {
     username: "vince",
     email: "vince@example.com",
     daily_digest: true,
+    closing_nudge: false,
     theme: "system",
     time_zone: "America/New_York",
     compass_purpose: "Build something worth maintaining.",
@@ -90,7 +91,12 @@ describe("PreferencesRoute", () => {
 
     expect(await screen.findByDisplayValue("vince")).toBeInTheDocument();
     expect(screen.getByDisplayValue("vince@example.com")).toBeInTheDocument();
-    expect(screen.getByRole("switch")).toBeChecked();
+    // Two switches now, so this names which. The digest is on and the
+    // evening nudge is off, which is the difference the privacy policy
+    // states in published text and a Django test holds against the model.
+    const [digest, nudge] = screen.getAllByRole("switch");
+    expect(digest).toBeChecked();
+    expect(nudge).not.toBeChecked();
     expect(screen.getByRole("button", { name: "System" })).toHaveAttribute(
       "aria-pressed",
       "true",

@@ -3348,6 +3348,11 @@
             "title": "Daily Digest",
             "type": "boolean"
           },
+          "closing_nudge": {
+            "default": false,
+            "title": "Closing Nudge",
+            "type": "boolean"
+          },
           "theme": {
             "enum": [
               "system",
@@ -3403,6 +3408,11 @@
           },
           "daily_digest": {
             "title": "Daily Digest",
+            "type": "boolean"
+          },
+          "closing_nudge": {
+            "default": false,
+            "title": "Closing Nudge",
             "type": "boolean"
           },
           "theme": {

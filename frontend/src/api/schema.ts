@@ -1606,6 +1606,11 @@ export interface components {
             /** Daily Digest */
             daily_digest: boolean;
             /**
+             * Closing Nudge
+             * @default false
+             */
+            closing_nudge: boolean;
+            /**
              * Theme
              * @enum {string}
              */
@@ -1637,6 +1642,11 @@ export interface components {
             email: string;
             /** Daily Digest */
             daily_digest: boolean;
+            /**
+             * Closing Nudge
+             * @default false
+             */
+            closing_nudge: boolean;
             /**
              * Theme
              * @enum {string}

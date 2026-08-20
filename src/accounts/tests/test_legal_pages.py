@@ -109,6 +109,23 @@ class ClaimsThatMustStayTrueTest(TestCase):
             with self.subTest(page=name):
                 self.assertContains(self.client.get(reverse(name)), "30 days")
 
+    def test_the_evening_nudge_is_described_as_off_by_default(self):
+        """The second recurring message, and the reason this page had to
+        change with it: it said "the one recurring message is the daily
+        summary", and a published promise the code contradicts is worse than
+        no promise. Off by default, and the page and the model must agree
+        about which -- the same pairing the test below makes."""
+        self.assertFalse(User._meta.get_field("closing_nudge").default)
+        self.assertContains(self.client.get(reverse("privacy")), "off by default")
+
+    def test_the_page_does_not_still_claim_only_one_recurring_message(self):
+        """The claim that went stale. Asserted as an absence, because a
+        positive test would pass with the old sentence still sitting beside
+        the new paragraph."""
+        page = self.client.get(reverse("privacy")).content.decode()
+
+        self.assertNotIn("The one recurring message", page)
+
     def test_the_daily_summary_is_described_as_on_by_default(self):
         """It defaults to True, so a policy calling it opt-in would be wrong in
         the direction that matters."""

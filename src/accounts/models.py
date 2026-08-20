@@ -173,6 +173,24 @@ class User(AbstractBaseUser, PermissionsMixin):
     # container, or a DST repeat all find the day already handled. Not
     # editable -- it is a record of what happened, not a preference.
     last_digest_date = models.DateField(null=True, blank=True, editable=False)
+    # **Off by default, unlike the digest above it.** A second recurring
+    # message is a different thing to agree to, and turning one on is a
+    # smaller ask than discovering one -- more so because `/privacy/` said in
+    # published text that the daily summary was "the one recurring message".
+    # That sentence is amended alongside this field rather than left to
+    # contradict the code.
+    closing_nudge = models.BooleanField(
+        default=False,
+        verbose_name="Email me an evening nudge to close the day",
+        help_text=(
+            "An evening email with what the day held, asking what happened "
+            "while it is still true. Nothing is sent once you have written "
+            "the day."
+        ),
+    )
+    last_closing_nudge_date = models.DateField(
+        null=True, blank=True, editable=False
+    )
 
     class Theme(models.TextChoices):
         SYSTEM = "system", "Match my device"

@@ -14,6 +14,9 @@ export function PreferencesRoute() {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [dailyDigest, setDailyDigest] = useState(true);
+  // Off, matching the model and `/privacy/`: a second recurring message is a
+  // different thing to agree to, and nobody receives it who has not asked.
+  const [closingNudge, setClosingNudge] = useState(false);
   const [timeZone, setTimeZone] = useState("");
   const [compassPurpose, setCompassPurpose] = useState("");
   const [compassQuestion, setCompassQuestion] = useState("");
@@ -45,6 +48,7 @@ export function PreferencesRoute() {
     setUsername(data.username);
     setEmail(data.email);
     setDailyDigest(data.daily_digest);
+    setClosingNudge(data.closing_nudge);
     setTimeZone(data.time_zone);
     setCompassPurpose(data.compass_purpose);
     setCompassQuestion(data.compass_question);
@@ -80,6 +84,7 @@ export function PreferencesRoute() {
           username,
           email,
           daily_digest: dailyDigest,
+          closing_nudge: closingNudge,
           theme,
           time_zone: timeZone,
           compass_purpose: compassPurpose,
@@ -111,6 +116,7 @@ export function PreferencesRoute() {
           username: data?.username ?? username,
           email: data?.email ?? email,
           daily_digest: data?.daily_digest ?? dailyDigest,
+          closing_nudge: data?.closing_nudge ?? closingNudge,
           theme,
           // This request sends the whole preferences object, so leaving
           // the zone out would silently reset the user's day boundaries
@@ -262,6 +268,22 @@ export function PreferencesRoute() {
           <Switch
             checked={dailyDigest}
             onCheckedChange={(next) => edit(setDailyDigest, next)}
+          />
+        </div>
+
+        <div className="flex items-center justify-between gap-4 rounded-lg border border-border bg-input px-3 py-2.5">
+          <div>
+            <p className="text-sm font-bold">
+              Email me an evening nudge to close the day
+            </p>
+            <p className="text-sm text-muted-foreground">
+              What the day held, and a question while it is still true.
+              Nothing is sent once you have written the day.
+            </p>
+          </div>
+          <Switch
+            checked={closingNudge}
+            onCheckedChange={(next) => edit(setClosingNudge, next)}
           />
         </div>
 

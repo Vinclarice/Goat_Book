@@ -114,6 +114,10 @@ class PreferencesOut(Schema):
     username: str
     email: str
     daily_digest: bool
+    #: Defaulted here as well as on the model, the same guard `landing_surface`
+    #: carries below: an older client that has never heard of this must not be
+    #: able to turn it off by omission.
+    closing_nudge: bool = False
     theme: ThemeChoice
     time_zone: str
     # The Personal Compass. Edited here, on the one settings surface, and
@@ -131,6 +135,7 @@ class PreferencesIn(Schema):
     username: str
     email: str
     daily_digest: bool
+    closing_nudge: bool = False
     theme: ThemeChoice
     time_zone: str
     # The Personal Compass. Edited here, on the one settings surface, and
@@ -153,6 +158,7 @@ def _preferences_out(user: User) -> dict:
         "username": user.username,
         "email": user.email,
         "daily_digest": user.daily_digest,
+        "closing_nudge": user.closing_nudge,
         "theme": user.theme,
         "time_zone": user.time_zone,
         "compass_purpose": user.compass_purpose,
@@ -274,6 +280,7 @@ def update_preferences(request, payload: PreferencesIn):
             "username": payload.username,
             "email": payload.email,
             "daily_digest": payload.daily_digest,
+            "closing_nudge": payload.closing_nudge,
             "time_zone": payload.time_zone,
             "compass_purpose": payload.compass_purpose,
             "compass_question": payload.compass_question,

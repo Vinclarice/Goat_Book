@@ -491,6 +491,23 @@
       # omission survived until the first real run.
       become: true
 
+    # The evening half of the same idea, and off by default -- nobody receives
+    # this who has not asked for it, which is what `/privacy/` says in
+    # published text. Hourly for the same reason as the digest above: the
+    # command decides whose evening it is, so the server's own zone stays out
+    # of it. Nothing is sent once somebody has written the day.
+    - name: Schedule the evening closing nudge
+      ansible.builtin.cron:
+        name: clarice-closing-nudge
+        minute: "5"
+        hour: "*"
+        job: docker exec clarice ./manage.py send_closing_nudge
+        user: root
+      # Five past, not on the hour: two `docker exec`s into the same container
+      # at the same instant is a contention nobody needs, and the window is
+      # hours wide so the offset costs nothing.
+      become: true
+
     # Erases accounts whose 30-day grace period has run out. Requesting deletion
     # writes a timestamp and nothing else; this is what eventually makes it
     # true, so an account only actually leaves if this runs.

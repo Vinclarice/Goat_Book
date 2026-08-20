@@ -247,6 +247,7 @@ class AccountSettingsForm(forms.ModelForm):
             "username",
             "email",
             "daily_digest",
+            "closing_nudge",
             "time_zone",
             "compass_purpose",
             "compass_question",

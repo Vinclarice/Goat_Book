@@ -208,15 +208,14 @@ from it.
 - **A second event log.** `ActivityEvent` is the log; it gains a vocabulary,
   not a sibling.
 
-## A correction this brief owes `product-stories.md`
+## A correction this brief owed `product-stories.md`, since made
 
-That file's three-loop table says *"The second brain is not a fourth loop. It is
-the memory of the third one."* Vince's call, August 20, 2026: **that is wrong.**
-Memory is not the memory of one loop — it is the substrate, and the three loops
-are tempos of reading and writing it. The line is load-bearing, other documents
-defer to it, and it is currently propagating a model this work contradicts.
-`product-stories.md` owns that fact; this file does not restate it and does not
-fix it.
+That file's three-loop table said *"The second brain is not a fourth loop. It is
+the memory of the third one."* Vince's call, August 20, 2026: **that was wrong**
+— memory is the substrate, and the three loops are tempos of reading and writing
+it. **Corrected in `product-stories.md` the same day**, which owns the fact and
+now carries what the old line was hiding. Recorded here only because this brief
+was written against the corrected model before the correction landed.
 
 ## Where the facts live
 

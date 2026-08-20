@@ -38,6 +38,13 @@ consecutive body of work aimed at this document rather than passing near it.
 and how narrowly. Six stories were re-read (S3, S7, S9, S10, S12, S16); three
 of them are now one clause short of *works*, and their entries say which clause.
 
+**The three-loop model was corrected August 20, 2026, and this was not a
+re-score.** The second brain is not the memory of the Decide loop; it is the
+substrate the loops run on — see §The three loops, which owns the correction and
+what it was hiding. Recorded up here because **this file's model is quoted by
+other documents and a wrong model travels further than a wrong verdict.** The
+nineteen verdicts were not re-read against it, and none is claimed to have moved.
+
 ## The score
 
 **3 work · 10 bend · 6 impossible** — from 3 · 9 · 7 on August 19, 3 · 6 · 10
@@ -88,7 +95,28 @@ journey crosses a seam.
 | **Adjust** | weekly | Did my intentions and my life match? |
 | **Decide** | project / quarterly | What am I pursuing, why, and what did it teach me? |
 
-The second brain is not a fourth loop. It is the **memory of the third one**.
+~~The second brain is not a fourth loop. It is the **memory of the third one**.~~
+**Corrected August 20, 2026 — Vince's call, and it was wrong in a way that hid
+work.**
+
+**The second brain is not a loop at all. It is the substrate, and the three
+loops above are tempos of reading and writing it.** Do writes fast and reads
+today; Adjust reads a week and writes what was concluded; Decide reads long and
+writes direction.
+
+**What the old line hid.** Subordinating memory to the least-built loop made a
+set of stuck things look like data problems when they are intake problems.
+Memory has two intake pipes — `capture` and the journal — and the task core,
+which records most of what actually happens, is not one of them:
+`mind.EventType` carries 23 values and every one of them is about a note. So the
+corpus is thin because nothing writes to it except deliberate capture, not
+because one person uses it, and every gate waiting on corpus volume was waiting
+on the wrong thing.
+
+[`clarice-v3-plan.md`](clarice-v3-plan.md) and
+[`temporal-substrate-plan.md`](temporal-substrate-plan.md) are both built on the
+corrected model, and both recorded this correction as *owed* rather than making
+it, because this file owns it.
 
 ## Personas
 

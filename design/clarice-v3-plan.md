@@ -339,9 +339,9 @@ Whether any of this is active, deferred or open is
 [`roadmap.md`](roadmap.md)'s — **nothing here is claimed by it yet.** What
 shipped and how it was verified is [`roadmap-history.md`](roadmap-history.md)'s.
 How the product scores is [`product-stories.md`](product-stories.md)'s, which
-also owes itself one correction from August 20: **the second brain is not the
-memory of the third loop** — it is the substrate, and the three loops are tempos
-of reading and writing it. The charter every new model answers to is
+**corrected its own three-loop model on August 20**: the second brain is not the
+memory of the Decide loop, it is the substrate, and the three loops are tempos of
+reading and writing it. This plan is built on the corrected version. The charter every new model answers to is
 `architecture-trajectory.md` §4, and the knowledge core's design authority
 remains `design-concept.md` in Second Mind's own `docs/`. How work is delivered
 and verified is [`principles.md`](principles.md)'s.

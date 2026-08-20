@@ -26,8 +26,10 @@ not**. `C:\dev\Clarice_secondmind` survives as documents only, and
 is still exactly right and only its first sentence went stale. Since August 16
 the releases have been Ibis, Jackdaw, the navigation and identity work, signup
 with the legal documents, and `kestrel` — the planning assistant, August 19,
-which spent the letter K and left **no active release again**. *Open now*
-carries the current state, as it is supposed to.
+which spent the letter K. ~~Left no active release again~~ — **release L
+opened on August 19 and half of it is live**; the snapshot below is what a
+baseline looked like before it, and *Open now* carries the current state, as it
+is supposed to.
 
 **There is no active release.** Heron was the last, verified in production
 August 15. What it leaves is a baseline rather than a backlog:
@@ -55,6 +57,34 @@ It is planned in the Second Mind documents and built in `src/mind/`; do not
 re-add it here.
 
 ## Open now
+
+- **Release L is open, and its bird is not chosen.** *Tag only after production
+  is verified* — so the letter is claimed, the name waits, and this entry is
+  what the release is until it has one. **Half of it is already live.**
+
+  **Deployed August 19, 2026** (`DEPLOYED-2026-08-19/2338`, image
+  `a60df12fc9ad`, migrations applied and none pending). What went out:
+
+  - **The planning assistant's second version, increments 1–8** — the entry
+    below carries the detail.
+  - **The second factor's machinery**, installed and *enforcing nothing*.
+    Enrolment before enforcement is the ordering `admin-mfa-plan.md` insists
+    on, so this half is deliberately inert until somebody has enrolled.
+  - **Mail no longer waits on reverse DNS**, which cost a browser-suite journey
+    twelve seconds and two wrong diagnoses before it was measured.
+  - **Two test-infrastructure fixes**: a test database name derived from the
+    checkout, and a CI check on recorded file modes.
+
+  **What it still needs before it is a release** is Vince's to add — the point
+  of leaving the bird unchosen is that a release is *a coherent body of work
+  with a finish line*, and this one has not reached its. When it does: verify in
+  production, then the annotated codename tag, then the narrative moves to
+  [`roadmap-history.md`](roadmap-history.md) and this entry becomes its stub.
+
+  **A deployment is not a release**, which is exactly what the two tag kinds
+  are for. `DEPLOYED-2026-08-19/2338` permanently records that this code ran;
+  the codename will record what the work *was*. Fulmar's annotation admits its
+  verification was piecemeal precisely because those two got conflated once.
 
 - ~~**`/api/v1/login` is unthrottled.**~~ Fixed August 18, 2026 (`9eb9eea`),
   with `/accounts/password/reset/` alongside it — an exact-match `limit_req`
@@ -101,8 +131,9 @@ re-add it here.
   being built to
   [`planning-assistant-v2-plan.md`](planning-assistant-v2-plan.md): the weekly
   planning *session*, on the review's forward half rather than a second
-  surface. **Eight of its nine increments are complete, on `main` and
-  undeployed** — the weekly intention made reachable (which closed the item
+  surface. **Eight of its nine increments are complete and live** — deployed
+  August 19, 2026 as the first half of release L, see the entry above — the
+  weekly intention made reachable (which closed the item
   struck above), capacity at day grain where D2 always specified it, a project
   that can say what done looks like and be parked, a check-in that opens with
   what the system believes, outcomes chosen from evidence, blockers answered
@@ -418,7 +449,10 @@ Production releases use alphabetic bird codenames: `albatross`, `bittern`,
 `crane`, `dunlin`, `fulmar`, `godwit`, `heron`. **Tag only after production is
 verified.** The letter carries; the bird is chosen when the release ships. The
 sequence skips E — Vince's call, August 3, 2026. Since then `ibis`, `jackdaw`
-and `kestrel` have taken I, J and K, so **the next release takes L.**
+and `kestrel` have taken I, J and K, so **L is the current letter** — and it is
+already claimed rather than next. See *Release L, open* under **Open now**;
+what it is called is decided when it is finished, which is what "the bird is
+chosen when the release ships" means.
 
 - `LIVE` is a moving tag for the code currently running. It is the only tag
   ever overwritten, which is safe precisely because the position it leaves is

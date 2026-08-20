@@ -13,9 +13,12 @@ taken, and what it costs.
 
 **Most of it is now a record.** Part 1 is closed, Part 2's question was answered
 by the merger, and Phase 0 of Part 6 is done. What is still live is Part 8's
-refusals, the open recommendations flagged below, and **Part 9's three remaining
-decisions** — is this a business, which wedge, and mobile native versus
-responsive web. Part numbers are cited from code; they do not move.
+refusals and the open recommendations flagged below. **Part 9 is closed as of
+August 20, 2026** — #1 answered *personal tool with an intent to invite*, #2
+deferred with a trigger, #4 answered *"on a phone" means the Android app too*.
+The sequence those answers imply is [`clarice-v3-plan.md`](clarice-v3-plan.md)'s,
+which replaced Part 6's phases 2–5. Part numbers are cited from code; they do
+not move.
 
 ## The verdict, stated plainly
 
@@ -124,9 +127,11 @@ picker anywhere in the frontend — reaching a day twelve weeks back means click
 
 - A deferred/start date distinct from `due_date`, so snooze stops erasing the
   original commitment.
-- Completing and adding a task from the Day page. The daily loop's core act
-  currently requires navigating away, by explicit design decision
-  (`DayRoute.tsx:117`) — taken before Day was the home surface.
+- ~~Completing~~ and adding a task from the Day page. **Completing shipped
+  August 20, 2026, on both clients, along with rescheduling** — the design
+  decision this cited was reversed by `principles.md`'s *the main surface can
+  do the main thing*, which pays the duplication cost by naming the authority
+  rather than accepting the veto. **Adding is what remains.**
 - Date navigation: a picker on `/app/day`, a week jump on `/app/review`.
   `/day/:date` currently has no UI entry point at all.
 - Links in the digest email. It presently ends "Open Clarice to work through
@@ -397,8 +402,22 @@ embeddings with a measured shadow evaluation. `mind/models.py` is the authority.
 3. ~~**Second brain: invest or retire?**~~ **Answered August 13, 2026: invest,
    elsewhere.** Part 2 carries the reasoning; the consequence for this document
    is that Phase 2 is largely cancelled.
-4. **Mobile: full native client, or freeze and go responsive web?** The audit's
-   recommendation is freeze — `android-full-client-plan.md`'s core assumption
+4. ~~**Mobile: full native client, or freeze and go responsive web?**~~
+   **Answered August 20, 2026: neither freeze nor a full client — "on a phone"
+   means the Android app too, and the app grows where a journey needs it.**
+   Vince's call, against this section's recommendation, and **the check that
+   mattered came out the other way.** S2 needed a Day screen that could
+   complete and reschedule; every endpoint it wanted was already
+   token-reachable (`day:read`, `day:write`, `agenda:write`) and the Kotlin
+   client already had `setTaskStatus`, `rescheduleTask` and `tomorrow`.
+   **Nothing in the backend moved.** So the falsified assumption below —
+   *mostly an Android build-out, not a backend rebuild* — **held for this
+   story**, and the recommendation was priced on two cases where it had not.
+   The 13-of-40 figure still stands as a warning for journeys that need the
+   other 27; it is not a general bar. `product-stories.md` owns S2's verdict.
+
+   The original recommendation, kept because it is what the argument was:
+   freeze — `android-full-client-plan.md`'s core assumption
    ("mostly an Android build-out, not a backend rebuild") has been falsified
    twice, and only 13 of the 40 `/api/v1/` operations are token-reachable — the
    rest default to `django_auth`, which a phone does not have. Responsive web

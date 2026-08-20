@@ -68,8 +68,12 @@ Vince's calls, recorded once because several documents are downstream:
    needed**, which keeps `/privacy/`'s absolute no-analytics claim true for free.
 2. **The wedge is deferred** (Part 9 #2), decidable when invited people can say
    what they would miss — the one question that genuinely needed somebody else.
-3. **Mobile (Part 9 #4) collapses rather than resolves.** "Responsive web serves
-   iOS simultaneously" argues about a market that does not exist here.
+3. **Mobile (Part 9 #4) is answered: "on a phone" means the Android app too.**
+   Not a freeze and not a full client — the app grows where a journey needs it.
+   The market argument ("responsive web serves iOS simultaneously") was about a
+   market that does not exist here; what settled it was that S2's Android half
+   needed **no backend work at all**. The 13-of-40 token-reachability figure is
+   a warning about particular journeys, not a general bar.
 4. **The second brain is the substrate, not a core beside the task core.** A
    conceptual inversion, explicitly **not** a merge of `Node` and `Item`.
 5. **`principles.md` was rewritten** (`217243d`): a bend is a defect, the main

@@ -45,10 +45,15 @@ what it was hiding. Recorded up here because **this file's model is quoted by
 other documents and a wrong model travels further than a wrong verdict.** The
 nineteen verdicts were not re-read against it, and none is claimed to have moved.
 
+**Re-scored against v3's *Usable* release, August 20, 2026 — and S2 moved.**
+The first verdict to move on work aimed at a *bend* rather than at the
+impossible pile, which is what `principles.md` changed this morning to allow.
+Only S2 was re-read; the other eighteen were not.
+
 ## The score
 
-**3 work · 10 bend · 6 impossible** — from 3 · 9 · 7 on August 19, 3 · 6 · 10
-on August 16, and 2 · 2 · 15 on August 12.
+**4 work · 9 bend · 6 impossible** — from 3 · 10 · 6 earlier on August 20,
+3 · 9 · 7 on August 19, 3 · 6 · 10 on August 16, and 2 · 2 · 15 on August 12.
 
 **The impossible pile is now six, and it is the honest shape of what is left:**
 signing up needs a policy decision, not code; the quarter and the project
@@ -57,8 +62,8 @@ models nobody has started. Nothing in it is waiting on a form any more.
 
 | | journeys |
 |---|---|
-| **Works** | S4 durable capture · S6 the honest weekly review · S17 leaving with your data |
-| **Bends** | S2 the phone morning · S3 planning against capacity · S5 closing the day · S7 acting on the review · S9 the week · S10 a project's why · S13 finding what you wrote · S14 a note that knows when · S16 the past arriving · S18 bringing your history |
+| **Works** | S2 the phone morning · S4 durable capture · S6 the honest weekly review · S17 leaving with your data |
+| **Bends** | S3 planning against capacity · S5 closing the day · S7 acting on the review · S9 the week · S10 a project's why · S13 finding what you wrote · S14 a note that knows when · S16 the past arriving · S18 bringing your history |
 | **Impossible** | S1 signing up · S8 the quarter · S11 a decision returning · S12 a project explaining itself · S15 reading producing work · S19 paying |
 
 **This score lives here and nowhere else.** Other documents link to it; they do
@@ -177,14 +182,40 @@ decision that this story is not the target after all.
 task from the day surface itself, reschedule another without leaving it, and hit
 every control with a thumb.
 
-**Verdict: bends.** Android does agenda read/write, but the Day page's action
-items are still read-only *by design* (`DayRoute.tsx:123` explains why a Complete
-button was refused) — completing a task means navigating away. On mobile web
-`button.tsx:28` still tops out at `h-9`, 36px, and `DayRoute` carries none of the
-per-call-site 44px overrides.
+**Verdict: works**, moved from *bends* on August 20, 2026 — the first story to
+move on work aimed at a bend rather than at the impossible pile.
 
-**Requires:** complete/add from the day surface; a 44px floor in the primitive;
-a decided client strategy so "on a phone" has one answer.
+**All three requires closed the same day, and one of them was not code.**
+
+- **Complete and reschedule from the day surface.** `DayRoute.tsx` declined a
+  Complete button because it "would mean reimplementing the agenda's mutation";
+  right that a second mutation would be wrong, and wrong that the only
+  alternative was doing without. Both clients now call the one authority —
+  `updateTaskStatus`/`updateTaskDueDate` on the web, `AgendaApi.setTaskStatus`/
+  `rescheduleTask` on Android. What was actually missing was an *address*, so
+  `FocusOut` gained `url`.
+- **The 44px floor.** This story's citation of `button.tsx:28` went stale on
+  August 18: the primitive carries `touch-target` on its base, so no call site
+  needs an override. The compass link, which `roadmap.md` names as the half
+  that was left, now carries it too. **The action-item row's inline links
+  deliberately do not**, and there is a comment at the code saying why — the
+  chips sit 6px apart under a utility whose own note says controls closer than
+  ~12px fight on touch. Android's controls are Material `TextButton`s and
+  inherit Material's 48dp minimum interactive size; that is inherited rather
+  than measured here.
+- **A decided client strategy.** Vince's call, August 20: **on a phone means
+  the Android app too.** It contradicts `commercial-blueprint.md` Part 9 #4's
+  recommendation to freeze native — and the check that mattered came out the
+  other way. Every endpoint this story needs is already token-reachable
+  (`day:read`, `day:write`, `agenda:write`), and the Kotlin client already had
+  `setTaskStatus`, `rescheduleTask` and `tomorrow`. **Nothing in the backend
+  moved.** The falsified assumption — *mostly an Android build-out, not a
+  backend rebuild* — held here.
+
+**What is deliberately not in it:** adding a task from the day surface. The old
+`Requires` line said "complete/add"; this story's own *done means* asks for
+complete, reschedule and thumb-reachable, and those are what it was scored on.
+Adding remains a `commercial-blueprint.md` Part 3 item.
 
 ### S3. Vince plans a Tuesday he can actually survive
 

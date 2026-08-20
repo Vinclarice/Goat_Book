@@ -16,11 +16,19 @@ import { ageLabel, daysBetween } from "./agenda";
 import { formatShortDate } from "./format";
 import type { Task, TaskRecurrence, TaskStatus, TaskWorkspaceData } from "./types";
 
+// A second copy of TaskDetailRoute's, and the one `lists/models.py`'s comment
+// warns about when it says adding a value means something else has to change.
+// It stays a copy rather than being lifted somewhere shared, because
+// `Record<TaskRecurrence, string>` is what makes it safe: adding a cadence
+// fails the build here until this is updated, which is how this one was found
+// at all. A shared constant would be tidier and would lose that.
 const RECURRENCE_LABELS: Record<TaskRecurrence, string> = {
   none: "Doesn't repeat",
   daily: "Daily",
   weekly: "Weekly",
   monthly: "Monthly",
+  quarterly: "Quarterly",
+  annual: "Annually",
 };
 
 function todayIsoDate(): string {

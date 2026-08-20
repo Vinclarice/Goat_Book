@@ -41,7 +41,9 @@ from lists.serializers import (
 router = Router()
 
 TaskStatus = Literal["active", "completed", "archived"]
-TaskRecurrence = Literal["none", "daily", "weekly", "monthly"]
+TaskRecurrence = Literal[
+    "none", "daily", "weekly", "monthly", "quarterly", "annual"
+]
 #: No "medium": an unmarked task already means ordinary. See lists.models.Priority.
 TaskPriority = Literal["none", "high", "low"]
 BucketKey = Literal["overdue", "today", "week", "later", "someday"]

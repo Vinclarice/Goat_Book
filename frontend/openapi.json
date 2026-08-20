@@ -2568,7 +2568,9 @@
               "none",
               "daily",
               "weekly",
-              "monthly"
+              "monthly",
+              "quarterly",
+              "annual"
             ],
             "title": "Recurrence",
             "type": "string"
@@ -3823,7 +3825,9 @@
               "none",
               "daily",
               "weekly",
-              "monthly"
+              "monthly",
+              "quarterly",
+              "annual"
             ],
             "title": "Recurrence",
             "type": "string"

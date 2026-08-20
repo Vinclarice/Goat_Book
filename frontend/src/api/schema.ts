@@ -1330,7 +1330,7 @@ export interface components {
              * Recurrence
              * @enum {string}
              */
-            recurrence: "none" | "daily" | "weekly" | "monthly";
+            recurrence: "none" | "daily" | "weekly" | "monthly" | "quarterly" | "annual";
             /**
              * Priority
              * @enum {string}
@@ -1850,7 +1850,7 @@ export interface components {
              * Recurrence
              * @enum {string}
              */
-            recurrence: "none" | "daily" | "weekly" | "monthly";
+            recurrence: "none" | "daily" | "weekly" | "monthly" | "quarterly" | "annual";
             /**
              * Priority
              * @enum {string}

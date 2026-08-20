@@ -20,6 +20,13 @@ class Recurrence(models.TextChoices):
     DAILY = "daily", "Daily"
     WEEKLY = "weekly", "Weekly"
     MONTHLY = "monthly", "Monthly"
+    # Added August 20, 2026 for the commitments that come round least often
+    # and are hardest to hold in your head -- a property tax bill due 5
+    # October could not be expressed at all. Both are the monthly arithmetic
+    # with a multiplier rather than new branches, so they inherit its
+    # anchor-and-clamp behaviour instead of restating it.
+    QUARTERLY = "quarterly", "Quarterly"
+    ANNUAL = "annual", "Annually"
 
 class CadenceMode(models.TextChoices):
     """Whether a repeating commitment is fixed to the calendar or to the last

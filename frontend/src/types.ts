@@ -8,7 +8,13 @@ export type TaskStatus = "active" | "completed" | "archived";
  */
 export type CadenceMode = "anchored" | "floating";
 
-export type TaskRecurrence = "none" | "daily" | "weekly" | "monthly";
+export type TaskRecurrence =
+  | "none"
+  | "daily"
+  | "weekly"
+  | "monthly"
+  | "quarterly"
+  | "annual";
 /** No "medium": an unmarked task already means ordinary. */
 export type TaskPriority = "none" | "high" | "low";
 export type AreaColorKey =

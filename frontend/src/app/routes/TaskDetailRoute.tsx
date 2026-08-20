@@ -54,6 +54,8 @@ const RECURRENCE_LABELS: Record<TaskRecurrence, string> = {
   daily: "Daily",
   weekly: "Weekly",
   monthly: "Monthly",
+  quarterly: "Quarterly",
+  annual: "Annually",
 };
 
 function parseTagInput(value: string): string[] {

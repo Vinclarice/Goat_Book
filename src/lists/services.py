@@ -557,7 +557,16 @@ def _nth_occurrence_after(base, recurrence, n):
         return base + timedelta(days=n)
     if recurrence == Item.Recurrence.WEEKLY:
         return base + timedelta(weeks=n)
-    if recurrence == Item.Recurrence.MONTHLY:
+    # Quarterly and annual are monthly with a multiplier, deliberately: the
+    # anchor arithmetic below is the part that is easy to get wrong, and three
+    # copies of it would be three chances to.
+    months = {
+        Item.Recurrence.MONTHLY: 1,
+        Item.Recurrence.QUARTERLY: 3,
+        Item.Recurrence.ANNUAL: 12,
+    }.get(recurrence)
+    if months is not None:
+        n = n * months
         month_index = base.month - 1 + n
         year = base.year + month_index // 12
         month = month_index % 12 + 1

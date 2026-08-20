@@ -26,9 +26,12 @@ from calendar import monthrange
 from dataclasses import dataclass
 from datetime import date, timedelta
 
-# The three the task core can hold. A parser that read "every third Tuesday"
-# would promise a cadence `Item.Recurrence` cannot store, and a commitment
-# silently recorded as the wrong one is worse than one not recognised at all.
+# The three this parser will claim. `Item.Recurrence` gained `quarterly` and
+# `annual` on August 20, 2026 and these deliberately did not follow: reading
+# "quarterly" out of prose is a much larger claim than reading "every Tuesday",
+# and the rule here is unchanged -- a cadence promised wrongly is worse than
+# one not recognised at all. Narrower than the model on purpose, which is safe
+# in this direction and would not be in the other.
 DAILY, WEEKLY, MONTHLY = "daily", "weekly", "monthly"
 
 _WEEKDAYS = (

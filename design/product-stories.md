@@ -349,13 +349,22 @@ answered closes unclosed, which is itself a fact.
 boundary — so the client has no time of its own to reason about and cannot
 disagree about whose evening it is.
 
-**One limit, flagged rather than buried.** The third absence this entry listed
-was *"no reminder"*, and that is still true: the nudge is in-page, so it asks
-when he opens the day and does nothing if he does not. Scored on the `Requires`
-line, which asked for *a closing ritual with a time-aware nudge* and now has
-one. A nudge that **reaches** him needs the notification surface
-[`clarice-v3-plan.md`](clarice-v3-plan.md) still lists as open in the same
-release — where the digest's advance reminders need it too.
+~~**One limit, flagged rather than buried.** The third absence this entry
+listed was *"no reminder"*, and that is still true.~~ **Closed the same day.**
+`send_closing_nudge` is an evening email carrying what the day held and a link
+to it, asking the same read the page does so the two cannot disagree about what
+the day held or whether it has already been written.
+
+**Off by default, unlike the digest**, and that had a published consequence
+rather than only a product one: `/privacy/` said in live text that *"the one
+recurring message is the daily summary"*, which a second one makes false. The
+page was amended in the same change, and two tests hold it — one pairing the
+page's *off by default* against the model's default, and one asserting the old
+sentence is **gone**, since a positive test would have passed with it still
+sitting beside the new paragraph.
+
+So all three of this entry's original absences are closed: the evening surface,
+the prompt, and the reminder.
 
 ~~**Requires:** a closing ritual with a time-aware nudge.~~
 

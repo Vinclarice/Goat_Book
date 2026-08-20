@@ -267,8 +267,11 @@ and the daily loop got a form**, and daily runs seven times as often.
 **S5 reached *works* on August 20, 2026**, with `draft_day` and the closing
 ritual. **The calendar view shipped the same day** — a month over what Clarice already
 knows, closing S13's *land on a date* require without closing the story, which
-still wants sources and reviews. **Still open in this release:** the daily
-brief's awareness half, bills, and the notification surface — which
+still wants sources and reviews. **The notification surface shipped the same day** — `send_closing_nudge`,
+built on a scheduler extracted out of the digest first so the six behaviours
+that loop had learned could not be copied into a second one. It closes S5's
+last absence and is where bills' advance reminders will arrive. **Still open in
+this release:** the daily brief's awareness half, and bills — which
 S5's own entry now names as what a nudge that *reaches* somebody would need,
 and which the digest's advance reminders need too.
 

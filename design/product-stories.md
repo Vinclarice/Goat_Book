@@ -641,12 +641,34 @@ vectors, and the page says when it is showing 30 of N rather than truncating in
 silence — which mattered because the "I know I wrote this" button sits directly
 beneath the results, so a truncation was being recorded as a retrieval failure.
 
-What still bends is reach. It searches **notes only** — tasks, days and reviews
+~~What still bends is reach. It searches **notes only** — tasks, days and reviews
 are outside it — and reaching the day a note was written still means clicking
-back a week at a time.
+back a week at a time.~~ **Both halves of that sentence are now stale, and the
+verdict is unchanged anyway.** Corrected August 20, 2026 rather than left, since
+this file's own rule is that a citation which no longer resolves is how it
+became misleading while every sentence still read as evidence.
 
-**Requires:** reach across content, and a way to land on a date. Ranking is no
-longer on this list.
+**Reach widened**, in `lapwing`: `/mind/search/` answers in three sections —
+notes, tasks and days — from one box, and `GET /api/v1/search` serves the same
+thing.
+
+**Landing on a date is done**, in v3's *The day* release. `/app/calendar` is a
+month of open tasks by due date and days that have words in them, both
+neighbours on every response, and every square links to `/app/day/:date` —
+which had no UI entry point at all until then. The Day page links to it, and a
+test holds that link, because an unreachable route is the same gap wearing a
+nicer name. Day search results already linked to their own date, so what this
+adds is reaching a date **nobody searched for**.
+
+**What still bends, and why the verdict does not move:** the done-means asks
+for results spanning *sources and reviews* too. Reviews are simply outside the
+index. **Sources do not exist** — there is nothing to attach an article to,
+which is S15's whole entry and its own `Source` model. Search's fifth
+increment, the nine fields deferred by name, is the rest of the reach.
+
+**Requires:** ~~a way to land on a date~~ — and the one that remains: **reach
+across sources and reviews**, which waits on S15 for the first noun. Ranking
+has not been on this list since August 18.
 
 ### S14. A note knows when it was written
 

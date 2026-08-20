@@ -240,9 +240,18 @@ becomes work.
 
 - **Full-text search over Clarice's own material.** `Item.text`, `Item.notes`
   and `DailyEntry`'s three fields, ranked. There is no full-text search
-  anywhere in the product — zero hits for `SearchVector`, `GinIndex` or
-  `pg_trgm` — a daily journal entry is not searchable by any means, and no date
-  picker exists to reach one by hand.
+  ~~anywhere in the product~~ **in the task core** — zero hits for
+  `SearchVector`, `GinIndex` or `pg_trgm` across `lists`, `daily`, `review`,
+  `routines` and `accounts` — a daily journal entry is not searchable by any
+  means, and no date picker exists to reach one by hand.
+
+  **The struck words were true on August 13 and false on the 14th**, when the
+  merger brought `src/mind/` into this tree. The knowledge core has generated
+  `tsvector` columns on `Node` and `Revision`, a `GinIndex` on each, and a
+  ranked read serving `/mind/search/`. The substance is untouched — a daily
+  entry is unfindable — but the sentence named the whole product while only ever
+  having measured half of it, and it survived two edits to this file after it
+  went stale. Corrected August 20, 2026.
 
   **Trigger: fired.** The old entry (Reference/Idea search) asked for "enough
   retained material that finding something again is a felt problem" —
@@ -250,6 +259,15 @@ becomes work.
   store they cannot search. Daily entries are already written, already numerous
   and already unfindable, so the problem exists today. This entry replaced the
   Idea half on August 13, 2026 and needs no discovery pass first.
+
+  **Briefed August 20, 2026** as [`search-plan.md`](search-plan.md), which is
+  the focused brief this section asks a candidate for. **Not started, and not
+  claimed here until it is.** It scopes slice 1 to exactly the fields named
+  above and defers nine others by name, inherits the knowledge core's mechanism
+  rather than starting a second one, and recommends sectioned results over one
+  merged ranking because `SearchRank` is not comparable across two document
+  sets. Four decisions are open in it, and one of them asks whether this
+  promotes the command palette below.
 
 - **Audit log and general undo.** Structured change records making more than
   task completion safely reversible. **No trigger.**

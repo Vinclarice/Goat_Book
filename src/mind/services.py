@@ -1554,6 +1554,9 @@ def record_retrieval_miss(
     query_text: str,
     now: datetime,
     context: str = MissContext.SEARCH,
+    notes_found: int | None = None,
+    tasks_found: int | None = None,
+    days_found: int | None = None,
 ) -> RetrievalMiss:
     """Record that the person knew they had written something and could not
     find it.
@@ -1562,9 +1565,19 @@ def record_retrieval_miss(
     because the correct answer is known. Vocabulary drift — the same idea named
     twice — shows up here first and nowhere else, and full-text search cannot
     surface it by construction.
+
+    The three counts say what each section of the search returned, and default
+    to None so a caller that predates them records exactly what it always did.
+    See the fields for why None is not the same as zero.
     """
     return RetrievalMiss.objects.create(
-        owner=owner, query_text=query_text, context=context, created_at=now
+        owner=owner,
+        query_text=query_text,
+        context=context,
+        created_at=now,
+        notes_found=notes_found,
+        tasks_found=tasks_found,
+        days_found=days_found,
     )
 
 

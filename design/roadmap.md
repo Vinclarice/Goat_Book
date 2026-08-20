@@ -193,11 +193,21 @@ re-add it here.
   having asked the same question; `GET /api/v1/search`, session-only; and the
   page. 42 new tests.
 
-  **D1 and D2 are answered and the brief records them** — the endpoint went in
-  `mind/api_v1.py` beside capture, and the surface is the page that already
-  existed, which is what keeps search attached to the miss button. **D3 and D4
-  remain**: whether `RetrievalMiss` widens to resolve against a task or a day,
-  and whether this promotes the command palette below.
+  **D1, D2 and D3 are answered and the brief records them** — the endpoint went
+  in `mind/api_v1.py` beside capture, and the surface is the page that already
+  existed, which is what keeps search attached to the miss button. **Only D4
+  remains**: whether this promotes the command palette below.
+
+  **D3 turned out to be the wrong question, and answering it caught a defect
+  this work had just created.** It asked whether `RetrievalMiss.resolved_node`
+  should widen to reach a task; it should not, because nothing has ever
+  populated that field — **the fourth un-switched-on seam found in a
+  fortnight.** What did need fixing is that the retirement gate's *"retrieval
+  misses fall"* counted every miss, which was exact only while this page
+  searched notes alone. A miss now records what each section returned and the
+  gate counts the ones where the note index returned nothing. **Fixed before
+  the deploy on purpose**: a miss cannot be re-interpreted afterwards, so every
+  one recorded in the gap would have been permanently ambiguous.
 
   **Sectioned, never merged, and that is a refusal rather than a first
   version.** `SearchRank` compares documents within one set and means nothing

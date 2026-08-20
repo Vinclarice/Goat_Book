@@ -118,9 +118,10 @@ say which core a person meant, that is the moment to revisit — not before.
    precedent. Query-only, no mutation, no view yet.
 3. **One surface, sectioned.** The three lists, counted before slicing the way
    `mind/views.py` already does. This is the first increment a person can use.
-4. **The miss button, on the unified surface.** Gated on D3 below, because
-   `RetrievalMiss.resolved_node` is a foreign key to `Node` and a miss that
-   resolves to an `Item` does not fit it.
+4. ~~**The miss button, on the unified surface.**~~ **Done August 20, 2026**,
+   and not as written. The button needed no change; what needed one was what a
+   miss *means* once three sections sit above it. See D3, which turned out to
+   be a signal-integrity fix rather than a schema decision.
 5. **The wider field set** — the nine deferred above, once the mechanism has
    been used against real material for long enough to say the sections are the
    right sections.
@@ -147,13 +148,38 @@ feature. **Nothing here needs staging**, and nothing here generates anything.
    relative, so this is settled rather than welded. **What it buys is the miss
    button** — an SPA route would have split search from the only instrument
    this project has for judging whether search works.
-3. **D3. Does `RetrievalMiss` widen to cover both cores?** `resolved_node` is a
-   FK to `Node`. Widening it means a nullable second FK or a generic reference,
-   and the model's docstring is specific that this is evidence about *semantic
-   retrieval*. It may be right to leave it knowledge-core-only and let task
-   search have no miss signal at first — but that should be chosen, since the
-   miss button is the strongest retrieval evidence this project has and slice 1
-   is the moment it would start accumulating for the other core.
+3. ~~**D3. Does `RetrievalMiss` widen to cover both cores?**~~ **Answered
+   August 20, 2026 — and it was the wrong question, which is the useful part.**
+
+   **`resolved_node` should not widen, because nothing has ever populated it.**
+   `services.resolve_retrieval_miss` is its only writer, has no caller outside
+   its own tests, and no reader anywhere. This decision was framed around
+   widening a seam that was never switched on — the fourth instance of that
+   shape in a fortnight, after `/healthz`, the uninvoked detectors and
+   `Backends.isSplit`. **The check is cheap and was not done here until it was
+   asked for directly**; `CLAUDE.md` already says to check the build
+   configuration rather than the branch, and this generalises it to *check for a
+   caller rather than a field*.
+
+   **The real problem was one increment 3 created**, and it is fixed rather than
+   decided. `retrieval_miss_trend` counted every miss an owner had, which was
+   exact while this page searched only notes — every miss was a note-retrieval
+   failure by construction. Three sections made a bare miss ambiguous, and it
+   feeds the retirement gate's *"retrieval misses fall"*, the one condition its
+   own comment calls measurable without interpretation.
+
+   So a miss now records what each section returned (`notes_found`,
+   `tasks_found`, `days_found`, recomputed server-side rather than posted by the
+   form), and the gate counts the ones where the note index returned nothing —
+   the form the embeddings question actually takes. **The rule is narrower than
+   it was, and the code says so**: a fall across August 20 is a changed
+   denominator before it is an improvement. Misses where notes did return
+   results are kept in full and excluded from that gate, because they are the
+   only evidence available about whether task and journal search fail anybody.
+
+   **Fixed before the deploy, deliberately.** A miss cannot be re-interpreted
+   afterwards; had this shipped first, every miss recorded in the gap would be
+   permanently ambiguous.
 4. **D4. Does this promote the command palette?** `roadmap.md` records `Ctrl+K`
    as a candidate with no trigger, and says explicitly that full-text search is
    *"the thing that earns retrieval work first"* and to revisit the palette

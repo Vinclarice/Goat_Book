@@ -967,9 +967,36 @@ class RetrievalMiss(models.Model):
     # state, not incidental metadata.
     created_at = models.DateTimeField()
     # Set if the node is later found, which makes the miss diagnosable.
+    #
+    # **Nothing has ever set this.** `services.resolve_retrieval_miss` is its
+    # only writer and has no caller outside its own tests; nothing reads the
+    # column at all. Recorded here rather than removed because the *idea* is
+    # sound and the field costs nothing -- but it is a seam that was never
+    # switched on, and `search-plan.md` D3 was framed around widening it before
+    # anybody checked. Widen it when something populates it.
     resolved_node = models.ForeignKey(
         Node, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
     )
+    # What each section of the search actually returned, at the moment the
+    # button was pressed. `search-plan.md` D3, August 20, 2026.
+    #
+    # A miss used to need no such thing: `/mind/search/` searched notes and
+    # only notes, so every miss was a note-retrieval failure by construction.
+    # Increment 3 put the same button under three sections and made a bare miss
+    # ambiguous -- and a miss cannot be re-interpreted afterwards, which is why
+    # these arrived before the deploy rather than after it.
+    #
+    # **Null means "recorded before this existed", which means notes-only**, and
+    # `retrieval_miss_trend` counts those. Reading null as "the notes section
+    # had results" would silently drop every miss recorded up to this date out
+    # of the gate they were collected for.
+    #
+    # Totals rather than booleans, at the same cost: "the index returned
+    # nothing" and "it returned thirty and none was right" are different
+    # evidence, and only the first answers the embeddings question.
+    notes_found = models.PositiveIntegerField(null=True, blank=True)
+    tasks_found = models.PositiveIntegerField(null=True, blank=True)
+    days_found = models.PositiveIntegerField(null=True, blank=True)
 
     class Meta:
         verbose_name_plural = "retrieval misses"

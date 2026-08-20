@@ -186,20 +186,47 @@ def detector_performance(owner) -> list[DetectorPerformance]:
 def retrieval_miss_trend(
     owner, *, now: datetime, window: timedelta = timedelta(days=30), periods: int = 6
 ) -> list[tuple[datetime, int]]:
-    """Recorded misses per period, oldest first.
+    """Recorded misses per period, oldest first — the ones that are *note*
+    evidence.
 
     A miss is a moment the person knew they had written something and could not find
     it — the strongest evidence available about retrieval, because the correct answer
     is known. Whether this falls over time is one of the three retirement-gate
     conditions, and it is the only one measurable without interpretation.
+
+    **The rule narrowed on August 20, 2026 and that has to be said out loud.**
+    Until then `/mind/search/` searched notes and nothing else, so every miss
+    was a note-retrieval failure and counting all of them was exact. Increment 3
+    of `search-plan.md` put the same button under three sections, so a bare miss
+    can now be about a task or a day. This counts a miss when the note index
+    returned **nothing** — the form the embeddings question actually takes:
+    would a semantic index have surfaced what the lexical one missed entirely?
+
+    A miss where notes *did* return results is ambiguous — the person may have
+    wanted one of them and been failed by ranking, or may have wanted the task
+    below — and it is excluded rather than guessed at. Excluded is not
+    discarded: the row is kept with all three counts, and it is the only
+    evidence available about whether task and journal search fail anybody.
+
+    **So counts before and after that date are measured differently**, and a
+    fall across the boundary is a narrower rule before it is an improvement.
+    That is precisely the trap the gate's own "needs a non-zero baseline"
+    warning describes, arriving from the other direction.
+
+    `notes_found IS NULL` counts, because null means the miss predates the
+    field, which means the page searched only notes.
     """
     buckets: list[tuple[datetime, int]] = []
     for index in range(periods, 0, -1):
         start = now - window * index
         end = start + window
-        count = RetrievalMiss.objects.filter(
-            owner=owner, created_at__gte=start, created_at__lt=end
-        ).count()
+        count = (
+            RetrievalMiss.objects.filter(
+                owner=owner, created_at__gte=start, created_at__lt=end
+            )
+            .filter(Q(notes_found=0) | Q(notes_found__isnull=True))
+            .count()
+        )
         buckets.append((start, count))
     return buckets
 

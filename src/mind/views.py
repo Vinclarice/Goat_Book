@@ -560,10 +560,32 @@ def search(request):
 @login_required
 @require_http_methods(["POST"])
 def record_miss(request):
+    """"I know I wrote this and can't find it", with what the search had shown.
+
+    The counts are **recomputed from the query rather than posted by the form**.
+    Hidden inputs would be cheaper and would make the one signal a decision is
+    measured against forgeable by the page that submits it; three counts on an
+    action somebody takes a handful of times a year is the better trade.
+    """
+    q = (request.POST.get("q") or "").strip()
+    query = to_query(q)
     services.record_retrieval_miss(
         request.user,
         query_text=request.POST.get("q", ""),
         now=timezone.now(),
+        notes_found=(
+            queries.search_ranked(request.user, query).count()
+            if query is not None
+            else 0
+        ),
+        tasks_found=(
+            lists_search.search_tasks(request.user, q).count() if query is not None else 0
+        ),
+        days_found=(
+            daily_reads.search_entries(request.user, q).count()
+            if query is not None
+            else 0
+        ),
     )
     return redirect("search")
 

@@ -1,7 +1,7 @@
 # Temporal substrate and contextual retrieval — focused spec
 
 Vince · focused spec · written August 20, 2026 · **widened twice the same day** ·
-**not started**
+**not started, claimed by `roadmap.md` August 20**
 
 ## What this is
 

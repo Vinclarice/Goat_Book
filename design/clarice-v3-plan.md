@@ -1,6 +1,7 @@
 # Clarice v3 — bringing the cores together, and making it usable
 
-Vince · long-form plan · written August 20, 2026 · **not claimed by `roadmap.md`**
+Vince · long-form plan · written August 20, 2026 · **claimed by `roadmap.md`
+the same day**
 
 ## What v3 is
 

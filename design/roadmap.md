@@ -58,9 +58,27 @@ re-add it here.
 
 ## Open now
 
+- **Clarice v3 is the plan, claimed August 20, 2026.**
+  [`clarice-v3-plan.md`](clarice-v3-plan.md) is the authority on **what order
+  the work goes in and toward what**, replacing `commercial-blueprint.md` Part
+  6's phases 2–5. Eight releases toward one destination — *Clarice is the
+  instrument by which accumulated experience produces fewer, more honest
+  commitments* — scored against [`product-stories.md`](product-stories.md) with
+  a reachable ceiling of 17 of 19.
+
+  **Three decisions of Part 9 were answered the same day** and are recorded
+  there rather than here: personal tool with an intent to invite, the wedge
+  deferred until invited people can say what they would miss, and mobile
+  collapsing rather than resolving.
+  [`temporal-substrate-plan.md`](temporal-substrate-plan.md) is claimed with it
+  as the focused spec for the substrate, contextual retrieval, observations and
+  intake. **Nothing in either has started**; *Close L* is v3's own first
+  release and is the entry below.
+
 - **Release L is open, and its bird is not chosen.** *Tag only after production
   is verified* — so the letter is claimed, the name waits, and this entry is
-  what the release is until it has one. **Half of it is already live.**
+  what the release is until it has one. **Half of it is already live**, and
+  closing it is v3's first release.
 
   **Deployed August 19, 2026** (`DEPLOYED-2026-08-19/2338`, image
   `a60df12fc9ad`, migrations applied and none pending). What went out:

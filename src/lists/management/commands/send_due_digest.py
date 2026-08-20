@@ -18,6 +18,7 @@ from zoneinfo import ZoneInfo
 
 from django.conf import settings
 from django.core.mail import send_mail
+from django.urls import reverse
 from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 from django.utils.formats import date_format
@@ -39,6 +40,16 @@ DIGEST_HOUR = 7
 DIGEST_LAST_HOUR = 12
 
 
+def _app_url(subpath):
+    """An absolute link into the SPA, for a message with no request behind it.
+
+    `settings.SITE_URL` rather than `build_absolute_uri`, which is the same
+    choice `accounts/apps.py` already makes for the login link in an approval
+    mail -- a management command has no request to build one against.
+    """
+    return f"{settings.SITE_URL}{reverse('app_shell_path', args=[subpath])}"
+
+
 def _describe(item, today):
     bucket = agenda_reader.bucket_for(item.due_date, today)
     if bucket == agenda_reader.OVERDUE:
@@ -51,7 +62,17 @@ def _describe(item, today):
     # (`0857835`): the absence of the signal rather than another value of it.
     # `list_id`, not `list`, so a task without one costs no query.
     where = f"{item.list.title}, " if item.list_id else ""
-    return f"  - {item.text} ({where}{when})"
+    # The link on its own line rather than inline: this is plain text, mail
+    # clients linkify a bare URL, and a wrapped one mid-sentence is what stops
+    # them. `commercial-blueprint.md` Part 3 -- the product's only outbound
+    # channel had nothing clickable in it, so the one message that reaches
+    # somebody on a phone made them go and find the task by hand.
+    return "\n".join(
+        [
+            f"  - {item.text} ({where}{when})",
+            f"    {_app_url(f'tasks/{item.id}')}",
+        ]
+    )
 
 
 def build_message(user, items, today):
@@ -71,7 +92,7 @@ def build_message(user, items, today):
         lines.append(f"Due today ({len(due_today)}):")
         lines += [_describe(item, today) for item in due_today]
         lines.append("")
-    lines.append("Open Clarice to work through them.")
+    lines.append(f"Work through them: {_app_url('day')}")
     return "\n".join(lines)
 
 

@@ -3,6 +3,7 @@ from io import StringIO
 from unittest.mock import patch
 from zoneinfo import ZoneInfo
 
+from django.conf import settings
 from django.core import mail
 from django.core.management import call_command
 from django.core.management.base import CommandError
@@ -99,6 +100,31 @@ class SendDueDigestTest(TestCase):
 
         body = mail.outbox[0].body
         self.assertIn("  - Dentist (due today)", body)
+
+    def test_each_task_carries_a_link_to_itself(self):
+        """`commercial-blueprint.md` Part 3: the digest was the product's only
+        outbound channel and ended "Open Clarice to work through them." with
+        nothing clickable -- so the one message that reaches somebody on a
+        phone made them go and find the task by hand.
+
+        Absolute, and from `settings.SITE_URL`, because there is no request to
+        build one against. That is the same setting `accounts/apps.py` already
+        uses for the login link in an approval mail."""
+        task = self.make("Pay rent", due_offset=0)
+
+        self.run_command()
+
+        body = mail.outbox[0].body
+        self.assertIn(f"{settings.SITE_URL}/app/tasks/{task.id}", body)
+
+    def test_the_closing_line_is_a_link_rather_than_an_instruction(self):
+        self.make("Pay rent", due_offset=0)
+
+        self.run_command()
+
+        body = mail.outbox[0].body
+        self.assertIn(f"{settings.SITE_URL}/app/day", body)
+        self.assertNotIn("Open Clarice to work through them.", body)
 
     def test_one_rejected_recipient_does_not_starve_everybody_after_them(self):
         """The loop orders by username and had no guard, so a raise on the

@@ -334,47 +334,120 @@ Two uses, and they behave differently enough to be worth telling apart:
   to write down under the same motivated cueing. A sweep gets what filtering
   missed.
 
-**Segmentation already exists and is deliberately dumb.** `services._SENTENCE`
-splits on sentence punctuation *and newlines*, "because journal writing uses
-them as punctuation" — which is exactly how people write a dump. The comment
-beside it refuses an NLP dependency outright, since "a real NLP dependency costs
-the determinism the whole live path rests on." **A dump needs no new
-segmentation**, and should not acquire cleverer segmentation as a side effect.
+#### A fragment is a submission, not a sentence
 
-#### The hazard, and it is severe
+**Capture is atomic and the person draws the boundaries.** Each *keep and
+continue* is one fragment and one `Node`. **No segmentation is involved, and an
+earlier draft of this brief wrongly implied otherwise**: `services._SENTENCE`
+splits a `DailyEntry` into passages so the journal commitment parser can cite
+the sentence that caused a proposal — its only use is at
+[`services.py:1727`](../src/mind/services.py) — and it has never created a
+`Node`. A splitter exists; the splitting a dump would need does not.
 
-**Every detector caps at three proposals per *capture*, and a dump is one
-occasion with many captures.** `dormant_thread`, `semantic_echo`,
-`shared_referent`, `open_question` and `concept_assignment` each cap at 3. Forty
-fragments through five detectors is **up to six hundred proposals from one
-sitting.**
+**A multiline paste is a product decision, not a parsing one.** If several lines
+should become several memories, **show a preview and ask.** Never split a
+submission silently: a dump is precisely the surface where a person is least
+able to predict what the system did with what they typed.
 
-`dormant_thread`'s own reasoning is the warning: *"a stream of poor ones teaches
-the person to skim past the review surface, and no later improvement recovers
-that."* Done naively, the brain dump is the most efficient available way to
-destroy trust in the review surface — and at orientation it would do it on
-someone's first interaction, permanently.
+#### The session is its own record
 
-**So the budget must be per occasion, not per capture.** This is Part 2's mode
-concept arriving somewhere very concrete: *a dump is a processing moment with
-its own budget*, and the existing caps are the right number attached to the
-wrong unit. D11 is its shape.
+**A dump is not a container node.** `NodeSource.THREAD` is a semantic conclusion
+distilled from several memories — searchable content that participates in the
+graph. **A dump is provenance**: an occasion during which several independent
+memories were captured. Those are different things, and conflating them would
+put a node that is not a thought into the graph.
 
-**One inversion worth expecting.** At orientation there is no corpus, so
-`dormant_thread`, `semantic_echo` and `shared_referent` can propose nothing at
-all — they need prior material to connect to. Only the role, question, concept
-and commitment producers can fire. **The dangerous dump is the ongoing one
-against a rich corpus**, not the first one, which is the opposite of the
-intuition.
+So a small **`CaptureSession`**, with each `Node` carrying an optional reference
+to it and **no `MEMBER_OF` edges at all**:
 
-#### What a dump produces
+> owner · mode (orientation or ongoing) · started and finished timestamps ·
+> state (finished, abandoned, timed out) · processing state · proposal budget ·
+> optional prompt provenance
 
-A dump is one input and many memories, which is a modelling question rather than
-a detail — D12. `NodeSource.THREAD` is the precedent for a node that is a
-container rather than a thought: *"a meta-node distilled from a confirmed
-thread... it was not captured, it was concluded."* A dump is the mirror image —
-captured, not concluded — and the same `MEMBER_OF` edge shape would give the
-occasion something for its budget, its provenance and its review to attach to.
+**It passes `architecture-trajectory.md` §4 on the strict reading** — a session
+has a life cycle and behaviour that individual nodes do not. A shared timestamp
+cannot represent duration, completion, a budget, which prompts were used, or
+whether processing has run.
+
+#### The hazard is two hazards, at two different times
+
+- **Immediately, and synchronously.** `_propose_any_commitment`
+  ([`services.py:314`](../src/mind/services.py)) runs **on the live path for
+  every captured node**, deliberately — *"the parser is deterministic, rules and
+  a regex, no model, no network, no per-call cost,"* which is what lets capture
+  stay one box that returns immediately. Forty fragments therefore create **up
+  to forty actionable facets before any detector job has run at all.**
+- **Later, in batch.** The five connection detectors do **not** run in the
+  capture request; they run through `run_mind_maintenance` → `run_detectors`.
+  Three proposals each across forty nodes is a real bound on the eventual review
+  flood, but it is a batch bound, and an earlier draft of this brief stated it
+  as a live one.
+- **And more is coming.** Part 2's role facets, and the concept and question
+  producers, all add attention-demanding output.
+
+`dormant_thread`'s reasoning is still the warning: *"a stream of poor ones
+teaches the person to skim past the review surface, and no later improvement
+recovers that."*
+
+**So the budget must cover every attention-producing mechanism, not only the
+five connection detectors.** That is the correction that matters most — a cap
+scoped to the detectors would have left the synchronous commitment parser
+completely uncapped, and it is the one that fires first.
+
+#### Two budgets, and no backlog
+
+- **A processing budget** — how many proposals are materialized from the session
+  at all.
+- **An attention budget** — how many are shown now.
+
+The flow:
+
+1. **Save every fragment immediately** as an ordinary node. *Capture is durable
+   before it is clever*, and nothing here weakens that.
+2. **During the dump, create nothing that requires attention.**
+3. **When the session ends, run all producers in read-only mode.**
+4. **Aggregate and deduplicate across the whole session.** Forty fragments about
+   one project must not become forty findings about it.
+5. **Materialize a small total** — five is the working number — with **no
+   producer contributing more than two.**
+6. **Show at most three immediately.**
+7. **Mark the session processed**, so the next maintenance run cannot process its
+   forty nodes independently and walk straight around the cap.
+8. **Keep every fragment as a candidate** for future captures and retrievals.
+
+**No slow-release queue.** A backlog dribbling out hundreds of session findings
+is the Second Mind inbox this design refuses, wearing a schedule.
+
+**And nothing valuable is discarded, because the person wrote memories, not
+proposals.** Every fragment stays searchable and can produce a new finding the
+moment a future context makes it relevant. **A stale inference from orientation
+does not earn screen time later merely because it once ranked sixth.**
+
+#### What can fire during orientation
+
+**Not the flat "there is no corpus" an earlier draft claimed.**
+`shared_referent`'s `DEFAULT_MIN_GAP` is `timedelta(0)` — it was built and
+tested for two notes from one sitting, and it keys on confirmed mentions and
+aliases rather than on age. So it is silent at the *start* of an orientation
+dump and **can connect fragments from that same dump** once concepts or aliases
+have been confirmed. **A sequencing dependency, not an unavailability.**
+
+`dormant_thread` genuinely cannot fire: its floor is 548 days.
+
+#### Orientation stays optional, and progressive
+
+A dump can take far longer than S1's four-minute first-success target, so it must
+not be the only door. **Two entrances:**
+
+- **Quick start** — capture one thought, plan today.
+- **Empty my head** — the deeper orientation dump.
+
+And **explain only the concepts the person's own material actually
+demonstrates.** No dump can be guaranteed to contain a Project, a Checklist
+Step, a Compass, a Focus *and* a "call it enough" — and explaining one that is
+not there turns personalised interpretation back into a tutorial, which is the
+thing it was supposed to replace. Whatever the dump does not reach, something
+else has to.
 
 **And a dump invites more sensitive material than a task box does.** Fears,
 resentments, things about other people. Nothing about the existing guarantees
@@ -446,16 +519,20 @@ nothing else.
 
 ### Track D — intake
 
-13. **The per-occasion proposal budget**, before any dump surface exists. D11.
-    **This one is ordered deliberately**: shipping the dump first and the budget
-    second means the first dump is the one that teaches a person to skim past
-    the review surface, and that is not recoverable.
-14. **The brain dump surface**, using the existing segmenter unchanged. The
-    ongoing ritual and the orientation flow are the same surface with different
-    copy and a different corpus behind them.
-15. **Orientation built on it** — the six concepts demonstrated on the person's
-    own sentences rather than explained. This is also the invitation bar's third
-    item, and v3's *Usable* release carries it.
+13. **`CaptureSession`, and session-aware processing**, before any dump surface
+    exists. The two budgets, the read-only producer pass at session end, the
+    cross-session dedupe, and the processed flag that stops the next maintenance
+    run walking around the cap. **Ordered deliberately**: ship the surface first
+    and the first dump is the one that teaches a person to skim past the review
+    surface, which is not recoverable.
+14. **The brain dump surface.** Atomic fragments — one *keep and continue*, one
+    node — with a preview-and-ask on multiline paste and no silent splitting.
+    The ongoing ritual and the orientation flow are the same surface with
+    different copy and a different corpus behind them.
+15. **Orientation built on it, as one of two entrances** — *quick start* beside
+    *empty my head* — explaining only the concepts the person's own material
+    demonstrates. This carries the invitation bar's third item, and v3's
+    *Usable* release holds it.
 16. **Switch attachments on** — upload path, size limit, content-type handling,
     storage.
 17. **URL intake**, if D7 says the SSRF surface is worth it.
@@ -503,25 +580,30 @@ nothing else.
 10. **D10. Email intake — scope it, or defer with a trigger?** Deferring without
     one is what `roadmap.md`'s Track D refuses, and `principles.md` now says a
     trigger that cannot fire is a refusal.
-11. **D11. What shape is a per-occasion proposal budget?** A flat cap for the
-    whole dump, a cap per producer across the occasion, or proposals deferred
-    and released over subsequent review surfaces rather than all at once. The
-    third is the most humane and the most complicated, and it is the only one
-    that does not throw away material the person took the trouble to write.
-    **Whatever the answer, the per-capture caps stay** — they are correct for a
-    capture.
-12. **D12. Is a dump a container node, or only a timestamp its members share?**
-    `NodeSource.THREAD` plus `MEMBER_OF` is the existing shape and would need one
-    new enum value. Against it: a container is a node that is not a thought, and
-    `captured_at` already groups an occasion. For it: the budget, the
-    provenance and the review all need something to attach to, and *"the dump
-    from March 3rd"* is a thing a person will want to open.
-13. **D13. Is voice intake in scope?** A brain dump is far more natural spoken
-    than typed, and audio is exactly what Part 4's attachments would carry — but
-    transcription is an ML dependency, and `design-concept.md`'s ML policy is
-    strict enough that v1 of the planning assistant shipped no generation at
-    all. Storing the audio is cheap and settled; turning it into text is a
-    policy question, not an engineering one.
+11. ~~**D11. What shape is a per-occasion proposal budget?**~~ **Answered
+    August 20, 2026: two budgets, and no backlog.** A *processing* budget
+    bounding what is materialized at all, and an *attention* budget bounding
+    what is shown now — see Part 4's flow. **The slow-release option was
+    rejected on principle rather than on cost**: a queue dribbling out hundreds
+    of findings is the Second Mind inbox this design refuses. And the scoping
+    correction is the load-bearing half — **the budget covers every
+    attention-producing mechanism**, including the synchronous commitment
+    parser, not only the five connection detectors. The per-capture caps stay;
+    they are correct for a capture.
+12. ~~**D12. Is a dump a container node?**~~ **Answered August 20, 2026: no —
+    a `CaptureSession` record.** `NodeSource.THREAD` is a semantic conclusion
+    that participates in the graph; a dump is provenance. The session earns its
+    own model under §4 because it has a life cycle and behaviour nodes do not,
+    and a shared timestamp cannot carry duration, completion, a budget, prompts
+    or processing state. Each node gets an optional session reference and no
+    graph edges.
+13. ~~**D13. Is voice intake in scope?**~~ **Answered August 20, 2026: not in
+    the first slice, and the path is preserved.** Typed dumping validates the
+    interaction first. Audio needs attachment storage, export, deletion and a
+    privacy disclosure before it needs transcription — and **storing audio
+    without searchable text does not deliver the assembly a dump is for.**
+    Transcription remains an ML-policy question for `design-concept.md`, not an
+    engineering one.
 
 ## What this refuses
 
@@ -542,10 +624,14 @@ nothing else.
   sober one.
 - **Overhauling unified search.** It is the correct foundation; this sits above
   it.
-- **A brain dump surface before the per-occasion budget exists.** The order is
+- **A brain dump surface before session-aware budgeting exists.** The order is
   the whole safety of the feature.
-- **Cleverer segmentation.** The dumb splitter is deliberate; a dump is not the
-  occasion to acquire an NLP dependency the live path would then rest on.
+- **Splitting a submission silently.** A fragment is what the person submitted.
+  Multiline paste gets a preview and a question, never a guess.
+- **A proposal backlog.** No queue slowly releasing session findings — that is
+  the inbox this design refuses, on a timer.
+- **A dump as a container node.** Provenance is a session record, not graph
+  content.
 - **Inventing history.** No event without a recorded timestamp on the source row.
 - **A second event log.** `ActivityEvent` gains a vocabulary, not a sibling.
 

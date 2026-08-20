@@ -155,23 +155,28 @@ Nothing here waits on anything else, and most of it is small.
   through them." with nothing clickable.
 - **The 44px floor into the link primitive**, finishing August 18's half-fix —
   "Edit your compass" is still a 20px anchor.
-- **The brain dump, and orientation built on it.** Empty your head into a box,
-  no decisions about what any of it is; the existing sentence splitter already
-  breaks on newlines "because journal writing uses them as punctuation," which
-  is exactly how a dump is written. **This is how the six invented concepts get
-  explained** — Area, Project, Checklist Step, Compass, Focus, "call it enough,"
-  demonstrated on the person's own sentences rather than toured. It carries the
-  invitation bar's third item and is a better answer to S1's *four minutes* than
-  a tutorial.
+- **The brain dump, and orientation as one of two entrances.** Empty your head
+  into a box, no decisions about what any of it is. **Fragments are atomic** —
+  one *keep and continue*, one node, with a preview-and-ask on multiline paste
+  and no silent splitting. **This is how the six invented concepts get
+  explained**, demonstrated on the person's own material rather than toured, and
+  **only the ones their material actually demonstrates** — explaining a Compass
+  that isn't there turns personalisation back into the tutorial it replaced. It
+  carries the invitation bar's third item. **Quick start stays beside it**,
+  because a dump takes far longer than S1's four minutes.
 
-  **It ships behind a per-occasion proposal budget or not at all.** Five
-  detectors cap at three proposals *per capture*; forty fragments is up to six
-  hundred proposals from one sitting, and `dormant_thread`'s own comment says a
-  stream of poor ones "teaches the person to skim past the review surface, and
-  no later improvement recovers that." Substrate D11, and the ordering is the
-  whole safety of the feature. The ongoing ritual is the same surface — and it
-  is the counterweight to a memory fed only by deliberate capture inheriting the
-  biases of the brain doing the capturing.
+  **It ships behind session-aware budgeting or not at all.** `CaptureSession`
+  first, then the surface. Two budgets — what gets materialized, and what gets
+  shown now — covering **every attention-producing mechanism**, because
+  `_propose_any_commitment` runs *synchronously on the live path for every
+  node*, so forty fragments is forty actionable facets before a detector job has
+  run. A cap scoped to the five connection detectors would miss the one that
+  fires first. **No backlog**: a queue slowly releasing session findings is the
+  inbox this design refuses. Substrate D11 and D12.
+
+  The ongoing ritual is the same surface, and it is the counterweight to a
+  memory fed only by deliberate capture inheriting the biases of the brain doing
+  the capturing.
 
 **Acceptance: S2, S3, S5, S7 and S9 reach *works*.** Five of the ten bends, in
 the release with the least new machinery in it.

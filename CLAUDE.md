@@ -154,6 +154,48 @@ another project's Postgres on `5432`) when the env var isn't set. Nothing to
 configure beyond starting the container; a stale `db.sqlite3` from before this
 change is harmless and can be deleted.
 
+**Two test runs in this checkout destroy each other's database, and the failure
+does not look like it.** Django names the test database after the real one, so
+every `manage.py test` here uses `test_clarice`. Whichever run starts second
+finds it already there and asks whether to delete it — which is `EOFError` with
+nothing on stdin. Unluckier timing is worse: the first run's teardown drops the
+database the second is still using, and what comes back is a hundred
+`setUpClass` errors that read like a broken migration. **Before diagnosing a
+suite that fails everywhere at once, check whether another session is running
+one.** Both shapes were observed on August 19, 2026:
+
+```powershell
+docker exec goat-book-db-1 psql -U clarice -d clarice -tAc "select count(*) from pg_stat_activity where datname='test_clarice'"
+```
+
+**Give a run its own database rather than dropping somebody else's**, which is
+never the right move while a connection is open on it:
+
+```powershell
+$env:DJANGO_TEST_DB_SUFFIX = "b"   # test_clarice_b, created and torn down alone
+```
+
+Unset by default, because CI runs alone and a per-run database there would be a
+`CREATE DATABASE` for nothing. **`--parallel` is not a substitute** — it clones
+from `test_clarice` and collides in the same place.
+
+**The other cost of two sessions in one tree: commits capture each other's
+edits.** `git commit -- <path>` and `git commit -a` both take the *working
+tree*, so an unstaged edit somebody else is midway through lands in your commit
+under your message. That is how `821be3e`, whose subject is the second factor,
+also carries the `DJANGO_TEST_DB_SUFFIX` block described above — written by
+another session that had not committed it yet. Nothing broke and the history is
+left alone, because rewriting somebody else's commit is worse than a misfiled
+hunk. Two habits avoid it:
+
+- **Name your paths explicitly** on every commit, and check `git status` first —
+  a file you did not touch appearing as modified means somebody else is in it.
+- **Land small changes quickly.** The window is the whole risk, and it is
+  measured in minutes.
+
+The stronger answer, when two sessions are genuinely going to overlap, is a
+worktree rather than care.
+
 The browser smoke suite is deliberately not in that list — it needs a built
 bundle and a browser binary, which an ordinary edit-and-test loop should not
 have to install. Run it when you have touched routing, the app shell, static

@@ -51,6 +51,8 @@ function weekData(overrides: Record<string, unknown> = {}) {
       projects: [],
       outcomes: [],
       proposals: [],
+            blockers: [],
+            carryover: [],
     },
     habits: [],
     recent_weeks: [],
@@ -434,6 +436,8 @@ describe("ReviewRoute", () => {
             ],
             outcomes: [],
             proposals: [],
+            blockers: [],
+            carryover: [],
           },
         }),
       ),
@@ -469,6 +473,8 @@ describe("ReviewRoute", () => {
             ],
             outcomes: [],
             proposals: [],
+            blockers: [],
+            carryover: [],
           },
         }),
       );
@@ -498,6 +504,8 @@ describe("ReviewRoute", () => {
           check_in: { started: true, unusual: "usual", projects: [],
             outcomes: [],
             proposals: [],
+            blockers: [],
+            carryover: [],
           },
         }),
       );
@@ -537,6 +545,8 @@ describe("ReviewRoute", () => {
                 because: ["Due 2026-08-28", "4 tasks already dated for it"],
               },
             ],
+            blockers: [],
+            carryover: [],
           },
         }),
       ),
@@ -568,6 +578,8 @@ describe("ReviewRoute", () => {
             },
           ],
           proposals: [],
+            blockers: [],
+            carryover: [],
         });
       }
       return jsonResponse(
@@ -585,6 +597,8 @@ describe("ReviewRoute", () => {
                 because: ["Due 2026-08-28"],
               },
             ],
+            blockers: [],
+            carryover: [],
           },
         }),
       );
@@ -620,6 +634,8 @@ describe("ReviewRoute", () => {
               },
             ],
             proposals: [],
+            blockers: [],
+            carryover: [],
           },
         }),
       ),
@@ -642,6 +658,8 @@ describe("ReviewRoute", () => {
           projects: [],
           outcomes: [],
           proposals: [],
+            blockers: [],
+            carryover: [],
         });
       }
       return jsonResponse(
@@ -659,6 +677,8 @@ describe("ReviewRoute", () => {
               },
             ],
             proposals: [],
+            blockers: [],
+            carryover: [],
           },
         }),
       );
@@ -675,6 +695,126 @@ describe("ReviewRoute", () => {
         .filter((req) => req.method === "DELETE");
       expect(deleted).toHaveLength(1);
     });
+  });
+
+  /* Blockers and carryover, triaged against the outcomes -- increment 6. */
+  it("names the question standing in the way, and what it blocks", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        weekData({
+          check_in: {
+            started: true,
+            unusual: "usual",
+            projects: [],
+            outcomes: [],
+            proposals: [],
+            blockers: [
+              {
+                public_id: "11111111-1111-1111-1111-111111111111",
+                text: "Which analytics provider should we use?",
+                days_open: 12,
+                came_back: 2,
+                outcome_text: "The booking form is live.",
+              },
+            ],
+            carryover: [],
+          },
+        }),
+      ),
+    );
+
+    renderAt("/review");
+
+    expect(
+      await screen.findByText("Which analytics provider should we use?"),
+    ).toBeInTheDocument();
+    /* The evidence for the word "blocker": what it blocks, how long it has
+       been open, and that it came back. */
+    expect(screen.getByText(/The booking form is live\./)).toBeInTheDocument();
+    expect(screen.getByText(/open 12 days/)).toBeInTheDocument();
+    expect(screen.getByText(/came back twice/)).toBeInTheDocument();
+  });
+
+  it("answers a blocker in place rather than pointing at another surface", async () => {
+    /* v1's review could only link out: "Decide them in Second Mind". This is
+       the whole point of increment 6, and it goes through the knowledge
+       core's own service so both surfaces record the same decision. */
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const request = input as Request;
+      if (request.method === "POST") return jsonResponse({ public_id: "x" });
+      return jsonResponse(
+        weekData({
+          check_in: {
+            started: true,
+            unusual: "usual",
+            projects: [],
+            outcomes: [],
+            proposals: [],
+            blockers: [
+              {
+                public_id: "11111111-1111-1111-1111-111111111111",
+                text: "Which analytics provider should we use?",
+                days_open: 12,
+                came_back: 0,
+                outcome_text: "The booking form is live.",
+              },
+            ],
+            carryover: [],
+          },
+        }),
+      );
+    });
+
+    renderAt("/review");
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Settled" }),
+    );
+
+    await waitFor(() => {
+      const posted = fetchSpy.mock.calls
+        .map(([request]) => request as Request)
+        .filter((req) => req.url.includes("/answered"));
+      expect(posted).toHaveLength(1);
+    });
+  });
+
+  it("marks the leftover work that serves what the week is for", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        weekData({
+          check_in: {
+            started: true,
+            unusual: "usual",
+            projects: [],
+            outcomes: [],
+            proposals: [],
+            blockers: [],
+            carryover: [
+              {
+                id: 1,
+                text: "Write the copy",
+                due_date: "2026-07-30",
+                serves_an_outcome: true,
+              },
+              {
+                id: 2,
+                text: "Fix the gate",
+                due_date: "2026-07-29",
+                serves_an_outcome: false,
+              },
+            ],
+          },
+        }),
+      ),
+    );
+
+    renderAt("/review");
+
+    expect(await screen.findByText("Write the copy")).toBeInTheDocument();
+    /* Nothing is hidden: the unconnected leftover is the row most worth
+       deciding about. */
+    expect(screen.getByText("Fix the gate")).toBeInTheDocument();
+    expect(screen.getByText(/serves an outcome/)).toBeInTheDocument();
   });
 
   it("lets a person say what next week is for", async () => {

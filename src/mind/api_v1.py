@@ -14,9 +14,17 @@ delete the `capture` app without anybody rebuilding an APK or logging in twice.
 dual-write question arriving early, and it is answered when facets land — one
 capture endpoint that writes a node and optionally a task."
 
-**Create-only, still.** Reviewing and triaging what has been captured stays on
-the web. A phone client exists to get a thought out of your head in three
-seconds, which needs exactly one verb.
+**Create-only for a token, still**, which is what that sentence always meant. A
+phone client exists to get a thought out of your head in three seconds and
+needs exactly one verb, and `test_api_auth_surface.py` holds the token set at
+exactly the operations that serve it.
+
+The question dispositions below are **session-only** and were added for the
+weekly planning session (`planning-assistant-v2-plan.md` increment 6), which
+reaches a knowledge-core record from the task core's review. They live here
+rather than on a second API because `CLAUDE.md` says a knowledge-core endpoint
+belongs on `/api/v1/` as a router in this module -- and they call `mind`'s own
+services, so the core that owns the record still decides what happens to it.
 """
 
 import uuid
@@ -30,7 +38,7 @@ from accounts.auth import SessionAuthIfLoggedIn, TokenAuth
 from accounts.models import SCOPE_CAPTURE_WRITE
 
 from . import services
-from .models import NodeSource
+from .models import Node, NodeSource
 
 router = Router()
 
@@ -139,3 +147,55 @@ def new_capture(
         201 if created else 200,
         {"public_id": node.public_id, "captured_at": node.captured_at},
     )
+
+
+class QuestionOut(Schema):
+    public_id: uuid.UUID
+
+
+def _question_or_404(request, public_id):
+    """This owner's live question, by public id.
+
+    Owner-scoped in the lookup rather than checked afterwards: a read that
+    fetched by id and then compared owners is one forgotten comparison away
+    from a leak, which is `principles.md`'s rule for every ID-taking surface.
+    """
+    node = Node.objects.filter(
+        owner=request.user,
+        public_id=public_id,
+        deleted_at__isnull=True,
+        archived_at__isnull=True,
+    ).first()
+    if node is None:
+        raise HttpError(404, "Question not found.")
+    return node
+
+
+@router.post("/questions/{public_id}/answered", response=QuestionOut, auth=SessionAuthIfLoggedIn())
+def mark_question_answered(request, public_id: uuid.UUID):
+    """"I settled this", with nothing to point at.
+
+    The knowledge core's own service does the work, so the epistemic facet, the
+    activity event and the actor are recorded exactly as they are when this is
+    answered from `/mind/review/`. Two surfaces, one decision path.
+    """
+    node = _question_or_404(request, public_id)
+    services.resolve_question(
+        node, now=timezone.now(), actor=request.user.get_username()
+    )
+    return {"public_id": node.public_id}
+
+
+@router.post("/questions/{public_id}/not-a-question", response=QuestionOut, auth=SessionAuthIfLoggedIn())
+def mark_not_a_question(request, public_id: uuid.UUID):
+    """"This was never a question."
+
+    A different fact from answering it, deliberately, and the reason is at the
+    service: this is the only correction the question heuristic will ever get,
+    and collapsing the two would spend that signal to save a status value.
+    """
+    node = _question_or_404(request, public_id)
+    services.dismiss_as_question(
+        node, now=timezone.now(), actor=request.user.get_username()
+    )
+    return {"public_id": node.public_id}

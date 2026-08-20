@@ -713,19 +713,29 @@ def unresolved_questions_in_context(
     a claim, and the words underneath are what let somebody disagree with it —
     a number nobody can check is exactly what `precision.md` refuses.
     """
-    found = []
-    for node in unresolved_questions(owner)[:limit]:
-        found.append(
-            OpenQuestion(
-                node=node,
-                days_open=(now - node.captured_at).days,
-                mentions=material_bearing_on(
-                    owner,
-                    node.original_content,
-                    limit=QUESTION_MENTION_LIMIT,
-                    source_node_id=node.pk,
-                    since=node.captured_at,
-                ),
-            )
-        )
-    return found
+    return [
+        context_for_question(owner, node, now=now)
+        for node in unresolved_questions(owner)[:limit]
+    ]
+
+
+def context_for_question(owner, node, *, now: datetime) -> OpenQuestion:
+    """One question's age and recurrence, for a node somebody already has.
+
+    Factored out of the read above when the weekly planning session became its
+    second caller — that surface starts from *which questions bear on the
+    outcomes chosen*, so it has the nodes already and asking for the oldest
+    five would answer a different question. Same cost per question and the same
+    rules; only the choice of which questions changes.
+    """
+    return OpenQuestion(
+        node=node,
+        days_open=(now - node.captured_at).days,
+        mentions=material_bearing_on(
+            owner,
+            node.original_content,
+            limit=QUESTION_MENTION_LIMIT,
+            source_node_id=node.pk,
+            since=node.captured_at,
+        ),
+    )

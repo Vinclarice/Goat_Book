@@ -1030,3 +1030,105 @@ def outcomes_worth_proposing(owner, week_start):
         )
     )
     return found[:OUTCOME_PROPOSAL_LIMIT]
+
+
+@dataclass(frozen=True)
+class Blocker:
+    """An open question standing in the way of something the week is for.
+
+    `outcome` is the evidence for calling it a blocker at all -- without it
+    this is a list of questions with an adjective attached. `question` carries
+    how long it has been open and which later notes came back to it, from the
+    read that has waited since increment 1 for a caller willing to pay for it.
+    """
+
+    question: object
+    outcome: object
+
+
+def blockers_for(owner, day, *, now):
+    """Open questions bearing on this week's chosen outcomes — increment 6.
+
+    **Defined against the outcomes, never "every open question".** That is what
+    increment 5 bought by putting the choosing first: a question is a blocker
+    because it stands in the way of something specific, and a week with nothing
+    chosen has nothing to block. The loose-ends list on the review still shows
+    the oldest few unconditionally; this is a different claim about a smaller
+    set.
+
+    **The retrieval is `material_bearing_on`**, the same rare-term gate the
+    project brief anchors on, asked of the outcome's own words. A question that
+    shares only common vocabulary is not a blocker, and a panel built on plain
+    topical similarity is the one `detectors/__init__` rejects.
+
+    Each question appears once even when it bears on two outcomes: a thing
+    shown twice makes a surface untrustworthy about its own contents, which is
+    the rule `brief_for` and `upcoming_constraints` already keep. The first
+    outcome that reaches it is the one named.
+
+    **Reading this writes nothing**, and that is what makes it safe from a
+    second surface. A question carries no review window -- nothing expires and
+    nothing ripens -- where a proposal is stamped when it is shown. Only the
+    proposals make "where does the ritual live" a real question.
+    """
+    open_ids = {node.pk for node in mind_queries.unresolved_questions(owner)}
+    if not open_ids:
+        return []
+
+    found = []
+    seen = set()
+    for outcome in outcomes_for(owner, day):
+        for material in mind_queries.material_bearing_on(owner, outcome.text):
+            node = material.node
+            if node.pk not in open_ids or node.pk in seen:
+                continue
+            seen.add(node.pk)
+            found.append(
+                Blocker(
+                    question=mind_queries.context_for_question(owner, node, now=now),
+                    outcome=outcome,
+                )
+            )
+    return found
+
+
+@dataclass(frozen=True)
+class Carryover:
+    """One piece of overdue work, and whether it serves a chosen outcome."""
+
+    task: object
+    serves_an_outcome: bool
+
+
+def carryover_for(owner, day, *, today):
+    """Overdue work, the ones serving this week's outcomes first — increment 6.
+
+    **Ordered, never filtered.** A leftover connected to nothing chosen is
+    exactly the row most worth deciding about, so everything stays and the
+    connected ones rise. Hiding the rest would turn triage into a backlog
+    nobody looks at, which is the failure this step exists to prevent.
+
+    Connection is by project, which is the only link a task and an outcome
+    actually share: an outcome chosen from a project carries that project, and
+    a task belongs to an area that belongs to one. Sorting is stable within
+    each group, so the agenda's own order survives underneath.
+
+    Overdue is `agenda.bucket_for`'s boundary via `loose_ends`, and not a
+    fourth idea of the word.
+    """
+    projects = {
+        outcome.project_id
+        for outcome in outcomes_for(owner, day)
+        if outcome.project_id is not None
+    }
+    found = [
+        Carryover(
+            task=task,
+            serves_an_outcome=(
+                task.list is not None and task.list.project_id in projects
+            ),
+        )
+        for task in loose_ends(owner, today=today).overdue
+    ]
+    found.sort(key=lambda each: not each.serves_an_outcome)
+    return found

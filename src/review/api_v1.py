@@ -573,6 +573,11 @@ class CheckInOut(Schema):
     # considering" without a second request.
     outcomes: list[OutcomeOut]
     proposals: list[OutcomeProposalOut]
+    # Both triaged against the outcomes above, which is why they are in this
+    # block rather than beside the review's own loose ends: those are the
+    # oldest few unconditionally, these are defined by what the week is for.
+    blockers: list[BlockerOut]
+    carryover: list[CarryoverOut]
 
 
 class OutcomeOut(Schema):
@@ -599,6 +604,33 @@ class OutcomeProposalOut(Schema):
     project_title: str
     suggested_text: str
     because: list[str]
+
+
+class BlockerOut(Schema):
+    """An open question standing in the way of a chosen outcome.
+
+    `outcome_text` is the evidence for the word "blocker" -- naming what it
+    blocks is what stops this being a list of questions with an adjective.
+    `came_back` is how many later notes returned to it, from the read that
+    waited since increment 1 for a caller willing to pay one retrieval per
+    question; a ritual asking about five is where that cost is finally worth it.
+    """
+
+    public_id: str
+    text: str
+    days_open: int
+    came_back: int
+    outcome_text: str
+
+
+class CarryoverOut(Schema):
+    id: int
+    text: str
+    due_date: date | None
+    # Whether it serves something the week is for. Ordered by this and never
+    # filtered: a leftover connected to nothing is the row most worth deciding
+    # about, and hiding it would make triage a backlog nobody sees.
+    serves_an_outcome: bool
 
 
 class ChooseOutcomeIn(Schema):
@@ -693,6 +725,27 @@ def _check_in_out(owner, week_start):
                 "project_id": each.project_id,
             }
             for each in reads.outcomes_for(owner, week_start)
+        ],
+        "blockers": [
+            {
+                "public_id": str(each.question.node.public_id),
+                "text": each.question.node.original_content,
+                "days_open": each.question.days_open,
+                "came_back": len(each.question.mentions),
+                "outcome_text": each.outcome.text,
+            }
+            for each in reads.blockers_for(owner, week_start, now=timezone.now())
+        ],
+        "carryover": [
+            {
+                "id": each.task.id,
+                "text": each.task.text,
+                "due_date": each.task.due_date,
+                "serves_an_outcome": each.serves_an_outcome,
+            }
+            for each in reads.carryover_for(
+                owner, week_start, today=timezone.localdate()
+            )
         ],
         "proposals": [
             {

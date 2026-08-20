@@ -796,6 +796,78 @@
         ]
       }
     },
+    "/api/v1/questions/{public_id}/answered": {
+      "post": {
+        "operationId": "mind_api_v1_mark_question_answered",
+        "summary": "Mark Question Answered",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "public_id",
+            "schema": {
+              "format": "uuid",
+              "title": "Public Id",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuestionOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "\"I settled this\", with nothing to point at.\n\nThe knowledge core's own service does the work, so the epistemic facet, the\nactivity event and the actor are recorded exactly as they are when this is\nanswered from `/mind/review/`. Two surfaces, one decision path.",
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      }
+    },
+    "/api/v1/questions/{public_id}/not-a-question": {
+      "post": {
+        "operationId": "mind_api_v1_mark_not_a_question",
+        "summary": "Mark Not A Question",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "public_id",
+            "schema": {
+              "format": "uuid",
+              "title": "Public Id",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuestionOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "\"This was never a question.\"\n\nA different fact from answering it, deliberately, and the reason is at the\nservice: this is the only correction the question heuristic will ever get,\nand collapsing the two would spend that signal to save a status value.",
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      }
+    },
     "/api/v1/day": {
       "get": {
         "operationId": "daily_api_v1_get_today",
@@ -3156,6 +3228,20 @@
         "title": "CaptureIn",
         "type": "object"
       },
+      "QuestionOut": {
+        "properties": {
+          "public_id": {
+            "format": "uuid",
+            "title": "Public Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "public_id"
+        ],
+        "title": "QuestionOut",
+        "type": "object"
+      },
       "DayActionItemOut": {
         "description": "A task, plus the one thing the day knows about it that the agenda\ndoes not: how long it has been waiting.\n\nA subclass rather than a field added to TaskOut, so the agenda's\ncontract is untouched by a number only this page renders. Age needs a\n\"today\" to be measured against, and TaskOut is serialised in places that\ndo not have one.",
         "properties": {
@@ -3763,6 +3849,76 @@
         "title": "LogIn",
         "type": "object"
       },
+      "BlockerOut": {
+        "description": "An open question standing in the way of a chosen outcome.\n\n`outcome_text` is the evidence for the word \"blocker\" -- naming what it\nblocks is what stops this being a list of questions with an adjective.\n`came_back` is how many later notes returned to it, from the read that\nwaited since increment 1 for a caller willing to pay one retrieval per\nquestion; a ritual asking about five is where that cost is finally worth it.",
+        "properties": {
+          "public_id": {
+            "title": "Public Id",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "days_open": {
+            "title": "Days Open",
+            "type": "integer"
+          },
+          "came_back": {
+            "title": "Came Back",
+            "type": "integer"
+          },
+          "outcome_text": {
+            "title": "Outcome Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "public_id",
+          "text",
+          "days_open",
+          "came_back",
+          "outcome_text"
+        ],
+        "title": "BlockerOut",
+        "type": "object"
+      },
+      "CarryoverOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "serves_an_outcome": {
+            "title": "Serves An Outcome",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "due_date",
+          "serves_an_outcome"
+        ],
+        "title": "CarryoverOut",
+        "type": "object"
+      },
       "CheckInOut": {
         "description": "What the session believes, so it can be corrected rather than asked.\n\nEvery field here is something already recorded or derived. The plan's rule\nis that a check-in asking what the system knows makes the ritual longer and\nthe answers worse, so this is a page of statements with controls beside\nthem, not a form.\n\n`started` is the session's *existence*, which is the fact the record is for\n-- \"I planned and had little to change\" and \"I never opened it\" are\ndifferent, and only the first says the ritual is happening.",
         "properties": {
@@ -3794,6 +3950,20 @@
             },
             "title": "Proposals",
             "type": "array"
+          },
+          "blockers": {
+            "items": {
+              "$ref": "#/components/schemas/BlockerOut"
+            },
+            "title": "Blockers",
+            "type": "array"
+          },
+          "carryover": {
+            "items": {
+              "$ref": "#/components/schemas/CarryoverOut"
+            },
+            "title": "Carryover",
+            "type": "array"
           }
         },
         "required": [
@@ -3801,7 +3971,9 @@
           "unusual",
           "projects",
           "outcomes",
-          "proposals"
+          "proposals",
+          "blockers",
+          "carryover"
         ],
         "title": "CheckInOut",
         "type": "object"

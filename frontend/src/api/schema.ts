@@ -439,6 +439,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/questions/{public_id}/answered": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark Question Answered
+         * @description "I settled this", with nothing to point at.
+         *
+         *     The knowledge core's own service does the work, so the epistemic facet, the
+         *     activity event and the actor are recorded exactly as they are when this is
+         *     answered from `/mind/review/`. Two surfaces, one decision path.
+         */
+        post: operations["mind_api_v1_mark_question_answered"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/questions/{public_id}/not-a-question": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark Not A Question
+         * @description "This was never a question."
+         *
+         *     A different fact from answering it, deliberately, and the reason is at the
+         *     service: this is the only correction the question heuristic will ever get,
+         *     and collapsing the two would spend that signal to save a status value.
+         */
+        post: operations["mind_api_v1_mark_not_a_question"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/day": {
         parameters: {
             query?: never;
@@ -1448,6 +1496,14 @@ export interface components {
             /** Captured At */
             captured_at?: string | null;
         };
+        /** QuestionOut */
+        QuestionOut: {
+            /**
+             * Public Id
+             * Format: uuid
+             */
+            public_id: string;
+        };
         /**
          * DayActionItemOut
          * @description A task, plus the one thing the day knows about it that the agenda
@@ -1713,6 +1769,39 @@ export interface components {
             amount: number;
         };
         /**
+         * BlockerOut
+         * @description An open question standing in the way of a chosen outcome.
+         *
+         *     `outcome_text` is the evidence for the word "blocker" -- naming what it
+         *     blocks is what stops this being a list of questions with an adjective.
+         *     `came_back` is how many later notes returned to it, from the read that
+         *     waited since increment 1 for a caller willing to pay one retrieval per
+         *     question; a ritual asking about five is where that cost is finally worth it.
+         */
+        BlockerOut: {
+            /** Public Id */
+            public_id: string;
+            /** Text */
+            text: string;
+            /** Days Open */
+            days_open: number;
+            /** Came Back */
+            came_back: number;
+            /** Outcome Text */
+            outcome_text: string;
+        };
+        /** CarryoverOut */
+        CarryoverOut: {
+            /** Id */
+            id: number;
+            /** Text */
+            text: string;
+            /** Due Date */
+            due_date: string | null;
+            /** Serves An Outcome */
+            serves_an_outcome: boolean;
+        };
+        /**
          * CheckInOut
          * @description What the session believes, so it can be corrected rather than asked.
          *
@@ -1736,6 +1825,10 @@ export interface components {
             outcomes: components["schemas"]["OutcomeOut"][];
             /** Proposals */
             proposals: components["schemas"]["OutcomeProposalOut"][];
+            /** Blockers */
+            blockers: components["schemas"]["BlockerOut"][];
+            /** Carryover */
+            carryover: components["schemas"]["CarryoverOut"][];
         };
         /**
          * CompletedTaskOut
@@ -2794,6 +2887,50 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CaptureOut"];
+                };
+            };
+        };
+    };
+    mind_api_v1_mark_question_answered: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                public_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuestionOut"];
+                };
+            };
+        };
+    };
+    mind_api_v1_mark_not_a_question: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                public_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuestionOut"];
                 };
             };
         };

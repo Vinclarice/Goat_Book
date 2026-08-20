@@ -747,6 +747,34 @@ export function ReviewRoute() {
     onError: (caught: Error) => setSaveError(caught.message),
   });
 
+  // Answering a blocker in place -- v2 increment 6, and the end of "Decide them
+  // in Second Mind". It posts to the knowledge core's own router on the shared
+  // /api/v1/, which calls that core's services, so a question settled from here
+  // records exactly what one settled from /mind/review/ does.
+  //
+  // Two verbs, not one. "I settled this" and "this was never a question" are
+  // different facts, and the second is the only correction the question
+  // heuristic will ever get -- collapsing them would spend that signal.
+  const answerBlocker = useMutation({
+    mutationFn: async ({
+      publicId,
+      disposition,
+    }: {
+      publicId: string;
+      disposition: "answered" | "not-a-question";
+    }) => {
+      const { error } = await apiV1.POST(
+        disposition === "answered"
+          ? "/api/v1/questions/{public_id}/answered"
+          : "/api/v1/questions/{public_id}/not-a-question",
+        { params: { path: { public_id: publicId } } },
+      );
+      if (error) throw new Error("Couldn't record that.");
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
+    onError: (caught: Error) => setSaveError(caught.message),
+  });
+
   // Parking a project from the check-in, through the task core's own endpoint.
   // The review proposes and the service that owns projects still decides --
   // the same shape pinning a task to today already takes, and the reason there
@@ -1182,6 +1210,82 @@ export function ReviewRoute() {
                       >
                         Use
                       </Button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {/* What stands in the way of what was just chosen -- increment
+                  6. Defined against the outcomes rather than being every open
+                  question, which is what increment 5 bought by putting the
+                  choosing first.
+
+                  Each row carries its own evidence: what it blocks, how long
+                  it has been open, and whether later notes came back to it.
+                  A question that keeps returning is a different kind of
+                  blocker from one asked once and forgotten. */}
+              {checkIn.blockers.length > 0 && (
+                <ul className="space-y-1">
+                  {checkIn.blockers.map((blocker) => (
+                    <li
+                      key={blocker.public_id}
+                      className="space-y-1 rounded-lg border border-border px-3 py-2 text-sm"
+                    >
+                      <p>{blocker.text}</p>
+                      <p className="text-muted-foreground">
+                        Blocks “{blocker.outcome_text}” — open{" "}
+                        {blocker.days_open} days
+                        {blocker.came_back === 1 && ", came back once"}
+                        {blocker.came_back > 1 &&
+                          `, came back ${blocker.came_back === 2 ? "twice" : `${blocker.came_back} times`}`}
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          disabled={answerBlocker.isPending}
+                          onClick={() =>
+                            answerBlocker.mutate({
+                              publicId: blocker.public_id,
+                              disposition: "answered",
+                            })
+                          }
+                        >
+                          Settled
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          disabled={answerBlocker.isPending}
+                          onClick={() =>
+                            answerBlocker.mutate({
+                              publicId: blocker.public_id,
+                              disposition: "not-a-question",
+                            })
+                          }
+                        >
+                          Not a question
+                        </Button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {/* Overdue work, the ones serving a chosen outcome first.
+                  Ordered and never filtered: a leftover connected to nothing
+                  is exactly the row worth deciding about, and hiding it would
+                  make this a backlog rather than triage. */}
+              {checkIn.carryover.length > 0 && (
+                <ul className="space-y-1">
+                  {checkIn.carryover.map((task) => (
+                    <li key={task.id} className="text-sm">
+                      {task.text}{" "}
+                      <span className="text-muted-foreground">
+                        {task.serves_an_outcome
+                          ? "— serves an outcome"
+                          : task.due_date && `— due ${task.due_date}`}
+                      </span>
                     </li>
                   ))}
                 </ul>

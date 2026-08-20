@@ -589,6 +589,65 @@ describe("DayRoute", () => {
     });
   });
 
+  it("moves a pinned task to tomorrow without leaving the day", async () => {
+    // S2's second verb: "moves one task to tomorrow", in bed, on a phone.
+    // The date comes from `snoozePresets`, the client-side authority the
+    // Agenda already uses, rather than an inline today+1 -- that would be a
+    // third copy of a rule already mirrored twice.
+    //
+    // Not carry-forward. daily-operating-system-vision.md forbids rewriting
+    // due dates *automatically*; "one item, one decision" is exactly this.
+    const called = (input: unknown, init?: RequestInit) =>
+      typeof input === "string"
+        ? { url: input, method: init?.method, body: init?.body }
+        : {
+            url: (input as Request).url,
+            method: (input as Request).method,
+            body: undefined,
+          };
+
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((input, init) => {
+        const { url, method } = called(input, init);
+        if (method === "PATCH" && url.includes("/api/items/1/")) {
+          return jsonResponse({ data: focusRow({ due_date: "2026-08-04" }) });
+        }
+        return jsonResponse(dayData({ focus: [focusRow()] }));
+      });
+
+    renderAt("/day/2026-08-03");
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Move Pay rent to tomorrow" }),
+    );
+
+    await waitFor(() => {
+      const patched = fetchSpy.mock.calls
+        .map(([input, init]) => called(input, init))
+        .find((call) => call.method === "PATCH");
+      expect(patched?.url).toContain("/api/items/1/");
+      expect(JSON.parse(String(patched?.body))).toEqual({
+        due_date: "2026-08-04",
+      });
+    });
+  });
+
+  it("gives the compass link a thumb-sized target like every button has", async () => {
+    // What this can prove: the shared utility is applied. What it cannot:
+    // that the box measures 44px, which needs a coarse pointer no suite here
+    // emulates. roadmap.md's mobile entry names links as the half of the
+    // August 18 fix that was left -- "Edit your compass" is the one on this
+    // page, and it is a control that happens to be an anchor.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(dayData({ compass_purpose: "Build the thing" })),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    expect(await screen.findByRole("link", { name: "Edit your compass" }))
+      .toHaveClass("touch-target");
+  });
+
   it("offers no complete button for a pin whose task has been deleted", async () => {
     // The record of having planned something outlives the task, so the row
     // stays -- but there is nothing left to address. Same reasoning as the

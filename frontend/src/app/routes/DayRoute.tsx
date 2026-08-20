@@ -4,10 +4,10 @@ import { useParams } from "react-router";
 
 import { Button } from "@/components/ui/button";
 
-import { ageLabel, colorForKey, dueLabel } from "../../agenda";
+import { ageLabel, colorForKey, dueLabel, snoozePresets } from "../../agenda";
 import { apiV1 } from "../../api/client";
 import { RequestFailed, statusOf } from "../../api/failure";
-import { updateTaskStatus } from "../../api";
+import { updateTaskDueDate, updateTaskStatus } from "../../api";
 import type { AreaColorKey } from "../../types";
 import { FirstRun } from "./FirstRun";
 import { JournalSuggestions } from "./JournalSuggestions";
@@ -72,12 +72,14 @@ function FocusList({
   today,
   onUnpin,
   onComplete,
+  onDefer,
   busy,
 }: {
   focus: Focus[];
   today: string;
   onUnpin: (taskId: number) => void;
   onComplete: (item: Focus) => void;
+  onDefer: (item: Focus) => void;
   busy: boolean;
 }) {
   if (focus.length === 0) {
@@ -115,6 +117,17 @@ function FocusList({
                 onClick={() => onComplete(item)}
               >
                 Complete
+              </Button>
+            )}
+            {item.url !== null && item.status !== "completed" && (
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={busy}
+                aria-label={`Move ${item.text} to tomorrow`}
+                onClick={() => onDefer(item)}
+              >
+                Tomorrow
               </Button>
             )}
             {item.task_id !== null && (
@@ -184,6 +197,20 @@ function ActionItems({
             key={item.id}
             className="flex items-baseline justify-between gap-3 rounded-lg border border-border px-3 py-2"
           >
+            {/* **These links deliberately carry no `touch-target`.** The
+                utility's own note says two controls closer than ~12px apart
+                overlap on touch and the later one in the DOM wins -- and here
+                the area and project chips sit at `gap-1.5` (6px) with the
+                title 4px above them, so 44px boxes on all three would fight
+                each other in both directions. The row would get worse, not
+                more reachable.
+
+                S2's thumb requirement is met by the controls its own story
+                uses -- Complete, Tomorrow, Pin, Unpin -- which are `Button`s
+                and inherit the floor from the primitive. Reaching a task's
+                detail page is navigation, and the row is not where that has
+                to be thumb-sized. Do not "finish the sweep" here without
+                first widening the gaps. */}
             <span className="min-w-0 space-y-1">
               <span className="block">
                 <a href={`/app/tasks/${item.id}`} className="hover:underline">
@@ -509,7 +536,7 @@ function CaptureBox() {
             "Sent to your Inbox." until Heron 4a moved the destination. */}
         {captured && (
           <span className="text-sm text-muted-foreground">
-            Kept. <a href="/mind/" className="underline">See it</a>
+            Kept. <a href="/mind/" className="touch-target underline">See it</a>
           </span>
         )}
         {mutation.isError && (
@@ -823,6 +850,35 @@ export function DayRoute() {
       queryClient.invalidateQueries({ queryKey: ["day", date ?? "today"] }),
   });
 
+  // "Moves one task to tomorrow" -- S2's second verb, and the one that makes
+  // the day a place to *decide* rather than only to look.
+  //
+  // **Not carry-forward.** daily-operating-system-vision.md forbids rewriting
+  // a due date *automatically* -- "never automatically reschedule everything
+  // left incomplete". One person, one item, one decision is the shape that
+  // rule deliberately leaves open, and this is it.
+  //
+  // The date comes from `snoozePresets`, the authority the Agenda's own snooze
+  // menu uses, rather than an inline today+1. That rule is already mirrored in
+  // Python and TypeScript; a third copy here would be the exact drift
+  // `mirrored-rules-brief.md` was written about. Serving the presets in the
+  // payload -- the blueprint's highest-ROI adopt item -- would delete the
+  // mirror properly, and is a bigger change than this one.
+  const deferMutation = useMutation({
+    mutationFn: async (item: Focus) => {
+      const tomorrow = snoozePresets(data?.today ?? "").find(
+        (preset) => preset.key === "tomorrow",
+      );
+      if (!item.url || !tomorrow) throw new Error("Couldn't move that.");
+      return updateTaskDueDate(
+        { url: item.url } as Parameters<typeof updateTaskDueDate>[0],
+        tomorrow.dueDate,
+      );
+    },
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["day", date ?? "today"] }),
+  });
+
   // Routine writes answer with today's standings rather than the whole day,
   // so the day in cache is patched with them instead of refetched. Same
   // reason as the focus mutations: a refetch would settle the query again,
@@ -939,7 +995,7 @@ export function DayRoute() {
           )}
           <a
             href="/app/preferences"
-            className="inline-block text-sm text-muted-foreground hover:text-foreground"
+            className="touch-target inline-block text-sm text-muted-foreground hover:text-foreground"
           >
             Edit your compass
           </a>
@@ -985,7 +1041,12 @@ export function DayRoute() {
           today={data.today}
           onUnpin={(taskId) => focusMutation.mutate({ taskId, pin: false })}
           onComplete={(item) => completeMutation.mutate(item)}
-          busy={focusMutation.isPending || completeMutation.isPending}
+          onDefer={(item) => deferMutation.mutate(item)}
+          busy={
+            focusMutation.isPending ||
+            completeMutation.isPending ||
+            deferMutation.isPending
+          }
         />
         {/* What the day actually holds — product-stories.md S3, whose
             done-means is "the day says so while he is still planning". The

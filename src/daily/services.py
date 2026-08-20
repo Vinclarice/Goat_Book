@@ -95,7 +95,7 @@ def _entry_for_writing(owner, day):
 
 
 @transaction.atomic
-def pin_task(owner, day, task):
+def pin_task(owner, day, task, *, from_draft=False):
     """Choose ``task`` as work for ``day``.
 
     Touches nothing on the task itself -- not its due date, its status, or
@@ -133,7 +133,25 @@ def pin_task(owner, day, task):
         # Snapshotted now, while there is still a task to read it from.
         task_text=task.text,
         position=0 if highest is None else highest + 1,
+        accepted_from_draft=from_draft,
     )
+
+
+@transaction.atomic
+def accept_draft(owner, day, tasks):
+    """Take the day's draft as it was shown.
+
+    **The ids come from the caller, not from a fresh read.** The draft is
+    computed on read and stored nowhere, so between rendering and accepting a
+    task can be completed elsewhere or a recurrence can fire -- accepting
+    *what was shown* is the honest contract, and re-deriving would pin
+    something nobody saw.
+
+    Each pin goes through `pin_task`, so the ownership check, the
+    repin-clears-release rule and the position are one definition rather than
+    two. What is added here is only the record that this was a draft.
+    """
+    return [pin_task(owner, day, task, from_draft=True) for task in tasks]
 
 
 @transaction.atomic

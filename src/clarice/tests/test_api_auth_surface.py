@@ -72,6 +72,13 @@ TOKEN_AUTHENTICATED = {
     ("GET", "/api/v1/day/{day}"),
     ("PATCH", "/api/v1/day/{day}"),
     ("POST", "/api/v1/day/{day}/focus"),
+    # Accepting the day's draft is pinning, in one act instead of five. Same
+    # scope, same effect on the same rows -- session-only here would be an
+    # asymmetry beside the line above that somebody would later have to undo,
+    # and Vince's August 20 call ("on a phone means the Android app too")
+    # says that Day screen keeps growing. Added deliberately, which is what
+    # this list exists to make somebody do.
+    ("POST", "/api/v1/day/{day}/focus/draft"),
     ("DELETE", "/api/v1/day/{day}/focus/{task_id}"),
     # Which account a freshly pasted token belongs to. The one endpoint the
     # Connect screen can call before anything else works.

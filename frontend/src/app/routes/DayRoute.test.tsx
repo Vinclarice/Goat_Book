@@ -41,6 +41,7 @@ function dayData(overrides: Record<string, unknown> = {}) {
     new_area_url: "/areas/new",
     shows_action_items: true,
     focus: [],
+    draft: { typical: null, proposed: [], available: 0 },
     compass_purpose: "",
     compass_question: "",
     week_intention: "",
@@ -548,6 +549,79 @@ describe("DayRoute", () => {
       .map(([input]) => input as Request)
       .find((request) => request.method === "DELETE");
     expect(deleted?.url).toContain("/api/v1/day/2026-08-03/focus/1");
+  });
+
+  it("offers to plan the day, and pins what it showed", async () => {
+    // The daily loop's whole write surface was write_entry, pin_task and
+    // unpin_task -- nothing that proposes. One decision instead of five.
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const request = input as Request;
+      if (request.method === "POST") return jsonResponse(dayData());
+      return jsonResponse(
+        dayData({
+          draft: {
+            typical: 2,
+            available: 5,
+            proposed: [
+              { id: 1, text: "Pay rent", due_date: "2026-08-03" },
+              { id: 2, text: "Call the plumber", due_date: null },
+            ],
+          },
+        }),
+      );
+    });
+
+    renderAt("/day/2026-08-03");
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Plan my day" }),
+    );
+
+    await waitFor(() => {
+      const posted = fetchSpy.mock.calls
+        .map(([input]) => input as Request)
+        .find((req) => req.url.includes("/focus/draft"));
+      expect(posted).toBeTruthy();
+    });
+  });
+
+  it("says what it left out rather than quietly showing less", async () => {
+    // Bounding the proposal is not hiding the work: the number is what lets
+    // the page say "two of five" instead of showing two and meaning nine.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        dayData({
+          draft: {
+            typical: 2,
+            available: 5,
+            proposed: [
+              { id: 1, text: "Pay rent", due_date: "2026-08-03" },
+              { id: 2, text: "Call the plumber", due_date: null },
+            ],
+          },
+        }),
+      ),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    expect(await screen.findByText(/2 of 5/)).toBeInTheDocument();
+  });
+
+  it("offers no draft when there is not enough history to justify one", async () => {
+    // null is not zero. "No evidence yet" and "you have room" call for
+    // opposite responses, and a proposal of nothing would say the second.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        dayData({ draft: { typical: null, proposed: [], available: 4 } }),
+      ),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    await screen.findByText(/Nothing pinned yet/);
+    expect(
+      screen.queryByRole("button", { name: "Plan my day" }),
+    ).not.toBeInTheDocument();
   });
 
   it("completes a pinned task through the task's own endpoint", async () => {

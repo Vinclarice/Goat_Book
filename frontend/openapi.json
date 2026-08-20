@@ -1207,6 +1207,55 @@
         ]
       }
     },
+    "/api/v1/day/{day}/focus/draft": {
+      "post": {
+        "operationId": "daily_api_v1_accept_days_draft",
+        "summary": "Accept Days Draft",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "day",
+            "schema": {
+              "format": "date",
+              "title": "Day",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DayOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Take the day's draft as it was shown, in one act.\n\nOne decision rather than one per task, which is the whole point: the\nmanual cost of the daily loop was choosing five things by hand every\nmorning. It is still a decision -- the draft is bounded by observed\ncapacity and says what it left out.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DraftIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "TokenAuth": []
+          },
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      }
+    },
     "/api/v1/day/{day}/focus/{task_id}": {
       "delete": {
         "operationId": "daily_api_v1_unpin_from_day",
@@ -3843,6 +3892,40 @@
         "title": "DayAreaSummaryOut",
         "type": "object"
       },
+      "DayDraftOut": {
+        "description": "What today could hold -- the day's own draft.\n\n**A proposal, never a plan.** Nothing here is pinned; accepting it is a\nseparate, deliberate act, because `DailyFocus` records what a person\n*chose* and a focus the system pinned would change what the finish rate\nmeasures.",
+        "properties": {
+          "typical": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Typical"
+          },
+          "proposed": {
+            "items": {
+              "$ref": "#/components/schemas/FocusTaskOut"
+            },
+            "title": "Proposed",
+            "type": "array"
+          },
+          "available": {
+            "title": "Available",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "typical",
+          "proposed",
+          "available"
+        ],
+        "title": "DayDraftOut",
+        "type": "object"
+      },
       "DayOut": {
         "properties": {
           "date": {
@@ -3908,6 +3991,9 @@
             "title": "Focus",
             "type": "array"
           },
+          "draft": {
+            "$ref": "#/components/schemas/DayDraftOut"
+          },
           "week_intention": {
             "title": "Week Intention",
             "type": "string"
@@ -3963,6 +4049,7 @@
           "shows_action_items",
           "new_area_url",
           "focus",
+          "draft",
           "week_intention",
           "typical_day",
           "compass_purpose",
@@ -4039,6 +4126,36 @@
           "url"
         ],
         "title": "FocusOut",
+        "type": "object"
+      },
+      "FocusTaskOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "due_date"
+        ],
+        "title": "FocusTaskOut",
         "type": "object"
       },
       "PausedRoutineOut": {
@@ -4209,6 +4326,22 @@
           "task_id"
         ],
         "title": "FocusIn",
+        "type": "object"
+      },
+      "DraftIn": {
+        "properties": {
+          "task_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Task Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "task_ids"
+        ],
+        "title": "DraftIn",
         "type": "object"
       },
       "StandingsOut": {

@@ -250,6 +250,68 @@ class DayFocusEndpointTest(TestCase):
             row["url"], reverse("api_item_detail", args=[self.task.pk])
         )
 
+    def test_the_day_carries_a_draft_of_what_it_could_hold(self):
+        body = self.client.get(self.day_url()).json()
+
+        for field in ("typical", "proposed", "available"):
+            self.assertIn(field, body["draft"])
+
+    def test_accepting_a_draft_pins_what_it_showed(self):
+        """Carries the ids it displayed rather than re-deriving them.
+
+        The draft is computed on read and never stored, so between rendering
+        and clicking a task can be completed elsewhere or a recurrence can
+        fire. Accepting *what was shown* is the honest contract -- the same
+        shape Bittern's `Idempotency-Key` gives capture.
+        """
+        second = list_services.create_item(self.list_, "Call the plumber")
+
+        response = self.client.post(
+            f"{self.day_url()}/focus/draft",
+            data=json.dumps({"task_ids": [self.task.id, second.id]}),
+            content_type="application/json",
+            HTTP_X_CSRFTOKEN=self.csrf,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            sorted(self.focus_texts()), ["Call the plumber", "Pay rent"]
+        )
+
+    def test_an_accepted_draft_is_recorded_as_one(self):
+        """Otherwise rubber-stamping and genuine agreement are
+        indistinguishable, and the finish rate quietly becomes a measure of
+        how good the draft is. The same instinct as `typical_day_for`
+        refusing to let a day be its own evidence."""
+        self.client.post(
+            f"{self.day_url()}/focus/draft",
+            data=json.dumps({"task_ids": [self.task.id]}),
+            content_type="application/json",
+            HTTP_X_CSRFTOKEN=self.csrf,
+        )
+
+        focus = DailyFocus.objects.get(task=self.task)
+        self.assertTrue(focus.accepted_from_draft)
+
+    def test_pinning_one_by_hand_is_not_recorded_as_a_draft(self):
+        self.pin(self.task)
+
+        self.assertFalse(DailyFocus.objects.get(task=self.task).accepted_from_draft)
+
+    def test_one_person_cannot_accept_a_draft_of_anothers_task(self):
+        bobs_list = List.objects.create(owner=self.bob, title="Bob's home")
+        bobs_task = list_services.create_item(bobs_list, "Bob's private task")
+
+        response = self.client.post(
+            f"{self.day_url()}/focus/draft",
+            data=json.dumps({"task_ids": [bobs_task.id]}),
+            content_type="application/json",
+            HTTP_X_CSRFTOKEN=self.csrf,
+        )
+
+        self.assertIn(response.status_code, (403, 404))
+        self.assertEqual(DailyFocus.objects.count(), 0)
+
     def test_a_pinned_task_still_appears_in_the_broader_action_items(self):
         """The focus list sits above the agenda rather than carving it up --
         'the broader embedded Agenda output', in the vision document's words.

@@ -114,6 +114,10 @@ class DayOut(Schema):
     # Released pins are absent -- they are Crane 3's history, not today's
     # work.
     focus: list["FocusOut"]
+    #: What today could hold, and whether it holds it. Always present; its
+    #: `typical` is None and its `proposed` empty when there is no evidence
+    #: to justify a number.
+    draft: "DayDraftOut"
     # The Personal Compass, read from the user on every request and stored
     # on no day. Sent with the day rather than fetched separately so the
     # page renders in one round trip -- and because a day is exactly the
@@ -176,6 +180,33 @@ class DayActionItemOut(TaskOut):
     age_in_days: int
 
 
+class DayDraftOut(Schema):
+    """What today could hold -- the day's own draft.
+
+    **A proposal, never a plan.** Nothing here is pinned; accepting it is a
+    separate, deliberate act, because `DailyFocus` records what a person
+    *chose* and a focus the system pinned would change what the finish rate
+    measures.
+    """
+
+    #: What a typical day finishes, or None below the evidence floor -- never
+    #: zero, because "no evidence yet" and "you have room" call for opposite
+    #: responses.
+    typical: int | None
+    #: What the draft would pin, in the agenda's own order.
+    proposed: list["FocusTaskOut"]
+    #: How many tasks have a claim on the day in total, so the page can say
+    #: "two of nine" rather than quietly showing two. Bounding the proposal is
+    #: not hiding the work.
+    available: int
+
+
+class FocusTaskOut(Schema):
+    id: int
+    text: str
+    due_date: str | None
+
+
 class FocusOut(Schema):
     """A pinned task, as the day needs to render it.
 
@@ -198,6 +229,13 @@ class FocusOut(Schema):
     #: already completes through. Nullable beside `task_id` and for the same
     #: reason: a pin for a deleted task has nothing to address.
     url: str | None
+
+
+class DraftIn(Schema):
+    #: The ids the draft actually displayed, not a fresh read. The draft is
+    #: computed on read and stored nowhere, so accepting *what was shown* is
+    #: the honest contract; re-deriving here would pin something nobody saw.
+    task_ids: list[int]
 
 
 class FocusIn(Schema):
@@ -253,6 +291,22 @@ def _focus_out(focus):
     }
 
 
+def _draft_out(owner, day, today):
+    draft = reads.draft_day(owner, day, today=today)
+    return {
+        "typical": draft.typical,
+        "available": draft.available,
+        "proposed": [
+            {
+                "id": task.id,
+                "text": task.text,
+                "due_date": task.due_date.isoformat() if task.due_date else None,
+            }
+            for task in draft.proposed
+        ],
+    }
+
+
 def _day_out(owner, day):
     entry = reads.entry_for(owner, day)
     today = _today_for_request()
@@ -300,6 +354,7 @@ def _day_out(owner, day):
         "shows_action_items": shows_action_items,
         "new_area_url": reverse("new_list"),
         "focus": [_focus_out(focus) for focus in reads.focus_for(owner, day)],
+        "draft": _draft_out(owner, day, today),
         "week_intention": _week_intention_for(owner, day),
         # Asked of the day being shown, so a past day reports what was typical
         # *before it*, not what is typical now. A capacity figure that moved
@@ -383,6 +438,23 @@ def pin_to_day(request, day: date, payload: FocusIn):
     task = _own_task_or_404(request.user, payload.task_id)
     try:
         services.pin_task(request.user, day, task)
+    except services.FocusError as error:
+        raise HttpError(403, str(error))
+    return _day_out(request.user, day)
+
+
+@router.post("/day/{day}/focus/draft", response=DayOut, auth=_TOKEN_OR_SESSION_WRITE)
+def accept_days_draft(request, day: date, payload: DraftIn):
+    """Take the day's draft as it was shown, in one act.
+
+    One decision rather than one per task, which is the whole point: the
+    manual cost of the daily loop was choosing five things by hand every
+    morning. It is still a decision -- the draft is bounded by observed
+    capacity and says what it left out.
+    """
+    tasks = [_own_task_or_404(request.user, task_id) for task_id in payload.task_ids]
+    try:
+        services.accept_draft(request.user, day, tasks)
     except services.FocusError as error:
         raise HttpError(403, str(error))
     return _day_out(request.user, day)

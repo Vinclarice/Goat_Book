@@ -826,6 +826,31 @@ export function DayRoute() {
       queryClient.setQueryData(["day", date ?? "today"], updated),
   });
 
+  // Accepting the day's draft, in one act rather than one per task. That is
+  // the whole point: the daily loop's manual cost was choosing five things by
+  // hand every morning, while the weekly loop had fourteen increments of
+  // assistant.
+  //
+  // **It sends the ids the draft displayed**, not a fresh read. The draft is
+  // computed on read and stored nowhere, so between rendering and clicking a
+  // task can be completed elsewhere or a recurrence can fire -- accepting what
+  // was shown is the honest contract, and re-deriving would pin something
+  // nobody saw.
+  const acceptDraft = useMutation({
+    mutationFn: async (taskIds: number[]) => {
+      const day = data?.date;
+      if (!day) throw new Error("Couldn't plan the day.");
+      const { data: updated, error } = await apiV1.POST(
+        "/api/v1/day/{day}/focus/draft",
+        { params: { path: { day } }, body: { task_ids: taskIds } },
+      );
+      if (error) throw new Error("Couldn't plan the day.");
+      return updated;
+    },
+    onSuccess: (updated) =>
+      queryClient.setQueryData(["day", date ?? "today"], updated),
+  });
+
   // Completing goes through the task's own endpoint rather than the day's,
   // because `updateTaskStatus` is the authority every other surface already
   // completes through -- `principles.md`'s *one rule, one authoritative
@@ -1036,6 +1061,27 @@ export function DayRoute() {
         <>
       <section className="space-y-2">
         <h2 className="text-sm font-bold">Focus</h2>
+        {/* Absent when there is no capacity to justify a number: null is not
+            zero, and "no evidence yet" and "you have room" call for opposite
+            responses. Says what it left out, because bounding the proposal is
+            not hiding the work -- the full list is the action items below. */}
+        {data.draft.proposed.length > 0 && (
+          <div className="flex flex-wrap items-baseline justify-between gap-2 rounded-lg border border-accent px-3 py-2">
+            <p className="text-sm text-muted-foreground">
+              {data.draft.proposed.length} of {data.draft.available} have a
+              claim on today. You finish {data.draft.typical} on a typical day.
+            </p>
+            <Button
+              type="button"
+              disabled={acceptDraft.isPending}
+              onClick={() =>
+                acceptDraft.mutate(data.draft.proposed.map((task) => task.id))
+              }
+            >
+              Plan my day
+            </Button>
+          </div>
+        )}
         <FocusList
           focus={data.focus}
           today={data.today}

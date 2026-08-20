@@ -6,6 +6,7 @@ one charter rule that is about where code goes rather than what a table
 holds -- and the reason it is a rule is that `lists` got this right and it
 has stayed right.
 """
+from dataclasses import dataclass
 from datetime import timedelta
 
 from django.contrib.postgres.search import SearchRank
@@ -81,6 +82,66 @@ def action_items_for(owner, day):
     """
     grouped = agenda.bucketed(agenda.open_items_for(owner), day)
     return [item for key in DAY_BUCKETS for item in grouped[key]]
+
+
+@dataclass(frozen=True)
+class DayDraft:
+    """What today could hold, and whether it holds it.
+
+    Named apart from `review.reads.DraftedDay`, which is a *week's* view of one
+    of its days and carries different fields. Two shapes, two names.
+    """
+
+    #: What a typical day finishes, or None below the evidence floor.
+    typical: int | None
+    #: What the draft would pin, in the agenda's own order. Empty when there is
+    #: no capacity to justify a number, and empty on a day already lived.
+    proposed: list
+    #: How many tasks have a claim on the day in total, pinned or not, so a
+    #: surface can say "two of nine" rather than quietly showing two.
+    available: int
+
+
+def draft_day(owner, day, *, today):
+    """Propose what to commit to today. Writes nothing.
+
+    **Not a new planner.** The selection is `action_items_for` -- the agenda's
+    own query and bucketing, late then due -- and the capacity is
+    `typical_day_for`. D2 is explicit that the daily grain is the same
+    computation as the weekly one, and two definitions of "what I got through"
+    would drift; nothing here counts, buckets or dates anything of its own.
+
+    **It proposes and never pins.** `draft_week`'s rule, and for a sharper
+    reason at this grain: `DailyFocus` records what a person *chose*, which is
+    the one thing almost no competitor stores, and a focus pinned by the system
+    would quietly turn the finish rate into a measure of how good the draft is.
+    That is not reconstructible afterwards.
+
+    **No capacity, no proposal.** `typical_day_for` answers `None` rather than
+    zero below its floor, because "no evidence yet" and "you have room" call
+    for opposite responses -- so a draft with no figure proposes nothing rather
+    than proposing a number it cannot justify.
+
+    **What is already chosen is subtracted, not added to.** Proposing on top of
+    a day somebody has already filled would make this an argument for
+    over-committing rather than a check on it.
+
+    **Nothing for a day already lived.** The same refusal `typical_day_for`
+    makes by excluding the day being planned from its own evidence: telling
+    somebody what they should have done is a verdict, not a plan.
+    """
+    available = action_items_for(owner, day)
+    typical = typical_day_for(owner, day)
+    if typical is None or day < today:
+        return DayDraft(typical=typical, proposed=[], available=len(available))
+    chosen = {focus.task_id for focus in focus_for(owner, day)}
+    room = typical - len(chosen)
+    unchosen = [task for task in available if task.id not in chosen]
+    return DayDraft(
+        typical=typical,
+        proposed=unchosen[: room] if room > 0 else [],
+        available=len(available),
+    )
 
 
 def focus_for(owner, day):

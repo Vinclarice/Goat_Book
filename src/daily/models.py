@@ -163,6 +163,16 @@ class DailyFocus(models.Model):
     # which is not the same as "finished" -- that question belongs to the
     # task.
     released_at = models.DateTimeField(null=True, blank=True)
+    # Whether this pin came from accepting the day's draft rather than being
+    # composed by hand.
+    #
+    # **The measurement that makes the automation checkable.** Without it,
+    # rubber-stamping a good draft and genuinely agreeing with it are the same
+    # row, and the finish rate quietly stops measuring commitment kept and
+    # starts measuring how good the draft was -- two numbers wearing one name,
+    # and not separable afterwards. The same instinct as `typical_day_for`
+    # refusing to let a day be its own evidence.
+    accepted_from_draft = models.BooleanField(default=False)
 
     class Meta:
         ordering = ("position", "id")

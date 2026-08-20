@@ -676,6 +676,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/day/{day}/focus/draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accept Days Draft
+         * @description Take the day's draft as it was shown, in one act.
+         *
+         *     One decision rather than one per task, which is the whole point: the
+         *     manual cost of the daily loop was choosing five things by hand every
+         *     morning. It is still a decision -- the draft is bounded by observed
+         *     capacity and says what it left out.
+         */
+        post: operations["daily_api_v1_accept_days_draft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/day/{day}/focus/{task_id}": {
         parameters: {
             query?: never;
@@ -1826,6 +1851,23 @@ export interface components {
              */
             color_key: "sky" | "sage" | "amber" | "lilac" | "coral" | "azure" | "blush" | "straw";
         };
+        /**
+         * DayDraftOut
+         * @description What today could hold -- the day's own draft.
+         *
+         *     **A proposal, never a plan.** Nothing here is pinned; accepting it is a
+         *     separate, deliberate act, because `DailyFocus` records what a person
+         *     *chose* and a focus the system pinned would change what the finish rate
+         *     measures.
+         */
+        DayDraftOut: {
+            /** Typical */
+            typical: number | null;
+            /** Proposed */
+            proposed: components["schemas"]["FocusTaskOut"][];
+            /** Available */
+            available: number;
+        };
         /** DayOut */
         DayOut: {
             /** Date */
@@ -1852,6 +1894,7 @@ export interface components {
             new_area_url: string;
             /** Focus */
             focus: components["schemas"]["FocusOut"][];
+            draft: components["schemas"]["DayDraftOut"];
             /** Week Intention */
             week_intention: string;
             /** Typical Day */
@@ -1889,6 +1932,15 @@ export interface components {
             selected_at: string;
             /** Url */
             url: string | null;
+        };
+        /** FocusTaskOut */
+        FocusTaskOut: {
+            /** Id */
+            id: number;
+            /** Text */
+            text: string;
+            /** Due Date */
+            due_date: string | null;
         };
         /**
          * PausedRoutineOut
@@ -1980,6 +2032,11 @@ export interface components {
         FocusIn: {
             /** Task Id */
             task_id: number;
+        };
+        /** DraftIn */
+        DraftIn: {
+            /** Task Ids */
+            task_ids: number[];
         };
         /** StandingsOut */
         StandingsOut: {
@@ -3427,6 +3484,32 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["FocusIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DayOut"];
+                };
+            };
+        };
+    };
+    daily_api_v1_accept_days_draft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                day: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DraftIn"];
             };
         };
         responses: {

@@ -24,6 +24,9 @@ urlpatterns = [
     path("logout/", auth_views.LogoutView.as_view(), name="logout"),
     path("settings/", views.account_settings, name="account_settings"),
     path("password/change/", views.change_password, name="change_password"),
+    # A second factor, self-service for the same reason the tokens page
+    # below is: design/admin-mfa-plan.md.
+    path("security/", views.security, name="security"),
     path("tokens/", views.tokens, name="tokens"),
     path("tokens/new/", views.new_token, name="new_token"),
     path("tokens/<int:token_id>/delete/", views.delete_token, name="delete_token"),

@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}Two-step sign-in · Clarice{% endblock %}
+
+{% block content %}
+  <section class="mx-auto max-w-md py-8 space-y-6">
+    <div class="rounded-xl border border-border bg-card p-6 sm:p-8 space-y-6">
+      <div class="space-y-1">
+        <p class="text-xs font-bold uppercase tracking-wide text-accent">Account security</p>
+        <h1 class="text-2xl font-bold">Two-step sign-in</h1>
+        <p class="text-sm text-muted-foreground">
+          A code from your phone, on top of your password. It matters most
+          for an account that can read other people's material.
+        </p>
+      </div>
+
+      {% if recovery_codes %}
+        <div class="rounded-lg border border-accent/40 bg-accent/10 px-4 py-3 space-y-2" role="alert">
+          <p class="text-sm font-bold">Save these recovery codes now.</p>
+          <p class="text-xs text-muted-foreground">
+            Each one signs you in once if you lose the phone. They are shown
+            on this page and never again — losing both means the account is
+            reachable only from the server.
+          </p>
+          <ul class="grid grid-cols-2 gap-1">
+            {% for code in recovery_codes %}
+              <li><code class="block rounded border border-border bg-input px-2 py-1 text-sm">{{ code }}</code></li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% endif %}
+
+      {% if confirmed_device %}
+        <p class="text-sm">
+          <span class="font-bold">Two-step sign-in is on.</span>
+          Confirmed {{ confirmed_device.created_at|date:"j F Y" }}.
+        </p>
+      {% else %}
+        <ol class="space-y-4 text-sm">
+          <li>
+            <span class="font-bold">1.</span> Scan this with an authenticator app.
+            <div class="mt-2 rounded-lg border border-border bg-input p-3">
+              <img src="{{ qr }}" alt="Enrolment QR code" class="mx-auto h-44 w-44">
+            </div>
+            <p class="mt-2 text-xs text-muted-foreground">
+              Can't scan? Enter this key by hand:
+              <code class="break-all">{{ pending_device.key }}</code>
+            </p>
+          </li>
+          <li>
+            <span class="font-bold">2.</span> Type the six-digit code it shows,
+            to prove the app and this account agree.
+            <form method="post" class="mt-2 flex gap-2">
+              {% csrf_token %}
+              <input type="text" name="token" inputmode="numeric" autocomplete="one-time-code"
+                     maxlength="6" required
+                     class="w-32 rounded-lg border border-border bg-input px-3 py-2 text-sm">
+              <button type="submit"
+                      class="touch-target rounded-lg bg-primary px-4 py-2 text-sm font-bold text-primary-foreground">
+                Turn it on
+              </button>
+            </form>
+          </li>
+        </ol>
+      {% endif %}
+    </div>
+  </section>
+{% endblock %}

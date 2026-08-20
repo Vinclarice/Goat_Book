@@ -26,6 +26,8 @@ from accounts.emails import (
     send_support_message,
 )
 from accounts.forms import ContactForm, LoginForm, SignUpForm, TokenForm
+from accounts.mfa import enrolment_qr, issue_recovery_codes
+from django_otp.plugins.otp_totp.models import TOTPDevice
 from accounts.models import PersonalAccessToken, User
 from accounts.tokens import activation_token
 
@@ -301,6 +303,67 @@ def tokens(request):
             # redirects (so a refresh can't mint a second token), and a
             # redirect has nowhere else to carry it.
             "raw_token": request.session.pop("raw_token", None),
+        },
+    )
+
+
+@login_required
+def security(request):
+    """Turn a second factor on, and prove it works before trusting it.
+
+    **The device is created unconfirmed and stays that way until a code from it
+    comes back correct.** Somebody who scans the QR into an app that never
+    syncs, or who closes the page halfway, has not armed a lock they cannot
+    open -- `is_verified()` ignores an unconfirmed device, so nothing changes
+    for them until the round trip succeeds. That is what makes increment 4's
+    enforcement safe to deploy.
+
+    `verify_token` carries the throttling itself: it refuses while the backoff
+    from earlier failures is still running, and resets the counter on success.
+    That matters more here than it looks, because `django-axes` counts failures
+    at `authenticate()` and this is not `authenticate()` -- the five-attempt
+    lockout does not reach a six-digit code at all, so the device's own backoff
+    is the entire protection on this step. See design/admin-mfa-plan.md §2.4.
+
+    Recovery codes ride through the redirect in the session and are popped by
+    the GET that follows, exactly as `new_token` does with a raw token: they
+    are shown on one page load and are unrecoverable afterwards.
+    """
+    confirmed = TOTPDevice.objects.filter(user=request.user, confirmed=True).first()
+
+    if request.method == "POST" and not confirmed:
+        # Owner-scoped in the lookup, not checked afterwards -- there is no
+        # code path here that loads somebody else's device in the first place.
+        pending = TOTPDevice.objects.filter(
+            user=request.user, confirmed=False
+        ).first()
+        if pending is not None and pending.verify_token(request.POST.get("token", "")):
+            pending.confirmed = True
+            pending.save(update_fields=["confirmed"])
+            request.session["recovery_codes"] = issue_recovery_codes(request.user)
+            return redirect("security")
+        messages.error(
+            request, "That code was not accepted. Check the clock on your phone."
+        )
+        return redirect("security")
+
+    pending = None
+    if confirmed is None:
+        # get_or_create rather than create: a refresh must not strand the
+        # previous secret, or the QR on screen stops matching the row that
+        # will be asked to verify it.
+        pending, _ = TOTPDevice.objects.get_or_create(
+            user=request.user, confirmed=False, defaults={"name": "authenticator"}
+        )
+
+    return render(
+        request,
+        "accounts/security.html",
+        {
+            "confirmed_device": confirmed,
+            "pending_device": pending,
+            "qr": enrolment_qr(pending) if pending is not None else None,
+            "recovery_codes": request.session.pop("recovery_codes", None),
         },
     )
 

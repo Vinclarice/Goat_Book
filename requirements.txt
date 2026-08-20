@@ -17,3 +17,7 @@ pgvector==0.4.1
 # heavier package brings its own views, URLs and templates with it.
 # otp_static (recovery codes) ships in the same distribution.
 django-otp==1.7.0
+# The enrolment QR. SVG output only, so no Pillow -- an image made of
+# squares is not worth that dependency. See accounts/mfa.py for why the
+# QR travels as a data: URI rather than from a served URL.
+qrcode==8.2

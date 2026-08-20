@@ -1,0 +1,125 @@
+"""What is due this month, and what it comes to.
+
+The last piece of bills, and the one a person actually opens. Everything under
+it exists already: a bill is a task with a sidecar, so this is a read rather
+than a model.
+
+**Totals are per currency, never across them.** Adding 500 USD to 40 GBP
+produces 540 of nothing. One number would be easier to render and would be
+wrong, which is the trade `SearchRank` across two document sets already
+refused once.
+
+**An unpriced bill is counted and not totalled**, and the count says so. "The
+water bill, whatever it comes to" is a real bill, and a total that silently
+omitted it would be a number somebody plans against and should not.
+
+**Open bills only.** A paid one is not still due, the same definition of open
+the agenda uses everywhere else.
+"""
+
+import datetime
+from decimal import Decimal
+
+from django.test import TestCase
+
+from accounts.models import User
+from lists import bills as bills_reader
+from lists import services
+from lists.models import List
+
+
+AUGUST = datetime.date(2026, 8, 1)
+MID_AUGUST = datetime.date(2026, 8, 14)
+
+
+class TheMonthsBillsTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            "alice", "alice@example.com", "a secure password"
+        )
+        self.other = User.objects.create_user("bob", "bob@example.com", "a password")
+        self.list_ = List.objects.create(owner=self.user, title="Home")
+
+    def bill(self, text, *, due=MID_AUGUST, amount="100.00", currency="USD", owner=None):
+        area = self.list_
+        if owner is not None:
+            area = List.objects.create(owner=owner, title="Theirs")
+        task = services.create_item(area, text, due_date=due)
+        services.set_bill(
+            task,
+            amount=Decimal(amount) if amount is not None else None,
+            currency=currency,
+            payee="Someone",
+        )
+        return task
+
+    def month(self, day=MID_AUGUST, owner=None):
+        return bills_reader.bills_for(owner or self.user, day)
+
+    def test_a_month_with_no_bills_says_so_rather_than_showing_zero(self):
+        """Zero due and nothing due are different, and only one of them
+        deserves a total."""
+        found = self.month()
+
+        self.assertEqual(found.bills, [])
+        self.assertEqual(found.totals, {})
+
+    def test_it_lists_the_months_bills_soonest_first(self):
+        self.bill("Later", due=datetime.date(2026, 8, 20))
+        self.bill("Sooner", due=datetime.date(2026, 8, 3))
+
+        self.assertEqual(
+            [row.task.text for row in self.month().bills], ["Sooner", "Later"]
+        )
+
+    def test_it_leaves_out_other_months(self):
+        self.bill("September", due=datetime.date(2026, 9, 1))
+
+        self.assertEqual(self.month().bills, [])
+
+    def test_it_totals_what_is_due(self):
+        self.bill("Rent", amount="1200.00")
+        self.bill("Water", amount="45.50")
+
+        self.assertEqual(self.month().totals, {"USD": Decimal("1245.50")})
+
+    def test_currencies_are_totalled_apart_never_together(self):
+        """Adding 500 USD to 40 GBP produces 540 of nothing."""
+        self.bill("Rent", amount="500.00", currency="USD")
+        self.bill("Subscription", amount="40.00", currency="GBP")
+
+        self.assertEqual(
+            self.month().totals, {"USD": Decimal("500.00"), "GBP": Decimal("40.00")}
+        )
+
+    def test_an_unpriced_bill_is_counted_and_not_totalled(self):
+        """A total that silently omitted it would be a number somebody plans
+        against and should not."""
+        self.bill("Rent", amount="500.00")
+        self.bill("Water", amount=None)
+
+        found = self.month()
+
+        self.assertEqual(found.totals, {"USD": Decimal("500.00")})
+        self.assertEqual(found.unpriced, 1)
+        self.assertEqual(len(found.bills), 2)
+
+    def test_a_paid_bill_is_not_still_due(self):
+        paid = self.bill("Rent")
+        services.complete_item(paid)
+
+        self.assertEqual(self.month().bills, [])
+
+    def test_a_task_that_is_not_a_bill_is_not_here(self):
+        services.create_item(self.list_, "Ordinary task", due_date=MID_AUGUST)
+
+        self.assertEqual(self.month().bills, [])
+
+    def test_one_person_never_sees_anothers_bills(self):
+        """The isolation test principles.md asks of every owner-scoped read."""
+        self.bill("Bob's rent", owner=self.other)
+
+        found = self.month()
+
+        self.assertEqual(found.bills, [])
+        self.assertEqual(found.totals, {})

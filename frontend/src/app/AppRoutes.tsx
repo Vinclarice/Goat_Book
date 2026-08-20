@@ -6,6 +6,7 @@ import { AppLayout } from "./AppLayout";
 import { AgendaRoute } from "./routes/AgendaRoute";
 import { ArchiveRoute } from "./routes/ArchiveRoute";
 import { CalendarRoute } from "./routes/CalendarRoute";
+import { BillsRoute } from "./routes/BillsRoute";
 import { DayRoute } from "./routes/DayRoute";
 import { DevUiGallery } from "./routes/DevUiGallery";
 import { AreaRoute } from "./routes/AreaRoute";
@@ -90,6 +91,9 @@ export function AppRoutes() {
         {/* S13's second require. `/day/:date` had no UI entry point at all. */}
         <Route path="/calendar" element={<CalendarRoute />} />
         <Route path="/calendar/:month" element={<CalendarRoute />} />
+        {/* A bill is a task with a sidecar; this is a read over them. */}
+        <Route path="/bills" element={<BillsRoute />} />
+        <Route path="/bills/:month" element={<BillsRoute />} />
         {/* Same two-path shape as the day, for the same reason: the
             undated one lets the server say which week it is, since a week
             boundary belongs to the account's time zone. The dated one is

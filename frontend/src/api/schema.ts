@@ -21,6 +21,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/bills/{day}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Months Bills
+         * @description What is due this month and what it comes to.
+         *
+         *     Session-only, like the calendar: a new surface the phone does not have,
+         *     and widening the token surface for one it cannot show would be the
+         *     un-switched-on seam this project keeps finding.
+         */
+        get: operations["lists_api_v1_months_bills"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/nav": {
         parameters: {
             query?: never;
@@ -1190,6 +1214,52 @@ export interface components {
             username: string;
             /** Email */
             email: string;
+        };
+        /** MonthBillOut */
+        MonthBillOut: {
+            /** Task Id */
+            task_id: number;
+            /** Text */
+            text: string;
+            /**
+             * Due Date
+             * Format: date
+             */
+            due_date: string;
+            /** Amount */
+            amount: string | null;
+            /** Currency */
+            currency: string;
+            /** Payee */
+            payee: string;
+            /** Url */
+            url: string;
+        };
+        /** MonthOfBillsOut */
+        MonthOfBillsOut: {
+            /**
+             * Month Start
+             * Format: date
+             */
+            month_start: string;
+            /**
+             * Previous Month
+             * Format: date
+             */
+            previous_month: string;
+            /**
+             * Next Month
+             * Format: date
+             */
+            next_month: string;
+            /** Bills */
+            bills: components["schemas"]["MonthBillOut"][];
+            /** Totals */
+            totals: {
+                [key: string]: string;
+            };
+            /** Unpriced */
+            unpriced: number;
         };
         /** NavAreaOut */
         NavAreaOut: {
@@ -2821,6 +2891,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MeOut"];
+                };
+            };
+        };
+    };
+    lists_api_v1_months_bills: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                day: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MonthOfBillsOut"];
                 };
             };
         };

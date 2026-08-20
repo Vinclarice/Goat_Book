@@ -14,7 +14,8 @@ same split `Item`/"task" already lives with. Python locals below still read
 `our_list`, because renaming them would be churn no client can observe.
 See `lists/tests/test_area_vocabulary.py` for the guard.
 """
-from datetime import date, datetime
+from calendar import monthrange
+from datetime import date, datetime, timedelta
 from typing import Literal
 
 from django.shortcuts import get_object_or_404
@@ -27,6 +28,7 @@ from accounts import services as account_services
 from accounts.auth import SessionAuthIfLoggedIn, TokenAuth
 from accounts.models import SCOPE_AGENDA_READ
 from lists import agenda as agenda_reader
+from lists import bills as bills_reader
 from lists import projects as project_reader
 from lists import services
 from lists.forms import ListTitleForm
@@ -235,6 +237,65 @@ class NavOut(Schema):
     # scheduled erasure that is only visible on the page you asked to schedule
     # it from is one somebody can forget they started.
     deletion_purge_at: datetime | None
+
+
+class MonthBillOut(Schema):
+    task_id: int
+    text: str
+    due_date: date
+    #: A string, like `BillOut.amount`, and null for a bill nobody has priced.
+    amount: str | None
+    currency: str
+    payee: str
+    url: str
+
+
+class MonthOfBillsOut(Schema):
+    month_start: date
+    previous_month: date
+    next_month: date
+    bills: list[MonthBillOut]
+    #: Per currency, keyed by code. **Never one number**: adding 500 USD to 40
+    #: GBP produces 540 of nothing. Empty when nothing is due, because
+    #: "nothing" and "0.00" are different and only one deserves a total.
+    totals: dict[str, str]
+    #: How many are counted but not totalled, so the figure above cannot
+    #: quietly understate the month.
+    unpriced: int
+
+
+@router.get("/bills/{day}", response=MonthOfBillsOut, auth=SessionAuthIfLoggedIn())
+def months_bills(request, day: date):
+    """What is due this month and what it comes to.
+
+    Session-only, like the calendar: a new surface the phone does not have,
+    and widening the token surface for one it cannot show would be the
+    un-switched-on seam this project keeps finding.
+    """
+    found = bills_reader.bills_for(request.user, day)
+    first = day.replace(day=1)
+    last = first.replace(day=monthrange(first.year, first.month)[1])
+    return {
+        "month_start": first,
+        "previous_month": (first - timedelta(days=1)).replace(day=1),
+        "next_month": last + timedelta(days=1),
+        "bills": [
+            {
+                "task_id": row.task.id,
+                "text": row.task.text,
+                "due_date": row.task.due_date,
+                "amount": (
+                    str(row.bill.amount) if row.bill.amount is not None else None
+                ),
+                "currency": row.bill.currency,
+                "payee": row.bill.payee,
+                "url": reverse("api_item_detail", args=[row.task.id]),
+            }
+            for row in found.bills
+        ],
+        "totals": {code: str(total) for code, total in found.totals.items()},
+        "unpriced": found.unpriced,
+    }
 
 
 @router.get("/nav", response=NavOut)

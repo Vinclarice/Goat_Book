@@ -33,6 +33,42 @@
         ]
       }
     },
+    "/api/v1/bills/{day}": {
+      "get": {
+        "operationId": "lists_api_v1_months_bills",
+        "summary": "Months Bills",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "day",
+            "schema": {
+              "format": "date",
+              "title": "Day",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MonthOfBillsOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "What is due this month and what it comes to.\n\nSession-only, like the calendar: a new surface the phone does not have,\nand widening the token surface for one it cannot show would be the\nun-switched-on seam this project keeps finding.",
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      }
+    },
     "/api/v1/nav": {
       "get": {
         "operationId": "lists_api_v1_navigation",
@@ -2178,6 +2214,104 @@
           "email"
         ],
         "title": "MeOut",
+        "type": "object"
+      },
+      "MonthBillOut": {
+        "properties": {
+          "task_id": {
+            "title": "Task Id",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "due_date": {
+            "format": "date",
+            "title": "Due Date",
+            "type": "string"
+          },
+          "amount": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "payee": {
+            "title": "Payee",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id",
+          "text",
+          "due_date",
+          "amount",
+          "currency",
+          "payee",
+          "url"
+        ],
+        "title": "MonthBillOut",
+        "type": "object"
+      },
+      "MonthOfBillsOut": {
+        "properties": {
+          "month_start": {
+            "format": "date",
+            "title": "Month Start",
+            "type": "string"
+          },
+          "previous_month": {
+            "format": "date",
+            "title": "Previous Month",
+            "type": "string"
+          },
+          "next_month": {
+            "format": "date",
+            "title": "Next Month",
+            "type": "string"
+          },
+          "bills": {
+            "items": {
+              "$ref": "#/components/schemas/MonthBillOut"
+            },
+            "title": "Bills",
+            "type": "array"
+          },
+          "totals": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Totals",
+            "type": "object"
+          },
+          "unpriced": {
+            "title": "Unpriced",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "month_start",
+          "previous_month",
+          "next_month",
+          "bills",
+          "totals",
+          "unpriced"
+        ],
+        "title": "MonthOfBillsOut",
         "type": "object"
       },
       "NavAreaOut": {

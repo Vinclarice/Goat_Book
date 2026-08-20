@@ -71,6 +71,16 @@ export function CalendarRoute() {
         </Link>
       </nav>
 
+      {/* The only way into the bills month. An unreachable route is the
+          un-switched-on seam under a nicer name, and this is the other
+          month-shaped surface. */}
+      <Link
+        to={`/bills/${data.month_start}`}
+        className="touch-target inline-block text-sm text-muted-foreground hover:text-foreground"
+      >
+        Bills this month
+      </Link>
+
       <div className="grid grid-cols-7 gap-1">
         {WEEKDAYS.map((name) => (
           <div key={name} className="text-center text-xs text-muted-foreground">

@@ -99,6 +99,20 @@ describe("CalendarRoute", () => {
     );
   });
 
+  it("offers the way into the bills month", async () => {
+    // An unreachable route is the un-switched-on seam under a nicer name,
+    // and the calendar is the other month-shaped surface.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(monthData()),
+    );
+
+    renderAt();
+
+    expect(
+      await screen.findByRole("link", { name: "Bills this month" }),
+    ).toHaveAttribute("href", "/bills/2026-08-01");
+  });
+
   it("reports a failure rather than an empty month", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(() =>
       jsonResponse({}, false, 500),

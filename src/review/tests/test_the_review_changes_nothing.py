@@ -158,6 +158,25 @@ class TheReviewDecidesNothingTest(TestCase):
         sat down, the PATCH records that they corrected what the system
         believed about the week. Same criterion, same answer, and the guard
         made somebody say so twice rather than letting a route arrive quietly.
+
+        **The outcomes routes are a change in kind, and this is where it is
+        argued rather than assumed.** Two of them take an `outcome_id`, where
+        every write above names only a date — and the paragraph below says in
+        as many words that a path naming a date is a smaller surface than an id
+        would be. That protection is genuinely being given up here, and the
+        reason is that a week holds *several* outcomes: a week key alone cannot
+        say which one to reword or drop, so there is nothing to address them by
+        except an id.
+
+        What replaces the protection is a narrower guarantee, held by tests
+        rather than by the shape of the URL: both services look the record up
+        as `get(pk=..., owner=owner)`, so an id belonging to somebody else is a
+        `DoesNotExist` and a 404 rather than a permission check somebody could
+        forget to write. `test_weekly_outcomes.py` holds that at the service
+        and this file's siblings hold it over HTTP.
+
+        Still no bulk route, which is what this test is actually for: three
+        outcomes are three requests.
         """
         from review.api_v1 import router
 
@@ -169,12 +188,15 @@ class TheReviewDecidesNothingTest(TestCase):
         self.assertEqual(
             paths,
             [
+                "DELETE /weeks/{day}/outcomes/{outcome_id}",
                 "GET /review",
                 "GET /review/{day}",
                 "PATCH /review/{day}",
+                "PATCH /weeks/{day}/outcomes/{outcome_id}",
                 "PATCH /weeks/{day}/planning-session",
                 "POST /review/{day}/complete",
                 "POST /review/{day}/reopen",
+                "POST /weeks/{day}/outcomes",
                 "POST /weeks/{day}/planning-session",
                 "PUT /weeks/{day}/intention",
             ],

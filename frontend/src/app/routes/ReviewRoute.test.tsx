@@ -45,7 +45,13 @@ function weekData(overrides: Record<string, unknown> = {}) {
       typical_week: null,
       over_committed: false,
     },
-    check_in: { started: false, unusual: "usual", projects: [] },
+    check_in: {
+      started: false,
+      unusual: "usual",
+      projects: [],
+      outcomes: [],
+      proposals: [],
+    },
     habits: [],
     recent_weeks: [],
     review: {
@@ -426,6 +432,8 @@ describe("ReviewRoute", () => {
                 looks_active: true,
               },
             ],
+            outcomes: [],
+            proposals: [],
           },
         }),
       ),
@@ -459,6 +467,8 @@ describe("ReviewRoute", () => {
                 looks_active: false,
               },
             ],
+            outcomes: [],
+            proposals: [],
           },
         }),
       );
@@ -485,7 +495,10 @@ describe("ReviewRoute", () => {
       }
       return jsonResponse(
         weekData({
-          check_in: { started: true, unusual: "usual", projects: [] },
+          check_in: { started: true, unusual: "usual", projects: [],
+            outcomes: [],
+            proposals: [],
+          },
         }),
       );
     });
@@ -501,6 +514,166 @@ describe("ReviewRoute", () => {
         .map(([request]) => request as Request)
         .filter((req) => req.url.includes("planning-session"));
       expect(patched).toHaveLength(1);
+    });
+  });
+
+  /* Outcomes -- planning-assistant-v2-plan.md increment 5, and D3 answered:
+     an intention is one sentence about what a week is for, an outcome is one
+     of two or three things that will be true by Friday. */
+  it("offers a project the week has a reason to be about, with the reason", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        weekData({
+          check_in: {
+            started: true,
+            unusual: "usual",
+            projects: [],
+            outcomes: [],
+            proposals: [
+              {
+                project_id: 7,
+                project_title: "Website launch",
+                suggested_text: "The booking form is live.",
+                because: ["Due 2026-08-28", "4 tasks already dated for it"],
+              },
+            ],
+          },
+        }),
+      ),
+    );
+
+    renderAt("/review");
+
+    expect(await screen.findByText("Website launch")).toBeInTheDocument();
+    expect(screen.getByText(/Due 2026-08-28/)).toBeInTheDocument();
+    expect(screen.getByText(/4 tasks already dated for it/)).toBeInTheDocument();
+  });
+
+  it("chooses an outcome using the project's own words", async () => {
+    /* Never a composed sentence: what is offered is the project's own
+       `desired_outcome`, which is what increment 3 added it for. */
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const request = input as Request;
+      if (request.method === "POST") {
+        return jsonResponse({
+          started: true,
+          unusual: "usual",
+          projects: [],
+          outcomes: [
+            {
+              id: 1,
+              text: "The booking form is live.",
+              project_title: "Website launch",
+              project_id: 7,
+            },
+          ],
+          proposals: [],
+        });
+      }
+      return jsonResponse(
+        weekData({
+          check_in: {
+            started: true,
+            unusual: "usual",
+            projects: [],
+            outcomes: [],
+            proposals: [
+              {
+                project_id: 7,
+                project_title: "Website launch",
+                suggested_text: "The booking form is live.",
+                because: ["Due 2026-08-28"],
+              },
+            ],
+          },
+        }),
+      );
+    });
+
+    renderAt("/review");
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Use Website launch" }),
+    );
+
+    await waitFor(() => {
+      const posted = fetchSpy.mock.calls
+        .map(([request]) => request as Request)
+        .filter((req) => req.url.includes("/outcomes"));
+      expect(posted).toHaveLength(1);
+    });
+  });
+
+  it("lists what the week is already committed to", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        weekData({
+          check_in: {
+            started: true,
+            unusual: "usual",
+            projects: [],
+            outcomes: [
+              {
+                id: 1,
+                text: "The booking form is live.",
+                project_title: "Website launch",
+                project_id: 7,
+              },
+            ],
+            proposals: [],
+          },
+        }),
+      ),
+    );
+
+    renderAt("/review");
+
+    expect(
+      await screen.findByText("The booking form is live."),
+    ).toBeInTheDocument();
+  });
+
+  it("takes an outcome back off the week", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const request = input as Request;
+      if (request.method === "DELETE") {
+        return jsonResponse({
+          started: true,
+          unusual: "usual",
+          projects: [],
+          outcomes: [],
+          proposals: [],
+        });
+      }
+      return jsonResponse(
+        weekData({
+          check_in: {
+            started: true,
+            unusual: "usual",
+            projects: [],
+            outcomes: [
+              {
+                id: 1,
+                text: "The booking form is live.",
+                project_title: "Website launch",
+                project_id: 7,
+              },
+            ],
+            proposals: [],
+          },
+        }),
+      );
+    });
+
+    renderAt("/review");
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Drop this outcome" }),
+    );
+
+    await waitFor(() => {
+      const deleted = fetchSpy.mock.calls
+        .map(([request]) => request as Request)
+        .filter((req) => req.method === "DELETE");
+      expect(deleted).toHaveLength(1);
     });
   });
 

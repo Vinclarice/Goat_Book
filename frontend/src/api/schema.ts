@@ -843,6 +843,51 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/weeks/{day}/outcomes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Choose Outcome
+         * @description Commit to something being true by the end of this week.
+         *
+         *     The project is looked up owner-scoped, so a foreign id is a 404 rather
+         *     than an outcome pointing at somebody else's work.
+         */
+        post: operations["review_api_v1_choose_outcome"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/weeks/{day}/outcomes/{outcome_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Drop Outcome
+         * @description Take it off the week. A real delete — see the model on why this one
+         *     record is allowed it.
+         */
+        delete: operations["review_api_v1_drop_outcome"];
+        options?: never;
+        head?: never;
+        /** Reword Outcome */
+        patch: operations["review_api_v1_reword_outcome"];
+        trace?: never;
+    };
     "/api/v1/weeks/{day}/planning-session": {
         parameters: {
             query?: never;
@@ -1687,6 +1732,10 @@ export interface components {
             unusual: string;
             /** Projects */
             projects: components["schemas"]["ProjectToConfirmOut"][];
+            /** Outcomes */
+            outcomes: components["schemas"]["OutcomeOut"][];
+            /** Proposals */
+            proposals: components["schemas"]["OutcomeProposalOut"][];
         };
         /**
          * CompletedTaskOut
@@ -1806,6 +1855,36 @@ export interface components {
             label: string;
             /** Mentions */
             mentions: number;
+        };
+        /** OutcomeOut */
+        OutcomeOut: {
+            /** Id */
+            id: number;
+            /** Text */
+            text: string;
+            /** Project Title */
+            project_title: string;
+            /** Project Id */
+            project_id: number | null;
+        };
+        /**
+         * OutcomeProposalOut
+         * @description A project the week has a reason to be about, and the reason.
+         *
+         *     `because` is stated facts rather than a score, and `suggested_text` is the
+         *     project's own words -- never a phrasing this composed. D1 defers generated
+         *     prose, and rewording somebody's own sentence would be the least defensible
+         *     place to start.
+         */
+        OutcomeProposalOut: {
+            /** Project Id */
+            project_id: number;
+            /** Project Title */
+            project_title: string;
+            /** Suggested Text */
+            suggested_text: string;
+            /** Because */
+            because: string[];
         };
         /**
          * PlannedOut
@@ -2131,6 +2210,18 @@ export interface components {
          *     wearing two shapes.
          */
         WeekIntentionIn: {
+            /** Text */
+            text: string;
+        };
+        /** ChooseOutcomeIn */
+        ChooseOutcomeIn: {
+            /** Text */
+            text: string;
+            /** Project Id */
+            project_id?: number | null;
+        };
+        /** RewordOutcomeIn */
+        RewordOutcomeIn: {
             /** Text */
             text: string;
         };
@@ -3160,6 +3251,82 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WeekIntentionOut"];
+                };
+            };
+        };
+    };
+    review_api_v1_choose_outcome: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                day: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChooseOutcomeIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckInOut"];
+                };
+            };
+        };
+    };
+    review_api_v1_drop_outcome: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                day: string;
+                outcome_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckInOut"];
+                };
+            };
+        };
+    };
+    review_api_v1_reword_outcome: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                day: string;
+                outcome_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RewordOutcomeIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckInOut"];
                 };
             };
         };

@@ -1555,6 +1555,149 @@
         ]
       }
     },
+    "/api/v1/weeks/{day}/outcomes": {
+      "post": {
+        "operationId": "review_api_v1_choose_outcome",
+        "summary": "Choose Outcome",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "day",
+            "schema": {
+              "format": "date",
+              "title": "Day",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckInOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Commit to something being true by the end of this week.\n\nThe project is looked up owner-scoped, so a foreign id is a 404 rather\nthan an outcome pointing at somebody else's work.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChooseOutcomeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/weeks/{day}/outcomes/{outcome_id}": {
+      "patch": {
+        "operationId": "review_api_v1_reword_outcome",
+        "summary": "Reword Outcome",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "day",
+            "schema": {
+              "format": "date",
+              "title": "Day",
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "in": "path",
+            "name": "outcome_id",
+            "schema": {
+              "title": "Outcome Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckInOut"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RewordOutcomeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "review_api_v1_drop_outcome",
+        "summary": "Drop Outcome",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "day",
+            "schema": {
+              "format": "date",
+              "title": "Day",
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "in": "path",
+            "name": "outcome_id",
+            "schema": {
+              "title": "Outcome Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckInOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Take it off the week. A real delete \u2014 see the model on why this one\nrecord is allowed it.",
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/weeks/{day}/planning-session": {
       "post": {
         "operationId": "review_api_v1_start_planning_session",
@@ -3637,12 +3780,28 @@
             },
             "title": "Projects",
             "type": "array"
+          },
+          "outcomes": {
+            "items": {
+              "$ref": "#/components/schemas/OutcomeOut"
+            },
+            "title": "Outcomes",
+            "type": "array"
+          },
+          "proposals": {
+            "items": {
+              "$ref": "#/components/schemas/OutcomeProposalOut"
+            },
+            "title": "Proposals",
+            "type": "array"
           }
         },
         "required": [
           "started",
           "unusual",
-          "projects"
+          "projects",
+          "outcomes",
+          "proposals"
         ],
         "title": "CheckInOut",
         "type": "object"
@@ -3892,6 +4051,73 @@
           "mentions"
         ],
         "title": "NameToConfirmOut",
+        "type": "object"
+      },
+      "OutcomeOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "project_title": {
+            "title": "Project Title",
+            "type": "string"
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Id"
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "project_title",
+          "project_id"
+        ],
+        "title": "OutcomeOut",
+        "type": "object"
+      },
+      "OutcomeProposalOut": {
+        "description": "A project the week has a reason to be about, and the reason.\n\n`because` is stated facts rather than a score, and `suggested_text` is the\nproject's own words -- never a phrasing this composed. D1 defers generated\nprose, and rewording somebody's own sentence would be the least defensible\nplace to start.",
+        "properties": {
+          "project_id": {
+            "title": "Project Id",
+            "type": "integer"
+          },
+          "project_title": {
+            "title": "Project Title",
+            "type": "string"
+          },
+          "suggested_text": {
+            "title": "Suggested Text",
+            "type": "string"
+          },
+          "because": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Because",
+            "type": "array"
+          }
+        },
+        "required": [
+          "project_id",
+          "project_title",
+          "suggested_text",
+          "because"
+        ],
+        "title": "OutcomeProposalOut",
         "type": "object"
       },
       "PlannedOut": {
@@ -4545,6 +4771,43 @@
           "text"
         ],
         "title": "WeekIntentionIn",
+        "type": "object"
+      },
+      "ChooseOutcomeIn": {
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Id"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "ChooseOutcomeIn",
+        "type": "object"
+      },
+      "RewordOutcomeIn": {
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "RewordOutcomeIn",
         "type": "object"
       },
       "WeekUnusualIn": {

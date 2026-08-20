@@ -714,6 +714,39 @@ export function ReviewRoute() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey }),
   });
 
+  // Outcomes -- v2 increment 5. Three writes, because choosing, rewording and
+  // dropping are three statements; the responses all carry the whole check-in
+  // back, so the section re-renders from one source rather than reconciling.
+  const chooseOutcome = useMutation({
+    mutationFn: async (proposal: { project_id: number; suggested_text: string }) => {
+      const day = data?.draft.week_start;
+      if (!day) throw new Error("Couldn't add that outcome.");
+      const { error } = await apiV1.POST("/api/v1/weeks/{day}/outcomes", {
+        params: { path: { day } },
+        // The project's own words, carried through unchanged. Nothing here
+        // composes a sentence -- see the model on why that is D1's line.
+        body: { text: proposal.suggested_text, project_id: proposal.project_id },
+      });
+      if (error) throw new Error("Couldn't add that outcome.");
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
+    onError: (caught: Error) => setSaveError(caught.message),
+  });
+
+  const dropOutcome = useMutation({
+    mutationFn: async (outcomeId: number) => {
+      const day = data?.draft.week_start;
+      if (!day) throw new Error("Couldn't remove that outcome.");
+      const { error } = await apiV1.DELETE(
+        "/api/v1/weeks/{day}/outcomes/{outcome_id}",
+        { params: { path: { day, outcome_id: outcomeId } } },
+      );
+      if (error) throw new Error("Couldn't remove that outcome.");
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
+    onError: (caught: Error) => setSaveError(caught.message),
+  });
+
   // Parking a project from the check-in, through the task core's own endpoint.
   // The review proposes and the service that owns projects still decides --
   // the same shape pinning a task to today already takes, and the reason there
@@ -1083,6 +1116,76 @@ export function ReviewRoute() {
                   <option value="more_time">More time than usual</option>
                 </select>
               </div>
+
+              {/* What the week is already committed to -- v2 increment 5.
+                  Two or three things that will be true by Friday, each chosen
+                  separately. Listed before the proposals, because the question
+                  "is this enough?" is easier to answer looking at what is
+                  already there. */}
+              {checkIn.outcomes.length > 0 && (
+                <ul className="space-y-1">
+                  {checkIn.outcomes.map((outcome) => (
+                    <li
+                      key={outcome.id}
+                      className="flex flex-wrap items-baseline justify-between gap-2 rounded-lg border border-accent px-3 py-2 text-sm"
+                    >
+                      <span>
+                        {outcome.text}
+                        {/* The snapshot, not the project's current name. A
+                            rename does not rewrite what was committed to. */}
+                        {outcome.project_title && (
+                          <span className="text-muted-foreground">
+                            {" "}
+                            — {outcome.project_title}
+                          </span>
+                        )}
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        aria-label="Drop this outcome"
+                        disabled={dropOutcome.isPending}
+                        onClick={() => dropOutcome.mutate(outcome.id)}
+                      >
+                        Drop
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {/* What is worth choosing, and why. `because` is stated facts a
+                  reader can check -- a deadline, work already dated into the
+                  week -- rather than a score, and the sentence offered is the
+                  project's own `desired_outcome`. Capped at five in the read:
+                  a ritual opening with nine choices is the pile this step
+                  exists to replace. */}
+              {checkIn.proposals.length > 0 && (
+                <ul className="space-y-1">
+                  {checkIn.proposals.map((proposal) => (
+                    <li
+                      key={proposal.project_id}
+                      className="flex flex-wrap items-baseline justify-between gap-2 text-sm"
+                    >
+                      <span>
+                        {proposal.project_title}{" "}
+                        <span className="text-muted-foreground">
+                          — {proposal.because.join(" · ")}
+                        </span>
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        aria-label={`Use ${proposal.project_title}`}
+                        disabled={chooseOutcome.isPending}
+                        onClick={() => chooseOutcome.mutate(proposal)}
+                      >
+                        Use
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              )}
 
               {checkIn.projects.length > 0 && (
                 <ul className="space-y-1">

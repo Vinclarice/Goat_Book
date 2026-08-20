@@ -20,7 +20,12 @@ from daily.models import DailyEntry, DailyFocus
 from mind import queries as mind_queries
 from mind.models import Facet, FacetKind, Node
 from lists.models import Item, Project
-from review.models import PlanningSession, WeeklyIntention, WeeklyReview
+from review.models import (
+    PlanningSession,
+    WeeklyIntention,
+    WeeklyOutcome,
+    WeeklyReview,
+)
 from review.weeks import DAYS_IN_WEEK, days_in, week_end_for, week_start_for
 from routines import reads as routine_reads
 from routines.models import Routine, RoutineOccurrence, RoutinePause
@@ -926,3 +931,102 @@ def projects_to_confirm(owner):
         )
     found.sort(key=lambda each: (-each.quiet_for_days, each.project.id))
     return found
+
+
+def outcomes_for(owner, day):
+    """What this owner decided would be true by the end of that week.
+
+    In the order they were chosen, which is the order they are shown. A list
+    rather than a queryset, matching every other read here that a serialiser
+    walks twice.
+    """
+    return list(
+        WeeklyOutcome.objects.filter(
+            owner=owner, week_start=week_start_for(day)
+        ).select_related("project")
+    )
+
+
+# How many candidates the check-in offers. Five, matching the review's other
+# queues -- a ritual that opens with nine choices is the pile of work this step
+# exists to replace. **The cap is on what is shown and never on how many
+# outcomes somebody may choose**; how much a week can hold is theirs to decide,
+# and the draft further down already says what a typical week holds.
+OUTCOME_PROPOSAL_LIMIT = 5
+
+
+@dataclass(frozen=True)
+class OutcomeProposal:
+    """A project the week has a reason to be about, and the reason.
+
+    `because` is a list of stated facts rather than a score: a deadline, work
+    already dated into the week. `suggested_text` is the project's *own* words
+    -- its `desired_outcome`, or failing that its title -- because D1 defers
+    composed prose and a rephrasing of somebody's own sentence would be the
+    least defensible generation in this plan.
+    """
+
+    project: object
+    suggested_text: str
+    because: list
+
+
+def outcomes_worth_proposing(owner, week_start):
+    """Projects this week has a reason to be about — increment 5.
+
+    Two reasons qualify, and both are checkable facts rather than judgements:
+    a deadline inside the week, and work already dated into it. A project with
+    neither is not this week's, and offering every project would be the pile of
+    choices the ritual replaces.
+
+    Paused and completed projects are excluded, as everywhere else -- both have
+    been answered. So is one already chosen for this week: offering it again is
+    the surface asking a question it holds the answer to.
+
+    Soonest deadline first, then by id, so the ordering is stable and none of it
+    is a ranking.
+    """
+    week_end = week_end_for(week_start)
+    already = set(
+        WeeklyOutcome.objects.filter(
+            owner=owner, week_start=week_start, project__isnull=False
+        ).values_list("project_id", flat=True)
+    )
+
+    found = []
+    for project in Project.objects.filter(
+        owner=owner, is_completed=False, paused_at__isnull=True
+    ).exclude(pk__in=already):
+        because = []
+        if project.due_date and week_start <= project.due_date <= week_end:
+            because.append(f"Due {project.due_date}")
+        dated = Item.objects.filter(
+            owner=owner,
+            list__project=project,
+            status=Item.Status.ACTIVE,
+            due_date__gte=week_start,
+            due_date__lte=week_end,
+        ).count()
+        if dated:
+            because.append(
+                f"{dated} {'task' if dated == 1 else 'tasks'} already dated for it"
+            )
+        if not because:
+            continue
+        found.append(
+            OutcomeProposal(
+                project=project,
+                # The person's words, never this module's.
+                suggested_text=project.desired_outcome or project.title,
+                because=because,
+            )
+        )
+
+    found.sort(
+        key=lambda each: (
+            each.project.due_date is None,
+            each.project.due_date or week_end,
+            each.project.id,
+        )
+    )
+    return found[:OUTCOME_PROPOSAL_LIMIT]

@@ -262,3 +262,92 @@ class PlanningSession(models.Model):
 
     def __str__(self):
         return f"{self.owner}: planned week of {self.week_start}"
+
+
+class WeeklyOutcome(models.Model):
+    """A thing a person decided would be true by the end of a week.
+
+    **D3, answered: outcomes and intentions are different questions.** An
+    intention is one sentence about what a week is *for* and survives the week
+    as context a Wednesday reads; an outcome is one of two or three concrete
+    things that will be true by Friday, each chosen separately, each carrying
+    the evidence that put it on the list. One record per owner per week could
+    not hold several, and folding them together would mean the sentence and the
+    commitments shared a confirmation state -- which is exactly the collapse
+    §4's life-cycle test exists to catch.
+
+    **Nothing here is generated.** The proposal is a *project* plus the facts
+    that make it this week's, and the sentence offered is the project's own
+    `desired_outcome` -- the person's words, which is why that field was added
+    in increment 3. D1 defers composed prose and this surface does not need it:
+    what a model would add is a rephrasing, and a rephrasing of somebody's own
+    sentence is the least defensible generation in the plan.
+
+    **Charter compliance** (architecture-trajectory.md §4):
+
+    - Rule 1, owned at birth: `owner` is non-null in this first migration.
+    - Rule 2, public identifier: none. Nothing plans a week offline.
+    - Rule 3, snapshot: `project_title` is copied at confirmation. An outcome
+      that read its project's title live would be silently rewritten by a
+      rename, and "what I committed to three weeks ago" is exactly the kind of
+      history `RoutineOccurrence.target_quantity` copies for. The FK stays as a
+      reference for reaching the project, and goes SET_NULL rather than taking
+      the outcome with it -- deleting a project does not unmake the week you
+      spent on it.
+    - Rule 5, reference never copy: the project's *current* state is read live
+      wherever it is shown. Only what gives this record its meaning is copied.
+    - Rule 6, deletion: **hard delete, and this model is the exception to the
+      week-keyed pattern around it.** `WeeklyReview`, `DailyEntry`,
+      `WeeklyIntention` and `PlanningSession` all keep their rows because their
+      *existence* answers "did this practice happen" -- and here
+      `PlanningSession` already answers that. An outcome is a chosen thing;
+      choosing three and dropping one is ordinary editing, not rewriting
+      history, and a tombstone would make the week's own list unreadable.
+    - Rule 7, index the query: the constraint below covers "this owner, this
+      week, in order", which is the only read.
+    - Rule 8, template and occurrences: does not apply.
+    """
+
+    owner = models.ForeignKey(
+        "accounts.User",
+        related_name="weekly_outcomes",
+        on_delete=models.CASCADE,
+    )
+    # The Monday of the week this is an outcome *for*, from review.weeks.
+    week_start = models.DateField()
+    # The person's own words. Seeded from the project's `desired_outcome` when
+    # one is confirmed from a proposal, and editable afterwards -- an outcome
+    # for a week is not the same sentence as the project's standing definition
+    # of done, even when it starts as a copy of it.
+    text = models.TextField()
+    # What it came from, when it came from something. Null for one written from
+    # nothing, which is allowed: a week can be about something that is not a
+    # project.
+    project = models.ForeignKey(
+        "lists.Project",
+        related_name="weekly_outcomes",
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+    )
+    # Rule 3. What the project was called when this was chosen, so a rename
+    # cannot rewrite what somebody committed to.
+    project_title = models.CharField(max_length=100, blank=True, default="")
+    # The order they were chosen in, which is the order they are shown in. Not
+    # a priority: the plan is explicit that ranking work is the person's, and a
+    # number the system sorted by would become one.
+    position = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ("week_start", "position", "id")
+        indexes = [
+            models.Index(
+                fields=("owner", "week_start", "position"),
+                name="outcome_owner_week_idx",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.owner}: {self.text[:40]} (week of {self.week_start})"

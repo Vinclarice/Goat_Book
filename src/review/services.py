@@ -9,7 +9,12 @@ from django.db import transaction
 from django.utils import timezone
 
 from review import reads
-from review.models import PlanningSession, WeeklyIntention, WeeklyReview
+from review.models import (
+    PlanningSession,
+    WeeklyIntention,
+    WeeklyOutcome,
+    WeeklyReview,
+)
 from review.weeks import week_start_for
 
 
@@ -173,3 +178,52 @@ def set_week_unusual(owner, day, unusual):
     session.unusual = unusual
     session.save(update_fields=["unusual", "updated_at"])
     return session
+
+
+@transaction.atomic
+def choose_outcome(owner, day, *, text, project=None):
+    """Commit to something being true by the end of this week — increment 5.
+
+    **Snapshots the project's title at the moment of choosing**, charter rule
+    3. The FK stays as a live reference for reaching the project; the copy is
+    what stops a rename rewriting what somebody committed to. A project deleted
+    later leaves the outcome standing, readable from the copy.
+
+    `position` is the order chosen and never a ranking. Which outcome matters
+    more is the person's to say, and a number the system sorted by would
+    quietly become one.
+    """
+    week_start = week_start_for(day)
+    taken = WeeklyOutcome.objects.filter(
+        owner=owner, week_start=week_start
+    ).count()
+    return WeeklyOutcome.objects.create(
+        owner=owner,
+        week_start=week_start,
+        text=text,
+        project=project,
+        project_title=project.title if project else "",
+        position=taken,
+    )
+
+
+@transaction.atomic
+def reword_outcome(owner, outcome_id, text):
+    """Say it differently. Owner-scoped in the lookup rather than checked
+    afterwards, so there is no comparison to forget."""
+    outcome = WeeklyOutcome.objects.get(pk=outcome_id, owner=owner)
+    outcome.text = text
+    outcome.save(update_fields=["text", "updated_at"])
+    return outcome
+
+
+@transaction.atomic
+def drop_outcome(owner, outcome_id):
+    """Take it off the week.
+
+    A hard delete, which every other week-keyed record here refuses. Their
+    rows exist because their *presence* answers "did this practice happen",
+    and `PlanningSession` already answers that for planning -- so an outcome
+    is free to be what it looks like, a chosen thing that can be un-chosen.
+    """
+    WeeklyOutcome.objects.get(pk=outcome_id, owner=owner).delete()

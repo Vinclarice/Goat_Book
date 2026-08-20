@@ -41,7 +41,12 @@ from mind.models import (
     Revision,
     SentenceEmbedding,
 )
-from review.models import PlanningSession, WeeklyIntention, WeeklyReview
+from review.models import (
+    PlanningSession,
+    WeeklyIntention,
+    WeeklyOutcome,
+    WeeklyReview,
+)
 from routines.models import Routine, RoutineOccurrence, RoutinePause
 
 # Never leaves the database. Both are one-way hashes, so exporting them would
@@ -76,6 +81,7 @@ EXPORT_KEYS = {
     WeeklyReview: "reviews",
     WeeklyIntention: "week_intentions",
     PlanningSession: "planning_sessions",
+    WeeklyOutcome: "week_outcomes",
     Node: "nodes",
     Revision: "revisions",
     Facet: "facets",
@@ -204,6 +210,7 @@ def _payload(user, *, now):
         # being missing before a person could, which is the second time that
         # test has earned its place on a model added to the review app.
         "planning_sessions": _rows(PlanningSession.objects.filter(owner=user)),
+        "week_outcomes": _rows(WeeklyOutcome.objects.filter(owner=user)),
         "knowledge": {
             "nodes": _rows(nodes),
             "revisions": _rows(Revision.objects.filter(node__owner=user)),

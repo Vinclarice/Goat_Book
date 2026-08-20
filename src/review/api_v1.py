@@ -26,7 +26,8 @@ from ninja.errors import HttpError
 
 from lists import agenda
 from review import reads, services
-from review.models import PlanningSession
+from lists.models import Project
+from review.models import PlanningSession, WeeklyOutcome
 from review.weeks import DAYS_IN_WEEK, week_start_for
 
 
@@ -567,6 +568,46 @@ class CheckInOut(Schema):
     started: bool
     unusual: str
     projects: list[ProjectToConfirmOut]
+    # What has been chosen for the week, and what is worth choosing. Both, so
+    # the section can say "here are your two" and "here is a third worth
+    # considering" without a second request.
+    outcomes: list[OutcomeOut]
+    proposals: list[OutcomeProposalOut]
+
+
+class OutcomeOut(Schema):
+    id: int
+    text: str
+    # The snapshot, not the project's current title -- what it was called when
+    # this was chosen. Empty for an outcome written from nothing.
+    project_title: str
+    # Null once the project is deleted, which leaves the outcome standing and
+    # readable from the copy above.
+    project_id: int | None
+
+
+class OutcomeProposalOut(Schema):
+    """A project the week has a reason to be about, and the reason.
+
+    `because` is stated facts rather than a score, and `suggested_text` is the
+    project's own words -- never a phrasing this composed. D1 defers generated
+    prose, and rewording somebody's own sentence would be the least defensible
+    place to start.
+    """
+
+    project_id: int
+    project_title: str
+    suggested_text: str
+    because: list[str]
+
+
+class ChooseOutcomeIn(Schema):
+    text: str
+    project_id: int | None = None
+
+
+class RewordOutcomeIn(Schema):
+    text: str
 
 
 class WeekUnusualIn(Schema):
@@ -644,7 +685,71 @@ def _check_in_out(owner, week_start):
             }
             for each in reads.projects_to_confirm(owner)
         ],
+        "outcomes": [
+            {
+                "id": each.id,
+                "text": each.text,
+                "project_title": each.project_title,
+                "project_id": each.project_id,
+            }
+            for each in reads.outcomes_for(owner, week_start)
+        ],
+        "proposals": [
+            {
+                "project_id": each.project.id,
+                "project_title": each.project.title,
+                "suggested_text": each.suggested_text,
+                "because": each.because,
+            }
+            for each in reads.outcomes_worth_proposing(
+                owner, week_start_for(week_start)
+            )
+        ],
     }
+
+
+@router.post("/weeks/{day}/outcomes", response=CheckInOut)
+def choose_outcome(request, day: date, payload: ChooseOutcomeIn):
+    """Commit to something being true by the end of this week.
+
+    The project is looked up owner-scoped, so a foreign id is a 404 rather
+    than an outcome pointing at somebody else's work.
+    """
+    text = payload.text.strip()
+    if not text:
+        raise HttpError(422, "An outcome needs words.")
+    project = None
+    if payload.project_id is not None:
+        project = Project.objects.filter(
+            owner=request.user, pk=payload.project_id
+        ).first()
+        if project is None:
+            raise HttpError(404, "Project not found.")
+    services.choose_outcome(request.user, day, text=text, project=project)
+    return _check_in_out(request.user, day)
+
+
+@router.patch("/weeks/{day}/outcomes/{outcome_id}", response=CheckInOut)
+def reword_outcome(request, day: date, outcome_id: int, payload: RewordOutcomeIn):
+    text = payload.text.strip()
+    if not text:
+        raise HttpError(422, "An outcome needs words.")
+    try:
+        services.reword_outcome(request.user, outcome_id, text)
+    except WeeklyOutcome.DoesNotExist:
+        raise HttpError(404, "Outcome not found.")
+    return _check_in_out(request.user, day)
+
+
+@router.delete("/weeks/{day}/outcomes/{outcome_id}", response=CheckInOut)
+def drop_outcome(request, day: date, outcome_id: int):
+    """Take it off the week. A real delete — see the model on why this one
+    record is allowed it."""
+    try:
+        services.drop_outcome(request.user, outcome_id)
+    except WeeklyOutcome.DoesNotExist:
+        raise HttpError(404, "Outcome not found.")
+    return _check_in_out(request.user, day)
 
 
 @router.post("/weeks/{day}/planning-session", response=CheckInOut)

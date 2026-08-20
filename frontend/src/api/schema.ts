@@ -487,6 +487,37 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search
+         * @description Everything this owner has written that matches `q`.
+         *
+         *     D1's answer, August 20, 2026: here, in the knowledge core's router on the
+         *     shared API, rather than in a new one. Search is not owned by either core --
+         *     it reads `Item`, `DailyEntry` and `Node` -- and `CLAUDE.md`'s rule is one
+         *     API with a knowledge-core endpoint as a router in this module. The
+         *     alternative was `clarice` growing its first router, which is a bigger
+         *     precedent than this needed to set.
+         *
+         *     One query parse for all three sections, via `clarice.search`. Three sections
+         *     that disagreed about whether a second word narrows would look like a ranking
+         *     bug and would not be one.
+         */
+        get: operations["mind_api_v1_search"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/day": {
         parameters: {
             query?: never;
@@ -1536,6 +1567,79 @@ export interface components {
              * Format: uuid
              */
             public_id: string;
+        };
+        /** DayResultOut */
+        DayResultOut: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Intentions */
+            intentions: string;
+            /** Gratitude */
+            gratitude: string;
+            /** Happenings */
+            happenings: string;
+        };
+        /** NoteResultOut */
+        NoteResultOut: {
+            /**
+             * Public Id
+             * Format: uuid
+             */
+            public_id: string;
+            /** Body */
+            body: string;
+            /**
+             * Captured At
+             * Format: date-time
+             */
+            captured_at: string;
+            /** Superseded */
+            superseded: boolean;
+        };
+        /**
+         * SearchOut
+         * @description Three sections, each ranked and counted on its own.
+         *
+         *     **Never one merged list.** `SearchRank` compares documents within one set
+         *     and means nothing across two, so a combined ordering would be a number that
+         *     does not exist, presented as relevance. `design/search-plan.md` rejects the
+         *     merged list rather than deferring it: validating a weighting would need the
+         *     retrieval evidence that does not exist yet.
+         *
+         *     Each `*_total` is counted before slicing. A section showing three of thirty
+         *     and saying nothing invites the miss button to be pressed for something it
+         *     simply did not show, which records a truncation as a retrieval failure in
+         *     the one signal where the right answer is known.
+         */
+        SearchOut: {
+            /** Tasks */
+            tasks: components["schemas"]["TaskResultOut"][];
+            /** Tasks Total */
+            tasks_total: number;
+            /** Days */
+            days: components["schemas"]["DayResultOut"][];
+            /** Days Total */
+            days_total: number;
+            /** Notes */
+            notes: components["schemas"]["NoteResultOut"][];
+            /** Notes Total */
+            notes_total: number;
+        };
+        /** TaskResultOut */
+        TaskResultOut: {
+            /** Id */
+            id: number;
+            /** Text */
+            text: string;
+            /** Notes */
+            notes: string;
+            /** Status */
+            status: string;
+            /** Due Date */
+            due_date: string | null;
         };
         /**
          * DayActionItemOut
@@ -3002,6 +3106,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["QuestionOut"];
+                };
+            };
+        };
+    };
+    mind_api_v1_search: {
+        parameters: {
+            query?: {
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SearchOut"];
                 };
             };
         };

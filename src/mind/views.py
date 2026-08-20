@@ -24,12 +24,14 @@ Everything routes through `services`; these views parse a form and redirect.
 from __future__ import annotations
 
 from django.contrib.auth.decorators import login_required
-from django.contrib.postgres.search import SearchQuery
 from django.shortcuts import redirect, render
 from django.templatetags.static import static
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
+from clarice.search import to_query
+from daily import reads as daily_reads
+from lists import search as lists_search
 from lists.services import TaskConflict
 
 from . import instrumentation, queries, services
@@ -477,12 +479,39 @@ def search(request):
     The "I know I wrote this" button is the point of this page as much as the results
     are: a recorded miss is the strongest evidence available about retrieval, because
     the correct answer is known.
+
+    **Three sections since August 20, 2026** — notes, tasks and days —
+    `design/search-plan.md` increment 3, and D2's answer: this page rather than a
+    new one. It lives under `/mind/` while searching both cores, which is the
+    prefix naming the smaller half again; taken deliberately, because the
+    alternative was splitting search from the miss button, and the button is the
+    only instrument this project has for judging whether search works at all.
+
+    **Sectioned, and ranked within each section, never merged.** `SearchRank`
+    compares documents within one set and means nothing across two, so one
+    combined list would be ordered by a number that does not exist. Each section
+    also carries its own total, for the reason the notes section already did.
     """
     q = (request.GET.get("q") or "").strip()
     results = []
     total = 0
-    if q:
-        query = SearchQuery(q, config="english")
+    tasks = []
+    tasks_total = 0
+    days = []
+    days_total = 0
+    # One parse for every section. Three sections that disagree about whether a
+    # second word narrows would look like a ranking bug and would not be one --
+    # see `clarice/search.py`, which exists for exactly this.
+    query = to_query(q)
+    if query is not None:
+        matching_tasks = lists_search.search_tasks(request.user, q)
+        tasks_total = matching_tasks.count()
+        tasks = list(matching_tasks[:RECENT_LIMIT])
+
+        matching_days = daily_reads.search_entries(request.user, q)
+        days_total = matching_days.count()
+        days = list(matching_days[:RECENT_LIMIT])
+
         matching = queries.search_ranked(request.user, query)
         # Counted before slicing, because the count is the point: a page that
         # returns thirty of thirty-five and says nothing is a page that invites
@@ -512,6 +541,17 @@ def search(request):
             "results": results,
             "total": total,
             "truncated": total > len(results),
+            "tasks": tasks,
+            "tasks_total": tasks_total,
+            "tasks_truncated": tasks_total > len(tasks),
+            "days": days,
+            "days_total": days_total,
+            "days_truncated": days_total > len(days),
+            # Said once, when every section is empty. Three stacked empty-states
+            # would announce failure three times for a search that found
+            # something -- and noise directly above the miss button is how that
+            # button stops being read.
+            "nothing_anywhere": bool(q) and not (results or tasks or days),
             "limit": RECENT_LIMIT,
         },
     )

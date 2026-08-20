@@ -868,6 +868,42 @@
         ]
       }
     },
+    "/api/v1/search": {
+      "get": {
+        "operationId": "mind_api_v1_search",
+        "summary": "Search",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "schema": {
+              "default": "",
+              "title": "Q",
+              "type": "string"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Everything this owner has written that matches `q`.\n\nD1's answer, August 20, 2026: here, in the knowledge core's router on the\nshared API, rather than in a new one. Search is not owned by either core --\nit reads `Item`, `DailyEntry` and `Node` -- and `CLAUDE.md`'s rule is one\nAPI with a knowledge-core endpoint as a router in this module. The\nalternative was `clarice` growing its first router, which is a bigger\nprecedent than this needed to set.\n\nOne query parse for all three sections, via `clarice.search`. Three sections\nthat disagreed about whether a second word narrows would look like a ranking\nbug and would not be one.",
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      }
+    },
     "/api/v1/day": {
       "get": {
         "operationId": "daily_api_v1_get_today",
@@ -3286,6 +3322,154 @@
           "public_id"
         ],
         "title": "QuestionOut",
+        "type": "object"
+      },
+      "DayResultOut": {
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "intentions": {
+            "title": "Intentions",
+            "type": "string"
+          },
+          "gratitude": {
+            "title": "Gratitude",
+            "type": "string"
+          },
+          "happenings": {
+            "title": "Happenings",
+            "type": "string"
+          }
+        },
+        "required": [
+          "date",
+          "intentions",
+          "gratitude",
+          "happenings"
+        ],
+        "title": "DayResultOut",
+        "type": "object"
+      },
+      "NoteResultOut": {
+        "properties": {
+          "public_id": {
+            "format": "uuid",
+            "title": "Public Id",
+            "type": "string"
+          },
+          "body": {
+            "title": "Body",
+            "type": "string"
+          },
+          "captured_at": {
+            "format": "date-time",
+            "title": "Captured At",
+            "type": "string"
+          },
+          "superseded": {
+            "title": "Superseded",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "public_id",
+          "body",
+          "captured_at",
+          "superseded"
+        ],
+        "title": "NoteResultOut",
+        "type": "object"
+      },
+      "SearchOut": {
+        "description": "Three sections, each ranked and counted on its own.\n\n**Never one merged list.** `SearchRank` compares documents within one set\nand means nothing across two, so a combined ordering would be a number that\ndoes not exist, presented as relevance. `design/search-plan.md` rejects the\nmerged list rather than deferring it: validating a weighting would need the\nretrieval evidence that does not exist yet.\n\nEach `*_total` is counted before slicing. A section showing three of thirty\nand saying nothing invites the miss button to be pressed for something it\nsimply did not show, which records a truncation as a retrieval failure in\nthe one signal where the right answer is known.",
+        "properties": {
+          "tasks": {
+            "items": {
+              "$ref": "#/components/schemas/TaskResultOut"
+            },
+            "title": "Tasks",
+            "type": "array"
+          },
+          "tasks_total": {
+            "title": "Tasks Total",
+            "type": "integer"
+          },
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/DayResultOut"
+            },
+            "title": "Days",
+            "type": "array"
+          },
+          "days_total": {
+            "title": "Days Total",
+            "type": "integer"
+          },
+          "notes": {
+            "items": {
+              "$ref": "#/components/schemas/NoteResultOut"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "notes_total": {
+            "title": "Notes Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "tasks",
+          "tasks_total",
+          "days",
+          "days_total",
+          "notes",
+          "notes_total"
+        ],
+        "title": "SearchOut",
+        "type": "object"
+      },
+      "TaskResultOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "notes": {
+            "title": "Notes",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "notes",
+          "status",
+          "due_date"
+        ],
+        "title": "TaskResultOut",
         "type": "object"
       },
       "DayActionItemOut": {

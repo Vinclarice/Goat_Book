@@ -180,24 +180,30 @@ re-add it here.
   this a business, which wedge, and mobile native versus responsive web. Two of
   its five are stale rather than open: #3 is answered but its reasoning predates
   the merger, and #5 was largely done by the August 15 documentation pass.
-- **Unified search is active, and paused at a decision rather than at a
-  problem.** Designed and built to
-  [`search-plan.md`](search-plan.md). **Two of its five increments are done and
-  neither is visible**, which is the shape the plan chose deliberately: the
-  task core's material is indexed, and there is a ranked read over it.
+- **Unified search is active and usable, and undeployed.** Designed and built
+  to [`search-plan.md`](search-plan.md). **Three of its five increments are
+  done**, and the third is the one a person can use: `/mind/search/` now
+  answers in three sections — notes, tasks and days — from one box.
 
-  What landed August 20, 2026 — on `main`, **not deployed**: generated
-  `tsvector` columns with a `GinIndex` on `Item` and `DailyEntry`, two
-  migrations, `lists/search.py` and `daily.reads.search_entries`, and
-  `clarice/search.py` holding the one definition of how typed text becomes a
-  query — because sectioned results have a quiet dependency on every section
-  having asked the same question. 25 new tests; both suites green at 1384 and
-  771.
+  What landed August 20, 2026, all on `main` and **none of it deployed**:
+  generated `tsvector` columns with a `GinIndex` on `Item` and `DailyEntry`
+  and two migrations; `lists/search.py` and `daily.reads.search_entries`;
+  `clarice/search.py`, holding the one definition of how typed text becomes a
+  query, because sectioned results have a quiet dependency on every section
+  having asked the same question; `GET /api/v1/search`, session-only; and the
+  page. 42 new tests.
 
-  **Increment 3 is the first one a person can use, and it is blocked on D1 and
-  D2** — where a cross-core endpoint lives, and which surface shows it. Those
-  are the brief's, and they are Vince's. **Nothing about them is discoverable
-  by building more**, which is why this stopped here rather than guessing.
+  **D1 and D2 are answered and the brief records them** — the endpoint went in
+  `mind/api_v1.py` beside capture, and the surface is the page that already
+  existed, which is what keeps search attached to the miss button. **D3 and D4
+  remain**: whether `RetrievalMiss` widens to resolve against a task or a day,
+  and whether this promotes the command palette below.
+
+  **Sectioned, never merged, and that is a refusal rather than a first
+  version.** `SearchRank` compares documents within one set and means nothing
+  across two, so one ordered list would present a number that does not exist as
+  relevance. Validating a weighting would need the retrieval evidence that does
+  not exist yet — which is what the miss button is for.
 
   Two things were decided at the keyboard and are recorded at the code rather
   than here: search returns every status, where the agenda hides finished work,

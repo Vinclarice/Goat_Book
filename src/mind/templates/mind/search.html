@@ -10,27 +10,81 @@
 
 {% if q %}
   {% comment %}
-  Only when it is true. "Showing 3 of 3" on every search is noise, and noise
-  directly above a button about failure is how that button stops being read.
+  Three sections, each ranked and counted on its own, never merged into one
+  list. SearchRank compares documents within one set and means nothing across
+  two -- a combined list would be ordered by a number that does not exist, and
+  it would look right. See design/search-plan.md.
+
+  A section that matched nothing is absent rather than showing its own empty
+  state: "nothing matched" three times over, for a search that found something
+  in the other two, is noise directly above the button about failure.
   {% endcomment %}
-  {% if truncated %}
-    <p class="meta">Showing the {{ limit }} closest matches of {{ total }}.
-    Try a longer phrase to narrow it.</p>
+
+  {% if results %}
+    <h2>Notes</h2>
+    {% if truncated %}
+      <p class="meta">Showing the {{ limit }} closest matches of {{ total }}.
+      Try a longer phrase to narrow it.</p>
+    {% endif %}
+    {% for result in results %}
+      <div class="card">
+        <div class="body">{{ result.body }}</div>
+        <div class="meta" style="margin-top:.5rem">{{ result.node.captured_at|date:"j M Y" }}{% if result.superseded %} · matched an earlier version of this note{% endif %}</div>
+      </div>
+    {% endfor %}
   {% endif %}
 
-  {% for result in results %}
-    <div class="card">
-      <div class="body">{{ result.body }}</div>
-      <div class="meta" style="margin-top:.5rem">{{ result.node.captured_at|date:"j M Y" }}{% if result.superseded %} · matched an earlier version of this note{% endif %}</div>
-    </div>
-  {% empty %}
+  {% if tasks %}
+    <h2>Tasks</h2>
+    {% if tasks_truncated %}
+      <p class="meta">Showing the {{ limit }} closest matches of {{ tasks_total }}.
+      Try a longer phrase to narrow it.</p>
+    {% endif %}
+    {% for task in tasks %}
+      <div class="card">
+        <div class="body"><a href="/app/tasks/{{ task.pk }}">{{ task.text }}</a></div>
+        {% if task.notes %}<div class="body">{{ task.notes|truncatewords:40 }}</div>{% endif %}
+        {% comment %}
+        The status is shown because search returns every status, unlike the
+        agenda -- the older a task is, the more likely it is both finished and
+        the one being looked for. A completed task in a result list with nothing
+        saying so is worse than not returning it at all.
+        {% endcomment %}
+        <div class="meta" style="margin-top:.5rem">{{ task.get_status_display }}{% if task.due_date %} · due {{ task.due_date|date:"j M Y" }}{% endif %}</div>
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  {% if days %}
+    <h2>Days</h2>
+    {% if days_truncated %}
+      <p class="meta">Showing the {{ limit }} closest matches of {{ days_total }}.
+      Try a longer phrase to narrow it.</p>
+    {% endif %}
+    {% for day in days %}
+      <div class="card">
+        <div class="body"><a href="/app/day/{{ day.date|date:'Y-m-d' }}">{{ day.date|date:"l j F Y" }}</a></div>
+        {% if day.intentions %}<div class="body">{{ day.intentions|truncatewords:30 }}</div>{% endif %}
+        {% if day.happenings %}<div class="body">{{ day.happenings|truncatewords:40 }}</div>{% endif %}
+        {% if day.gratitude %}<div class="body">{{ day.gratitude|truncatewords:30 }}</div>{% endif %}
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  {% if nothing_anywhere %}
     <p class="empty">Nothing matched “{{ q }}”.</p>
-  {% endfor %}
+  {% endif %}
 
   {% comment %}
   The point of this page as much as the results. A recorded miss is the strongest
   evidence available about retrieval, because the correct answer is known — and
   vocabulary drift shows up here before it shows up anywhere else.
+
+  Kept directly below the results even though there are three sections now: the
+  further this sits from what somebody just failed to find, the less it gets
+  pressed, and an instrument nobody uses measures nothing. A miss recorded here
+  cannot yet resolve to a task or a day -- that is search-plan.md's D3, still
+  open -- but recording *that the search failed* never depended on it.
   {% endcomment %}
   <form method="post" action="{% url 'record_miss' %}" class="row" style="margin-top:1.5rem">
     {% csrf_token %}

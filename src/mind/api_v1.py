@@ -28,7 +28,7 @@ services, so the core that owns the record still decides what happens to it.
 """
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
 from django.utils import timezone
 from ninja import Header, Router, Schema, Status
@@ -36,8 +36,11 @@ from ninja.errors import HttpError
 
 from accounts.auth import SessionAuthIfLoggedIn, TokenAuth
 from accounts.models import SCOPE_CAPTURE_WRITE
+from clarice.search import to_query
+from daily import reads as daily_reads
+from lists import search as lists_search
 
-from . import services
+from . import queries, services
 from .models import Node, NodeSource
 
 router = Router()
@@ -199,3 +202,124 @@ def mark_not_a_question(request, public_id: uuid.UUID):
         node, now=timezone.now(), actor=request.user.get_username()
     )
     return {"public_id": node.public_id}
+
+
+# How many results any one section returns. The same number the page uses, so
+# the API and `/mind/search/` cannot disagree about what "the closest matches"
+# means for the same query.
+SEARCH_LIMIT = 30
+
+
+class TaskResultOut(Schema):
+    id: int
+    text: str
+    notes: str
+    # Carried because search returns every status where the agenda hides
+    # finished work -- the older a task is, the more likely it is both done and
+    # the one being looked for. A completed task in a result list with nothing
+    # saying so is worse than not returning it.
+    status: str
+    due_date: date | None
+
+
+class DayResultOut(Schema):
+    date: date
+    intentions: str
+    gratitude: str
+    happenings: str
+
+
+class NoteResultOut(Schema):
+    public_id: uuid.UUID
+    body: str
+    captured_at: datetime
+    # Matched only in text that has since been edited away. The original is
+    # preserved on purpose, so this is the design working -- but without the
+    # label a person is shown a note that does not contain the word they typed.
+    superseded: bool
+
+
+class SearchOut(Schema):
+    """Three sections, each ranked and counted on its own.
+
+    **Never one merged list.** `SearchRank` compares documents within one set
+    and means nothing across two, so a combined ordering would be a number that
+    does not exist, presented as relevance. `design/search-plan.md` rejects the
+    merged list rather than deferring it: validating a weighting would need the
+    retrieval evidence that does not exist yet.
+
+    Each `*_total` is counted before slicing. A section showing three of thirty
+    and saying nothing invites the miss button to be pressed for something it
+    simply did not show, which records a truncation as a retrieval failure in
+    the one signal where the right answer is known.
+    """
+
+    tasks: list[TaskResultOut]
+    tasks_total: int
+    days: list[DayResultOut]
+    days_total: int
+    notes: list[NoteResultOut]
+    notes_total: int
+
+
+@router.get(
+    "/search",
+    response=SearchOut,
+    # Session only, and deliberately not a token. `test_api_auth_surface.py`
+    # holds the token set at the operations a phone needs, and this is not one:
+    # a capture client exists to get a thought out of your head in three
+    # seconds. Widening a bearer that sits in a keystore for ninety days to
+    # read every task, day and note somebody owns is the largest single
+    # widening available here, and it should be asked for rather than arrive
+    # with a search box.
+    auth=SessionAuthIfLoggedIn(),
+)
+def search(request, q: str = ""):
+    """Everything this owner has written that matches `q`.
+
+    D1's answer, August 20, 2026: here, in the knowledge core's router on the
+    shared API, rather than in a new one. Search is not owned by either core --
+    it reads `Item`, `DailyEntry` and `Node` -- and `CLAUDE.md`'s rule is one
+    API with a knowledge-core endpoint as a router in this module. The
+    alternative was `clarice` growing its first router, which is a bigger
+    precedent than this needed to set.
+
+    One query parse for all three sections, via `clarice.search`. Three sections
+    that disagreed about whether a second word narrows would look like a ranking
+    bug and would not be one.
+    """
+    query = to_query(q)
+    if query is None:
+        return {
+            "tasks": [], "tasks_total": 0,
+            "days": [], "days_total": 0,
+            "notes": [], "notes_total": 0,
+        }
+
+    matching_tasks = lists_search.search_tasks(request.user, q)
+    tasks_total = matching_tasks.count()
+
+    matching_days = daily_reads.search_entries(request.user, q)
+    days_total = matching_days.count()
+
+    matching_notes = queries.search_ranked(request.user, query)
+    notes_total = matching_notes.count()
+    nodes = list(matching_notes[:SEARCH_LIMIT])
+    current = queries.current_text_matches(nodes, query)
+
+    return {
+        "tasks": list(matching_tasks[:SEARCH_LIMIT]),
+        "tasks_total": tasks_total,
+        "days": list(matching_days[:SEARCH_LIMIT]),
+        "days_total": days_total,
+        "notes": [
+            {
+                "public_id": node.public_id,
+                "body": queries.current_body(node),
+                "captured_at": node.captured_at,
+                "superseded": node.pk not in current,
+            }
+            for node in nodes
+        ],
+        "notes_total": notes_total,
+    }

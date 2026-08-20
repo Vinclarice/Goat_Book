@@ -130,20 +130,23 @@ feature. **Nothing here needs staging**, and nothing here generates anything.
 
 ## Open decisions — Vince's, not this document's
 
-1. **D1. Where does the endpoint live?** `CLAUDE.md` is explicit that there is
-   one API and a knowledge-core endpoint belongs in `mind/api_v1.py` beside the
-   capture one. Cross-core search belongs to *neither* core, which that rule
-   did not anticipate. Either it goes in `mind/api_v1.py` because search is the
-   knowledge core's concern and it already owns the miss signal, or `clarice/`
-   grows its first router — which is a small precedent with a long tail, since
-   it is the first thing that is the *application's* rather than a core's.
-2. **D2. Which surface?** `/mind/search/` already exists, works, and has the
-   miss button. Extending it is much the cheapest and puts task search under a
-   prefix that names the smaller half — the same shape as the `/capture/`
-   argument settled in `roadmap.md`. The alternatives are an SPA route, which
-   splits search from the miss signal and from the knowledge core's own
-   results, or a new top-level `/search/`, which is the honest name and the
-   most work.
+1. ~~**D1. Where does the endpoint live?**~~ **Answered August 20, 2026:
+   `mind/api_v1.py`, beside capture.** Vince's call. `CLAUDE.md`'s rule holds
+   rather than bending — one API, and a knowledge-core router carries it — and
+   `clarice/` does not grow its first router, which was the alternative and the
+   larger precedent. What the rule did not anticipate is still true and is
+   recorded here rather than smoothed over: **search belongs to neither core**,
+   and it reads `Item`, `DailyEntry` and `Node`. The next thing shaped like
+   this gets the same question, and `clarice/search.py` — which does hold a
+   rule for both cores — is where it will be asked again.
+2. ~~**D2. Which surface?**~~ **Answered August 20, 2026: the existing
+   `/mind/search/` page.** Vince's call, and the cheapest of the three. It puts
+   task and journal search under a prefix naming the smaller half, which is the
+   `/capture/` shape again and is accepted for the same reason it was there:
+   the prefix lives in one line of `clarice/urls.py` and everything under it is
+   relative, so this is settled rather than welded. **What it buys is the miss
+   button** — an SPA route would have split search from the only instrument
+   this project has for judging whether search works.
 3. **D3. Does `RetrievalMiss` widen to cover both cores?** `resolved_node` is a
    FK to `Node`. Widening it means a nullable second FK or a generic reference,
    and the model's docstring is specific that this is evidence about *semantic

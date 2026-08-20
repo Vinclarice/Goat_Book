@@ -155,9 +155,23 @@ Nothing here waits on anything else, and most of it is small.
   through them." with nothing clickable.
 - **The 44px floor into the link primitive**, finishing August 18's half-fix —
   "Edit your compass" is still a 20px anchor.
-- **The six invented concepts explained in-product, once** — Area, Project,
-  Checklist Step, Compass, Focus, "call it enough." Also the invitation bar's
-  third item.
+- **The brain dump, and orientation built on it.** Empty your head into a box,
+  no decisions about what any of it is; the existing sentence splitter already
+  breaks on newlines "because journal writing uses them as punctuation," which
+  is exactly how a dump is written. **This is how the six invented concepts get
+  explained** — Area, Project, Checklist Step, Compass, Focus, "call it enough,"
+  demonstrated on the person's own sentences rather than toured. It carries the
+  invitation bar's third item and is a better answer to S1's *four minutes* than
+  a tutorial.
+
+  **It ships behind a per-occasion proposal budget or not at all.** Five
+  detectors cap at three proposals *per capture*; forty fragments is up to six
+  hundred proposals from one sitting, and `dormant_thread`'s own comment says a
+  stream of poor ones "teaches the person to skim past the review surface, and
+  no later improvement recovers that." Substrate D11, and the ordering is the
+  whole safety of the feature. The ongoing ritual is the same surface — and it
+  is the counterweight to a memory fed only by deliberate capture inheriting the
+  biases of the brain doing the capturing.
 
 **Acceptance: S2, S3, S5, S7 and S9 reach *works*.** Five of the ten bends, in
 the release with the least new machinery in it.

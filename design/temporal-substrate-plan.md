@@ -19,6 +19,8 @@ an hour before it became clear they are one claim:
    similarity at all.
 4. **What memory holds** — intake, because *Clarice stores it all* is a claim
    about getting material **in** before it is a claim about finding it again.
+   **The brain dump lives here** and is the highest-bandwidth intake there is,
+   at orientation and as an ongoing ritual.
 
 **Widened twice, both Vince's call, both on the day it was written.** It began
 as the time axis alone. The corrected model is that memory holds anything —
@@ -311,6 +313,75 @@ is what makes images, audio and documents possible at all.
 at least a title — see D7, that is not free. **No email intake**; Resend sends
 and does not receive.
 
+### The brain dump
+
+**The highest-bandwidth intake surface there is, and it costs a text box.**
+Empty your head — everything on your mind, no decisions about what any of it is.
+Two uses, and they behave differently enough to be worth telling apart:
+
+- **At orientation.** A new person arrives carrying years of material. A dump is
+  how it gets in, and **it is also how the six invented concepts get taught** —
+  Area, Project, Checklist Step, Compass, Focus, "call it enough" — by being
+  demonstrated on the person's own sentences rather than explained in a tour.
+  That converts `commercial-blueprint.md` Part 5's *"explain the six invented
+  concepts somewhere in the product, once"* from a documentation task into the
+  first thing the product does, and it is a better answer to S1's *"within four
+  minutes he has captured a thought and planned a day"* than any tutorial.
+- **As an ongoing ritual.** Periodic *what is on your mind that is not written
+  down anywhere*. This is the counterweight to a real weakness named in the same
+  session that produced this brief: **a memory fed only by deliberate capture
+  inherits the biases of the brain doing the capturing**, because you chose what
+  to write down under the same motivated cueing. A sweep gets what filtering
+  missed.
+
+**Segmentation already exists and is deliberately dumb.** `services._SENTENCE`
+splits on sentence punctuation *and newlines*, "because journal writing uses
+them as punctuation" — which is exactly how people write a dump. The comment
+beside it refuses an NLP dependency outright, since "a real NLP dependency costs
+the determinism the whole live path rests on." **A dump needs no new
+segmentation**, and should not acquire cleverer segmentation as a side effect.
+
+#### The hazard, and it is severe
+
+**Every detector caps at three proposals per *capture*, and a dump is one
+occasion with many captures.** `dormant_thread`, `semantic_echo`,
+`shared_referent`, `open_question` and `concept_assignment` each cap at 3. Forty
+fragments through five detectors is **up to six hundred proposals from one
+sitting.**
+
+`dormant_thread`'s own reasoning is the warning: *"a stream of poor ones teaches
+the person to skim past the review surface, and no later improvement recovers
+that."* Done naively, the brain dump is the most efficient available way to
+destroy trust in the review surface — and at orientation it would do it on
+someone's first interaction, permanently.
+
+**So the budget must be per occasion, not per capture.** This is Part 2's mode
+concept arriving somewhere very concrete: *a dump is a processing moment with
+its own budget*, and the existing caps are the right number attached to the
+wrong unit. D11 is its shape.
+
+**One inversion worth expecting.** At orientation there is no corpus, so
+`dormant_thread`, `semantic_echo` and `shared_referent` can propose nothing at
+all — they need prior material to connect to. Only the role, question, concept
+and commitment producers can fire. **The dangerous dump is the ongoing one
+against a rich corpus**, not the first one, which is the opposite of the
+intuition.
+
+#### What a dump produces
+
+A dump is one input and many memories, which is a modelling question rather than
+a detail — D12. `NodeSource.THREAD` is the precedent for a node that is a
+container rather than a thought: *"a meta-node distilled from a confirmed
+thread... it was not captured, it was concluded."* A dump is the mirror image —
+captured, not concluded — and the same `MEMBER_OF` edge shape would give the
+occasion something for its budget, its provenance and its review to attach to.
+
+**And a dump invites more sensitive material than a task box does.** Fears,
+resentments, things about other people. Nothing about the existing guarantees
+changes — owner-scoped, `send_default_pii=False`, export and deletion — but the
+surface should be honest that emptying your head is what it is for, and the
+review of what it proposed should be as easy to reject wholesale as to accept.
+
 ### Intake spends a security property, and that must be deliberate
 
 `commercial-blueprint.md`'s verdict lists as a *positive*: **"No raw SQL, no
@@ -375,10 +446,20 @@ nothing else.
 
 ### Track D — intake
 
-13. **Switch attachments on** — upload path, size limit, content-type handling,
+13. **The per-occasion proposal budget**, before any dump surface exists. D11.
+    **This one is ordered deliberately**: shipping the dump first and the budget
+    second means the first dump is the one that teaches a person to skim past
+    the review surface, and that is not recoverable.
+14. **The brain dump surface**, using the existing segmenter unchanged. The
+    ongoing ritual and the orientation flow are the same surface with different
+    copy and a different corpus behind them.
+15. **Orientation built on it** — the six concepts demonstrated on the person's
+    own sentences rather than explained. This is also the invitation bar's third
+    item, and v3's *Usable* release carries it.
+16. **Switch attachments on** — upload path, size limit, content-type handling,
     storage.
-14. **URL intake**, if D7 says the SSRF surface is worth it.
-15. **Email intake**, or a recorded deferral with a trigger.
+17. **URL intake**, if D7 says the SSRF surface is worth it.
+18. **Email intake**, or a recorded deferral with a trigger.
 
 ## Open decisions — Vince's, not this document's
 
@@ -422,6 +503,25 @@ nothing else.
 10. **D10. Email intake — scope it, or defer with a trigger?** Deferring without
     one is what `roadmap.md`'s Track D refuses, and `principles.md` now says a
     trigger that cannot fire is a refusal.
+11. **D11. What shape is a per-occasion proposal budget?** A flat cap for the
+    whole dump, a cap per producer across the occasion, or proposals deferred
+    and released over subsequent review surfaces rather than all at once. The
+    third is the most humane and the most complicated, and it is the only one
+    that does not throw away material the person took the trouble to write.
+    **Whatever the answer, the per-capture caps stay** — they are correct for a
+    capture.
+12. **D12. Is a dump a container node, or only a timestamp its members share?**
+    `NodeSource.THREAD` plus `MEMBER_OF` is the existing shape and would need one
+    new enum value. Against it: a container is a node that is not a thought, and
+    `captured_at` already groups an occasion. For it: the budget, the
+    provenance and the review all need something to attach to, and *"the dump
+    from March 3rd"* is a thing a person will want to open.
+13. **D13. Is voice intake in scope?** A brain dump is far more natural spoken
+    than typed, and audio is exactly what Part 4's attachments would carry — but
+    transcription is an ML dependency, and `design-concept.md`'s ML policy is
+    strict enough that v1 of the planning assistant shipped no generation at
+    all. Storing the audio is cheap and settled; turning it into text is a
+    policy question, not an engineering one.
 
 ## What this refuses
 
@@ -442,6 +542,10 @@ nothing else.
   sober one.
 - **Overhauling unified search.** It is the correct foundation; this sits above
   it.
+- **A brain dump surface before the per-occasion budget exists.** The order is
+  the whole safety of the feature.
+- **Cleverer segmentation.** The dumb splitter is deliberate; a dump is not the
+  occasion to acquire an NLP dependency the live path would then rest on.
 - **Inventing history.** No event without a recorded timestamp on the source row.
 - **A second event log.** `ActivityEvent` gains a vocabulary, not a sibling.
 

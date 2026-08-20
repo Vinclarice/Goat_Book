@@ -3828,6 +3828,17 @@
           "selected_at": {
             "title": "Selected At",
             "type": "string"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
           }
         },
         "required": [
@@ -3835,7 +3846,8 @@
           "text",
           "status",
           "due_date",
-          "selected_at"
+          "selected_at",
+          "url"
         ],
         "title": "FocusOut",
         "type": "object"

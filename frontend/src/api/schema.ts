@@ -1773,6 +1773,8 @@ export interface components {
             due_date: string | null;
             /** Selected At */
             selected_at: string;
+            /** Url */
+            url: string | null;
         };
         /**
          * PausedRoutineOut

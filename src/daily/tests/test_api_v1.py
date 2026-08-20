@@ -14,6 +14,7 @@ import json
 from datetime import date, timedelta
 
 from django.test import Client, TestCase
+from django.urls import reverse
 from django.utils import timezone
 
 from accounts.models import (
@@ -221,6 +222,33 @@ class DayFocusEndpointTest(TestCase):
 
         for field in ("task_id", "text", "status", "due_date", "selected_at"):
             self.assertIn(field, row)
+
+    def test_a_focus_row_carries_the_address_of_the_task_it_names(self):
+        """What the day needs in order to *act* rather than only render.
+
+        `principles.md`'s *the main surface can do the main thing*: the vision
+        document calls the Daily Page the main working surface and it could not
+        complete a task, because a focus row named a task it had no way to
+        address. The server supplies the URL for the reason it supplies every
+        other one -- a client that assembles it holds a second definition of
+        the route, and `one rule, one authoritative definition` is the rule
+        that says not to.
+
+        **Not a new mutation path.** The address is the existing hand-rolled
+        endpoint every other surface already completes through; this is the
+        Daily Page reaching the one authority rather than growing a second.
+
+        Nullable beside `task_id` and for the same reason: the record of having
+        planned something outlives the task being deleted, and a row for a
+        deleted task has nothing to address.
+        """
+        self.pin(self.task)
+
+        row = self.client.get(self.day_url()).json()["focus"][0]
+
+        self.assertEqual(
+            row["url"], reverse("api_item_detail", args=[self.task.pk])
+        )
 
     def test_a_pinned_task_still_appears_in_the_broader_action_items(self):
         """The focus list sits above the agenda rather than carving it up --

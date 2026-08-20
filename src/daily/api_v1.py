@@ -190,6 +190,14 @@ class FocusOut(Schema):
     status: str | None
     due_date: str | None
     selected_at: str
+    #: Where the task itself lives, so the day can *act* rather than only
+    #: render -- `principles.md`'s *the main surface can do the main thing*.
+    #: The server supplies it for the reason it supplies every other URL: a
+    #: client that assembles one holds a second definition of the route.
+    #: **Not a new mutation path** -- this is the address every other surface
+    #: already completes through. Nullable beside `task_id` and for the same
+    #: reason: a pin for a deleted task has nothing to address.
+    url: str | None
 
 
 class FocusIn(Schema):
@@ -241,6 +249,7 @@ def _focus_out(focus):
         "status": task.status if task else None,
         "due_date": task.due_date.isoformat() if task and task.due_date else None,
         "selected_at": focus.selected_at.isoformat(),
+        "url": reverse("api_item_detail", args=[task.pk]) if task else None,
     }
 
 

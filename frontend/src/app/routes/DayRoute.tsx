@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ageLabel, colorForKey, dueLabel } from "../../agenda";
 import { apiV1 } from "../../api/client";
 import { RequestFailed, statusOf } from "../../api/failure";
+import { updateTaskStatus } from "../../api";
 import type { AreaColorKey } from "../../types";
 import { FirstRun } from "./FirstRun";
 import { JournalSuggestions } from "./JournalSuggestions";
@@ -53,6 +54,9 @@ type Focus = {
   text: string;
   status: string | null;
   due_date: string | null;
+  /** Where the task lives, so this page can act on it. Null for a pin whose
+   * task was deleted -- the record of having planned it outlives the task. */
+  url: string | null;
 };
 
 /**
@@ -67,11 +71,13 @@ function FocusList({
   focus,
   today,
   onUnpin,
+  onComplete,
   busy,
 }: {
   focus: Focus[];
   today: string;
   onUnpin: (taskId: number) => void;
+  onComplete: (item: Focus) => void;
   busy: boolean;
 }) {
   if (focus.length === 0) {
@@ -99,7 +105,18 @@ function FocusList({
                 {dueLabel(item.due_date, today)}
               </span>
             )}
-            {/* A deleted task leaves the record but nothing to unpin. */}
+            {/* A deleted task leaves the record but nothing to address. */}
+            {item.url !== null && item.status !== "completed" && (
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={busy}
+                aria-label={`Complete ${item.text}`}
+                onClick={() => onComplete(item)}
+              >
+                Complete
+              </Button>
+            )}
             {item.task_id !== null && (
               <Button
                 type="button"
@@ -782,6 +799,30 @@ export function DayRoute() {
       queryClient.setQueryData(["day", date ?? "today"], updated),
   });
 
+  // Completing goes through the task's own endpoint rather than the day's,
+  // because `updateTaskStatus` is the authority every other surface already
+  // completes through -- `principles.md`'s *one rule, one authoritative
+  // definition*. The read-only note that used to sit on the agenda rows here
+  // was right that a second mutation would be wrong, and wrong that the only
+  // alternative was doing without the verb.
+  //
+  // Invalidated rather than patched into the cache, unlike pin and unpin.
+  // They answer with the whole day; this answers with a task, and a completed
+  // *recurring* task also archives itself and spawns its successor -- so what
+  // the day looks like afterwards is the server's answer, not one this page
+  // can assemble. The draft survives a refetch by design; there is a test.
+  const completeMutation = useMutation({
+    mutationFn: async (item: Focus) => {
+      if (!item.url) throw new Error("Couldn't complete that.");
+      return updateTaskStatus(
+        { url: item.url } as Parameters<typeof updateTaskStatus>[0],
+        "completed",
+      );
+    },
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["day", date ?? "today"] }),
+  });
+
   // Routine writes answer with today's standings rather than the whole day,
   // so the day in cache is patched with them instead of refetched. Same
   // reason as the focus mutations: a refetch would settle the query again,
@@ -943,7 +984,8 @@ export function DayRoute() {
           focus={data.focus}
           today={data.today}
           onUnpin={(taskId) => focusMutation.mutate({ taskId, pin: false })}
-          busy={focusMutation.isPending}
+          onComplete={(item) => completeMutation.mutate(item)}
+          busy={focusMutation.isPending || completeMutation.isPending}
         />
         {/* What the day actually holds — product-stories.md S3, whose
             done-means is "the day says so while he is still planning". The

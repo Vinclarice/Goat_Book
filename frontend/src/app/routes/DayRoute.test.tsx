@@ -74,6 +74,7 @@ function focusRow(overrides: Record<string, unknown> = {}) {
     status: "active",
     due_date: "2026-08-03",
     selected_at: "2026-08-03T09:00:00",
+    url: "/api/items/1/",
     ...overrides,
   };
 }
@@ -547,6 +548,63 @@ describe("DayRoute", () => {
       .map(([input]) => input as Request)
       .find((request) => request.method === "DELETE");
     expect(deleted?.url).toContain("/api/v1/day/2026-08-03/focus/1");
+  });
+
+  it("completes a pinned task through the task's own endpoint", async () => {
+    // principles.md, *the main surface can do the main thing*: the vision
+    // document calls this the main working surface and it could not tick
+    // anything off. The endpoint is the one the Agenda already completes
+    // through -- naming the authority rather than growing a second one,
+    // which is what the read-only comment here was protecting against.
+    // Two client layers on one page, so a call is read rather than cast.
+    // Everything else here goes through `apiV1`, which builds a `Request`;
+    // `updateTaskStatus` is the hand-written client and passes a string URL
+    // with an init object. `commercial-blueprint.md` Part 4 names that
+    // duplication; this is what it looks like from a test.
+    const called = (input: unknown, init?: RequestInit) =>
+      typeof input === "string"
+        ? { url: input, method: init?.method }
+        : { url: (input as Request).url, method: (input as Request).method };
+
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((input, init) => {
+        const { url, method } = called(input, init);
+        if (method === "PATCH" && url.includes("/api/items/1/")) {
+          return jsonResponse({ data: { ...focusRow(), status: "completed" } });
+        }
+        return jsonResponse(dayData({ focus: [focusRow()] }));
+      });
+
+    renderAt("/day/2026-08-03");
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Complete Pay rent" }),
+    );
+
+    await waitFor(() => {
+      const patched = fetchSpy.mock.calls
+        .map(([input, init]) => called(input, init))
+        .find((call) => call.method === "PATCH");
+      expect(patched?.url).toContain("/api/items/1/");
+    });
+  });
+
+  it("offers no complete button for a pin whose task has been deleted", async () => {
+    // The record of having planned something outlives the task, so the row
+    // stays -- but there is nothing left to address. Same reasoning as the
+    // missing Unpin on that row.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        dayData({ focus: [focusRow({ task_id: null, url: null })] }),
+      ),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    await screen.findByText("Pay rent");
+    expect(
+      screen.queryByRole("button", { name: /^Complete/ }),
+    ).not.toBeInTheDocument();
   });
 
   it("does not lose a half-written day when something is pinned", async () => {

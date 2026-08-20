@@ -296,6 +296,14 @@ sentence in `roadmap.md`. Choosing the wedge is what unblocks this.
 
 ## Part 6 — Sequence
 
+**Phases 2 through 5 are superseded, August 20, 2026**, by
+[`clarice-v3-plan.md`](clarice-v3-plan.md). Part 9 #1 was answered *personal
+tool, with an intent to invite* — which removes Phase 4's wedge-then-billing
+entirely, empties most of what Phase 3 had left, and replaces the destination
+those phases were sequencing toward. **Phases 0 and 1 below stand**, and the
+phase *numbers* stay readable because code and documents cite them. Read the
+rest as the record of a sequence that was correct for a different answer.
+
 **Phase 0 — stop the bleeding. Done August 15**: Part 1's ten defects, CI first,
 because until it was green no other signal in this document was readable.
 

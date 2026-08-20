@@ -24,7 +24,8 @@ file has to resolve; its three hundred lines do not. 11,002 lines became roughly
 | [`roadmap.md`](roadmap.md) | What is active, what is deferred, what is still open |
 | [`roadmap-history.md`](roadmap-history.md) | The record: every shipped release, its deployment, and what it taught. **The one file that cannot go stale**, because it is explicitly about the past |
 | [`architecture-trajectory.md`](architecture-trajectory.md) | §4's charter for new models and §7's refusals. Release sequencing lives in `roadmap.md` |
-| [`commercial-blueprint.md`](commercial-blueprint.md) | The commercial decision and its sequence. **Part 1's defect list is closed and empty**; Part 9's three open decisions are the live content |
+| [`commercial-blueprint.md`](commercial-blueprint.md) | The August 12 audit, its architecture verdicts (Part 4) and its refusals (Part 8). **Part 1's defect list is closed and empty.** **No longer the authority on the sequence** — Part 6's phases 2–5 were superseded on August 20 by `clarice-v3-plan.md`, and Part 9's #1 and #2 were answered the same day |
+| [`clarice-v3-plan.md`](clarice-v3-plan.md) | **The sequence**, from August 20, 2026 — bringing the two cores together and making the product usable, in five named releases toward one destination. Deliberately long, overriding Part 8's refusal of exactly that. Scored against `product-stories.md` and not against itself |
 | [`product-stories.md`](product-stories.md) | What the product is *for*, as behaviour, and **the only score measuring the product rather than the process** |
 | [`daily-operating-system-vision.md`](daily-operating-system-vision.md) | Product direction for the task core: the premise, the thesis, and the rules the Daily Page must not break |
 
@@ -73,6 +74,7 @@ Most drift came from one fact in two documents and only one being updated.
 | Fact | Sole authority |
 |---|---|
 | Whether something is active, deferred or open | `roadmap.md` |
+| **What order the work goes in, and toward what** | `clarice-v3-plan.md` — from August 20, 2026; it replaced `commercial-blueprint.md` Part 6's phases 2–5 |
 | What shipped, when, and how it was verified | `roadmap-history.md` |
 | How work is delivered and verified | `principles.md` |
 | What a new model must satisfy | `architecture-trajectory.md` §4 (task core), `design-concept.md` (knowledge core) |

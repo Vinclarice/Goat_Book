@@ -180,6 +180,30 @@ re-add it here.
   this a business, which wedge, and mobile native versus responsive web. Two of
   its five are stale rather than open: #3 is answered but its reasoning predates
   the merger, and #5 was largely done by the August 15 documentation pass.
+- **Unified search is active, and paused at a decision rather than at a
+  problem.** Designed and built to
+  [`search-plan.md`](search-plan.md). **Two of its five increments are done and
+  neither is visible**, which is the shape the plan chose deliberately: the
+  task core's material is indexed, and there is a ranked read over it.
+
+  What landed August 20, 2026 — on `main`, **not deployed**: generated
+  `tsvector` columns with a `GinIndex` on `Item` and `DailyEntry`, two
+  migrations, `lists/search.py` and `daily.reads.search_entries`, and
+  `clarice/search.py` holding the one definition of how typed text becomes a
+  query — because sectioned results have a quiet dependency on every section
+  having asked the same question. 25 new tests; both suites green at 1384 and
+  771.
+
+  **Increment 3 is the first one a person can use, and it is blocked on D1 and
+  D2** — where a cross-core endpoint lives, and which surface shows it. Those
+  are the brief's, and they are Vince's. **Nothing about them is discoverable
+  by building more**, which is why this stopped here rather than guessing.
+
+  Two things were decided at the keyboard and are recorded at the code rather
+  than here: search returns every status, where the agenda hides finished work,
+  because the older a task is the more likely it is both done and the one being
+  looked for; and `Item` weights its text above its notes, which is safe within
+  one model in a way ranking across two is not.
 - **Whether the Android client keeps growing.** Slices 1 and 2 shipped (Today
   read-only, then Agenda with read and act); later slices are undecided. Part 9
   recommends freezing native for responsive web, on the evidence that
@@ -238,36 +262,12 @@ remain, and none of them is a task:
 Candidates. Each needs its own product trigger or focused brief before it
 becomes work.
 
-- **Full-text search over Clarice's own material.** `Item.text`, `Item.notes`
-  and `DailyEntry`'s three fields, ranked. There is no full-text search
-  ~~anywhere in the product~~ **in the task core** — zero hits for
-  `SearchVector`, `GinIndex` or `pg_trgm` across `lists`, `daily`, `review`,
-  `routines` and `accounts` — a daily journal entry is not searchable by any
-  means, and no date picker exists to reach one by hand.
-
-  **The struck words were true on August 13 and false on the 14th**, when the
-  merger brought `src/mind/` into this tree. The knowledge core has generated
-  `tsvector` columns on `Node` and `Revision`, a `GinIndex` on each, and a
-  ranked read serving `/mind/search/`. The substance is untouched — a daily
-  entry is unfindable — but the sentence named the whole product while only ever
-  having measured half of it, and it survived two edits to this file after it
-  went stale. Corrected August 20, 2026.
-
-  **Trigger: fired.** The old entry (Reference/Idea search) asked for "enough
-  retained material that finding something again is a felt problem" —
-  anticipated, never observed, and unreachable, because nobody accumulates in a
-  store they cannot search. Daily entries are already written, already numerous
-  and already unfindable, so the problem exists today. This entry replaced the
-  Idea half on August 13, 2026 and needs no discovery pass first.
-
-  **Briefed August 20, 2026** as [`search-plan.md`](search-plan.md), which is
-  the focused brief this section asks a candidate for. **Not started, and not
-  claimed here until it is.** It scopes slice 1 to exactly the fields named
-  above and defers nine others by name, inherits the knowledge core's mechanism
-  rather than starting a second one, and recommends sectioned results over one
-  merged ranking because `SearchRank` is not comparable across two document
-  sets. Four decisions are open in it, and one of them asks whether this
-  promotes the command palette below.
+- ~~**Full-text search over Clarice's own material.**~~ **Stopped being a
+  candidate on August 20, 2026** — briefed as
+  [`search-plan.md`](search-plan.md), started the same day, and now carried
+  under *Open now* above, which is where active work lives. The trigger that
+  fired and the argument for it are in the brief; this section's job was to
+  hold the candidate until one of those existed, and it is done.
 
 - **Audit log and general undo.** Structured change records making more than
   task completion safely reversible. **No trigger.**

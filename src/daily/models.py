@@ -1,3 +1,5 @@
+from django.contrib.postgres.indexes import GinIndex
+from django.contrib.postgres.search import SearchVector, SearchVectorField
 from django.db import models
 
 
@@ -27,8 +29,11 @@ class DailyEntry(models.Model):
       cannot tell them apart is the kind of thing the vision document means
       by history that is useful without being punishing. Deleting an
       account still cascades.
-    - Rule 7, index the query: the unique constraint below is the index.
-      Every read is "this owner, this date", which it covers exactly.
+    - Rule 7, index the query: the unique constraint below is the index for
+      the read this table was built for -- "this owner, this date", covered
+      exactly. **A second read arrived on August 20, 2026** and needed its
+      own: search over the three text fields, which no btree can serve. The
+      `GinIndex` beside the constraint is that one.
     - Rule 8, template and occurrences: does not apply. A day recurs in the
       calendar sense but has no template holding a rule, and inventing one
       would be the overload that rule exists to prevent.
@@ -51,6 +56,23 @@ class DailyEntry(models.Model):
     happenings = models.TextField(blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    # search-plan.md slice 1, and the half its trigger actually fired on: a day
+    # was reachable only by knowing its date, and there is no date picker.
+    #
+    # All three fields as peers, with no weights, because none of them is the
+    # day's title -- `Item` weights its text over its notes for exactly the
+    # reason that does not apply here.
+    #
+    # Generated rather than maintained, so it cannot drift from its source;
+    # the same mechanism as `mind.Node.search_original`, inherited rather than
+    # reinvented.
+    search_document = models.GeneratedField(
+        expression=SearchVector(
+            "intentions", "gratitude", "happenings", config="english"
+        ),
+        output_field=SearchVectorField(),
+        db_persist=True,
+    )
 
     class Meta:
         # Most recent first: the pages worth reopening are the recent ones.
@@ -63,6 +85,13 @@ class DailyEntry(models.Model):
                 fields=("owner", "date"),
                 name="unique_daily_entry_per_owner_date",
             ),
+        ]
+        indexes = [
+            # GinIndex, not models.Index. A btree on a tsvector cannot serve
+            # `@@` and caps entries at 2704 bytes -- on a journal entry, which
+            # is long and lexically varied, that is a failure to INSERT rather
+            # than a slow read. `mind/models.py:113` is where that was paid for.
+            GinIndex(fields=["search_document"], name="daily_entry_search"),
         ]
 
     def __str__(self):

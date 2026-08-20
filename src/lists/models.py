@@ -1,4 +1,6 @@
 from django.conf import settings
+from django.contrib.postgres.indexes import GinIndex
+from django.contrib.postgres.search import SearchVector, SearchVectorField
 from django.db import models
 from django.db.models import Q
 from django.urls import reverse
@@ -197,6 +199,28 @@ class Item(models.Model):
         on_delete=models.RESTRICT,
         related_name="occurrences",
     )
+    # Generated, so it cannot drift from its source -- the same argument
+    # `mind.Node.search_original` makes, and the same mechanism, because
+    # search-plan.md's rule is that this core inherits that one rather than
+    # starting a second way of doing it.
+    #
+    # `text` outranks `notes` because a task's text is its name and its notes
+    # are its body, and a query matching the name is almost always the better
+    # hit. Weighting *within* one model is safe in a way that ranking across
+    # two models is not -- see search-plan.md on why the cross-core list is
+    # sectioned rather than merged.
+    #
+    # The two-argument `to_tsvector` that `config=` produces is immutable,
+    # which is what makes it legal in a generated column; the one-argument
+    # form is only stable and is rejected.
+    search_document = models.GeneratedField(
+        expression=(
+            SearchVector("text", weight="A", config="english")
+            + SearchVector("notes", weight="B", config="english")
+        ),
+        output_field=SearchVectorField(),
+        db_persist=True,
+    )
 
     class Meta:
         ordering = ("position", "id")
@@ -241,6 +265,14 @@ class Item(models.Model):
             ),
         ]
         indexes = [
+            # GinIndex, not models.Index, and the distinction is not stylistic.
+            # `mind/models.py:113` records what a btree on a tsvector costs: it
+            # cannot serve `@@` at all, so every search falls back to a
+            # sequential scan -- and its 2704-byte entry cap means a row with a
+            # few hundred distinct lexemes fails to INSERT. A long task note
+            # would stop being savable. Inherited as a decision, not rediscovered;
+            # test_search.py holds the write path open.
+            GinIndex(fields=["search_document"], name="item_search_document"),
             # Covers list_summaries()'s open/overdue counts per list, and
             # (extended with due_date) open_items_for()'s per-list bucket
             # ordering without a separate lookup.

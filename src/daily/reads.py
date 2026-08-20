@@ -8,6 +8,10 @@ has stayed right.
 """
 from datetime import timedelta
 
+from django.contrib.postgres.search import SearchRank
+from django.db.models import F
+
+from clarice.search import to_query
 from daily.models import DailyEntry, DailyFocus
 from lists import agenda
 
@@ -33,6 +37,33 @@ def entry_for(owner, day):
     away from serving somebody else's day.
     """
     return DailyEntry.objects.filter(owner=owner, date=day).first()
+
+
+def search_entries(owner, text):
+    """This owner's days matching `text`, best first.
+
+    `design/search-plan.md` slice 1, and the read the trigger actually fired
+    on. Before this a day was reachable only by knowing its date, and there is
+    no date picker -- so an entry from three weeks ago was, in practice, gone.
+
+    Owner-scoped in the query for the reason `entry_for` states above, and more
+    so: a journal is the most private material this application holds, and a
+    read that filters afterwards is one forgotten comparison from serving it to
+    the wrong person.
+
+    Ties break by recency rather than by nothing. The same phrase on several
+    days is ordinary in a journal, and an unstable order there means the same
+    search puts a different day first each time it runs.
+    """
+    query = to_query(text)
+    if query is None:
+        return DailyEntry.objects.none()
+
+    return (
+        DailyEntry.objects.filter(owner=owner, search_document=query)
+        .annotate(rank=SearchRank(F("search_document"), query))
+        .order_by("-rank", "-date")
+    )
 
 
 def action_items_for(owner, day):

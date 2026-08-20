@@ -16,7 +16,16 @@ from django.urls import reverse
 from accounts.models import User
 
 
-class AppBarTest(TestCase):
+class AppBarRendering:
+    """Rendering helpers, shared without also sharing tests.
+
+    A mixin rather than a base class carrying tests. Subclassing a `TestCase`
+    to reuse a helper silently re-runs every test on the parent under the
+    child's name -- six more passing tests that prove nothing, and a total
+    nobody can reconcile. Found on August 20, 2026 when adding four tests moved
+    the suite by ten.
+    """
+
     def setUp(self):
         self.factory = RequestFactory()
         self.user = User.objects.create_user(
@@ -36,6 +45,9 @@ class AppBarTest(TestCase):
             {"core": core, "user": user or self.user},
             request=self._request(user or self.user),
         )
+
+
+class AppBarTest(AppBarRendering, TestCase):
 
     def test_offers_both_cores_when_signed_in(self):
         html = self._bar()
@@ -156,3 +168,51 @@ class KnowledgeCoreSubNavTest(TestCase):
 
         self.assertContains(response, "Concepts")
         self.assertNotContains(response, ">Things<")
+
+
+class SearchIsReachableFromEitherCoreTest(AppBarRendering, TestCase):
+    """`search-plan.md` D4, August 20, 2026.
+
+    Search shipped into `/mind/search/` and the shared bar did not mention it,
+    so reaching it from the task core meant opening the *other core's* capture
+    page and using its sub-nav — two hops through somewhere you did not want to
+    go. That is B3's shape again: a path built for one audience and never given
+    to the people most likely to need it.
+
+    D4 asked whether shipping search promoted the command palette. It does not
+    — a cleared precondition is not a trigger — and this is what the question
+    was really pointing at.
+    """
+
+    def test_search_is_one_click_from_the_task_core(self):
+        html = self._bar(core="tasks")
+
+        self.assertIn(reverse("search"), html)
+
+    def test_search_is_one_click_from_the_knowledge_core_too(self):
+        """It has its own sub-nav entry there already. The bar carries it as
+        well because the bar is what is identical on every surface, and a person
+        should not have to learn that search is reachable two different ways
+        depending on which half of the application they are standing in."""
+        html = self._bar(core="mind")
+
+        self.assertIn(reverse("search"), html)
+
+    def test_search_is_not_offered_as_a_core(self):
+        """The Cores nav means "this goes to a core"; its own comment says so.
+        Search belongs to neither -- it reads `Item`, `DailyEntry` and `Node` --
+        and putting it beside Tasks and Second Mind would say it is a third
+        one.
+        """
+        html = self._bar(core="tasks")
+
+        cores_nav = html.split('aria-label="Cores"')[1].split("</nav>")[0]
+
+        self.assertNotIn(reverse("search"), cores_nav)
+
+    def test_a_signed_out_visitor_is_not_offered_search(self):
+        """There is nothing to search, and the link would go to a login form
+        that says nothing about why."""
+        html = self._bar(user=AnonymousUser())
+
+        self.assertNotIn(reverse("search"), html)

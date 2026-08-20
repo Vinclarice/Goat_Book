@@ -58,6 +58,28 @@ task core holds, and they stay in the rail as contents.
 
       <div class="flex items-center gap-3">
         {% comment %}
+        Here rather than in the Cores nav above, deliberately. That nav means
+        "this goes to a core", and search belongs to neither -- it reads `Item`,
+        `DailyEntry` and `Node`. Beside Tasks and Second Mind it would read as a
+        third core; here it reads as what it is, something the application does
+        across both.
+
+        `search-plan.md` D4. Search shipped into `/mind/search/` and nothing in
+        the task core mentioned it, so reaching it meant opening the other
+        core's capture page and using its sub-nav -- two hops through somewhere
+        you did not want to go, for a feature built partly to search *tasks*.
+        That is B3's shape again: a path built for one audience and never given
+        to the people most likely to need it.
+
+        Reversed rather than written out, for the reason the nav payload gives:
+        `/mind/` lives in one line of the project URLconf and a route spelled
+        out twice is one that can disagree with itself.
+        {% endcomment %}
+        <a
+          class="touch-target font-sans text-sm text-muted-foreground hover:text-text inline-flex items-center"
+          href="{% url 'search' %}"
+        >Search</a>
+        {% comment %}
         One way in to one screen. This reverses `account_settings`, a two-line
         view that redirects to /app/preferences -- kept rather than linking the
         SPA route directly because one href has to work from a Django page, from

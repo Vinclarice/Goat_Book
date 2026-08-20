@@ -193,10 +193,17 @@ re-add it here.
   having asked the same question; `GET /api/v1/search`, session-only; and the
   page. 42 new tests.
 
-  **D1, D2 and D3 are answered and the brief records them** — the endpoint went
-  in `mind/api_v1.py` beside capture, and the surface is the page that already
-  existed, which is what keeps search attached to the miss button. **Only D4
-  remains**: whether this promotes the command palette below.
+  **All four decisions are answered and the brief records them** — the endpoint
+  went in `mind/api_v1.py` beside capture, and the surface is the page that
+  already existed, which is what keeps search attached to the miss button.
+
+  **D4 said no to the command palette and found the real gap instead: nothing
+  in the task core linked to search at all.** Four navigation surfaces were
+  checked and only the knowledge core's own sub-nav had it, so reaching search
+  from the task core meant two hops through the other core's capture page — for
+  a feature built partly to search tasks. One link in the shared app bar,
+  in the utility group rather than the Cores nav, because search belongs to
+  neither core. The palette entry below carries the trigger to watch.
 
   **D3 turned out to be the wrong question, and answering it caught a defect
   this work had just created.** It asked whether `RetrievalMiss.resolved_node`
@@ -445,9 +452,19 @@ to Track D, because writing something down is not deciding to build it.
   input. The server owns date meaning, so parsing belongs server-side with the
   client showing what was understood before it is committed — an automation
   that proposes rather than silently decides.
-- **A command palette.** `Ctrl+K` over tasks, lists and nodes. Genuinely
+- **A command palette.** `Ctrl+K` over tasks, lists and nodes. ~~Genuinely
   premature: it is a *retrieval* affordance, and full-text search above is the
-  thing that earns retrieval work first. Revisit it with that, not before.
+  thing that earns retrieval work first. Revisit it with that, not before.~~
+  **Revisited August 20, 2026 when search shipped, and still no** — the answer
+  is `search-plan.md`'s D4 and the reasoning is there. In short: that condition
+  was a *precondition*, and clearing it removes an objection without supplying
+  demand. A candidate with no trigger is a candidate nobody wants yet, which is
+  this section's whole standard.
+
+  **The trigger to watch is friction in reaching or repeating a search**, now
+  that one is a click away from both cores. **`RetrievalMiss` cannot supply it**
+  — it measures whether search succeeded, not how long it took to ask — so
+  nobody should watch the miss count for this.
 
 ### Longer-term product direction
 

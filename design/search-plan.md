@@ -180,10 +180,35 @@ feature. **Nothing here needs staging**, and nothing here generates anything.
    **Fixed before the deploy, deliberately.** A miss cannot be re-interpreted
    afterwards; had this shipped first, every miss recorded in the gap would be
    permanently ambiguous.
-4. **D4. Does this promote the command palette?** `roadmap.md` records `Ctrl+K`
-   as a candidate with no trigger, and says explicitly that full-text search is
-   *"the thing that earns retrieval work first"* and to revisit the palette
-   with it. This is that moment. The answer may still be no.
+4. ~~**D4. Does this promote the command palette?**~~ **Answered August 20,
+   2026: no.** Vince's call.
+
+   **A cleared precondition is not a trigger.** The candidate's blocker was that
+   search "earns retrieval work first"; search shipping removes an *objection*
+   and supplies no demand. Track D's own standard is that a candidate with no
+   trigger is a candidate nobody wants yet — and this file has already paid for
+   the other answer once, in the Reference/Idea search entry that was
+   *anticipated, never observed*.
+
+   **And building it now would cost the instrument D2 just protected.** A
+   `Ctrl+K` palette lives in the SPA; search lives at `/mind/search/` with the
+   miss button, which is exactly why D2 chose that surface. A palette that
+   became the primary retrieval path would route people away from the only
+   signal that judges whether search works.
+
+   **What the question was really pointing at, and it is fixed.** Search shipped
+   and *nothing in the task core linked to it* — four navigation surfaces
+   checked, and only the knowledge core's own sub-nav had it. Reaching search
+   from the task core meant opening the other core's capture page and using its
+   sub-nav: two hops, for a feature built partly to search tasks. One link in
+   the shared app bar, in the utility group rather than the Cores nav, because
+   search belongs to neither core.
+
+   **The trigger that would promote the palette**, named so nobody waits on the
+   wrong signal: observed friction in *reaching or repeating* search now that it
+   is one click away. **`RetrievalMiss` cannot supply it** — it measures whether
+   search succeeded, not how long it took to ask — so watching the miss count
+   for this would be waiting for a signal that cannot arrive.
 
 ## What this refuses
 

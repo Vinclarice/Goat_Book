@@ -117,6 +117,34 @@ else:
 # console branch -- never exercised the real sender at all, silently
 # falling through to Django's webmaster@localhost.
 EMAIL_DOMAIN = os.environ.get("DJANGO_EMAIL_DOMAIN", "vinclarice.com")
+
+# **Django asks the network for this host's name every time a message is built,
+# and on a machine where reverse DNS is slow that blocks the request.**
+# `EmailMessage.message()` stamps a `Message-ID` using
+# `django.core.mail.utils.DNS_NAME`, which calls `socket.getfqdn()` once per
+# process and caches the answer. On this laptop that call takes **12 seconds**,
+# measured -- which is how it was found: `test_leaving`'s schedule-deletion
+# journey began failing, and the cause was neither the code under test nor the
+# MFA work that landed beside it. Playwright waits ten seconds; the send took
+# twelve.
+#
+# Pre-seeding the cache is the whole fix. `message.py` binds `DNS_NAME` by
+# value at import, so replacing the module attribute would not take -- what
+# works is filling the cache on the instance everything already holds.
+#
+# **Production never paid this**, and the fix is not for its benefit:
+# `clarice.mail.ResendBackend` builds Resend's JSON payload from the message's
+# own fields and never calls `.message()`. What does call it is the locmem
+# backend the test suite runs on -- deliberately, "to trigger header
+# validation" -- and the console backend used in development.
+#
+# The name is better than the one it replaces either way. A `Message-ID`
+# claiming to come from `Vincez` says nothing true about where the mail is
+# from; this one names the domain the mail actually claims to be from.
+from django.core.mail.utils import DNS_NAME as _dns_name  # noqa: E402
+
+_dns_name._fqdn = os.environ.get("DJANGO_MAIL_FQDN", EMAIL_DOMAIN)
+
 DEFAULT_FROM_EMAIL = os.environ.get(
     "DJANGO_DEFAULT_FROM_EMAIL", f"Clarice <accounts@{EMAIL_DOMAIN}>"
 )

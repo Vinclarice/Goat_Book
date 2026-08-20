@@ -151,6 +151,13 @@ class TheReviewDecidesNothingTest(TestCase):
         not part of the review record; writing one must not invent a
         `WeeklyReview`, whose existence is the only evidence of whether
         reviewing is happening at all.
+
+        **It fired again for the planning session**, which added the fifth and
+        sixth writes. Both address one week's own `PlanningSession` by owner
+        and date, and neither touches a task — the POST records that somebody
+        sat down, the PATCH records that they corrected what the system
+        believed about the week. Same criterion, same answer, and the guard
+        made somebody say so twice rather than letting a route arrive quietly.
         """
         from review.api_v1 import router
 
@@ -165,8 +172,10 @@ class TheReviewDecidesNothingTest(TestCase):
                 "GET /review",
                 "GET /review/{day}",
                 "PATCH /review/{day}",
+                "PATCH /weeks/{day}/planning-session",
                 "POST /review/{day}/complete",
                 "POST /review/{day}/reopen",
+                "POST /weeks/{day}/planning-session",
                 "PUT /weeks/{day}/intention",
             ],
         )

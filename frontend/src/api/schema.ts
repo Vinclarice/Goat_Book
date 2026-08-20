@@ -843,6 +843,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/weeks/{day}/planning-session": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Planning Session
+         * @description Record that somebody sat down to plan this week.
+         *
+         *     **A POST, because loading the review must not count as planning.**
+         *     `review.reads` is query-only and a session created by a page view would
+         *     make every refresh a planning session, destroying the only number this
+         *     record exists to produce. Opening the check-in is an act; reading the
+         *     review is not.
+         *
+         *     Idempotent: opening it twice is one session, and the second call does not
+         *     move when it started.
+         */
+        post: operations["review_api_v1_start_planning_session"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Correct Planning Session
+         * @description Say this week is not a typical one — or take it back.
+         *
+         *     Opens a session if none is open, because correcting what the system
+         *     believed *is* planning; requiring a separate POST first would let the
+         *     ritual's denominator miss anybody who only corrected something.
+         */
+        patch: operations["review_api_v1_correct_planning_session"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1631,6 +1668,27 @@ export interface components {
             amount: number;
         };
         /**
+         * CheckInOut
+         * @description What the session believes, so it can be corrected rather than asked.
+         *
+         *     Every field here is something already recorded or derived. The plan's rule
+         *     is that a check-in asking what the system knows makes the ritual longer and
+         *     the answers worse, so this is a page of statements with controls beside
+         *     them, not a form.
+         *
+         *     `started` is the session's *existence*, which is the fact the record is for
+         *     -- "I planned and had little to change" and "I never opened it" are
+         *     different, and only the first says the ritual is happening.
+         */
+        CheckInOut: {
+            /** Started */
+            started: boolean;
+            /** Unusual */
+            unusual: string;
+            /** Projects */
+            projects: components["schemas"]["ProjectToConfirmOut"][];
+        };
+        /**
          * CompletedTaskOut
          * @description A finished task, as a week needs to read it.
          *
@@ -1796,6 +1854,17 @@ export interface components {
             age_in_days: number;
             /** Completed On */
             completed_on: string | null;
+        };
+        /** ProjectToConfirmOut */
+        ProjectToConfirmOut: {
+            /** Id */
+            id: number;
+            /** Title */
+            title: string;
+            /** Quiet For Days */
+            quiet_for_days: number;
+            /** Looks Active */
+            looks_active: boolean;
         };
         /**
          * ReviewOut
@@ -1965,6 +2034,7 @@ export interface components {
             loose_ends: components["schemas"]["LooseEndsOut"];
             upcoming: components["schemas"]["UpcomingOut"];
             draft: components["schemas"]["WeekDraftOut"];
+            check_in: components["schemas"]["CheckInOut"];
             /** Habits */
             habits: components["schemas"]["HabitOut"][];
             /** Recent Weeks */
@@ -2063,6 +2133,11 @@ export interface components {
         WeekIntentionIn: {
             /** Text */
             text: string;
+        };
+        /** WeekUnusualIn */
+        WeekUnusualIn: {
+            /** Unusual */
+            unusual: string;
         };
     };
     responses: never;
@@ -3085,6 +3160,54 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WeekIntentionOut"];
+                };
+            };
+        };
+    };
+    review_api_v1_start_planning_session: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                day: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckInOut"];
+                };
+            };
+        };
+    };
+    review_api_v1_correct_planning_session: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                day: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WeekUnusualIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckInOut"];
                 };
             };
         };

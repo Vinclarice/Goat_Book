@@ -1554,6 +1554,86 @@
           }
         ]
       }
+    },
+    "/api/v1/weeks/{day}/planning-session": {
+      "post": {
+        "operationId": "review_api_v1_start_planning_session",
+        "summary": "Start Planning Session",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "day",
+            "schema": {
+              "format": "date",
+              "title": "Day",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckInOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Record that somebody sat down to plan this week.\n\n**A POST, because loading the review must not count as planning.**\n`review.reads` is query-only and a session created by a page view would\nmake every refresh a planning session, destroying the only number this\nrecord exists to produce. Opening the check-in is an act; reading the\nreview is not.\n\nIdempotent: opening it twice is one session, and the second call does not\nmove when it started.",
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "review_api_v1_correct_planning_session",
+        "summary": "Correct Planning Session",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "day",
+            "schema": {
+              "format": "date",
+              "title": "Day",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckInOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Say this week is not a typical one \u2014 or take it back.\n\nOpens a session if none is open, because correcting what the system\nbelieved *is* planning; requiring a separate POST first would let the\nritual's denominator miss anybody who only corrected something.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WeekUnusualIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -3540,6 +3620,33 @@
         "title": "LogIn",
         "type": "object"
       },
+      "CheckInOut": {
+        "description": "What the session believes, so it can be corrected rather than asked.\n\nEvery field here is something already recorded or derived. The plan's rule\nis that a check-in asking what the system knows makes the ritual longer and\nthe answers worse, so this is a page of statements with controls beside\nthem, not a form.\n\n`started` is the session's *existence*, which is the fact the record is for\n-- \"I planned and had little to change\" and \"I never opened it\" are\ndifferent, and only the first says the ritual is happening.",
+        "properties": {
+          "started": {
+            "title": "Started",
+            "type": "boolean"
+          },
+          "unusual": {
+            "title": "Unusual",
+            "type": "string"
+          },
+          "projects": {
+            "items": {
+              "$ref": "#/components/schemas/ProjectToConfirmOut"
+            },
+            "title": "Projects",
+            "type": "array"
+          }
+        },
+        "required": [
+          "started",
+          "unusual",
+          "projects"
+        ],
+        "title": "CheckInOut",
+        "type": "object"
+      },
       "CompletedTaskOut": {
         "description": "A finished task, as a week needs to read it.\n\nNot `TaskOut`: a week reports what happened rather than offering\nsomething to act on, and the field that matters here -- which day it was\nfinished on -- is one the agenda's contract has no reason to carry.",
         "properties": {
@@ -3893,6 +4000,34 @@
         "title": "PlannedTaskOut",
         "type": "object"
       },
+      "ProjectToConfirmOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "quiet_for_days": {
+            "title": "Quiet For Days",
+            "type": "integer"
+          },
+          "looks_active": {
+            "title": "Looks Active",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "quiet_for_days",
+          "looks_active"
+        ],
+        "title": "ProjectToConfirmOut",
+        "type": "object"
+      },
       "ReviewOut": {
         "description": "The written half of a week, and what was concluded from it.\n\nAlways present, even for a week nobody has reviewed -- an unwritten\nreview is a blank page rather than a missing one, so 404 would answer\nthe wrong question and make the client handle a case that is not an\nerror. The same call the day's endpoint makes for an unwritten day.",
         "properties": {
@@ -4207,6 +4342,9 @@
           "draft": {
             "$ref": "#/components/schemas/WeekDraftOut"
           },
+          "check_in": {
+            "$ref": "#/components/schemas/CheckInOut"
+          },
           "habits": {
             "items": {
               "$ref": "#/components/schemas/HabitOut"
@@ -4240,6 +4378,7 @@
           "loose_ends",
           "upcoming",
           "draft",
+          "check_in",
           "habits",
           "recent_weeks",
           "review"
@@ -4406,6 +4545,19 @@
           "text"
         ],
         "title": "WeekIntentionIn",
+        "type": "object"
+      },
+      "WeekUnusualIn": {
+        "properties": {
+          "unusual": {
+            "title": "Unusual",
+            "type": "string"
+          }
+        },
+        "required": [
+          "unusual"
+        ],
+        "title": "WeekUnusualIn",
         "type": "object"
       }
     },

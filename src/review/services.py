@@ -9,7 +9,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from review import reads
-from review.models import WeeklyIntention, WeeklyReview
+from review.models import PlanningSession, WeeklyIntention, WeeklyReview
 from review.weeks import week_start_for
 
 
@@ -135,3 +135,41 @@ def set_intention(owner, day, text):
     intention.text = text or ""
     intention.save(update_fields=["text", "updated_at"])
     return intention
+
+
+@transaction.atomic
+def open_planning_session(owner, day):
+    """Record that somebody sat down to plan the week containing ``day``.
+
+    **Idempotent, and `created_at` is why.** When the ritual was first opened
+    is the fact this row exists to hold; a second open that re-stamped it would
+    rewrite that for no gain -- the same call `complete_project` and
+    `pause_project` both make.
+
+    Takes any day and normalises, like every week-keyed write here, so opening
+    the planner from a Wednesday cannot make a second row for the same week.
+    """
+    session, _ = PlanningSession.objects.get_or_create(
+        owner=owner, week_start=week_start_for(day),
+    )
+    return session
+
+
+@transaction.atomic
+def set_week_unusual(owner, day, unusual):
+    """Say this week is not a typical one — or take that back.
+
+    **Opens a session if none is open.** Correcting what the system believed
+    *is* planning, so requiring a separate open first would let a correction be
+    recorded against a week nobody sat down with -- and would mean the ritual's
+    denominator missed everybody who only corrected something.
+
+    Stores a direction and never a number. `typical_week_for` stays the
+    authority on what a week holds; nothing multiplies the two together,
+    because a declared figure beside a derived one is two authorities for one
+    rule.
+    """
+    session = open_planning_session(owner, day)
+    session.unusual = unusual
+    session.save(update_fields=["unusual", "updated_at"])
+    return session

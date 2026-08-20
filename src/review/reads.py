@@ -20,7 +20,7 @@ from daily.models import DailyEntry, DailyFocus
 from mind import queries as mind_queries
 from mind.models import Facet, FacetKind, Node
 from lists.models import Item, Project
-from review.models import WeeklyIntention, WeeklyReview
+from review.models import PlanningSession, WeeklyIntention, WeeklyReview
 from review.weeks import DAYS_IN_WEEK, days_in, week_end_for, week_start_for
 from routines import reads as routine_reads
 from routines.models import Routine, RoutineOccurrence, RoutinePause
@@ -844,3 +844,85 @@ def draft_week(owner, week_start, *, today):
         # a planner is the surface most able to break that.
         over_committed=typical is not None and len(proposed) > typical,
     )
+
+
+def planning_session_for(owner, day):
+    """This owner's planning session for the week containing ``day``, or None.
+
+    None rather than a created row, exactly as `review_for` and
+    `intention_for` both return. A read that brought the record into existence
+    would make every page load a planning session and destroy the only number
+    the model exists to produce.
+    """
+    return PlanningSession.objects.filter(
+        owner=owner, week_start=week_start_for(day)
+    ).first()
+
+
+# How long a project has to sit still before the check-in asks about it. Five
+# weeks is the plan's own example and is deliberately longer than a month: work
+# that pauses over a holiday should not be met with a question about whether it
+# is still real.
+QUIET_PROJECT_DAYS = 35
+
+
+@dataclass(frozen=True)
+class ProjectToConfirm:
+    """One project, and whether it looks like it is still being worked on."""
+
+    project: object
+    quiet_for_days: int
+    looks_active: bool
+
+
+def projects_to_confirm(owner):
+    """Open projects, quietest first — v2 increment 4's check-in.
+
+    **The check-in states this rather than asking it.** A session that opened
+    by asking which projects are active would be asking for something already
+    recorded, which the plan names as the failure mode of a questionnaire.
+
+    **Movement is creation or completion**, whichever is more recent. A project
+    whose last act was finishing something was being worked on just as much as
+    one that gained a task, and counting only new work would call a project
+    quiet in the week somebody cleared it.
+
+    **A project with no tasks is judged by its own age**, because that is the
+    only evidence there is. One made this morning is not stale; one made two
+    months ago and never filled is exactly what this should ask about.
+
+    Paused and completed projects are left out: both have already been
+    answered, and asking again would make those states worth nothing.
+
+    Quietest first, because this list is a question and the rows needing an
+    answer are the ones that have not moved. Sorting the active ones up would
+    bury them.
+    """
+    now = timezone.now()
+    found = []
+    for project in Project.objects.filter(
+        owner=owner, is_completed=False, paused_at__isnull=True
+    ):
+        stamps = []
+        for created, completed in Item.objects.filter(
+            list__project=project
+        ).values_list("created_at", "completed_at"):
+            stamps.append(created)
+            if completed is not None:
+                stamps.append(completed)
+        # The project's own age is the fallback and not another candidate. It
+        # can never be later than a task inside it, so including it always
+        # would change nothing in production and mask the empty-project case in
+        # any test that backdates a task without backdating its project — which
+        # is exactly how this was first written, and how it disagreed with the
+        # paragraph above while passing.
+        quiet_for = (now - (max(stamps) if stamps else project.created_at)).days
+        found.append(
+            ProjectToConfirm(
+                project=project,
+                quiet_for_days=quiet_for,
+                looks_active=quiet_for < QUIET_PROJECT_DAYS,
+            )
+        )
+    found.sort(key=lambda each: (-each.quiet_for_days, each.project.id))
+    return found

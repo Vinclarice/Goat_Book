@@ -22,9 +22,11 @@ from datetime import date, timedelta
 
 from django.utils import timezone
 from ninja import Router, Schema
+from ninja.errors import HttpError
 
 from lists import agenda
 from review import reads, services
+from review.models import PlanningSession
 from review.weeks import DAYS_IN_WEEK, week_start_for
 
 
@@ -336,6 +338,11 @@ class WeekOut(Schema):
     # is already looking backwards and is the one moment they are placed to
     # look forwards -- `design-concept.md`'s ritual, not a second surface.
     draft: WeekDraftOut
+    # What the planning session believes about the week being drafted — v2
+    # increment 4. Carried on the review because that is where the ritual's
+    # forward half lives, and keyed to the *drafted* week like the draft above
+    # rather than to the week on screen.
+    check_in: CheckInOut
     habits: list[HabitOut]
     # The shown week and the four before it. Not an analytics surface: the
     # six questions architecture-trajectory.md §4 names are release F's, and
@@ -429,6 +436,10 @@ def _week_out(owner, day):
         "loose_ends": _loose_ends_out(owner, today),
         "upcoming": _upcoming_out(owner, week_end),
         "draft": _draft_out(owner, week_start, today),
+        # Keyed to the week being *drafted*, like the draft above it. A
+        # check-in about the week on screen would be asking somebody to plan a
+        # week that has already happened.
+        "check_in": _check_in_out(owner, week_start + timedelta(days=DAYS_IN_WEEK)),
         "habits": [
             {
                 "routine_id": habit.routine.id,
@@ -533,6 +544,35 @@ def reopen_review(request, day: date):
     return _week_out(request.user, day)
 
 
+class ProjectToConfirmOut(Schema):
+    id: int
+    title: str
+    quiet_for_days: int
+    looks_active: bool
+
+
+class CheckInOut(Schema):
+    """What the session believes, so it can be corrected rather than asked.
+
+    Every field here is something already recorded or derived. The plan's rule
+    is that a check-in asking what the system knows makes the ritual longer and
+    the answers worse, so this is a page of statements with controls beside
+    them, not a form.
+
+    `started` is the session's *existence*, which is the fact the record is for
+    -- "I planned and had little to change" and "I never opened it" are
+    different, and only the first says the ritual is happening.
+    """
+
+    started: bool
+    unusual: str
+    projects: list[ProjectToConfirmOut]
+
+
+class WeekUnusualIn(Schema):
+    unusual: str
+
+
 class WeekIntentionIn(Schema):
     """One field, and blank is a value.
 
@@ -583,6 +623,59 @@ def write_week_intention(request, day: date, payload: WeekIntentionIn):
     """
     intention = services.set_intention(request.user, day, payload.text)
     return {"week_start": intention.week_start, "text": intention.text}
+
+
+def _check_in_out(owner, week_start):
+    session = reads.planning_session_for(owner, week_start)
+    return {
+        "started": session is not None,
+        # The default rather than null when no session is open. "Nobody has
+        # said otherwise" and "somebody said it is usual" call for the same
+        # rendering, and a nullable enum would make every client handle both.
+        "unusual": (
+            session.unusual if session else PlanningSession.Unusual.USUAL
+        ),
+        "projects": [
+            {
+                "id": each.project.id,
+                "title": each.project.title,
+                "quiet_for_days": each.quiet_for_days,
+                "looks_active": each.looks_active,
+            }
+            for each in reads.projects_to_confirm(owner)
+        ],
+    }
+
+
+@router.post("/weeks/{day}/planning-session", response=CheckInOut)
+def start_planning_session(request, day: date):
+    """Record that somebody sat down to plan this week.
+
+    **A POST, because loading the review must not count as planning.**
+    `review.reads` is query-only and a session created by a page view would
+    make every refresh a planning session, destroying the only number this
+    record exists to produce. Opening the check-in is an act; reading the
+    review is not.
+
+    Idempotent: opening it twice is one session, and the second call does not
+    move when it started.
+    """
+    services.open_planning_session(request.user, day)
+    return _check_in_out(request.user, day)
+
+
+@router.patch("/weeks/{day}/planning-session", response=CheckInOut)
+def correct_planning_session(request, day: date, payload: WeekUnusualIn):
+    """Say this week is not a typical one — or take it back.
+
+    Opens a session if none is open, because correcting what the system
+    believed *is* planning; requiring a separate POST first would let the
+    ritual's denominator miss anybody who only corrected something.
+    """
+    if payload.unusual not in PlanningSession.Unusual.values:
+        raise HttpError(422, "That is not a week shape.")
+    services.set_week_unusual(request.user, day, payload.unusual)
+    return _check_in_out(request.user, day)
 
 
 def _draft_out(owner, week_start, today):

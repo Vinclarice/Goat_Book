@@ -686,6 +686,49 @@ export function ReviewRoute() {
     },
   });
 
+  // The check-in — v2 increment 4. Two writes, because starting the ritual and
+  // correcting what it believes are different statements: the first records
+  // that somebody sat down, the second records what they changed.
+  const startSession = useMutation({
+    mutationFn: async () => {
+      const day = data?.draft.week_start;
+      if (!day) throw new Error("Couldn't start planning.");
+      const { error } = await apiV1.POST("/api/v1/weeks/{day}/planning-session", {
+        params: { path: { day } },
+      });
+      if (error) throw new Error("Couldn't start planning.");
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
+  });
+
+  const correctSession = useMutation({
+    mutationFn: async (unusual: string) => {
+      const day = data?.draft.week_start;
+      if (!day) throw new Error("Couldn't save that.");
+      const { error } = await apiV1.PATCH("/api/v1/weeks/{day}/planning-session", {
+        params: { path: { day } },
+        body: { unusual },
+      });
+      if (error) throw new Error("Couldn't save that.");
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
+  });
+
+  // Parking a project from the check-in, through the task core's own endpoint.
+  // The review proposes and the service that owns projects still decides --
+  // the same shape pinning a task to today already takes, and the reason there
+  // is no review-shaped write path for a bulk convenience to grow out of.
+  const pauseProject = useMutation({
+    mutationFn: async (projectId: number) => {
+      const { error } = await apiV1.PATCH("/api/v1/projects/{project_id}", {
+        params: { path: { project_id: projectId } },
+        body: { is_paused: true },
+      });
+      if (error) throw new Error("Couldn't pause that project.");
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
+  });
+
   // What next week is for — product-stories.md S9. Its own mutation, its own
   // endpoint and its own control, for the reason the model is its own model:
   // an intention must not be able to invent a `WeeklyReview` row, because that
@@ -791,7 +834,7 @@ export function ReviewRoute() {
   // `weekDraft`, because `draft` above is the review's own unsaved text. Two
   // different drafts on one page, and the collision was a build error rather
   // than a subtle bug only because they share a scope.
-  const { loose_ends: looseEnds, upcoming, draft: weekDraft } = data;
+  const { loose_ends: looseEnds, upcoming, draft: weekDraft, check_in: checkIn } = data;
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 space-y-8">
@@ -998,6 +1041,83 @@ export function ReviewRoute() {
           saying what it is for is worth most. */}
       <section className="space-y-2">
           <h2 className="text-sm font-bold">Next week</h2>
+
+          {/* The check-in -- v2 increment 4. It opens with what the system
+              believes and takes corrections; it does not ask for what is
+              already recorded. A session that began "which projects are
+              active?" would be asking somebody to supply an answer the
+              database already holds.
+
+              Behind a button, because reading the review must not count as
+              planning: `review.reads` is query-only and a session recorded on
+              page load would make every refresh a planning session, which
+              would destroy the one number the record exists to produce. */}
+          {!checkIn.started ? (
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={startSession.isPending}
+              onClick={() => startSession.mutate()}
+            >
+              Plan next week
+            </Button>
+          ) : (
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <label htmlFor="week-unusual" className="text-sm text-muted-foreground">
+                  How is next week looking?
+                </label>
+                {/* A direction and never a number. The typical-week figure
+                    below stays the authority on what a week holds; this says
+                    only that next week is not a typical one, and nothing
+                    multiplies the two together -- a declared figure beside a
+                    derived one would be two authorities for one rule. */}
+                <select
+                  id="week-unusual"
+                  value={checkIn.unusual}
+                  onChange={(event) => correctSession.mutate(event.target.value)}
+                  className="rounded-lg border border-border bg-input px-2 py-1 text-sm"
+                >
+                  <option value="usual">About usual</option>
+                  <option value="less_time">Less time than usual</option>
+                  <option value="more_time">More time than usual</option>
+                </select>
+              </div>
+
+              {checkIn.projects.length > 0 && (
+                <ul className="space-y-1">
+                  {checkIn.projects.map((project) => (
+                    <li
+                      key={project.id}
+                      className="flex flex-wrap items-baseline justify-between gap-2 text-sm"
+                    >
+                      <span>
+                        {project.title}{" "}
+                        <span className="text-muted-foreground">
+                          {project.looks_active
+                            ? "— active"
+                            : `— nothing for ${project.quiet_for_days} days`}
+                        </span>
+                      </span>
+                      {/* Only the quiet ones get the control. Offering to park
+                          a project somebody worked on yesterday is a question
+                          nobody needed asked. */}
+                      {!project.looks_active && (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          disabled={pauseProject.isPending}
+                          onClick={() => pauseProject.mutate(project.id)}
+                        >
+                          {`Pause ${project.title}`}
+                        </Button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
 
           {/* product-stories.md S9 -- "on Sunday she decides what the week is
               about". Written here because this is the moment somebody is

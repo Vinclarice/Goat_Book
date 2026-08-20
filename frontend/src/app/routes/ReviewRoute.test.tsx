@@ -45,6 +45,7 @@ function weekData(overrides: Record<string, unknown> = {}) {
       typical_week: null,
       over_committed: false,
     },
+    check_in: { started: false, unusual: "usual", projects: [] },
     habits: [],
     recent_weeks: [],
     review: {
@@ -375,6 +376,132 @@ describe("ReviewRoute", () => {
       .map(([request]) => request as Request)
       .filter((request) => request.method === "PATCH");
     expect(patched).toHaveLength(1);
+  });
+
+  /* The check-in -- planning-assistant-v2-plan.md increment 4. The forward
+     half of the ritual opens with what the system believes and takes
+     corrections, rather than asking for what it already knows. */
+  it("offers to start planning, and records that somebody did", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const request = input as Request;
+      if (request.method === "POST") {
+        return jsonResponse({ started: true, unusual: "usual", projects: [] });
+      }
+      return jsonResponse(weekData());
+    });
+
+    renderAt("/review");
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Plan next week" }),
+    );
+
+    await waitFor(() => {
+      const posted = fetchSpy.mock.calls
+        .map(([request]) => request as Request)
+        .filter((req) => req.url.includes("planning-session"));
+      expect(posted).toHaveLength(1);
+    });
+  });
+
+  it("says which project has not moved, and for how long", async () => {
+    /* The plan's own example: "Newsletter has not moved in five weeks --
+       still going?" An opinion to correct, not a question to answer. */
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        weekData({
+          check_in: {
+            started: true,
+            unusual: "usual",
+            projects: [
+              {
+                id: 7,
+                title: "Newsletter",
+                quiet_for_days: 40,
+                looks_active: false,
+              },
+              {
+                id: 8,
+                title: "Website launch",
+                quiet_for_days: 2,
+                looks_active: true,
+              },
+            ],
+          },
+        }),
+      ),
+    );
+
+    renderAt("/review");
+
+    expect(await screen.findByText("Newsletter")).toBeInTheDocument();
+    expect(screen.getByText(/nothing for 40 days/)).toBeInTheDocument();
+    /* The active one is stated too, so the list reads as "here is what I
+       believe" rather than as a pile of problems. */
+    expect(screen.getByText("Website launch")).toBeInTheDocument();
+  });
+
+  it("parks a project from the check-in", async () => {
+    /* Correcting the belief in place. Sending somebody to the project page to
+       do it would make the check-in a report rather than a ritual. */
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const request = input as Request;
+      if (request.method === "PATCH") return jsonResponse({ id: 7 });
+      return jsonResponse(
+        weekData({
+          check_in: {
+            started: true,
+            unusual: "usual",
+            projects: [
+              {
+                id: 7,
+                title: "Newsletter",
+                quiet_for_days: 40,
+                looks_active: false,
+              },
+            ],
+          },
+        }),
+      );
+    });
+
+    renderAt("/review");
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Pause Newsletter" }),
+    );
+
+    await waitFor(() => {
+      const patched = fetchSpy.mock.calls
+        .map(([request]) => request as Request)
+        .filter((req) => req.url.includes("/api/v1/projects/7"));
+      expect(patched).toHaveLength(1);
+    });
+  });
+
+  it("takes a correction about how unusual the week is", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const request = input as Request;
+      if (request.method === "PATCH") {
+        return jsonResponse({ started: true, unusual: "less_time", projects: [] });
+      }
+      return jsonResponse(
+        weekData({
+          check_in: { started: true, unusual: "usual", projects: [] },
+        }),
+      );
+    });
+
+    renderAt("/review");
+    await userEvent.selectOptions(
+      await screen.findByLabelText("How is next week looking?"),
+      "less_time",
+    );
+
+    await waitFor(() => {
+      const patched = fetchSpy.mock.calls
+        .map(([request]) => request as Request)
+        .filter((req) => req.url.includes("planning-session"));
+      expect(patched).toHaveLength(1);
+    });
   });
 
   it("lets a person say what next week is for", async () => {

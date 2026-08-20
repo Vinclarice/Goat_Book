@@ -195,7 +195,12 @@ Nothing here waits on anything else, and most of it is small.
 - **Links in the digest email.**
 - **The 44px floor into the link primitive**, finishing August 18's half-fix.
 
-**Acceptance: S2, S3, S7 and S9 reach *works*.**
+~~**Acceptance: S2, S3, S7 and S9 reach *works*.**~~ **Met August 20, 2026** —
+all four, plus task move between areas and the digest's links. **Task priority
+is what remains of this release.** The score went 3 · 10 · 6 to **7 · 6 · 6**
+in a day, after two releases moved one verdict between them, and the reason is
+this plan's own §*What v3 inherits*: three of the four were an argument's
+difference, a read nobody had written, and the same treatment applied twice.
 
 ### The day — planning and review stop being manual
 

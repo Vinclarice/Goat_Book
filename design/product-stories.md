@@ -45,15 +45,23 @@ what it was hiding. Recorded up here because **this file's model is quoted by
 other documents and a wrong model travels further than a wrong verdict.** The
 nineteen verdicts were not re-read against it, and none is claimed to have moved.
 
-**Re-scored against v3's *Usable* release, August 20, 2026 — and S2 moved.**
-The first verdict to move on work aimed at a *bend* rather than at the
+**Re-scored against v3's *Usable* release, August 20, 2026 — and four moved.**
+The first verdicts to move on work aimed at *bends* rather than at the
 impossible pile, which is what `principles.md` changed this morning to allow.
-Only S2 was re-read; the other eighteen were not.
+S2 went first; S3, S7 and S9 followed with the review block. Four stories were
+re-read; the other fifteen were not.
+
+**Three of the four cost almost nothing, and that is the finding.** S3 was "an
+argument's difference" and was; S9 was "a read nobody has written" and was; S7
+"needed no new decision, only the same treatment" and did. `kestrel` and v2 had
+already paid for their substrates, which is why a day's work moved four
+verdicts after two releases moved one.
 
 ## The score
 
-**4 work · 9 bend · 6 impossible** — from 3 · 10 · 6 earlier on August 20,
-3 · 9 · 7 on August 19, 3 · 6 · 10 on August 16, and 2 · 2 · 15 on August 12.
+**7 work · 6 bend · 6 impossible** — from 4 · 9 · 6 and 3 · 10 · 6 earlier on
+August 20, 3 · 9 · 7 on August 19, 3 · 6 · 10 on August 16, and 2 · 2 · 15 on
+August 12.
 
 **The impossible pile is now six, and it is the honest shape of what is left:**
 signing up needs a policy decision, not code; the quarter and the project
@@ -62,8 +70,8 @@ models nobody has started. Nothing in it is waiting on a form any more.
 
 | | journeys |
 |---|---|
-| **Works** | S2 the phone morning · S4 durable capture · S6 the honest weekly review · S17 leaving with your data |
-| **Bends** | S3 planning against capacity · S5 closing the day · S7 acting on the review · S9 the week · S10 a project's why · S13 finding what you wrote · S14 a note that knows when · S16 the past arriving · S18 bringing your history |
+| **Works** | S2 the phone morning · S3 planning against capacity · S4 durable capture · S6 the honest weekly review · S7 acting on the review · S9 the week · S17 leaving with your data |
+| **Bends** | S5 closing the day · S10 a project's why · S13 finding what you wrote · S14 a note that knows when · S16 the past arriving · S18 bringing your history |
 | **Impossible** | S1 signing up · S8 the quarter · S11 a decision returning · S12 a project explaining itself · S15 reading producing work · S19 paying |
 
 **This score lives here and nowhere else.** Other documents link to it; they do
@@ -228,7 +236,8 @@ pinned exceeds what his days actually hold — and the weekly review can separat
 the outcome rather than one mechanism**; it previously specified effort estimates
 and a declared free-time budget, which is an implementation and not a journey.
 
-**Verdict: bends**, moved from *impossible* by `kestrel` on August 19, 2026 —
+**Verdict: works**, moved from *bends* on August 20, 2026, having moved from
+*impossible* by `kestrel` the day before —
 **the same day the paragraph above said nothing had been built.** Both halves of
 the `Requires` line were built within hours of it being written, which is worth
 leaving visible rather than tidying into one entry.
@@ -250,8 +259,15 @@ the day itself while he is pinning: *"5 pinned for today. You have finished 3 on
 a typical day."* Absent on a day already lived, absent before anything is
 pinned, absent below the evidence floor.
 
-**One clause of the done-means is left, and it is the review's half**: *the
-weekly review can separate over-committed from under-delivered*. It cannot yet.
+~~**One clause of the done-means is left, and it is the review's half**: *the
+weekly review can separate over-committed from under-delivered*.~~ **Closed
+August 20, 2026, and the story with it — verdict: works.** The review now
+carries `typical` and `over_committed` on its own week, states them in the
+same neutral wording the draft uses, and says nothing at all below the sample
+floor. It was exactly the argument's difference this line predicted:
+`typical_week_for` was already running on every review and pointed forwards at
+the draft, and the fix was to point the same call backwards. The paragraph
+below records what it was.
 Finishing four of nine is reported as a rate (S6's, and honest), but nothing
 holds that nine against what his weeks actually hold, so the two readings of the
 same number stay indistinguishable — the exact confusion this story exists to
@@ -360,7 +376,7 @@ and the numbers update in place.
 > The box stays as a record of the question, since the answer arriving from a
 > plan that never mentioned this story is the interesting part.
 
-**Verdict: bends**, moved from *impossible*. The pile exists, the review shows
+**Verdict: works**, moved from *bends* on August 20, 2026. The pile exists, the review shows
 it with its dates, and she can deal with it — the section links her to `/mind/`
 to do it (`ReviewRoute.tsx:1070`, *"Decide them in Second Mind"*). The journey
 completes across two surfaces.
@@ -375,10 +391,20 @@ this"* and `:190` records *"this was never a question"*, both through the
 knowledge core's own services, so a question answered from the planner records
 exactly what one answered from `/mind/review/` does.
 
-**What is left is the rest of the pile.** Only questions bearing on a chosen
-outcome are answerable here; the loose-ends list itself still sends her to
-`/mind/` for a commitment she never accepted, and the recurring names it shows
-still carry no action at all. So she can deal with *some* of what the review
+~~**What is left is the rest of the pile.**~~ **Closed August 20, 2026 —
+verdict: works.** Four session-only routes on the knowledge core's own router
+(`mind/api_v1.py`) answer a proposed commitment (accept / not a commitment) and
+a recurring name (confirm / not a thing), through that core's own services, so
+the record is identical to the same decision made from `/mind/`. *"Decide them
+in Second Mind"* is gone, and a test asserts its **absence** — a positive one
+would have passed with the link still beside the new buttons. The numbers
+update in place because each verb invalidates the week.
+
+**The reason it was "only the same treatment" was checked rather than
+assumed.** Increment 6 was safe because a question carries no review window;
+`first_surfaced_at` turns out to belong to `ConnectionHypothesis` alone, so
+neither `Facet` nor `ConceptCandidate` has one either, and D6 stays
+undisturbed. What the old line said still stood: So she can deal with *some* of what the review
 tells her without leaving it, which is a bend rather than a block — and the
 remaining half needs no new decision, only the same treatment. The review is not inert either way: `ReviewRoute.tsx:888` pins
 a task to today and `:867` completes or reopens the review itself — both through
@@ -419,7 +445,8 @@ null-not-zero discipline already exists in `review/reads.py` and must carry up.
 **Done means:** Wednesday shows what the week was for, and the review can ask
 whether the week's days served the week's intention.
 
-**Verdict: bends**, moved from *impossible* on August 20, 2026. The previous
+**Verdict: works**, moved from *bends* later the same day it moved from
+*impossible* — both on August 20, 2026. The previous
 entry said everything this story needed existed **except a way in**, and named
 the absence precisely: a model, a service, a read and a Day payload, with no
 form and no endpoint. V2's increment 1 built the way in.
@@ -430,10 +457,24 @@ forward half carries the box that calls it. **And Wednesday knows**:
 `DayRoute.tsx:922` renders the week's intention under the compass, which is the
 half that reached `schema.ts` and no component for a fortnight.
 
-**What it still bends on is the second clause**, and it is a real one: *the
-review can ask whether the week's days served the week's intention*. It cannot.
-The intention is shown while planning the week ahead, and nothing looks back at
-a finished week and holds its days against what it was for. Every ingredient is
+~~**What it still bends on is the second clause**~~ **— closed August 20,
+2026, verdict: works.** The week payload now carries the *reviewed* week's own
+intention, and the review states it above the numbers rather than beside them,
+because it is the thing they are meant to be measured against. A week nobody
+named says nothing rather than showing an empty heading.
+
+**The test worth having is the one that would have passed by accident**:
+`draft.intention` has been in that payload since v2's increment 1, so reading
+*an* intention proves nothing — two different sentences, and the assertion is
+that the reviewed week gets its own.
+
+**One judgement, flagged rather than buried.** The done-means says the review
+*can ask*; what it now does is hold the days against the intention so a person
+can. The entry's own statement of the gap — *"nothing looks back at a finished
+week and holds its days against what it was for"* — is false now, which is why
+this scores as *works*. A review that **poses** the question is the briefing in
+`clarice-v3-plan.md`'s *first question* release, not this story. What the old
+line said still stood: Every ingredient is
 present — `DailyFocus` has the days, `WeeklyIntention` has the sentence, and
 `review/reads.py` already computes planned against met — so this is a read
 nobody has written rather than anything missing.

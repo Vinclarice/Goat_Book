@@ -375,6 +375,57 @@ class Item(models.Model):
     def __str__(self):
         return self.text
 
+class Bill(models.Model):
+    """What a task costs, when the task is a bill.
+
+    **A sidecar, not a primitive**, and `architecture-trajectory.md` §4 is why:
+    a bill's life cycle -- arrives, is due, is paid, comes round again -- *is* a
+    recurring task's, and `daily-operating-system-vision.md` says so by
+    example, with "pay rent every month" as its canonical recurring task. A
+    `Bill` model of its own would contradict the product's own statement and
+    re-implement recurrence, due dates, completion and snapshotting beside the
+    thing that already does them.
+
+    So this adds attributes without claiming a life cycle. One-to-one rather
+    than fields on `Item`, which keeps a decimal column that is null for almost
+    every row off the most-queried model in the application -- and makes "is
+    this a bill" a row's existence rather than a nullable flag.
+
+    **Not a `Facet` either.** That table carries inferred capabilities with a
+    confirmation flow; a number somebody typed is a fact, and putting it there
+    would muddy both.
+    """
+
+    item = models.OneToOneField(
+        "Item", related_name="bill", on_delete=models.CASCADE
+    )
+    #: Optional, because "the water bill, whatever it comes to" is a real
+    #: bill. The *row* is what marks a task as one.
+    amount = models.DecimalField(
+        max_digits=12, decimal_places=2, null=True, blank=True
+    )
+    #: Per bill rather than per account, so somebody paying rent in one
+    #: currency and a subscription in another is not a migration later. Three
+    #: characters and no lookup table: this is a label on a number, not an
+    #: exchange-rate system, and it does not become one by having a table.
+    currency = models.CharField(max_length=3, default="USD")
+    payee = models.CharField(max_length=200, blank=True, default="")
+
+    class Meta:
+        constraints = [
+            # A bill is something owed. A negative one is a refund, which is a
+            # different thing and not this -- refused in the database as well
+            # as at the boundary, because the boundary is not the only writer.
+            models.CheckConstraint(
+                condition=Q(amount__isnull=True) | Q(amount__gte=0),
+                name="bill_amount_not_negative",
+            ),
+        ]
+
+    def __str__(self):
+        return f"bill for {self.item_id}"
+
+
 class ChecklistStep(models.Model):
     """A step inside a task's checklist -- release-d-plan.md 2.
 

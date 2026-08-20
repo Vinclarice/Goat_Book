@@ -107,6 +107,62 @@ describe("TaskDetailRoute", () => {
     expect(await screen.findByText("Task updated.")).toBeInTheDocument();
   });
 
+  it("records what a bill comes to", async () => {
+    const user = userEvent.setup();
+    let sent: unknown = null;
+    vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
+      if (typeof input !== "string") {
+        if ((input as Request).url.includes("/api/v1/nav")) {
+          return jsonResponse({ areas: [], projects: [], archived_count: 0 });
+        }
+        return jsonResponse(taskDetailData());
+      }
+      const body = JSON.parse((init?.body as string) ?? "{}");
+      if ("bill" in body) sent = body.bill;
+      return jsonResponse({
+        data: task({
+          bill: { amount: "500.00", currency: "USD", payee: "County" },
+        }),
+      });
+    });
+
+    renderAt("1");
+    await screen.findByDisplayValue("Write tests");
+
+    await user.click(screen.getByRole("button", { name: "This is a bill" }));
+
+    await waitFor(() => expect(sent).not.toBeNull());
+    expect(await screen.findByLabelText("Amount")).toHaveValue("500.00");
+  });
+
+  it("stops a task being a bill without touching the task", async () => {
+    const user = userEvent.setup();
+    let sent: unknown = "untouched";
+    vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
+      if (typeof input !== "string") {
+        if ((input as Request).url.includes("/api/v1/nav")) {
+          return jsonResponse({ areas: [], projects: [], archived_count: 0 });
+        }
+        return jsonResponse(
+          taskDetailData({
+            task: task({
+              bill: { amount: "500.00", currency: "USD", payee: "County" },
+            }),
+          }),
+        );
+      }
+      const body = JSON.parse((init?.body as string) ?? "{}");
+      if ("bill" in body) sent = body.bill;
+      return jsonResponse({ data: task() });
+    });
+
+    renderAt("1");
+
+    await user.click(await screen.findByRole("button", { name: "Not a bill" }));
+
+    await waitFor(() => expect(sent).toBeNull());
+  });
+
   it("marks a task as pressing", async () => {
     const user = userEvent.setup();
     let sent: unknown = null;

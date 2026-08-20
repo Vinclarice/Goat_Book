@@ -1,5 +1,6 @@
 import json
 from datetime import date
+from decimal import Decimal, InvalidOperation
 from functools import wraps
 
 from django.http import JsonResponse
@@ -195,7 +196,7 @@ def item_detail(request, item_id):
     if error_response:
         return error_response
     changed_fields = {
-        "text", "status", "due_date", "tags", "recurrence", "notes", "list", "priority",
+        "text", "status", "due_date", "tags", "recurrence", "notes", "list", "priority", "bill",
         # Its own single change rather than a companion to `recurrence`,
         # keeping the one-field-per-request discipline the rest of this
         # endpoint runs on. Setting both is two requests.
@@ -207,8 +208,8 @@ def item_detail(request, item_id):
                 "errors": {
                     "body": [
                         "Change exactly one of text, status, due_date, tags, "
-                        "recurrence, cadence_mode, notes, list, or priority per "
-                        "request."
+                        "recurrence, cadence_mode, notes, list, priority or "
+                        "bill per request."
                     ]
                 }
             },
@@ -261,6 +262,46 @@ def item_detail(request, item_id):
             # set_recurrence rather than writing the commitment directly, so
             # the archived-task guard and the write-through stay in one place.
             item = services.set_recurrence(item, item.recurrence, cadence_mode=mode)
+        elif "bill" in changed_fields:
+            bill = payload["bill"]
+            if bill is None:
+                item = services.clear_bill(item)
+            elif not isinstance(bill, dict):
+                return JsonResponse(
+                    {"errors": {"bill": ["Send an object, or null to unmark."]}},
+                    status=400,
+                )
+            else:
+                raw = bill.get("amount")
+                amount = None
+                if raw not in (None, ""):
+                    try:
+                        # str() first: a JSON float would bring binary
+                        # rounding to a column that exists to avoid it.
+                        amount = Decimal(str(raw))
+                    except (InvalidOperation, ValueError):
+                        return JsonResponse(
+                            {"errors": {"bill": ["Use an amount like 12.34."]}},
+                            status=400,
+                        )
+                    if amount < 0:
+                        return JsonResponse(
+                            {
+                                "errors": {
+                                    "bill": [
+                                        "A bill is something owed, so it "
+                                        "cannot be negative."
+                                    ]
+                                }
+                            },
+                            status=400,
+                        )
+                item = services.set_bill(
+                    item,
+                    amount=amount,
+                    currency=(bill.get("currency") or "USD")[:3].upper(),
+                    payee=(bill.get("payee") or "")[:200],
+                )
         elif "priority" in changed_fields:
             # Checked here rather than left to the service's TaskConflict,
             # which this endpoint answers with 409 -- an unknown enum value is

@@ -17,6 +17,15 @@ export type TaskRecurrence =
   | "annual";
 /** No "medium": an unmarked task already means ordinary. */
 export type TaskPriority = "none" | "high" | "low";
+
+/** What a task costs, when it is a bill. Null on the task when it is not.
+ *  `amount` is a string because the column exists to avoid binary rounding
+ *  and a JS number would put it straight back. */
+export interface TaskBill {
+  amount: string | null;
+  currency: string;
+  payee: string;
+}
 export type AreaColorKey =
   | "sky"
   | "sage"
@@ -46,6 +55,7 @@ export interface Task {
   tags: string[];
   recurrence: TaskRecurrence;
   priority: TaskPriority;
+  bill: TaskBill | null;
   // Plain text, never Markdown. "" means no notes -- the API normalises
   // blank input to the empty string so this is never null.
   notes: string;

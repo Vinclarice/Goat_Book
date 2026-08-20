@@ -2,6 +2,7 @@ import type {
   CadenceMode,
   ChecklistStep,
   Task,
+  TaskBill,
   TaskPriority,
   TaskRecurrence,
   TaskStatus,
@@ -125,6 +126,17 @@ export function updateTaskPriority(
   priority: TaskPriority,
 ): Promise<Task> {
   return request<Task>(task.url, "PATCH", { priority });
+}
+
+/** Mark a task as a bill, edit the one it is, or `null` to stop it being one.
+ *
+ *  The amount travels as a string for the same reason the column is a decimal:
+ *  a JSON number would bring back the binary rounding both exist to avoid. */
+export function updateTaskBill(
+  task: Task,
+  bill: { amount: string | null; currency: string; payee: string } | null,
+): Promise<Task> {
+  return request<Task>(task.url, "PATCH", { bill });
 }
 
 export function updateTaskTags(task: Task, tags: string[]): Promise<Task> {

@@ -12,6 +12,7 @@ import {
   updateChecklistStepCarriesForward,
   updateChecklistStepDone,
   moveTaskToArea,
+  updateTaskBill,
   updateTaskPriority,
   updateTaskDueDate,
   updateTaskNotes,
@@ -28,6 +29,7 @@ import type {
   CadenceMode,
   ChecklistStep,
   Task,
+  TaskBill,
   TaskPriority,
   TaskRecurrence,
 } from "../../types";
@@ -357,6 +359,22 @@ export function TaskDetailRoute() {
     }
   }
 
+  async function handleBill(bill: TaskBill | null) {
+    if (!task) return;
+    setError(null);
+    setNotice(null);
+    setBusy(true);
+    try {
+      const updated = await updateTaskBill(task, bill);
+      setTask(updated);
+      setNotice(bill === null ? "No longer a bill." : "Bill saved.");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to save the bill.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function handlePriority(priority: TaskPriority) {
     if (!task) return;
     setError(null);
@@ -534,6 +552,72 @@ export function TaskDetailRoute() {
           disabled={busy}
           className="w-full rounded-lg border border-border bg-input px-3 py-1.5"
         />
+      </div>
+
+      {/* A bill is a recurring task with a number on it -- §4 said no to a
+          primitive, and the vision document's own example is "pay rent every
+          month". So this edits a sidecar rather than a different kind of
+          thing, and the task above is untouched either way. */}
+      <div className="space-y-1">
+        <p className="text-sm font-bold">Bill</p>
+        {task.bill === null ? (
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={busy}
+            onClick={() => handleBill({ amount: null, currency: "USD", payee: "" })}
+          >
+            This is a bill
+          </Button>
+        ) : (
+          <div className="space-y-2 rounded-lg border border-border px-3 py-2">
+            <div className="space-y-1">
+              <label htmlFor="bill-amount" className="text-sm">
+                Amount
+              </label>
+              <input
+                id="bill-amount"
+                aria-label="Amount"
+                inputMode="decimal"
+                defaultValue={task.bill.amount ?? ""}
+                disabled={busy}
+                onBlur={(event) =>
+                  handleBill({
+                    ...task.bill!,
+                    amount: event.target.value.trim() || null,
+                  })
+                }
+                className="w-full rounded-lg border border-border bg-input px-3 py-1.5"
+              />
+            </div>
+            <div className="space-y-1">
+              <label htmlFor="bill-payee" className="text-sm">
+                Payee
+              </label>
+              <input
+                id="bill-payee"
+                aria-label="Payee"
+                defaultValue={task.bill.payee}
+                disabled={busy}
+                onBlur={(event) =>
+                  handleBill({ ...task.bill!, payee: event.target.value })
+                }
+                className="w-full rounded-lg border border-border bg-input px-3 py-1.5"
+              />
+            </div>
+            {/* An empty amount is a real state -- "the water bill, whatever
+                it comes to" -- so this removes the bill rather than the
+                number. */}
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={busy}
+              onClick={() => handleBill(null)}
+            >
+              Not a bill
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="space-y-1">

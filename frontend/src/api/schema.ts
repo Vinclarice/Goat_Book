@@ -1301,6 +1301,21 @@ export interface components {
             /** Url */
             url: string;
         };
+        /**
+         * BillOut
+         * @description What a task costs, when it is a bill. Null on the task when it is not.
+         *
+         *     `amount` is a string, not a float: this column exists to avoid binary
+         *     rounding and sending it as a JSON number would put it straight back.
+         */
+        BillOut: {
+            /** Amount */
+            amount: string | null;
+            /** Currency */
+            currency: string;
+            /** Payee */
+            payee: string;
+        };
         /** TaskOut */
         TaskOut: {
             /** Id */
@@ -1336,6 +1351,7 @@ export interface components {
              * @enum {string}
              */
             priority: "none" | "high" | "low";
+            bill: components["schemas"]["BillOut"] | null;
             /** Notes */
             notes: string;
             /** Area Id */
@@ -1856,6 +1872,7 @@ export interface components {
              * @enum {string}
              */
             priority: "none" | "high" | "low";
+            bill: components["schemas"]["BillOut"] | null;
             /** Notes */
             notes: string;
             /** Area Id */

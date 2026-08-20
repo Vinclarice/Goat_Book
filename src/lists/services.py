@@ -9,6 +9,7 @@ from lists.models import (
     CadenceMode,
     ChecklistStep,
     Item,
+    Bill,
     List,
     Priority,
     Project,
@@ -317,6 +318,39 @@ def set_priority(item, priority):
     item.priority = priority
     item.save(update_fields=["priority"])
     _write_through_to_commitment(item, priority=priority)
+    return item
+
+
+@transaction.atomic
+def set_bill(item, *, amount=None, currency="USD", payee=""):
+    """Mark a task as a bill, or edit the one it already is.
+
+    Upserts rather than accumulating: a task is one bill or none, which is what
+    the one-to-one says and what "marking it twice" has to mean.
+
+    Deliberately **not** written through to the commitment, unlike text, notes
+    and the Area. What a bill comes to is a fact about *this* occurrence -- last
+    quarter's was 500 and this one is 525 -- so carrying it forward would state
+    an amount nobody has been told yet. The payee travels with the series only
+    in the sense that the next occurrence is created from the same commitment
+    and somebody fills it in again; inventing the number would be worse.
+    """
+    item = Item.objects.select_for_update().get(pk=item.pk)
+    if item.status == Item.Status.ARCHIVED:
+        raise InvalidTaskTransition("Restore this task before editing it")
+    if amount is not None and amount < 0:
+        raise TaskConflict("A bill is something owed, so it cannot be negative.")
+    Bill.objects.update_or_create(
+        item=item,
+        defaults={"amount": amount, "currency": currency, "payee": payee},
+    )
+    return item
+
+
+@transaction.atomic
+def clear_bill(item):
+    """Stop this task being a bill. The task itself is untouched."""
+    Bill.objects.filter(item=item).delete()
     return item
 
 

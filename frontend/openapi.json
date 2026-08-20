@@ -2492,6 +2492,37 @@
         "title": "AgendaProjectSummaryOut",
         "type": "object"
       },
+      "BillOut": {
+        "description": "What a task costs, when it is a bill. Null on the task when it is not.\n\n`amount` is a string, not a float: this column exists to avoid binary\nrounding and sending it as a JSON number would put it straight back.",
+        "properties": {
+          "amount": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "payee": {
+            "title": "Payee",
+            "type": "string"
+          }
+        },
+        "required": [
+          "amount",
+          "currency",
+          "payee"
+        ],
+        "title": "BillOut",
+        "type": "object"
+      },
       "TaskOut": {
         "properties": {
           "id": {
@@ -2584,6 +2615,16 @@
             "title": "Priority",
             "type": "string"
           },
+          "bill": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BillOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "notes": {
             "title": "Notes",
             "type": "string"
@@ -2632,6 +2673,7 @@
           "tags",
           "recurrence",
           "priority",
+          "bill",
           "notes",
           "area_id",
           "project_id",
@@ -3841,6 +3883,16 @@
             "title": "Priority",
             "type": "string"
           },
+          "bill": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BillOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "notes": {
             "title": "Notes",
             "type": "string"
@@ -3893,6 +3945,7 @@
           "tags",
           "recurrence",
           "priority",
+          "bill",
           "notes",
           "area_id",
           "project_id",

@@ -25,7 +25,15 @@ from uuid import UUID
 
 from accounts.models import PersonalAccessToken, User
 from daily.models import DailyEntry, DailyFocus
-from lists.models import ChecklistStep, Item, List, Project, RecurringCommitment, Tag
+from lists.models import (
+    Bill,
+    ChecklistStep,
+    Item,
+    List,
+    Project,
+    RecurringCommitment,
+    Tag,
+)
 from mind import queries as mind_queries
 from mind.models import (
     ActivityEvent,
@@ -71,6 +79,10 @@ EXPORT_KEYS = {
     Project: "projects",
     Item: "items",
     ChecklistStep: "checklist_steps",
+    # Owned through its task rather than directly -- a sidecar has no owner of
+    # its own, which is exactly the shape that goes missing from a list like
+    # this. The test above is what caught it.
+    Bill: "bills",
     Tag: "tags",
     RecurringCommitment: "commitments",
     DailyEntry: "entries",
@@ -188,6 +200,7 @@ def _payload(user, *, now):
             "projects": _rows(Project.objects.filter(owner=user)),
             "items": _rows(Item.objects.filter(owner=user), many_to_many=("tags",)),
             "checklist_steps": _rows(ChecklistStep.objects.filter(owner=user)),
+            "bills": _rows(Bill.objects.filter(item__owner=user)),
             "tags": _rows(Tag.objects.filter(owner=user)),
             "commitments": _rows(
                 RecurringCommitment.objects.filter(owner=user),

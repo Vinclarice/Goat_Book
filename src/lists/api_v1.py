@@ -64,6 +64,18 @@ class ChecklistStepOut(Schema):
     promote_url: str
 
 
+class BillOut(Schema):
+    """What a task costs, when it is a bill. Null on the task when it is not.
+
+    `amount` is a string, not a float: this column exists to avoid binary
+    rounding and sending it as a JSON number would put it straight back.
+    """
+
+    amount: str | None
+    currency: str
+    payee: str
+
+
 class TaskOut(Schema):
     id: int
     text: str
@@ -77,6 +89,9 @@ class TaskOut(Schema):
     tags: list[str]
     recurrence: TaskRecurrence
     priority: TaskPriority
+    #: Null when the task is not a bill -- a different fact from a bill with
+    #: nothing filled in, which is reachable on purpose.
+    bill: BillOut | None
     notes: str
     # Nullable since August 14, 2026 -- a task may stand on its own, so this is
     # the boundary admitting a state the database already allowed. Ninja

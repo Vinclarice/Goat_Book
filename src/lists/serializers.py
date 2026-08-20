@@ -20,6 +20,17 @@ def serialize_checklist_step(step):
     }
 
 
+def _bill_for(item):
+    bill = getattr(item, "bill", None)
+    if bill is None:
+        return None
+    return {
+        "amount": str(bill.amount) if bill.amount is not None else None,
+        "currency": bill.currency,
+        "payee": bill.payee,
+    }
+
+
 def serialize_item(item):
     return {
         "id": item.id,
@@ -36,6 +47,11 @@ def serialize_item(item):
         "tags": [tag.name for tag in item.tags.all()],
         "recurrence": item.recurrence,
         "priority": item.priority,
+        # Null rather than an empty object: "not a bill" and "a bill with
+        # nothing filled in" are different facts, and the second is reachable
+        # on purpose. `getattr` because a OneToOne with no row raises rather
+        # than answering None.
+        "bill": _bill_for(item),
         "notes": item.notes,
         # Just the id -- callers already have (or can fetch) the area's
         # title/url from the top-level `areas` array in the page payload,

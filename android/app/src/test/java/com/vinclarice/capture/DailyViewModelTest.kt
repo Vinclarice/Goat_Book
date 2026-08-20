@@ -23,6 +23,44 @@ class DailyViewModelTest {
         override fun clear() { saved = null }
     }
 
+    /** Records the task verbs the day borrows from the agenda's client. */
+    private class FakeTaskApi(
+        private val result: TaskWriteResult =
+            TaskWriteSucceeded(
+                AgendaTaskEntry(
+                    id = 42,
+                    text = "Pay rent",
+                    dueDate = null,
+                    tags = emptyList(),
+                    areaId = null,
+                    projectId = null,
+                    url = "/api/items/42/",
+                ),
+            ),
+    ) : AgendaApi {
+        var lastCall: Pair<String, List<Any?>>? = null
+
+        override suspend fun getAgenda(token: String) =
+            throw UnsupportedOperationException("the day never asks for the agenda")
+
+        override suspend fun setTaskStatus(token: String, taskUrl: String, status: String): TaskWriteResult {
+            lastCall = "status" to listOf(taskUrl, status)
+            return result
+        }
+
+        override suspend fun rescheduleTask(token: String, taskUrl: String, dueDate: String?): TaskWriteResult {
+            lastCall = "reschedule" to listOf(taskUrl, dueDate)
+            return result
+        }
+
+        override suspend fun createTask(
+            token: String,
+            createItemUrl: String,
+            text: String,
+            dueDate: String?,
+        ): TaskWriteResult = throw UnsupportedOperationException("the day does not create tasks")
+    }
+
     private class FakeDailyApi(
         private var readResult: DayResult,
         private var writeResult: DayWriteResult = DayWriteSucceeded,
@@ -107,7 +145,7 @@ class DailyViewModelTest {
 
     @Test
     fun `a loaded day is shown, not still loading`() = runTest {
-        val model = DailyViewModel(FakeDailyApi(DayLoaded(sampleDay)), FakeStore())
+        val model = DailyViewModel(FakeDailyApi(DayLoaded(sampleDay)), FakeStore(), FakeTaskApi())
 
         model.load()
 
@@ -119,7 +157,7 @@ class DailyViewModelTest {
 
     @Test
     fun `an unauthorised token asks to reconnect, without discarding the message as an ordinary error tone`() = runTest {
-        val model = DailyViewModel(FakeDailyApi(DayUnauthorised), FakeStore())
+        val model = DailyViewModel(FakeDailyApi(DayUnauthorised), FakeStore(), FakeTaskApi())
 
         model.load()
 
@@ -132,7 +170,7 @@ class DailyViewModelTest {
 
     @Test
     fun `an unreachable server reports its own reason`() = runTest {
-        val model = DailyViewModel(FakeDailyApi(DayUnreachable("Could not reach Clarice.")), FakeStore())
+        val model = DailyViewModel(FakeDailyApi(DayUnreachable("Could not reach Clarice.")), FakeStore(), FakeTaskApi())
 
         model.load()
 
@@ -145,7 +183,7 @@ class DailyViewModelTest {
     @Test
     fun `no stored token is a quiet state, not an error`() = runTest {
         val api = FakeDailyApi(DayLoaded(sampleDay))
-        val model = DailyViewModel(api, FakeStore(saved = null))
+        val model = DailyViewModel(api, FakeStore(saved = null), FakeTaskApi())
 
         model.load()
 
@@ -159,7 +197,7 @@ class DailyViewModelTest {
 
     @Test
     fun `loading seeds the draft text from the day`() = runTest {
-        val model = DailyViewModel(FakeDailyApi(DayLoaded(sampleDay)), FakeStore())
+        val model = DailyViewModel(FakeDailyApi(DayLoaded(sampleDay)), FakeStore(), FakeTaskApi())
 
         model.load()
 
@@ -172,7 +210,7 @@ class DailyViewModelTest {
     @Test
     fun `a reload for the same date does not stomp on an in-progress edit`() = runTest {
         val api = FakeDailyApi(DayLoaded(sampleDay))
-        val model = DailyViewModel(api, FakeStore())
+        val model = DailyViewModel(api, FakeStore(), FakeTaskApi())
         model.load()
 
         model.setDraftIntentions("Still typing...")
@@ -184,7 +222,7 @@ class DailyViewModelTest {
     @Test
     fun `a reload for a new date does reseed the draft`() = runTest {
         val api = FakeDailyApi(DayLoaded(sampleDay))
-        val model = DailyViewModel(api, FakeStore())
+        val model = DailyViewModel(api, FakeStore(), FakeTaskApi())
         model.load()
         model.setDraftIntentions("Still typing...")
 
@@ -197,7 +235,7 @@ class DailyViewModelTest {
     @Test
     fun `saving the days text sends the current draft and reloads`() = runTest {
         val api = FakeDailyApi(DayLoaded(sampleDay))
-        val model = DailyViewModel(api, FakeStore())
+        val model = DailyViewModel(api, FakeStore(), FakeTaskApi())
         model.load()
         model.setDraftIntentions("Updated")
         model.setDraftGratitude("Sunshine")
@@ -212,7 +250,7 @@ class DailyViewModelTest {
     @Test
     fun `pinning a task sends the days own date and the task id`() = runTest {
         val api = FakeDailyApi(DayLoaded(sampleDay))
-        val model = DailyViewModel(api, FakeStore())
+        val model = DailyViewModel(api, FakeStore(), FakeTaskApi())
         model.load()
 
         model.pinTask(42)
@@ -223,7 +261,7 @@ class DailyViewModelTest {
     @Test
     fun `unpinning a task sends the days own date and the task id`() = runTest {
         val api = FakeDailyApi(DayLoaded(sampleDay))
-        val model = DailyViewModel(api, FakeStore())
+        val model = DailyViewModel(api, FakeStore(), FakeTaskApi())
         model.load()
 
         model.unpinTask(42)
@@ -232,9 +270,37 @@ class DailyViewModelTest {
     }
 
     @Test
+    fun `completing a pinned task sends its own url to the task endpoint`() = runTest {
+        // S2's first verb on the phone. The day borrows the agenda's client
+        // rather than growing its own -- the same move DayRoute.tsx makes.
+        val taskApi = FakeTaskApi()
+        val model = DailyViewModel(FakeDailyApi(DayLoaded(sampleDay)), FakeStore(), taskApi)
+        model.load()
+
+        model.completeTask("/api/items/42/")
+
+        assertEquals("status" to listOf("/api/items/42/", "completed"), taskApi.lastCall)
+    }
+
+    @Test
+    fun `moving a pinned task to tomorrow uses the day's own date`() = runTest {
+        // The date comes from AgendaFormatting.tomorrow, which the Agenda
+        // screen already uses -- a fourth copy of that rule is exactly what
+        // mirrored-rules-brief.md is about. And it is *the day's* date, not
+        // the device's: the server said what today is.
+        val taskApi = FakeTaskApi()
+        val model = DailyViewModel(FakeDailyApi(DayLoaded(sampleDay)), FakeStore(), taskApi)
+        model.load()
+
+        model.deferTaskToTomorrow("/api/items/42/")
+
+        assertEquals("reschedule" to listOf("/api/items/42/", "2026-08-11"), taskApi.lastCall)
+    }
+
+    @Test
     fun `logging a routine sends its id and amount`() = runTest {
         val api = FakeDailyApi(DayLoaded(sampleDay))
-        val model = DailyViewModel(api, FakeStore())
+        val model = DailyViewModel(api, FakeStore(), FakeTaskApi())
 
         model.logRoutine(routineId = 3, amount = -1)
 
@@ -244,7 +310,7 @@ class DailyViewModelTest {
     @Test
     fun `skip, enough, pause and resume each hit their own action`() = runTest {
         val api = FakeDailyApi(DayLoaded(sampleDay))
-        val model = DailyViewModel(api, FakeStore())
+        val model = DailyViewModel(api, FakeStore(), FakeTaskApi())
 
         model.skipRoutine(3)
         assertEquals("skip" to listOf(3), api.lastWrite)
@@ -262,7 +328,7 @@ class DailyViewModelTest {
     @Test
     fun `keeping a new routine sends its fields`() = runTest {
         val api = FakeDailyApi(DayLoaded(sampleDay))
-        val model = DailyViewModel(api, FakeStore())
+        val model = DailyViewModel(api, FakeStore(), FakeTaskApi())
 
         model.createRoutine("Practice Spanish", "daily", 5, "lessons")
 
@@ -275,7 +341,7 @@ class DailyViewModelTest {
     @Test
     fun `keeping a routine with a blank title never reaches the network`() = runTest {
         val api = FakeDailyApi(DayLoaded(sampleDay))
-        val model = DailyViewModel(api, FakeStore())
+        val model = DailyViewModel(api, FakeStore(), FakeTaskApi())
 
         model.createRoutine("   ", "daily", 1, "")
 
@@ -288,7 +354,7 @@ class DailyViewModelTest {
             readResult = DayLoaded(sampleDay),
             writeResult = DayWriteRejected("That routine is paused."),
         )
-        val model = DailyViewModel(api, FakeStore())
+        val model = DailyViewModel(api, FakeStore(), FakeTaskApi())
         model.load()
 
         model.logRoutine(3, 1)
@@ -307,7 +373,7 @@ class DailyViewModelTest {
         // since a screen with nothing loaded has no pin button to tap.
         val store = FakeStore()
         val api = FakeDailyApi(DayLoaded(sampleDay))
-        val model = DailyViewModel(api, store)
+        val model = DailyViewModel(api, store, FakeTaskApi())
         model.load()
         store.clear()
 

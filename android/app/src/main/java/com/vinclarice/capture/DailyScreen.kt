@@ -141,6 +141,8 @@ private fun DailyContent(state: DailyUiState, day: DayEntry, model: DailyViewMod
                         today = day.today,
                         busy = state.busy,
                         onUnpin = { taskId -> scope.launch { model.unpinTask(taskId) } },
+                        onComplete = { url -> scope.launch { model.completeTask(url) } },
+                        onDefer = { url -> scope.launch { model.deferTaskToTomorrow(url) } },
                     )
                 }
             }
@@ -279,7 +281,14 @@ private fun DailyRow(content: @Composable RowScope.() -> Unit) {
 }
 
 @Composable
-private fun FocusRow(focus: FocusEntry, today: String, busy: Boolean, onUnpin: (Int) -> Unit) {
+private fun FocusRow(
+    focus: FocusEntry,
+    today: String,
+    busy: Boolean,
+    onUnpin: (Int) -> Unit,
+    onComplete: (String) -> Unit,
+    onDefer: (String) -> Unit,
+) {
     DailyRow {
         Text(
             focus.text,
@@ -295,7 +304,12 @@ private fun FocusRow(focus: FocusEntry, today: String, busy: Boolean, onUnpin: (
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            // A deleted task leaves the record but nothing to unpin.
+            // A deleted task leaves the record but nothing to address --
+            // same reason the Unpin below is conditional.
+            if (focus.url != null && focus.status != "completed") {
+                TextButton(enabled = !busy, onClick = { onComplete(focus.url) }) { Text("Complete") }
+                TextButton(enabled = !busy, onClick = { onDefer(focus.url) }) { Text("Tomorrow") }
+            }
             if (focus.taskId != null) {
                 TextButton(enabled = !busy, onClick = { onUnpin(focus.taskId) }) { Text("Unpin") }
             }

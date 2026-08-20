@@ -227,7 +227,7 @@ private fun Root(
     }
     // Same reasoning as captureModel: held above the tab switch so opening
     // Settings and coming back doesn't drop today's already-loaded state.
-    val dailyModel = remember { DailyViewModel(dailyApi, workspaceStore) }
+    val dailyModel = remember { DailyViewModel(dailyApi, workspaceStore, agendaApi) }
     // Same again, and doubly so here: the Agenda's own filter selections
     // (area, tag, scope, search) live in this model too, and losing them
     // on every trip to Settings would be worse than losing loaded data.

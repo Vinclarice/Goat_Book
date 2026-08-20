@@ -40,6 +40,16 @@ data class DailyUiState(
 class DailyViewModel(
     private val api: DailyApi,
     private val store: TokenStore,
+    /**
+     * The task verbs the day needs, borrowed rather than rebuilt.
+     *
+     * Completing and rescheduling are `lists.api`'s hand-rolled
+     * `item_detail`, and [AgendaApi] already speaks to it -- so this reaches
+     * the one authority instead of growing a second copy inside [DailyApi].
+     * Exactly the move `DayRoute.tsx` makes on the web for the same reason;
+     * `principles.md`'s *one rule, one authoritative definition*.
+     */
+    private val tasks: AgendaApi,
 ) {
     private val _state = MutableStateFlow(DailyUiState())
     val state: StateFlow<DailyUiState> = _state.asStateFlow()
@@ -117,6 +127,43 @@ class DailyViewModel(
         val day = _state.value.day ?: return
         write { token -> api.unpinFocus(token, day.date, taskId) }
     }
+
+    suspend fun completeTask(url: String) = writeTask { token ->
+        tasks.setTaskStatus(token, url, "completed")
+    }
+
+    /**
+     * "Moves one task to tomorrow" -- S2's second verb.
+     *
+     * **Not carry-forward.** `daily-operating-system-vision.md` forbids
+     * rewriting a due date *automatically*; one person moving one item is the
+     * shape that rule deliberately leaves open.
+     *
+     * Tomorrow is measured from *the day's* date, which the server supplied,
+     * never the device's clock -- and it comes from [tomorrow], the rule the
+     * Agenda screen already snoozes with, rather than a fourth hand-written
+     * copy of it.
+     */
+    suspend fun deferTaskToTomorrow(url: String) {
+        val day = _state.value.day ?: return
+        writeTask { token -> tasks.rescheduleTask(token, url, tomorrow(day.date)) }
+    }
+
+    /**
+     * The borrowed verbs answer with [TaskWriteResult]; everything else here
+     * speaks [DayWriteResult]. Mapped one to one rather than duplicated, so
+     * completing inherits [write]'s reload-on-success and its rule that a
+     * failed write never blanks an already-visible page.
+     */
+    private suspend fun writeTask(perform: suspend (String) -> TaskWriteResult) =
+        write { token ->
+            when (val result = perform(token)) {
+                is TaskWriteSucceeded -> DayWriteSucceeded
+                TaskWriteUnauthorised -> DayWriteUnauthorised
+                is TaskWriteRejected -> DayWriteRejected(result.message)
+                is TaskWriteUnreachable -> DayWriteUnreachable(result.reason)
+            }
+        }
 
     suspend fun logRoutine(routineId: Int, amount: Int) = write { token ->
         api.logRoutine(token, routineId, amount)

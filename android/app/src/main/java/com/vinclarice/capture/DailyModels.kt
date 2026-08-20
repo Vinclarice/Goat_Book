@@ -36,6 +36,12 @@ data class FocusEntry(
     val text: String,
     val status: String?,
     val dueDate: String?,
+    /** Where the task itself lives, so the day can act on it rather than
+     *  only show it. Null for a pin whose task was deleted -- the record of
+     *  having planned it outlives the task, and there is then nothing to
+     *  address. The server supplies it; assembling one here would be a
+     *  second definition of a route Android does not own. */
+    val url: String?,
 )
 
 data class ActionItemEntry(

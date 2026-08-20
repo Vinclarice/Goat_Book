@@ -552,6 +552,20 @@ describe("DayRoute", () => {
     expect(deleted?.url).toContain("/api/v1/day/2026-08-03/focus/1");
   });
 
+  it("offers a way to reach another day at all", async () => {
+    // The only entrance to the calendar, and therefore to any date that is
+    // not this one. Without it the route is a surface nothing reaches.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(dayData()),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    expect(
+      await screen.findByRole("link", { name: "Another day" }),
+    ).toHaveAttribute("href", "/calendar/2026-08-03");
+  });
+
   it("asks him to close the day, with what the day held", async () => {
     // S5's missing half. The record and the morning's choice were already
     // good; nothing ever asked for the first.

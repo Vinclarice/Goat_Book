@@ -5,7 +5,7 @@ Two shapes of the same read: `/day` for "whatever today is for me", and
 has to decide what day it is -- that is a per-user time-zone question, and
 `principles.md` puts the answer on the server.
 """
-from datetime import date
+from datetime import date, timedelta
 
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
@@ -181,6 +181,25 @@ class DayActionItemOut(TaskOut):
     """
 
     age_in_days: int
+
+
+class CalendarDayOut(Schema):
+    date: date
+    #: Open tasks due on this date -- the agenda's own definition of open.
+    due: int
+    #: Whether the day has words in it, not merely a row.
+    written: bool
+
+
+class CalendarOut(Schema):
+    month_start: date
+    #: Both neighbours, always. The same rule `WeekOut` follows: a surface
+    #: reachable only by editing the address bar is a gap this sequence has
+    #: already shipped twice.
+    previous_month: date
+    next_month: date
+    today: date
+    days: list[CalendarDayOut]
 
 
 class DayClosingOut(Schema):
@@ -470,6 +489,37 @@ def get_today(request):
 @router.get("/day/{day}", response=DayOut, auth=_TOKEN_OR_SESSION_READ)
 def get_day(request, day: date):
     return _day_out(request.user, day)
+
+
+# Session-only, deliberately, and unlike the day reads beside it. A month is a
+# new *surface* rather than an existing act in a new shape, and the phone has
+# no calendar to put it on -- so token-reaching it now would be the
+# un-switched-on seam this project has found five times in a fortnight. One
+# line and a deliberate decision if Android ever grows one.
+@router.get("/calendar/{day}", response=CalendarOut, auth=SessionAuthIfLoggedIn())
+def calendar_month(request, day: date):
+    """The month containing ``day``, so a date can be reached without typing.
+
+    `/app/day/:date` has had no UI entry point at all -- reaching a day twelve
+    weeks back meant clicking "the week before" twelve times.
+
+    Any day of the month answers with the same month, the courtesy
+    `intention_for` gives a week: a client that had to know which day a month
+    starts on would hold a second definition of the calendar.
+    """
+    days = reads.month_for(request.user, day)
+    month_start = days[0].date
+    previous_end = month_start - timedelta(days=1)
+    return {
+        "month_start": month_start,
+        "previous_month": previous_end.replace(day=1),
+        "next_month": days[-1].date + timedelta(days=1),
+        "today": _today_for_request(),
+        "days": [
+            {"date": each.date, "due": each.due, "written": each.written}
+            for each in days
+        ],
+    }
 
 
 @router.post("/day/{day}/focus", response=DayOut, auth=_TOKEN_OR_SESSION_WRITE)

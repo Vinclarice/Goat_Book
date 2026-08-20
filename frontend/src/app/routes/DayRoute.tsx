@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useParams } from "react-router";
+import { Link, useParams } from "react-router";
 
 import { Button } from "@/components/ui/button";
 
@@ -999,6 +999,16 @@ export function DayRoute() {
           {isToday ? "Today" : "Your day"}
         </p>
         <h1 className="text-2xl font-bold">{longDate(data.date)}</h1>
+        {/* The only way into the calendar, and therefore into any date that
+            is not this one. Without it the route is a surface nothing
+            reaches -- the un-switched-on seam this project has found five
+            times in a fortnight. */}
+        <Link
+          to={`/calendar/${data.date}`}
+          className="touch-target inline-block text-sm text-muted-foreground hover:text-foreground"
+        >
+          Another day
+        </Link>
       </div>
 
       {/* What the day's writing read as a commitment — increment 2 slice D.

@@ -6,8 +6,10 @@ one charter rule that is about where code goes rather than what a table
 holds -- and the reason it is a rule is that `lists` got this right and it
 has stayed right.
 """
+from calendar import monthrange
+from collections import Counter
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import date as date_type, timedelta
 
 from django.contrib.postgres.search import SearchRank
 from django.db.models import F
@@ -82,6 +84,71 @@ def action_items_for(owner, day):
     """
     grouped = agenda.bucketed(agenda.open_items_for(owner), day)
     return [item for key in DAY_BUCKETS for item in grouped[key]]
+
+
+@dataclass(frozen=True)
+class CalendarDay:
+    """One square of the month.
+
+    Counts and a flag rather than the rows themselves: a month is for choosing
+    a day to open, and shipping every task on every date would be the Day page
+    thirty-one times over.
+    """
+
+    date: date_type
+    #: Open tasks due on this date. The agenda's own definition of open, not a
+    #: second one -- a calendar that kept counting completed work would show a
+    #: month that never empties.
+    due: int
+    #: Whether the day has words in it. A `DailyEntry` row exists as soon as
+    #: anything is pinned, so an empty one is the ordinary state of a planned
+    #: day rather than something written -- the same call `written_in_week`
+    #: makes for the review.
+    written: bool
+
+
+def month_for(owner, day):
+    """The month containing ``day``, and what each of its dates holds.
+
+    S13's second require: `/app/day/:date` has had no UI entry point at all,
+    so reaching a day twelve weeks back meant clicking "the week before"
+    twelve times.
+
+    **A view over what is already there.** Two queries over rows that exist.
+    The calendar that carries *events* is later work and needs a model this
+    does not; routines are deferred by name here because they are measured
+    over a period rather than due on a date, and bills because they do not
+    exist yet.
+
+    **Any day of the month addresses the same month**, the courtesy
+    `intention_for` gives a week -- a client that had to know which day a month
+    starts on would hold a second definition of the calendar.
+    """
+    first = day.replace(day=1)
+    last = first.replace(day=monthrange(first.year, first.month)[1])
+
+    due = Counter(
+        agenda.open_items_for(owner)
+        .filter(due_date__gte=first, due_date__lte=last)
+        .values_list("due_date", flat=True)
+    )
+    written = {
+        entry.date
+        for entry in DailyEntry.objects.filter(
+            owner=owner, date__gte=first, date__lte=last
+        )
+        if entry.intentions.strip()
+        or entry.gratitude.strip()
+        or entry.happenings.strip()
+    }
+    return [
+        CalendarDay(
+            date=first + timedelta(days=offset),
+            due=due.get(first + timedelta(days=offset), 0),
+            written=(first + timedelta(days=offset)) in written,
+        )
+        for offset in range((last - first).days + 1)
+    ]
 
 
 # When the day stops being something to plan and starts being something to

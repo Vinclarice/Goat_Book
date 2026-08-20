@@ -652,6 +652,33 @@ export interface paths {
         patch: operations["daily_api_v1_write_day"];
         trace?: never;
     };
+    "/api/v1/calendar/{day}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Calendar Month
+         * @description The month containing ``day``, so a date can be reached without typing.
+         *
+         *     `/app/day/:date` has had no UI entry point at all -- reaching a day twelve
+         *     weeks back meant clicking "the week before" twelve times.
+         *
+         *     Any day of the month answers with the same month, the courtesy
+         *     `intention_for` gives a week: a client that had to know which day a month
+         *     starts on would hold a second definition of the calendar.
+         */
+        get: operations["daily_api_v1_calendar_month"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/day/{day}/focus": {
         parameters: {
             query?: never;
@@ -2046,6 +2073,43 @@ export interface components {
             gratitude?: string | null;
             /** Happenings */
             happenings?: string | null;
+        };
+        /** CalendarDayOut */
+        CalendarDayOut: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Due */
+            due: number;
+            /** Written */
+            written: boolean;
+        };
+        /** CalendarOut */
+        CalendarOut: {
+            /**
+             * Month Start
+             * Format: date
+             */
+            month_start: string;
+            /**
+             * Previous Month
+             * Format: date
+             */
+            previous_month: string;
+            /**
+             * Next Month
+             * Format: date
+             */
+            next_month: string;
+            /**
+             * Today
+             * Format: date
+             */
+            today: string;
+            /** Days */
+            days: components["schemas"]["CalendarDayOut"][];
         };
         /** FocusIn */
         FocusIn: {
@@ -3487,6 +3551,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DayOut"];
+                };
+            };
+        };
+    };
+    daily_api_v1_calendar_month: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                day: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarOut"];
                 };
             };
         };

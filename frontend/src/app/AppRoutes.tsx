@@ -5,6 +5,7 @@ import { apiV1 } from "../api/client";
 import { AppLayout } from "./AppLayout";
 import { AgendaRoute } from "./routes/AgendaRoute";
 import { ArchiveRoute } from "./routes/ArchiveRoute";
+import { CalendarRoute } from "./routes/CalendarRoute";
 import { DayRoute } from "./routes/DayRoute";
 import { DevUiGallery } from "./routes/DevUiGallery";
 import { AreaRoute } from "./routes/AreaRoute";
@@ -86,6 +87,9 @@ export function AppRoutes() {
             day boundary belongs to the account's time zone. */}
         <Route path="/day" element={<DayRoute />} />
         <Route path="/day/:date" element={<DayRoute />} />
+        {/* S13's second require. `/day/:date` had no UI entry point at all. */}
+        <Route path="/calendar" element={<CalendarRoute />} />
+        <Route path="/calendar/:month" element={<CalendarRoute />} />
         {/* Same two-path shape as the day, for the same reason: the
             undated one lets the server say which week it is, since a week
             boundary belongs to the account's time zone. The dated one is

@@ -134,6 +134,62 @@ class DayEndpointTest(TestCase):
         self.assertEqual(self.client.get("/api/v1/day/not-a-date").status_code, 422)
 
 
+class CalendarEndpointTest(TestCase):
+    """A month you can look at, and land on a day from -- S13's second
+    require."""
+
+    def setUp(self):
+        self.alice = User.objects.create_user(
+            "alice", "alice@example.com", PASSWORD
+        )
+        self.bob = User.objects.create_user("bob", "bob@example.com", PASSWORD)
+        self.list_ = List.objects.create(owner=self.alice, title="Home")
+        self.client = Client()
+        self.client.force_login(self.alice)
+
+    def month(self, day="2026-08-14"):
+        response = self.client.get(f"/api/v1/calendar/{day}")
+        self.assertEqual(response.status_code, 200)
+        return response.json()
+
+    def test_it_answers_with_the_month_containing_the_day_asked_for(self):
+        body = self.month()
+
+        self.assertEqual(body["month_start"], "2026-08-01")
+        self.assertEqual(len(body["days"]), 31)
+
+    def test_it_carries_both_neighbours_so_neither_needs_a_typed_url(self):
+        """The same rule `WeekOut` follows: a surface reachable only by
+        editing the address bar is a gap this sequence has shipped twice."""
+        body = self.month()
+
+        self.assertEqual(body["previous_month"], "2026-07-01")
+        self.assertEqual(body["next_month"], "2026-09-01")
+
+    def test_a_day_carries_what_it_holds(self):
+        list_services.create_item(
+            self.list_, "Pay rent", due_date=date(2026, 8, 14)
+        )
+        services.write_entry(self.alice, date(2026, 8, 14), happenings="Rain.")
+
+        squares = {day["date"]: day for day in self.month()["days"]}
+
+        self.assertEqual(squares["2026-08-14"]["due"], 1)
+        self.assertTrue(squares["2026-08-14"]["written"])
+
+    def test_signed_out_callers_get_nothing(self):
+        self.client.logout()
+
+        self.assertEqual(
+            self.client.get("/api/v1/calendar/2026-08-14").status_code, 401
+        )
+
+    def test_a_nonsense_date_is_refused_rather_than_guessed(self):
+        self.assertEqual(
+            self.client.get("/api/v1/calendar/not-a-date").status_code, 422
+        )
+
+
 class DayFocusEndpointTest(TestCase):
     """Slice 4 over the wire: choosing work, and unchoosing it."""
 

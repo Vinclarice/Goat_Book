@@ -1158,6 +1158,42 @@
         ]
       }
     },
+    "/api/v1/calendar/{day}": {
+      "get": {
+        "operationId": "daily_api_v1_calendar_month",
+        "summary": "Calendar Month",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "day",
+            "schema": {
+              "format": "date",
+              "title": "Day",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "The month containing ``day``, so a date can be reached without typing.\n\n`/app/day/:date` has had no UI entry point at all -- reaching a day twelve\nweeks back meant clicking \"the week before\" twelve times.\n\nAny day of the month answers with the same month, the courtesy\n`intention_for` gives a week: a client that had to know which day a month\nstarts on would hold a second definition of the calendar.",
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      }
+    },
     "/api/v1/day/{day}/focus": {
       "post": {
         "operationId": "daily_api_v1_pin_to_day",
@@ -4353,6 +4389,70 @@
           }
         },
         "title": "DayIn",
+        "type": "object"
+      },
+      "CalendarDayOut": {
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "due": {
+            "title": "Due",
+            "type": "integer"
+          },
+          "written": {
+            "title": "Written",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "date",
+          "due",
+          "written"
+        ],
+        "title": "CalendarDayOut",
+        "type": "object"
+      },
+      "CalendarOut": {
+        "properties": {
+          "month_start": {
+            "format": "date",
+            "title": "Month Start",
+            "type": "string"
+          },
+          "previous_month": {
+            "format": "date",
+            "title": "Previous Month",
+            "type": "string"
+          },
+          "next_month": {
+            "format": "date",
+            "title": "Next Month",
+            "type": "string"
+          },
+          "today": {
+            "format": "date",
+            "title": "Today",
+            "type": "string"
+          },
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/CalendarDayOut"
+            },
+            "title": "Days",
+            "type": "array"
+          }
+        },
+        "required": [
+          "month_start",
+          "previous_month",
+          "next_month",
+          "today",
+          "days"
+        ],
+        "title": "CalendarOut",
         "type": "object"
       },
       "FocusIn": {

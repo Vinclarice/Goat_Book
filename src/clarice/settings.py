@@ -17,7 +17,7 @@ import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
 import sys
 
-from clarice.deployment import is_debug
+from clarice.deployment import is_debug, test_database_name
 from clarice.monitoring import initialise as initialise_error_monitoring
 
 
@@ -410,21 +410,27 @@ else:
 # nothing like contention. Both were observed on August 19, 2026, with two
 # sessions working in this tree at once.
 #
-# Setting this gives a run its own database and its own name to tear down.
-# Off by default, because CI runs alone and a per-run database there would be
-# a fresh `CREATE DATABASE` for no reason -- and because a default that changed
-# every run would leave orphans behind on a laptop.
+# **The default now carries the checkout**, rather than an opt-in that only
+# helped whoever remembered it -- which was never going to be the sessions that
+# collide. `clarice.deployment.test_database_name` owns the reasoning and the
+# two properties that make a derived name safe: stable per checkout, so a
+# laptop keeps one test database rather than an orphan per run, and different
+# between checkouts, which is what a worktree is.
+#
+# `DJANGO_TEST_DB_SUFFIX` still works and still wins. It covers the one case a
+# path cannot see: two runs inside a single checkout, such as `manage.py test`
+# and `pytest` at once.
 #
 #     DJANGO_TEST_DB_SUFFIX=b .venv/Scripts/python.exe src/manage.py test ...
 #
-# Note this is not `--parallel`, which clones from `test_clarice` and therefore
-# collides in exactly the same place.
-test_db_suffix = os.environ.get("DJANGO_TEST_DB_SUFFIX")
-if test_db_suffix:
-    DATABASES["default"].setdefault("TEST", {})
-    DATABASES["default"]["TEST"]["NAME"] = (
-        f"test_{DATABASES['default']['NAME']}_{test_db_suffix}"
-    )
+# Note this is not `--parallel`, which clones from the database named here and
+# therefore collides in exactly the same place.
+DATABASES["default"].setdefault("TEST", {})
+DATABASES["default"]["TEST"]["NAME"] = test_database_name(
+    database_name=DATABASES["default"]["NAME"],
+    base_dir=BASE_DIR,
+    override=os.environ.get("DJANGO_TEST_DB_SUFFIX"),
+)
 
 
 # Password validation

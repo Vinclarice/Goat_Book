@@ -15,7 +15,7 @@ errors into the same Sentry project production uses
 """
 from django.test import SimpleTestCase
 
-from clarice.deployment import is_debug
+from clarice.deployment import is_debug, test_database_name
 
 
 class IsDebugTest(SimpleTestCase):
@@ -34,3 +34,55 @@ class IsDebugTest(SimpleTestCase):
         # DJANGO_ALLOWED_HOST and DJANGO_DATABASE_URL to even boot) to an
         # environment nobody deliberately promoted.
         self.assertTrue(is_debug("some-typo"))
+
+
+class TestDatabaseNameTest(SimpleTestCase):
+    """The test database's name, which two checkouts must not share.
+
+    `DJANGO_TEST_DB_SUFFIX` shipped on August 19 as an opt-in: set it and your
+    run gets its own database. It fixed the collision for anyone who remembered
+    it, which is the wrong set of people -- the runs that collide are the ones
+    nobody coordinated, and a session that knew to set the variable was not
+    going to be the problem. **The default is what has to be safe.**
+
+    So the default carries the checkout, and the two properties below are what
+    make that safe rather than merely different. It must be *stable* for one
+    checkout, or a laptop accumulates an orphan database per run; and it must
+    *differ* between checkouts, which is what a worktree is.
+    """
+
+    def test_two_checkouts_do_not_share_a_test_database(self):
+        main = test_database_name(database_name="clarice", base_dir="/repo")
+        tree = test_database_name(
+            database_name="clarice", base_dir="/repo/.claude/worktrees/increment-1"
+        )
+
+        self.assertNotEqual(main, tree)
+
+    def test_one_checkout_always_gets_the_same_name(self):
+        """Otherwise every run leaves a database behind, which is the objection
+        that kept this opt-in in the first place."""
+        first = test_database_name(database_name="clarice", base_dir="/repo")
+        second = test_database_name(database_name="clarice", base_dir="/repo")
+
+        self.assertEqual(first, second)
+
+    def test_an_explicit_suffix_wins(self):
+        """The opt-in stays: two runs in one checkout still need a way to be
+        told apart, and that is the case the derived name cannot see."""
+        name = test_database_name(
+            database_name="clarice", base_dir="/repo", override="b"
+        )
+
+        self.assertEqual(name, "test_clarice_b")
+
+    def test_the_name_is_a_legal_postgres_identifier(self):
+        """Postgres truncates identifiers at 63 bytes, silently. Two long
+        names truncated to the same 63 bytes would collide exactly the way
+        this exists to prevent."""
+        name = test_database_name(
+            database_name="clarice", base_dir="/" + "d" * 300
+        )
+
+        self.assertLessEqual(len(name), 63)
+        self.assertRegex(name, r"^[a-z][a-z0-9_]*$")

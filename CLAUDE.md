@@ -154,30 +154,38 @@ another project's Postgres on `5432`) when the env var isn't set. Nothing to
 configure beyond starting the container; a stale `db.sqlite3` from before this
 change is harmless and can be deleted.
 
-**Two test runs in this checkout destroy each other's database, and the failure
-does not look like it.** Django names the test database after the real one, so
-every `manage.py test` here uses `test_clarice`. Whichever run starts second
-finds it already there and asks whether to delete it — which is `EOFError` with
-nothing on stdin. Unluckier timing is worse: the first run's teardown drops the
-database the second is still using, and what comes back is a hundred
-`setUpClass` errors that read like a broken migration. **Before diagnosing a
-suite that fails everywhere at once, check whether another session is running
-one.** Both shapes were observed on August 19, 2026:
+**Two checkouts no longer destroy each other's test database — the name carries
+the checkout.** Django names it after the real one, so every run everywhere used
+to be `test_clarice`; `clarice.deployment.test_database_name` now appends a
+digest of the checkout path, and owns the reasoning. This checkout is
+`test_clarice_e1a4712a`, a worktree is something else, and both can run at once.
+Verified rather than assumed: two suites in parallel both pass, and forced onto
+one name by hand the second dies on `Key (datname)=... already exists`.
 
-```powershell
-docker exec goat-book-db-1 psql -U clarice -d clarice -tAc "select count(*) from pg_stat_activity where datname='test_clarice'"
-```
-
-**Give a run its own database rather than dropping somebody else's**, which is
-never the right move while a connection is open on it:
+**What the derived name does not cover is two runs inside one checkout** —
+`manage.py test` and `pytest` together, which share a `BASE_DIR` and therefore a
+name. That is what the override is for, and it still wins:
 
 ```powershell
 $env:DJANGO_TEST_DB_SUFFIX = "b"   # test_clarice_b, created and torn down alone
 ```
 
-Unset by default, because CI runs alone and a per-run database there would be a
-`CREATE DATABASE` for nothing. **`--parallel` is not a substitute** — it clones
-from `test_clarice` and collides in the same place.
+**`--parallel` is not a substitute** — it clones from the database named above
+and collides in the same place.
+
+**Know the shape of the failure anyway, because it does not look like
+contention.** The second run finds the database present and asks whether to
+delete it, which is `EOFError` with nothing on stdin; unluckier timing has the
+first run's teardown drop the database the second is still using, and what comes
+back is a wall of `setUpClass` errors reading like a broken migration. A real
+one of those on August 19 reported `column mind_facet.producer does not exist`
+while the migration creating it was present and `makemigrations --check` was
+clean. **Before diagnosing a suite that fails everywhere at once, ask who else
+is running one:**
+
+```powershell
+docker exec goat-book-db-1 psql -U clarice -d clarice -tAc "select datname, count(*) from pg_stat_activity where datname like 'test_%' group by datname"
+```
 
 **The other cost of two sessions in one tree: commits capture each other's
 edits.** `git commit -- <path>` and `git commit -a` both take the *working

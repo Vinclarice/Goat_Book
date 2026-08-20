@@ -370,6 +370,17 @@ class WeekOut(Schema):
     # URL is the gap this slice sequence has already shipped twice.
     previous_week: date
     next_week: date
+    #: What this week was said to be for, or None -- S9's second clause.
+    #:
+    #: **The reviewed week's own, not the draft's.** `draft.intention` names
+    #: the week ahead and has been in this payload since v2's increment 1;
+    #: this is the sentence the finished week was given, so its days can be
+    #: read under what they were meant to serve.
+    #:
+    #: None rather than "" for a week nobody named, matching `intention_for`'s
+    #: own refusal to invent a row on read: an unset intention is a blank page
+    #: and not a missing one.
+    intention: str | None
     completed: list[CompletedTaskOut]
     planned: PlannedOut
     written: list[WrittenDayOut]
@@ -438,6 +449,7 @@ def _week_out(owner, day):
     today = timezone.localdate()
     planned = reads.planned_in_week(owner, week_start, week_end)
     typical = reads.typical_week_for(owner, week_start)
+    intention = reads.intention_for(owner, week_start)
     review = reads.review_for(owner, week_start)
     return {
         "week_start": week_start,
@@ -446,6 +458,7 @@ def _week_out(owner, day):
         "is_current_week": week_start == week_start_for(today),
         "previous_week": week_start - timedelta(days=DAYS_IN_WEEK),
         "next_week": week_start + timedelta(days=DAYS_IN_WEEK),
+        "intention": intention.text if intention else None,
         "completed": [
             _completed_out(item)
             for item in reads.completed_in_week(owner, week_start, week_end)

@@ -5056,6 +5056,17 @@
             "title": "Next Week",
             "type": "string"
           },
+          "intention": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Intention"
+          },
           "completed": {
             "items": {
               "$ref": "#/components/schemas/CompletedTaskOut"
@@ -5124,6 +5135,7 @@
           "is_current_week",
           "previous_week",
           "next_week",
+          "intention",
           "completed",
           "planned",
           "written",

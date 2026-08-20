@@ -31,6 +31,7 @@ function weekData(overrides: Record<string, unknown> = {}) {
     previous_week: "2026-07-20",
     next_week: "2026-08-03",
     completed: [],
+    intention: null,
     planned: { total: 0, met: 0, met_tasks: [], unfinished: [], set_aside: [], typical: null, over_committed: false },
     written: [],
     thoughts: [],
@@ -183,6 +184,32 @@ describe("ReviewRoute", () => {
     expect(
       await screen.findByText(/Nothing was marked finished/),
     ).toBeInTheDocument();
+  });
+
+  it("reads the finished week under what it was for", async () => {
+    // S9's second clause. The sentence was shown only while planning the week
+    // ahead, so a finished week's numbers were read against nothing.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(weekData({ intention: "Get the booking form shipped." })),
+    );
+
+    renderAt("/review");
+
+    expect(await screen.findByText("What the week was for")).toBeInTheDocument();
+    expect(
+      screen.getByText("Get the booking form shipped."),
+    ).toBeInTheDocument();
+  });
+
+  it("says nothing for a week nobody named", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(weekData({ intention: null })),
+    );
+
+    renderAt("/review");
+
+    await screen.findByRole("heading", { name: "What you planned" });
+    expect(screen.queryByText("What the week was for")).not.toBeInTheDocument();
   });
 
   it("holds the week's commitments against what its weeks actually hold", async () => {

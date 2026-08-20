@@ -2375,6 +2375,8 @@ export interface components {
              * Format: date
              */
             next_week: string;
+            /** Intention */
+            intention: string | null;
             /** Completed */
             completed: components["schemas"]["CompletedTaskOut"][];
             planned: components["schemas"]["PlannedOut"];

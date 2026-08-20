@@ -23,7 +23,7 @@ definition of when a week starts, and two answers to that is the drift
 """
 from datetime import date
 
-from django.test import TestCase
+from django.test import Client, TestCase
 
 from accounts.models import User
 from review import reads, services
@@ -33,6 +33,61 @@ MONDAY = date(2026, 6, 1)
 WEDNESDAY = date(2026, 6, 3)
 SUNDAY = date(2026, 6, 7)
 NEXT_MONDAY = date(2026, 6, 8)
+
+
+class TheWeekLooksBackAtWhatItWasFor(TestCase):
+    """S9's second clause: *the review can ask whether the week's days served
+    the week's intention*.
+
+    Until now the sentence was shown only while planning the week **ahead**,
+    and nothing looked back at a finished week and held its days against what
+    it was for. Every ingredient was present -- `DailyFocus` has the days,
+    `WeeklyIntention` has the sentence, and the review already computes
+    planned against met -- so this is a read nobody had written.
+    """
+
+    def setUp(self):
+        self.alice = User.objects.create_user(
+            "alice", "alice@example.com", "a secure password"
+        )
+        self.bob = User.objects.create_user(
+            "bob", "bob@example.com", "another secure password"
+        )
+        self.client = Client()
+        self.client.force_login(self.alice)
+
+    def week(self, day=MONDAY):
+        response = self.client.get(f"/api/v1/review/{day}")
+        self.assertEqual(response.status_code, 200)
+        return response.json()
+
+    def test_the_reviewed_week_carries_the_intention_it_was_given(self):
+        services.set_intention(self.alice, MONDAY, "Get the booking form shipped.")
+
+        self.assertEqual(self.week()["intention"], "Get the booking form shipped.")
+
+    def test_it_is_the_reviewed_weeks_own_and_not_the_drafts(self):
+        """The one that would go unnoticed. The draft's intention was already
+        in this payload, so reading *an* intention proves nothing -- these two
+        have to be different sentences for the test to mean anything."""
+        services.set_intention(self.alice, MONDAY, "The week being reviewed.")
+        services.set_intention(self.alice, NEXT_MONDAY, "The week ahead.")
+
+        body = self.week()
+
+        self.assertEqual(body["intention"], "The week being reviewed.")
+        self.assertEqual(body["draft"]["intention"], "The week ahead.")
+
+    def test_a_week_nobody_named_says_so_rather_than_borrowing_one(self):
+        services.set_intention(self.alice, NEXT_MONDAY, "The week ahead.")
+
+        self.assertIsNone(self.week()["intention"])
+
+    def test_one_person_cannot_read_anothers_intention(self):
+        """The isolation test principles.md asks of every owner-scoped read."""
+        services.set_intention(self.bob, MONDAY, "Bob's private week.")
+
+        self.assertIsNone(self.week()["intention"])
 
 
 class WeeklyIntentionTest(TestCase):

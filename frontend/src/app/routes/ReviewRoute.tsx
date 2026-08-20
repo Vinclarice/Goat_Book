@@ -981,6 +981,21 @@ export function ReviewRoute() {
         )}
       </nav>
 
+      {/* S9's second clause: *the review can ask whether the week's days
+          served the week's intention*. The sentence was shown only while
+          planning the week ahead, so a finished week's numbers were read
+          against nothing. Above the numbers rather than beside them, because
+          it is the thing they are supposed to be measured against.
+
+          Absent for a week nobody named -- null rather than an empty
+          heading, matching what the read already refuses to invent. */}
+      {data.intention !== null && (
+        <section className="space-y-1">
+          <h2 className="text-sm font-bold">What the week was for</h2>
+          <p className="text-sm text-muted-foreground">{data.intention}</p>
+        </section>
+      )}
+
       {/* Above what merely got finished, because it is the deliberate half
           of the week -- the same reason Focus sits above Action Items on
           the day. */}

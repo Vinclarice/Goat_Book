@@ -89,14 +89,43 @@ re-add it here.
   **re-scored against this release later the same day, and three verdicts did**;
   that file owns the score and is not quoted here.
 
-  **What the re-score found and this file has to carry: S9's write path does not
-  exist.** The model, the service, the read and the Day payload all shipped, and
-  nothing — no endpoint, no form — can set a weekly intention, so the draft
-  displays a value no person can produce. Open, unscheduled, and cheap.
+  ~~**What the re-score found and this file has to carry: S9's write path does
+  not exist.**~~ **Built August 20, 2026** as v2's increment 1 — see the entry
+  below, which is where that work continued.
 
-  The narrative, the four decisions and the three silent-nothings the build
-  turned up are in [`roadmap-history.md`](roadmap-history.md); the plan is a
+  The narrative, the four decisions and the three silent-nothings that build
+  turned up are in [`roadmap-history.md`](roadmap-history.md); the v1 plan is a
   stub.
+
+- **The planning assistant's second version is the active work.** Designed and
+  being built to
+  [`planning-assistant-v2-plan.md`](planning-assistant-v2-plan.md): the weekly
+  planning *session*, on the review's forward half rather than a second
+  surface. **Eight of its nine increments are complete, on `main` and
+  undeployed** — the weekly intention made reachable (which closed the item
+  struck above), capacity at day grain where D2 always specified it, a project
+  that can say what done looks like and be parked, a check-in that opens with
+  what the system believes, outcomes chosen from evidence, blockers answered
+  where they are read, the week laid out by day and stress-tested, and scenario
+  planning.
+
+  **Nothing in it generates anything**, which is the finding that shaped it:
+  twelve of fourteen elements needed no prose at all, and the two that do are
+  the sites D1 already ranked. Scenario planning — the part that feels most like
+  an assistant — is `draft_week` with one argument.
+
+  **Increment 9 may never ship, and that is the correct outcome rather than a
+  failure**: ranking by confirmation history is gated on a sample floor a corpus
+  of 41 nodes has not cleared. Three smaller pieces were deferred and named in
+  `abcfc51`: confirming a recurring name in place, the planning-miss signal, and
+  "schedule a decision" as a third disposition.
+
+  **Two decisions dissolved on contact with the code** and are recorded there
+  rather than here: D5, whether the review may decide things, which it already
+  did through the owning core's services; and D6, where the ritual lives, which
+  does not bind while only questions are acted on because a question carries no
+  review window. D1, D2, D4 and D7 remain open; the score is
+  [`product-stories.md`](product-stories.md)'s and is not quoted here.
 
 - ~~**Terms of service and a privacy policy.**~~ **Written and published
   August 19, 2026**, at `/privacy/` and `/terms/`, linked from a footer on

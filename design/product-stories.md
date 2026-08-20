@@ -31,18 +31,28 @@ other eleven were not re-read.
 and is the most useful thing this pass found: **S9 has a model, a service, a read
 and an API payload, and no way for a person to write one.** See its entry.
 
+**Re-scored against v2's increments 1–8, August 20, 2026.** Eight increments of
+`planning-assistant-v2-plan.md` shipped in one stretch, and this is the second
+consecutive body of work aimed at this document rather than passing near it.
+**Only one verdict moved** — and the more useful finding is how many did not,
+and how narrowly. Six stories were re-read (S3, S7, S9, S10, S12, S16); three
+of them are now one clause short of *works*, and their entries say which clause.
+
 ## The score
 
-**3 work · 9 bend · 7 impossible** — from 3 · 6 · 10 on August 16, and from
-2 · 2 · 15 on August 12. **Unlike every previous move, this one was aimed**: the
-merger and Heron shifted the second-brain stories as a side effect, where
-`kestrel` was built at the planning and project stories on purpose.
+**3 work · 10 bend · 6 impossible** — from 3 · 9 · 7 on August 19, 3 · 6 · 10
+on August 16, and 2 · 2 · 15 on August 12.
+
+**The impossible pile is now six, and it is the honest shape of what is left:**
+signing up needs a policy decision, not code; the quarter and the project
+retrospective are unbuilt reads; and `Decision`, `Source` and billing are three
+models nobody has started. Nothing in it is waiting on a form any more.
 
 | | journeys |
 |---|---|
 | **Works** | S4 durable capture · S6 the honest weekly review · S17 leaving with your data |
-| **Bends** | S2 the phone morning · S3 planning against capacity · S5 closing the day · S7 acting on the review · S10 a project's why · S13 finding what you wrote · S14 a note that knows when · S16 the past arriving · S18 bringing your history |
-| **Impossible** | S1 signing up · S8 the quarter · S9 the week · S11 a decision returning · S12 a project explaining itself · S15 reading producing work · S19 paying |
+| **Bends** | S2 the phone morning · S3 planning against capacity · S5 closing the day · S7 acting on the review · S9 the week · S10 a project's why · S13 finding what you wrote · S14 a note that knows when · S16 the past arriving · S18 bringing your history |
+| **Impossible** | S1 signing up · S8 the quarter · S11 a decision returning · S12 a project explaining itself · S15 reading producing work · S19 paying |
 
 **This score lives here and nowhere else.** Other documents link to it; they do
 not quote it.
@@ -140,7 +150,7 @@ task from the day surface itself, reschedule another without leaving it, and hit
 every control with a thumb.
 
 **Verdict: bends.** Android does agenda read/write, but the Day page's action
-items are still read-only *by design* (`DayRoute.tsx:122` explains why a Complete
+items are still read-only *by design* (`DayRoute.tsx:123` explains why a Complete
 button was refused) — completing a task means navigating away. On mobile web
 `button.tsx:28` still tops out at `h-9`, 36px, and `DayRoute` carries none of the
 per-call-site 44px overrides.
@@ -164,26 +174,33 @@ and a declared free-time budget, which is an implementation and not a journey.
 the `Requires` line were built within hours of it being written, which is worth
 leaving visible rather than tidying into one entry.
 
-The throughput read is `typical_week_for` (`review/reads.py:739`): the **median**
+The throughput read is `typical_week_for` (`review/reads.py:802`): the **median**
 of what was finished across up to eight weeks that had a plan in them, computed
 from `DailyFocus` exactly as the line below anticipated, returning `None` below
 two planned weeks because *"no evidence yet"* and *"you have room"* call for
 opposite responses. The planning-time signal is `draft_week`'s `over_committed`
-(`review/reads.py:835`), and `ReviewRoute.tsx` states it without grading it — a
+(`review/reads.py:974`), and `ReviewRoute.tsx` states it without grading it — a
 test asserts the scolding phrasing is *absent*, not merely that the neutral one
 is present.
 
-**What still fights him is grain and place.** The signal is a week's, on the
-review, about the week ahead; his story pins five things to a **Tuesday** and
-wants the day to answer while he is still choosing. `DayRoute` has no capacity
-signal at all, so the day he is planning into stays silent, and he learns it by
-opening a different surface and reading about a different unit. It reaches him
-on Monday rather than at Friday's review, which is the thing the story actually
-asked for — so this bends rather than blocks.
+~~**What still fights him is grain and place.**~~ **The grain half closed on
+August 20, 2026**, in v2's increment 2. `daily/reads.py`'s `typical_day_for` is
+the same computation at day scale — the median of what was finished across days
+that had a plan, `None` below five of them — and `DayRoute.tsx:967` states it on
+the day itself while he is pinning: *"5 pinned for today. You have finished 3 on
+a typical day."* Absent on a day already lived, absent before anything is
+pinned, absent below the evidence floor.
 
-**Requires:** the same read at day grain, on the day surface. Still **no new
-field**: `review/reads.py:103` computes planned against completed for a week and
-a day is that computation finer, which is what made the week version cheap.
+**One clause of the done-means is left, and it is the review's half**: *the
+weekly review can separate over-committed from under-delivered*. It cannot yet.
+Finishing four of nine is reported as a rate (S6's, and honest), but nothing
+holds that nine against what his weeks actually hold, so the two readings of the
+same number stay indistinguishable — the exact confusion this story exists to
+resolve. The figure needed is already computed: `typical_week_for` runs on every
+review, pointed forwards at the draft rather than backwards at the week.
+
+**Requires:** the comparison the draft already makes, applied to the week being
+reviewed. No model, no field, no new read — an argument's difference.
 
 **The appetite test this story carried is withdrawn.** It read *"the sharpest
 test of appetite in the whole set — if estimates would go unentered, this story
@@ -276,7 +293,7 @@ and the numbers update in place.
 > holding open.** It read: *this journey's premise no longer exists* — captures,
 > the Inbox and triage were deleted on August 15 — *and the ageing pile has to be
 > renamed before the story can be scored.* `kestrel` increment 5 named it without
-> being asked to. `loose_ends` (`review/reads.py:588`) gives the review a pile
+> being asked to. `loose_ends` (`review/reads.py:598`) gives the review a pile
 > that ages again: **unanswered questions** carrying `asked_on`, **commitments
 > read out of her own writing and never accepted or dismissed** carrying
 > `proposed_on`, and overdue work. *"Four things have been waiting eleven days"*
@@ -286,26 +303,40 @@ and the numbers update in place.
 
 **Verdict: bends**, moved from *impossible*. The pile exists, the review shows
 it with its dates, and she can deal with it — the section links her to `/mind/`
-to do it (`ReviewRoute.tsx:888`, *"Decide them in Second Mind"*). The journey
+to do it (`ReviewRoute.tsx:1070`, *"Decide them in Second Mind"*). The journey
 completes across two surfaces.
 
-**What still fights her is the second surface.** *"Without leaving the review,
-and the numbers update in place"* is unbuilt **and deliberately so**: the section
-is extractive, and the comment above it gives the reason — nothing there
-proposes, so nothing there needs a confirm gate. That is the read-only rule
-protecting exactly what makes S6 the product's moat, and it is a refusal rather
-than an omission. The review is not inert either way: `ReviewRoute.tsx:710` pins
-a task to today and `:689` completes or reopens the review itself — both through
-the owning service rather than a review-shaped write path, which is the shape any
-answer to the question below should copy. **Those two citations were `:147` and
-`:896` before this pass and had drifted onto unrelated lines**, which is the rule
-at the top of this file catching itself.
+~~**What still fights her is the second surface.**~~ **Half of that closed on
+August 20, 2026**, in v2's increment 6, and the refusal it rested on turned out
+to be narrower than it read. A question carries **no review window** — nothing
+expires, nothing ripens — where a proposal is stamped when it is shown, so
+answering one from another surface cannot disturb the machinery that interprets
+silence. Two verbs now do it in place: `mind/api_v1.py:175` records *"I settled
+this"* and `:190` records *"this was never a question"*, both through the
+knowledge core's own services, so a question answered from the planner records
+exactly what one answered from `/mind/review/` does.
 
-**Requires:** deciding whether deciding-in-place is worth opening that rule —
-the one genuine product question left here, now that what the pile *is* has been
-settled by shipping it. The resolution already found for tasks — write through
-the owning core's services, leave the review's own reads untouched — is the one
-to repeat if the answer is yes.
+**What is left is the rest of the pile.** Only questions bearing on a chosen
+outcome are answerable here; the loose-ends list itself still sends her to
+`/mind/` for a commitment she never accepted, and the recurring names it shows
+still carry no action at all. So she can deal with *some* of what the review
+tells her without leaving it, which is a bend rather than a block — and the
+remaining half needs no new decision, only the same treatment. The review is not inert either way: `ReviewRoute.tsx:888` pins
+a task to today and `:867` completes or reopens the review itself — both through
+the owning service rather than a review-shaped write path, which is the shape the
+remaining rows should copy. **Both numbers have now drifted twice** — they were
+`:147` and `:896` before the kestrel pass and `:710` and `:689` before this one,
+moved each time by work in the file rather than by anything changing meaning.
+That is the rule at the top of this document catching itself, twice, and the
+argument for citing a function's own line rather than a call site inside a
+component that grows.
+
+**Requires:** the same treatment for the other two rows — an unaccepted
+commitment and a recurring name — through the owning core's services, which is
+the shape both the questions and the pinning already take. ~~Deciding whether
+deciding-in-place is worth opening the read-only rule~~ is answered: it was
+never that rule. The review still holds no write path of its own, and every verb
+on it calls the core that owns the record.
 
 ### S8. Vince zooms out to a quarter
 
@@ -329,40 +360,27 @@ null-not-zero discipline already exists in `review/reads.py` and must carry up.
 **Done means:** Wednesday shows what the week was for, and the review can ask
 whether the week's days served the week's intention.
 
-**Verdict: impossible, and for a reason worth reading carefully — everything
-this story needs exists except a way in.** The old verdict said *planning exists
-only at day scale*, and that is no longer true. `kestrel` built S9 as increment
-6's prerequisite:
+**Verdict: bends**, moved from *impossible* on August 20, 2026. The previous
+entry said everything this story needed existed **except a way in**, and named
+the absence precisely: a model, a service, a read and a Day payload, with no
+form and no endpoint. V2's increment 1 built the way in.
 
-- `WeeklyIntention` (`review/models.py:94`), its own model rather than a field
-  on `WeeklyReview`, so that setting an intention cannot invent a review row and
-  destroy the one thing a review's *existence* is evidence of.
-- `services.set_intention` (`review/services.py:118`), which takes any day and
-  normalises, so Wednesday can rewrite what Sunday decided without a second row.
-- `reads.intention_for` (`review/reads.py:697`), returning `None` rather than
-  creating.
-- `week_intention` on the Day payload (`daily/api_v1.py:284`), with tests at
-  `review/tests/test_weekly_intentions.py:154` asserting a Wednesday carries it.
+**Sunday can decide now.** `PUT /api/v1/weeks/{day}/intention`
+(`review/api_v1.py:710`) is the write path that did not exist, and the review's
+forward half carries the box that calls it. **And Wednesday knows**:
+`DayRoute.tsx:922` renders the week's intention under the compass, which is the
+half that reached `schema.ts` and no component for a fortnight.
 
-**And nothing can write one.** `set_intention` has no caller outside its own
-tests: there is no endpoint for it on the review router, `ReviewIn`
-(`review/api_v1.py:491`) accepts `reflections` and `plan` only, and no template
-posts one. **So "on Sunday she decides what the week is about" cannot happen at
-all**, from any client, at any cost short of new code — which is this document's
-definition of *impossible*, met by a feature that is otherwise finished.
+**What it still bends on is the second clause**, and it is a real one: *the
+review can ask whether the week's days served the week's intention*. It cannot.
+The intention is shown while planning the week ahead, and nothing looks back at
+a finished week and holds its days against what it was for. Every ingredient is
+present — `DailyFocus` has the days, `WeeklyIntention` has the sentence, and
+`review/reads.py` already computes planned against met — so this is a read
+nobody has written rather than anything missing.
 
-**The second half is missing in the same shape.** `week_intention` appears in
-`frontend/src/api/schema.ts:1420` and **in no component** — the Day page never
-renders it. So *"on Wednesday the day knows"* is true of the payload and false of
-the page, and the commit that built it (`8b02c1b`, *"so a Wednesday can know"*)
-asserted it through the Day API rather than the Day page, which is where the gap
-slipped through. The draft on the review displays the intention
-(`ReviewRoute.tsx:947`), so the only text a person can ever see there is text no
-person could have put there.
-
-**Requires:** a write path and a render — **no model, no service and no read.**
-This is the cheapest remaining item in the impossible pile by a wide margin, and
-it is the difference between a shipped feature and a reachable one.
+**Requires:** a retrospective that reads the intention beside the week's own
+days. No model, no service, no field.
 
 ---
 
@@ -383,7 +401,7 @@ end, model to text area, and the comment above it names this story as the reason
 and names its own two omissions.
 
 **One of S10's three shipped, and it is the load-bearing one.** Purpose is what
-increment 4 anchors retrieval against — `brief_for` (`lists/projects.py:105`)
+increment 4 anchors retrieval against — `brief_for` (`lists/projects.py:117`)
 returns nothing for a project without one, on purpose, because an unanchored
 query is a ranked-by-coincidence panel. Optional, and staying optional: requiring
 it would put a writing task in front of somebody who only wants to group three
@@ -395,8 +413,21 @@ survives — plain text takes anything — but the abandonment condition is then
 indistinguishable from the ambition, which is precisely the distinction the story
 is about, and nothing can ever read one without the other.
 
+**A fourth field arrived on August 20, 2026 and it is not one of the three.**
+`Project.desired_outcome` (`lists/models.py:468`) says *what done looks like*,
+where purpose says *why*; a project can also now be **paused**
+(`lists/models.py:487`), which is the third state a workspace needed. Both are
+real additions to the workspace and **neither is the abandonment condition**, so
+this story's gap is exactly where it was. Recorded because a project page that
+has grown two fields looks from a distance like a story that moved.
+
+Whether the outcome *absorbs* the abandonment condition — what done looks like
+against what going wrong looks like — is D4 in
+[`planning-assistant-v2-plan.md`](planning-assistant-v2-plan.md), and is open.
+If it does, this story's remaining requires is one field rather than two.
+
 **Requires:** the remaining two of the three — notes, and an abandonment
-condition that is its own field.
+condition that is its own field, unless D4 folds the second into the outcome.
 
 ### S11. A decision comes back
 
@@ -435,8 +466,8 @@ for next time.
 
 **Verdict: impossible**, unchanged — **but both halves of the old citation are
 now false, and half the `Requires` shipped.** *"`src/review/` imports nothing
-from projects"* stopped being true at `review/reads.py:22`, and
-`upcoming_constraints` (`review/reads.py:661`) reads project deadlines into the
+from projects"* stopped being true at `review/reads.py:27`, and
+`upcoming_constraints` (`review/reads.py:671`) reads project deadlines into the
 review. Left in the impossible pile anyway, because what this story asks for is
 none of that.
 
@@ -448,6 +479,14 @@ Nothing computes planned-versus-met across a project's life, and
 `services.complete_project` (`lists/services.py:785`) still sets two fields and
 writes no record, so the second clause of the old verdict stands exactly as
 written. There is nowhere to put *what he would do differently* either.
+
+**Re-read against v2 and unmoved, August 20, 2026.** The project workspace
+gained a desired outcome and a paused state, and the weekly ritual gained
+outcomes that carry a project and snapshot its title
+(`review/models.py:267`) — so a project's *life* is better recorded than it was.
+None of that is what this story asks for. `services.complete_project` still
+sets two fields and writes no record, and nothing reads a project's history back
+at the moment it ends.
 
 **Requires:** what completing a project produces — a retrospective read over its
 life, and somewhere to keep his own account of it. **This is still the story
@@ -629,7 +668,7 @@ leaves him able to read and export.
 
 ## What the stories add up to
 
-**19 stories: 3 work, 9 bend, 7 impossible.**
+**19 stories: 3 work, 10 bend, 6 impossible.**
 
 **The August 16 reading of this section was that almost none of the movement had
 been aimed at these stories** — the merger and Heron were about capture surfaces
@@ -648,9 +687,20 @@ planning and project cluster this section named as immovable three days earlier.
   and the sentence is struck rather than deleted because it was true for a week
   and its being wrong is the point. What remains true is the shape underneath it:
   the three journeys that *work* are still capture, reflection and leaving, and
-  planning and projects still only bend. Nothing in the impossible pile is a
-  planning story any more except **S9, which is impossible for want of a form**,
-  and **S8, the quarter**, which nothing has touched since August 12.
+  planning and projects still only bend.
+- **After v2's first eight increments, no planning story is impossible.** S9 was
+  the last one, and it moved when it got a form. What replaced that pile is
+  narrower and more awkward to be pleased about: **three stories are now one
+  clause short of *works***, and in each case the missing clause is a read
+  nobody has written rather than a model nobody has built. S3 needs the draft's
+  own comparison pointed backwards at the week being reviewed; S9 needs the
+  intention held against that week's days; S7 needs two more rows treated the
+  way its questions now are.
+- **A one-clause gap is not a small gap, and this document should not pretend
+  otherwise.** *Works* means a real person could do the whole journey today, and
+  a journey that stops one step short stops. What the count does say is that the
+  remaining work is reads over records that already exist — which is a different
+  and cheaper kind of remaining than the one this document opened with.
 
 The three that work — durable capture, the honest weekly review, and leaving with
 your data — are what the product should be sold on, and none needs changing.
@@ -676,9 +726,11 @@ the note half. What is missing:
 - Deferral distinct from `due_date`, so snooze stops erasing the commitment
 - A someday state, so non-committed work stops masquerading as something else
 - `Project` as a workspace: ~~purpose~~ *(shipped, `kestrel`)*, notes,
-  abandonment condition, retrospective *(S10, S12)*
-- ~~Intentions above the day~~ *(the model shipped; the form did not — S9)*;
-  reviews above the week *(S8)*
+  abandonment condition *(a desired outcome and a paused state shipped in v2 and
+  are neither — S10, and D4 asks whether the outcome absorbs the condition)*,
+  retrospective *(S12)*
+- ~~Intentions above the day~~ — **shipped whole in v2's increment 1**, model,
+  service, write path and render *(S9)*; reviews above the week *(S8)*
 
 **Substrate**
 

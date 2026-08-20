@@ -2,6 +2,7 @@ import type {
   CadenceMode,
   ChecklistStep,
   Task,
+  TaskPriority,
   TaskRecurrence,
   TaskStatus,
 } from "./types";
@@ -115,6 +116,15 @@ export function updateTaskDueDate(
  */
 export function moveTaskToArea(task: Task, listId: number | null): Promise<Task> {
   return request<Task>(task.url, "PATCH", { list: listId });
+}
+
+/** How pressing this is, relative to the rest. Writes through to the series,
+ *  so a repeating task keeps it. */
+export function updateTaskPriority(
+  task: Task,
+  priority: TaskPriority,
+): Promise<Task> {
+  return request<Task>(task.url, "PATCH", { priority });
 }
 
 export function updateTaskTags(task: Task, tags: string[]): Promise<Task> {

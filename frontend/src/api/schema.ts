@@ -1279,6 +1279,11 @@ export interface components {
              * @enum {string}
              */
             recurrence: "none" | "daily" | "weekly" | "monthly";
+            /**
+             * Priority
+             * @enum {string}
+             */
+            priority: "none" | "high" | "low";
             /** Notes */
             notes: string;
             /** Area Id */
@@ -1784,6 +1789,11 @@ export interface components {
              * @enum {string}
              */
             recurrence: "none" | "daily" | "weekly" | "monthly";
+            /**
+             * Priority
+             * @enum {string}
+             */
+            priority: "none" | "high" | "low";
             /** Notes */
             notes: string;
             /** Area Id */

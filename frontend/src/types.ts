@@ -9,6 +9,8 @@ export type TaskStatus = "active" | "completed" | "archived";
 export type CadenceMode = "anchored" | "floating";
 
 export type TaskRecurrence = "none" | "daily" | "weekly" | "monthly";
+/** No "medium": an unmarked task already means ordinary. */
+export type TaskPriority = "none" | "high" | "low";
 export type AreaColorKey =
   | "sky"
   | "sage"
@@ -37,6 +39,7 @@ export interface Task {
   position: number;
   tags: string[];
   recurrence: TaskRecurrence;
+  priority: TaskPriority;
   // Plain text, never Markdown. "" means no notes -- the API normalises
   // blank input to the empty string so this is never null.
   notes: string;

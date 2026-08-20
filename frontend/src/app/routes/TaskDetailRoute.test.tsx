@@ -107,6 +107,49 @@ describe("TaskDetailRoute", () => {
     expect(await screen.findByText("Task updated.")).toBeInTheDocument();
   });
 
+  it("marks a task as pressing", async () => {
+    const user = userEvent.setup();
+    let sent: unknown = null;
+    vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
+      if (typeof input !== "string") {
+        if ((input as Request).url.includes("/api/v1/nav")) {
+          return jsonResponse({ areas: [], projects: [], archived_count: 0 });
+        }
+        return jsonResponse(taskDetailData());
+      }
+      const body = JSON.parse((init?.body as string) ?? "{}");
+      if ("priority" in body) sent = body.priority;
+      return jsonResponse({ data: task({ priority: "high" }) });
+    });
+
+    renderAt("1");
+    await screen.findByDisplayValue("Write tests");
+
+    await user.selectOptions(await screen.findByLabelText("Priority"), "high");
+
+    await waitFor(() => expect(sent).toBe("high"));
+    expect(await screen.findByText("Priority updated.")).toBeInTheDocument();
+  });
+
+  it("offers no middle value, because an unmarked task already is one", async () => {
+    // The design decision, held by a test rather than only by a docstring:
+    // offering "medium" beside "no priority" invites the distinction every
+    // to-do app collapses into, where everything is medium.
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      if (typeof input !== "string" && (input as Request).url.includes("/api/v1/nav")) {
+        return jsonResponse({ areas: [], projects: [], archived_count: 0 });
+      }
+      return jsonResponse(taskDetailData());
+    });
+
+    renderAt("1");
+
+    const select = await screen.findByLabelText("Priority");
+    expect(
+      Array.from(select.querySelectorAll("option")).map((o) => o.textContent),
+    ).toEqual(["No priority", "Pressing", "Whenever"]);
+  });
+
   it("moves a task into another of your areas", async () => {
     const user = userEvent.setup();
     let moved: unknown = null;

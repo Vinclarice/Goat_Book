@@ -43,6 +43,25 @@ class CadenceMode(models.TextChoices):
     FLOATING = "floating", "A set time after it is done"
 
 
+class Priority(models.TextChoices):
+    """How pressing a commitment is, relative to the rest.
+
+    Module level for the same reason `Recurrence` is: `RecurringCommitment` is
+    declared below and carries it too, because priority belongs to the series
+    rather than to one occurrence. `Item.Priority` is an alias further down.
+
+    **There is deliberately no "medium".** Priority marks a *departure* from
+    ordinary, so an unmarked task already means medium; offering both invites
+    the distinction every to-do app collapses into, where everything is medium
+    and the field says nothing. `NONE` is the absence of the signal rather than
+    another value of it.
+    """
+
+    NONE = "none", "No priority"
+    HIGH = "high", "Pressing"
+    LOW = "low", "Whenever"
+
+
 class RecurringCommitment(models.Model):
     """The durable identity of a repeating commitment, across its occurrences.
 
@@ -106,6 +125,12 @@ class RecurringCommitment(models.Model):
         max_length=10, choices=CadenceMode.choices, default=CadenceMode.ANCHORED
     )
     notes = models.TextField(blank=True, default="")
+    # Carried by the series, like text, notes, tags and the Area. A priority
+    # that reset every occurrence would be the one attribute somebody had to
+    # set again forever.
+    priority = models.CharField(
+        max_length=6, choices=Priority.choices, default=Priority.NONE
+    )
     tags = models.ManyToManyField("Tag", related_name="commitments", blank=True)
 
     def __str__(self):
@@ -120,6 +145,7 @@ class Item(models.Model):
         ARCHIVED = "archived", "Archived"
 
     Recurrence = Recurrence
+    Priority = Priority
 
     text = models.TextField(default="")
     # Nullable since August 14, 2026. A task no longer needs an Area to exist.
@@ -175,6 +201,9 @@ class Item(models.Model):
         max_length=10,
         choices=Recurrence.choices,
         default=Recurrence.NONE,
+    )
+    priority = models.CharField(
+        max_length=6, choices=Priority.choices, default=Priority.NONE
     )
     # Plain text, deliberately not Markdown: a renderer plus an XSS surface
     # is a poor trade at two users. blank=True and no null -- "no notes" is

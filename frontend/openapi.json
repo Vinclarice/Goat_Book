@@ -2488,6 +2488,15 @@
             "title": "Recurrence",
             "type": "string"
           },
+          "priority": {
+            "enum": [
+              "none",
+              "high",
+              "low"
+            ],
+            "title": "Priority",
+            "type": "string"
+          },
           "notes": {
             "title": "Notes",
             "type": "string"
@@ -2535,6 +2544,7 @@
           "position",
           "tags",
           "recurrence",
+          "priority",
           "notes",
           "area_id",
           "project_id",
@@ -3723,6 +3733,15 @@
             "title": "Recurrence",
             "type": "string"
           },
+          "priority": {
+            "enum": [
+              "none",
+              "high",
+              "low"
+            ],
+            "title": "Priority",
+            "type": "string"
+          },
           "notes": {
             "title": "Notes",
             "type": "string"
@@ -3774,6 +3793,7 @@
           "position",
           "tags",
           "recurrence",
+          "priority",
           "notes",
           "area_id",
           "project_id",

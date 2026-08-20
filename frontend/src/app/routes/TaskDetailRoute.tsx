@@ -12,6 +12,7 @@ import {
   updateChecklistStepCarriesForward,
   updateChecklistStepDone,
   moveTaskToArea,
+  updateTaskPriority,
   updateTaskDueDate,
   updateTaskNotes,
   updateTaskCadenceMode,
@@ -27,6 +28,7 @@ import type {
   CadenceMode,
   ChecklistStep,
   Task,
+  TaskPriority,
   TaskRecurrence,
 } from "../../types";
 
@@ -36,6 +38,15 @@ import type {
 const CADENCE_MODE_LABELS: Record<CadenceMode, string> = {
   anchored: "On the same date each time",
   floating: "A set time after I finish it",
+};
+
+/** The model's own labels, so the page and the admin do not disagree about
+ *  what "high" is called. No "medium": an unmarked task already means
+ *  ordinary -- see lists.models.Priority. */
+const PRIORITY_LABELS: Record<TaskPriority, string> = {
+  none: "No priority",
+  high: "Pressing",
+  low: "Whenever",
 };
 
 const RECURRENCE_LABELS: Record<TaskRecurrence, string> = {
@@ -344,6 +355,25 @@ export function TaskDetailRoute() {
     }
   }
 
+  async function handlePriority(priority: TaskPriority) {
+    if (!task) return;
+    setError(null);
+    setNotice(null);
+    setBusy(true);
+    try {
+      const updated = await updateTaskPriority(task, priority);
+      setTask(updated);
+      setNotice("Priority updated.");
+      // The agenda orders within a day by it, so the counts a person sees
+      // next are not the ones they just left.
+      refreshNav();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to set the priority.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function handleMove(listId: number | null) {
     if (!task) return;
     setError(null);
@@ -502,6 +532,25 @@ export function TaskDetailRoute() {
           disabled={busy}
           className="w-full rounded-lg border border-border bg-input px-3 py-1.5"
         />
+      </div>
+
+      <div className="space-y-1">
+        <label htmlFor="task-priority" className="text-sm font-bold">
+          Priority
+        </label>
+        <select
+          id="task-priority"
+          value={task.priority}
+          onChange={(event) => handlePriority(event.target.value as TaskPriority)}
+          disabled={busy}
+          className="w-full rounded-lg border border-border bg-input px-3 py-1.5"
+        >
+          {(Object.keys(PRIORITY_LABELS) as TaskPriority[]).map((value) => (
+            <option key={value} value={value}>
+              {PRIORITY_LABELS[value]}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div className="space-y-1">

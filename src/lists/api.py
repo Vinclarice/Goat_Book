@@ -8,7 +8,7 @@ from django.views.decorators.http import require_http_methods
 from accounts.auth import token_or_session_required
 from accounts.models import SCOPE_AGENDA_WRITE
 from lists import services
-from lists.models import CadenceMode, ChecklistStep, Item, List
+from lists.models import CadenceMode, ChecklistStep, Item, List, Priority
 from lists.serializers import serialize_checklist_step, serialize_item
 
 # What a token-authenticated request may change through item_detail --
@@ -195,7 +195,7 @@ def item_detail(request, item_id):
     if error_response:
         return error_response
     changed_fields = {
-        "text", "status", "due_date", "tags", "recurrence", "notes", "list",
+        "text", "status", "due_date", "tags", "recurrence", "notes", "list", "priority",
         # Its own single change rather than a companion to `recurrence`,
         # keeping the one-field-per-request discipline the rest of this
         # endpoint runs on. Setting both is two requests.
@@ -207,7 +207,8 @@ def item_detail(request, item_id):
                 "errors": {
                     "body": [
                         "Change exactly one of text, status, due_date, tags, "
-                        "recurrence, cadence_mode, notes, or list per request."
+                        "recurrence, cadence_mode, notes, list, or priority per "
+                        "request."
                     ]
                 }
             },
@@ -260,6 +261,16 @@ def item_detail(request, item_id):
             # set_recurrence rather than writing the commitment directly, so
             # the archived-task guard and the write-through stay in one place.
             item = services.set_recurrence(item, item.recurrence, cadence_mode=mode)
+        elif "priority" in changed_fields:
+            # Checked here rather than left to the service's TaskConflict,
+            # which this endpoint answers with 409 -- an unknown enum value is
+            # a malformed request, the same call cadence_mode makes above.
+            if payload["priority"] not in Priority.values:
+                return JsonResponse(
+                    {"errors": {"priority": ["Choose a valid priority."]}},
+                    status=400,
+                )
+            item = services.set_priority(item, payload["priority"])
         elif "list" in changed_fields:
             destination_id = payload["list"]
             # `bool` is an `int` subclass, so a JSON `true` would otherwise

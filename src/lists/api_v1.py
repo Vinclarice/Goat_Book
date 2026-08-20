@@ -42,6 +42,8 @@ router = Router()
 
 TaskStatus = Literal["active", "completed", "archived"]
 TaskRecurrence = Literal["none", "daily", "weekly", "monthly"]
+#: No "medium": an unmarked task already means ordinary. See lists.models.Priority.
+TaskPriority = Literal["none", "high", "low"]
 BucketKey = Literal["overdue", "today", "week", "later", "someday"]
 AreaColorKey = Literal[
     "sky", "sage", "amber", "lilac", "coral", "azure", "blush", "straw"
@@ -72,6 +74,7 @@ class TaskOut(Schema):
     position: int
     tags: list[str]
     recurrence: TaskRecurrence
+    priority: TaskPriority
     notes: str
     # Nullable since August 14, 2026 -- a task may stand on its own, so this is
     # the boundary admitting a state the database already allowed. Ninja

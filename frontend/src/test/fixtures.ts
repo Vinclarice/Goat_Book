@@ -18,6 +18,7 @@ export function task(overrides: Partial<Task> = {}): Task {
     position: 0,
     tags: [],
     recurrence: "none",
+  priority: "none",
     notes: "",
     area_id: 1,
     project_id: null,

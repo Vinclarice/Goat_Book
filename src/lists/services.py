@@ -10,6 +10,7 @@ from lists.models import (
     ChecklistStep,
     Item,
     List,
+    Priority,
     Project,
     RecurringCommitment,
     Tag,
@@ -297,6 +298,25 @@ def set_due_date(item, due_date):
         raise InvalidTaskTransition("Restore this task before editing it")
     item.due_date = due_date or None
     item.save()
+    return item
+
+
+@transaction.atomic
+def set_priority(item, priority):
+    """Mark a commitment as more or less pressing than the rest.
+
+    Writes through to the series for the same reason renaming does -- "this and
+    future". A priority set on "pay rent" that came back unmarked next month
+    would be the one attribute of a commitment that did not carry.
+    """
+    item = Item.objects.select_for_update().get(pk=item.pk)
+    if item.status == Item.Status.ARCHIVED:
+        raise InvalidTaskTransition("Restore this task before editing it")
+    if priority not in Priority.values:
+        raise TaskConflict("Choose a valid priority.")
+    item.priority = priority
+    item.save(update_fields=["priority"])
+    _write_through_to_commitment(item, priority=priority)
     return item
 
 
@@ -636,6 +656,7 @@ def _spawn_next_occurrence(completed_item, carry_forward_steps=()):
         position=_next_position(commitment.list, owner=commitment.owner),
         commitment=commitment,
         notes=commitment.notes,
+        priority=commitment.priority,
     )
     next_item.tags.set(commitment.tags.all())
 

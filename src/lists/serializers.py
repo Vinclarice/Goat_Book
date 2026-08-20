@@ -35,6 +35,7 @@ def serialize_item(item):
         "position": item.position,
         "tags": [tag.name for tag in item.tags.all()],
         "recurrence": item.recurrence,
+        "priority": item.priority,
         "notes": item.notes,
         # Just the id -- callers already have (or can fetch) the area's
         # title/url from the top-level `areas` array in the page payload,

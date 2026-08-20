@@ -7,11 +7,11 @@ means the same thing in both.
 """
 from datetime import datetime, timedelta
 
-from django.db.models import Count, F, Q
+from django.db.models import Case, Count, F, IntegerField, Q, Value, When
 from django.urls import reverse
 from django.utils import timezone
 
-from lists.models import Item, List
+from lists.models import Item, List, Priority
 from lists.serializers import project_ref_for, serialize_item
 
 
@@ -189,7 +189,27 @@ def open_items_for(user):
         Item.objects.filter(owner=user, status=Item.Status.ACTIVE)
         .select_related("list")
         .prefetch_related("tags")
-        .order_by(F("due_date").asc(nulls_last=True), "position", "id")
+        .annotate(
+            # Explicit rather than alphabetical: the values sort "high, low,
+            # none" as text, and what is wanted is high, then unmarked, then
+            # low. `Priority.NONE` sits in the middle because it *is* the
+            # middle -- an unmarked task is ordinary, not lowest.
+            priority_rank=Case(
+                When(priority=Priority.HIGH, then=Value(0)),
+                When(priority=Priority.LOW, then=Value(2)),
+                default=Value(1),
+                output_field=IntegerField(),
+            )
+        )
+        # **After the due date, never before it.** Sorting emphasis above a
+        # date would bury something overdue under something starred, which is
+        # worse than having no priority at all. It orders *within* a day.
+        #
+        # Server-side only, unlike `bucket_for` and `WEEK_HORIZON_DAYS`: no
+        # client mirrors this ordering, so it is not a fourth copy of anything.
+        .order_by(
+            F("due_date").asc(nulls_last=True), "priority_rank", "position", "id"
+        )
     )
 
 

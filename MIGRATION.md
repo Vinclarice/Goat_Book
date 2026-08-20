@@ -113,7 +113,10 @@ awkward way or don't bother.
 #    rather than opening the cluster firewall to do it. The `table|count`
 #    format and the ordering are deliberate: they match infra/table-counts.sh
 #    exactly, so step 4 is a diff rather than a reading exercise.
-ssh <user>@<droplet> 'docker exec -i clarice python manage.py shell' <<'EOF' > live-counts.txt
+#    `--no-imports` is load-bearing: Django 5.2's shell auto-imports models and
+#    announces it on stdout ("36 objects imported automatically"), which lands
+#    in the redirect and makes step 4's diff open with two phantom rows.
+ssh <user>@<droplet> 'docker exec -i clarice python manage.py shell --no-imports' <<'EOF' > live-counts.txt
 from django.db import connection
 with connection.cursor() as c:
     c.execute("SELECT table_name FROM information_schema.tables "
@@ -161,38 +164,43 @@ pass while the UPDATE it should refuse was accepted. The script writes nothing:
 its one write is inside a transaction it rolls back, so it is safe to point at
 production if you want to prove the check itself works.
 
-**Run August 1, 2026 (roadmap item A2). Result: passed.** All 18 tables
-matched the live cluster exactly — `lists_item` 24, `lists_list` 17,
-`accounts_user` 3, `django_migrations` 53 — on Postgres 18.4, restored
-from the 2026-07-31 06:56 UTC backup. Provisioning the clone took about
-seven minutes end to end.
+**Run August 19, 2026. Result: passed, and this is the first run entitled to
+the word.** Restored from the 2026-08-19 06:56 UTC backup onto Postgres 18,
+`db-s-1vcpu-1gb` in nyc1.
 
-**That pass is narrower than it reads, and the schema has moved a long way under
-it.** It compared row counts and `django_migrations` and nothing else, across 18
-tables at 53 migrations. There are 46 tables now. Since August 1 the database has
-gained the `vector` extension, `ActivityEvent`'s append-only triggers, the
-depth-one triggers and the knowledge core's tables — none of which is a row, and
-all of which a count-only drill reports as fine before failing on the first
-write.
+- **Step 4: the diff was empty.** All **42** tables matched the live cluster —
+  `django_migrations` 115, `lists_item` 23, `lists_list` 10, `accounts_user` 3,
+  `mind_node` 45, `mind_activityevent` 105.
+- **Step 5: exit 0, thirteen checks, none skipped.** The extension, three
+  triggers, the append-only guarantee exercised, `mention_unique` and its NULLS
+  NOT DISTINCT, and the task core's five constraints. **The duplicate-task probe
+  ran for real rather than skipping** — production has filed active tasks to
+  clone, where a near-empty local database gives it nothing and it reports
+  `skip`.
 
-**Closed August 19, 2026, and this paragraph's own instruction is superseded
-rather than done.** It asked for `\dx` and `information_schema.triggers` at step
-4. Step 5 answers both, and answers them *behaviourally* — attempting the write
-the guarantee should refuse, rather than reading a name out of a catalogue that
-a disabled trigger satisfies just as well. Do not add the presence checks; they
-would be the weaker half of something already covered.
+**Why the August 1 pass did not count, kept because the distinction is the
+point.** That run compared row counts and `django_migrations` and nothing else,
+across 18 tables at 53 migrations — `lists_item` 24, `lists_list` 17. It was a
+check on *data*. Every guarantee the schema has gained since is DDL: the
+`vector` extension, `ActivityEvent`'s append-only trigger, the depth-one
+triggers, and the task core's constraints. A restore that came back without a
+single one of them would have passed that drill exactly as written and failed
+on the first write.
 
-What did need doing, and was: step 5 checked the knowledge core's DDL and none
-of the task core's, so a restore that lost `unique_active_item`,
+**The standing instruction that paragraph carried is superseded rather than
+done.** It asked for `\dx` and `information_schema.triggers` at step 4. Step 5
+answers both, and answers them *behaviourally* — attempting the write the
+guarantee should refuse, rather than reading a name out of a catalogue that a
+disabled trigger satisfies just as well. Do not add the presence checks; they
+are the weaker half of something already covered.
+
+What did need doing, and was done August 19: step 5 checked the knowledge core's
+DDL and none of the task core's, so a restore that lost `unique_active_item`,
 `unique_active_arealess_item`, `unique_open_checklist_step_text`,
 `valid_item_status_timestamps` and `valid_project_completion` printed *"All
 checked guarantees are intact."* All five are checked now, and step 4 is a diff
-rather than a comparison by eye over forty-six tables at the end of a billed
+rather than a comparison by eye over forty-two tables at the end of a billed
 hour.
-
-**So the next run is the first that can honestly be called a pass**, and what it
-must record is here rather than left to memory: the migration count and engine
-version it ran at, that step 4's diff was empty, and that step 5 exited zero.
 
 Three things worth knowing before the next one:
 
@@ -204,7 +212,22 @@ Three things worth knowing before the next one:
 - **The restored cluster's default database is `defaultdb`.** The URI
   `doctl databases connection` prints points there, not at `Clarice_todo`;
   connect to the wrong one and you will find an empty database and think
-  the restore failed.
+  the restore failed. The clone carries **three** databases — `Clarice_todo`,
+  `defaultdb` and `restaurant_app` — which is the "one cluster, several
+  projects" arrangement `restrict-database-user.sh` exists for, and it makes
+  the wrong-database mistake concrete rather than theoretical.
+- **`psql` is installed on neither the Windows host nor WSL**, and both drill
+  scripts exit 2 without it. Run each through a throwaway container matching the
+  cluster's engine, the same pattern `restrict-database-user.sh` already uses:
+  `docker run --rm -i postgres:18 bash -s -- "$DSN" < infra/<script>.sh`. The
+  container's outbound traffic leaves as the host's public IP, so the one
+  trusted-source rule below covers it.
+- **`doctl databases firewalls append --rule` takes a single string, not a
+  repeatable flag.** Passing `--rule` twice silently keeps only the last, so an
+  attempt to add an IP and re-state the droplet in one call adds neither. One
+  rule per invocation; `append` genuinely appends, so the inherited droplet rule
+  survives without being restated. Note also that `curl ifconfig.me` may answer
+  with IPv6 here — trusted sources want the v4, from `curl -4 ifconfig.me`.
 - **Retention is DigitalOcean's, not ours.** Daily backups, roughly one
   per day (observed 2026-07-29 22:59, 07-30 10:59, 07-31 06:56 UTC), kept
   for 7 days on this plan. That is the real answer to "how far back can a

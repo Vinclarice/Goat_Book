@@ -115,8 +115,11 @@ picker anywhere in the frontend — reaching a day twelve weeks back means click
 **Essential to the thesis**
 
 - Full-text search over the task core (above). Highest leverage single item here.
-- **Task priority.** A to-do core with recurrence, routines, pauses and snapshot
-  denominators, and no priority field, is unbalanced.
+- ~~**Task priority.**~~ **Shipped August 20, 2026.** Three values and
+  deliberately no *medium* -- an unmarked task already means ordinary, and
+  offering both invites the distinction every to-do app collapses into. Carried
+  by the series like text and tags, and it orders *within* a day rather than
+  above the due date, so emphasis cannot bury something overdue.
 - **Onboarding and a first action on the landing surface.** A new user lands on
   `/app/day` (the default `landing_surface`) which has no affordance that creates
   anything. The "Start your first area" CTA exists only on `/agenda`, which that
@@ -134,12 +137,17 @@ picker anywhere in the frontend — reaching a day twelve weeks back means click
   rather than accepting the veto. **Adding is what remains.**
 - Date navigation: a picker on `/app/day`, a week jump on `/app/review`.
   `/day/:date` currently has no UI entry point at all.
-- Links in the digest email. It presently ends "Open Clarice to work through
-  them." with nothing clickable.
+- ~~Links in the digest email.~~ **Shipped August 20, 2026.** Each task links
+  to itself and the closing line links to the day, absolute from
+  `settings.SITE_URL` because a management command has no request to build one
+  against.
 - Streaks or a habit heatmap. For a product whose sharpest differentiator is
   quantified practice, "you're on day 34" is table stakes and is absent.
-- Task move between areas. `item_detail` PATCH accepts six fields and `list` is
-  not among them (`src/lists/api.py:197`), so a misfiled task stays misfiled.
+- ~~Task move between areas.~~ **Shipped August 20, 2026**, with the two
+  things a naive version would have got wrong: position is recomputed, since it
+  orders a task *within* an Area, and the move writes through to the series,
+  since spawning reads `commitment.list` and would otherwise have filed the
+  successor back where it came from.
 
 **Explicitly not yet:** graph view, spaced repetition, calendar/ICS, command
 palette, AI synthesis. All correctly deferred; **none has a trigger**, which is

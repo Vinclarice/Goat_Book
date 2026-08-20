@@ -1388,6 +1388,58 @@ export function ReviewRoute() {
             </p>
           )}
 
+          {/* The week laid out by day -- v2 increment 7. Only work already
+              dated into the week appears here; overdue work stays in the flat
+              list below and lands on no day, because placing a late task onto
+              a weekday would be re-dating it and nothing here re-dates.
+
+              Every day is shown, empty ones included: an empty day is where
+              anything being moved would go.
+
+              **Stated, never scolded.** "More than a typical day" is a fact
+              about the days; "too much" is a verdict about the person, and a
+              test asserts the second phrasing is absent. */}
+          {weekDraft.days.some((day) => day.tasks.length > 0) && (
+            <ul className="space-y-1">
+              {weekDraft.days.map((day) => (
+                <li key={day.date} className="text-sm">
+                  <span className="text-muted-foreground">
+                    {new Intl.DateTimeFormat(undefined, {
+                      weekday: "long",
+                      timeZone: "UTC",
+                    }).format(new Date(`${day.date}T00:00:00Z`))}
+                  </span>
+                  {day.tasks.length === 0 ? (
+                    <span className="text-muted-foreground"> — free</span>
+                  ) : (
+                    <ul className="mt-1 space-y-1 pl-4">
+                      {day.tasks.map((task) => (
+                        <li key={task.id}>
+                          {task.text}
+                          {/* Marked rather than filtered: work connected to
+                              nothing chosen is exactly what somebody should
+                              see before deciding about it. */}
+                          {task.serves_an_outcome && (
+                            <span className="text-muted-foreground">
+                              {" "}
+                              — serves an outcome
+                            </span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {day.over_committed && (
+                    <p className="text-sm text-muted-foreground">
+                      {day.tasks.length} here, which is more than a typical day
+                      of yours holds.
+                    </p>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+
           {weekDraft.proposed.length > 0 && (
             <ul className="space-y-1">
               {weekDraft.proposed.map((task) => (

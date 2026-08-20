@@ -44,6 +44,8 @@ function weekData(overrides: Record<string, unknown> = {}) {
       routines: [],
       typical_week: null,
       over_committed: false,
+            days: [],
+            typical_day: null,
     },
     check_in: {
       started: false,
@@ -817,6 +819,103 @@ describe("ReviewRoute", () => {
     expect(screen.getByText(/serves an outcome/)).toBeInTheDocument();
   });
 
+  /* The draft, scoped and stress-tested -- increment 7. */
+  it("lays the week out by day, and names a day holding more than usual", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        weekData({
+          draft: {
+            week_start: "2026-08-03",
+            intention: "",
+            proposed: [],
+            routines: [],
+            typical_week: 4,
+            over_committed: false,
+            typical_day: 2,
+            days: [
+              {
+                date: "2026-08-03",
+                tasks: [
+                  {
+                    id: 1,
+                    text: "Write the copy",
+                    due_date: "2026-08-03",
+                    serves_an_outcome: true,
+                  },
+                  {
+                    id: 2,
+                    text: "Fix the gate",
+                    due_date: "2026-08-03",
+                    serves_an_outcome: false,
+                  },
+                  {
+                    id: 3,
+                    text: "Call the bank",
+                    due_date: "2026-08-03",
+                    serves_an_outcome: false,
+                  },
+                ],
+                over_committed: true,
+              },
+              {
+                date: "2026-08-04",
+                tasks: [],
+                over_committed: false,
+              },
+            ],
+          },
+        }),
+      ),
+    );
+
+    renderAt("/review");
+
+    expect(await screen.findByText("Write the copy")).toBeInTheDocument();
+    /* Work serving nothing chosen is listed, not cut. */
+    expect(screen.getByText("Fix the gate")).toBeInTheDocument();
+    expect(screen.getByText(/more than a typical day/)).toBeInTheDocument();
+  });
+
+  it("states the overload without grading the person", async () => {
+    /* The same rule the week-grain and day-grain signals both keep: a fact
+       about the days, never a verdict about the person. */
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        weekData({
+          draft: {
+            week_start: "2026-08-03",
+            intention: "",
+            proposed: [],
+            routines: [],
+            typical_week: 4,
+            over_committed: false,
+            typical_day: 2,
+            days: [
+              {
+                date: "2026-08-03",
+                tasks: [
+                  {
+                    id: 1,
+                    text: "Write the copy",
+                    due_date: "2026-08-03",
+                    serves_an_outcome: false,
+                  },
+                ],
+                over_committed: true,
+              },
+            ],
+          },
+        }),
+      ),
+    );
+
+    renderAt("/review");
+
+    await screen.findByText("Write the copy");
+    expect(screen.queryByText(/too much/i)).toBeNull();
+    expect(screen.queryByText(/you only/i)).toBeNull();
+  });
+
   it("lets a person say what next week is for", async () => {
     // product-stories.md S9's missing half. `WeeklyIntention` has had a model,
     // a service, a read and a Day payload since 8b02c1b, and no way in --
@@ -876,6 +975,8 @@ describe("ReviewRoute", () => {
             routines: [],
             typical_week: null,
             over_committed: false,
+            days: [],
+            typical_day: null,
           },
         }),
       ),
@@ -1475,6 +1576,8 @@ describe("ReviewRoute", () => {
             routines: [],
             typical_week: 4,
             over_committed: false,
+            days: [],
+            typical_day: null,
           },
         }),
       ),
@@ -1503,6 +1606,8 @@ describe("ReviewRoute", () => {
             routines: [],
             typical_week: 1,
             over_committed: true,
+            days: [],
+            typical_day: null,
           },
         }),
       ),
@@ -1527,6 +1632,8 @@ describe("ReviewRoute", () => {
             routines: [],
             typical_week: null,
             over_committed: false,
+            days: [],
+            typical_day: null,
           },
         }),
       ),

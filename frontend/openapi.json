@@ -4038,6 +4038,70 @@
         "title": "DraftRoutineOut",
         "type": "object"
       },
+      "DraftedDayOut": {
+        "description": "One day of the drafted week.\n\nSent for all seven, empty ones included: an empty day is where anything\nbeing moved would go, and a week showing only its busy days answers a\ndifferent question.",
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "tasks": {
+            "items": {
+              "$ref": "#/components/schemas/DraftedTaskOut"
+            },
+            "title": "Tasks",
+            "type": "array"
+          },
+          "over_committed": {
+            "title": "Over Committed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "date",
+          "tasks",
+          "over_committed"
+        ],
+        "title": "DraftedDayOut",
+        "type": "object"
+      },
+      "DraftedTaskOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "serves_an_outcome": {
+            "title": "Serves An Outcome",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "due_date",
+          "serves_an_outcome"
+        ],
+        "title": "DraftedTaskOut",
+        "type": "object"
+      },
       "HabitOut": {
         "description": "A routine's week.\n\n`expected` is the periods the week actually asked of it -- floored at\nthe routine's own beginning, capped at today, and with skips removed --\nso `met` over `expected` is the vision document's \"4 of 5 planned\nlesson targets met\" rather than a fraction of an arbitrary seven.\n`skipped` rides alongside so the number cannot hide them.",
         "properties": {
@@ -4656,6 +4720,24 @@
           "over_committed": {
             "title": "Over Committed",
             "type": "boolean"
+          },
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/DraftedDayOut"
+            },
+            "title": "Days",
+            "type": "array"
+          },
+          "typical_day": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Typical Day"
           }
         },
         "required": [
@@ -4664,7 +4746,9 @@
           "proposed",
           "routines",
           "typical_week",
-          "over_committed"
+          "over_committed",
+          "days",
+          "typical_day"
         ],
         "title": "WeekDraftOut",
         "type": "object"

@@ -33,8 +33,8 @@ from django.test import TestCase
 from django.utils import timezone
 
 from accounts.models import User
-from daily import services as daily_services
-from lists.models import Item, List
+from daily import reads as daily_reads, services as daily_services
+from lists.models import Item, List, Project
 from review import reads, services
 
 # A Monday, and the week the draft is for.
@@ -217,3 +217,156 @@ class WeekDraftTest(TestCase):
         self.draft()
 
         self.assertEqual(DailyFocus.objects.count(), before)
+
+
+class TheDraftIsScopedAndStressTestedTest(TestCase):
+    """The draft, arranged and questioned — v2 increment 7.
+
+    Three things happen to a proposal here and none of them is a decision.
+    Dated work is **arranged onto the day it is already due**, never re-dated;
+    each row says whether it serves something the week is *for*, which
+    increment 5 made answerable; and each day is measured against what a
+    typical day of this person's actually holds, which increment 2 built.
+
+    **Nothing is cut.** Work connected to no chosen outcome is listed and
+    marked, because a draft that quietly dropped it would be deciding, and
+    `draft_week`'s whole discipline is that it writes nothing and decides
+    nothing.
+    """
+
+    def setUp(self):
+        self.alice = User.objects.create_user(
+            "alice", "alice@example.com", "a secure password"
+        )
+        self.project = Project.objects.create(
+            owner=self.alice, title="Website launch"
+        )
+        self.area = List.objects.create(
+            owner=self.alice, title="Site", project=self.project
+        )
+        self.elsewhere = List.objects.create(owner=self.alice, title="Home")
+
+    def task(self, text, due_date, area=None):
+        return Item.objects.create(
+            owner=self.alice,
+            list=area if area is not None else self.area,
+            text=text,
+            due_date=due_date,
+        )
+
+    def draft(self):
+        return reads.draft_week(self.alice, NEXT_MONDAY, today=THIS_MONDAY)
+
+    def a_typical_day_of(self, met):
+        """Enough planned days behind `today` for a typical-day figure."""
+        for offset in range(1, 6):
+            day = THIS_MONDAY - timedelta(days=offset)
+            for index in range(met + 2):
+                task = Item.objects.create(
+                    owner=self.alice, list=self.elsewhere, text=f"{day}-{index}"
+                )
+                daily_services.pin_task(self.alice, day, task)
+                if index < met:
+                    task.status = Item.Status.COMPLETED
+                    task.completed_at = timezone.make_aware(
+                        timezone.datetime.combine(
+                            day, timezone.datetime.min.time()
+                        )
+                    ) + timedelta(hours=9)
+                    task.save(update_fields=["status", "completed_at"])
+
+    def test_dated_work_is_arranged_onto_the_day_it_is_already_due(self):
+        wednesday = NEXT_MONDAY + timedelta(days=2)
+        self.task("Write the copy", wednesday)
+
+        days = {each.date: each for each in self.draft().days}
+
+        self.assertEqual([t.text for t in days[wednesday].tasks], ["Write the copy"])
+
+    def test_overdue_work_is_not_given_a_day(self):
+        """The line this feature could most easily cross. A draft that placed
+        a late task onto Tuesday would be re-dating it, which is the one thing
+        `draft_week` promises it never does."""
+        self.task("Call the bank", THIS_MONDAY - timedelta(days=3))
+
+        draft = self.draft()
+
+        placed = [t.text for day in draft.days for t in day.tasks]
+        self.assertEqual(placed, [])
+        self.assertIn("Call the bank", [t.text for t in draft.proposed])
+
+    def test_every_day_of_the_week_is_present_even_when_empty(self):
+        """A week is seven days and the empty ones are information: they are
+        where anything being moved would go."""
+        draft = self.draft()
+
+        self.assertEqual(len(draft.days), 7)
+        self.assertEqual(draft.days[0].date, NEXT_MONDAY)
+
+    def test_work_serving_a_chosen_outcome_is_marked(self):
+        wednesday = NEXT_MONDAY + timedelta(days=2)
+        self.task("Write the copy", wednesday)
+        services.choose_outcome(
+            self.alice, NEXT_MONDAY, text="The form is live.", project=self.project
+        )
+
+        days = {each.date: each for each in self.draft().days}
+
+        self.assertTrue(days[wednesday].tasks[0].serves_an_outcome)
+
+    def test_work_serving_nothing_chosen_is_listed_and_marked(self):
+        wednesday = NEXT_MONDAY + timedelta(days=2)
+        self.task("Fix the gate", wednesday, area=self.elsewhere)
+        services.choose_outcome(
+            self.alice, NEXT_MONDAY, text="The form is live.", project=self.project
+        )
+
+        days = {each.date: each for each in self.draft().days}
+
+        self.assertEqual([t.text for t in days[wednesday].tasks], ["Fix the gate"])
+        self.assertFalse(days[wednesday].tasks[0].serves_an_outcome)
+
+    def test_a_day_holding_more_than_a_typical_one_is_named(self):
+        self.a_typical_day_of(2)
+        wednesday = NEXT_MONDAY + timedelta(days=2)
+        for index in range(4):
+            self.task(f"Thing {index}", wednesday)
+
+        days = {each.date: each for each in self.draft().days}
+
+        self.assertTrue(days[wednesday].over_committed)
+
+    def test_a_day_that_fits_is_not_named(self):
+        self.a_typical_day_of(4)
+        wednesday = NEXT_MONDAY + timedelta(days=2)
+        self.task("Write the copy", wednesday)
+
+        days = {each.date: each for each in self.draft().days}
+
+        self.assertFalse(days[wednesday].over_committed)
+
+    def test_with_too_little_history_no_day_is_named(self):
+        """Null is not zero. Without a typical day there is nothing to exceed,
+        and flagging every day would be a verdict drawn from no evidence."""
+        wednesday = NEXT_MONDAY + timedelta(days=2)
+        for index in range(9):
+            self.task(f"Thing {index}", wednesday)
+
+        draft = self.draft()
+
+        self.assertIsNone(draft.typical_day)
+        self.assertFalse(any(day.over_committed for day in draft.days))
+
+    def test_the_typical_day_is_measured_once_for_the_week(self):
+        """Seven days do not mean seven measurements. What a typical day holds
+        is a fact about the person, not about a date in the future, and asking
+        per day would cost thirty queries seven times over on the surface that
+        can least afford it."""
+        self.a_typical_day_of(3)
+
+        draft = self.draft()
+
+        self.assertEqual(
+            draft.typical_day,
+            daily_reads.typical_day_for(self.alice, THIS_MONDAY),
+        )

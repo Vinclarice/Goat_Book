@@ -193,6 +193,29 @@ class DraftRoutineOut(Schema):
     cadence: str
 
 
+class DraftedTaskOut(Schema):
+    id: int
+    text: str
+    due_date: date | None
+    # Whether it serves something the week is for -- v2 increment 7. Marked and
+    # never cut: a draft that quietly dropped unconnected work would be
+    # deciding, which is the one thing this proposal does not do.
+    serves_an_outcome: bool
+
+
+class DraftedDayOut(Schema):
+    """One day of the drafted week.
+
+    Sent for all seven, empty ones included: an empty day is where anything
+    being moved would go, and a week showing only its busy days answers a
+    different question.
+    """
+
+    date: date
+    tasks: list[DraftedTaskOut]
+    over_committed: bool
+
+
 class WeekDraftOut(Schema):
     """Next week, proposed — increment 6.
 
@@ -212,6 +235,13 @@ class WeekDraftOut(Schema):
     routines: list[DraftRoutineOut]
     typical_week: int | None
     over_committed: bool
+    # The same work laid out on the days it is already due. Overdue work is in
+    # `proposed` and on no day at all -- placing a late task onto a weekday
+    # would be re-dating it, and nothing here re-dates anything.
+    days: list[DraftedDayOut]
+    # Null below the evidence floor, like `typical_week`, and for the same
+    # reason: a client handed zero would render "you have room".
+    typical_day: int | None
 
 
 class HabitPeriodOut(Schema):
@@ -858,6 +888,23 @@ def _draft_out(owner, week_start, today):
             {"id": routine.id, "title": routine.title, "cadence": routine.cadence}
             for routine in draft.routines
         ],
+        "days": [
+            {
+                "date": day.date,
+                "tasks": [
+                    {
+                        "id": each.id,
+                        "text": each.text,
+                        "due_date": each.due_date,
+                        "serves_an_outcome": each.serves_an_outcome,
+                    }
+                    for each in day.tasks
+                ],
+                "over_committed": day.over_committed,
+            }
+            for day in draft.days
+        ],
+        "typical_day": draft.typical_day,
         "typical_week": draft.typical_week,
         "over_committed": draft.over_committed,
     }

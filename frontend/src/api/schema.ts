@@ -1861,6 +1861,36 @@ export interface components {
             cadence: string;
         };
         /**
+         * DraftedDayOut
+         * @description One day of the drafted week.
+         *
+         *     Sent for all seven, empty ones included: an empty day is where anything
+         *     being moved would go, and a week showing only its busy days answers a
+         *     different question.
+         */
+        DraftedDayOut: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Tasks */
+            tasks: components["schemas"]["DraftedTaskOut"][];
+            /** Over Committed */
+            over_committed: boolean;
+        };
+        /** DraftedTaskOut */
+        DraftedTaskOut: {
+            /** Id */
+            id: number;
+            /** Text */
+            text: string;
+            /** Due Date */
+            due_date: string | null;
+            /** Serves An Outcome */
+            serves_an_outcome: boolean;
+        };
+        /**
          * HabitOut
          * @description A routine's week.
          *
@@ -2164,6 +2194,10 @@ export interface components {
             typical_week: number | null;
             /** Over Committed */
             over_committed: boolean;
+            /** Days */
+            days: components["schemas"]["DraftedDayOut"][];
+            /** Typical Day */
+            typical_day: number | null;
         };
         /** WeekOut */
         WeekOut: {

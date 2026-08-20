@@ -16,6 +16,11 @@ from datetime import datetime, timedelta
 from django.db.models import F, Q
 from django.utils import timezone
 
+# `daily.reads` for the day-grain capacity figure the draft measures against.
+# Safe at module scope in this direction: `daily.reads` imports `review.reads`
+# lazily, inside the one function that needs `planned_in_week`, precisely so
+# these two can read from each other without an import order to remember.
+from daily import reads as daily_reads
 from daily.models import DailyEntry, DailyFocus
 from mind import queries as mind_queries
 from mind.models import Facet, FacetKind, Node
@@ -722,6 +727,35 @@ def intention_for(owner, day):
 
 
 @dataclass(frozen=True)
+class DraftedTask:
+    """One proposed task, and whether it serves something the week is for."""
+
+    task: object
+    serves_an_outcome: bool
+
+    @property
+    def text(self):
+        return self.task.text
+
+    @property
+    def id(self):
+        return self.task.id
+
+    @property
+    def due_date(self):
+        return self.task.due_date
+
+
+@dataclass(frozen=True)
+class DraftedDay:
+    """One day of the drafted week, and whether it holds more than usual."""
+
+    date: object
+    tasks: list
+    over_committed: bool
+
+
+@dataclass(frozen=True)
 class WeekDraft:
     """A proposed week, and whether it fits.
 
@@ -735,6 +769,12 @@ class WeekDraft:
     intention: str
     proposed: list
     routines: list
+    # The same work, laid out on the days it is already due -- v2 increment 7.
+    # `proposed` stays the flat list, because overdue work appears there and
+    # deliberately on no day at all.
+    days: list
+    # What a typical day of this person's holds, measured once for the week.
+    typical_day: int | None
     typical_week: int | None
     over_committed: bool
 
@@ -834,6 +874,54 @@ def draft_week(owner, week_start, *, today):
     typical = typical_week_for(owner, today)
     proposed = overdue + dated
 
+    # **Measured once for the whole week.** What a typical day holds is a fact
+    # about the person rather than about a date in the future, and asking per
+    # day would cost thirty queries seven times over -- see the cost test on
+    # `typical_day_for`. Asked of `today`, which is the only day there is
+    # evidence up to.
+    typical_day = daily_reads.typical_day_for(owner, today)
+    outcome_projects = {
+        outcome.project_id
+        for outcome in outcomes_for(owner, week_start)
+        if outcome.project_id is not None
+    }
+
+    def drafted(task):
+        return DraftedTask(
+            task=task,
+            serves_an_outcome=(
+                task.list is not None and task.list.project_id in outcome_projects
+            ),
+        )
+
+    # **Only work already dated into the week gets a day.** Overdue tasks stay
+    # in `proposed` and land on no day at all: putting a late thing on Tuesday
+    # would be re-dating it, which is the one move this function promises never
+    # to make. Where it goes is the person's decision, made through the task.
+    #
+    # All seven days, empty ones included. An empty day is information -- it is
+    # where anything being moved would go -- and a week that showed only its
+    # busy days would be answering a different question.
+    by_day = {}
+    for task in dated:
+        by_day.setdefault(task.due_date, []).append(drafted(task))
+    days = []
+    for offset in range(DAYS_IN_WEEK):
+        day = week_start + timedelta(days=offset)
+        on_it = by_day.get(day, [])
+        days.append(
+            DraftedDay(
+                date=day,
+                tasks=on_it,
+                # Stated, never scolded, and absent entirely without evidence:
+                # null is not zero, and flagging every day from no history
+                # would be a verdict drawn from nothing.
+                over_committed=(
+                    typical_day is not None and len(on_it) > typical_day
+                ),
+            )
+        )
+
     return WeekDraft(
         week_start=week_start,
         intention=intention.text if intention else "",
@@ -842,6 +930,8 @@ def draft_week(owner, week_start, *, today):
         # domain's word and it already has one definition; a second would
         # disagree the first time pausing changed meaning.
         routines=routine_reads.active_routines_for(owner),
+        days=days,
+        typical_day=typical_day,
         typical_week=typical,
         # Stated, never scolded: this says the week holds less than this, not
         # that the person is failing. `daily-operating-system-vision.md` asks

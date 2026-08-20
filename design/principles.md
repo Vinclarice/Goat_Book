@@ -73,6 +73,15 @@ removal, human-confirmed planning assistance before autonomous AI changes. Make
 an irreversible choice only when real usage, data or a stated safety
 requirement makes its cost worthwhile: commit deeply, but only on evidence.
 
+**A trigger that cannot fire is a refusal, and should be recorded as one.**
+Documenting a reconsideration trigger is what keeps a deferral honest, and it
+stops working when the trigger is gated on evidence this project cannot
+generate — several months of weekly reviews measured against one person, a
+corpus a single user will not reach, a cohort that does not exist. Three
+separate gates now say *may never fire* in their own text. When that is the
+true state, write a refusal, which cannot go stale, rather than a deferral,
+which will.
+
 ## Delivery practices
 
 ### Make behavior executable first
@@ -124,8 +133,19 @@ check, not evidence that a change works.
    field turned a passing ten-test file into four failures elsewhere. Crossing
    an API, migration, authentication, build or deployment boundary makes the
    broader run mandatory.
-4. Record material design decisions in `design/` so a later contributor does
-   not have to infer intent from generated code.
+4. Record a material design decision **where the decision lives** — a comment
+   at the site carrying the reason, and a document in `design/` only when it
+   spans files or has to be argued rather than stated.
+
+   **A document is a standing cost, and this one is measured.** `design/` holds
+   around fifty files; 251 code comments cite them; an index document exists
+   whose whole job is arbitrating which document owns which fact; six commits
+   went to correcting stale statuses; and one August afternoon reduced 11,002
+   lines to roughly 4,000 without breaking a citation. The premise this rule
+   was written on — a later contributor inferring intent from generated code —
+   is not true here, and [`README.md`](README.md) records that those 251
+   comments already state in full the reasoning they cite a plan for. The
+   documents are provenance, not content.
 
 ### Prefer small, verifiable changes
 
@@ -138,6 +158,53 @@ This pulls against vertical slices, and the resolution is **slice the work,
 split the commits.** A migration that can be applied ahead of the code using it
 earns its own commit. A schema change and the client regenerated against it do
 not, because separating them produces a commit that cannot build.
+
+## The person using it
+
+Every principle in the next section is about the correctness of the substrate,
+and while there was a substrate to build that was the right emphasis — it is
+now genuinely good, in several ways `commercial-blueprint.md` calls better than
+commercial average. This section exists because **nothing in this file spoke
+for the person at the keyboard**, and it showed: `product-stories.md` scores
+ten journeys as *bends*, meaning the capability exists and the product fights
+the person, and a bend has never had to compete for time with anything.
+
+These are task-core design rules and answer to the same split as the rest of
+this file; see §Scope.
+
+### A bend is a defect
+
+A journey the product fights is not a lesser thing than one that is broken.
+`product-stories.md` sorts journeys into works, bends and impossible, and only
+the third pile has ever read as work — which is how task priority, named
+*essential to the thesis* on August 12, 2026, was still absent from
+`lists/models.py` eight days later, and how `lists/api.py`'s PATCH still
+accepts six fields with `list` not among them, so a misfiled task stays
+misfiled. Neither was blocked. Neither was argued against. Neither competed.
+
+A bend has a cause, the cause is nameable in one line, and naming it is most of
+fixing it.
+
+### The main surface can do the main thing
+
+`daily-operating-system-vision.md` names the Daily Page **the main working
+surface**. It cannot complete a task, and the reason recorded at
+`DayRoute.tsx:120` is that a Complete button "would mean reimplementing the
+agenda's mutation and undo beside it."
+
+That cost is real and it is not a veto. *One rule, one authoritative
+definition* below says exactly how to pay it — name the authority, explain the
+synchronization boundary, protect it with tests. A principle that forbids the
+home screen its own verb has stopped guiding a choice and started making one.
+
+### Felt friction is evidence
+
+For a product with one user, n=1 is not a sampling problem — it is the
+population. Friction you have hit yourself is observed use, and no
+instrumentation having recorded it does not make it imagined. The rule against
+optimizing an imagined workflow is about workflows **nobody has performed**;
+reaching a day twelve weeks back by clicking "the week before" twelve times is
+not imagined.
 
 ## Application design
 
@@ -206,12 +273,38 @@ create a second result. Use a client-generated identity, an explicit API
 contract, and a database constraint for the guarantee. Bittern M1's
 owner-scoped `Idempotency-Key` capture contract is the reference example.
 
-### Automations propose; people decide
+### Automations act reversibly; people decide what is durable
 
-Carry-forward, routine generation, review summaries and eventual AI may prepare
-or recommend work. They must not silently change a person's commitments, ideas
-or history. Make automated outcomes visible, reversible where practical, and
+Carry-forward, routine generation, review summaries and AI may prepare,
+recommend, and — where the act is **visible and undoable** — perform work
+without asking first. Drafting a week, filing a note, proposing a due date: a
+person who can see that it happened and undo it has not lost a decision, and
+making them click yes first buys nothing but friction.
+
+What still requires a person is anything **durable or destructive** — changing
+a commitment, editing history, deleting, or anything that leaves no trace of
+having been automatic. *Preserve durable records and meaningful history* is
+unweakened by this and stays absolute. Automated outcomes remain visible and
 explicit about the evidence used.
+
+**Two guards, because "reversible" is the easiest thing here to claim falsely.**
+
+- **Undo has to exist, not merely be conceivable.** Where there is no undo the
+  act is not reversible and needs a confirmation, whatever it looks like in
+  principle. This is the product trigger `roadmap.md`'s Track D has been asking
+  *audit log and general undo* for since August 2, 2026 — it has now fired, and
+  the scope of the automation is what sets the scope of the undo.
+- **`daily-operating-system-vision.md`'s two rules are untouched.** No manual
+  carry-forward and no duplicate task copies describe what the Daily Page *is*;
+  they are not confirmation requirements that reversibility can satisfy.
+  Automatically rescheduling everything left incomplete stays forbidden however
+  cleanly it could be undone.
+
+**Why the text changed and the practice mostly does not.** The previous form —
+*automations propose; people decide* — shipped two versions of a planning
+assistant with **no generation at all**, and that was a correct reading of it
+rather than an over-cautious one. Read the change narrowly: it licenses acting
+where the act is cheap to reverse, not deciding.
 
 ### Failure is recoverable and visible
 
@@ -248,12 +341,20 @@ Tests establish intended behavior; browser smoke checks, deployment evidence
 and error monitoring establish what users receive. Treat the served build, not
 local source, as the authority when diagnosing production.
 
-### Measure behavior before optimizing it
+### Measure behavior before ranking or automating it
 
-Define a metric and observe real use before adding ranking, redesigning
-navigation or automating planning. Completion trends need a durable definition
-of a planned commitment; habit trends need routine-occurrence records. Avoid
-optimizing an imagined workflow.
+Define a metric and observe real use before adding **ranking or automation**.
+An invented weighting is noise wearing a number, which is why the planning
+assistant's confirmation-history ranking is gated on a sample floor rather than
+shipped on a hunch. Completion trends need a durable definition of a planned
+commitment; habit trends need routine-occurrence records.
+
+**This is a rule about inventing rankings, not a licence to leave interface
+friction alone.** It read as the second for a while, and with no analytics and
+one user that made it unfalsifiable — no observation could ever qualify, so
+every navigation and interface repair failed a test nothing could pass. See
+*Felt friction is evidence*. Avoid optimizing an imagined workflow — one nobody
+has performed; do not wait for a metric before fixing one you perform daily.
 
 ## Keeping this useful
 
@@ -261,3 +362,17 @@ Review this document when a new domain, client or public-facing capability
 introduces a recurring design decision. Add a principle only after it has a
 concrete project example or prevents a named risk. Remove or rewrite one that
 no longer guides real choices.
+
+**Revised August 20, 2026, and nothing was deleted.** The review asked whether
+these principles had begun limiting the product rather than protecting it, and
+the answer was that the file's problem was omission and three framings, not
+bloat — the delivery practices, the isolation tests, the injected clock and the
+durable-record guarantees are why this codebase is what it is, and they get
+*more* valuable as the product grows, not less. What changed: **§The person
+using it** was added, because nothing here argued for the person at the
+keyboard and the score showed it; *measure behavior* was narrowed to ranking
+and automation, having become unfalsifiable with one user and no analytics;
+*automations propose* became *automations act reversibly*, having shipped two
+planning assistants with no generation at all; and recording design decisions
+moved to the site of the decision, the later contributor it was written for
+being nobody.

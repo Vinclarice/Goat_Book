@@ -270,8 +270,12 @@ knows, closing S13's *land on a date* require without closing the story, which
 still wants sources and reviews. **The notification surface shipped the same day** — `send_closing_nudge`,
 built on a scheduler extracted out of the digest first so the six behaviours
 that loop had learned could not be copied into a second one. It closes S5's
-last absence and is where bills' advance reminders will arrive. **Still open in
-this release:** the daily brief's awareness half, and bills — which
+last absence and is where bills' advance reminders will arrive. **Bills shipped the same day**, in four pieces: quarterly and annual cadences
+(without which a property tax bill could not be expressed at all), the
+one-to-one sidecar §4 argued for instead of a primitive, a lead time on `Item`
+rather than on the sidecar because *"remind me before the MOT"* is the same
+sentence, and a month's-bills read that **totals per currency and never across
+them**. **Still open in this release:** the daily brief's awareness half — which
 S5's own entry now names as what a nudge that *reaches* somebody would need,
 and which the digest's advance reminders need too.
 

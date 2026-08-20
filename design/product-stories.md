@@ -59,8 +59,8 @@ verdicts after two releases moved one.
 
 ## The score
 
-**7 work · 6 bend · 6 impossible** — from 4 · 9 · 6 and 3 · 10 · 6 earlier on
-August 20, 3 · 9 · 7 on August 19, 3 · 6 · 10 on August 16, and 2 · 2 · 15 on
+**8 work · 5 bend · 6 impossible** — from 7 · 6 · 6, 4 · 9 · 6 and 3 · 10 · 6
+earlier on August 20, 3 · 9 · 7 on August 19, 3 · 6 · 10 on August 16, and 2 · 2 · 15 on
 August 12.
 
 **The impossible pile is now six, and it is the honest shape of what is left:**
@@ -70,8 +70,8 @@ models nobody has started. Nothing in it is waiting on a form any more.
 
 | | journeys |
 |---|---|
-| **Works** | S2 the phone morning · S3 planning against capacity · S4 durable capture · S6 the honest weekly review · S7 acting on the review · S9 the week · S17 leaving with your data |
-| **Bends** | S5 closing the day · S10 a project's why · S13 finding what you wrote · S14 a note that knows when · S16 the past arriving · S18 bringing your history |
+| **Works** | S2 the phone morning · S3 planning against capacity · S4 durable capture · S5 closing the day · S6 the honest weekly review · S7 acting on the review · S9 the week · S17 leaving with your data |
+| **Bends** | S10 a project's why · S13 finding what you wrote · S14 a note that knows when · S16 the past arriving · S18 bringing your history |
 | **Impossible** | S1 signing up · S8 the quarter · S11 a decision returning · S12 a project explaining itself · S15 reading producing work · S19 paying |
 
 **This score lives here and nowhere else.** Other documents link to it; they do
@@ -329,11 +329,35 @@ account export, the one place that label is shown to the person it is wrong abou
 **Done means:** the record keeps what he chose that morning and not only what he
 finished — and something prompts him to close the day at all.
 
-**Verdict: bends.** `DailyEntry.happenings` exists and `DailyFocus` preserves
-the morning's choice honestly — genuinely good. But nothing ever asks him to
-write it: no evening surface, no prompt, no reminder.
+**Verdict: works**, moved from *bends* on August 20, 2026, in v3's *The day*
+release. The half this entry already called genuinely good is untouched;
+what it named as missing — *"no evening surface, no prompt"* — now exists.
 
-**Requires:** a closing ritual with a time-aware nudge.
+`reads.closing_for` asks in the evening, on today only, until the record is
+written. It reports what the day held using `planned_in_week` for a one-day
+window — the same borrowing `typical_day_for` does, because D2 says two
+definitions of *what I got through* would drift — and it reports a released
+pin **apart from** what is still open, since "I decided this wasn't for today"
+and "I never got to it" are different facts.
+
+**It cannot close a day retroactively**, deliberately: a prompt on a past day
+asks somebody to reconstruct one, and this record is worth reading in six
+months precisely because it was written while it was still true. A day nobody
+answered closes unclosed, which is itself a fact.
+
+**The hour is the server's**, in the owner's own zone, read once at the request
+boundary — so the client has no time of its own to reason about and cannot
+disagree about whose evening it is.
+
+**One limit, flagged rather than buried.** The third absence this entry listed
+was *"no reminder"*, and that is still true: the nudge is in-page, so it asks
+when he opens the day and does nothing if he does not. Scored on the `Requires`
+line, which asked for *a closing ritual with a time-aware nudge* and now has
+one. A nudge that **reaches** him needs the notification surface
+[`clarice-v3-plan.md`](clarice-v3-plan.md) still lists as open in the same
+release — where the digest's advance reminders need it too.
+
+~~**Requires:** a closing ritual with a time-aware nudge.~~
 
 ---
 

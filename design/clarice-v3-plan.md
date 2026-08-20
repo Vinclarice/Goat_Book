@@ -263,7 +263,12 @@ and the daily loop got a form**, and daily runs seven times as often.
 - **A real notification surface**, because an advance reminder needs somewhere
   to arrive.
 
-**Acceptance: S5 reaches *works*; S13 gets its land-on-a-date half.**
+~~**Acceptance: S5 reaches *works*; S13 gets its land-on-a-date half.**~~
+**S5 reached *works* on August 20, 2026**, with `draft_day` and the closing
+ritual. **Still open in this release:** the daily brief's awareness half, bills,
+the calendar view (S13's other half), and the notification surface — which
+S5's own entry now names as what a nudge that *reaches* somebody would need,
+and which the digest's advance reminders need too.
 
 ### Capture — the brain dump and what it holds
 

@@ -13,6 +13,7 @@ import {
   updateChecklistStepDone,
   moveTaskToArea,
   updateTaskBill,
+  updateTaskLeadDays,
   updateTaskPriority,
   updateTaskDueDate,
   updateTaskNotes,
@@ -359,6 +360,24 @@ export function TaskDetailRoute() {
     }
   }
 
+  async function handleLeadDays(days: number) {
+    if (!task) return;
+    setError(null);
+    setNotice(null);
+    setBusy(true);
+    try {
+      const updated = await updateTaskLeadDays(task, days);
+      setTask(updated);
+      setNotice(days ? "Reminder set." : "Reminder off.");
+    } catch (caught) {
+      setError(
+        caught instanceof Error ? caught.message : "Unable to set the reminder.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function handleBill(bill: TaskBill | null) {
     if (!task) return;
     setError(null);
@@ -552,6 +571,31 @@ export function TaskDetailRoute() {
           disabled={busy}
           className="w-full rounded-lg border border-border bg-input px-3 py-1.5"
         />
+      </div>
+
+      {/* Not bill-specific, which is why it sits out here rather than inside
+          the bill below: "remind me before the MOT" is the same sentence.
+          Zero is off, and a lead time changes nothing about when the task is
+          *due* -- it is mentioned early, in a section of its own. */}
+      <div className="space-y-1">
+        <label htmlFor="task-lead-days" className="text-sm font-bold">
+          Remind me in advance
+        </label>
+        <input
+          id="task-lead-days"
+          type="number"
+          min={0}
+          aria-label="Remind me in advance"
+          defaultValue={task.lead_days}
+          disabled={busy}
+          onBlur={(event) =>
+            handleLeadDays(Math.max(0, Number(event.target.value) || 0))
+          }
+          className="w-full rounded-lg border border-border bg-input px-3 py-1.5"
+        />
+        <p className="text-sm text-muted-foreground">
+          Days before it is due. Zero is off.
+        </p>
       </div>
 
       {/* A bill is a recurring task with a number on it -- §4 said no to a

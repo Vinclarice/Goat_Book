@@ -2615,6 +2615,10 @@
             "title": "Priority",
             "type": "string"
           },
+          "lead_days": {
+            "title": "Lead Days",
+            "type": "integer"
+          },
           "bill": {
             "anyOf": [
               {
@@ -2673,6 +2677,7 @@
           "tags",
           "recurrence",
           "priority",
+          "lead_days",
           "bill",
           "notes",
           "area_id",
@@ -3883,6 +3888,10 @@
             "title": "Priority",
             "type": "string"
           },
+          "lead_days": {
+            "title": "Lead Days",
+            "type": "integer"
+          },
           "bill": {
             "anyOf": [
               {
@@ -3945,6 +3954,7 @@
           "tags",
           "recurrence",
           "priority",
+          "lead_days",
           "bill",
           "notes",
           "area_id",

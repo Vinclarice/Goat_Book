@@ -331,6 +331,38 @@ def workspace_data_for(
     }
 
 
+def coming_up_for(user, today=None):
+    """Open tasks inside their own lead time, soonest first.
+
+    Advance notice, and deliberately a *separate* list from what is due: a task
+    with a lead time is not overdue early and is not due early, it is mentioned
+    early. `bucket_for` is untouched, which is also what keeps this out of the
+    three languages that mirror it.
+
+    Strictly after today, so nothing appears here and in the digest's own list
+    at once -- saying a thing twice in one email is how a reminder starts being
+    skimmed. Zero lead time is off rather than "the day itself", or every dated
+    task in the product would join in.
+    """
+    today = today or timezone.localdate()
+    # Filtered here rather than in SQL, which reads like the lazier choice and
+    # is the cheaper one: `digest_items_for` below already materialises this
+    # exact queryset to bucket it, so a database-side version would be a
+    # second full scan of rows already in memory. The comparison is per-row
+    # against that row's own `lead_days`, which is also why it cannot be a
+    # plain `due_date__lte` bound.
+    return sorted(
+        (
+            item
+            for item in open_items_for(user)
+            if item.lead_days
+            and item.due_date is not None
+            and today < item.due_date <= today + timedelta(days=item.lead_days)
+        ),
+        key=lambda item: (item.due_date, item.id),
+    )
+
+
 def digest_items_for(user, today=None):
     """The tasks a daily reminder email should mention, in order."""
     today = today or timezone.localdate()

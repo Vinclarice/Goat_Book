@@ -47,6 +47,7 @@ def serialize_item(item):
         "tags": [tag.name for tag in item.tags.all()],
         "recurrence": item.recurrence,
         "priority": item.priority,
+        "lead_days": item.lead_days,
         # Null rather than an empty object: "not a bill" and "a bill with
         # nothing filled in" are different facts, and the second is reachable
         # on purpose. `getattr` because a OneToOne with no row raises rather

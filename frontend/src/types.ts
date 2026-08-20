@@ -55,6 +55,7 @@ export interface Task {
   tags: string[];
   recurrence: TaskRecurrence;
   priority: TaskPriority;
+  lead_days: number;
   bill: TaskBill | null;
   // Plain text, never Markdown. "" means no notes -- the API normalises
   // blank input to the empty string so this is never null.

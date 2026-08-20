@@ -76,7 +76,19 @@ def _describe(item, today):
     )
 
 
-def build_message(user, items, today):
+def _coming(item, today):
+    days = (item.due_date - today).days
+    when = "tomorrow" if days == 1 else f"in {days} days"
+    where = f"{item.list.title}, " if item.list_id else ""
+    return "\n".join(
+        [
+            f"  - {item.text} ({where}due {when})",
+            f"    {_app_url(f'tasks/{item.id}')}",
+        ]
+    )
+
+
+def build_message(user, items, coming, today):
     overdue = [
         item for item in items
         if agenda_reader.bucket_for(item.due_date, today)
@@ -93,11 +105,19 @@ def build_message(user, items, today):
         lines.append(f"Due today ({len(due_today)}):")
         lines += [_describe(item, today) for item in due_today]
         lines.append("")
+    if coming:
+        # Its own section, below what is actually due. A lead time says
+        # "mention this early", not "this is due early" -- folding it into the
+        # lists above would make the digest claim something is due when it is
+        # not.
+        lines.append(f"Coming up ({len(coming)}):")
+        lines += [_coming(item, today) for item in coming]
+        lines.append("")
     lines.append(f"Work through them: {_app_url('day')}")
     return "\n".join(lines)
 
 
-def build_subject(items, today):
+def build_subject(items, today, coming=()):
     overdue = sum(
         1 for item in items
         if agenda_reader.bucket_for(item.due_date, today)
@@ -109,6 +129,11 @@ def build_subject(items, today):
     remaining = len(items) - overdue
     if remaining:
         parts.append(f"{remaining} due today")
+    # Only when there is nothing due, so a quiet week's advance warning still
+    # has a subject that says something -- and a busy day's subject is not
+    # diluted by a bill a week away.
+    if not parts and coming:
+        parts.append(f"{len(coming)} coming up")
     return f"Clarice · {date_format(today, 'M j')} · " + ", ".join(parts)
 
 
@@ -169,9 +194,16 @@ class Command(BaseCommand):
 
         def compose(user, today):
             items = agenda_reader.digest_items_for(user, today)
-            if not items:
+            coming = agenda_reader.coming_up_for(user, today)
+            # Either alone is worth a message. Gating on `items` only would
+            # leave the one channel that exists to warn you in advance silent
+            # on exactly the quiet day it is for.
+            if not items and not coming:
                 return None
-            return build_subject(items, today), build_message(user, items, today)
+            return (
+                build_subject(items, today, coming),
+                build_message(user, items, coming, today),
+            )
 
         def show(user, subject, body):
             self.stdout.write(f"--- {user.email} ({user.time_zone}) ---")

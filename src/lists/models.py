@@ -138,6 +138,10 @@ class RecurringCommitment(models.Model):
     priority = models.CharField(
         max_length=6, choices=Priority.choices, default=Priority.NONE
     )
+    # Carried by the series like priority above it: a lead time that came back
+    # zero next month would be the one attribute somebody had to set again
+    # forever. See `Item.lead_days` for what it means.
+    lead_days = models.PositiveSmallIntegerField(default=0)
     tags = models.ManyToManyField("Tag", related_name="commitments", blank=True)
 
     def __str__(self):
@@ -212,6 +216,16 @@ class Item(models.Model):
     priority = models.CharField(
         max_length=6, choices=Priority.choices, default=Priority.NONE
     )
+    #: How many days before its due date this should be mentioned. Zero is
+    #: off, not "the day itself" -- otherwise every dated task in the product
+    #: would join the advance reminder.
+    #:
+    #: On the task rather than on `Bill`, because a lead time is not a
+    #: property of costing money: "remind me before the MOT" is the same
+    #: sentence. And it changes nothing about when a thing is *due* --
+    #: `bucket_for` is untouched, which also keeps this out of the three
+    #: languages that mirror it.
+    lead_days = models.PositiveSmallIntegerField(default=0)
     # Plain text, deliberately not Markdown: a renderer plus an XSS surface
     # is a poor trade at two users. blank=True and no null -- "no notes" is
     # the empty string, so nothing has to handle both.

@@ -322,6 +322,25 @@ def set_priority(item, priority):
 
 
 @transaction.atomic
+def set_lead_days(item, days):
+    """How many days before its due date this should be mentioned.
+
+    Written through to the series, like priority: a lead time on "pay rent"
+    that came back zero next month would be the one attribute somebody had to
+    set again forever.
+    """
+    item = Item.objects.select_for_update().get(pk=item.pk)
+    if item.status == Item.Status.ARCHIVED:
+        raise InvalidTaskTransition("Restore this task before editing it")
+    if days < 0:
+        raise TaskConflict("A lead time cannot be negative.")
+    item.lead_days = days
+    item.save(update_fields=["lead_days"])
+    _write_through_to_commitment(item, lead_days=days)
+    return item
+
+
+@transaction.atomic
 def set_bill(item, *, amount=None, currency="USD", payee=""):
     """Mark a task as a bill, or edit the one it already is.
 
@@ -700,6 +719,7 @@ def _spawn_next_occurrence(completed_item, carry_forward_steps=()):
         commitment=commitment,
         notes=commitment.notes,
         priority=commitment.priority,
+        lead_days=commitment.lead_days,
     )
     next_item.tags.set(commitment.tags.all())
 

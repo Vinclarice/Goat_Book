@@ -196,7 +196,7 @@ def item_detail(request, item_id):
     if error_response:
         return error_response
     changed_fields = {
-        "text", "status", "due_date", "tags", "recurrence", "notes", "list", "priority", "bill",
+        "text", "status", "due_date", "tags", "recurrence", "notes", "list", "priority", "bill", "lead_days",
         # Its own single change rather than a companion to `recurrence`,
         # keeping the one-field-per-request discipline the rest of this
         # endpoint runs on. Setting both is two requests.
@@ -208,8 +208,8 @@ def item_detail(request, item_id):
                 "errors": {
                     "body": [
                         "Change exactly one of text, status, due_date, tags, "
-                        "recurrence, cadence_mode, notes, list, priority or "
-                        "bill per request."
+                        "recurrence, cadence_mode, notes, list, priority, "
+                        "bill or lead_days per request."
                     ]
                 }
             },
@@ -262,6 +262,15 @@ def item_detail(request, item_id):
             # set_recurrence rather than writing the commitment directly, so
             # the archived-task guard and the write-through stay in one place.
             item = services.set_recurrence(item, item.recurrence, cadence_mode=mode)
+        elif "lead_days" in changed_fields:
+            days = payload["lead_days"]
+            # bool is an int subclass, so a JSON `true` would read as one day.
+            if isinstance(days, bool) or not isinstance(days, int) or days < 0:
+                return JsonResponse(
+                    {"errors": {"lead_days": ["Send a whole number of days, 0 or more."]}},
+                    status=400,
+                )
+            item = services.set_lead_days(item, days)
         elif "bill" in changed_fields:
             bill = payload["bill"]
             if bill is None:

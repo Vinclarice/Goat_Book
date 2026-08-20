@@ -89,6 +89,8 @@ class TaskOut(Schema):
     tags: list[str]
     recurrence: TaskRecurrence
     priority: TaskPriority
+    #: Days before the due date this should be mentioned. Zero is off.
+    lead_days: int
     #: Null when the task is not a bill -- a different fact from a bill with
     #: nothing filled in, which is reachable on purpose.
     bill: BillOut | None

@@ -1351,6 +1351,8 @@ export interface components {
              * @enum {string}
              */
             priority: "none" | "high" | "low";
+            /** Lead Days */
+            lead_days: number;
             bill: components["schemas"]["BillOut"] | null;
             /** Notes */
             notes: string;
@@ -1872,6 +1874,8 @@ export interface components {
              * @enum {string}
              */
             priority: "none" | "high" | "low";
+            /** Lead Days */
+            lead_days: number;
             bill: components["schemas"]["BillOut"] | null;
             /** Notes */
             notes: string;

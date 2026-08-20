@@ -139,6 +139,11 @@ export function updateTaskBill(
   return request<Task>(task.url, "PATCH", { bill });
 }
 
+/** How many days before its due date this should be mentioned. Zero is off. */
+export function updateTaskLeadDays(task: Task, days: number): Promise<Task> {
+  return request<Task>(task.url, "PATCH", { lead_days: days });
+}
+
 export function updateTaskTags(task: Task, tags: string[]): Promise<Task> {
   return request<Task>(task.url, "PATCH", { tags });
 }

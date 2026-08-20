@@ -42,6 +42,7 @@ function dayData(overrides: Record<string, unknown> = {}) {
     shows_action_items: true,
     focus: [],
     draft: { typical: null, proposed: [], available: 0 },
+    closing: null,
     compass_purpose: "",
     compass_question: "",
     week_intention: "",
@@ -549,6 +550,37 @@ describe("DayRoute", () => {
       .map(([input]) => input as Request)
       .find((request) => request.method === "DELETE");
     expect(deleted?.url).toContain("/api/v1/day/2026-08-03/focus/1");
+  });
+
+  it("asks him to close the day, with what the day held", async () => {
+    // S5's missing half. The record and the morning's choice were already
+    // good; nothing ever asked for the first.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        dayData({
+          closing: { chosen: 3, finished: 2, unfinished: 1, released: 1 },
+        }),
+      ),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    expect(await screen.findByText(/2 of 3/)).toBeInTheDocument();
+    expect(screen.getByText(/1 you set aside/i)).toBeInTheDocument();
+  });
+
+  it("does not ask when the server has not said it is time", async () => {
+    // The hour is the server's call, in the owner's own zone -- the client
+    // has none of its own to reason about, which is why this is a null rather
+    // than a time the page compares against.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(dayData({ closing: null })),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    await screen.findByLabelText("Happenings");
+    expect(screen.queryByText(/close the day/i)).not.toBeInTheDocument();
   });
 
   it("offers to plan the day, and pins what it showed", async () => {

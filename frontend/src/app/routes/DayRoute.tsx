@@ -1206,6 +1206,36 @@ export function DayRoute() {
 
       <CaptureBox />
 
+      {/* S5's missing half: the record and the morning's choice were already
+          good, and nothing ever asked for the first.
+
+          Above the fields it is asking for, and only when the server says so
+          -- the hour is read in the owner's own zone at the request boundary,
+          so the client has no time of its own to reason about. Absent on a
+          past day (a prompt there asks somebody to reconstruct one, and the
+          record is worth reading because it was written while it was still
+          true) and absent once the record exists. */}
+      {data.closing !== null && (
+        <section className="space-y-1 rounded-lg border border-accent px-3 py-2">
+          <h2 className="text-sm font-bold">Close the day</h2>
+          <p className="text-sm text-muted-foreground">
+            {data.closing.chosen > 0 ? (
+              <>
+                You finished {data.closing.finished} of {data.closing.chosen}
+                {data.closing.released > 0 && (
+                  <>
+                    {", and "}
+                    {data.closing.released} you set aside
+                  </>
+                )}
+                .{" "}
+              </>
+            ) : null}
+            What happened today, while it is still true?
+          </p>
+        </section>
+      )}
+
       <form onSubmit={handleSubmit} className="space-y-6">
         {SECTIONS.map(({ field, label, hint }) => (
           <div key={field} className="space-y-1">

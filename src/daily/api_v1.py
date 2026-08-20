@@ -118,6 +118,9 @@ class DayOut(Schema):
     #: `typical` is None and its `proposed` empty when there is no evidence
     #: to justify a number.
     draft: "DayDraftOut"
+    #: The evening's ask, or null. S5: the record and the morning's choice were
+    #: already good, and nothing ever asked for the first.
+    closing: "DayClosingOut | None"
     # The Personal Compass, read from the user on every request and stored
     # on no day. Sent with the day rather than fetched separately so the
     # page renders in one round trip -- and because a day is exactly the
@@ -178,6 +181,22 @@ class DayActionItemOut(TaskOut):
     """
 
     age_in_days: int
+
+
+class DayClosingOut(Schema):
+    """What the day held, at the point of being asked to write it down.
+
+    Present only in the evening, only on today, and only until the record
+    exists -- see `reads.closing_for`. Null the rest of the time, which is why
+    the client has no hour of its own to reason about.
+    """
+
+    chosen: int
+    finished: int
+    unfinished: int
+    #: Reported apart from `unfinished`, because "I decided this wasn't for
+    #: today" and "I never got to it" are different facts.
+    released: int
 
 
 class DayDraftOut(Schema):
@@ -264,6 +283,17 @@ def _today_for_request():
     return timezone.localdate()
 
 
+def _hour_for_request():
+    """The requesting user's local hour of day.
+
+    Beside `_today_for_request` and for the same reason: the middleware
+    activated the owner's zone, so "evening" means theirs rather than the
+    server's. Read once here at the boundary and passed down, per
+    `principles.md`'s injected clock.
+    """
+    return timezone.localtime().hour
+
+
 def _action_item_out(item, today):
     # The age rule itself lives in lists.agenda, because Crane 3's weekly
     # review reports the same number about the same tasks and a second
@@ -288,6 +318,20 @@ def _focus_out(focus):
         "due_date": task.due_date.isoformat() if task and task.due_date else None,
         "selected_at": focus.selected_at.isoformat(),
         "url": reverse("api_item_detail", args=[task.pk]) if task else None,
+    }
+
+
+def _closing_out(owner, day, today):
+    closing = reads.closing_for(
+        owner, day, today=today, hour=_hour_for_request()
+    )
+    if closing is None:
+        return None
+    return {
+        "chosen": closing.chosen,
+        "finished": closing.finished,
+        "unfinished": closing.unfinished,
+        "released": closing.released,
     }
 
 
@@ -355,6 +399,7 @@ def _day_out(owner, day):
         "new_area_url": reverse("new_list"),
         "focus": [_focus_out(focus) for focus in reads.focus_for(owner, day)],
         "draft": _draft_out(owner, day, today),
+        "closing": _closing_out(owner, day, today),
         "week_intention": _week_intention_for(owner, day),
         # Asked of the day being shown, so a past day reports what was typical
         # *before it*, not what is typical now. A capacity figure that moved

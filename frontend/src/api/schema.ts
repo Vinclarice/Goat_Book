@@ -1852,6 +1852,24 @@ export interface components {
             color_key: "sky" | "sage" | "amber" | "lilac" | "coral" | "azure" | "blush" | "straw";
         };
         /**
+         * DayClosingOut
+         * @description What the day held, at the point of being asked to write it down.
+         *
+         *     Present only in the evening, only on today, and only until the record
+         *     exists -- see `reads.closing_for`. Null the rest of the time, which is why
+         *     the client has no hour of its own to reason about.
+         */
+        DayClosingOut: {
+            /** Chosen */
+            chosen: number;
+            /** Finished */
+            finished: number;
+            /** Unfinished */
+            unfinished: number;
+            /** Released */
+            released: number;
+        };
+        /**
          * DayDraftOut
          * @description What today could hold -- the day's own draft.
          *
@@ -1895,6 +1913,7 @@ export interface components {
             /** Focus */
             focus: components["schemas"]["FocusOut"][];
             draft: components["schemas"]["DayDraftOut"];
+            closing: components["schemas"]["DayClosingOut"] | null;
             /** Week Intention */
             week_intention: string;
             /** Typical Day */

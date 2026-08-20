@@ -3892,6 +3892,35 @@
         "title": "DayAreaSummaryOut",
         "type": "object"
       },
+      "DayClosingOut": {
+        "description": "What the day held, at the point of being asked to write it down.\n\nPresent only in the evening, only on today, and only until the record\nexists -- see `reads.closing_for`. Null the rest of the time, which is why\nthe client has no hour of its own to reason about.",
+        "properties": {
+          "chosen": {
+            "title": "Chosen",
+            "type": "integer"
+          },
+          "finished": {
+            "title": "Finished",
+            "type": "integer"
+          },
+          "unfinished": {
+            "title": "Unfinished",
+            "type": "integer"
+          },
+          "released": {
+            "title": "Released",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "chosen",
+          "finished",
+          "unfinished",
+          "released"
+        ],
+        "title": "DayClosingOut",
+        "type": "object"
+      },
       "DayDraftOut": {
         "description": "What today could hold -- the day's own draft.\n\n**A proposal, never a plan.** Nothing here is pinned; accepting it is a\nseparate, deliberate act, because `DailyFocus` records what a person\n*chose* and a focus the system pinned would change what the finish rate\nmeasures.",
         "properties": {
@@ -3994,6 +4023,16 @@
           "draft": {
             "$ref": "#/components/schemas/DayDraftOut"
           },
+          "closing": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DayClosingOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "week_intention": {
             "title": "Week Intention",
             "type": "string"
@@ -4050,6 +4089,7 @@
           "new_area_url",
           "focus",
           "draft",
+          "closing",
           "week_intention",
           "typical_day",
           "compass_purpose",

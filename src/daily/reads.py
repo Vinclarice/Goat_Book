@@ -84,6 +84,75 @@ def action_items_for(owner, day):
     return [item for key in DAY_BUCKETS for item in grouped[key]]
 
 
+# When the day stops being something to plan and starts being something to
+# record. Named here rather than scattered, the same call `DIGEST_HOUR` makes
+# for the morning -- and read in the owner's own zone, so "evening" means
+# theirs rather than the server's.
+#
+# Six is early enough to catch somebody before the evening gets away and late
+# enough that it is not still the working day. One threshold and no per-user
+# setting, because a preference nobody has asked for is a decision deferred
+# rather than made.
+CLOSING_HOUR = 18
+
+
+@dataclass(frozen=True)
+class DayClosing:
+    """What the day held, at the point of writing it down.
+
+    Counts rather than lists: the ask is for the record, and a closing prompt
+    that re-listed the day would be the page somebody already read.
+    """
+
+    #: Planned commitments still standing -- the denominator S6 rests on.
+    chosen: int
+    finished: int
+    unfinished: int
+    #: Deliberately taken off. Outside `chosen` entirely, because deciding on
+    #: Wednesday that something is not for today is a decommitment and
+    #: counting it as a failure would be the product disagreeing with a
+    #: decision somebody made.
+    released: int
+
+
+def closing_for(owner, day, *, today, hour):
+    """Whether to ask for the day's record, and what to say while asking.
+
+    S5's missing half. `DailyEntry.happenings` and `DailyFocus` were already
+    good; nothing ever asked.
+
+    **Only for today, and only in the evening.** A prompt on a past day would
+    ask somebody to reconstruct one, and the record is worth reading in six
+    months precisely because it was written while it was still true. A day
+    nobody answered closes unclosed, which is itself a fact -- `DailyEntry` has
+    no deleted or archived state for the same reason.
+
+    **It stops once the record exists.** The ask is for the writing, so a
+    prompt that stayed after it would be nagging about something done.
+
+    **The counts are `planned_in_week`'s, for a one-day window** -- the same
+    borrowing `typical_day_for` does, because D2 is explicit that two
+    definitions of "what I got through" would drift. Safe on a day in progress
+    because that read judges against the window's *end*: with the window
+    ending today, finished-today counts as met and released-today as set
+    aside, which is exactly "so far".
+    """
+    if day != today or hour < CLOSING_HOUR:
+        return None
+    entry = entry_for(owner, day)
+    if entry is not None and entry.happenings.strip():
+        return None
+    from review import reads as review_reads
+
+    planned = review_reads.planned_in_week(owner, day, day)
+    return DayClosing(
+        chosen=planned.total,
+        finished=len(planned.met),
+        unfinished=len(planned.unfinished),
+        released=len(planned.set_aside),
+    )
+
+
 @dataclass(frozen=True)
 class DayDraft:
     """What today could hold, and whether it holds it.

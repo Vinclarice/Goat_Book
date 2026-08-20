@@ -26,8 +26,8 @@ not**. `C:\dev\Clarice_secondmind` survives as documents only, and
 is still exactly right and only its first sentence went stale. Since August 16
 the releases have been Ibis, Jackdaw, the navigation and identity work, signup
 with the legal documents, and `kestrel` — the planning assistant, August 19,
-which spent the letter K. ~~Left no active release again~~ — **release L
-opened on August 19 and half of it is live**; the snapshot below is what a
+which spent the letter K. ~~Left no active release again~~ — **release L opened on August 19 and closed
+on August 20 as `lapwing`**; the snapshot below is what a
 baseline looked like before it, and *Open now* carries the current state, as it
 is supposed to.
 
@@ -75,34 +75,21 @@ re-add it here.
   intake. **Nothing in either has started**; *Close L* is v3's own first
   release and is the entry below.
 
-- **Release L is open, and its bird is not chosen.** *Tag only after production
-  is verified* — so the letter is claimed, the name waits, and this entry is
-  what the release is until it has one. **Half of it is already live**, and
-  closing it is v3's first release.
+- ~~**Release L is open, and its bird is not chosen.**~~ **Closed August 20,
+  2026, shipped and verified in production as `lapwing`**
+  (`DEPLOYED-2026-08-20/1132`, image `clarice:612e23415830`, all three
+  migrations applied and none pending). *The week you can plan, and the material
+  you can find* — the planning assistant's second version and unified search,
+  across two deployments.
 
-  **Deployed August 19, 2026** (`DEPLOYED-2026-08-19/2338`, image
-  `a60df12fc9ad`, migrations applied and none pending). What went out:
+  The narrative, the six things it taught and the verification actually run are
+  in [`roadmap-history.md`](roadmap-history.md).
 
-  - **The planning assistant's second version, increments 1–8** — the entry
-    below carries the detail.
-  - **The second factor's machinery**, installed and *enforcing nothing*.
-    Enrolment before enforcement is the ordering `admin-mfa-plan.md` insists
-    on, so this half is deliberately inert until somebody has enrolled.
-  - **Mail no longer waits on reverse DNS**, which cost a browser-suite journey
-    twelve seconds and two wrong diagnoses before it was measured.
-  - **Two test-infrastructure fixes**: a test database name derived from the
-    checkout, and a CI check on recorded file modes.
-
-  **What it still needs before it is a release** is Vince's to add — the point
-  of leaving the bird unchosen is that a release is *a coherent body of work
-  with a finish line*, and this one has not reached its. When it does: verify in
-  production, then the annotated codename tag, then the narrative moves to
-  [`roadmap-history.md`](roadmap-history.md) and this entry becomes its stub.
-
-  **A deployment is not a release**, which is exactly what the two tag kinds
-  are for. `DEPLOYED-2026-08-19/2338` permanently records that this code ran;
-  the codename will record what the work *was*. Fulmar's annotation admits its
-  verification was piecemeal precisely because those two got conflated once.
+  **What it leaves open, both deliberately**: search's fifth increment, nine
+  fields deferred by name that want real use first, and the planning assistant's
+  ninth, a ranking gated on a sample floor a corpus of 41 nodes has not cleared.
+  Neither is a shortfall; `principles.md` now says a trigger that cannot fire is
+  a refusal, and the second is a candidate for that reading.
 
 - ~~**`/api/v1/login` is unthrottled.**~~ Fixed August 18, 2026 (`9eb9eea`),
   with `/accounts/password/reset/` alongside it — an exact-match `limit_req`
@@ -145,7 +132,10 @@ re-add it here.
   turned up are in [`roadmap-history.md`](roadmap-history.md); the v1 plan is a
   stub.
 
-- **The planning assistant's second version is the active work.** Designed and
+- ~~**The planning assistant's second version is the active work.**~~ **Shipped
+  and deployed; increments 1–8 went out August 19 and the release closed as
+  `lapwing` on August 20. Increment 9 is all that remains and may never fire.**
+  Designed and
   being built to
   [`planning-assistant-v2-plan.md`](planning-assistant-v2-plan.md): the weekly
   planning *session*, on the review's forward half rather than a second
@@ -198,12 +188,15 @@ re-add it here.
   this a business, which wedge, and mobile native versus responsive web. Two of
   its five are stale rather than open: #3 is answered but its reasoning predates
   the merger, and #5 was largely done by the August 15 documentation pass.
-- **Unified search is active and usable, and undeployed.** Designed and built
+- ~~**Unified search is active and usable, and undeployed.**~~ **Deployed and
+  verified August 20, 2026 as part of `lapwing`.** Four of five increments;
+  the fifth is the only thing left. Designed and built
   to [`search-plan.md`](search-plan.md). **Three of its five increments are
   done**, and the third is the one a person can use: `/mind/search/` now
   answers in three sections — notes, tasks and days — from one box.
 
-  What landed August 20, 2026, all on `main` and **none of it deployed**:
+  What landed August 20, 2026, ~~all on `main` and **none of it deployed**~~ —
+  **live since `DEPLOYED-2026-08-20/1132`**:
   generated `tsvector` columns with a `GinIndex` on `Item` and `DailyEntry`
   and two migrations; `lists/search.py` and `daily.reads.search_entries`;
   `clarice/search.py`, holding the one definition of how typed text becomes a
@@ -521,11 +514,12 @@ remain out of scope until the public-readiness bar is genuinely met.
 Production releases use alphabetic bird codenames: `albatross`, `bittern`,
 `crane`, `dunlin`, `fulmar`, `godwit`, `heron`. **Tag only after production is
 verified.** The letter carries; the bird is chosen when the release ships. The
-sequence skips E — Vince's call, August 3, 2026. Since then `ibis`, `jackdaw`
-and `kestrel` have taken I, J and K, so **L is the current letter** — and it is
-already claimed rather than next. See *Release L, open* under **Open now**;
-what it is called is decided when it is finished, which is what "the bird is
-chosen when the release ships" means.
+sequence skips E — Vince's call, August 3, 2026. Since then `ibis`, `jackdaw`,
+`kestrel` and `lapwing` have taken I, J, K and L, so **M is the current
+letter** and is unclaimed. `lapwing` closed August 20, 2026 — *the week you can
+plan, and the material you can find*. What claims M is whichever of
+[`clarice-v3-plan.md`](clarice-v3-plan.md)'s eight releases ships first, and a
+letter is never reserved for a subject in advance.
 
 - `LIVE` is a moving tag for the code currently running. It is the only tag
   ever overwritten, which is safe precisely because the position it leaves is

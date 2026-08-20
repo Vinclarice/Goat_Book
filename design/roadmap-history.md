@@ -7,6 +7,74 @@ The reasoning, deployment record and lessons behind completed work, kept out of
 the active plan so that plan stays scannable. The active plan is
 [`roadmap.md`](roadmap.md).
 
+## The week you can plan, and the material you can find — August 19–20, 2026, `lapwing`
+
+Release L, across two deployments and verified in production on August 20 at
+11:32 (`DEPLOYED-2026-08-20/1132`, image `clarice:612e23415830`). Two bodies of
+work that turned out to be one release: **planning the week, and finding what
+you wrote.**
+
+**What shipped**
+
+- **The planning assistant's second version, increments 1–8**
+  (`DEPLOYED-2026-08-19/2338`): the weekly intention made reachable, capacity at
+  day grain, a project that can say what done looks like and be parked, a
+  check-in that opens with what the system believes, outcomes chosen from
+  evidence, blockers answered where they are read, the week laid out by day and
+  stress-tested, and scenario planning. **Nothing generates anything** — the
+  part that feels most like an assistant is `draft_week` with one argument.
+- **Unified search, four of five increments.** Generated `tsvector` columns with
+  `GinIndex`es on `Item` and `DailyEntry`, `clarice/search.py` holding the one
+  definition of how typed text becomes a query, `GET /api/v1/search`, and
+  `/mind/search/` answering in three sections from one box.
+- **The second factor's machinery**, installed and enforcing nothing. Enrolment
+  before enforcement, deliberately inert.
+- **Mail no longer waits on reverse DNS**, which had cost a browser-suite
+  journey twelve seconds and two wrong diagnoses before anybody measured it.
+- **Two test-infrastructure fixes**: a test database name derived from the
+  checkout, and a CI check on recorded file modes.
+
+**What it taught**
+
+- **A claim about an absence goes stale the day the tree changes.**
+  `roadmap.md` said there was *"no full-text search anywhere in the product —
+  zero hits for `SearchVector`, `GinIndex` or `pg_trgm`."* True when written on
+  August 13, false on the 14th when the merger brought `src/mind/` in. The
+  substance survived — a journal entry was unfindable by any means — but the
+  evidence sentence had been wrong for six days.
+- **Check for a caller, not for existence.** D3 asked whether
+  `RetrievalMiss.resolved_node` should widen to reach a task. It should not:
+  **nothing has ever populated it.** `resolve_retrieval_miss` has no caller
+  outside its own tests and no reader anywhere — **the fourth un-switched-on
+  seam found in a fortnight**, after `/healthz`, the uninvoked detectors and
+  `Backends.isSplit`. `CLAUDE.md` already said to check the build configuration
+  rather than the branch; this generalises it.
+- **A miss cannot be re-interpreted after the fact**, which is why the real
+  defect D3 turned up was fixed *before* the deploy rather than after.
+  `retrieval_miss_trend` feeds `retirement_gate`'s only condition measurable
+  without interpretation, and it meant something exact while the page searched
+  notes alone. Putting the same button under three sections made it ambiguous,
+  and no later change could have recovered what the ambiguous ones meant.
+- **Sectioned, never merged, is a refusal rather than a first version.**
+  `SearchRank` compares documents within one set and means nothing across two,
+  so a single ordered list would present a number that does not exist as
+  relevance — and the failure would be silent.
+- **A cleared precondition is not a trigger.** D4 said no to the command
+  palette: search existing removes the argument *against* it without supplying
+  one *for* it. What the question did turn up is that nothing in the task core
+  linked to search at all.
+- **Two increments were deliberately not shipped**, and both are the right
+  outcome rather than a shortfall: search's fifth, nine deferred fields that
+  want real use first, and the planning assistant's ninth, a ranking gated on a
+  sample floor a corpus of 41 nodes has not cleared.
+
+**Verified before the deploy**, all at `612e234`: `makemigrations --check`
+clean; 1388 Django tests OK; 789 passed and 6 xfailed under pytest; 354 frontend
+tests with a clean `tsc --noEmit`; 34 browser tests OK against a freshly built
+bundle, run because the app bar was touched. **Verified after**: site 200,
+`/mind/search/` answering 302 rather than 404, the running image tagged with the
+commit, and all three migrations applied with none pending.
+
 ## The planning assistant — August 18–19, 2026, `kestrel`
 
 An evidence-backed proposal inbox rather than a chatbot, in six increments, all

@@ -165,8 +165,29 @@ its one write is inside a transaction it rolls back, so it is safe to point at
 production if you want to prove the check itself works.
 
 **Run August 19, 2026. Result: passed, and this is the first run entitled to
-the word.** Restored from the 2026-08-19 06:56 UTC backup onto Postgres 18,
-`db-s-1vcpu-1gb` in nyc1.
+the word.** Restored onto Postgres 18.6, `db-s-1vcpu-1gb` in nyc1, provisioned
+23:49 UTC.
+
+**Restored to the latest restorable point, not to the last daily backup — and
+the first write-up of this run got that wrong.** `doctl databases backups` lists
+one entry a day and the newest was 06:56 UTC, so "restored from the 06:56
+backup" looked obviously true. The restored cluster's newest
+`django_migrations` row was applied **17:36:32 UTC**, ten and a half hours after
+that backup — those are `kestrel`'s migrations, and `DEPLOYED-2026-08-19/1339`
+is 13:39 EDT, which is 17:39 UTC. A daily snapshot cannot contain them.
+
+So `--restore-from-cluster-name` with no timestamp rolls WAL forward to roughly
+the moment of provisioning. **Inferred from that evidence rather than read from
+a manual**, but the evidence is hard to argue with: data ten hours newer than
+the newest listed backup was present, and the live-versus-restored diff was
+empty at 23:42 UTC.
+
+**It changes what the drill proved and what recovery is worth.** The empty diff
+is not evidence that production sat idle between the backup and the snapshot —
+it is the restore being current to within minutes. The recoverable position is
+any point inside the retention window, not one of seven daily snapshots, which
+is a materially better answer to *how much would we lose* than this file has
+been giving.
 
 - **Step 4: the diff was empty.** All **42** tables matched the live cluster —
   `django_migrations` 115, `lists_item` 23, `lists_list` 10, `accounts_user` 3,
@@ -228,10 +249,16 @@ Three things worth knowing before the next one:
   rule per invocation; `append` genuinely appends, so the inherited droplet rule
   survives without being restated. Note also that `curl ifconfig.me` may answer
   with IPv6 here — trusted sources want the v4, from `curl -4 ifconfig.me`.
-- **Retention is DigitalOcean's, not ours.** Daily backups, roughly one
-  per day (observed 2026-07-29 22:59, 07-30 10:59, 07-31 06:56 UTC), kept
-  for 7 days on this plan. That is the real answer to "how far back can a
-  bad migration be undone" — a week, not indefinitely.
+- **Retention is DigitalOcean's, not ours — and it is continuous inside the
+  window, not daily.** `doctl databases backups` lists one entry a day
+  (2026-08-16 through 08-19, each 06:56 UTC), kept 7 days on this plan, and
+  that listing is what made two write-ups of this drill describe a restore as
+  coming "from" a particular daily backup. **It does not.** The August 19 run
+  came back holding migrations applied 10.5 hours after the newest listed
+  backup, so the restorable position is any point in the week rather than one
+  of seven snapshots. The answer to *how far back can a bad migration be
+  undone* is a week; the answer to *how much would we lose* is minutes, not up
+  to a day.
 
 Between drills, `infra/check-backup-freshness.sh` answers the cheap half
 of the question — when did this cluster last back up successfully — and

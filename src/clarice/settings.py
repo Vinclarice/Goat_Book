@@ -202,6 +202,24 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "axes",
+    # A second factor for the accounts that can read everything --
+    # design/admin-mfa-plan.md, increment 1. Installed here and enforced
+    # nowhere yet: this increment only makes `request.user.is_verified()`
+    # answerable, so that increment 4 has something to gate on and can be
+    # deployed after somebody has actually enrolled.
+    #
+    # `otp_static` is the recovery codes, and it is not optional-in-practice:
+    # a second factor with no way back in is a way to lose the admin account
+    # rather than a way to protect it.
+    #
+    # **Their app labels are deliberately outside `accounts.export.OWNED_APPS`.**
+    # That module walks whole apps, so adding these there would sweep
+    # `TOTPDevice.key` -- the shared secret -- and the static tokens into the
+    # archive a person downloads. `test_mfa.py` holds that boundary; the
+    # exclusion is a decision, not the accident of app naming it resembles.
+    "django_otp",
+    "django_otp.plugins.otp_totp",
+    "django_otp.plugins.otp_static",
     "accounts",
     "lists",
     # `capture` stood here until August 15, 2026. It held the Inbox -- `Capture`
@@ -294,6 +312,15 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    # Directly after authentication, because it wraps the `request.user` that
+    # middleware set: it attaches `is_verified()`, which answers "has this
+    # session presented a second factor", as opposed to `is_authenticated`,
+    # which answers "did it present a password". Nothing consults it yet --
+    # design/admin-mfa-plan.md increment 4 is what gates on it.
+    #
+    # Before TimeZoneMiddleware rather than after, only because that one reads
+    # `request.user` and should read the same object every other layer sees.
+    'django_otp.middleware.OTPMiddleware',
     # Straight after authentication, since it needs request.user: it
     # activates that user's own time zone so every day-boundary decision
     # below (and in every view) is made against their day, not the
@@ -372,6 +399,32 @@ else:
             ssl_require=True,
         )
     }
+
+# **Two `manage.py test` runs in this repository destroy each other's database.**
+# Django derives the test database's name from the one above, so every run in
+# this checkout is called `test_clarice` -- and the second one to start finds it
+# already there, asks whether to delete it, and gets `EOFError` because nothing
+# is attached to stdin. Worse when the timing is unluckier: the first run's
+# teardown drops the database the second is still using, and the failure arrives
+# as a hundred `setUpClass` errors that look like a broken migration and read
+# nothing like contention. Both were observed on August 19, 2026, with two
+# sessions working in this tree at once.
+#
+# Setting this gives a run its own database and its own name to tear down.
+# Off by default, because CI runs alone and a per-run database there would be
+# a fresh `CREATE DATABASE` for no reason -- and because a default that changed
+# every run would leave orphans behind on a laptop.
+#
+#     DJANGO_TEST_DB_SUFFIX=b .venv/Scripts/python.exe src/manage.py test ...
+#
+# Note this is not `--parallel`, which clones from `test_clarice` and therefore
+# collides in exactly the same place.
+test_db_suffix = os.environ.get("DJANGO_TEST_DB_SUFFIX")
+if test_db_suffix:
+    DATABASES["default"].setdefault("TEST", {})
+    DATABASES["default"]["TEST"]["NAME"] = (
+        f"test_{DATABASES['default']['NAME']}_{test_db_suffix}"
+    )
 
 
 # Password validation

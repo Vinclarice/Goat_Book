@@ -107,10 +107,20 @@ all**, and without something else in front of it a six-digit code is a
 brute-force target with a bounded and small keyspace.
 
 `django-otp`'s devices carry their own throttling, which backs off after
-repeated failures. **Confirm it is active rather than assume it** — it is
-version-dependent, it is the whole of the protection on this step, and a test
-that a wrong code cannot be retried indefinitely is the only thing that turns
-the assumption into evidence.
+repeated failures. **Confirmed on 1.7.0, August 19** — this was written as
+*confirm rather than assume*, and the confirmation is: `TOTPDevice` and
+`StaticDevice` both inherit `ThrottlingMixin`, both carry
+`throttling_failure_count` and `throttling_failure_timestamp`, and
+`verify_is_allowed` refuses until `factor × 2^(n-1)` seconds have passed — 1, 2,
+4, 8, and so on. `OTP_TOTP_THROTTLE_FACTOR` is unset, so the library default
+applies.
+
+Two things that follow. **It is on by default**, so this is not a switch to
+remember. And **the first few failures are cheap** — a second, then two — so
+whether the default factor is high enough for a six-digit code is a judgement to
+make at increment 2 with the number in front of you, not a thing to assume
+either way. The test increment 2 owes is still the one that matters: a wrong
+code, retried, must start being refused.
 
 ### 2.5 Two smaller ones
 

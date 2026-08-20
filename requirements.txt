@@ -11,3 +11,9 @@ sentry-sdk==2.66.1
 # index. Nothing in the task core touches it, but the schema is one app's, not
 # one project's, and a migration that cannot run is not optional.
 pgvector==0.4.1
+# A second factor for the accounts that can read everything --
+# design/admin-mfa-plan.md. django-otp rather than django-two-factor-auth:
+# this project owns its login views for reasons the plan states, and the
+# heavier package brings its own views, URLs and templates with it.
+# otp_static (recovery codes) ships in the same distribution.
+django-otp==1.7.0

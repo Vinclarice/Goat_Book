@@ -195,7 +195,7 @@ def item_detail(request, item_id):
     if error_response:
         return error_response
     changed_fields = {
-        "text", "status", "due_date", "tags", "recurrence", "notes",
+        "text", "status", "due_date", "tags", "recurrence", "notes", "list",
         # Its own single change rather than a companion to `recurrence`,
         # keeping the one-field-per-request discipline the rest of this
         # endpoint runs on. Setting both is two requests.
@@ -207,7 +207,7 @@ def item_detail(request, item_id):
                 "errors": {
                     "body": [
                         "Change exactly one of text, status, due_date, tags, "
-                        "recurrence, cadence_mode, or notes per request."
+                        "recurrence, cadence_mode, notes, or list per request."
                     ]
                 }
             },
@@ -260,6 +260,32 @@ def item_detail(request, item_id):
             # set_recurrence rather than writing the commitment directly, so
             # the archived-task guard and the write-through stay in one place.
             item = services.set_recurrence(item, item.recurrence, cadence_mode=mode)
+        elif "list" in changed_fields:
+            destination_id = payload["list"]
+            # `bool` is an `int` subclass, so a JSON `true` would otherwise
+            # read as area 1 -- somebody's real area, quite possibly.
+            if destination_id is not None and (
+                isinstance(destination_id, bool) or not isinstance(destination_id, int)
+            ):
+                return JsonResponse(
+                    {"errors": {"list": ["Send an area id, or null to unfile."]}},
+                    status=400,
+                )
+            destination = None
+            if destination_id is not None:
+                # Scoped in the lookup rather than checked afterwards, the way
+                # every other id-taking surface here is. Somebody else's area
+                # is *not found*, not *forbidden* -- answering differently
+                # would confirm the id exists.
+                destination = List.objects.filter(
+                    pk=destination_id, owner=request.user
+                ).first()
+                if destination is None:
+                    return JsonResponse(
+                        {"errors": {"list": ["Area not found."]}},
+                        status=404,
+                    )
+            item = services.move_item(item, destination)
         elif "notes" in changed_fields:
             notes = payload["notes"]
             if not isinstance(notes, str):

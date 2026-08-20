@@ -107,6 +107,38 @@ describe("TaskDetailRoute", () => {
     expect(await screen.findByText("Task updated.")).toBeInTheDocument();
   });
 
+  it("moves a task into another of your areas", async () => {
+    const user = userEvent.setup();
+    let moved: unknown = null;
+    vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
+      if (typeof input !== "string") {
+        // Two apiV1 GETs on this page now: the task, and the nav that says
+        // which areas exist to move it into.
+        if ((input as Request).url.includes("/api/v1/nav")) {
+          return jsonResponse({
+            areas: [
+              { id: 1, title: "Programming", open_count: 0, overdue_count: 0, color_key: "slate" },
+              { id: 2, title: "Home", open_count: 0, overdue_count: 0, color_key: "slate" },
+            ],
+            projects: [],
+            archived_count: 0,
+          });
+        }
+        return jsonResponse(taskDetailData());
+      }
+      const body = JSON.parse((init?.body as string) ?? "{}");
+      if ("list" in body) moved = body.list;
+      return jsonResponse({ data: task() });
+    });
+
+    renderAt("1");
+    await screen.findByDisplayValue("Write tests");
+
+    await user.selectOptions(await screen.findByLabelText("Area"), "2");
+
+    await waitFor(() => expect(moved).toBe(2));
+  });
+
   it("saves notes on blur and reports it", async () => {
     const user = userEvent.setup();
     vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
@@ -532,20 +564,31 @@ describe("TaskDetailRoute", () => {
     // status write goes through the legacy api layer, which calls
     // fetch(url, init) with a string. Splitting on that is the idiom the
     // recurring-task test above already uses.
-    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
-      if (typeof input !== "string") return jsonResponse(taskDetailData());
+    const nav = { areas: [], projects: [], archived_count: 0 };
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      if (typeof input !== "string") {
+        if ((input as Request).url.includes("/api/v1/nav")) return jsonResponse(nav);
+        return jsonResponse(taskDetailData());
+      }
       return jsonResponse({ data: task({ status: "completed" }) });
     });
+    const navRequests = () =>
+      fetchSpy.mock.calls.filter(
+        ([input]) => typeof input !== "string" && (input as Request).url.includes("/api/v1/nav"),
+      ).length;
 
-    const { queryClient } = renderAt("1");
+    renderAt("1");
     await screen.findByDisplayValue("Write tests");
-    queryClient.setQueryData(["nav"], { areas: [], projects: [], archived_count: 0 });
+    const before = navRequests();
 
     await user.click(screen.getByRole("button", { name: "Mark complete" }));
 
-    await waitFor(() =>
-      expect(queryClient.getQueryState(["nav"])?.isInvalidated).toBe(true),
-    );
+    // Asserts the refetch rather than the `isInvalidated` flag. Since this
+    // route gained a nav observer (the Area control needs to know which areas
+    // exist), invalidating refetches immediately and the flag clears again --
+    // so it was reading a state that is now transient. The effect is the
+    // stronger claim anyway: the nav was actually asked again.
+    await waitFor(() => expect(navRequests()).toBeGreaterThan(before));
   });
 
   it("keeps unsaved notes when the query refetches underneath them", async () => {

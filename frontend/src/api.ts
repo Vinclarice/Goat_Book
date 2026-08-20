@@ -105,6 +105,18 @@ export function updateTaskDueDate(
   return request<Task>(task.url, "PATCH", { due_date: dueDate });
 }
 
+/**
+ * File a task into a different Area, or out of every Area with `null`.
+ *
+ * `commercial-blueprint.md` Part 3 named the gap: `item_detail` PATCH took
+ * six fields and `list` was not one of them, so a misfiled task stayed
+ * misfiled. Moving Areas moves Projects too, because a Project hangs off the
+ * Area rather than off the task.
+ */
+export function moveTaskToArea(task: Task, listId: number | null): Promise<Task> {
+  return request<Task>(task.url, "PATCH", { list: listId });
+}
+
 export function updateTaskTags(task: Task, tags: string[]): Promise<Task> {
   return request<Task>(task.url, "PATCH", { tags });
 }

@@ -11,6 +11,7 @@ import {
   promoteChecklistStep,
   updateChecklistStepCarriesForward,
   updateChecklistStepDone,
+  moveTaskToArea,
   updateTaskDueDate,
   updateTaskNotes,
   updateTaskCadenceMode,
@@ -69,6 +70,17 @@ export function TaskDetailRoute() {
   const queryClient = useQueryClient();
   const refreshNav = () =>
     queryClient.invalidateQueries({ queryKey: ["nav"] });
+
+  // Where a task *could* go. Read from the nav query the app already runs
+  // rather than added to the task payload -- one definition of "your areas",
+  // and on any page but the first render this is a cache hit.
+  const { data: nav } = useQuery({
+    queryKey: ["nav"],
+    queryFn: async () => {
+      const { data } = await apiV1.GET("/api/v1/nav");
+      return data ?? null;
+    },
+  });
 
 
   const { taskId } = useParams();
@@ -332,6 +344,30 @@ export function TaskDetailRoute() {
     }
   }
 
+  async function handleMove(listId: number | null) {
+    if (!task) return;
+    setError(null);
+    setNotice(null);
+    setBusy(true);
+    try {
+      const updated = await moveTaskToArea(task, listId);
+      setTask(updated);
+      setAreaRef(
+        listId === null
+          ? null
+          : nav?.areas.find((area) => area.id === listId) ?? null,
+      );
+      setNotice(listId === null ? "Task unfiled." : "Task moved.");
+      // Both the old and the new area's counts changed, so the whole nav is
+      // refetched rather than two entries patched.
+      refreshNav();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to move the task.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function handleCadenceMode(mode: CadenceMode) {
     if (!task) return;
     setError(null);
@@ -466,6 +502,30 @@ export function TaskDetailRoute() {
           disabled={busy}
           className="w-full rounded-lg border border-border bg-input px-3 py-1.5"
         />
+      </div>
+
+      <div className="space-y-1">
+        <label htmlFor="task-area" className="text-sm font-bold">
+          Area
+        </label>
+        <select
+          id="task-area"
+          value={areaRef?.id ?? ""}
+          onChange={(event) =>
+            handleMove(event.target.value === "" ? null : Number(event.target.value))
+          }
+          disabled={busy}
+          className="w-full rounded-lg border border-border bg-input px-3 py-1.5"
+        >
+          {/* An unfiled task is a real task, so "no area" is an option a
+              person can choose rather than only a state they arrive in. */}
+          <option value="">No area</option>
+          {(nav?.areas ?? []).map((area) => (
+            <option key={area.id} value={area.id}>
+              {area.title}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div className="space-y-1">

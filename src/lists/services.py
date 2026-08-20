@@ -301,6 +301,44 @@ def set_due_date(item, due_date):
 
 
 @transaction.atomic
+def move_item(item, to_list):
+    """File a task into a different Area, or out of every Area.
+
+    `commercial-blueprint.md` Part 3 named the absence: `item_detail` PATCH
+    took six fields and `list` was not one, so a misfiled task stayed
+    misfiled.
+
+    **Moving between Areas moves between Projects as a consequence, not as a
+    second decision.** A `Project` hangs off `List`, so a task's project is
+    whatever its area's is -- there is nothing here to keep consistent.
+
+    **`position` is recomputed rather than carried.** It orders a task *within*
+    its Area, so the number it held in the old one means nothing in the new
+    one; appending is the only answer that does not interleave it silently
+    into an order somebody arranged.
+
+    **`to_list=None` is a destination, not a missing argument.** `Item.list`
+    has been nullable since August 14 and `Item.owner` is what keeps an
+    unfiled task a real one -- and `_derive_owner` only fires when there *is*
+    an area, so unfiling leaves the owner where it was rather than stranding
+    the row.
+    """
+    item = Item.objects.select_for_update().get(pk=item.pk)
+    if item.status == Item.Status.ARCHIVED:
+        raise InvalidTaskTransition("Restore this task before editing it")
+    item.list = to_list
+    item.position = _next_position(to_list, owner=item.owner)
+    item.save()
+    # **Write through, or a series quietly stays where it was.** Spawning
+    # reads `commitment.list`, not the occurrence's -- see `list=commitment.list`
+    # in the spawn below -- so moving only the task would file this occurrence
+    # in the new Area and its successor back in the old one. Same "this and
+    # future" rule renaming already follows.
+    _write_through_to_commitment(item, list=to_list)
+    return item
+
+
+@transaction.atomic
 def set_recurrence(item, recurrence, cadence_mode=None):
     """Set how often this repeats, and optionally whether it is anchored.
 

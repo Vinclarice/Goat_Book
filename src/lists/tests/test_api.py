@@ -159,6 +159,81 @@ class TaskApiTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["data"]["notes"], "Bring the receipt")
 
+    def test_moves_a_task_into_another_of_your_own_areas(self):
+        """`commercial-blueprint.md` Part 3: `item_detail` accepted six fields
+        and `list` was not among them, so a misfiled task stayed misfiled.
+
+        Moving between Areas moves between Projects too, and needs no separate
+        handling for it: a `Project` hangs off `List`, not off `Item`."""
+        destination = List.objects.create(owner=self.user, title="Home")
+
+        response = self.request(
+            "patch", f"/api/items/{self.item.id}/", {"list": destination.id}
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.list, destination)
+
+    def test_a_moved_task_goes_to_the_end_of_its_new_area(self):
+        """Position orders a task *within* its Area, so the one it carried
+        from the old one means nothing here. Appending is the only answer
+        that does not silently interleave it into somebody's ordering."""
+        destination = List.objects.create(owner=self.user, title="Home")
+        first = Item.objects.create(list=destination, text="Already here")
+        first.position = 7
+        first.save()
+
+        self.request("patch", f"/api/items/{self.item.id}/", {"list": destination.id})
+
+        self.item.refresh_from_db()
+        self.assertGreater(self.item.position, first.position)
+
+    def test_unfiling_a_task_is_a_real_move_rather_than_an_error(self):
+        """`Item.list` has been nullable since August 14 and `Item.owner` is
+        what keeps an unfiled task a real task. "Out of every area" is a
+        destination, not a missing argument."""
+        response = self.request("patch", f"/api/items/{self.item.id}/", {"list": None})
+
+        self.assertEqual(response.status_code, 200)
+        self.item.refresh_from_db()
+        self.assertIsNone(self.item.list)
+
+    def test_refuses_a_move_into_somebody_elses_area(self):
+        """The isolation test principles.md asks of every owner-scoped,
+        id-taking surface -- and this endpoint now takes a second id."""
+        theirs = List.objects.create(owner=self.other_user, title="Bob's")
+
+        response = self.request(
+            "patch", f"/api/items/{self.item.id}/", {"list": theirs.id}
+        )
+
+        self.assertEqual(response.status_code, 404)
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.list, self.list_)
+
+    def test_moving_a_repeating_task_moves_the_series_with_it(self):
+        """Spawning reads `commitment.list`, so moving only the occurrence
+        would file this one in the new Area and its successor back in the
+        old one -- a series quietly staying where it was."""
+        destination = List.objects.create(owner=self.user, title="Home")
+        self.request(
+            "patch", f"/api/items/{self.item.id}/", {"recurrence": "weekly"}
+        )
+
+        self.request("patch", f"/api/items/{self.item.id}/", {"list": destination.id})
+
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.commitment.list, destination)
+
+    def test_rejects_a_list_that_is_not_an_id(self):
+        response = self.request(
+            "patch", f"/api/items/{self.item.id}/", {"list": "Home"}
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("list", response.json()["errors"])
+
     def test_rejects_non_string_notes(self):
         response = self.request(
             "patch",

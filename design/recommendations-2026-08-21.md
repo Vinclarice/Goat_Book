@@ -37,7 +37,7 @@ exhaustiveness test from the review's R8: a partition assertion over
 **Fits:** the C1–C4 repair slice; `principles.md`'s "make behavior executable
 first" applied to the one place a regression cannot be undone.
 
-## 2. Extend the seam rule from plans to code
+## ~~2. Extend the seam rule from plans to code~~ — adopted August 21, 2026
 
 **The disease is recorded three times and keeps recurring** — the
 un-switched-on seam count is now far past the six CLAUDE.md names, and the two
@@ -53,8 +53,24 @@ deletion. Apply it retroactively via the review's inventory: D15 already
 covers the review loop; `services.unlink` (zero callers anywhere, ever) is a
 deletion candidate today; the rest each get a trigger or go.
 
-**Owner of the wording:** `principles.md`, Vince's yes required — this file
-only recommends it.
+~~**Owner of the wording:** `principles.md`, Vince's yes required~~ —
+**given, and the rule is now in
+[`principles.md`](principles.md) under *Deliver vertical slices*** as *a slice
+is not closed while nothing calls it*, with *check for a caller, not for
+existence* as its tell and the second factor named as the honest exception: a
+deferral is fine when it is **declared**, and undeclared it gets a named
+trigger or a deletion.
+
+**One claim was corrected on the way in.** This file's evidence said
+`mark_reviewed` is the only writer of node-level `reviewed` events — true, and
+one word from false: production holds two `reviewed` rows written by the *live*
+connection-review page, owner-scoped and feeding nothing. Checked before the
+sentence was written into the authoritative document. **A seam can look alive
+because something adjacent to it is.**
+
+**The retroactive half is not done.** `services.unlink` and the rest of the
+inventory each still need a trigger or a deletion; the principle now says so,
+and nothing has yet been deleted.
 
 ## 3. Run the test you just wrote
 

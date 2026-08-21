@@ -51,6 +51,34 @@ validated connect → capture → safe retry → the text arriving on the server
 before share sheets, settings, or richer mobile features. A slice has an
 observable acceptance condition, not just a list of technical tasks.
 
+**A slice is not closed while nothing calls it.** Built and dark is a deferral
+wearing a completion's clothes: the tests pass, the code reads as live, and the
+behaviour has never once happened. This project keeps rediscovering it —
+`/healthz` with nothing polling it, detectors built and never invoked,
+`Backends.isSplit` switched by a flag no shipped build has ever passed,
+`resolve_retrieval_miss` with no caller and no reader, `Attachment` with no
+upload path, `THREAD_ARTICULATED` declared in the first migration and never
+written. The August 21 inventory found ten more in `src/mind/` alone, and the
+two worst were the two that read most convincingly as working. `revise` has no
+door, so `Revision` is empty in production and search's *superseded* branch is
+decoration. And `mark_reviewed` is the only writer of **node-scoped** review
+events, so `review_state` returns zero for every node and the whole spaced
+schedule has never run — while production holds two `reviewed` rows from the
+live connection-review page, owner-scoped, feeding nothing. **A seam can look
+alive because something adjacent to it is.** Counting rows was not enough;
+reading which column they filled was.
+
+So: **check for a caller, not for existence.** `CLAUDE.md` says the same thing
+one layer out — *a seam that is not switched on is not a seam; check the build
+configuration, not the branch* — and this is its code half. Something
+deliberately built one step ahead is still fine, and the second factor is the
+model: *enrolment before enforcement, deliberately inert*, said out loud in
+`settings.py` with the increment that switches it on named. **The rule is that
+the deferral has to be declared.** Undeclared, it gets a named trigger or a
+deletion — and by *Prefer reversible, evolutionary decisions* below, a trigger
+that cannot fire is a refusal, which is an honest answer here too. Deleting the
+design note loses nothing: the note is the part that was load-bearing.
+
 ### Use domain-driven design, lightly
 
 Use the product's actual language and give each meaningful concept a clear

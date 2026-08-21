@@ -801,6 +801,60 @@ class EventType(models.TextChoices):
     #: from "never ran", which no amount of counting rows can distinguish.
     MAINTENANCE_RAN = "maintenance_ran"
 
+    # ------------------------------------------------------------------
+    # Life events -- `temporal-substrate-plan.md` Track A increment 1.
+    #
+    # Everything above this line is about a note, which is the finding that
+    # opened the substrate brief: the most carefully guarded structure in the
+    # codebase was a note log, not a life log. The right structure with the
+    # wrong vocabulary.
+    #
+    # **Facts, not derivations.** "This commitment was released on the 14th"
+    # is a fact and belongs in an append-only row. "This project is stalling"
+    # is a derivation and stays computed on demand, the way `review` does
+    # today. Nothing here may record a thing a read could have produced --
+    # which is what keeps Part 4's refusal of an event bus standing.
+    #
+    # **Scoped to where a durable decision already exists**, and deliberately
+    # no wider: routine occurrences, project pause and resume, area changes,
+    # and every task-field edit that is not a change of commitment are
+    # deferred by name. A log recording every keystroke of a task's text is a
+    # log nobody can read.
+    #
+    # Distinct from `ARCHIVED` and `DELETED` above rather than reusing them.
+    # Those name a note's fate, and one value meaning two things is a value no
+    # reading can filter on.
+    # ------------------------------------------------------------------
+
+    #: A commitment was met. The single most load-bearing fact in the task
+    #: core, and until now the log could not say it.
+    TASK_COMPLETED = "task_completed"
+    #: ...and un-met. Without this the log asserts a completion it can never
+    #: retract, so any projection folded over it drifts the first time
+    #: somebody ticks the wrong row.
+    TASK_REOPENED = "task_reopened"
+    TASK_ARCHIVED = "task_archived"
+
+    #: The recurring undertaking behind a task changed shape, or ended. Not
+    #: every edit -- the cadence and the undertaking itself, which is what
+    #: "its commitment changes" means in the brief's scope sentence.
+    COMMITMENT_CHANGED = "commitment_changed"
+    COMMITMENT_ENDED = "commitment_ended"
+
+    #: A day was planned, and un-planned. `DailyFocus` records what somebody
+    #: *chose*, and `released_at` is how a pin ends -- so these two are what
+    #: let a decommitment be told from a failure, which is the distinction the
+    #: whole review block is built on.
+    FOCUS_PINNED = "focus_pinned"
+    FOCUS_RELEASED = "focus_released"
+
+    #: The week-grained decisions. Subject-less like `MAINTENANCE_RAN`: a week
+    #: is neither a task nor a day's entry, and inventing a subject column for
+    #: one cadence would be a column the next cadence does not fit.
+    WEEK_REVIEWED = "week_reviewed"
+    INTENTION_SET = "intention_set"
+    OUTCOME_CHOSEN = "outcome_chosen"
+
 
 class ActivityEvent(models.Model):
     """The one append-only log.
@@ -839,6 +893,41 @@ class ActivityEvent(models.Model):
         db_constraint=False,
         related_name="events",
     )
+
+    # The two subject references `Facet` already carries, arriving here for the
+    # same reason they arrived there: this is where the writing actually
+    # happens. **Every word of the `node` comment above applies unchanged** --
+    # non-constraining because a cascade is a mutation of the log and the
+    # trigger refuses one, so a real foreign key would make any task with
+    # events undeletable, and under increment 2 every completed task has one.
+    #
+    # **Foreign keys rather than ids in `payload`.** `around()` is the read all
+    # of this exists for and it joins; an id buried in JSON cannot be indexed
+    # or joined, and D3's payload-versus-reference question is about the
+    # *snapshot*, not about the subject.
+    #
+    # **No exactly-one constraint, unlike `Facet`.** A facet citing two sources
+    # makes "where did this come from" ambiguous at the moment somebody is
+    # deciding whether to trust it. An event citing two subjects is not
+    # ambiguous: `confirm_actionable` turns a thought into a commitment, and
+    # that event honestly has both. Subject-less stays legal too --
+    # `MAINTENANCE_RAN` shipped that way and a reviewed week has neither.
+    task = models.ForeignKey(
+        "lists.Item",
+        null=True,
+        blank=True,
+        on_delete=models.DO_NOTHING,
+        db_constraint=False,
+        related_name="events",
+    )
+    entry = models.ForeignKey(
+        "daily.DailyEntry",
+        null=True,
+        blank=True,
+        on_delete=models.DO_NOTHING,
+        db_constraint=False,
+        related_name="events",
+    )
     event_type = models.CharField(max_length=32, choices=EventType)
     schema_version = models.PositiveSmallIntegerField(default=1)
     payload = models.JSONField(default=dict)
@@ -855,6 +944,15 @@ class ActivityEvent(models.Model):
             models.Index(fields=["owner", "-occurred_at"], name="event_timeline"),
             models.Index(
                 fields=["node", "event_type", "occurred_at"], name="event_by_node"
+            ),
+            # The same shape as `event_by_node`, for the same read. A subject
+            # column nothing can seek on is a subject column that pushes every
+            # life-event query into a sequential scan of the whole log.
+            models.Index(
+                fields=["task", "event_type", "occurred_at"], name="event_by_task"
+            ),
+            models.Index(
+                fields=["entry", "event_type", "occurred_at"], name="event_by_entry"
             ),
         ]
 

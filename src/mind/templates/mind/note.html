@@ -82,35 +82,43 @@ designed twice.
 {% endif %}
 
 <h2>What else was going on</h2>
-{% if when_written.has_anything %}
-  {% for neighbour in when_written.before %}
-    <div class="card">
-      <div class="body">
-        {% if neighbour.node %}<a href="{% url 'note' neighbour.node.public_id %}">{{ neighbour.node.original_content|truncatechars:100 }}</a>{% elif neighbour.task %}{{ neighbour.task.text }}{% else %}{{ neighbour.phrase }}{% endif %}
+{% if occasions %}
+  {% comment %}
+  One block per occasion rather than one list -- D19. A note has several
+  moments, not one: its writing, its confirmation as a commitment, the
+  completion of the task it became. Anchoring on the capture answered about one
+  morning and silently dropped the rest of its life.
+
+  Moments close enough to be one sitting are merged, so a heading names a span
+  rather than an instant, and anything near two occasions is reported at the
+  earlier one only.
+  {% endcomment %}
+  {% for occasion in occasions %}
+    <h3>
+      {{ occasion.began|date:"j M Y, H:i" }}{% if occasion.ended != occasion.began %}–{{ occasion.ended|date:"H:i" }}{% endif %}
+      <span class="meta">· {% for moment in occasion.moments %}{{ moment.phrase }}{% if not forloop.last %}, {% endif %}{% endfor %}</span>
+    </h3>
+    {% for neighbour in occasion.neighbours %}
+      <div class="card">
+        <div class="body">
+          {% if neighbour.node %}<a href="{% url 'note' neighbour.node.public_id %}">{{ neighbour.node.original_content|truncatechars:100 }}</a>{% elif neighbour.task %}{{ neighbour.task.text }}{% elif neighbour.subject_withheld %}<span class="meta">a note that is no longer shown</span>{% else %}{{ neighbour.phrase }}{% endif %}
+        </div>
+        {% comment %}
+        The phrase only when the body above it is the note or the task. With
+        neither, the body is already the phrase and printing it twice reads as
+        a rendering fault.
+        {% endcomment %}
+        <div class="meta" style="margin-top:.5rem">{{ neighbour.occurred_at|date:"H:i" }}{% if neighbour.node or neighbour.task or neighbour.subject_withheld %} · {{ neighbour.phrase }}{% endif %}</div>
       </div>
-      {% comment %}
-      The phrase only when the body above it is the note or the task. With
-      neither, the body is already the phrase and printing it twice reads as a
-      rendering fault.
-      {% endcomment %}
-      <div class="meta" style="margin-top:.5rem">{{ neighbour.occurred_at|date:"H:i" }}{% if neighbour.node or neighbour.task %} · {{ neighbour.phrase }}{% endif %}</div>
-    </div>
-  {% endfor %}
-  {% for neighbour in when_written.after %}
-    <div class="card">
-      <div class="body">
-        {% if neighbour.node %}<a href="{% url 'note' neighbour.node.public_id %}">{{ neighbour.node.original_content|truncatechars:100 }}</a>{% elif neighbour.task %}{{ neighbour.task.text }}{% else %}{{ neighbour.phrase }}{% endif %}
-      </div>
-      {% comment %}
-      The phrase only when the body above it is the note or the task. With
-      neither, the body is already the phrase and printing it twice reads as a
-      rendering fault.
-      {% endcomment %}
-      <div class="meta" style="margin-top:.5rem">{{ neighbour.occurred_at|date:"H:i" }}{% if neighbour.node or neighbour.task %} · {{ neighbour.phrase }}{% endif %}</div>
-    </div>
+    {% empty %}
+      <p class="meta">Nothing else is recorded around this.</p>
+    {% endfor %}
+    {% if occasion.omitted %}
+      <p class="meta">{{ occasion.omitted }} more not shown.</p>
+    {% endif %}
   {% endfor %}
 {% else %}
-  <p class="meta">Nothing else is recorded within six hours of this note.</p>
+  <p class="meta">Nothing is recorded about this note at all.</p>
 {% endif %}
 
 {% endblock %}

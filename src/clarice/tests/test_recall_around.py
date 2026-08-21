@@ -409,3 +409,40 @@ class AroundTest(CrossCoreTestCase):
         )
 
         self.assertEqual(self.types(self.around()), [])
+
+    # -- when the subject cannot be handed back ---------------------------
+
+    def test_it_says_when_an_event_named_a_note_it_cannot_show(self):
+        """`ActivityEvent.node` is `DO_NOTHING` with no database constraint, so
+        a hard-deleted node leaves `node_id` pointing at nothing while `node`
+        resolves to None -- the log outliving what it names, exactly as
+        designed.
+
+        Without this flag a surface cannot tell *an event about a note you
+        cannot see* from *an event that never had a note*, and renders both as
+        a bare verb. Eight identical rows reading "written" is what that looks
+        like."""
+        node = self.a_node("something since removed")
+        self.event(EventType.CAPTURED, at(minutes=-5), node=node)
+        node.delete()
+
+        neighbour = self.around().before[0]
+
+        self.assertIsNone(neighbour.node)
+        self.assertTrue(neighbour.subject_withheld)
+
+    def test_a_withheld_deleted_note_is_marked_the_same_way(self):
+        node = self.a_node("something regretted")
+        self.event(EventType.CAPTURED, at(minutes=-5), node=node)
+        node.deleted_at = timezone.now()
+        node.save(update_fields=["deleted_at"])
+
+        self.assertTrue(self.around().before[0].subject_withheld)
+
+    def test_an_event_that_never_had_a_note_is_not_marked_as_withholding_one(self):
+        """`WEEK_REVIEWED` is subject-less by design -- a week is neither a task
+        nor a day's entry. Marking it as hiding something would be a lie in the
+        one place the log is being careful."""
+        life_log.record(self.alice, life_log.WEEK_REVIEWED, week_start=NOON.date(), occurred_at=at(minutes=-5))
+
+        self.assertFalse(self.around().before[0].subject_withheld)

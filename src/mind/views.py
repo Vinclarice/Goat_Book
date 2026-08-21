@@ -537,29 +537,9 @@ def _readable(neighbour):
         "origin": neighbour.origin,
         "node": neighbour.node,
         "task": neighbour.task,
+        # So the page can say *a note you cannot see* rather than a bare verb.
+        "subject_withheld": neighbour.subject_withheld,
     }
-
-
-def _elsewhere(neighbourhood, node):
-    """The same neighbourhood, minus anything about this note.
-
-    Filtered here rather than in `clarice.recall`: `around()` answers *what was
-    in the log near this instant*, which is a complete answer to its own
-    question. What counts as *else* is the caller's business, and a note page
-    and a day page would not agree about it.
-
-    The omitted counts are left alone. They describe what the cap dropped, and
-    quietly adjusting them for a filter applied afterwards would make the one
-    number that exists to be honest about truncation mean something else.
-    """
-    keep = lambda side: [
-        _readable(n) for n in side if n.node is None or n.node.pk != node.pk
-    ]
-    return replace(
-        neighbourhood,
-        before=keep(neighbourhood.before),
-        after=keep(neighbourhood.after),
-    )
 
 
 @login_required
@@ -613,9 +593,24 @@ def note(request, public_id):
             # render listed as something else that was going on. Its later
             # events belong under "what came of it", where they are the answer
             # rather than the background.
-            "when_written": _elsewhere(
-                recall.around(request.user, found.captured_at), found
-            ),
+            # **D19, and this page was the caller it names.** It anchored on
+            # `captured_at` alone, which answered about the morning the note was
+            # written and dropped the rest of its life -- a note turned into a
+            # task two months later had a second moment that nothing here could
+            # see. `context_of` unions the neighbourhoods of the subject's own
+            # moments and merges the ones close enough to be one sitting, which
+            # is exactly the resolution the decision says no caller should
+            # re-derive.
+            "occasions": [
+                {
+                    "began": occasion.began,
+                    "ended": occasion.ended,
+                    "moments": [_readable(m) for m in occasion.moments],
+                    "neighbours": [_readable(n) for n in occasion.neighbours],
+                    "omitted": occasion.omitted,
+                }
+                for occasion in recall.context_of(request.user, found).occasions
+            ],
             "what_came_of_it": _phrased(recall.since(request.user, found)),
         },
     )

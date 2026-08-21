@@ -153,6 +153,19 @@ class Neighbour:
     task: object | None
     entry_id: int | None
     payload: dict
+    #: The event named a note this read will not hand back -- deleted,
+    #: archived, or a row that no longer exists at all.
+    #:
+    #: **Without this a surface cannot tell "about a note you cannot see" from
+    #: "never had a note",** and renders both as a bare verb. Eight rows
+    #: reading `written` with nothing beside them is what that looks like, and
+    #: it is what the note page rendered before this existed.
+    #:
+    #: `ActivityEvent.node` is `DO_NOTHING` with `db_constraint=False`, so a
+    #: hard-deleted node leaves `node_id` set while `node` resolves to None --
+    #: which is the log outliving what it names, working as designed, and the
+    #: exact signal this reads.
+    subject_withheld: bool = False
 
 
 @dataclass(frozen=True)
@@ -350,6 +363,161 @@ def since(owner, node, *, from_moment=None, limit=DEFAULT_LIMIT_EACH_SIDE):
     )
 
 
+@dataclass(frozen=True)
+class Occasion:
+    """One stretch of a subject's life, and what else was going on around it.
+
+    **The moments are the subject's own**; the neighbours are everything else.
+    A merged occasion has no single timestamp, which is why `began` and `ended`
+    exist and why this is a read rather than something each caller assembles.
+    """
+
+    moments: list[Neighbour] = field(default_factory=list)
+    neighbours: list[Neighbour] = field(default_factory=list)
+    omitted: int = 0
+
+    @property
+    def began(self):
+        return self.moments[0].occurred_at
+
+    @property
+    def ended(self):
+        return self.moments[-1].occurred_at
+
+
+@dataclass(frozen=True)
+class Context:
+    """A subject's life, in occasions."""
+
+    node_id: int
+    occasions: list[Occasion] = field(default_factory=list)
+
+    @property
+    def has_anything(self):
+        return bool(self.occasions)
+
+
+def context_of(
+    owner, node, *, window=DEFAULT_WINDOW, limit_each_side=DEFAULT_LIMIT_EACH_SIDE
+):
+    """What was going on around this note, across the whole of its life.
+
+    **D19, answered: both, and the subject read is built on the instant one.**
+    `around()` takes one timestamp and a thing does not have one -- a note has
+    its writing, its confirmation as a commitment, the completion of the task it
+    became. Anchoring on `captured_at` alone answers about the morning it was
+    written and drops the rest, which is what the note page did because that was
+    the one timestamp to hand.
+
+    **The subject's moments** are its own log events plus those of any task it
+    grew into, which is `since()`'s provenance chain reaching back to include
+    the capture itself. Coincidence is not provenance here any more than there.
+
+    **Moments within ``window`` of each other are one occasion.** Two moments
+    twenty minutes apart otherwise produce two nearly identical neighbourhoods,
+    and a caller unioning them naively either shows everything twice or loses
+    which moment each thing belonged to -- both silent. The decision's own
+    words: *without it every caller re-derives that resolution ad hoc.*
+
+    **An event near two occasions is reported once, in the earlier.** Later is
+    the tempting choice and it is wrong: the first time something appeared
+    beside this subject is the fact worth keeping.
+    """
+    if window is None or limit_each_side is None:
+        raise ValueError("context_of needs a window and a per-side limit")
+    if _visible(node) is None:
+        return Context(node_id=node.pk)
+
+    moments = list(_moments_of(owner, node))
+    if not moments:
+        return Context(node_id=node.pk)
+
+    own_life = {event.pk for event in moments}
+    already_seen = set()
+    occasions = []
+    for cluster in _clustered(moments, window):
+        neighbours, omitted = _around_the_cluster(
+            owner, cluster, window, limit_each_side, own_life, already_seen
+        )
+        occasions.append(
+            Occasion(
+                moments=[_neighbour(e) for e in cluster],
+                neighbours=neighbours,
+                omitted=omitted,
+            )
+        )
+    return Context(node_id=node.pk, occasions=occasions)
+
+
+def _moments_of(owner, node):
+    """Every event that is part of this subject's own life, in order.
+
+    `since()`'s chain, reaching back far enough to include the capture -- that
+    read answers *what came after* and this one needs the whole life.
+    """
+    from mind.models import Facet
+
+    grew_into = set(
+        Facet.objects.filter(node=node, task__isnull=False)
+        .exclude(confirmed_at=None)
+        .values_list("task_id", flat=True)
+    )
+    return (
+        ActivityEvent.objects.filter(owner=owner, event_type__in=PERSON_EVENTS)
+        .filter(Q(node=node) | Q(task_id__in=grew_into))
+        .select_related("node", "task")
+        .defer("node__search_original", "task__search_document")
+        .order_by("occurred_at", "id")
+    )
+
+
+def _clustered(moments, window):
+    """Moments within ``window`` of each other, grouped.
+
+    The gap is measured against the previous moment rather than the cluster's
+    start, so a long working session stays one occasion instead of splitting
+    every time it outgrows a fixed span.
+    """
+    clusters = [[moments[0]]]
+    for moment in moments[1:]:
+        if moment.occurred_at - clusters[-1][-1].occurred_at <= window:
+            clusters[-1].append(moment)
+        else:
+            clusters.append([moment])
+    return clusters
+
+
+def _around_the_cluster(owner, cluster, window, limit_each_side, own_life, already_seen):
+    """The union of each moment's neighbourhood, minus the subject's own life.
+
+    ``own_life`` is every one of the subject's moments and not merely this
+    cluster's -- a completion three months later is still the subject, and
+    without the whole set it reappears as a bystander at an earlier occasion.
+
+    ``already_seen`` carries across occasions, which is what makes an event
+    near two of them appear in the earlier one only. Earlier rather than later
+    is deliberate: the first time something turned up beside this subject is
+    the fact worth keeping.
+    """
+    found = {}
+    for event in cluster:
+        neighbourhood = around(
+            owner,
+            event.occurred_at,
+            window=window,
+            limit_each_side=limit_each_side,
+        )
+        for neighbour in neighbourhood.before + neighbourhood.after:
+            if neighbour.event_id in own_life or neighbour.event_id in already_seen:
+                continue
+            found[neighbour.event_id] = neighbour
+
+    already_seen.update(found)
+    ordered = sorted(found.values(), key=lambda n: (n.occurred_at, n.event_id))
+    omitted = max(0, len(ordered) - limit_each_side)
+    return ordered[: len(ordered) - omitted], omitted
+
+
 def _event_id(excluding):
     if isinstance(excluding, ActivityEvent):
         return excluding.pk
@@ -374,13 +542,15 @@ def _visible(node):
 
 
 def _neighbour(event):
+    visible = _visible(event.node)
     return Neighbour(
         event_id=event.pk,
         event_type=event.event_type,
         occurred_at=event.occurred_at,
         origin=event.origin,
         actor=event.actor,
-        node=_visible(event.node),
+        node=visible,
+        subject_withheld=event.node_id is not None and visible is None,
         # **An archived task is not withheld, unlike an archived node**, and
         # the asymmetry is the two cores' rules rather than an oversight. The
         # task core has an archive somebody browses -- an archived task is

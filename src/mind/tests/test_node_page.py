@@ -330,3 +330,60 @@ def test_an_event_with_no_phrase_still_says_something(signed_in, owner, note):
     from mind.views import phrase_for
 
     assert phrase_for("something_nobody_has_written_yet")
+
+
+# ---------------------------------------------------------------------------
+# D19: the context of a thing is plural
+# ---------------------------------------------------------------------------
+
+
+def test_it_says_what_was_going_on_at_each_moment_of_the_notes_life(signed_in, owner, note):
+    """The page anchored on `captured_at` alone, which answered about the
+    morning it was written and dropped the rest of its life -- D19's *"every
+    caller re-derives that resolution ad hoc"*, and this page was the caller.
+
+    A note written in May and turned into a task in July has two occasions, and
+    what was going on around the second is not visible from the first.
+    """
+    from lists import services as list_services
+    from lists.models import Item, List
+
+    area = List.objects.create(owner=owner, title="Home")
+    facet = services.propose_facet(
+        note,
+        kind=FacetKind.ACTIONABLE,
+        data={},
+        now=later(days=60),
+        actor="vince",
+        reason="looks like a commitment",
+    )
+    confirmed = services.confirm_actionable(
+        facet, area=area, now=later(days=60), actor="vince"
+    )
+    services.capture(
+        owner,
+        content="a bystander two months later",
+        captured_at=later(days=60, minutes=10),
+        source=Node.Source.WEB,
+        actor="vince",
+    )
+
+    body = page(signed_in, note).content.decode()
+
+    assert "a bystander two months later" in body
+
+
+def test_each_occasion_says_when_it_was(signed_in, owner, note):
+    """*What else was going on* is only answerable if the page can say *going
+    on when* -- and a merged occasion has no single timestamp."""
+    services.capture(
+        owner,
+        content="a bystander",
+        captured_at=later(minutes=10),
+        source=Node.Source.WEB,
+        actor="vince",
+    )
+
+    body = page(signed_in, note).content.decode()
+
+    assert "4 May 2026" in body

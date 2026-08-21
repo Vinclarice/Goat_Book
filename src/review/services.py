@@ -150,16 +150,30 @@ def set_intention(owner, day, text):
     `DailyEntry` and `WeeklyReview` both make.
     """
     week_start = week_start_for(day)
-    intention, _ = WeeklyIntention.objects.get_or_create(
+    intention, created = WeeklyIntention.objects.get_or_create(
         owner=owner, week_start=week_start
     )
-    intention.text = text or ""
+    new_text = text or ""
+    # Whether this call changed anything, decided before the save overwrites
+    # the evidence. `created` covers the first setting, which is a decision
+    # even when it is empty.
+    is_a_change = created or intention.text != new_text
+    intention.text = new_text
     intention.save(update_fields=["text", "updated_at"])
-    # Recorded even when cleared to empty, for the reason the row itself is
-    # kept: "I set none this week" and "I never opened it" are different facts
-    # and only one of them says the practice lapsed. The text is not carried --
-    # the row holds it, and holds the correction if it is rewritten.
-    life_log.record(owner, life_log.INTENTION_SET, week_start=week_start)
+    if is_a_change:
+        # Recorded even when cleared to empty, for the reason the row itself is
+        # kept: "I set none this week" and "I never opened it" are different
+        # facts and only one of them says the practice lapsed. The text is not
+        # carried -- the row holds it, and holds the correction if it is
+        # rewritten.
+        #
+        # **Guarded, unlike the first version of this line**, which recorded on
+        # every call -- on an endpoint whose own docstring promises that
+        # sending it twice leaves the same state. Every blur re-save, retry and
+        # double-click wrote a permanent duplicate into a table that refuses
+        # `DELETE`. C4 in `code-review-2026-08-21.md`; every other emitter in
+        # increment 2 already guarded on a state change and this one did not.
+        life_log.record(owner, life_log.INTENTION_SET, week_start=week_start)
     return intention
 
 

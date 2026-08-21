@@ -26,10 +26,16 @@ fixed again. This one writes to the append-only log, where a wrong run is
 permanent -- so it is run when somebody is looking, after `--dry-run` has said
 what it would do.
 
-**Idempotent by subject, not by a marker.** A second run finds the events the
-first one wrote and skips their subjects, which also means it will never
-duplicate what increment 2 recorded live. A marker row would have been a
+**Idempotent by counting what is already there**, not by a marker. A second run
+finds the events the first one wrote and spends them, which also means it never
+duplicates what increment 2 recorded live. A marker row would have been a
 seventh thing to keep true.
+
+**Three of its four repairs are recorded in `code-review-2026-08-21.md`** as
+C1-C3, found the day after it first ran, and
+`clarice/tests/test_life_log_repairs.py` holds them. All three were live when
+this ran against production and none of them fired -- not because they were
+harmless, but because the data was too thin to reach any of them.
 
 **Here rather than beside `clarice/life_log.py`, which is where it belongs
 conceptually.** `clarice` is the project package and not an installed app, so
@@ -38,10 +44,12 @@ backfill already lives (`backfill_typed_tags`). The seam itself stays in
 `clarice/`; only this operational script moved, and it still writes through
 `life_log` rather than touching `ActivityEvent.objects.create` directly.
 
-Its tests are in `clarice/tests/test_life_log_backfill.py`, with the rest of
-the cross-core seam and on the Django runner. New tests for the knowledge core
-belong on pytest; this is not one.
+Its tests are in `clarice/tests/`, with the rest of the cross-core seam and on
+the Django runner. New tests for the knowledge core belong on pytest; these are
+not.
 """
+
+from collections import Counter
 
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand, CommandError
@@ -120,33 +128,40 @@ class Command(BaseCommand):
                     **subjects,
                 )
 
-        seen_tasks = self._task_subjects_already_logged(owner)
+        subjects = self._ledger_of_subject_events(owner)
+        weeks = self._ledger_of_week_events(owner)
+
         for task in Item.objects.filter(owner=owner).exclude(
             completed_at=None, archived_at=None
         ):
-            if task.completed_at and (
-                task.pk,
-                life_log.TASK_COMPLETED,
-            ) not in seen_tasks:
+            if task.completed_at and not subjects.already_have(
+                (task.pk, None, life_log.TASK_COMPLETED)
+            ):
                 emit(life_log.TASK_COMPLETED, task.completed_at, task=task)
-            if task.archived_at and (
-                task.pk,
-                life_log.TASK_ARCHIVED,
-            ) not in seen_tasks:
+            if self._is_a_real_archive(task) and not subjects.already_have(
+                (task.pk, None, life_log.TASK_ARCHIVED)
+            ):
                 emit(life_log.TASK_ARCHIVED, task.archived_at, task=task)
 
-        for focus in DailyFocus.objects.filter(owner=owner).select_related("entry", "task"):
-            if (focus.task_id, life_log.FOCUS_PINNED) not in seen_tasks:
+        for focus in DailyFocus.objects.filter(owner=owner).select_related(
+            "entry", "task"
+        ):
+            # Keyed on the day as well as the task, which is the grain
+            # `DailyFocus.unique_daily_focus_per_entry_task` already enforces.
+            # Keyed on the task alone, one live pin stood for every pin of that
+            # task there had ever been, and the rest were skipped in silence.
+            if not subjects.already_have(
+                (focus.task_id, focus.entry_id, life_log.FOCUS_PINNED)
+            ):
                 emit(
                     life_log.FOCUS_PINNED,
                     focus.selected_at,
                     task=focus.task,
                     entry=focus.entry,
                 )
-            if focus.released_at and (
-                focus.task_id,
-                life_log.FOCUS_RELEASED,
-            ) not in seen_tasks:
+            if focus.released_at and not subjects.already_have(
+                (focus.task_id, focus.entry_id, life_log.FOCUS_RELEASED)
+            ):
                 emit(
                     life_log.FOCUS_RELEASED,
                     focus.released_at,
@@ -157,12 +172,11 @@ class Command(BaseCommand):
                     entry=focus.entry,
                 )
 
-        seen_weeks = self._week_subjects_already_logged(owner)
         for review in WeeklyReview.objects.filter(owner=owner).exclude(
             completed_at=None
         ):
             key = (review.week_start.isoformat(), life_log.WEEK_REVIEWED)
-            if key not in seen_weeks:
+            if not weeks.already_have(key):
                 emit(
                     life_log.WEEK_REVIEWED,
                     review.completed_at,
@@ -171,7 +185,7 @@ class Command(BaseCommand):
 
         for intention in WeeklyIntention.objects.filter(owner=owner):
             key = (intention.week_start.isoformat(), life_log.INTENTION_SET)
-            if key not in seen_weeks:
+            if not weeks.already_have(key):
                 # `created_at`, not `updated_at`. The first setting is a real
                 # recorded moment; the rewrites after it left no trace, and
                 # stamping this with the last edit would date a decision to a
@@ -183,8 +197,11 @@ class Command(BaseCommand):
                 )
 
         for outcome in WeeklyOutcome.objects.filter(owner=owner):
+            # Counted, not set-tested: a week has as many outcomes as it has
+            # commitments, so one event cannot stand for the whole week the way
+            # WEEK_REVIEWED and INTENTION_SET legitimately do.
             key = (outcome.week_start.isoformat(), life_log.OUTCOME_CHOSEN)
-            if key not in seen_weeks:
+            if not weeks.already_have(key):
                 emit(
                     life_log.OUTCOME_CHOSEN,
                     outcome.created_at,
@@ -193,21 +210,53 @@ class Command(BaseCommand):
 
         return counts
 
-    # -- what is already there -------------------------------------------
+    @staticmethod
+    def _is_a_real_archive(task):
+        """Whether this archive was a decision, or the mechanism behind one.
 
-    def _task_subjects_already_logged(self, owner):
-        """Every (task, type) pair the log already holds, live or reconstructed.
+        A recurring task is archived the instant it is completed, to free its
+        text for the next occurrence. `complete_item` refuses to log that and
+        says why in four lines: logging it *"would put a retirement in the
+        record of a habit somebody is keeping."* Reading the two timestamps
+        independently wrote exactly that retirement, for every recurring task
+        anybody had ever completed.
 
-        Read once rather than asked per row: this is the check that makes a
-        second run safe, and doing it as a query per task would make the safe
-        thing the slow thing.
+        Narrow on purpose. A recurring task archived *later* than it was
+        completed is somebody ending the undertaking, which is a decision and
+        belongs in the record.
         """
-        return set(
-            ActivityEvent.objects.filter(owner=owner, task__isnull=False)
-            .values_list("task_id", "event_type")
+        if task.archived_at is None:
+            return False
+        return not (
+            task.recurrence != Item.Recurrence.NONE
+            and task.archived_at == task.completed_at
         )
 
-    def _week_subjects_already_logged(self, owner):
+    # -- what is already there -------------------------------------------
+
+    def _ledger_of_subject_events(self, owner):
+        """Every subject-bearing event the log already holds, **counted**.
+
+        Counted rather than set-tested, which is the repair C3 needed:
+        hard-deleting a pinned task leaves `DailyFocus.task` NULL, so two
+        orphaned rows on one day share a key exactly. A set says "seen it" and
+        loses one of them for ever; a count says "seen two of these", which is
+        the truth. Ordinary SQL NULL semantics let both rows exist -- the model
+        says so out loud -- so the ledger has to permit both too.
+
+        Read once rather than asked per row: this is the check that makes a
+        second run safe, and a query per subject would make the safe thing the
+        slow thing.
+        """
+        return _Ledger(
+            Counter(
+                ActivityEvent.objects.filter(owner=owner)
+                .exclude(task__isnull=True, entry__isnull=True)
+                .values_list("task_id", "entry_id", "event_type")
+            )
+        )
+
+    def _ledger_of_week_events(self, owner):
         """The same, for the three events whose subject lives in the payload.
 
         `week_start` is the one payload key slice 1 has, so this reads it
@@ -216,14 +265,36 @@ class Command(BaseCommand):
         need one, and saying so here is cheaper than adding an index nothing
         else uses.
         """
-        return {
-            (event.payload.get("week_start"), event.event_type)
-            for event in ActivityEvent.objects.filter(
-                owner=owner,
-                event_type__in=(
-                    life_log.WEEK_REVIEWED,
-                    life_log.INTENTION_SET,
-                    life_log.OUTCOME_CHOSEN,
-                ),
+        return _Ledger(
+            Counter(
+                (event.payload.get("week_start"), event.event_type)
+                for event in ActivityEvent.objects.filter(
+                    owner=owner,
+                    event_type__in=(
+                        life_log.WEEK_REVIEWED,
+                        life_log.INTENTION_SET,
+                        life_log.OUTCOME_CHOSEN,
+                    ),
+                )
             )
-        }
+        )
+
+
+class _Ledger:
+    """Events the log already holds, spent as the pass accounts for them.
+
+    `already_have(key)` answers *"is one of these already recorded that I have
+    not yet matched?"* and spends it if so. That is what makes the pass
+    idempotent against its own previous runs **and** against what increment 2
+    recorded live, without having to tell the two apart -- both are simply rows
+    that are already there.
+    """
+
+    def __init__(self, counts):
+        self._counts = counts
+
+    def already_have(self, key):
+        if self._counts.get(key, 0) > 0:
+            self._counts[key] -= 1
+            return True
+        return False

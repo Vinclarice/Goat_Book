@@ -28,7 +28,12 @@
     {% endif %}
     {% for result in results %}
       <div class="card">
-        <div class="body">{{ result.body }}</div>
+        {% comment %}
+        Somewhere to go. Until Track E increment 19 a search could find a note
+        and offer no way to open it -- the same failure the calendar and bills
+        pages shipped with, reachable only from one link nobody found.
+        {% endcomment %}
+        <div class="body"><a href="{% url 'note' result.node.public_id %}">{{ result.body }}</a></div>
         <div class="meta" style="margin-top:.5rem">{{ result.node.captured_at|date:"j M Y" }}{% if result.superseded %} · matched an earlier version of this note{% endif %}</div>
       </div>
     {% endfor %}

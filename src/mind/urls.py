@@ -47,6 +47,10 @@ urlpatterns = [
         views.dismiss_question,
         name="dismiss_question",
     ),
+    # One note. `notes/` rather than a bare `<uuid>/` prefix, which is
+    # already taken by `tag_node` -- and a noun in the path is worth the
+    # eight characters when the surface is meant to be linked to.
+    path("notes/<uuid:public_id>/", views.note, name="note"),
     path("concepts/", views.concepts, name="concepts"),
     path("concepts/<uuid:public_id>/", views.concept, name="concept"),
     path(

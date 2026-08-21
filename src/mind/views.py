@@ -23,12 +23,16 @@ Everything routes through `services`; these views parse a form and redirect.
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 from django.contrib.auth.decorators import login_required
+from django.http import Http404
 from django.shortcuts import redirect, render
 from django.templatetags.static import static
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
+from clarice import recall
 from clarice.search import to_query
 from daily import reads as daily_reads
 from lists import search as lists_search
@@ -443,6 +447,176 @@ def concept(request, public_id):
             "concept": canonical,
             "nodes": queries.nodes_mentioning(request.user, canonical),
             "aliases": canonical.aliases.filter(retired_at__isnull=True),
+        },
+    )
+
+
+# What each event reads as on a page a person looks at.
+#
+# **The log's vocabulary is not a person's**, and the first render of the note
+# page proved it by putting `facet_confirmed`, `mention_confirmed` and
+# `task_completed` on screen. Those names are chosen for what a *reading* can
+# filter on, which is a different job from what somebody can read -- and
+# `principles.md` calls the gap between them a bend.
+#
+# **Past tense and no subject**, so the same phrase works under both headings:
+# "what came of it" wants *became a task*, and "what else was going on" wants
+# the same words about a different note.
+EVENT_PHRASES = {
+    "captured": "written",
+    "revised": "corrected",
+    "imported": "imported",
+    "reviewed": "reviewed",
+    "archived": "put away",
+    "concept_confirmed": "a name confirmed",
+    "concept_retired": "a name retired",
+    "facet_confirmed": "became a task",
+    "facet_dismissed": "an offer declined",
+    "mention_confirmed": "tagged",
+    "edge_created": "linked to another note",
+    "edge_removed": "a link removed",
+    "alias_merged": "two names merged into one",
+    "hypothesis_resolved": "a suggested connection answered",
+    "thread_articulated": "a thread named",
+    "task_completed": "the task finished",
+    "task_reopened": "the task reopened",
+    "task_archived": "the task put away",
+    "commitment_changed": "the commitment changed shape",
+    "commitment_ended": "the commitment ended",
+    "focus_pinned": "chosen for a day",
+    "focus_released": "put down again",
+    "week_reviewed": "the week reviewed",
+    "intention_set": "an intention set",
+    "outcome_chosen": "an outcome chosen",
+    "deleted": "deleted",
+    "purged": "erased",
+}
+
+# How two notes relate, in words. Small enough to spell out, and spelled out
+# for the same reason as the phrases above.
+RELATION_PHRASES = {
+    "relates_to": "related",
+    "answers": "answers this",
+}
+
+
+def phrase_for(event_type):
+    """A person's words for one event, falling back to the log's.
+
+    **The fallback is the part that matters.** `EventType` is open by design --
+    new kinds are new values, not new tables -- so a mapping that returned
+    nothing for an unmapped one would render a blank row. Degrading to the raw
+    name is ugly and truthful, which is the right order.
+    """
+    return EVENT_PHRASES.get(event_type) or event_type.replace("_", " ")
+
+
+def relation_phrase_for(relation):
+    return RELATION_PHRASES.get(relation) or relation.replace("_", " ")
+
+
+def _phrased(development_chain):
+    """The same chain, with each development's phrase chosen."""
+    return replace(
+        development_chain,
+        developments=[_readable(d) for d in development_chain.developments],
+    )
+
+
+def _readable(neighbour):
+    """One `Neighbour`, with its phrase already chosen.
+
+    Resolved here rather than in the template, because a Django template cannot
+    call a function with an argument -- and a filter registered to do it would
+    put the mapping somewhere a test cannot reach it by name. The fallback is
+    the part worth testing, so it stays importable.
+    """
+    return {
+        "phrase": phrase_for(neighbour.event_type),
+        "occurred_at": neighbour.occurred_at,
+        "origin": neighbour.origin,
+        "node": neighbour.node,
+        "task": neighbour.task,
+    }
+
+
+def _elsewhere(neighbourhood, node):
+    """The same neighbourhood, minus anything about this note.
+
+    Filtered here rather than in `clarice.recall`: `around()` answers *what was
+    in the log near this instant*, which is a complete answer to its own
+    question. What counts as *else* is the caller's business, and a note page
+    and a day page would not agree about it.
+
+    The omitted counts are left alone. They describe what the cap dropped, and
+    quietly adjusting them for a filter applied afterwards would make the one
+    number that exists to be honest about truncation mean something else.
+    """
+    keep = lambda side: [
+        _readable(n) for n in side if n.node is None or n.node.pk != node.pk
+    ]
+    return replace(
+        neighbourhood,
+        before=keep(neighbourhood.before),
+        after=keep(neighbourhood.after),
+    )
+
+
+@login_required
+def note(request, public_id):
+    """One note, and everything the graph has accreted around it.
+
+    **Track E increment 19, and the first caller either of Track A's reads has
+    ever had.** Five increments built a time axis and two reads over it, and
+    nothing used them — which by `principles.md` made the whole track a
+    deferral wearing a completion's clothes. The two questions a person asks
+    about an old note are exactly the two those reads answer: *what else was
+    going on when I wrote this*, and *what came of it*.
+
+    **Read-only on purpose.** Nine dark services are waiting on this page —
+    `revise`, `delete_node`, `archive_node`, `unlink`, `reopen_question` — and
+    they stay dark. `temporal-substrate-plan.md` puts the correction surface at
+    increment 21 and person-anchoring at 20; hanging five affordances on a page
+    nobody has looked at yet is how a surface gets designed twice.
+
+    **`live_nodes` rather than a bare lookup**, which is R5's rule reaching its
+    door: a deleted or archived note is a 404 here, and `clarice/recall.py`
+    already withholds their content from both reads. The rule was written and
+    tested before the surface existed, which is the only reason this increment
+    does not have to invent it.
+
+    **D19 is not answered here.** The neighbourhood is anchored on one instant
+    — when the note was captured — because that is what `around()` takes. The
+    plural version, unioning the neighbourhoods of a subject's whole life, is
+    that decision's to make, and guessing at it in a template would settle it
+    by accident.
+    """
+    found = queries.live_nodes(request.user).filter(public_id=public_id).first()
+    if found is None:
+        # 404 rather than a redirect, and rather than 403 for someone else's:
+        # whether a note exists is itself the person's.
+        raise Http404("no such note")
+
+    return render(
+        request,
+        "mind/note.html",
+        {
+            "node": found,
+            "body": queries.current_body(found),
+            "labels": queries.confirmed_concept_labels(found),
+            "connections": [
+                {"relation": relation_phrase_for(relation), "node": other}
+                for relation, other in queries.connections_of(found)
+            ],
+            # **"Else" means else.** Anything whose subject is this note is
+            # filtered out -- its own capture first of all, which the first
+            # render listed as something else that was going on. Its later
+            # events belong under "what came of it", where they are the answer
+            # rather than the background.
+            "when_written": _elsewhere(
+                recall.around(request.user, found.captured_at), found
+            ),
+            "what_came_of_it": _phrased(recall.since(request.user, found)),
         },
     )
 

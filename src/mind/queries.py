@@ -259,6 +259,29 @@ def confirmed_mentions_of(concept: ConceptCandidate) -> QuerySet[Mention]:
     ).select_related("node")
 
 
+def connections_of(node: Node) -> list[tuple[str, Node]]:
+    """The live notes this one is linked to, in either direction.
+
+    Both directions, unlike `clarice.recall.since`, and the difference is the
+    question each answers. `since()` asks *what came out of this*, so following
+    a link backwards would make it *what has since mentioned this* -- the slide
+    D4 exists to stop. A connections list asks *what is this joined to*, where
+    direction is a property of the edge and not of the answer.
+
+    Live only, through `live_nodes`: a link to a note somebody deleted is not a
+    way back to its content.
+    """
+    live = set(live_nodes(node.owner).values_list("pk", flat=True))
+    found = []
+    for edge in node.edges_out.select_related("to_node"):
+        if edge.to_node_id in live:
+            found.append((edge.relation, edge.to_node))
+    for edge in node.edges_in.select_related("from_node"):
+        if edge.from_node_id in live:
+            found.append((edge.relation, edge.from_node))
+    return found
+
+
 def nodes_mentioning(owner, concept: ConceptCandidate) -> QuerySet[Node]:
     """Live nodes that mention a concept, resolving through aliases."""
     canonical = canonical_concept(concept)

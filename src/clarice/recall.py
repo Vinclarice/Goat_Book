@@ -11,10 +11,18 @@ twenty-one reads is adjacency in *meaning*: similarity, shared concepts,
 mentions, threads. None of them can say what else you were doing that morning,
 because until increment 1 the log had no vocabulary for a morning.
 
-Later increments join it here: `since()` is increment 5 and is gated on **D4**,
-which is the honest question of whether *"what changed after"* can be answered
-without inventing a diff the log never recorded. When it arrives it shares
-`PERSON_EVENTS` below rather than copying it.
+**`since()` is adjacency in provenance**, and increment 5 -- the one the brief
+said might correctly never ship. **D4** asked what makes a later event *bear
+on* an earlier note, and the wide answer is the one that cannot be given
+honestly: "bears on" would be a similarity score wearing a causal word. The
+narrow answer invents nothing, because the merger already records one true
+development chain in columns -- `Node` to confirmed actionable `Facet` to
+`Item` to that task's later life events. `since()` follows it and stops.
+
+**The two share `PERSON_EVENTS` rather than copying it**, and share
+`Neighbour`, the chronological-never-ranked rule and the counted-not-flagged
+cap. A caller putting *what else was going on* beside *what came of it* should
+not have to reconcile two vocabularies.
 
 **Six findings in `code-review-2026-08-21.md` are answered in this file** --
 R2, R4, R5, R6, R8, R9 -- and one is deliberately deferred: **R7**. The window
@@ -28,6 +36,7 @@ say what windows it asks for. The cheap half of it is done: the two persisted
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
+from django.db.models import Q
 from django.utils import timezone
 
 from mind.models import ActivityEvent, EventType
@@ -246,6 +255,98 @@ def around(
         after=[_neighbour(e) for e in after[: len(after) - omitted_after]],
         omitted_before=omitted_before,
         omitted_after=omitted_after,
+    )
+
+
+@dataclass(frozen=True)
+class Since:
+    """What developed out of one note, afterwards."""
+
+    node_id: int
+    from_moment: datetime
+    #: Chronological, earliest first -- a development chain is read forward
+    #: from a beginning, where a neighbourhood is read outward from an instant.
+    developments: list[Neighbour] = field(default_factory=list)
+    omitted: int = 0
+
+    @property
+    def has_anything(self):
+        return bool(self.developments or self.omitted)
+
+
+def since(owner, node, *, from_moment=None, limit=DEFAULT_LIMIT_EACH_SIDE):
+    """What came of ``node`` after ``from_moment``, along recorded provenance.
+
+    Track A increment 5, and the narrow answer to **D4**. The merger already
+    records one true development chain, in columns::
+
+        Node -> Facet (confirmed actionable) -> Item -> that task's life events
+
+    Every hop is a row somebody wrote, with a date on it. This follows that and
+    stops. **What it refuses is the point**: two notes about the same subject,
+    a shared concept, a close embedding -- none of those is development, and
+    presenting them as *"what came of this"* would be a similarity score
+    wearing a causal word. The brief's *"stopping at four is the correct
+    outcome"* was written for that wider version, and this is not it.
+
+    ``from_moment`` defaults to when the node was captured, which is the honest
+    default for *"what came of this"*. Passing a later one answers *"what
+    changed since I last looked"*.
+
+    **A deleted or archived node develops no further**, matching `around()` and
+    `delete_node`'s promise.
+
+    **Edges reach forward only.** An edge drawn *from* this note grew out of
+    it; one drawn *toward* it is a development of the other note, and following
+    it would make *"what developed from X"* and *"what has since mentioned X"*
+    one question -- which is the slide D4 exists to stop. Nothing extra is
+    needed to get this right: `EDGE_CREATED` is recorded against `from_node`.
+    """
+    if _visible(node) is None:
+        return Since(node_id=node.pk, from_moment=from_moment or node.captured_at)
+
+    from_moment = from_moment if from_moment is not None else node.captured_at
+    if timezone.is_naive(from_moment):
+        raise ValueError(
+            "since() needs a timezone-aware moment; "
+            "got a naive one, which the database would reinterpret silently"
+        )
+    if limit < 0:
+        raise ValueError("limit cannot be negative")
+
+    # The one hop out of the knowledge core. Imported here rather than at
+    # module scope for the reason `confirm_actionable` gives going the other
+    # way: the seam is one-directional and should be visible where it is used.
+    from mind.models import Facet
+
+    grew_into = set(
+        Facet.objects.filter(node=node, task__isnull=False)
+        .exclude(confirmed_at=None)
+        .values_list("task_id", flat=True)
+    )
+
+    rows = (
+        ActivityEvent.objects.filter(
+            owner=owner,
+            event_type__in=PERSON_EVENTS,
+            occurred_at__gt=from_moment,
+        )
+        .filter(Q(node=node) | Q(task_id__in=grew_into))
+        .select_related("node", "task")
+        .defer("node__search_original", "task__search_document")
+        .order_by("occurred_at", "id")
+    )
+
+    found = list(rows)
+    # Truncated from the far end, which is the *later* end here -- the opposite
+    # of `around()`, and deliberately: the first things that came of a thought
+    # are the ones that explain it.
+    omitted = max(0, len(found) - limit)
+    return Since(
+        node_id=node.pk,
+        from_moment=from_moment,
+        developments=[_neighbour(e) for e in found[: len(found) - omitted]],
+        omitted=omitted,
     )
 
 

@@ -494,9 +494,15 @@ nothing else.
    **four deferrals held by tests rather than left as omissions**: an ordinary
    field edit, writing in the day, opening the planner, and the mechanical
    archive a recurring completion performs on itself. No backfill, no reads.
-3. **Backfill what carries its own timestamp.** **Nothing invented** — no
-   recorded time, no event; reconstructed events are marked so a reading can
-   tell a record from a re-presentation.
+3. ~~**Backfill what carries its own timestamp.**~~ **Shipped August 20, 2026**
+   (`51264c7`), as `manage.py backfill_life_log` with a `--dry-run`.
+   **Six of the ten events come back; four are not invented** — reopening
+   clears the `completed_at` that was its only evidence, nothing records when a
+   task started repeating, an intention is one row per week edited in place, and
+   repinning clears the release before it. **A command rather than a data
+   migration**, unlike this repository's other backfills: those fix columns and
+   can be fixed again, and this one writes where `UPDATE` and `DELETE` are
+   refused.
 4. **`around()`** — what else was in the log near an instant. The first read
    that crosses.
 5. **`since()`** — what developed after a node, gated on D4. **If D4 cannot be
@@ -566,11 +572,28 @@ nothing else.
    — the failure `MAINTENANCE_RAN` exists one layer up to prevent. This needed
    `complete_item` to become atomic, which it was not: two saves and a spawn,
    each committing alone.
-2. **D2. How far back does backfill reach, and how is a reconstructed event
-   marked?** The argument for it is that the task core already holds the
-   history; the argument against inventing any is that this codebase left defect
-   2's misdated routine records alone rather than guess at a durable record.
-   `Facet.origin`'s split is the shape to copy.
+2. ~~**D2. How far back does backfill reach, and how is a reconstructed event
+   marked?**~~ **Answered August 20, 2026 — and taken by Claude at Vince's
+   direction rather than by Vince, which is worth saying because this list is
+   his.**
+
+   **How far back: as far as the data goes, and no date cutoff.** The limit is
+   not age, it is whether a timestamp exists; a horizon would discard real
+   records to satisfy a number nobody chose.
+
+   **The mark: `ActivityEvent.origin`, a column**, copying `Facet.origin`'s
+   split as this entry suggested. **A column rather than a payload key**,
+   because every read will want to label or exclude reconstructions and a JSONB
+   lookup with no index is not what that should cost — and in an append-only
+   table the cheap choice is the unfixable one. Distinct from `InferenceOrigin`
+   and deliberately not reusing it: that one asks whether a thing was stated or
+   inferred, which is about *content*. This is about *witness*.
+
+   **The guess-nothing instinct held.** Defect 2's misdated routine records
+   were left alone rather than reconstructed, and this follows it: four of the
+   ten events have no honest source and are simply absent. **Under-recording is
+   the safe direction** — a log that says less than happened can be added to,
+   and one that says more cannot be corrected.
 3. ~~**D3. Payload snapshot, or foreign key only?**~~ **Answered for slice 1
    only, August 20, 2026: a foreign key where one exists, and the payload for
    what has none.** The week's Monday is the single payload key slice 1 has,

@@ -166,16 +166,81 @@ do
                       || report no  "partial unique index $index (found: ${got:-error})"
 done
 
+# --- The vocabulary, and the grains the emitters rest on ---------------------
+# Added August 21, 2026, after the same drift this script's own August 19 note
+# describes: five task-core constraints were unchecked, so a restore that lost
+# every one of them printed "All checked guarantees are intact." Two days and
+# two deploys later, forty-nine of fifty-five declared constraints were
+# unnamed here.
+#
+# **The criterion, so the next person is not guessing.** A constraint is
+# checked here when some code's correctness argument names it -- when a
+# docstring or a comment says "this is safe *because* the database refuses
+# that". Those are the ones whose loss turns working code into silently wrong
+# code rather than into an error. The rest are shape checks on a value
+# (`*_span_ordered`, `*_confidence_range`) and are deliberately not here;
+# `clarice/tests/test_restore_integrity_covers_the_schema.py` holds that list
+# so a new constraint cannot join it by being forgotten.
+#
+# Three CHECKs. `event_type_valid` and `event_origin_valid` are the log's
+# vocabulary, and `clarice/life_log.py` raises on a bad value *"rather than
+# failing at the database check constraint three layers down"* -- which names
+# this constraint as the backstop it is deliberately in front of.
+# `bill_amount_not_negative` guards a number somebody plans a month against.
+for constraint in event_type_valid event_origin_valid bill_amount_not_negative
+do
+  got=$(query "SELECT count(*) FROM pg_constraint
+               WHERE conname = '$constraint' AND contype = 'c' AND convalidated")
+  [[ "$got" == "1" ]] && report yes "constraint $constraint, validated" \
+                      || report no  "constraint $constraint, validated (found: ${got:-error})"
+done
+
+# Four unique constraints, and unlike the three partial indexes above these are
+# unconditional, so they are real `pg_constraint` rows with contype 'u'.
+#
+# Every one of them is a grain some service's idempotency is written against.
+# `write_entry` says so outright -- *"get_or_create under the unique constraint
+# makes that safe: two concurrent first-writes cannot produce two rows"* -- and
+# `complete_review` and `set_intention` rest on the same shape, which
+# `clarice/tests/test_emitters_are_idempotent.py` now holds as a contract.
+# `unique_daily_focus_per_entry_task` is the one the backfill's C2 and C3
+# repairs were keyed to: one focus per task **per day** is what makes a second
+# run safe against a table that refuses DELETE.
+for constraint in \
+  unique_daily_entry_per_owner_date \
+  unique_daily_focus_per_entry_task \
+  unique_weekly_review_per_owner_week \
+  unique_weekly_intention_per_owner_week
+do
+  got=$(query "SELECT count(*) FROM pg_constraint
+               WHERE conname = '$constraint' AND contype = 'u'")
+  [[ "$got" == "1" ]] && report yes "constraint $constraint" \
+                      || report no  "constraint $constraint (found: ${got:-error})"
+done
+
 # --- The duplicate-task guarantee, exercised --------------------------------
 # The catalogue checks above answer presence and validity. This answers whether
 # the thing actually refuses a duplicate on the data that came back, which is
 # the guarantee a person would feel: `unique_active_item` is what stops a phone
 # retrying a share from writing the note twice.
 #
-# The row is cloned through jsonb rather than by naming columns, so adding a
-# column to lists_item does not quietly turn this check into a syntax error --
+# The column list is built from the catalogue rather than typed out, so adding
+# a column to lists_item does not quietly turn this check into a syntax error --
 # and the clone takes a fresh id so the refusal that matters is the unique
 # violation rather than a primary-key collision.
+#
+# **Generated columns are excluded, and that is a repair rather than a
+# detail.** This probe cloned the row through `to_jsonb` and `SELECT *`, which
+# was written to survive a new column and did -- until `lists.0040` added
+# `search_document`, a generated column, on August 20. Postgres refuses to
+# insert a non-DEFAULT value into one, so from that day the strongest check in
+# this script errored instead of running, and the next drill would have printed
+# a failure that reads exactly like a lost `unique_active_item`. The drill
+# recorded on August 19 passed honestly; the migration that broke this landed
+# the day after it.
+#
+# `is_generated = 'NEVER'` is the whole fix, and it is read from the catalogue
+# so the *next* generated column needs no edit either.
 #
 # Verified in both directions before being trusted, on a local database inside a
 # transaction that was rolled back: with the index present the insert was
@@ -184,7 +249,7 @@ done
 duplicate=$(psql "$DSN" -tA <<'SQL' 2>&1
 BEGIN;
 DO $$
-DECLARE refused boolean := false; candidates int;
+DECLARE refused boolean := false; candidates int; cols text; vals text;
 BEGIN
     SELECT count(*) INTO candidates
       FROM lists_item WHERE status <> 'archived' AND list_id IS NOT NULL;
@@ -192,15 +257,22 @@ BEGIN
         RAISE NOTICE 'EMPTY';
         RETURN;
     END IF;
+
+    SELECT string_agg(quote_ident(column_name), ', ' ORDER BY ordinal_position),
+           string_agg(CASE WHEN column_name = 'id'
+                           THEN '(SELECT max(id) + 1 FROM lists_item)'
+                           ELSE 't.' || quote_ident(column_name) END,
+                      ', ' ORDER BY ordinal_position)
+      INTO cols, vals
+      FROM information_schema.columns
+     WHERE table_schema = 'public' AND table_name = 'lists_item'
+       AND is_generated = 'NEVER';
+
     BEGIN
-        INSERT INTO lists_item
-        SELECT (jsonb_populate_record(
-                   NULL::lists_item,
-                   to_jsonb(t) || jsonb_build_object('id', (SELECT max(id) + 1 FROM lists_item))
-               )).*
-          FROM lists_item t
-         WHERE t.status <> 'archived' AND t.list_id IS NOT NULL
-         LIMIT 1;
+        EXECUTE format(
+            'INSERT INTO lists_item (%s) SELECT %s FROM lists_item t '
+            'WHERE t.status <> ''archived'' AND t.list_id IS NOT NULL LIMIT 1',
+            cols, vals);
     EXCEPTION WHEN unique_violation THEN
         refused := true;
     END;

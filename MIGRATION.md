@@ -223,6 +223,58 @@ checked guarantees are intact."* All five are checked now, and step 4 is a diff
 rather than a comparison by eye over forty-two tables at the end of a billed
 hour.
 
+### August 21, 2026 — the drill was not re-run, and its checks were repaired
+
+**No cluster was provisioned and nothing was billed.** The August 19 pass was
+two days old and the schema had gained two migrations, neither of which changes
+what a restore has to bring back. Re-running would have proved what that run
+already proved. **What was worth doing instead was auditing whether step 5
+still catches what it is supposed to** — and it did not.
+
+**The duplicate-task probe had been broken since the day after the drill
+passed.** It clones a live row to prove `unique_active_item` actually refuses a
+duplicate, and it cloned through `to_jsonb` and `SELECT *` specifically so that
+a new column would not break it. `lists.0040` then added `search_document`, a
+**generated** column, on August 20 — and Postgres refuses to insert a
+non-DEFAULT value into one. From that day the strongest check in the script
+errored instead of running, and the next drill would have printed a failure
+that reads exactly like a lost `unique_active_item`, at the end of a billed
+hour, during the one procedure nobody wants to debug.
+
+Fixed by building the column list from `information_schema.columns` with
+`is_generated = 'NEVER'`, so the next generated column needs no edit either.
+**Verified in both directions on a local database inside rolled-back
+transactions**, the way the original was: `REFUSED` with the index present,
+`ACCEPTED` after `DROP INDEX unique_active_item`, and the index still there
+afterwards.
+
+**Seven guarantees were added to step 5**, chosen by a criterion this file did
+not have before: *a constraint is drilled when some code's correctness argument
+names it* — when a docstring says "this is safe because the database refuses
+that". Losing one of those turns working code into silently wrong code rather
+than into a visible error. The seven are the log's vocabulary
+(`event_type_valid`, `event_origin_valid`), the bills total's floor
+(`bill_amount_not_negative`), and four grains the emitters' idempotency is
+written against, including `unique_daily_focus_per_entry_task` — the one focus
+per task *per day* that the backfill's C2 and C3 repairs are keyed to.
+
+**The list can no longer drift in silence.**
+`clarice/tests/test_restore_integrity_covers_the_schema.py` asserts that every
+declared constraint is either named in the script or listed as deliberately
+undrilled with its reason. It reads the script as text and never opens a
+database, so it costs nothing and runs in CI — which matters, because the thing
+it guards costs money and an hour. It caught an omission in its own first run.
+
+**Why this was needed at all**: this file's August 19 note already describes
+the same drift — five task-core constraints unchecked, so a restore that lost
+every one of them printed *"All checked guarantees are intact."* Two days and
+two deploys later, forty-nine of fifty-five declared constraints were unnamed
+again. Curating a list is not the problem; having no way to notice the list has
+fallen behind is.
+
+**Step 5 now reports twenty checks**, verified end to end against a real
+database (the local Postgres, all twenty `ok`, exit 0).
+
 Three things worth knowing before the next one:
 
 - **The restore inherits the source cluster's trusted sources.** The clone

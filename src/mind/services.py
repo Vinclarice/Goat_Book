@@ -281,6 +281,9 @@ def capture_idempotent(
 
 
 @transaction.atomic
+# DARK: no production caller. The put-away half of `capture`.
+# Trigger: Track E increment 19. `queries.live_nodes` already excludes
+# archived nodes everywhere, which is why nothing looks broken.
 def archive_node(node: Node, *, now: datetime, actor: str) -> Node:
     """Take a node out of the live set without deleting it.
 
@@ -421,6 +424,8 @@ def dismiss_as_question(node: Node, *, now: datetime, actor: str) -> Facet:
     return _set_epistemic_status(node, NOT_A_QUESTION, now=now, actor=actor)
 
 
+# DARK: no production caller. The undo half of `resolve_question`, which has two callers --
+# `mind/api_v1.py` and `mind/views.py`. Trigger: Track E increment 19.
 def reopen_question(node: Node, *, now: datetime, actor: str) -> None:
     """Undo either statement, keeping the record that it was made.
 
@@ -444,6 +449,11 @@ def reopen_question(node: Node, *, now: datetime, actor: str) -> None:
 
 
 @transaction.atomic
+# DARK: no production caller. The correction half of `capture`, which has seven callers.
+# Trigger: Track E increment 21 in `temporal-substrate-plan.md` -- the
+# correction surface on the node page. `/privacy/` promises correction and
+# says outright that what the interface does not cover is done by hand, so
+# this is a deferral rather than a gap in a promise.
 def revise(node: Node, *, body: str, actor: str, now: datetime) -> Revision:
     """Add a revision, leaving the original capture untouched.
 
@@ -559,6 +569,10 @@ def retire_concept(
 
 
 @transaction.atomic
+# DARK: no production caller. The de-duplication half of `confirm_concept`, which has three
+# callers. Trigger: the concept page, which already exists at
+# `/mind/concepts/<public_id>/` -- this is the smallest of the twelve to
+# switch on, and the alias depth-one trigger already guards it.
 def merge_concept(
     alias: ConceptCandidate,
     into: ConceptCandidate,
@@ -813,6 +827,11 @@ def dismiss_facet(facet: Facet, *, now: datetime, actor: str) -> Facet:
     return facet
 
 
+# DARK: no production caller. **Not an undo half.** An invariant monitor nobody monitors:
+# its own docstring says it exists *"to say so in a number rather than to
+# be trusted"*, and no number shows it. Trigger: a row on `/numbers/`,
+# which is one line -- or delete it and let the transaction be the whole
+# guarantee.
 def commitments_without_tasks(owner) -> int:
     """Confirmed commitments whose task has gone. Should always be zero.
 
@@ -1042,6 +1061,11 @@ def _concept_for_label(owner, label: str, *, now: datetime, actor: str):
 
 
 @transaction.atomic
+# DARK: no production caller. The confirming half of `propose_mention`. Nothing else can
+# confirm an *inferred* mention: `record_typed_tags` stamps `confirmed_at`
+# directly for typed tags, and an `EXPLICIT` mention arrives confirmed.
+# So a detector's guess can be proposed and never accepted.
+# Trigger: the review surface, with D15.
 def confirm_mention(mention: Mention, *, now: datetime, actor: str) -> Mention:
     if mention.confirmed_at is None:
         mention.confirmed_at = now
@@ -1147,6 +1171,9 @@ def link(
 
 
 @transaction.atomic
+# DARK: no production caller. The undo half of `link`, which has two callers.
+# Trigger: Track E increment 19's connections section. Until then
+# `EDGE_REMOVED` is a vocabulary word nothing can write.
 def unlink(edge: Edge, *, now: datetime, actor: str) -> None:
     payload = {
         "from_node": edge.from_node_id,
@@ -1494,6 +1521,11 @@ def open_review(
 
 
 @transaction.atomic
+# DARK: no production caller. The recording half of `open_review`, which is live on
+# `/mind/review/`. Production holds two `reviewed` rows and every one is
+# owner-scoped from that page -- zero are node-scoped, so `review_state`
+# returns zero for every node and the spaced schedule has never run.
+# Decision registered: D15 in `temporal-substrate-plan.md`.
 def mark_reviewed(
     node: Node,
     *,
@@ -1519,6 +1551,12 @@ def mark_reviewed(
 
 
 @transaction.atomic
+# DARK: no production caller. **Not an undo half, and the one with a hazard.** Scheduled
+# work that was never scheduled: no cron entry calls it. It also defaults
+# to `actor="system"` while sharing `HYPOTHESIS_RESOLVED` with the
+# person's own decisions, so wiring it to cron makes those two
+# indistinguishable by event type -- `code-review-2026-08-21.md` R8.
+# Decide before wiring, not after: a cron entry or a deletion.
 def expire_stale_hypotheses(
     owner, *, now: datetime, unsurfaced_after: timedelta, actor: str = "system"
 ) -> int:
@@ -1594,6 +1632,11 @@ def record_retrieval_miss(
     )
 
 
+# DARK: no production caller. The answering half of the live `/mind/search/miss/` route.
+# **D3 already decided not to widen it** and nothing has ever populated
+# `RetrievalMiss.resolved_node`, so a miss can be recorded and never
+# answered. Trigger: a surface for reviewing misses, which no plan claims
+# -- so this is the strongest deletion candidate of the twelve.
 def resolve_retrieval_miss(miss: RetrievalMiss, node: Node) -> RetrievalMiss:
     """Attach the node that was being looked for, making the miss diagnosable.
 
@@ -1638,6 +1681,10 @@ def _invalidate_hypotheses_citing(
 
 
 @transaction.atomic
+# DARK: no production caller. The undo half of `capture`.
+# Trigger: Track E increment 19, the node page. `clarice/recall.py`
+# already withholds a deleted node's content from both its reads, so the
+# rule this service needs is written and tested ahead of the door.
 def delete_node(node: Node, *, now: datetime, actor: str) -> Node:
     """Remove a node from the working system immediately.
 
@@ -1666,6 +1713,8 @@ def delete_node(node: Node, *, now: datetime, actor: str) -> Node:
 
 
 @transaction.atomic
+# DARK: no production caller. Hard erasure for one node, where `accounts.services.purge_account`
+# is the whole-account path and is live. Trigger: Track E increment 19.
 def purge_node(node: Node, *, now: datetime, actor: str) -> list[str]:
     """Delete a node for real, once its retention window has passed.
 

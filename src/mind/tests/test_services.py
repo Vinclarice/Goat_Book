@@ -281,6 +281,41 @@ def test_an_explicit_mention_is_confirmed_on_arrival(owner):
     assert mention.confirmed_at == JAN
 
 
+def test_an_explicit_mention_is_logged_as_a_decision_not_a_suggestion(owner):
+    """The event has to agree with `confirmed_at` two lines above it.
+
+    `code-review-2026-08-21.md` R2: an explicit mention arrived already
+    confirmed and was logged as `MENTION_PROPOSED` anyway, which made a person
+    typing a tag indistinguishable from a detector guessing overnight. The
+    symptom surfaced a layer up, where `clarice.recall.around` treats proposals
+    as machine activity -- so tagging an existing note vanished from its own
+    morning.
+    """
+    node = _capture(owner)
+    concept = _concept(owner, "Bob")
+    services.propose_mention(
+        node,
+        concept,
+        index_version="manual",
+        origin=InferenceOrigin.EXPLICIT,
+        now=JAN,
+        actor="vince",
+    )
+    assert node.events.filter(event_type=EventType.MENTION_CONFIRMED).exists()
+    assert not node.events.filter(event_type=EventType.MENTION_PROPOSED).exists()
+
+
+def test_an_inferred_mention_is_still_logged_as_a_proposal(owner):
+    """The other half, so the repair stays narrow: nothing asked for this one,
+    and a detector's guess is exactly what `MENTION_PROPOSED` is for."""
+    node = _capture(owner)
+    concept = _concept(owner, "Bob")
+    services.propose_mention(
+        node, concept, index_version="fts-v1", span=(0, 3), now=JAN, actor="system"
+    )
+    assert node.events.filter(event_type=EventType.MENTION_PROPOSED).exists()
+
+
 def test_an_inferred_mention_waits_for_confirmation(owner):
     node = _capture(owner)
     concept = _concept(owner, "Bob")

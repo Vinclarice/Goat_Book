@@ -863,7 +863,20 @@ def propose_mention(
     )
     _record(
         node.owner,
-        EventType.MENTION_PROPOSED,
+        # A decision logged as a decision. An `EXPLICIT` mention is created
+        # with `confirmed_at` already stamped two lines above -- somebody typed
+        # the tag -- and logging that as a proposal made a deliberate act of
+        # naming indistinguishable from what a detector guessed overnight.
+        #
+        # `code-review-2026-08-21.md` R2, whose visible symptom was one layer
+        # up: `clarice.recall.around` classifies proposals as machine activity,
+        # so tagging an existing note vanished from its own morning. Fixed here
+        # rather than by widening that set, because the set was right.
+        (
+            EventType.MENTION_CONFIRMED
+            if origin == InferenceOrigin.EXPLICIT
+            else EventType.MENTION_PROPOSED
+        ),
         node=node,
         occurred_at=now,
         actor=actor,

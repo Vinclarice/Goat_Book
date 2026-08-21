@@ -39,14 +39,13 @@ read-only diagnosis that has to come first.
 import datetime
 from io import StringIO
 
-from django.contrib.auth import get_user_model
 from django.core.management import call_command
-from django.test import TestCase
 
+from clarice.testing import CrossCoreTestCase, make_area
 from daily import services as daily_services
 from daily.models import DailyEntry, DailyFocus
 from lists import services as list_services
-from lists.models import Item, List
+from lists.models import Item
 from mind.models import ActivityEvent, EventOrigin, EventType
 from review.models import WeeklyIntention, WeeklyOutcome, WeeklyReview
 
@@ -57,13 +56,7 @@ DAY = datetime.date(2026, 3, 2)
 ITS_MONDAY = datetime.date(2026, 3, 2)
 
 
-class BackfillTest(TestCase):
-    def setUp(self):
-        self.alice = get_user_model().objects.create_user(
-            "alice", "alice@example.com", "a secure password"
-        )
-        self.area = List.objects.create(owner=self.alice, title="Home")
-
+class BackfillTest(CrossCoreTestCase):
     # -- helpers ---------------------------------------------------------
 
     def backfill(self, *args):
@@ -305,8 +298,8 @@ class BackfillTest(TestCase):
         self.assertIn("1", output)
 
     def test_it_does_not_reach_into_another_persons_history(self):
-        bob = get_user_model().objects.create_user("bob", "bob@example.com", "pw")
-        their_area = List.objects.create(owner=bob, title="Theirs")
+        bob = self.someone_else()
+        their_area = make_area(bob, "Theirs")
         their_task = list_services.create_item(their_area, "Their task")
         Item.objects.filter(pk=their_task.pk).update(
             status=Item.Status.COMPLETED, completed_at=LONG_AGO

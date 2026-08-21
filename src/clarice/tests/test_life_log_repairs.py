@@ -22,14 +22,13 @@ would let the corrections read as though they had been the design.
 import datetime
 from io import StringIO
 
-from django.contrib.auth import get_user_model
 from django.core.management import call_command
-from django.test import TestCase
 
+from clarice.testing import CrossCoreTestCase
 from daily import services as daily_services
 from daily.models import DailyEntry, DailyFocus
 from lists import services as list_services
-from lists.models import Item, List
+from lists.models import Item
 from mind.models import ActivityEvent, EventOrigin, EventType
 from review import services as review_services
 
@@ -40,13 +39,7 @@ MONDAY = datetime.date(2026, 3, 2)
 TUESDAY = datetime.date(2026, 3, 3)
 
 
-class RepairTest(TestCase):
-    def setUp(self):
-        self.alice = get_user_model().objects.create_user(
-            "alice", "alice@example.com", "a secure password"
-        )
-        self.area = List.objects.create(owner=self.alice, title="Home")
-
+class RepairTest(CrossCoreTestCase):
     def backfill(self, *args):
         out = StringIO()
         call_command("backfill_life_log", *args, stdout=out)

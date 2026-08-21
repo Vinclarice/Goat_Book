@@ -7,6 +7,81 @@ The reasoning, deployment record and lessons behind completed work, kept out of
 the active plan so that plan stays scannable. The active plan is
 [`roadmap.md`](roadmap.md).
 
+## The day you can actually use — August 20, 2026, `moorhen`
+
+Release M, in one deployment and verified in production on August 20 at 20:30
+(`DEPLOYED-2026-08-20/2030`, image `clarice:b8591ee507f0`, all six migrations
+applied and none pending). v3's *Usable* release: **the day stopped being a
+list you fill in by hand.**
+
+**What shipped**
+
+- **The day drafts itself, and never pins.** `draft_day` proposes what has a
+  claim on today, bounded by `typical_day_for`, and one **Plan my day** accepts
+  the set. **No capacity, no proposal** — `typical_day_for` answers `None`
+  below a five-day sample floor rather than zero, because *"no evidence yet"*
+  and *"you have room"* call for opposite responses.
+- **A brief that reports change, not state** — what was chosen yesterday and
+  did not happen, what is inside its lead time, what has gone quiet. Everything
+  in it is deliberately something the Day page does not already show, which is
+  what stops it becoming the dashboard the destination refuses.
+- **The closing ritual** — the day asked for while it is still true, with an
+  honest denominator, plus an evening nudge that is **off by default**.
+- **A calendar, and a bills month.** `/app/day/:date` had no UI entry point at
+  all; reaching a day twelve weeks back meant clicking *the week before* twelve
+  times. Bills are a **sidecar on `Item`, not a primitive** — §4 said no — and
+  the month totals each currency apart, never as one number.
+- **Task priority**, three values with no *medium*, and **`lead_days`**, so a
+  thing can be said to be coming before it is due.
+- **Quarterly and annual recurrence**, and **moving a misfiled task**.
+- **The review block** — over-committed told from under-delivered, a finished
+  week read under the sentence it was given, four verdicts movable in a day.
+- **S2's other half**: the phone got the two verbs the browser's day had, which
+  needed **no backend work at all** — every endpoint was already token-reachable
+  and the client functions were already there.
+- **`clarice/scheduled_mail.py`**, lifted out of `send_due_digest` as a pure
+  refactor before a second sender could copy it, proved by that command's 32
+  unchanged tests.
+
+**What it taught**
+
+- **"Can this be reached" is not "would anyone find it."** The calendar shipped
+  behind one link on the Day page and bills behind one link on the calendar, and
+  the first thing Vince said after the deploy was that he could not find either
+  — or the brief. The arbiter already existed: a test named *"offers every
+  surface of the task core"* enumerating `ViewNav`. **A surface reachable only
+  from another surface is the un-switched-on seam wearing a nicer coat**, which
+  is the fifth time that shape has turned up in a fortnight.
+- **Published legal text is code.** The evening nudge made the privacy policy's
+  *"the one recurring message is the daily summary"* false, and the fix had to
+  ship in the same commit as the sender. Two tests hold it now, one asserting
+  the old sentence is **gone**.
+- **A token-surface test is a design question, not a chore.**
+  `test_api_auth_surface` caught both new endpoints, and the honest answers
+  differed: draft-accept stayed token-reachable because it is the same act as
+  pinning and sits beside it; the calendar became session-only because it is a
+  new surface the phone does not have.
+- **A widened enum wants its arithmetic widened with it.** Quarterly and annual
+  recurrence needed `_nth_occurrence_after` to carry a months multiplier, and
+  the first test written for the annual case asserted a rule the domain does not
+  have — that a 29 February commitment skips to the next leap year. The honest
+  schedule is *the 29th, or the 28th when there is no 29th.*
+
+**Verified before the deploy**, all at `b8591ee`: `makemigrations --check`
+clean, both Python suites, 392 frontend tests with a clean `tsc --noEmit`, and
+34 browser tests against a freshly built bundle. **Verified after**: site 200,
+the running image tagged with the commit, all six migrations applied with none
+pending, the amended privacy policy live, and all four cron entries present
+including `clarice-closing-nudge`.
+
+**Verified afterwards in a browser, which had not been done at all**: on
+August 20, against seeded data, the brief rendered its three sections, the draft
+proposed two of six and **Plan my day** accepted them in one click, the closing
+summary picked up its denominator, the calendar showed per-day counts and
+written marks across the month, and the bills month totalled 1264.99 USD and
+40.00 GBP **apart**. That pass is the entry below in `roadmap.md`; it found two
+copy defects and no broken page.
+
 ## The week you can plan, and the material you can find — August 19–20, 2026, `lapwing`
 
 Release L, across two deployments and verified in production on August 20 at

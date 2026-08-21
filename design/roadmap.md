@@ -75,6 +75,21 @@ re-add it here.
   intake. **Nothing in either has started**; *Close L* is v3's own first
   release and is the entry below.
 
+- ~~**Release M — *Usable*, v3's first delivery release.**~~ **Closed August 20,
+  2026, shipped and verified in production as `moorhen`**
+  (`DEPLOYED-2026-08-20/2030`, image `clarice:b8591ee507f0`, all six migrations
+  applied and none pending). *The day you can actually use* — the day drafts
+  itself and never pins, a brief that reports change rather than state, the
+  closing ritual, a calendar, a bills month, priority and lead time.
+
+  The narrative, the four things it taught and the verification actually run
+  are in [`roadmap-history.md`](roadmap-history.md).
+
+  **What it leaves open**: two copy defects found by the browser pass that
+  should have run before the deploy and did not — the draft says *nothing at
+  all* when it has candidates but no capacity figure, and the bills month says
+  *"that total"* while showing one per currency. Both are the entry below.
+
 - ~~**Release L is open, and its bird is not chosen.**~~ **Closed August 20,
   2026, shipped and verified in production as `lapwing`**
   (`DEPLOYED-2026-08-20/1132`, image `clarice:612e23415830`, all three

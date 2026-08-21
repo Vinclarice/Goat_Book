@@ -1,7 +1,10 @@
 # Temporal substrate and contextual retrieval — focused spec
 
 Vince · focused spec · written August 20, 2026 · **widened twice the same day** ·
-**not started, claimed by `roadmap.md` August 20**
+**claimed by `roadmap.md` August 20** · Track A increments 1–3 shipped
+August 20; increment 4 is written and in repair
+([`code-review-2026-08-21.md`](code-review-2026-08-21.md)) · **given its
+reading surfaces (Part 2, Track E) August 21**
 
 ## What this is
 
@@ -138,6 +141,12 @@ thought about a person all land there. Under a corpus of decided things that
 ladder was right; under a corpus that holds anything, quiet knowledge is not a
 tier but the remainder, and it holds most of a life.
 
+(One of the four tiers barely exists in production: the review-candidate tier
+is reachable only through the open-hypothesis branch, because nothing calls the
+spaced schedule's writer — the evidence is
+[`code-review-2026-08-21.md`](code-review-2026-08-21.md) Part 3's, and the
+decision it creates is D15.)
+
 `detectors/dormant_thread.py`'s floors say the same thing in constants:
 `MIN_DORMANCY` **548 days**, `MIN_LENGTH` **120 characters**,
 `MIN_SHARED_TERMS` and `MIN_DISTINCTIVE_TERMS` 3 each, `MAX_PROPOSALS` 3. *"Mum's
@@ -248,6 +257,41 @@ The Attention Policy and salience are `design-concept.md`'s, in Second Mind's
 own `docs/`. `principles.md` §Scope is explicit that this file is not design
 authority for the knowledge core. **Part 2 is a proposal to that document**,
 with the evidence attached.
+
+### The reading surfaces — memory needs a face
+
+**Added August 21, from the examination recorded in
+[`code-review-2026-08-21.md`](code-review-2026-08-21.md), and verified in the
+routes:** the knowledge core has **no node detail page**, and `views.py` never
+touches `Edge` or threads. Every confirmation a person makes in review writes
+an edge or mints a thread node — and no surface anywhere shows an edge, a
+thread's members, or a note's connections. The payoff of every confirm
+decision is invisible, and the cost feeds back: accept rates are what earn
+detectors their review slots, and a person stops confirming what they never
+see again. The graph is write-only from the person's perspective — the same
+disease the time axis had before Track A's increment 4, one layer up.
+
+Three surfaces follow, in dependency order:
+
+- **The node page is the anchor.** One page per memory: content, revisions,
+  confirmed labels, connections, and — once increment 4 lands — its temporal
+  neighbourhood. It is the natural home of four things already registered:
+  the recollection surface this plan describes, D19's subject anchoring, the
+  deleted-subject visibility rule (R5), and the correction affordance Part 4
+  now names.
+- **Person is the first role made real.** Every concept in production is
+  `ConceptType.UNKNOWN`; `PERSON` is declared and never assigned — while the
+  role taxonomy above leads with *person* and the "writing about an old
+  friend" scenario depends on it. A person page is mostly the concept page
+  that already exists, plus a confirmed type and the facet and temporal
+  joins.
+- **Ask-your-memory is the pipeline's face.** The span discipline already
+  everywhere in this core — facets cite spans, hypotheses quote evidence,
+  proposals cite the sentence that caused them — is exactly the substrate of
+  citation-faithful question answering. A question box that classifies the
+  retrieval moment and returns ranked passages citing themselves is how this
+  Part becomes something a person touches daily. `context_for_question` is
+  the seed. **Extractive, never generated** — see the refusal below.
 
 ## Part 3 — What memory notices: structured observations
 
@@ -468,7 +512,18 @@ and Sentry as the three processors, with a dozen tests holding the claims that
 have a mechanical counterpart. File storage or inbound mail changes that list —
 D9.
 
-## Increments — four tracks
+### Correction is part of holding
+
+**Added August 21.** A store's claim to hold a life is only as good as its
+ability to be corrected: a wrong note that stays wrong forever is a note a
+person slowly stops consulting, and distrust of one entry discounts the whole
+surface. The design already exists — `original_content` immutable,
+`services.revise` writing snapshot revisions, search reading current-over-
+original — and is dark: `revise` has no production caller because no surface
+offers an edit ([`code-review-2026-08-21.md`](code-review-2026-08-21.md)
+Part 3). The missing piece is a door, and it lives on the node page.
+
+## Increments — five tracks
 
 **One prerequisite outside this brief:** finish unified search as scoped
 ([`search-plan.md`](search-plan.md) increment 5). **The current search is not
@@ -478,7 +533,9 @@ overhaul sits *above* it.
 
 Track A and Track D can run in parallel. Track B wants A's temporal candidates
 and D's material to be worth widening for. Track C feeds B's Reflection mode and
-nothing else.
+nothing else. Track E's first three increments depend only on structure that
+already exists and can run beside Track A; its fourth is Part 2's face and
+waits for increments 7–9 beneath it.
 
 ### Track A — the time axis
 
@@ -503,10 +560,15 @@ nothing else.
    migration**, unlike this repository's other backfills: those fix columns and
    can be fixed again, and this one writes where `UPDATE` and `DELETE` are
    refused.
-4. **`around()`** — what else was in the log near an instant. The first read
-   that crosses.
-5. **`since()`** — what developed after a node, gated on D4. **If D4 cannot be
-   answered honestly, stopping at four is the correct outcome.**
+4. ~~**`around()`** — what else was in the log near an instant.~~ **Shipped
+   August 21, 2026** (`0baf5a8`), as `clarice/recall.py`. **The first read that
+   crosses**, and adjacency in *time* where `mind/queries.py`'s twenty-one
+   reads are all adjacency in *meaning*. Three decisions the brief left open
+   were taken in the module and are documented there: **only what a person
+   did** (the line is whose act it was, not which core), **chronological, never
+   ranked**, and **a per-side cap that says what it left out**. Its eight
+   review findings — including a suite that could never run — are closed in
+   [`code-review-2026-08-21.md`](code-review-2026-08-21.md).
 
 ### Track B — roles and modes
 
@@ -548,6 +610,22 @@ nothing else.
     storage.
 17. **URL intake**, if D7 says the SSRF surface is worth it.
 18. **Email intake**, or a recorded deferral with a trigger.
+
+### Track E — the reading surfaces (added August 21)
+
+19. **The node page.** Content, revisions, confirmed labels, connections, and
+    the temporal neighbourhood once increment 4 lands. Carries R5's
+    visibility rule and D19's subject anchoring, and is where increments 20
+    and 21 hang their affordances.
+20. **Person made real.** Type confirmation on the concept surface, and the
+    person page built from the concept page plus the facet and temporal
+    joins.
+21. **The correction surface** — `revise` given its door, on the node page.
+    The service, the model and the search integration already exist and are
+    tested.
+22. **Ask-your-memory.** The question box over Part 2's pipeline —
+    extractive, cited, per-mode. Last in the track because it is Part 2's
+    face and wants increments 7–9 beneath it.
 
 ## Open decisions — Vince's, not this document's
 
@@ -610,6 +688,15 @@ nothing else.
 4. **D4. What makes a later event *bear on* an earlier node?** The rule
    deciding whether *what developed afterward* is a recollection or a list of
    everything since.
+
+   **An answer shape registered August 21, standing on what the merger
+   already records:** the one honest development chain exists as fact —
+   `Node` → actionable facet → `Item` → that task's later life events — and
+   confirmed mentions and edges carry dates too. *Development along recorded
+   provenance* is answerable without inventing anything; it is the
+   similarity-based "bears on" that is not. Answered this way, `since()`
+   ships narrow and honest, and increment 5's "stopping at four" outcome is
+   only for the wide version.
 5. **D5. Can the log answer absence?** *"Since then, nothing has been recorded"*
    is honest only if the log can prove it was looking. `MAINTENANCE_RAN` is the
    precedent. **Part 3's sobriety refusal is the same decision** in the place a
@@ -626,6 +713,11 @@ nothing else.
    resurfacing fail differently, and **a missed resurfacing leaves no trace at
    all.** If one of the four has no honest signal, say so rather than grading it
    by proxy.
+
+   **One source registered August 21:** recollection can borrow the search
+   page's `RetrievalMiss` button verbatim — *"there was more to that
+   morning"* — giving one of the four modes an honest miss signal through a
+   mechanism the codebase already trusts.
 9. **D9. Where do attachment bytes live, and what does that do to the published
    promises?** Storage adds a processor or a volume, and `/privacy/`'s named
    list is test-held. **Export and deletion shipped August 16 exporting every
@@ -658,6 +750,52 @@ nothing else.
     without searchable text does not deliver the assembly a dump is for.**
     Transcription remains an ML-policy question for `design-concept.md`, not an
     engineering one.
+14. **D14. Does the semantic index get switched on, and how?** Registered
+    August 21 from
+    [`code-review-2026-08-21.md`](code-review-2026-08-21.md)'s examination:
+    Part 2's pipeline names the semantic index among its candidate generators,
+    but `semantic_echo` has **never run in production** —
+    `sentence-transformers` is dev-only by deliberate, documented refusal
+    (`run_mind_maintenance.py`), so the fifth detector and the HNSW index are
+    dark. The options are a decision, not engineering: accept the dependency,
+    embed via an API (a new processor, touching `/privacy/` the way D9 does),
+    or a smaller model. If this is ML policy rather than deployment, it
+    escalates to `design-concept.md`.
+15. **D15. The dormant review loop: wire it, fold it into the modes, or
+    delete it.** `mark_reviewed` has no production caller, so the spaced
+    resurfacing schedule has never run for a real note and `attention_tier`'s
+    review-candidate tier is reachable only through open hypotheses — evidence
+    in [`code-review-2026-08-21.md`](code-review-2026-08-21.md) Part 3.
+    Part 2's Resurfacing mode is the natural home for the decision; the one
+    wrong option is leaving built machinery dark and undecided, per the seam
+    rule. Registered August 21.
+16. **D16. Whose clock is a morning?** `occurred_at` is UTC and the task core
+    already has per-user time zones — but nothing here names which clock
+    defines a day, a morning, or Part 3's "the following morning"
+    denominator. Decided once, early, or "8 nights this quarter" quietly
+    means UTC nights. The code-level symptom is already on record
+    ([`code-review-2026-08-21.md`](code-review-2026-08-21.md) R4). Registered
+    August 21.
+17. **D17. Does Resurfacing include cyclic cues?** The time axis as drafted
+    is linear — `around()`, `since()`, windows — but human temporal cueing is
+    substantially cyclic: *this time last year*, anniversaries, the same
+    Sunday evening. An on-this-day read over `occurred_at` and `captured_at`
+    is pure derivation from recorded facts — no ML, no floors, no budget —
+    and is exactly Resurfacing's "cued by the person's present," where the
+    present includes the date. Leaving the axis linear leaves the cheapest
+    honest resurfacing unbuilt. Registered August 21.
+18. **D18. Is a neighbourhood clock-bounded or episode-bounded?** The ±6h
+    window is a proxy: episodes in a life are bounded by gaps in activity,
+    which the log itself shows. Expanding from the instant until a lull gives
+    "that morning" its real edges — tight on a busy day, wide on a quiet one
+    — derived at read time, so the facts-not-derivations line holds. Bears on
+    increment 4's API before it hardens. Registered August 21.
+19. **D19. Does recollection anchor on instants or subjects?** `around()`
+    takes one instant, but the context of a *thing* is plural — its capture,
+    its confirmation as a commitment, the completion of the task it became. A
+    subject-centric read unions the neighbourhoods of a subject's life
+    events, labeled by which moment each belongs to; without it every caller
+    re-derives that resolution ad hoc. Registered August 21.
 
 ## What this refuses
 
@@ -688,6 +826,10 @@ nothing else.
   content.
 - **Inventing history.** No event without a recorded timestamp on the source row.
 - **A second event log.** `ActivityEvent` gains a vocabulary, not a sibling.
+- **A generated answer.** Ask-your-memory returns passages that cite
+  themselves, ranked and mode-aware; composing prose over them is an
+  ML-policy question for `design-concept.md`, and nothing in this plan opens
+  it. *Nothing generated anywhere* is a property this product has on purpose.
 
 ## A correction this brief owed `product-stories.md`, since made
 

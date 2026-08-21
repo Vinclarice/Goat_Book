@@ -49,10 +49,17 @@ distinction disappears with it, which is the point of stubs.
 
 ## The rest of `design/` — one record, the stubs, and the mockups
 
-**A record:** [`code-review-2026-08-16.md`](code-review-2026-08-16.md), one
-risk-based review at `305d1e7` with the suite counts actually run. Explicitly
-about the past, so it cannot go stale; its findings are **not** production
-defects until someone promotes them to `commercial-blueprint.md` Part 1.
+**Two records:** [`code-review-2026-08-16.md`](code-review-2026-08-16.md), one
+risk-based review at `305d1e7` with the suite counts actually run; and
+[`code-review-2026-08-21.md`](code-review-2026-08-21.md), the double review of
+Track A increments 1–4 with its repair list still open. Explicitly about the
+past, so they cannot go stale; their findings are **not** production defects
+until someone promotes them to `commercial-blueprint.md` Part 1.
+
+**One advisory:** [`recommendations-2026-08-21.md`](recommendations-2026-08-21.md)
+— five project-wide recommendations with named owners, written the same day.
+Each item is struck when adopted or refused; an advisory that cannot close is
+a nag.
 
 **Twenty-five stubs**, each a few lines pointing at
 [`roadmap-history.md`](roadmap-history.md), which holds the narrative. Not

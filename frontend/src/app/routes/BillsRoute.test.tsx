@@ -105,6 +105,22 @@ describe("BillsRoute", () => {
     ).toBeInTheDocument();
   });
 
+  it("does not say \"that total\" while showing one per currency", async () => {
+    // Found in a browser with two currencies on screen: "it is not in that
+    // total" points at whichever of the two the reader happened to be looking
+    // at, and the honest claim is about both.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        billsData({ totals: { USD: "500.00", GBP: "40.00" }, unpriced: 1 }),
+      ),
+    );
+
+    renderAt();
+
+    expect(await screen.findByText(/not counted above/i)).toBeInTheDocument();
+    expect(screen.queryByText(/that total/i)).not.toBeInTheDocument();
+  });
+
   it("shows an unpriced bill as having no amount, not as free", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(() =>
       jsonResponse(

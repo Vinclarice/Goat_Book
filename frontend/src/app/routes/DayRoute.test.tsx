@@ -710,6 +710,42 @@ describe("DayRoute", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("says why it has nothing to propose, rather than saying nothing", async () => {
+    // Found by looking at the page rather than at a test: with six candidates
+    // and no capacity figure the draft rendered as blank space, which is
+    // indistinguishable from broken to somebody who has never seen it work.
+    // The count is the proof it is not broken; the second sentence is what
+    // unblocks it. The five-day floor is `TYPICAL_DAY_MINIMUM_SAMPLE` and is
+    // deliberately not restated here -- a mirrored constant is a constant that
+    // will disagree later.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        dayData({ draft: { typical: null, proposed: [], available: 4 } }),
+      ),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    expect(await screen.findByText(/4 could have a claim on today/)).
+      toBeInTheDocument();
+    expect(screen.getByText(/plan a few days by hand/i)).toBeInTheDocument();
+  });
+
+  it("stays silent when there is nothing it could have proposed", async () => {
+    // No capacity *and* no candidates is not a gap worth explaining, and a
+    // sentence every morning on an empty day is how a page stops being read.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        dayData({ draft: { typical: null, proposed: [], available: 0 } }),
+      ),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    await screen.findByText(/Nothing pinned yet/);
+    expect(screen.queryByText(/could have a claim/)).not.toBeInTheDocument();
+  });
+
   it("completes a pinned task through the task's own endpoint", async () => {
     // principles.md, *the main surface can do the main thing*: the vision
     // document calls this the main working surface and it could not tick

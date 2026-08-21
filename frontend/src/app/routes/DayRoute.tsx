@@ -1159,6 +1159,23 @@ export function DayRoute() {
             </Button>
           </div>
         )}
+
+        {/* The other half of "no capacity, no proposal": with candidates and
+            no figure, this rendered as blank space, which reads as broken
+            rather than as honest. The count proves it is not; the second
+            sentence says what unblocks it. **The floor is not restated here** —
+            `TYPICAL_DAY_MINIMUM_SAMPLE` owns it, and a mirrored constant is one
+            that disagrees later. Silent when there was nothing to propose
+            either, and on a day already lived, where planning advice is a
+            verdict. */}
+        {data.draft.typical === null &&
+          data.draft.available > 0 &&
+          data.date >= data.today && (
+            <p className="text-sm text-muted-foreground">
+              {data.draft.available} could have a claim on today. Plan a few
+              days by hand first, and this can start proposing a set.
+            </p>
+          )}
         <FocusList
           focus={data.focus}
           today={data.today}

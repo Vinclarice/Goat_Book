@@ -126,8 +126,8 @@ export function BillsRoute() {
             {data.unpriced > 0 && (
               <p className="text-sm text-muted-foreground">
                 {data.unpriced === 1
-                  ? "One bill has no amount, so it is not in that total."
-                  : `${data.unpriced} bills have no amount, so they are not in that total.`}
+                  ? "One bill has no amount, so it is not counted above."
+                  : `${data.unpriced} bills have no amount, so they are not counted above.`}
               </p>
             )}
           </div>

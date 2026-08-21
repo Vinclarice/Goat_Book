@@ -629,10 +629,18 @@ waits for increments 7–9 beneath it.
 
 ### Track E — the reading surfaces (added August 21)
 
-19. **The node page.** Content, revisions, confirmed labels, connections, and
-    the temporal neighbourhood once increment 4 lands. Carries R5's
-    visibility rule and D19's subject anchoring, and is where increments 20
-    and 21 hang their affordances.
+19. ~~**The node page.**~~ **Shipped August 21, 2026** (`ffbf1c8`, with D19
+    in `b15b77c`), at `/mind/notes/<public_id>/` and linked from every search
+    result. Content, confirmed labels, connections, what came of it
+    (`since()`) and what else was going on (`context_of()`) — **the first
+    caller either of Track A's reads has ever had.** Carries R5's visibility
+    rule, which was written and tested before this door existed, and D19's
+    subject anchoring, which it prompted.
+
+    **Read-only, and revisions are not on it yet**: correcting is increment
+    21, and the nine dark services still name this page as their trigger.
+    Hanging five affordances on a page nobody had looked at is how a surface
+    gets designed twice.
 20. **Person made real.** Type confirmation on the concept surface, and the
     person page built from the concept page plus the facet and temporal
     joins.
@@ -812,12 +820,26 @@ waits for increments 7–9 beneath it.
     "that morning" its real edges — tight on a busy day, wide on a quiet one
     — derived at read time, so the facts-not-derivations line holds. Bears on
     increment 4's API before it hardens. Registered August 21.
-19. **D19. Does recollection anchor on instants or subjects?** `around()`
-    takes one instant, but the context of a *thing* is plural — its capture,
-    its confirmation as a commitment, the completion of the task it became. A
-    subject-centric read unions the neighbourhoods of a subject's life
-    events, labeled by which moment each belongs to; without it every caller
-    re-derives that resolution ad hoc. Registered August 21.
+19. ~~**D19. Does recollection anchor on instants or subjects?**~~
+    **Answered and shipped August 21, 2026** (`b15b77c`): **both, and the
+    subject read is built on the instant one.** `around()` stays the
+    primitive; `clarice.recall.context_of` unions it over the subject's own
+    moments — its log events plus those of any task it grew into, which is
+    `since()`'s provenance chain reaching back to include the capture.
+
+    **The resolution the entry warned about turned out to be overlap.** Two
+    moments twenty minutes apart produce nearly identical neighbourhoods, and
+    a caller unioning them naively either shows everything twice or loses
+    which moment each belongs to — both silent. So moments within a window of
+    each other are **one occasion**, an occasion keeps its moments because a
+    merged one has no single timestamp, and an event near two occasions is
+    reported at the earlier one: the first time something turned up beside a
+    subject is the fact worth keeping.
+
+    **The caller it named was the note page**, which had anchored on
+    `captured_at` because that was the one timestamp to hand — so a note
+    turned into a task two months later had a second moment nothing could
+    see.
 
 ## What this refuses
 

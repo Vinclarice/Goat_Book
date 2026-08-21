@@ -856,6 +856,34 @@ class EventType(models.TextChoices):
     OUTCOME_CHOSEN = "outcome_chosen"
 
 
+class EventOrigin(models.TextChoices):
+    """Whether the log was there, or is re-presenting a time it found later.
+
+    `temporal-substrate-plan.md` **D2**, answered August 20, 2026. The task
+    core already held years of history the log never saw, and increment 3
+    reconstructs what carries its own recorded timestamp -- so a reading needs
+    to tell a record from a re-presentation, and `Facet.origin`'s split is the
+    shape this copies.
+
+    **A column rather than a payload key.** Every read over the log will want
+    to label or exclude reconstructions, and a JSONB lookup with no index is
+    not what that should cost. The log is append-only, so the cheap choice
+    would have been the unfixable one.
+
+    Distinct from `InferenceOrigin` and deliberately not reusing it: that one
+    says whether somebody stated a thing or the system inferred it, which is a
+    question about *content*. This is a question about *witness*.
+    """
+
+    #: The log was there. Something called `clarice.life_log.record` at the
+    #: moment the thing happened.
+    RECORDED = "recorded"
+    #: Reconstructed from a timestamp already stored against the thing itself.
+    #: Honest about *when*, and silent about everything the row does not keep
+    #: -- which is why increment 3 reconstructs so much less than happened.
+    RECONSTRUCTED = "reconstructed"
+
+
 class ActivityEvent(models.Model):
     """The one append-only log.
 
@@ -929,6 +957,11 @@ class ActivityEvent(models.Model):
         related_name="events",
     )
     event_type = models.CharField(max_length=32, choices=EventType)
+    # Defaulted, so every row that predates the question is what it says it is:
+    # each one was written by something calling `record` as it happened.
+    origin = models.CharField(
+        max_length=16, choices=EventOrigin, default=EventOrigin.RECORDED
+    )
     schema_version = models.PositiveSmallIntegerField(default=1)
     payload = models.JSONField(default=dict)
     occurred_at = models.DateTimeField()
@@ -938,6 +971,9 @@ class ActivityEvent(models.Model):
         constraints = [
             models.CheckConstraint(
                 condition=Q(event_type__in=EventType.values), name="event_type_valid"
+            ),
+            models.CheckConstraint(
+                condition=Q(origin__in=EventOrigin.values), name="event_origin_valid"
             ),
         ]
         indexes = [

@@ -38,7 +38,7 @@ snapshot is the point.
 
 from django.utils import timezone
 
-from mind.models import ActivityEvent, EventType
+from mind.models import ActivityEvent, EventOrigin, EventType
 
 
 # The vocabulary, re-exported so the task core never imports the knowledge
@@ -55,6 +55,12 @@ FOCUS_RELEASED = EventType.FOCUS_RELEASED
 WEEK_REVIEWED = EventType.WEEK_REVIEWED
 INTENTION_SET = EventType.INTENTION_SET
 OUTCOME_CHOSEN = EventType.OUTCOME_CHOSEN
+
+# Whether the log was there, or is re-presenting a timestamp found later.
+# Only the backfill passes RECONSTRUCTED; everything else is a record by
+# definition, because it is being written as the thing happens.
+RECORDED = EventOrigin.RECORDED
+RECONSTRUCTED = EventOrigin.RECONSTRUCTED
 
 LIFE_EVENTS = frozenset(
     {
@@ -81,6 +87,7 @@ def record(
     occurred_at=None,
     actor=None,
     week_start=None,
+    origin=RECORDED,
 ):
     """Write one fact to the log. Raises rather than failing quietly.
 
@@ -93,6 +100,11 @@ def record(
     ``actor`` defaults to the owner's username. A scheduled pass should name
     itself instead -- a log that credits the person for what a cron did makes
     every later reading about attention wrong.
+
+    ``origin`` is ``RECORDED`` for everything written as it happens, which is
+    everything except the backfill. A reconstruction that looked like a record
+    would make every later reading about *when* untrustworthy, in a table that
+    cannot be corrected.
     """
     if event_type not in LIFE_EVENTS:
         # Fails here rather than at the database check constraint three layers
@@ -113,5 +125,6 @@ def record(
         entry=entry,
         occurred_at=occurred_at if occurred_at is not None else timezone.now(),
         actor=actor if actor is not None else owner.get_username(),
+        origin=origin,
         payload=payload,
     )

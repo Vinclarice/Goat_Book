@@ -275,7 +275,12 @@ last absence and is where bills' advance reminders will arrive. **Bills shipped 
 one-to-one sidecar §4 argued for instead of a primitive, a lead time on `Item`
 rather than on the sidecar because *"remind me before the MOT"* is the same
 sentence, and a month's-bills read that **totals per currency and never across
-them**. **Still open in this release:** the daily brief's awareness half — which
+them**. **The awareness half shipped the same day, and the release is complete** —
+three lists, never one ordering, and absent entirely on a quiet day. What it
+reports is deliberately what the Day page does *not* already show: overdue
+work is on the page, and the fact that a slipped task was *chosen* yesterday
+is not. **Reading 4 is still absent and honestly so** — *where intention and
+attention disagree* waits on the temporal substrate — which
 S5's own entry now names as what a nudge that *reaches* somebody would need,
 and which the digest's advance reminders need too.
 

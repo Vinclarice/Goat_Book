@@ -8,6 +8,7 @@ product records on their behalf when they say the week is reviewed.
 from django.db import transaction
 from django.utils import timezone
 
+from clarice import life_log
 from review import reads
 from review.models import (
     PlanningSession,
@@ -84,6 +85,20 @@ def complete_review(owner, day):
             "updated_at",
         ]
     )
+    # Subject-less, like `MAINTENANCE_RAN`: a week is neither a task nor a
+    # day's entry, so its Monday goes in the payload rather than into a column
+    # invented for one cadence -- which is a column the monthly and quarterly
+    # horizons would not fit.
+    #
+    # The figures stay out. `recorded_planned_total` and `..._met` are on the
+    # row above, and a second copy in a record that can never be corrected is
+    # the one place a wrong number would outlive the fix.
+    life_log.record(
+        owner,
+        life_log.WEEK_REVIEWED,
+        week_start=week_start,
+        occurred_at=review.completed_at,
+    )
     return review
 
 
@@ -134,11 +149,17 @@ def set_intention(owner, day, text):
     facts and only one of them says the practice lapsed -- the same call
     `DailyEntry` and `WeeklyReview` both make.
     """
+    week_start = week_start_for(day)
     intention, _ = WeeklyIntention.objects.get_or_create(
-        owner=owner, week_start=week_start_for(day)
+        owner=owner, week_start=week_start
     )
     intention.text = text or ""
     intention.save(update_fields=["text", "updated_at"])
+    # Recorded even when cleared to empty, for the reason the row itself is
+    # kept: "I set none this week" and "I never opened it" are different facts
+    # and only one of them says the practice lapsed. The text is not carried --
+    # the row holds it, and holds the correction if it is rewritten.
+    life_log.record(owner, life_log.INTENTION_SET, week_start=week_start)
     return intention
 
 
@@ -197,7 +218,7 @@ def choose_outcome(owner, day, *, text, project=None):
     taken = WeeklyOutcome.objects.filter(
         owner=owner, week_start=week_start
     ).count()
-    return WeeklyOutcome.objects.create(
+    outcome = WeeklyOutcome.objects.create(
         owner=owner,
         week_start=week_start,
         text=text,
@@ -205,6 +226,8 @@ def choose_outcome(owner, day, *, text, project=None):
         project_title=project.title if project else "",
         position=taken,
     )
+    life_log.record(owner, life_log.OUTCOME_CHOSEN, week_start=week_start)
+    return outcome
 
 
 @transaction.atomic

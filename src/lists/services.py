@@ -5,6 +5,8 @@ from django.db import IntegrityError, transaction
 from django.db.models import Max
 from django.utils import timezone
 
+from clarice import life_log
+
 from lists.models import (
     CadenceMode,
     ChecklistStep,
@@ -426,6 +428,12 @@ def set_recurrence(item, recurrence, cadence_mode=None):
         raise TaskConflict("Choose a valid recurrence.")
     if cadence_mode is not None and cadence_mode not in CadenceMode.values:
         raise TaskConflict("Choose a valid schedule mode.")
+    # Read before the write, so the log can tell a change from a re-save.
+    # **Only the cadence.** `cadence_mode` is deliberately not a life event in
+    # slice 1: it decides where the *next* occurrence lands rather than whether
+    # there is a series at all, and under-recording is recoverable where a
+    # keystroke log is not.
+    cadence_changed = item.recurrence != recurrence
     item.recurrence = recurrence
     if recurrence == Item.Recurrence.NONE:
         # The link stays. This task really was an occurrence of that series,
@@ -446,6 +454,14 @@ def set_recurrence(item, recurrence, cadence_mode=None):
     _write_through_to_commitment(item, cadence=recurrence)
     if cadence_mode is not None:
         _write_through_to_commitment(item, cadence_mode=cadence_mode)
+    if cadence_changed:
+        life_log.record(
+            item.owner,
+            life_log.COMMITMENT_ENDED
+            if recurrence == Item.Recurrence.NONE
+            else life_log.COMMITMENT_CHANGED,
+            task=item,
+        )
     return item
 
 
@@ -761,6 +777,14 @@ def _checklist_steps_to_carry_forward(item):
 # nullability, none of them in code that mentions the column.
 
 
+# `transaction.atomic` here rather than nowhere, which is what it was.
+# `temporal-substrate-plan.md` increment 2 records a completion to the
+# append-only log, and Vince's answer to how that may fail is **both or
+# neither** -- so the completion and its event have to be one transaction or
+# the log becomes a sample with a silent hole in it. This function already did
+# two saves and a spawn in autocommit, each committing alone; the log is what
+# made that worth fixing rather than merely noting.
+@transaction.atomic
 def complete_item(item):
     item = Item.objects.select_for_update(of=("self",)).select_related("list").get(pk=item.pk)
     if item.status == Item.Status.ARCHIVED:
@@ -789,6 +813,17 @@ def complete_item(item):
             item._spawned = _spawn_next_occurrence(
                 item, carry_forward_steps=carry_forward_steps,
             )
+        # The completion, and not the archive above it. A recurring task is
+        # archived immediately to free its text for the next occurrence --
+        # mechanism, not a decision -- and logging that would put a retirement
+        # in the record of a habit somebody is keeping.
+        #
+        # `now` rather than a fresh clock read: the log has to agree with
+        # `completed_at`, or a reading joining the two sees one task finished
+        # twice a millisecond apart.
+        life_log.record(
+            item.owner, life_log.TASK_COMPLETED, task=item, occurred_at=now
+        )
     return item
 
 
@@ -802,6 +837,10 @@ def reopen_item(item):
         item.completed_at = None
         item.archived_at = None
         item.save()
+        # Without this the log asserts a completion it can never retract, and
+        # any projection folded over it drifts the first time somebody ticks
+        # the wrong row.
+        life_log.record(item.owner, life_log.TASK_REOPENED, task=item)
     return item
 
 
@@ -812,6 +851,12 @@ def archive_item(item):
         item.status = Item.Status.ARCHIVED
         item.archived_at = timezone.now()
         item.save()
+        life_log.record(
+            item.owner,
+            life_log.TASK_ARCHIVED,
+            task=item,
+            occurred_at=item.archived_at,
+        )
     return item
 
 

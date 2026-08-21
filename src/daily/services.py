@@ -6,6 +6,7 @@ from django.db import transaction
 from django.db.models import Max
 from django.utils import timezone
 
+from clarice import life_log
 from daily.models import DailyEntry, DailyFocus
 # The task core calling the knowledge core, which is the direction that already
 # runs: `review/reads.py` reads nodes, and `Facet.task` points the other way.
@@ -120,13 +121,20 @@ def pin_task(owner, day, task, *, from_draft=False):
         if focus.released_at is not None:
             focus.released_at = None
             focus.save(update_fields=["released_at"])
+            # "One task chosen for one day is one decision, however many times
+            # it was turned over" is a rule about the *row*. Turning it over is
+            # exactly what the log is for, so choosing it again after releasing
+            # it is a second event against the one row.
+            life_log.record(
+                owner, life_log.FOCUS_PINNED, task=task, entry=focus.entry
+            )
         return focus
 
     entry = _entry_for_writing(owner, day)
     highest = DailyFocus.objects.filter(entry=entry).aggregate(
         top=Max("position")
     )["top"]
-    return DailyFocus.objects.create(
+    focus = DailyFocus.objects.create(
         owner=owner,
         entry=entry,
         task=task,
@@ -135,6 +143,13 @@ def pin_task(owner, day, task, *, from_draft=False):
         position=0 if highest is None else highest + 1,
         accepted_from_draft=from_draft,
     )
+    # Both subjects. What a pin is *about* is a date; the task is the object of
+    # the decision, and `around()` will want to enter the log from either.
+    #
+    # No flag for whether a draft did it: `accepted_from_draft` above already
+    # carries that, and a second copy in the log is a second opinion.
+    life_log.record(owner, life_log.FOCUS_PINNED, task=task, entry=entry)
+    return focus
 
 
 @transaction.atomic
@@ -172,4 +187,14 @@ def unpin_task(owner, day, task):
         return None
     focus.released_at = timezone.now()
     focus.save(update_fields=["released_at"])
+    # The other half of the pair the review block rests on. `released_at` is
+    # how a pin ends, so a decommitment can be told from a failure; logging the
+    # choice and not the release would put that distinction back out of reach.
+    life_log.record(
+        owner,
+        life_log.FOCUS_RELEASED,
+        task=task,
+        entry=focus.entry,
+        occurred_at=focus.released_at,
+    )
     return focus

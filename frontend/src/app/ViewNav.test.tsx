@@ -61,7 +61,18 @@ describe("ViewNav", () => {
     renderNav();
 
     const nav = screen.getByRole("navigation", { name: "Views" });
-    for (const name of ["Today", "Agenda", "Review", /Archive/]) {
+    // The list is the point, not an example. Calendar and Bills shipped
+    // behind a single link each on the Day page and were not findable at
+    // all; this test is what should have been consulted about whether they
+    // were surfaces, and adding one here is what makes that true.
+    for (const name of [
+      "Today",
+      "Agenda",
+      "Review",
+      "Calendar",
+      "Bills",
+      /Archive/,
+    ]) {
       expect(
         nav.querySelector("a") && screen.getByRole("link", { name }),
       ).toBeInTheDocument();

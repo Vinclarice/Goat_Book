@@ -40,6 +40,15 @@ export function ViewNav() {
         {/* Undated for the same reason as Today: the week you are in, not the
             one this nav last rendered in. */}
         <Entry to="/review">Review</Entry>
+        {/* Undated like Today and Review, and for the same reason: the month
+            you are in, not the one this nav last rendered in.
+
+            Here rather than behind a link on the Day page, which is where
+            they shipped and where nobody found them. A route reachable from
+            exactly one other page is not the same as a surface, and this nav
+            is what says which surfaces exist. */}
+        <Entry to="/calendar">Calendar</Entry>
+        <Entry to="/bills">Bills</Entry>
         <Entry to="/archive">
           Archive
           {data && data.archived_count > 0 && (

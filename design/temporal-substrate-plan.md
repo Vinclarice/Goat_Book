@@ -482,13 +482,18 @@ nothing else.
 
 ### Track A — the time axis
 
-1. **The vocabulary, emitting nothing.** `EventType` gains its life-event
-   values; `ActivityEvent` gains the nullable subject foreign keys `Facet`
-   already carries. Acceptance: the append-only trigger still refuses `UPDATE`
-   and `DELETE` on the widened table, and `purge_account` still clears an owner
-   completely — `mind/tests/test_erasure.py` must keep passing on purpose.
-2. **The task core emits**, at the service functions where something durable is
-   already recorded. No backfill, no reads. D1 is answered in code here.
+1. ~~**The vocabulary, emitting nothing.**~~ **Shipped August 20, 2026**
+   (`0844d47`). Ten life events; `ActivityEvent` gained `task` and `entry`,
+   non-constraining for the reason its `node` reference already gives in full.
+   **No exactly-one-subject constraint, unlike `Facet`** — `confirm_actionable`
+   turns a thought into a commitment and that event honestly has both, while a
+   reviewed week has neither. `test_erasure.py` and `test_invariants.py` pass
+   unchanged and on purpose.
+2. ~~**The task core emits.**~~ **Shipped August 20, 2026** (`ffbd19a`). Ten
+   emit sites through [`clarice/life_log.py`](../src/clarice/life_log.py), and
+   **four deferrals held by tests rather than left as omissions**: an ordinary
+   field edit, writing in the day, opening the planner, and the mechanical
+   archive a recurring completion performs on itself. No backfill, no reads.
 3. **Backfill what carries its own timestamp.** **Nothing invented** — no
    recorded time, no event; reconstructed events are marked so a reading can
    tell a record from a re-presentation.
@@ -540,19 +545,45 @@ nothing else.
 
 ## Open decisions — Vince's, not this document's
 
-1. **D1. Which direction does the seam run?** `lists` importing `mind`, `mind`
-   exposing a thin ingest function, or a module in `clarice/` belonging to
-   neither. **`search-plan.md`'s own D1 predicted this** — it named
-   `clarice/search.py` as where the question would be asked again. This is that
-   second asking, one document later.
+1. ~~**D1. Which direction does the seam run?**~~ **Answered August 20, 2026:
+   a module in `clarice/` belonging to neither core** —
+   [`clarice/life_log.py`](../src/clarice/life_log.py), the placement
+   `clarice/search.py` has and `clarice/scheduled_mail.py` took a week later.
+   **The payoff is an import that does not happen:** `lists`, `daily` and
+   `review` name none of `mind`, `ActivityEvent` or `EventType`, because the
+   vocabulary is re-exported there.
+
+   **The cycle argument does not apply and was not the reason.** Both
+   directions already exist — `lists/projects.py` imports `mind.queries` at
+   module scope, and `mind` imports `lists` in three places. What decided it is
+   that three apps creating rows would restate the emit rules three times, and
+   two definitions of one thing is how they come to disagree.
+
+   **A second answer travelled with it: both or neither.** `record` is called
+   inside the caller's own atomic block and raises rather than swallowing, so a
+   completion whose event could not be written is not a completion. Swallowing
+   would make the log a sample and leave every read over it with a silent hole
+   — the failure `MAINTENANCE_RAN` exists one layer up to prevent. This needed
+   `complete_item` to become atomic, which it was not: two saves and a spawn,
+   each committing alone.
 2. **D2. How far back does backfill reach, and how is a reconstructed event
    marked?** The argument for it is that the task core already holds the
    history; the argument against inventing any is that this codebase left defect
    2's misdated routine records alone rather than guess at a durable record.
    `Facet.origin`'s split is the shape to copy.
-3. **D3. Payload snapshot, or foreign key only?** `ActivityEvent` has both, so
-   there is precedent either way. The answer probably differs per event type,
-   which is itself a decision.
+3. ~~**D3. Payload snapshot, or foreign key only?**~~ **Answered for slice 1
+   only, August 20, 2026: a foreign key where one exists, and the payload for
+   what has none.** The week's Monday is the single payload key slice 1 has,
+   because a week is neither a task nor a day's entry — and a subject column
+   invented for one cadence is a column the monthly and quarterly horizons
+   would not fit.
+
+   **Nothing snapshots a subject it could join to.** `WeeklyOutcome` already
+   keeps its own text and its project's title; `DailyFocus.task_text` already
+   snapshots the one case where a snapshot is the point. A third copy in an
+   append-only row is a copy that can never be corrected, which is the one
+   place a wrong value would outlive its fix. **Still open for later slices**,
+   where an event may genuinely have no row behind it.
 4. **D4. What makes a later event *bear on* an earlier node?** The rule
    deciding whether *what developed afterward* is a recollection or a list of
    everything since.

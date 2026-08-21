@@ -87,6 +87,77 @@ def action_items_for(owner, day):
 
 
 @dataclass(frozen=True)
+class DayBrief:
+    """What changed since yesterday, and nothing that merely *is*.
+
+    The awareness half of the daily brief. Its whole contract is **change, not
+    state**, which is what keeps it from becoming the dashboard the
+    destination refuses -- so every list here is deliberately something the Day
+    page does not already show. Overdue work is on the page; the fact that you
+    *chose* one of them yesterday is not.
+
+    **Three lists, never one ordering.** A slipped commitment against a bill
+    against a quiet project is `SearchRank` over two document sets again: a
+    number that does not exist as relevance, failing silently.
+
+    **Reading 4 is absent**, and honestly so. *Where intention and attention
+    disagree* needs the temporal substrate, and nothing here pretends to it.
+    """
+
+    #: Pins from yesterday that were neither finished nor released.
+    slipped: list
+    #: Tasks inside their own lead time -- until now this existed only in the
+    #: digest, so it was invisible to anybody reading the day itself.
+    coming: list
+    #: Projects nothing has moved for long enough to be worth a question.
+    gone_quiet: list
+
+    @property
+    def has_anything(self):
+        """Whether there is anything to read.
+
+        Short or absent is the correct output: a brief that filled three
+        sections every morning would be skipped by the end of the week.
+        """
+        return bool(self.slipped or self.coming or self.gone_quiet)
+
+
+def brief_for(owner, day, *, today):
+    """What changed since yesterday, for a day being lived.
+
+    Nothing for a day already lived, the refusal `draft_day` and
+    `closing_for` both make: telling somebody what changed on a day they have
+    finished is a verdict rather than a brief.
+    """
+    from lists import agenda as lists_agenda
+    from review import reads as review_reads
+
+    if day != today:
+        return DayBrief(slipped=[], coming=[], gone_quiet=[])
+
+    yesterday = day - timedelta(days=1)
+    # `planned_in_week` for a one-day window, the same borrowing
+    # `typical_day_for` and the closing ritual do -- what counts as finished
+    # and what a released pin means are its calls and only its.
+    slipped = review_reads.planned_in_week(owner, yesterday, yesterday).unfinished
+    return DayBrief(
+        slipped=slipped,
+        coming=lists_agenda.coming_up_for(owner, day),
+        # **Only the ones that are actually quiet.** `projects_to_confirm`
+        # returns every open project, quietest first, because the weekly
+        # check-in is a review of all of them. A brief that listed every
+        # project every morning would be the dashboard this refuses, so the
+        # ones still moving are dropped -- `looks_active` is the read's own
+        # judgement of that and is not re-decided here.
+        gone_quiet=[
+            row
+            for row in review_reads.projects_to_confirm(owner)
+            if not row.looks_active
+        ],
+    )
+
+
+@dataclass(frozen=True)
 class CalendarDay:
     """One square of the month.
 

@@ -118,6 +118,8 @@ class DayOut(Schema):
     #: `typical` is None and its `proposed` empty when there is no evidence
     #: to justify a number.
     draft: "DayDraftOut"
+    #: What changed since yesterday. Empty on a quiet day.
+    brief: "DayBriefOut"
     #: The evening's ask, or null. S5: the record and the morning's choice were
     #: already good, and nothing ever asked for the first.
     closing: "DayClosingOut | None"
@@ -200,6 +202,31 @@ class CalendarOut(Schema):
     next_month: date
     today: date
     days: list[CalendarDayOut]
+
+
+class BriefTaskOut(Schema):
+    id: int
+    text: str
+    due_date: str | None
+
+
+class BriefProjectOut(Schema):
+    id: int
+    title: str
+    quiet_for_days: int
+
+
+class DayBriefOut(Schema):
+    """What changed since yesterday. Three lists, never one ordering.
+
+    Everything here is deliberately something the Day page does *not* already
+    show: overdue work is on the page, and the fact that you chose one of them
+    yesterday is not. Empty on a quiet day, and empty is what it says.
+    """
+
+    slipped: list[BriefTaskOut]
+    coming: list[BriefTaskOut]
+    gone_quiet: list[BriefProjectOut]
 
 
 class DayClosingOut(Schema):
@@ -340,6 +367,44 @@ def _focus_out(focus):
     }
 
 
+def _brief_out(owner, day, today):
+    brief = reads.brief_for(owner, day, today=today)
+
+    def task_of(focus):
+        # A slipped pin keeps its snapshot text, because the task it names may
+        # have been deleted since -- `task_text` is exactly what that snapshot
+        # is for.
+        return {
+            "id": focus.task_id or 0,
+            "text": focus.task.text if focus.task else focus.task_text,
+            "due_date": (
+                focus.task.due_date.isoformat()
+                if focus.task and focus.task.due_date
+                else None
+            ),
+        }
+
+    return {
+        "slipped": [task_of(focus) for focus in brief.slipped],
+        "coming": [
+            {
+                "id": item.id,
+                "text": item.text,
+                "due_date": item.due_date.isoformat() if item.due_date else None,
+            }
+            for item in brief.coming
+        ],
+        "gone_quiet": [
+            {
+                "id": row.project.id,
+                "title": row.project.title,
+                "quiet_for_days": row.quiet_for_days,
+            }
+            for row in brief.gone_quiet
+        ],
+    }
+
+
 def _closing_out(owner, day, today):
     closing = reads.closing_for(
         owner, day, today=today, hour=_hour_for_request()
@@ -418,6 +483,7 @@ def _day_out(owner, day):
         "new_area_url": reverse("new_list"),
         "focus": [_focus_out(focus) for focus in reads.focus_for(owner, day)],
         "draft": _draft_out(owner, day, today),
+        "brief": _brief_out(owner, day, today),
         "closing": _closing_out(owner, day, today),
         "week_intention": _week_intention_for(owner, day),
         # Asked of the day being shown, so a past day reports what was typical

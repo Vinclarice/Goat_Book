@@ -1900,6 +1900,24 @@ export interface components {
             /** Due Date */
             due_date: string | null;
         };
+        /** BriefProjectOut */
+        BriefProjectOut: {
+            /** Id */
+            id: number;
+            /** Title */
+            title: string;
+            /** Quiet For Days */
+            quiet_for_days: number;
+        };
+        /** BriefTaskOut */
+        BriefTaskOut: {
+            /** Id */
+            id: number;
+            /** Text */
+            text: string;
+            /** Due Date */
+            due_date: string | null;
+        };
         /**
          * DayActionItemOut
          * @description A task, plus the one thing the day knows about it that the agenda
@@ -1980,6 +1998,22 @@ export interface components {
             color_key: "sky" | "sage" | "amber" | "lilac" | "coral" | "azure" | "blush" | "straw";
         };
         /**
+         * DayBriefOut
+         * @description What changed since yesterday. Three lists, never one ordering.
+         *
+         *     Everything here is deliberately something the Day page does *not* already
+         *     show: overdue work is on the page, and the fact that you chose one of them
+         *     yesterday is not. Empty on a quiet day, and empty is what it says.
+         */
+        DayBriefOut: {
+            /** Slipped */
+            slipped: components["schemas"]["BriefTaskOut"][];
+            /** Coming */
+            coming: components["schemas"]["BriefTaskOut"][];
+            /** Gone Quiet */
+            gone_quiet: components["schemas"]["BriefProjectOut"][];
+        };
+        /**
          * DayClosingOut
          * @description What the day held, at the point of being asked to write it down.
          *
@@ -2041,6 +2075,7 @@ export interface components {
             /** Focus */
             focus: components["schemas"]["FocusOut"][];
             draft: components["schemas"]["DayDraftOut"];
+            brief: components["schemas"]["DayBriefOut"];
             closing: components["schemas"]["DayClosingOut"] | null;
             /** Week Intention */
             week_intention: string;

@@ -3929,6 +3929,59 @@
         "title": "TaskResultOut",
         "type": "object"
       },
+      "BriefProjectOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "quiet_for_days": {
+            "title": "Quiet For Days",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "quiet_for_days"
+        ],
+        "title": "BriefProjectOut",
+        "type": "object"
+      },
+      "BriefTaskOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "due_date"
+        ],
+        "title": "BriefTaskOut",
+        "type": "object"
+      },
       "DayActionItemOut": {
         "description": "A task, plus the one thing the day knows about it that the agenda\ndoes not: how long it has been waiting.\n\nA subclass rather than a field added to TaskOut, so the agenda's\ncontract is untouched by a number only this page renders. Age needs a\n\"today\" to be measured against, and TaskOut is serialised in places that\ndo not have one.",
         "properties": {
@@ -4139,6 +4192,39 @@
         "title": "DayAreaSummaryOut",
         "type": "object"
       },
+      "DayBriefOut": {
+        "description": "What changed since yesterday. Three lists, never one ordering.\n\nEverything here is deliberately something the Day page does *not* already\nshow: overdue work is on the page, and the fact that you chose one of them\nyesterday is not. Empty on a quiet day, and empty is what it says.",
+        "properties": {
+          "slipped": {
+            "items": {
+              "$ref": "#/components/schemas/BriefTaskOut"
+            },
+            "title": "Slipped",
+            "type": "array"
+          },
+          "coming": {
+            "items": {
+              "$ref": "#/components/schemas/BriefTaskOut"
+            },
+            "title": "Coming",
+            "type": "array"
+          },
+          "gone_quiet": {
+            "items": {
+              "$ref": "#/components/schemas/BriefProjectOut"
+            },
+            "title": "Gone Quiet",
+            "type": "array"
+          }
+        },
+        "required": [
+          "slipped",
+          "coming",
+          "gone_quiet"
+        ],
+        "title": "DayBriefOut",
+        "type": "object"
+      },
       "DayClosingOut": {
         "description": "What the day held, at the point of being asked to write it down.\n\nPresent only in the evening, only on today, and only until the record\nexists -- see `reads.closing_for`. Null the rest of the time, which is why\nthe client has no hour of its own to reason about.",
         "properties": {
@@ -4270,6 +4356,9 @@
           "draft": {
             "$ref": "#/components/schemas/DayDraftOut"
           },
+          "brief": {
+            "$ref": "#/components/schemas/DayBriefOut"
+          },
           "closing": {
             "anyOf": [
               {
@@ -4336,6 +4425,7 @@
           "new_area_url",
           "focus",
           "draft",
+          "brief",
           "closing",
           "week_intention",
           "typical_day",

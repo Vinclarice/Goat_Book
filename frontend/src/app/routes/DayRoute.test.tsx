@@ -43,6 +43,7 @@ function dayData(overrides: Record<string, unknown> = {}) {
     focus: [],
     draft: { typical: null, proposed: [], available: 0 },
     closing: null,
+    brief: { slipped: [], coming: [], gone_quiet: [] },
     compass_purpose: "",
     compass_question: "",
     week_intention: "",
@@ -564,6 +565,45 @@ describe("DayRoute", () => {
     expect(
       await screen.findByRole("link", { name: "Another day" }),
     ).toHaveAttribute("href", "/calendar/2026-08-03");
+  });
+
+  it("says what slipped, what is coming and what has gone quiet", async () => {
+    // The awareness half. Everything in it is deliberately something this
+    // page does not already show: overdue work is here, the fact that he
+    // *chose* one of them yesterday is not.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        dayData({
+          brief: {
+            slipped: [{ id: 1, text: "Call the plumber", due_date: null }],
+            coming: [{ id: 2, text: "Property tax", due_date: "2026-08-08" }],
+            gone_quiet: [{ id: 3, title: "The book", quiet_for_days: 40 }],
+          },
+        }),
+      ),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    expect(await screen.findByText("Call the plumber")).toBeInTheDocument();
+    expect(screen.getByText("Property tax")).toBeInTheDocument();
+    expect(screen.getByText(/The book/)).toBeInTheDocument();
+  });
+
+  it("says nothing at all on a quiet day", async () => {
+    // Not an empty dashboard. A brief that filled three sections every
+    // morning would be skipped by the end of the week, which is why short or
+    // absent is the correct output rather than a failure.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        dayData({ brief: { slipped: [], coming: [], gone_quiet: [] } }),
+      ),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    await screen.findByLabelText("Happenings");
+    expect(screen.queryByText("Since yesterday")).not.toBeInTheDocument();
   });
 
   it("asks him to close the day, with what the day held", async () => {

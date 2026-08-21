@@ -1071,6 +1071,73 @@ export function DayRoute() {
         <>
       <section className="space-y-2">
         <h2 className="text-sm font-bold">Focus</h2>
+        {/* The awareness half of the brief — *what changed*, never what
+            merely is. Everything here is deliberately something this page
+            does not already show: overdue work is below, and the fact that he
+            *chose* one of them yesterday is not.
+
+            Three lists and never one ordering. A slipped commitment against a
+            bill against a quiet project is `SearchRank` over two document
+            sets again — a number that does not exist as relevance, failing
+            silently.
+
+            Absent entirely on a quiet day. A brief that filled three sections
+            every morning would be skipped by the end of the week, so short is
+            the correct output rather than a failure. */}
+        {(data.brief.slipped.length > 0 ||
+          data.brief.coming.length > 0 ||
+          data.brief.gone_quiet.length > 0) && (
+          <section className="space-y-2 rounded-lg border border-border px-3 py-2">
+            <h2 className="text-sm font-bold">Since yesterday</h2>
+            {data.brief.slipped.length > 0 && (
+              <div>
+                <p className="text-sm text-muted-foreground">
+                  Chosen yesterday, still open:
+                </p>
+                <ul className="text-sm">
+                  {data.brief.slipped.map((task) => (
+                    <li key={`slipped-${task.id}-${task.text}`}>{task.text}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {data.brief.coming.length > 0 && (
+              <div>
+                <p className="text-sm text-muted-foreground">Coming up:</p>
+                <ul className="text-sm">
+                  {data.brief.coming.map((task) => (
+                    <li key={`coming-${task.id}`}>
+                      {task.text}
+                      {task.due_date && (
+                        <span className="ml-2 text-muted-foreground">
+                          {dueLabel(task.due_date, data.today)}
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {data.brief.gone_quiet.length > 0 && (
+              <div>
+                <p className="text-sm text-muted-foreground">
+                  Nothing has moved here:
+                </p>
+                <ul className="text-sm">
+                  {data.brief.gone_quiet.map((project) => (
+                    <li key={`quiet-${project.id}`}>
+                      {project.title}
+                      <span className="ml-2 text-muted-foreground">
+                        {project.quiet_for_days} days
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </section>
+        )}
+
         {/* Absent when there is no capacity to justify a number: null is not
             zero, and "no evidence yet" and "you have room" call for opposite
             responses. Says what it left out, because bounding the proposal is

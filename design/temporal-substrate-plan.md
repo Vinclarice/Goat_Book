@@ -1,9 +1,10 @@
 # Temporal substrate and contextual retrieval — focused spec
 
 Vince · focused spec · written August 20, 2026 · **widened twice the same day** ·
-**claimed by `roadmap.md` August 20** · Track A increments 1–3 shipped
-August 20; increment 4 is written and in repair
-([`code-review-2026-08-21.md`](code-review-2026-08-21.md)) · **given its
+**claimed by `roadmap.md` August 20** · **Track A is complete** — increments
+1–3 shipped August 20, increments 4 and 5 on August 21, and the fourteen
+findings against them are closed in
+[`code-review-2026-08-21.md`](code-review-2026-08-21.md) · **given its
 reading surfaces (Part 2, Track E) August 21**
 
 ## What this is
@@ -570,6 +571,21 @@ waits for increments 7–9 beneath it.
    review findings — including a suite that could never run — are closed in
    [`code-review-2026-08-21.md`](code-review-2026-08-21.md).
 
+5. ~~**`since()`** — what developed out of a note afterwards.~~ **Shipped
+   August 21, 2026** (`c2d5b72`), completing Track A. **The narrow answer to
+   D4, not the wide one**: it follows the development chain the merger already
+   records in columns — `Node` → confirmed actionable `Facet` → `Item` → that
+   task's later life events — and stops. **Never written into this list
+   before**, which is why the numbering ran 4 then 6; the increment existed
+   only in D4 and Part 2.
+
+   **The refusal is what the tests assert.** A note written three days later
+   about the same subject, with every word in common, is not a development, and
+   saying otherwise would be a similarity score wearing a causal word. Edges
+   reach forward and never backward, for the same reason. Uniform with
+   `around()`: one `Neighbour`, one `PERSON_EVENTS` partition, one
+   chronological-never-ranked rule.
+
 ### Track B — roles and modes
 
 6. **Multi-valued memory-role facets.** Proposed after capture, corrigible,
@@ -689,14 +705,20 @@ waits for increments 7–9 beneath it.
    deciding whether *what developed afterward* is a recollection or a list of
    everything since.
 
-   **An answer shape registered August 21, standing on what the merger
-   already records:** the one honest development chain exists as fact —
+   ~~**An answer shape registered August 21**~~ — **answered and shipped
+   August 21, 2026** (`c2d5b72`). The shape below is what was built, unchanged: the one honest development chain exists as fact —
    `Node` → actionable facet → `Item` → that task's later life events — and
    confirmed mentions and edges carry dates too. *Development along recorded
    provenance* is answerable without inventing anything; it is the
    similarity-based "bears on" that is not. Answered this way, `since()`
    ships narrow and honest, and increment 5's "stopping at four" outcome is
    only for the wide version.
+
+   **What shipped adds one refusal the shape did not name**: edges reach
+   forward and never backward. An edge drawn *toward* a note is the other
+   note's development, and following it would quietly make *"what developed
+   from X"* and *"what has since mentioned X"* the same question — the slide
+   this decision exists to stop, one size smaller.
 5. **D5. Can the log answer absence?** *"Since then, nothing has been recorded"*
    is honest only if the log can prove it was looking. `MAINTENANCE_RAN` is the
    precedent. **Part 3's sobriety refusal is the same decision** in the place a

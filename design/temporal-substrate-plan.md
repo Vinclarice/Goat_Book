@@ -590,13 +590,26 @@ waits for increments 7–9 beneath it.
 
 6. **Multi-valued memory-role facets.** Proposed after capture, corrigible,
    never asked for. D6 settles how the kinds are shaped.
-7. **Modes named in code**, each surface declaring which mode it is in and what
-   its present context is. Lookup loses the dormancy and length floors it should
-   never have had; Discovery and Resurfacing keep them.
-8. **Candidate generators behind one contract.** Lexical, semantic, concept and
-   temporal indexes stop being final judges; eligibility and ranking move above
-   them.
-9. **Every result explains why it appeared.**
+7. ~~**Modes named in code.**~~ **Shipped August 21, 2026** (`061f134`), with
+   8 and 9 — they turned out to be one thing. `mind/retrieval.py`: six modes,
+   and a `Moment` carrying the mode *and* the present context, because a mode
+   alone does not answer *what moment is this?*
+8. ~~**Candidate generators behind one contract.**~~ **Shipped** in the same
+   commit. The lexical and concept indexes are unchanged and no longer decide;
+   eligibility and ranking sit above them. **Lookup admits everything and
+   Discovery keeps the floors**, which is the concrete payoff: *"Mum's
+   birthday, 14 March"* is 24 characters against a `MIN_LENGTH` of 120.
+9. ~~**Every result explains why it appeared.**~~ **Shipped**, and wired to
+   `/mind/search/` in the same slice — a retrieval architecture with no caller
+   would have been the largest dark seam in the project.
+
+   **Three things were deliberately not done.** Four modes — Recollection,
+   Planning, Reflection, Resurfacing — have no eligibility rules and **raise**
+   rather than falling back to Lookup's, because a fallback is four modes
+   quietly sharing one contract again. The semantic generator is **declared as
+   not running** rather than silently absent, since `sentence-transformers` is
+   dev-only (D14). And Lookup's ranking is unchanged, so a regression here
+   would be attributable.
 10. **Per-mode measurement**, replacing one blended number. D8.
 
 ### Track C — observations
@@ -669,14 +682,18 @@ waits for increments 7–9 beneath it.
     extractive, cited, per-mode. Last in the track because it is Part 2's
     face and wants increments 7–9 beneath it.
 
-    **Not started August 21, and the gate is the reason** — asked for and
-    declined the same day, recorded so nobody re-argues it. Increments 7, 8
-    and 9 are all open: no surface declares its mode, the indexes are still
-    final judges rather than candidate generators, and no result can say why it
-    appeared. Built on that, the question box is `search_ranked` with a prompt
-    in front of it — one blended ordering, unable to say where an answer came
-    from, and **the failure would be silent**, which is what makes it worth
-    refusing rather than shipping thin.
+    **Declined August 21, then partly unblocked the same day.** The refusal is
+    kept because the reasoning still holds for what remains: built on nothing,
+    the question box is `search_ranked` with a prompt in front of it — one
+    blended ordering, unable to say where an answer came from, and **the
+    failure would be silent**.
+
+    **7, 8 and 9 shipped that evening** (`061f134`), so the pipeline beneath it
+    now exists for two modes. **What it still wants is the other four**:
+    Recollection is the one this increment actually needs, and it has no
+    eligibility rules — `retrieval.retrieve` raises on it by design. A question
+    box answering in Lookup mode would be the thin version wearing the
+    architecture's clothes.
 
 ## Open decisions — Vince's, not this document's
 

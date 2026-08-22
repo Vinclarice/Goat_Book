@@ -424,11 +424,74 @@ after**: site 200, the running image tagged with the commit, all five
 migrations applied with none pending, and every new route answering.
 
 **What it leaves open, and none of it is a shortfall.** Six decisions, of which
-**D16 is the one with a clock running** — every observation Track C records is
-stamped UTC, and if a morning should be the person's morning then the longer
-that runs the more data is stamped against a decision nobody made.
+~~**D16 is the one with a clock running**~~ — **answered August 22, see below.**
 `product-stories.md` also needs re-scoring against what now exists; Unify's own
 acceptance was *"S13 and S14 reach works"* and that was never checked.
+
+### D16 — whose clock is a morning, and the answer that found a bug
+
+**Answered August 22, 2026: the person's clock**, which required no new policy.
+`per-user-time-zones-plan.md` decided this for the task core on August 1 and
+`User.time_zone` has been the single place it is stored ever since. There was
+never a second candidate; the knowledge core had simply never inherited the
+first. The rule is now [`clarice/clocks.py`](../src/clarice/clocks.py).
+
+**The part that needed deciding was not *which zone* but *whose*.**
+`timezone.localdate()` reads the zone the middleware activated for **this
+request** — the viewer's. That is right for *today*, where the viewer is the
+subject, and wrong for the question the knowledge core keeps asking: *which day
+was this note on?* That is a property of the record. `localdate` answers it
+three different ways — the reader's zone in a request, `settings.TIME_ZONE` in a
+management command, the owner's only by coincidence — so `day_for(owner,
+instant)` takes the owner and the instant and nothing else.
+
+**The entry's own symptom was wrong, and finding that out is what found the
+real one.** Both this file and `roadmap.md` said *every observation Track C
+records is stamped UTC*. It is not: Track C keys entirely on `DailyEntry.date`,
+which `daily/api_v1.py::_today_for_request` has set from `timezone.localdate()`
+since the day it was written. **The nights were always the person's nights.**
+Nothing was accumulating against an undecided clock there, and the urgency the
+decision was carrying was misplaced.
+
+**The clock was running in S14 instead, and it had already cost something.**
+`recall.what_surrounded` — *the day, the project and the week around one note*,
+the whole of S14 — asked for the day with `node.captured_at.date()`, the **UTC**
+date. For anyone west of UTC an ordinary evening note is stamped the next day,
+so it asked for **tomorrow's** `DailyEntry`, found nothing, and rendered an
+empty section. **No exception and no wrong number: a feature that quietly did
+less than it claimed**, through a release and a verdict of *works* scored the
+day before.
+
+**The week join was the worse half**, because it does not come back empty. Weeks
+start Monday, so a Sunday evening in New York is Monday in UTC — the note joined
+to the **following** week and displayed that week's intention as the one it was
+written under. A confidently wrong answer where the day gave a blank.
+
+**Why the tests did not catch it, which is the transferable part.** Every test
+of `what_surrounded` captured its notes at UTC midday, where the two clocks
+agree. A fixture that picks a convenient hour is a fixture that has quietly
+chosen the passing case — the same shape as `test_executable_file_modes`
+reading the index rather than the filesystem, because both machines this is
+built on lie about the mode.
+
+**So the guard is a test rather than a note.**
+`clarice/tests/test_a_day_names_its_clock.py` walks the AST of both cores and
+fails on any `.date()` taken from an instant that did not name a zone first,
+with an allowlist that itself fails if an entry stops being needed.
+`accounts/middleware.py` already carries the sentence this is built on — *a note
+telling the next person to remember something is not a mechanism* — written
+after six token endpoints each forgot to activate the owner's zone despite a
+docstring asking them to. This is the same mistake one core over.
+
+**What else it swept up.** Four other sites took the UTC date: Track C's
+ninety-day reflection window (a denominator this module exists to state
+honestly, off by a boundary day), the decisions-due read from the day before,
+the digest-staleness cutoff in `health.py`, and `scheduled_mail.py`'s own
+three-line zone resolution — which was the *original* per-user day boundary,
+reinvented nowhere else and now the extracted `clocks.zone_for`. The health
+check is the one deliberate exception: its skew is **absorbed** with an extra
+day of slack rather than removed, because it is an alerting path where a false
+alarm is the expensive failure. It says so in place and in the allowlist.
 
 ## The week you can plan, and the material you can find — August 19–20, 2026, `lapwing`
 

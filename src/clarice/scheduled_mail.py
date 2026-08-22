@@ -29,11 +29,8 @@ last is a scheduler with two definitions.
 """
 
 import logging
-from zoneinfo import ZoneInfo
 
-from django.conf import settings
-
-from accounts.models import resolve_time_zone
+from clarice import clocks
 
 
 logger = logging.getLogger(__name__)
@@ -76,9 +73,13 @@ def deliver_once_a_day(
     failed = []
     for user in recipients.order_by("username"):
         try:
-            zone = resolve_time_zone(user.time_zone) or ZoneInfo(settings.TIME_ZONE)
-            local_now = now.astimezone(zone)
-            today = local_now.date()
+            # **The clock, from the one place that owns it** -- D16. These
+            # three lines were the original per-user day boundary and every
+            # later one was written without them; `clarice.clocks` is now that
+            # code, extracted rather than reinvented, and the knowledge core
+            # shares it instead of taking the UTC date.
+            local_now = now.astimezone(clocks.zone_for(user))
+            today = clocks.day_for(user, now)
 
             if getattr(user, stamp_field) == today:
                 continue

@@ -840,6 +840,20 @@ task, is inside no project — nothing records that it was, and guessing from
 timing is the derivation this refuses. If that case matters, it needs a stored
 link and this verdict should be re-examined.
 
+**This was scored *works* while broken, and the verdict survives only because
+the bug was found the next day.** The read took the **UTC** date off
+`captured_at`, so for anyone west of UTC an evening note asked for *tomorrow's*
+`DailyEntry` and rendered an empty day — and a Sunday evening joined to the
+**following** week's intention and displayed it as the one the note was written
+under. Fixed August 22 answering D16; the reasoning is in
+[`roadmap-history.md`](roadmap-history.md).
+
+**Why the score did not catch it**, which is this file's own business: every
+test of `what_surrounded` captured its notes at UTC midday, where the two clocks
+agree. A citation resolving to code that runs is not the same as a citation
+resolving to code that is right, and the verdicts here can only ever be as good
+as the case the tests happened to choose.
+
 ### S15. Reading produces work
 
 > Sam reads an article. Two ideas and one task come out of it, and six months

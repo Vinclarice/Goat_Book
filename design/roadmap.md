@@ -113,11 +113,15 @@ re-add it here.
   The narrative, the thirteen decisions it answered and the seven things it
   taught are in [`roadmap-history.md`](roadmap-history.md); the spec is a stub.
 
-  **What it leaves, and neither is a shortfall.** **Six decisions stay open**
-  in the stub because they are about behaviour that is now live rather than
-  about work — **D16 is the one with a clock running**, since every observation
-  Track C records is stamped UTC and the longer that runs the more data is
-  stamped against a decision nobody made. And ~~**`product-stories.md` has not
+  **What it leaves, and neither is a shortfall.** ~~**Six decisions stay
+  open**~~ **five**, in the stub, because they are about behaviour that is now
+  live rather than about work. ~~**D16 is the one with a clock running**, since
+  every observation Track C records is stamped UTC~~ — **answered August 22:
+  the clock is the person's**, and the stated symptom was wrong. Track C's days
+  were always local; the UTC date was in S14's note-to-day join, where it had
+  been silently returning an empty section for every evening note west of UTC.
+  Reasoning and the defect in
+  [`roadmap-history.md`](roadmap-history.md). And ~~**`product-stories.md` has not
   been re-scored**~~ — **re-scored August 22, and the substrate moved nothing.**
   Every remaining require was a specific noun the substrate sits beneath rather
   than satisfies, and the re-score is what turned up that *Unify* had claimed

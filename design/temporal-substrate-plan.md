@@ -16,17 +16,17 @@ thousand lines do not.
 **The decisions below survive the stub**, and that is the one departure from
 the usual shape. They are not open *work*; they are open questions about
 behaviour that is now live, and a four-line stub would have quietly dropped
-them. **D16 is the one with a clock running.**
+them. ~~**D16 is the one with a clock running.**~~ **D16 answered August 22,
+2026** — the clock is the person's, and answering it turned up a live defect in
+S14. Five remain.
 
 ## The decisions still open
 
-**Six, and they survive the stub deliberately.** They are not open *work* —
+**Five, and they survive the stub deliberately.** They are not open *work* —
 every increment shipped — but open questions about behaviour that is now live,
-and a four-line stub would have quietly dropped them. The thirteen that were
+and a four-line stub would have quietly dropped them. The fourteen that were
 answered are in [`roadmap-history.md`](roadmap-history.md) with their
 reasoning.
-
-**D16 is the one with a clock running.**
 
 5. **D5. Can the log answer absence?** *"Since then, nothing has been recorded"*
    is honest only if the log can prove it was looking. `MAINTENANCE_RAN` is the
@@ -54,13 +54,20 @@ reasoning.
     wrong option is leaving built machinery dark and undecided, per the seam
     rule. Registered August 21.
 
-16. **D16. Whose clock is a morning?** `occurred_at` is UTC and the task core
-    already has per-user time zones — but nothing here names which clock
-    defines a day, a morning, or Part 3's "the following morning"
-    denominator. Decided once, early, or "8 nights this quarter" quietly
-    means UTC nights. The code-level symptom is already on record
-    ([`code-review-2026-08-21.md`](code-review-2026-08-21.md) R4). Registered
-    August 21.
+16. ~~**D16. Whose clock is a morning?**~~ **Answered August 22, 2026: the
+    person's**, which was already decided —
+    [`per-user-time-zones-plan.md`](per-user-time-zones-plan.md) settled it on
+    August 1 and `User.time_zone` has been the only place it is stored since.
+    The knowledge core inherited it rather than being given a second one. The
+    rule is [`clarice/clocks.py`](../src/clarice/clocks.py) and it is
+    deliberately **not** `timezone.localdate()`; the reasoning and the S14
+    defect it uncovered are in
+    [`roadmap-history.md`](roadmap-history.md).
+
+    **This entry's stated symptom was wrong**, which is worth leaving visible:
+    it said *every observation Track C records is stamped UTC*, and Track C's
+    days were always the person's, because they key on `DailyEntry.date`. The
+    clock was running two modules over.
 
 17. **D17. Does Resurfacing include cyclic cues?** The time axis as drafted
     is linear — `around()`, `since()`, windows — but human temporal cueing is

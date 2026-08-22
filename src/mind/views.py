@@ -33,7 +33,7 @@ from django.templatetags.static import static
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
-from clarice import orientation, recall
+from clarice import clocks, orientation, recall
 from clarice.search import to_query
 from daily import reads as daily_reads
 from lists import search as lists_search
@@ -290,12 +290,19 @@ def review(request):
     # The reading carries its own denominator and its own absence sentence, and
     # the template prints all three together: a number that can be separated
     # from its denominator is a number somebody reads as *of all mornings*.
+    #
+    # **The window is the owner's ninety days, not UTC's** -- D16. Track C's
+    # nights were always the person's, because everything downstream keys on
+    # `DailyEntry.date`; it was the two ends of the window that were UTC, which
+    # would move a boundary day into or out of a denominator this module exists
+    # to state honestly.
+    today = clocks.today_for(request.user)
     comparison = reflection.after_a_recorded_night(
         request.user,
         "alcohol.consumed",
         "energy.low",
-        since=(now - timedelta(days=90)).date(),
-        until=now.date(),
+        since=today - timedelta(days=90),
+        until=today,
     )
 
     proposals = []
@@ -874,8 +881,12 @@ def decisions(request):
         request,
         "mind/decisions.html",
         {
+            # The owner's today -- D16. A decision due on the 5th became due
+            # some hours early or late depending on which side of UTC they
+            # live on, which is a small wrongness in the one read whose whole
+            # job is *has this come back yet*.
             "due": services.decisions_to_revisit(
-                request.user, on=timezone.now().date()
+                request.user, on=clocks.today_for(request.user)
             ),
             "all": Decision.objects.filter(owner=request.user),
         },

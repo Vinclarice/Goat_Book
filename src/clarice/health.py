@@ -106,7 +106,18 @@ def _overdue(*, now) -> bool:
     # check reports backwards on a quiet site.
     from accounts.models import User
 
-    cutoff = (now - STALE_AFTER).date()
+    # **A day of slack, and it is D16 rather than superstition.**
+    # `last_digest_date` is stamped on the *owner's* clock by `scheduled_mail`,
+    # and this cutoff is derived from UTC, so the two can disagree by up to a
+    # day in either direction. Fixing that properly would mean a per-row zone
+    # conversion for a check whose whole output is one boolean.
+    #
+    # So the skew is absorbed rather than removed, and deliberately in the
+    # conservative direction: this is an **alerting** path, where a false alarm
+    # is the expensive failure and alarming a day later is not. That is the
+    # opposite trade from `recall.what_surrounded`, where the same skew was a
+    # wrong answer shown to a person and had to be corrected exactly.
+    cutoff = (now - STALE_AFTER - timedelta(days=1)).date()
     if User.objects.filter(
         is_active=True, daily_digest=True, last_digest_date__lt=cutoff
     ).exists():

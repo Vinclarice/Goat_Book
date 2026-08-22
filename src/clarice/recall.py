@@ -543,8 +543,9 @@ def what_surrounded(owner, node):
     Part 1 of the same brief says *facts, not derivations: nothing may write a
     row a read could have produced*, and all three are derivable:
 
-    - the **day** is `captured_at`'s date, so a stored link would be a second
-      answer to a question the timestamp already settles, free to disagree;
+    - the **day** is `captured_at`'s date **on the owner's clock**, so a stored
+      link would be a second answer to a question the timestamp already
+      settles, free to disagree;
     - the **project** comes along `Node` → confirmed actionable `Facet` →
       `Item` → `List` → `Project`, which the merger already records in columns;
     - the **week's commitments** are that week's intention and outcomes.
@@ -557,15 +558,27 @@ def what_surrounded(owner, node):
     module's: a note written *during* a project and about it, which never
     became a task, is inside no project here — because nothing records that it
     was, and guessing from timing is the derivation this refuses.
+
+    **`captured_at.date()` was the UTC date and this read was broken by it —
+    D16, found August 22.** For anybody west of UTC an ordinary evening note is
+    stamped the next day, so this asked for tomorrow's entry, which usually does
+    not exist: the day came back **empty rather than wrong**, which is why
+    nothing caught it. The week is the worse half, because it does come back
+    wrong — a Sunday evening in New York is Monday in UTC, and Monday starts the
+    next week, so the note displayed **next week's intention** as the intention
+    it was written under. Both are now `clocks.day_for`, which asks the owner's
+    clock and not the reader's.
     """
     from daily.models import DailyEntry
     from mind.models import Facet
     from review.models import WeeklyIntention, WeeklyOutcome
     from review.weeks import week_start_for
 
-    day = DailyEntry.objects.filter(
-        owner=owner, date=node.captured_at.date()
-    ).first()
+    from . import clocks
+
+    fell_on = clocks.day_for(owner, node.captured_at)
+
+    day = DailyEntry.objects.filter(owner=owner, date=fell_on).first()
 
     project = None
     facet = (
@@ -577,7 +590,7 @@ def what_surrounded(owner, node):
     if facet is not None and facet.task.list is not None:
         project = facet.task.list.project
 
-    week = week_start_for(node.captured_at.date())
+    week = week_start_for(fell_on)
     intention = (
         WeeklyIntention.objects.filter(owner=owner, week_start=week)
         .values_list("text", flat=True)

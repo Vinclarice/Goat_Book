@@ -641,9 +641,14 @@ waits for increments 7–9 beneath it.
     21, and the nine dark services still name this page as their trigger.
     Hanging five affordances on a page nobody had looked at is how a surface
     gets designed twice.
-20. **Person made real.** Type confirmation on the concept surface, and the
-    person page built from the concept page plus the facet and temporal
-    joins.
+20. ~~**Person made real.**~~ **Shipped August 21, 2026** (`f0f0148`).
+    `ConceptType` had seven values and one writer — production held eleven
+    concepts, every one `unknown`, which was never a judgement anybody made but
+    the absence of a control. `POST /mind/concepts/<id>/kind/` offers all seven,
+    and `/mind/people/<id>/` adds the two joins a list of mentions cannot give:
+    the commitments that grew out of notes about them, and when they came up by
+    month. **No event for a type change** — a corrigible property recorded in a
+    table that cannot be corrected is increment 1's *log nobody can read*.
 21. ~~**The correction surface** — `revise` given its door, on the node page.~~
     **Shipped August 21, 2026** (`e2ddc0d`). `POST /mind/notes/<id>/revise/`,
     with the earlier wordings shown rather than hidden — `original_content` is
@@ -663,6 +668,15 @@ waits for increments 7–9 beneath it.
 22. **Ask-your-memory.** The question box over Part 2's pipeline —
     extractive, cited, per-mode. Last in the track because it is Part 2's
     face and wants increments 7–9 beneath it.
+
+    **Not started August 21, and the gate is the reason** — asked for and
+    declined the same day, recorded so nobody re-argues it. Increments 7, 8
+    and 9 are all open: no surface declares its mode, the indexes are still
+    final judges rather than candidate generators, and no result can say why it
+    appeared. Built on that, the question box is `search_ranked` with a prompt
+    in front of it — one blended ordering, unable to say where an answer came
+    from, and **the failure would be silent**, which is what makes it worth
+    refusing rather than shipping thin.
 
 ## Open decisions — Vince's, not this document's
 

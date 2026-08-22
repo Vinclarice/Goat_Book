@@ -2077,11 +2077,14 @@ def open_review(
 
 
 @transaction.atomic
-# DARK: no production caller. The recording half of `open_review`, which is live on
-# `/mind/review/`. Production holds two `reviewed` rows and every one is
-# owner-scoped from that page -- zero are node-scoped, so `review_state`
-# returns zero for every node and the spaced schedule has never run.
-# Decision registered: D15 in `temporal-substrate-plan.md`.
+# Dark from the day it was written until August 22, 2026, when **D15** was
+# answered: `mind.views.this_time_before` calls it. Left noted rather than
+# silently un-marked, because what it was waiting for is the useful part --
+# every other piece of the loop existed and was tested, and production held two
+# `reviewed` rows, both owner-scoped from `/mind/review/` and none node-scoped,
+# so `review_state` returned zero for every node and the spaced schedule had
+# never once run. The missing piece was a surface where a person says something,
+# and Resurfacing could not be that surface until D17 built it.
 def mark_reviewed(
     node: Node,
     *,

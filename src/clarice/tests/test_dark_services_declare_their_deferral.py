@@ -58,7 +58,11 @@ DARK = {
     "reopen_question": "resolve_question",
     "merge_concept": "confirm_concept",
     "confirm_mention": "propose_mention",
-    "mark_reviewed": "open_review",
+    # `mark_reviewed` came off this list on August 22, 2026, when **D15** was
+    # answered and `mind.views.this_time_before` began calling it. The guard
+    # caught it in the same run that wired it, which is what it is for -- and
+    # the pleasant direction, since the alternative is finding out months later
+    # that a declaration had gone stale.
     "resolve_retrieval_miss": None,
     "expire_stale_hypotheses": None,
     "commitments_without_tasks": None,

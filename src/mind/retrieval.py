@@ -324,6 +324,44 @@ def _on_this_day(moment):
     return found
 
 
+def _due_for_review(moment):
+    """Notes whose own spaced schedule has come round — **D15's fold**.
+
+    **The second cue, and a different question from the first.** An anniversary
+    is *the date cues this*; a due review is *you asked to see this again*. Both
+    belong to Resurfacing and neither is the other, which is why they are two
+    generators rather than one with a branch.
+
+    **The whole mechanism was dark until D17 gave it a page.** `mark_reviewed`
+    had no production caller, so `review_state` returned zero for every node and
+    the stretching interval had never run once. D15 offered *wire it, fold it
+    into the modes, or delete it*, named Resurfacing as the natural home, and
+    named leaving it dark as the only wrong answer — while Resurfacing was
+    itself a `NotImplementedError`.
+
+    **Only nodes somebody has already answered about** are candidates, which is
+    both cheap and the designed behaviour: `is_due_for_review` returns False for
+    a node never reviewed, because *"a corpus of thousands would otherwise all
+    become due at once the moment the feature exists."*
+    """
+    from .models import ActivityEvent, EventType
+
+    answered = (
+        ActivityEvent.objects.filter(
+            owner=moment.owner,
+            event_type=EventType.REVIEWED,
+            node__isnull=False,
+        )
+        .values_list("node_id", flat=True)
+        .distinct()
+    )
+    found = []
+    for node in queries.live_nodes(moment.owner).filter(pk__in=list(answered)):
+        if queries.is_due_for_review(node, now=moment.when):
+            found.append((node, "review", "you asked to see this again"))
+    return found
+
+
 #: How far *around the same time* reaches when restoring context. Wider than
 #: `recall.DEFAULT_WINDOW`, and deliberately: the failure that matters here is
 #: **context too thin to resume**, so the cost of one extra note is far below
@@ -341,7 +379,7 @@ GENERATORS = {
     Mode.LOOKUP: (_lexical, _concept),
     Mode.DISCOVERY: (_lexical, _concept),
     Mode.RECOLLECTION: (_written_around, _shares_a_concept),
-    Mode.RESURFACING: (_on_this_day,),
+    Mode.RESURFACING: (_on_this_day, _due_for_review),
 }
 
 
@@ -401,11 +439,17 @@ def _eligible_for_resurfacing(node, moment):
     *interrupting for nothing*, and something arriving unbidden has to earn it —
     so Discovery's length floor applies, for Discovery's reason.
 
-    **No dormancy floor, because the generator is one.** A note reaches this
-    mode only by being a year old on today's date, which is a stronger and more
-    honest signal than 548 days of silence: the anniversary is a fact about the
-    calendar rather than a threshold somebody picked.
+    **No dormancy floor, because the generators are ones.** A note reaches this
+    mode by being a year old on today's date, or by a schedule the person
+    started — both stronger and more honest signals than 548 days of silence.
+
+    **And the floor lifts for a note somebody asked to see again — D15.** The
+    length floor exists because *nobody asked*. Once they have, they have, and
+    applying it anyway would be the surface overruling the only explicit
+    instruction it has ever been given about that note.
     """
+    if queries.review_state(node)["reviews"]:
+        return True
     return len(queries.current_body(node)) >= DEFAULT_MIN_LENGTH
 
 

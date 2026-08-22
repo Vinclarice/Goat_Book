@@ -854,6 +854,7 @@ def finish_dump(request):
 
 
 @login_required
+@require_http_methods(["GET", "POST"])
 def this_time_before(request):
     """What you were doing on this date in previous years — **D17**.
 
@@ -890,6 +891,12 @@ def this_time_before(request):
     domain logic rather than reading the current time inside it.* Read the clock
     once, at the edge, and let the edge be told otherwise.
     """
+    if request.method == "POST":
+        _record_a_response(request)
+        # Back to the same day, so answering something does not silently move
+        # the page off the date the person was reading.
+        return redirect(f"{request.path}?on={request.POST.get('on', '')}")
+
     on = _parse_optional_date(request.GET.get("on")) or clocks.today_for(request.user)
     before = recall.this_time_before(request.user, on=on)
     return render(
@@ -901,6 +908,44 @@ def this_time_before(request):
             "before": before,
             "years": [_readable_anniversary(year) for year in before.years],
         },
+    )
+
+
+def _record_a_response(request):
+    """*Keep* or *less often* — **D15's missing caller**.
+
+    The one thing the dormant review loop lacked. Everything else was built and
+    tested: `mark_reviewed` writes the event, `review_state` folds the events
+    into a stretching interval, `attention_tier` has a tier waiting on it. There
+    was simply nowhere a person said anything, so production held two `reviewed`
+    rows and both were owner-scoped from `/mind/review/` — none node-scoped —
+    and the schedule had never run once.
+
+    **Owner-scoped through `live_nodes`**, so somebody else's note is a miss
+    rather than a permission check somebody can forget. `principles.md`: guards
+    fail closed.
+
+    **An unrecognised response records nothing.** The two values are a designed
+    pair — burying stretches six times harder than keeping — and inventing a
+    third by accepting whatever a form posts would put a number nobody chose
+    into an append-only table.
+    """
+    try:
+        response = services.ReviewResponse(request.POST.get("response", ""))
+    except ValueError:
+        return
+
+    node = queries.live_nodes(request.user).filter(
+        public_id=request.POST.get("node", "")
+    ).first()
+    if node is None:
+        return
+
+    services.mark_reviewed(
+        node,
+        response=response,
+        now=timezone.now(),
+        actor=request.user.get_username(),
     )
 
 

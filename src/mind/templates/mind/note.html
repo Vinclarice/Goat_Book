@@ -203,6 +203,16 @@ is becomes answerable later, when the answer exists.
   {% endcomment %}
   <p class="meta">Nothing has grown out of this note yet — no commitment
   confirmed from it, no link drawn from it.</p>
+  {% comment %}
+  **D5.** And whether that means anything, which the sentence above cannot say
+  on its own: a note that went nowhere while you were here every week is a real
+  finding, and one that went nowhere while the log holds nothing at all is not a
+  finding about the note. The read carries the sentence -- a count and its
+  meaning must not be able to travel separately.
+  {% endcomment %}
+  {% if what_came_of_it.absence_says %}
+    <p class="meta">{{ what_came_of_it.absence_says|capfirst }}.</p>
+  {% endif %}
 {% endif %}
 
 <h2>What else was going on</h2>

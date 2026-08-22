@@ -539,6 +539,138 @@ change the zone the next one is composed in.
 its own now, at the mailer level where the defect actually lived, so a third
 scheduled message inherits the guarantee instead of the bug.
 
+### D5 — the log can answer absence, and it needed no new row
+
+**Answered August 22, 2026: yes.** The question was whether *"since then,
+nothing has been recorded"* is honest, given the log can only prove it was
+looking if something proves it. **The log's own other events are that proof.**
+
+**`MAINTENANCE_RAN` is the precedent and is also the contrast.** A machine had
+to be given a heartbeat because a pass that finds nothing leaves no other trace
+at all. **A person leaves traces constantly** — every completion, every capture,
+every confirmation — so the evidence already existed, and adding a heartbeat
+beside it would have been a row a read could have produced. Part 1 forbids
+exactly that, and this is the case where the rule paid.
+
+`recall.attendance_between` counts the days in a window the log holds anything
+for, excluding the subject's own events so the answer is evidence rather than a
+tautology. The note page now distinguishes two sentences that had been one:
+
+> you were recording on 14 of the 62 days since
+
+> nothing else was recorded either, on any of those 62 days — so this is a gap
+> in the log rather than a fact about the note
+
+**A note that went nowhere while you were here every week is a finding. One that
+went nowhere while the log holds nothing is not.** They had rendered identically.
+
+**Third axis, same discipline, and the shape is now settled.** Track C counts
+`nights_not_recorded`; D17 separates a silent year from one before the record;
+this separates *nothing came of it* from *nobody was here*. And like the other
+two it rests on D16 — *days you were recording* is a count of calendar days.
+
+### D15 — the loop that had every piece except somebody saying something
+
+**Answered August 22, 2026: wire it, into the mode** — which is both of D15's
+right options at once, and was not available until that morning. **D15 named
+Resurfacing as the natural home while Resurfacing was a `NotImplementedError`.**
+D17 built it, and a mode with a page is a caller.
+
+**What was dark.** `mark_reviewed` writes a `REVIEWED` event, `review_state`
+folds those into a stretching interval, `is_due_for_review` reads it, and
+`attention_tier` has a *review candidate* tier waiting on it. Every piece except
+the one where a person says something. Production held two `reviewed` rows, both
+owner-scoped from `/mind/review/` and none node-scoped, so `review_state`
+returned zero for every node and the schedule had never once run.
+
+**Deleting it was the real alternative and was rejected on the evidence rather
+than on sunk cost.** Deriving the schedule from an append-only log instead of a
+mutable `next_review` column is the expensive and correct half; and *burying*
+stretching six times faster than *keeping* is the difference between a review
+surface and a nag. That is designed behaviour with nowhere to happen.
+
+`/mind/this-time-before/` now offers **keep** and **less often**, and notes whose
+schedule has come round are a second Resurfacing generator beside the
+anniversary — two cues that are different questions: *the date cues this*, and
+*you asked to see this again*. **The length floor lifts for the second**, since
+the floor exists because nobody asked, and here somebody did.
+
+**Wiring it is safe because it stays opt-in.** `is_due_for_review` returns False
+for a node never reviewed — *"a corpus of thousands would otherwise all become
+due at once the moment the feature exists."* Nothing changes for anybody until
+they answer something.
+
+**And six of its tests passed on their first run**, which `principles.md` asks
+to be named rather than enjoyed. Four were refusals that were vacuous because
+`POST` was unhandled. One passed because there was only one generator to win.
+**And one is the admission**: the review-candidate tier test passed all along,
+because `mark_reviewed` has always been callable. Nothing was broken in the
+code; the tier was unreachable *in the application*. A green test over a dark
+seam is exactly what the seam rule exists to stop being mistaken for working
+software.
+
+### The one D15 broke on the way in
+
+**Found in a browser minutes after wiring it, and it is the day's fourth
+browser-only finding.** `since()` matches developments on `node=node`, so the
+`REVIEWED` event D15 introduced landed under the note page's **"What came of
+it"** — the page reported *reviewed* as something the note had grown into.
+
+**It has not.** Saying *keep showing me this* is a decision about attention, not
+a development of the thought. `since()` already refuses a shared concept and a
+close embedding because *"presenting them as 'what came of this' would be a
+similarity score wearing a causal word"*; this is the same slide with a
+housekeeping row in place of a score. `NOT_A_DEVELOPMENT` now names it, and a
+revision is deliberately not in it — the line is *about the note* against *the
+thought moved*, and a rewrite is the thought moving.
+
+**And it had silently eaten D5's sentence**, which is what makes it a defect
+rather than a tidy-up. A chain with a `reviewed` row in it is not empty, so
+`has_anything` was true for any note somebody had ever answered about — the page
+stopped saying whether the log had been looking and started implying something
+had come of the note. **Two decisions answered an hour apart, and the second
+broke the first**, invisibly, in the direction of claiming more than was true.
+
+### D14 — two of its three options were already closed, and the gate was a feeling
+
+**Answered August 22, 2026, mostly by reading.**
+
+**The API is refused by standing policy**, written in `mind/embeddings.py`
+before the question was asked: *"Per the ML policy: self-hosted, deterministic
+for a given model version, **no external call**, no per-use cost, nothing
+generative."* D14 said this escalates to `design-concept.md` if it is ML policy
+rather than deployment. **It is ML policy, and the policy already says no** —
+embedding every note through a third party would be the largest change to this
+product's privacy posture anyone has proposed.
+
+**A smaller model is the same option cheaper**, not a third one.
+`all-MiniLM-L6-v2` is already the small model; torch is what makes the
+dependency large, and every self-hosted sentence encoder pulls it in.
+
+**So one live option, and it was decided on August 18** — D4 of
+`planning-assistant-plan.md`: installing it in the image *"waits for a corpus
+large enough for the detector to have something to say."*
+
+**What was genuinely still open is that the gate was not checkable, and that is
+what this fixes.** *Large enough to have something to say* is a feeling; nothing
+measured it, nothing reported it, and the deferral could only be revisited by
+somebody happening to remember it. It is now **250 live notes**, reported on
+`/mind/numbers/` with the distance to it, and stated with its reasoning: below
+that the detector produces a demo rather than an accept rate, while the cost —
+torch in every image, on every build, across the four the droplet keeps for
+rollback — is paid forever. Revisable on purpose, like `DEFAULT_MIN_DORMANCY`'s
+548 days. **A number somebody can disagree with is worth more than a sentence
+nobody can check.**
+
+**And the readiness line had been telling production to do something
+impossible.** `detector_readiness` exists for one purpose — *"the difference
+between no connections found and no connections possible"* — and for this
+detector it gave a third answer that is neither: **"run manage.py
+embed_nodes"**, a command that cannot run in production because the dependency
+is deliberately absent. The one line whose job is to say what you are waiting
+for was naming an action nobody can take. The same shape as the nginx comment
+that claimed a rate cap it did not enforce.
+
 ### D17 — the cyclic axis, and the mode that had been refusing since increment 8
 
 **Answered August 22, 2026: yes**, and answering it built `Mode.RESURFACING`

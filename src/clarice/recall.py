@@ -124,6 +124,25 @@ PERSON_EVENTS = frozenset(
 )
 
 
+#: Person events that happen *to* a note without being something it grew into.
+#:
+#: **`since()` matches on `node=node`, so every act about a note lands in its
+#: development chain unless it is named here.** `REVIEWED` is one: saying *keep
+#: showing me this* is a decision about attention, not a development of the
+#: thought. The same module already refuses a shared concept and a close
+#: embedding because *"presenting them as 'what came of this' would be a
+#: similarity score wearing a causal word"* — this is that slide again with a
+#: housekeeping row in place of a score.
+#:
+#: **A revision is deliberately not here.** The line is *about the note* against
+#: *the thought moved*, and a rewrite is the thought moving.
+#:
+#: Found in a browser on August 22, 2026, minutes after D15 gave `mark_reviewed`
+#: its first caller — and it had already eaten D5's absence sentence, since a
+#: chain with a `reviewed` row in it is not empty.
+NOT_A_DEVELOPMENT = frozenset({EventType.REVIEWED})
+
+
 @dataclass(frozen=True)
 class Neighbour:
     """One thing that was going on near the instant asked about.
@@ -272,6 +291,47 @@ def around(
 
 
 @dataclass(frozen=True)
+class Attendance:
+    """Whether the log was open over a window — **D5's answer**.
+
+    D5 asked whether the log can answer absence, since *"since then, nothing has
+    been recorded"* is honest only if it can prove it was looking. **It can, and
+    it needs no new row**: the log's own other events are the proof.
+
+    `MAINTENANCE_RAN` is the precedent for a *machine* proving it ran, and it had
+    to be written down because a pass that finds nothing leaves no other trace.
+    **A person leaves traces constantly** — every completion, every capture,
+    every confirmation — so a heartbeat beside them would be a row a read could
+    have produced, which Part 1 forbids.
+
+    **Days rather than events.** *You were recording on 40 of 62 days* and *you
+    recorded 40 things in one afternoon* are different claims about how much a
+    silence means, and only the first is being made.
+    """
+
+    #: The denominator, said out loud for Track C's reason: a count whose
+    #: denominator is unstated is a count somebody reads as *of all days*.
+    days: int
+    days_recorded: int
+
+    @property
+    def was_looking(self):
+        return self.days_recorded > 0
+
+    @property
+    def says(self):
+        if self.was_looking:
+            return (
+                f"you were recording on {self.days_recorded} of the "
+                f"{self.days} days since"
+            )
+        return (
+            f"nothing else was recorded either, on any of those {self.days} days — "
+            "so this is a gap in the log rather than a fact about the note"
+        )
+
+
+@dataclass(frozen=True)
 class Since:
     """What developed out of one note, afterwards."""
 
@@ -281,13 +341,27 @@ class Since:
     #: from a beginning, where a neighbourhood is read outward from an instant.
     developments: list[Neighbour] = field(default_factory=list)
     omitted: int = 0
+    #: **D5.** Whether the log was open over the same window. `None` when the
+    #: subject is deleted or archived, where the question does not arise.
+    attendance: Attendance | None = None
 
     @property
     def has_anything(self):
         return bool(self.developments or self.omitted)
 
+    @property
+    def absence_says(self):
+        """Why the emptiness is empty, or nothing when it is not empty.
 
-def since(owner, node, *, from_moment=None, limit=DEFAULT_LIMIT_EACH_SIDE):
+        A page that printed this beside a development chain would be answering
+        a question nobody asked.
+        """
+        if self.has_anything or self.attendance is None:
+            return ""
+        return self.attendance.says
+
+
+def since(owner, node, *, from_moment=None, limit=DEFAULT_LIMIT_EACH_SIDE, now=None):
     """What came of ``node`` after ``from_moment``, along recorded provenance.
 
     Track A increment 5, and the narrow answer to **D4**. The merger already
@@ -314,8 +388,20 @@ def since(owner, node, *, from_moment=None, limit=DEFAULT_LIMIT_EACH_SIDE):
     it would make *"what developed from X"* and *"what has since mentioned X"*
     one question -- which is the slide D4 exists to stop. Nothing extra is
     needed to get this right: `EDGE_CREATED` is recorded against `from_node`.
+
+    **`NOT_A_DEVELOPMENT` is the other half of that refusal**, and it needed
+    writing down the moment D15 gave `mark_reviewed` a caller: an act *about* a
+    note is not a development *of* it.
+
+    **`attendance` answers D5**, and only matters when this returns nothing.
+    *Nothing came of this note* and *nobody was here* are different facts, and
+    an empty list says neither -- so the window is asked whether the log held
+    anything at all. ``now`` is the clock, injected like everywhere else in this
+    application so the answer does not depend on when the test runs.
     """
     if _visible(node) is None:
+        # No attendance: a deleted note develops no further by rule rather than
+        # by absence, so there is no silence here for the log to explain.
         return Since(node_id=node.pk, from_moment=from_moment or node.captured_at)
 
     from_moment = from_moment if from_moment is not None else node.captured_at
@@ -345,6 +431,7 @@ def since(owner, node, *, from_moment=None, limit=DEFAULT_LIMIT_EACH_SIDE):
             occurred_at__gt=from_moment,
         )
         .filter(Q(node=node) | Q(task_id__in=grew_into))
+        .exclude(event_type__in=NOT_A_DEVELOPMENT)
         .select_related("node", "task")
         .defer("node__search_original", "task__search_document")
         .order_by("occurred_at", "id")
@@ -360,7 +447,43 @@ def since(owner, node, *, from_moment=None, limit=DEFAULT_LIMIT_EACH_SIDE):
         from_moment=from_moment,
         developments=[_neighbour(e) for e in found[: len(found) - omitted]],
         omitted=omitted,
+        attendance=attendance_between(
+            owner,
+            from_moment,
+            now if now is not None else timezone.now(),
+            excluding_events=[event.pk for event in found],
+        ),
     )
+
+
+def attendance_between(owner, start, end, *, excluding_events=()):
+    """How many days in a window the log holds anything for — **D5**.
+
+    **The subject's own events are excluded**, which is what makes this
+    evidence rather than a tautology: a note whose only trace is its own
+    capture has not shown that anybody was here afterwards.
+
+    **Days are the owner's**, which is D16 and is the reason this could not have
+    been written yesterday. Two events at 21:00 and 22:00 in New York are the
+    3rd and the 4th in UTC, and they are one evening.
+    """
+    from . import clocks
+
+    rows = ActivityEvent.objects.filter(
+        owner=owner,
+        event_type__in=PERSON_EVENTS,
+        occurred_at__gt=start,
+        occurred_at__lte=end,
+    )
+    if excluding_events:
+        rows = rows.exclude(pk__in=list(excluding_events))
+
+    days = {
+        clocks.day_for(owner, occurred_at)
+        for occurred_at in rows.values_list("occurred_at", flat=True)
+    }
+    span = (clocks.day_for(owner, end) - clocks.day_for(owner, start)).days + 1
+    return Attendance(days=max(span, 0), days_recorded=len(days))
 
 
 @dataclass(frozen=True)

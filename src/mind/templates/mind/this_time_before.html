@@ -26,6 +26,20 @@ anniversaries and silently omits the third year has implied the third was empty.
       <div class="meta" style="margin-top:.5rem">
         {{ neighbour.occurred_at|date:"H:i" }} · {{ neighbour.phrase }}{% if neighbour.origin == "reconstructed" %} · recalled{% endif %}
       </div>
+      {% comment %}
+      D15. The caller the dormant review loop never had. Only on notes: a task
+      completion is not something there is a schedule for, and a control that
+      appeared on both would be claiming otherwise.
+      {% endcomment %}
+      {% if neighbour.node %}
+        <form method="post" style="margin-top:.5rem">
+          {% csrf_token %}
+          <input type="hidden" name="node" value="{{ neighbour.node.public_id }}">
+          <input type="hidden" name="on" value="{{ on|date:'Y-m-d' }}">
+          <button type="submit" name="response" value="kept">Keep</button>
+          <button type="submit" name="response" value="buried">Less often</button>
+        </form>
+      {% endif %}
     </div>
   {% endfor %}
 

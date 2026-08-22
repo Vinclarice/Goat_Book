@@ -13,47 +13,64 @@ retrieval), what it notices (structured observations) and what it holds
 file by name and eleven of them by track — the file has to resolve, its
 thousand lines do not.
 
-**The decisions below survive the stub**, and that is the one departure from
-the usual shape. They are not open *work*; they are open questions about
-behaviour that is now live, and a four-line stub would have quietly dropped
-them. ~~**D16 is the one with a clock running.**~~ **D16 answered August 22,
-2026** — the clock is the person's, and answering it turned up live defects in
-S14 and in the closing nudge. **D17 answered the same day**, and it needed D16
-underneath it. Four remain.
+~~**The decisions below survive the stub**~~ — **all six were answered on
+August 22, 2026, and the stub is now a stub.** They are kept below with their
+answers rather than deleted, because what each turned out to be is the useful
+part: two of the six were largely already decided and nobody had noticed, and
+two more were hiding live defects.
+
+**The order mattered.** D16 named whose clock a day is on; D17 could not have
+built the cyclic axis without it; D5 could not have counted *days you were
+recording* without it; D15 could not be folded into a Resurfacing mode that D17
+had to build first. Four of the six are one dependency chain, discovered by
+answering them rather than by planning them.
 
 ## The decisions still open
 
-**Four, and they survive the stub deliberately.** They are not open *work* —
-every increment shipped — but open questions about behaviour that is now live,
-and a four-line stub would have quietly dropped them. The fifteen that were
-answered are in [`roadmap-history.md`](roadmap-history.md) with their
-reasoning.
+**None. All nineteen are answered**, the last six on August 22, 2026. They
+stay listed below with what each turned out to be, because *what the question
+was actually hiding* is the part worth keeping — the reasoning for all of them
+is in [`roadmap-history.md`](roadmap-history.md).
 
-5. **D5. Can the log answer absence?** *"Since then, nothing has been recorded"*
-   is honest only if the log can prove it was looking. `MAINTENANCE_RAN` is the
-   precedent. **Part 3's sobriety refusal is the same decision** in the place a
-   person will feel it.
+5. ~~**D5. Can the log answer absence?**~~ **Answered August 22, 2026: yes, and
+   it needs no new row.** The log's own other events are the proof it was
+   looking. `MAINTENANCE_RAN` is the precedent for a *machine* proving it ran,
+   and it had to be written down because a pass that finds nothing leaves no
+   other trace — **a person leaves traces constantly**, so a heartbeat beside
+   them would be a row a read could have produced.
+   `recall.attendance_between` counts the days in a window the log holds
+   anything for, and the note page now says whether *nothing came of this* is a
+   fact about the note or about the log.
 
-14. **D14. Does the semantic index get switched on, and how?** Registered
-    August 21 from
-    [`code-review-2026-08-21.md`](code-review-2026-08-21.md)'s examination:
-    Part 2's pipeline names the semantic index among its candidate generators,
-    but `semantic_echo` has **never run in production** —
-    `sentence-transformers` is dev-only by deliberate, documented refusal
-    (`run_mind_maintenance.py`), so the fifth detector and the HNSW index are
-    dark. The options are a decision, not engineering: accept the dependency,
-    embed via an API (a new processor, touching `/privacy/` the way D9 does),
-    or a smaller model. If this is ML policy rather than deployment, it
-    escalates to `design-concept.md`.
+14. ~~**D14. Does the semantic index get switched on, and how?**~~ **Answered
+    August 22, 2026, and two of its three options were already closed.** The
+    **API is refused by standing ML policy** in `mind/embeddings.py` —
+    *self-hosted, deterministic, no external call, no per-use cost, nothing
+    generative*. D14 said this escalates if it is ML policy rather than
+    deployment: it is, and the policy already said no. **A smaller model is the
+    same option cheaper**, since torch is what makes the dependency large and
+    every self-hosted encoder pulls it in. The dependency itself was deferred on
+    **August 18** (D4 of `planning-assistant-plan.md`).
 
-15. **D15. The dormant review loop: wire it, fold it into the modes, or
-    delete it.** `mark_reviewed` has no production caller, so the spaced
-    resurfacing schedule has never run for a real note and `attention_tier`'s
-    review-candidate tier is reachable only through open hypotheses — evidence
-    in [`code-review-2026-08-21.md`](code-review-2026-08-21.md) Part 3.
-    Part 2's Resurfacing mode is the natural home for the decision; the one
-    wrong option is leaving built machinery dark and undecided, per the seam
-    rule. Registered August 21.
+    **What was still open is that the gate was not checkable.** *A corpus large
+    enough for the detector to have something to say* is a feeling; it is now
+    250 live notes, reported on `/mind/numbers/` with the distance to it — and
+    that line no longer tells production to run `embed_nodes`, **a command that
+    cannot run there.**
+
+15. ~~**D15. The dormant review loop: wire it, fold it into the modes, or
+    delete it.**~~ **Answered August 22, 2026: wire it, into the mode** — both
+    right options at once, and not available until that morning. D15 named
+    Resurfacing as the natural home while Resurfacing was itself a
+    `NotImplementedError`; **D17 built it**, and a mode with a page is a caller.
+    `/mind/this-time-before/` now offers *keep* and *less often*, which is the
+    one thing the loop lacked, and notes whose schedule has come round are a
+    second Resurfacing generator beside the anniversary.
+
+    **Deleting it was the real alternative and was rejected on evidence**: the
+    schedule is derived from an append-only log rather than a mutable column,
+    and *burying* stretching six times faster than *keeping* is designed
+    behaviour with nowhere to happen — not speculative machinery.
 
 16. ~~**D16. Whose clock is a morning?**~~ **Answered August 22, 2026: the
     person's**, which was already decided —

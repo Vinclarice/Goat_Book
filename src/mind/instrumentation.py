@@ -312,6 +312,33 @@ class Readiness:
     """
 
 
+#: When the semantic index stops being deferred — **D14's answer**.
+#:
+#: The decision itself was taken on August 18 (D4 of
+#: `planning-assistant-plan.md`): the dependency waits for *"a corpus large
+#: enough for the detector to have something to say."* That is a feeling, and
+#: nothing measured it, so the deferral could only be revisited by somebody
+#: happening to remember it. This is the number.
+#:
+#: **250 live notes**, and the reasoning is the cost rather than the model.
+#: `semantic_echo` finds *you have said this before, in other words*, which
+#: requires the person to have actually repeated themselves — and its worth is
+#: an accept rate, which needs enough proposals to be a rate at all. Against the
+#: forty-odd notes this corpus holds it would produce a demo, not a measurement,
+#: while the cost is torch in every image, on every build, across the four
+#: images the droplet keeps for rollback. That cost is paid forever; the
+#: evidence would be paid for once and be worthless.
+#:
+#: **Revisable, and that is the point.** `DEFAULT_MIN_DORMANCY` is 548 days and
+#: `DEFAULT_MIN_LENGTH` is 120 characters — both picked, both written down, both
+#: arguable. A number somebody can disagree with is worth more than a sentence
+#: nobody can check.
+DEFAULT_SEMANTIC_INDEX_CORPUS_GATE = 250
+
+#: Module-level so a test can move it. Nothing in production writes it.
+SEMANTIC_INDEX_CORPUS_GATE = DEFAULT_SEMANTIC_INDEX_CORPUS_GATE
+
+
 def detector_readiness(owner, *, now: datetime) -> list[Readiness]:
     """What each detector is waiting for, if anything.
 
@@ -405,12 +432,45 @@ def detector_readiness(owner, *, now: datetime) -> list[Readiness]:
         ),
     )
 
-    # -- semantic_echo: an optional dependency, already self-reporting -------
+    # -- semantic_echo: gated on the corpus, not on a command ---------------
+    #
+    # **D14, answered August 22, 2026.** Two of its three options were already
+    # closed: the API is refused by the ML policy in `mind/embeddings.py` --
+    # *self-hosted, deterministic, no external call* -- and a smaller model is
+    # the same option cheaper, since torch is what makes the dependency large
+    # and every self-hosted encoder pulls it in. The live option is the
+    # dependency, deferred on August 18 until *"a corpus large enough for the
+    # detector to have something to say."*
+    #
+    # **What this fixes is that the gate was not checkable**, and that this line
+    # was telling production to run `manage.py embed_nodes` -- which cannot run
+    # there, because the dependency is deliberately absent. The one line whose
+    # job is to say what you are waiting for was naming an action nobody can
+    # take, on a page that exists to distinguish *no connections found* from
+    # *no connections possible*.
     embedded = semantic_echo.available()
+    corpus = live.count()
+    if embedded:
+        blocked = ""
+    elif corpus < SEMANTIC_INDEX_CORPUS_GATE:
+        blocked = (
+            f"needs a corpus worth embedding — {SEMANTIC_INDEX_CORPUS_GATE} live "
+            f"notes; you have {corpus}. The dependency is deliberately not in "
+            f"the production image until then"
+        )
+    else:
+        # Past the gate the corpus is no longer what is blocking it, and
+        # repeating a threshold that has been met would be the same shrug in a
+        # different sentence.
+        blocked = (
+            f"the corpus is past the {SEMANTIC_INDEX_CORPUS_GATE}-note gate "
+            f"({corpus} live notes) — switching this on is now a deploy "
+            f"decision, D14 in temporal-substrate-plan.md"
+        )
     echoes = Readiness(
         detector=semantic_echo.DETECTOR,
         ready=embedded,
-        blocked_by="" if embedded else "no sentence vectors — run manage.py embed_nodes",
+        blocked_by=blocked,
     )
 
     return [assignment, questions, referents, dormant, echoes]

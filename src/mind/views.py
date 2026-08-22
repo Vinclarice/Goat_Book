@@ -27,7 +27,7 @@ from dataclasses import replace
 from datetime import timedelta
 
 from django.contrib.auth.decorators import login_required
-from django.http import Http404
+from django.http import Http404, HttpResponse
 from django.shortcuts import redirect, render
 from django.templatetags.static import static
 from django.utils import timezone
@@ -41,6 +41,7 @@ from lists.services import TaskConflict
 
 from . import ask, instrumentation, queries, reflection, retrieval, services
 from .models import (
+    Attachment,
     ConceptCandidate,
     MissContext,
     ConceptType,
@@ -164,12 +165,18 @@ def capture(request):
         content = request.POST.get("content", "")
         if content.strip():
             now = timezone.now()
+            # Track D increment 16. `None` when the file is too large or of a
+            # kind nobody offers, and the note is kept either way -- *capture
+            # is durable before it is clever*, and losing a thought because its
+            # photo was oversized is the worst reading of a size limit.
+            spec = services.attachment_from_upload(request.FILES.get("attachment"))
             node = services.capture(
                 request.user,
                 content=content,
                 captured_at=now,
                 source=NodeSource.WEB,
                 actor=request.user.get_username(),
+                attachments=[spec] if spec is not None else (),
             )
             # Split here rather than in the service, which takes labels: how a
             # surface spells a list is the surface's business, and the phone
@@ -819,6 +826,32 @@ def finish_dump(request):
         "mind/dump_done.html",
         {"shown": shown, "kept": session.fragments.count() if session else 0},
     )
+
+
+@login_required
+@require_http_methods(["GET"])
+def attachment(request, public_id):
+    """Hand back one file -- Track D increment 16.
+
+    Owner-scoped through `live_nodes`, so somebody else's file is *not found*
+    rather than found and refused, and a deleted note's file is not served: a
+    file is part of the note, and `delete_node`'s promise covers both.
+    """
+    found = Attachment.objects.filter(
+        public_id=public_id,
+        deleted_at__isnull=True,
+        node__in=queries.live_nodes(request.user),
+    ).first()
+    if found is None:
+        raise Http404("no such file")
+
+    # `Content-Disposition: attachment` rather than inline. A PDF rendered in
+    # the page is a document with a script engine behind it, on a same-origin
+    # response -- and the allowlist that keeps SVG out is worth nothing if the
+    # types that are allowed get to execute.
+    response = HttpResponse(bytes(found.content), content_type=found.mime_type)
+    response["Content-Disposition"] = f'attachment; filename="{found.public_id}"'
+    return response
 
 
 @login_required

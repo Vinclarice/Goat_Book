@@ -84,6 +84,8 @@ urlpatterns = [
     # Track D increment 14, safe only because increment 13 shipped first.
     path("dump/", views.dump, name="dump"),
     path("dump/done/", views.finish_dump, name="finish_dump"),
+    # Track D increment 16, and D9's answer: the bytes are a row.
+    path("files/<uuid:public_id>/", views.attachment, name="attachment"),
     path("ask/", views.ask_page, name="ask"),
     path("search/", views.search, name="search"),
     path("search/miss/", views.record_miss, name="record_miss"),

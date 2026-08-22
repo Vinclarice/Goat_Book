@@ -7,7 +7,7 @@ One box, no fields. Nothing requires classification at the moment of entry — a
 dropdown here would break the product's first principle before anything else got
 a chance to.
 {% endcomment %}
-<form method="post" action="{% url 'capture' %}">
+<form method="post" action="{% url 'capture' %}" enctype="multipart/form-data">
   {% csrf_token %}
   {% comment %}
   Pre-filled, never auto-saved, when text arrives from a share. Sharing is a gesture
@@ -29,6 +29,12 @@ a chance to.
          placeholder="Tags, optional — comma separated"
          aria-label="Tags, optional">
   <div class="row">
+    {% comment %}
+    Track D increment 16. Optional, like the tags box beside it and for the
+    same reason: this surface refuses to ask anything at the moment of entry,
+    and a file input somebody ignores asks nothing.
+    {% endcomment %}
+    <input type="file" name="attachment" accept="image/png,image/jpeg,image/gif,image/webp,application/pdf">
     <button type="submit" class="primary">Keep</button>
     <span class="meta">{{ total }} note{{ total|pluralize }}{% if pending %} · <a href="{% url 'review' %}">{{ pending }} to review</a>{% endif %}</span>
   </div>

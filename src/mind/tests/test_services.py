@@ -140,7 +140,7 @@ def test_an_attachment_only_node_is_allowed(owner):
                 mime_type="image/jpeg",
                 byte_size=1024,
                 checksum="abc",
-                storage_key="blobs/a.jpg",
+                content=b"jpegbytes",
             )
         ],
     )
@@ -648,9 +648,20 @@ def test_deleting_is_idempotent(owner):
     assert node.deleted_at == JAN
 
 
-def test_purging_returns_the_blobs_the_caller_must_remove(owner):
-    """Object storage is not transactional with Postgres, so the boundary is
-    visible rather than hidden behind an abstraction that would have to lie."""
+def test_purging_takes_the_bytes_with_it(owner):
+    """**Rewritten August 21, 2026, because the design under it changed.**
+
+    This asserted that purging *returned the blobs the caller must remove*, and
+    the reasoning was sound for object storage: it is not transactional with
+    Postgres, so the boundary was made visible rather than hidden behind an
+    abstraction that would have to lie.
+
+    D9 moved the bytes into the row. There is no boundary left to be honest
+    about -- `node.delete()` takes them, inside the transaction -- so the old
+    assertion now describes a hazard that cannot occur, and a test asserting a
+    caller's obligation that no longer exists would teach the next reader to
+    write cleanup code for nothing.
+    """
     node = _capture(
         owner,
         "with a photo",
@@ -660,13 +671,14 @@ def test_purging_returns_the_blobs_the_caller_must_remove(owner):
                 mime_type="image/jpeg",
                 byte_size=10,
                 checksum="abc",
-                storage_key="blobs/a.jpg",
+                content=b"jpegbytes",
             )
         ],
     )
-    keys = services.purge_node(node, now=JUN, actor="vince")
-    assert keys == ["blobs/a.jpg"]
+    removed = services.purge_node(node, now=JUN, actor="vince")
+    assert removed == 1
     assert Node.objects.count() == 0
+    assert Attachment.objects.count() == 0
 
 
 def test_purging_leaves_the_log_intact_and_still_pointing_at_the_node(owner):

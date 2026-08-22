@@ -157,7 +157,8 @@ class AttachmentSpec(NamedTuple):
     mime_type: str
     byte_size: int
     checksum: str
-    storage_key: str
+    #: The bytes themselves -- D9's answer. See `Attachment.content`.
+    content: bytes
 
 
 @transaction.atomic
@@ -583,6 +584,50 @@ MEMORY_ROLES = (
 #: keeps the other half of the increment true without any effort: *never asked
 #: for* — capture is untouched.
 ROLE_PROPOSAL_IS_DEFERRED = True
+
+
+#: What may be uploaded, and how much of it — Track D increment 16.
+#:
+#: **An allowlist, for the reason every allowlist here exists:** the next
+#: dangerous type is the one nobody thought of. `image/svg+xml` is the worked
+#: example — an image by every reasonable reading, and a script.
+ALLOWED_ATTACHMENT_TYPES = frozenset(
+    {"image/png", "image/jpeg", "image/gif", "image/webp", "application/pdf"}
+)
+
+#: Ten megabytes. The whole of what stands between an upload box and a full
+#: disk on a one-host deployment where the database and the application share
+#: it — and, since D9 made the bytes rows, the pressure valve on the decision
+#: to keep them there.
+MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024
+
+
+def attachment_from_upload(uploaded):
+    """An `AttachmentSpec` from an uploaded file, or None if it is not allowed.
+
+    **None rather than an exception**, because the caller's right answer is to
+    keep the note and drop the file: *capture is durable before it is clever*,
+    and losing a thought because its photo was too large is the worst possible
+    reading of a size limit.
+    """
+    if uploaded is None:
+        return None
+    if uploaded.size > MAX_ATTACHMENT_BYTES:
+        return None
+    if uploaded.content_type not in ALLOWED_ATTACHMENT_TYPES:
+        return None
+
+    content = uploaded.read()
+    return AttachmentSpec(
+        kind="image" if uploaded.content_type.startswith("image/") else "document",
+        mime_type=uploaded.content_type,
+        byte_size=len(content),
+        # Over what was stored, not over what arrived, so a restore can be
+        # checked against the bytes rather than against a byte count -- which
+        # two different files share easily.
+        checksum=hashlib.sha256(content).hexdigest(),
+        content=content,
+    )
 
 
 #: What a whole sitting may materialise. Five is the plan's working number.
@@ -1942,11 +1987,13 @@ def delete_node(node: Node, *, now: datetime, actor: str) -> Node:
 def purge_node(node: Node, *, now: datetime, actor: str) -> list[str]:
     """Delete a node for real, once its retention window has passed.
 
-    Returns the storage keys whose blobs the caller must remove. That boundary
-    is deliberately visible rather than hidden behind an abstraction: object
-    storage is not transactional with Postgres, so a purge that claimed to have
-    removed bytes it had not would be a lie in the one place the product
-    promises the most.
+    **Nothing is handed back for a caller to clean up**, which is D9's payoff.
+    This returned storage keys whose blobs the caller had to remove, and the
+    boundary was deliberately visible because object storage is not
+    transactional with Postgres — a purge claiming to have removed bytes it had
+    not would be a lie in the one place the product promises the most. The
+    bytes are rows now, so `node.delete()` takes them, inside the transaction,
+    and there is no boundary left to be honest about.
 
     The log keeps its rows, and they keep pointing at the vanished node id — an
     event asserts what happened, and that stays true. The purge event's payload
@@ -1954,7 +2001,7 @@ def purge_node(node: Node, *, now: datetime, actor: str) -> list[str]:
     """
     owner = node.owner
     node_pk = node.pk
-    storage_keys = list(node.attachments.values_list("storage_key", flat=True))
+    removed = node.attachments.count()
 
     _invalidate_hypotheses_citing(node, now=now, actor=actor, why="node_purged")
     node.delete()
@@ -1964,9 +2011,9 @@ def purge_node(node: Node, *, now: datetime, actor: str) -> list[str]:
         EventType.PURGED,
         occurred_at=now,
         actor=actor,
-        payload={"node": node_pk, "attachments_to_remove": len(storage_keys)},
+        payload={"node": node_pk, "attachments_removed": removed},
     )
-    return storage_keys
+    return removed
 
 
 # ---------------------------------------------------------------------------

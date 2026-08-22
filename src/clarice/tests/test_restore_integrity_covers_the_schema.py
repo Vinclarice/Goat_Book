@@ -56,6 +56,11 @@ NOT_DRILLED = {
     # range, a size that is not negative. A missing one produces a bad row that
     # the next read shows as nonsense, not a silent wrong answer.
     "attachment_size_non_negative",
+    # Guards the `default=b""` that exists only so `content` could be added to
+    # an empty table. Its loss lets a zero-byte attachment be written -- a file
+    # somebody downloads and finds empty, which is visible rather than silently
+    # wrong.
+    "attachment_has_content",
     "edge_confidence_range",
     "facet_span_ordered",
     "facet_span_paired",

@@ -184,9 +184,30 @@ class Attachment(models.Model):
     mime_type = models.CharField(max_length=127)
     byte_size = models.BigIntegerField()
     checksum = models.CharField(max_length=128)
-    # Bytes live in object storage; this row is the metadata and the thing the
-    # graph references. A purge removes both.
-    storage_key = models.TextField(unique=True)
+    # **The bytes are a row** — Track D increment 16, and D9's answer.
+    #
+    # This said *bytes live in object storage* from the first slice, written
+    # when nothing could create an attachment. D9 asked the question for real
+    # and named the deciding consideration: export and deletion ship every
+    # owned **row**, so a file that is not a row breaks two promises `/privacy/`
+    # currently keeps. As a row, both hold without either knowing files exist —
+    # and so does the restore drill, which would otherwise bring back a
+    # database referencing objects that are not there.
+    #
+    # It also avoids a fourth processor. The policy says *three companies, each
+    # doing one job*, and DigitalOcean's paragraph already says the database is
+    # where everything Clarice stores lives.
+    #
+    # **Postgres is not a blob store, and that is the cost.** Right at this
+    # scale — one person, a personal corpus, a managed backed-up database — and
+    # wrong later. `services.MAX_ATTACHMENT_BYTES` is the pressure valve, and
+    # the trigger for revisiting is that limit starting to hurt.
+    # `default=b""` only so the column can be added: **the table is provably
+    # empty**, because until this increment nothing anywhere could create an
+    # `Attachment` -- `FileField`, `ImageField` and `request.FILES` appeared
+    # nowhere in `src/`. The default never meets a real row, and
+    # `attachment_has_content` stops it becoming a way to write one.
+    content = models.BinaryField(default=b"")
     created_at = models.DateTimeField(auto_now_add=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
 
@@ -194,6 +215,11 @@ class Attachment(models.Model):
         constraints = [
             models.CheckConstraint(
                 condition=Q(byte_size__gte=0), name="attachment_size_non_negative"
+            ),
+            # An attachment with no bytes is metadata pretending to be a file,
+            # and the `default=b""` above is the one way one could arrive.
+            models.CheckConstraint(
+                condition=~Q(content=b""), name="attachment_has_content"
             ),
         ]
 

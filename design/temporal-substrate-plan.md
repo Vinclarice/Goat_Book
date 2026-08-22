@@ -657,16 +657,21 @@ waits for increments 7–9 beneath it.
 
 ### Track D — intake
 
-13. **`CaptureSession`, and session-aware processing**, before any dump surface
-    exists. The two budgets, the read-only producer pass at session end, the
-    cross-session dedupe, and the processed flag that stops the next maintenance
-    run walking around the cap. **Ordered deliberately**: ship the surface first
-    and the first dump is the one that teaches a person to skim past the review
-    surface, which is not recoverable.
-14. **The brain dump surface.** Atomic fragments — one *keep and continue*, one
-    node — with a preview-and-ask on multiline paste and no silent splitting.
-    The ongoing ritual and the orientation flow are the same surface with
-    different copy and a different corpus behind them.
+13. ~~**`CaptureSession`, and session-aware processing.**~~ **Shipped August
+    21, 2026** (`b7331b7`), and first, which is the ordering this list insists
+    on. All eight rules enforced: every fragment saved immediately, **nothing
+    proposed during the dump**, one producer pass at the end, five materialised
+    with no producer past two, three shown, and `processed_at` as a **stored
+    flag** so the nightly pass cannot reach the same forty nodes one at a time.
+14. ~~**The brain dump surface.**~~ **Shipped** in the same commit, at
+    `/mind/dump/`. **A multiline paste gets a preview and a question, and
+    nothing is written until it is answered** — verified in a browser, where
+    the counter proved the preview had saved nothing. One sitting of eight
+    fragments returned two things asking for attention, from four that each
+    carried a date.
+
+    **15 to 18 are not done**: orientation belongs to v3's *Usable* release,
+    attachments and email intake are open, and URL intake is gated on **D7**.
 15. **Orientation built on it, as one of two entrances** — *quick start* beside
     *empty my head* — explaining only the concepts the person's own material
     demonstrates. This carries the invitation bar's third item, and v3's

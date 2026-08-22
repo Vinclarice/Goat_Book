@@ -644,9 +644,22 @@ waits for increments 7–9 beneath it.
 20. **Person made real.** Type confirmation on the concept surface, and the
     person page built from the concept page plus the facet and temporal
     joins.
-21. **The correction surface** — `revise` given its door, on the node page.
-    The service, the model and the search integration already exist and are
-    tested.
+21. ~~**The correction surface** — `revise` given its door, on the node page.~~
+    **Shipped August 21, 2026** (`e2ddc0d`). `POST /mind/notes/<id>/revise/`,
+    with the earlier wordings shown rather than hidden — `original_content` is
+    never mutated, so a surface that concealed what it corrected would be an
+    edit box rather than a record.
+
+    **C4's defect was here too**, and the guard shipped with the door rather
+    than after somebody found the duplicates: `revise` wrote a `Revision` and a
+    permanent `REVISED` event on every call, and a correction surface is
+    exactly where a double-submit happens.
+
+    **The first dark service to come back.** `revise` is out of
+    `clarice/tests/test_dark_services_declare_their_deferral.py`, which found
+    out the way it was built to — the contract failed, and the fix was deleting
+    a declaration that had become untrue. Eleven still dark, and the node page
+    is the named trigger for five of them.
 22. **Ask-your-memory.** The question box over Part 2's pipeline —
     extractive, cited, per-mode. Last in the track because it is Part 2's
     face and wants increments 7–9 beneath it.

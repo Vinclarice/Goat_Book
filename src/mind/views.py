@@ -41,6 +41,7 @@ from lists.services import TaskConflict
 from . import ask, instrumentation, queries, retrieval, services
 from .models import (
     ConceptCandidate,
+    MissContext,
     ConceptType,
     ConnectionHypothesis,
     Facet,
@@ -621,6 +622,11 @@ def note(request, public_id):
         # whether a note exists is itself the person's.
         raise Http404("no such note")
 
+    held_roles = set(
+        Facet.objects.filter(
+            node=found, retired_at__isnull=True, kind__in=services.MEMORY_ROLES
+        ).values_list("kind", flat=True)
+    )
     return render(
         request,
         "mind/note.html",
@@ -628,6 +634,17 @@ def note(request, public_id):
             "node": found,
             "body": queries.current_body(found),
             "labels": queries.confirmed_concept_labels(found),
+            # Track B increment 6. Offered as checkboxes because roles are
+            # multi-valued by design -- a memory is several things at once,
+            # which is exactly what D6's answer had to preserve.
+            "roles": [
+                {
+                    "value": role,
+                    "label": FacetKind(role).label,
+                    "held": role in held_roles,
+                }
+                for role in services.MEMORY_ROLES
+            ],
             # Earlier wordings, oldest first. Shown rather than hidden: a
             # surface that concealed what it corrected would be an edit box,
             # and the reason revisions are kept at all is being able to see
@@ -764,6 +781,64 @@ def person(request, public_id):
             "months": queries.when_they_came_up(request.user, canonical),
         },
     )
+
+
+@login_required
+@require_http_methods(["POST"])
+def recollection_was_thin(request, public_id):
+    """*There was more to that morning* -- Track B increment 10.
+
+    The search page's miss button, borrowed verbatim, which is the source D8
+    registered rather than a new mechanism. It is the strongest instrument in
+    this project for the same reason there: **the person knows something is
+    missing**, so the failure is loud and recordable where a plausible metric
+    would be neither.
+
+    It gives Recollection the only other honest signal retrieval has. Planning
+    has none yet and Resurfacing cannot have one, and `/numbers/` says both
+    rather than reporting a zero.
+    """
+    node = queries.live_nodes(request.user).filter(public_id=public_id).first()
+    if node is None:
+        raise Http404("no such note")
+
+    services.record_retrieval_miss(
+        request.user,
+        # The note, not a phrase. What was missed here is context around
+        # something, and the something is the only part that can be named.
+        query_text=f"recollection around {node.public_id}",
+        context=MissContext.RECOLLECTION,
+        now=timezone.now(),
+    )
+    return redirect("note", public_id=public_id)
+
+
+@login_required
+@require_http_methods(["POST"])
+def say_what_note_is(request, public_id):
+    """Say what kinds of memory this note holds -- Track B increment 6.
+
+    **Never asked at capture**, which is the product's first principle and the
+    reason this lives here rather than on the box. A note is written without
+    answering anything; what it *is* becomes answerable later, when the answer
+    exists.
+    """
+    node = queries.live_nodes(request.user).filter(public_id=public_id).first()
+    if node is None:
+        raise Http404("no such note")
+
+    try:
+        services.say_what_this_is(
+            node,
+            roles=request.POST.getlist("roles"),
+            now=timezone.now(),
+            actor=request.user.get_username(),
+        )
+    except services.MindError:
+        # Refused rather than partly applied. A role nobody offers arriving in
+        # a POST is a client sending something the form never rendered.
+        pass
+    return redirect("note", public_id=public_id)
 
 
 @login_required

@@ -50,6 +50,26 @@ is done by hand; this is the half that stops being done by hand.
   <button type="submit">Save</button>
 </form>
 
+{% comment %}
+Track B increment 6. Checkboxes because roles are multi-valued by design -- a
+recipe that is also from Mum, also for Christmas -- which is what D6's answer
+had to preserve and why each role is its own `FacetKind`.
+
+Never asked at capture. A note is written without answering anything; what it
+is becomes answerable later, when the answer exists.
+{% endcomment %}
+<form method="post" action="{% url 'say_what_note_is' node.public_id %}">
+  {% csrf_token %}
+  <p class="meta">What kind of memory is this?</p>
+  {% for role in roles %}
+    <label>
+      <input type="checkbox" name="roles" value="{{ role.value }}"{% if role.held %} checked{% endif %}>
+      {{ role.label }}
+    </label>
+  {% endfor %}
+  <button type="submit">Save</button>
+</form>
+
 {% if was_corrected %}
   <h2>What it said before</h2>
   {% comment %}
@@ -139,6 +159,19 @@ is done by hand; this is the half that stops being done by hand.
 {% endif %}
 
 <h2>What else was going on</h2>
+{% comment %}
+Track B increment 10, and the search page's miss button borrowed verbatim --
+the source D8 registered rather than a new mechanism. The strongest instrument
+here for the same reason it is there: the person knows something is missing, so
+the failure is loud and recordable where a plausible metric would be neither.
+
+It gives Recollection the only other honest retrieval signal in the project.
+{% endcomment %}
+<form method="post" action="{% url 'recollection_was_thin' node.public_id %}">
+  {% csrf_token %}
+  <button type="submit" class="linkish">There was more to that than this</button>
+</form>
+
 {% if occasions %}
   {% comment %}
   One block per occasion rather than one list -- D19. A note has several

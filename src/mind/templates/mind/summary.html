@@ -103,4 +103,33 @@ as prose in the design document, which is how a gate becomes indefinite.</p>
   </div>
 {% endfor %}
 
+{% comment %}
+Track B increment 10 -- **one row per mode and never a number across them.**
+
+A search miss, a dismissed resurfacing and an irrelevant planning suggestion
+are three different failures, and any single number over them reports health.
+Everything above this grades a machine that proposes links between notes;
+retrieval was not measured at all.
+
+**A blank where a figure should be is the increment, not a gap in it.** It is
+the one thing that cannot be mistaken for working -- and Planning's blank and
+Resurfacing's are different: one has no signal *yet*, and one cannot have one.
+{% endcomment %}
+<h2>Retrieval, by mode</h2>
+<table>
+  <tr><th>Mode</th><th class="figure">Misses recorded</th></tr>
+  {% for row in retrieval_by_mode %}
+    <tr>
+      <td>{{ row.mode|capfirst }}</td>
+      <td class="figure">
+        {% if row.has_an_honest_signal %}
+          {{ row.misses }}
+        {% else %}
+          <span class="meta">no honest signal — {{ row.why_not }}</span>
+        {% endif %}
+      </td>
+    </tr>
+  {% endfor %}
+</table>
+
 {% endblock %}

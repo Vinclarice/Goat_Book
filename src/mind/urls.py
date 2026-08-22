@@ -55,6 +55,16 @@ urlpatterns = [
     path(
         "notes/<uuid:public_id>/revise/", views.revise_note, name="revise_note"
     ),
+    # What kind of memory this is -- Track B increment 6.
+    path(
+        "notes/<uuid:public_id>/is/", views.say_what_note_is, name="say_what_note_is"
+    ),
+    # Recollection's honest miss signal -- Track B increment 10.
+    path(
+        "notes/<uuid:public_id>/thin/",
+        views.recollection_was_thin,
+        name="recollection_was_thin",
+    ),
     path("concepts/", views.concepts, name="concepts"),
     path("concepts/<uuid:public_id>/", views.concept, name="concept"),
     # Track E increment 20: saying what kind of thing something is, and the

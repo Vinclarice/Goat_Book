@@ -280,6 +280,31 @@ class FacetKind(models.TextChoices):
     """
 
     ACTIONABLE = "actionable", "Actionable"
+
+    # --- Memory roles, Track B increment 6 and D6's answer -----------------
+    #
+    # **What kind of memory is this** -- Part 2's first axis. One value per
+    # role rather than one `ROLE` kind with the name in `data`, and a
+    # constraint decides it rather than taste: `facet_one_live_per_kind` is
+    # `unique(node, kind)` over live facets, so a single kind could hold
+    # exactly one role, and a memory is several things at once. *A recipe that
+    # is also from Mum, also for Christmas.*
+    #
+    # Unlike every kind above them these carry **no data and no validation**.
+    # That is the difference between a capability and a description: being
+    # actionable gives a note a due date and a task, and being a recipe gives
+    # it nothing except an answer to what it is.
+    #
+    # **Six of the brief's fourteen**, and the rest are values away rather
+    # than work away -- which is what "open by design" buys. Shipping all
+    # fourteen with nothing proposing any of them would be the dark seam this
+    # project keeps rediscovering, times fourteen.
+    RECIPE = "recipe", "Recipe or procedure"
+    OCCASION = "occasion", "Occasion or birthday"
+    DREAM = "dream", "Dream"
+    FEAR = "fear", "Fear"
+    DESIRE = "desire", "Something I want"
+    PREFERENCE = "preference", "Preference"
     MEDIA = "media", "Media"
     GOAL = "goal", "Goal"
     EPISTEMIC = "epistemic", "Epistemic status"
@@ -1079,6 +1104,11 @@ class SentenceEmbedding(models.Model):
 class MissContext(models.TextChoices):
     SEARCH = "search"
     CAPTURE = "capture"
+    # Track B increment 10, and the source D8 registered on August 21: the
+    # search page's miss button, borrowed verbatim onto the note page --
+    # *"there was more to that morning."* One value, and Recollection has the
+    # only other honest failure signal in the project.
+    RECOLLECTION = "recollection"
 
 
 class RetrievalMiss(models.Model):

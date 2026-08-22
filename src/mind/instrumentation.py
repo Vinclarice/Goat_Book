@@ -36,6 +36,7 @@ from .models import (
     HypothesisResolution,
     InferenceOrigin,
     Mention,
+    MissContext,
     Node,
     RetrievalMiss,
 )
@@ -434,6 +435,76 @@ def last_maintenance_run(owner) -> datetime | None:
     )
 
 
+#: What each mode's failure signal is, or why it has none — **D8's answer**.
+#:
+#: **Two of the four have honest signals and two do not, and the difference
+#: between the two that do not is the part worth keeping.** Planning has none
+#: *yet*: no surface declares itself Planning, so a zero would be a mode
+#: nothing runs reading as success. Resurfacing **cannot** have one: *a missed
+#: resurfacing leaves no trace at all*, so any rate built from dismissals
+#: grades the half that leaves evidence and calls it the whole.
+#:
+#: Discovery and Reflection sit with Planning for the same reason: declared,
+#: unrun, and a number for them would be an invention.
+_MODE_SIGNALS = {
+    "lookup": (
+        MissContext.SEARCH,
+        None,
+    ),
+    "recollection": (
+        MissContext.RECOLLECTION,
+        None,
+    ),
+    "discovery": (
+        None,
+        "no surface declares itself a discovery yet, so nothing has been missed",
+    ),
+    "planning": (
+        None,
+        "no surface declares itself a planning moment yet, so nothing has been "
+        "missed",
+    ),
+    "reflection": (
+        None,
+        "no surface declares itself a reflection yet, so nothing has been missed",
+    ),
+    "resurfacing": (
+        None,
+        "a missed resurfacing leaves no trace at all, so no honest rate can be "
+        "built — a dismissal is recordable and an absence is not",
+    ),
+}
+
+
+def retrieval_by_mode(owner, *, now: datetime) -> list[dict]:
+    """One row per mode, and **never a number across them**.
+
+    A search miss, a dismissed resurfacing and an irrelevant planning
+    suggestion are three different failures. Any single number over them
+    reports health, which is what `retirement_gate` and `producer_performance`
+    already do for the machine that proposes links between notes -- and
+    retrieval was not measured at all.
+
+    **A row with no number is the increment, not a gap in it.** A blank where a
+    figure should be is the one thing that cannot be mistaken for working.
+    """
+    rows = []
+    for mode, (context, why_not) in _MODE_SIGNALS.items():
+        rows.append(
+            {
+                "mode": mode,
+                "misses": (
+                    RetrievalMiss.objects.filter(owner=owner, context=context).count()
+                    if context is not None
+                    else None
+                ),
+                "has_an_honest_signal": context is not None,
+                "why_not": why_not,
+            }
+        )
+    return rows
+
+
 def lab_summary(owner, *, now: datetime) -> dict:
     """Everything worth knowing about whether the lab is working, in one call.
 
@@ -459,6 +530,11 @@ def lab_summary(owner, *, now: datetime) -> dict:
         # without a row here is the unswitched seam this repository keeps
         # catching.
         "detectors": producer_performance(owner),
+        # Per mode, never blended -- Track B increment 10. Beside the producer
+        # rows rather than among them, because those grade a machine that
+        # proposes and these grade retrieval, and one table over both would be
+        # the single number this increment exists to refuse.
+        "retrieval_by_mode": retrieval_by_mode(owner, now=now),
         # Beside the accept rates on purpose. A detector with no proposals and a
         # detector that cannot run yet produce the same empty row above, and only
         # this distinguishes them.

@@ -544,6 +544,87 @@ def confirm_concept(
     return concept
 
 
+#: What kinds of memory a person can say a note is — Track B increment 6.
+#:
+#: Six of the brief's fourteen, and the rest are values away rather than work
+#: away. **A capability is not a role**: `ACTIONABLE` carries a due date, a
+#: recurrence and its own confirmation path, and routing it through here would
+#: walk round `confirm_actionable` — the one facet that may never be attached
+#: outright.
+MEMORY_ROLES = (
+    FacetKind.RECIPE,
+    FacetKind.OCCASION,
+    FacetKind.DREAM,
+    FacetKind.FEAR,
+    FacetKind.DESIRE,
+    FacetKind.PREFERENCE,
+)
+
+#: **Nothing proposes a role yet, and that is declared rather than half-built.**
+#:
+#: The increment says *proposed after capture*, which needs a producer — and a
+#: role classifier built with no evidence is a proposer whose accept rate
+#: nobody can read. `Facet.producer` and the accept-rate machinery exist
+#: precisely to judge one, and are the named trigger: when there is a corpus
+#: worth classifying, a producer can be added and measured like every other.
+#:
+#: Until then a person says what a memory is, and nothing guesses. Which also
+#: keeps the other half of the increment true without any effort: *never asked
+#: for* — capture is untouched.
+ROLE_PROPOSAL_IS_DEFERRED = True
+
+
+@transaction.atomic
+def say_what_this_is(node: Node, *, roles, now: datetime, actor: str) -> list:
+    """Say what kinds of memory this note holds — Track B increment 6.
+
+    **Multi-valued, which is the whole point of D6's answer.** One facet per
+    role, so a note can be a recipe *and* an occasion; a single `ROLE` kind
+    would have been limited to one by `facet_one_live_per_kind`.
+
+    **Corrigible**: roles not named are retired rather than deleted, so a
+    dismissed role can be proposed again later on new evidence — the same rule
+    the constraint's own comment gives.
+
+    **Re-saying the same roles changes nothing**, including `confirmed_at`. A
+    corrigible property re-saved is not a second act, and moving the timestamp
+    would make every later reading about *when* somebody decided this wrong.
+    """
+    _require_live(node)
+    wanted = list(dict.fromkeys(roles))
+    for role in wanted:
+        if role not in MEMORY_ROLES:
+            raise MindError(f"{role!r} is not a kind of memory")
+
+    live = {
+        facet.kind: facet
+        for facet in Facet.objects.filter(
+            node=node, retired_at__isnull=True, kind__in=MEMORY_ROLES
+        )
+    }
+
+    for role in wanted:
+        if role in live:
+            continue
+        Facet.objects.create(
+            node=node,
+            kind=role,
+            data={},
+            # A person's statement, not a producer's guess -- which is what
+            # `origin` is for, and what the soft-apply rule turns on.
+            origin=InferenceOrigin.EXPLICIT,
+            confirmed_at=now,
+            reason="said so",
+        )
+
+    for role, facet in live.items():
+        if role not in wanted:
+            facet.retired_at = now
+            facet.save(update_fields=["retired_at"])
+
+    return wanted
+
+
 @transaction.atomic
 def say_what_kind(concept: ConceptCandidate, *, kind: str) -> ConceptCandidate:
     """Say what kind of thing a concept is — Track E increment 20.

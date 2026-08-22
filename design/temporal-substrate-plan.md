@@ -635,10 +635,25 @@ waits for increments 7–9 beneath it.
 
 ### Track C — observations
 
-11. **Extraction proposing namespaced observation facets** from journal entries,
-    explicit statements as facts and parsed ones as inferences.
-12. **Reflection reads them with stated denominators**, and refuses both causal
-    language and the sobriety inference.
+11. ~~**Extraction proposing namespaced observation facets** from journal
+    entries.~~ **Shipped August 21, 2026** (`8d290c8`). `mind/observations.py`,
+    eight namespaces, **rules rather than a model** — a classifier deciding
+    somebody drank last night is a claim about their life made by a number
+    nobody can inspect. Everything is `INFERRED` and says so, because nothing
+    in the journal is explicit today and nothing may ask at the moment of
+    entry. Invoked from `write_entry` beside the commitment producer, for the
+    reason the comment above it already gives: *a producer nothing calls is not
+    a producer.*
+12. ~~**Reflection reads them with stated denominators.**~~ **Shipped** in the
+    same commit, completing Track C. `mind/reflection.py`, on the review
+    surface, silent below three recorded nights.
+
+    **Both refusals are enforced and both are on the page.** And the second was
+    a real bug the test caught on its first run: *other recorded mornings* was
+    implemented as mornings whose previous day was absent from the drinking
+    set, which admits every morning after a night nobody wrote in — **the
+    sobriety inference itself, in code.** A morning now qualifies only when the
+    night before was recorded and did not carry the observation.
 
 ### Track D — intake
 

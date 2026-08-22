@@ -10,6 +10,7 @@ from clarice import life_log
 from daily.models import DailyEntry, DailyFocus
 # The task core calling the knowledge core, which is the direction that already
 # runs: `review/reads.py` reads nodes, and `Facet.task` points the other way.
+from mind import observations as mind_observations
 from mind import services as mind_services
 
 
@@ -79,9 +80,17 @@ def write_entry(
         # date the parser reads comes from `entry.date`, and threading a
         # parameter through every caller to timestamp an event would be
         # ceremony. The proposal itself is reproducible without it.
+        now = timezone.now()
         mind_services.propose_journal_commitments(
-            entry, now=timezone.now(), actor=owner.get_username()
+            entry, now=now, actor=owner.get_username()
         )
+        # Track C increment 11, beside the commitment producer and invoked here
+        # for the reason the paragraph above gives. Sleep, alcohol, mood and
+        # energy cannot be found by textual similarity at all -- they are
+        # quantities and states over time -- so the structure is proposed
+        # beside the entry, which is never altered. Retiring every proposal
+        # leaves the day exactly as it was written.
+        mind_observations.propose_from(entry, now=now)
     return entry
 
 

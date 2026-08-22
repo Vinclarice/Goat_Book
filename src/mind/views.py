@@ -24,6 +24,7 @@ Everything routes through `services`; these views parse a form and redirect.
 from __future__ import annotations
 
 from dataclasses import replace
+from datetime import timedelta
 
 from django.contrib.auth.decorators import login_required
 from django.http import Http404
@@ -38,7 +39,7 @@ from daily import reads as daily_reads
 from lists import search as lists_search
 from lists.services import TaskConflict
 
-from . import ask, instrumentation, queries, retrieval, services
+from . import ask, instrumentation, queries, reflection, retrieval, services
 from .models import (
     ConceptCandidate,
     MissContext,
@@ -272,6 +273,22 @@ def review(request):
         limit=REVIEW_LIMIT,
     )
 
+    # Track C increment 12. On the review surface because that is where a
+    # reflection belongs -- and shown only when there is enough to compare,
+    # because a rate over one night is a number that will be believed and
+    # should not be.
+    #
+    # The reading carries its own denominator and its own absence sentence, and
+    # the template prints all three together: a number that can be separated
+    # from its denominator is a number somebody reads as *of all mornings*.
+    comparison = reflection.after_a_recorded_night(
+        request.user,
+        "alcohol.consumed",
+        "energy.low",
+        since=(now - timedelta(days=90)).date(),
+        until=now.date(),
+    )
+
     proposals = []
     for hypothesis in hypotheses:
         members = sorted(
@@ -327,7 +344,12 @@ def review(request):
     return render(
         request,
         "mind/review.html",
-        {"proposals": proposals, "remaining": remaining, "questions": questions},
+        {
+            "proposals": proposals,
+            "remaining": remaining,
+            "questions": questions,
+            "comparison": comparison,
+        },
     )
 
 

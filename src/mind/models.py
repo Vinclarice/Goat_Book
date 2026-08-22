@@ -299,6 +299,14 @@ class FacetKind(models.TextChoices):
     # than work away -- which is what "open by design" buys. Shipping all
     # fourteen with nothing proposing any of them would be the dark seam this
     # project keeps rediscovering, times fourteen.
+    # Track C increment 11. **One kind, unlike the roles below**, and the
+    # difference is which constraint applies: entry facets are unique by
+    # `(entry, fingerprint)` and deliberately not one per kind, so a day can
+    # carry several observations without needing a value each. The namespaced
+    # name lives in `data`, which is what Part 3 means by "this needs no new
+    # model".
+    OBSERVATION = "observation", "Observation"
+
     RECIPE = "recipe", "Recipe or procedure"
     OCCASION = "occasion", "Occasion or birthday"
     DREAM = "dream", "Dream"

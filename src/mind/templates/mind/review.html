@@ -89,4 +89,28 @@ costless answer, and that is why it can sit at the top without costing anything.
   a review that feels like an inbox has already failed.</p>
 {% endif %}
 
+{% if comparison.worth_reading %}
+  {% comment %}
+  Track C increment 12, and both of the brief's non-negotiable refusals are on
+  the page rather than only in the module.
+
+  **No causal language.** The sentence is a comparison of recorded rates. The
+  difference between *recorded on 6 of 8* and *makes you tired* is the
+  difference between an instrument and an opinion about somebody's life.
+
+  **A silent night is not a sober one.** Days with no entry are counted on
+  neither side, and the page says how many there were -- because the days in
+  between look exactly like zeroes and that is the whole temptation.
+
+  The three sentences print together. A number that can be separated from its
+  denominator is a number somebody reads as *of all mornings*.
+  {% endcomment %}
+  <h2>What the journal records</h2>
+  <div class="card">
+    <div class="body">{{ comparison.reads_as }}.</div>
+    <div class="meta" style="margin-top:.5rem">{{ comparison.denominator_says }}.</div>
+    <div class="meta">{{ comparison.absence_says }}.</div>
+  </div>
+{% endif %}
+
 {% endblock %}

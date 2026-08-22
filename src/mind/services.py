@@ -61,6 +61,7 @@ from .models import (
     MissContext,
     Node,
     NodeSource,
+    Decision,
     RetrievalMiss,
     Revision,
     Source,
@@ -381,6 +382,136 @@ class Grew:
     @property
     def has_anything(self):
         return bool(self.notes or self.tasks)
+
+
+@dataclass(frozen=True)
+class DueToRevisit:
+    """Decisions worth looking at again, and the ones nothing can find.
+
+    **Two lists and a count, never one number.** A decision waiting on a date
+    and a decision waiting on *"if anyone asks for the meeting back"* are not
+    the same state, and a read that returned them together would claim to have
+    checked something it cannot check.
+    """
+
+    past_their_date: list = field(default_factory=list)
+    #: How many are waiting on a condition in words. Counted rather than
+    #: dropped -- the same absence discipline as `nights_not_recorded` and D5:
+    #: silence about them would read as *no decision has a trigger*.
+    waiting_on_a_condition: int = 0
+
+    @property
+    def about_conditions(self):
+        if not self.waiting_on_a_condition:
+            return ""
+        return (
+            f"{self.waiting_on_a_condition} more name a condition in words, "
+            "which cannot be checked by anything -- they come back when you "
+            "notice, not when Clarice does"
+        )
+
+    @property
+    def has_anything(self):
+        return bool(self.past_their_date or self.waiting_on_a_condition)
+
+
+@transaction.atomic
+def record_decision(
+    owner,
+    *,
+    question: str,
+    chose: str,
+    considered: str = "",
+    cites=None,
+    revisit_when: str = "",
+    revisit_after=None,
+    supersedes=None,
+    now: datetime,
+) -> Decision:
+    """Record what was chosen, over what, and what would bring it back — S11.
+
+    **The citation is a snapshot as well as a link**, which is this codebase's
+    existing move and a widening of the v3 plan's *"must cite a `Revision`"*.
+    See `Decision` for why a `Revision` alone cannot carry it.
+
+    **Superseding stamps the old one rather than deleting it.** *What he
+    considered at the time* is only answerable if the time survives, and the
+    recursion the product hangs from is that the previous answer stays
+    available as evidence.
+    """
+    if not chose.strip():
+        raise MindError("a decision needs something chosen")
+    if supersedes is not None and supersedes.owner_id != owner.pk:
+        raise NotYours("that decision belongs to someone else")
+
+    cited_text, cited_seq = "", None
+    if cites is not None:
+        from . import queries
+
+        cited_text = queries.current_body(cites)
+        cited_seq = (
+            cites.revisions.order_by("-seq").values_list("seq", flat=True).first()
+        )
+
+    decision = Decision.objects.create(
+        owner=owner,
+        question=question.strip(),
+        chose=chose.strip(),
+        considered=considered.strip(),
+        revisit_when=revisit_when.strip(),
+        revisit_after=revisit_after,
+        decided_at=now,
+        supersedes=supersedes,
+        cited_node=cites,
+        cited_text=cited_text,
+        cited_revision_seq=cited_seq,
+    )
+
+    if supersedes is not None and supersedes.revisited_at is None:
+        supersedes.revisited_at = now
+        supersedes.save(update_fields=["revisited_at"])
+
+    return decision
+
+
+@transaction.atomic
+def revisit_decision(decision, *, now: datetime) -> Decision:
+    """Mark that a decision has been looked at again, without replacing it.
+
+    Looking again and changing your mind are different acts: one stops it being
+    due, the other produces a new decision that supersedes it. Folding them
+    would mean you could not confirm a decision still stands.
+    """
+    if decision.revisited_at is None:
+        decision.revisited_at = now
+        decision.save(update_fields=["revisited_at"])
+    return decision
+
+
+def decisions_citing(node):
+    """The decisions a note provoked — the first third of S11's done-means."""
+    return Decision.objects.filter(cited_node=node).order_by("decided_at")
+
+
+def decisions_to_revisit(owner, *, on) -> "DueToRevisit":
+    """What is worth looking at again — the third of S11's done-means.
+
+    **Only the dated ones can be found**, and the rest are counted rather than
+    ignored. A condition in words is what makes a decision honest and is
+    checkable by nobody but the person; saying so is the difference between a
+    read that is incomplete and one that is misleading.
+    """
+    live = Decision.objects.filter(owner=owner, revisited_at__isnull=True)
+    return DueToRevisit(
+        past_their_date=list(
+            live.exclude(revisit_after=None)
+            .filter(revisit_after__lte=on)
+            .order_by("revisit_after")
+        ),
+        waiting_on_a_condition=live.filter(revisit_after=None)
+        .exclude(revisit_when="")
+        .count(),
+    )
 
 
 @transaction.atomic

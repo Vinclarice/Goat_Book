@@ -61,6 +61,10 @@ NOT_DRILLED = {
     # somebody downloads and finds empty, which is visible rather than silently
     # wrong.
     "attachment_has_content",
+    # A decision with nothing chosen is a question, and the service refuses one
+    # first. Losing the constraint lets a blank row through a path nothing
+    # takes -- visible as an empty entry, not a wrong answer.
+    "decision_chose_something",
     "edge_confidence_range",
     "facet_span_ordered",
     "facet_span_paired",

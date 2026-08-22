@@ -42,6 +42,7 @@ from lists.services import TaskConflict
 from . import ask, instrumentation, queries, reflection, retrieval, services
 from .models import (
     Attachment,
+    Decision,
     Source,
     ConceptCandidate,
     MissContext,
@@ -723,6 +724,9 @@ def note(request, public_id):
             # so, and links back -- otherwise the source page is the only way
             # to know and you would have to already be there.
             "came_from": found.came_from,
+            # S11's first third: *he can reach the decision from the work that
+            # provoked it.*
+            "decisions": services.decisions_citing(found),
             # **This page declares itself a Recollection** -- Track B increment
             # 7. It was already doing one ad hoc: the fragment, what was
             # nearby, what came of it, with no name for the kind of
@@ -840,6 +844,71 @@ def finish_dump(request):
         "mind/dump_done.html",
         {"shown": shown, "kept": session.fragments.count() if session else 0},
     )
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def decisions(request):
+    """What you chose, over what, and what would bring it back — S11.
+
+    **The due ones lead**, because *find decisions past their reconsideration
+    trigger without hunting for them* is the third of the story's done-means
+    and a list sorted by date buries exactly that.
+    """
+    if request.method == "POST" and request.POST.get("chose", "").strip():
+        try:
+            services.record_decision(
+                request.user,
+                question=request.POST.get("question", ""),
+                chose=request.POST.get("chose", ""),
+                considered=request.POST.get("considered", ""),
+                revisit_when=request.POST.get("revisit_when", ""),
+                revisit_after=_parse_optional_date(request.POST.get("revisit_after")),
+                now=timezone.now(),
+            )
+        except services.MindError:
+            pass
+        return redirect("decisions")
+
+    return render(
+        request,
+        "mind/decisions.html",
+        {
+            "due": services.decisions_to_revisit(
+                request.user, on=timezone.now().date()
+            ),
+            "all": Decision.objects.filter(owner=request.user),
+        },
+    )
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def decision(request, public_id):
+    """One decision, and what it was standing on."""
+    found = Decision.objects.filter(
+        public_id=public_id, owner=request.user
+    ).select_related("cited_node", "supersedes").first()
+    if found is None:
+        raise Http404("no such decision")
+
+    if request.method == "POST":
+        services.revisit_decision(found, now=timezone.now())
+        return redirect("decision", public_id=public_id)
+
+    return render(request, "mind/decision.html", {"decision": found})
+
+
+def _parse_optional_date(value):
+    from datetime import date
+
+    try:
+        return date.fromisoformat((value or "").strip())
+    except ValueError:
+        # A date nobody typed and a date typed wrongly are both "no date". The
+        # form offers a date input, so a malformed one is a client that did
+        # not, and refusing the whole decision over it would lose the decision.
+        return None
 
 
 @login_required

@@ -1,0 +1,58 @@
+{% extends "mind/base.html" %}
+{% block title %}Decisions — Second Mind{% endblock %}
+{% block content %}
+
+{% comment %}
+S11. The due ones lead, because *find decisions past their reconsideration
+trigger without hunting for them* is a third of the story's done-means and a
+list sorted by date buries exactly that.
+{% endcomment %}
+
+<h1>Decisions</h1>
+
+{% if due.has_anything %}
+  <h2>Worth revisiting</h2>
+  {% for item in due.past_their_date %}
+    <div class="card">
+      <div class="body"><a href="{% url 'decision' item.public_id %}">{{ item.question }}</a></div>
+      <div class="meta" style="margin-top:.5rem">
+        chose {{ item.chose }} · said to revisit after {{ item.revisit_after|date:"j M Y" }}
+      </div>
+    </div>
+  {% endfor %}
+  {% if due.about_conditions %}
+    {% comment %}
+    Counted rather than dropped. A condition in words is what makes a decision
+    honest and is checkable by nobody but the person — silence about them would
+    read as *no decision has a trigger*, which is the opposite of true.
+    {% endcomment %}
+    <p class="meta">{{ due.about_conditions }}.</p>
+  {% endif %}
+{% endif %}
+
+<h2>Record one</h2>
+<form method="post" action="{% url 'decisions' %}">
+  {% csrf_token %}
+  <input type="text" name="question" placeholder="what were you deciding?">
+  <textarea name="chose" rows="2" placeholder="what did you choose?" required></textarea>
+  <textarea name="considered" rows="2" placeholder="what else was on the table?"></textarea>
+  <input type="text" name="revisit_when" placeholder="what would make you revisit?">
+  <label class="meta" for="revisit_after">or a date to look again</label>
+  <input type="date" id="revisit_after" name="revisit_after">
+  <button type="submit">Record</button>
+</form>
+
+<h2>All of them</h2>
+{% for item in all %}
+  <div class="card">
+    <div class="body"><a href="{% url 'decision' item.public_id %}">{{ item.question }}</a></div>
+    <div class="meta" style="margin-top:.5rem">
+      chose {{ item.chose }} · {{ item.decided_at|date:"j M Y" }}
+      {% if item.revisited_at %} · revisited{% endif %}
+    </div>
+  </div>
+{% empty %}
+  <p class="meta">Nothing recorded yet.</p>
+{% endfor %}
+
+{% endblock %}

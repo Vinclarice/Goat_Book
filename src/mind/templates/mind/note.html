@@ -138,6 +138,20 @@ is becomes answerable later, when the answer exists.
   <p class="meta">read in <a href="{% url 'source' came_from.public_id %}">{{ came_from.title }}</a></p>
 {% endif %}
 
+{% if decisions %}
+  <h2>What it provoked</h2>
+  {% comment %}
+  S11's first third: *he can reach the decision from the work that provoked
+  it.* The other direction -- decision back to note -- is on the decision page.
+  {% endcomment %}
+  {% for decision in decisions %}
+    <div class="card">
+      <div class="body"><a href="{% url 'decision' decision.public_id %}">{{ decision.question }}</a></div>
+      <div class="meta" style="margin-top:.5rem">chose {{ decision.chose }} · {{ decision.decided_at|date:"j M Y" }}</div>
+    </div>
+  {% endfor %}
+{% endif %}
+
 {% if surrounding.has_anything %}
   <h2>Written into</h2>
   {% comment %}

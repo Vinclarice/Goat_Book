@@ -243,6 +243,93 @@ class Source(models.Model):
         return self.title
 
 
+class Decision(models.Model):
+    """Something chosen over something else, and what would bring it back — S11.
+
+    **Not hypothetical.** S11 says so itself: `architecture-trajectory.md` §7
+    and §8 are exactly this practice, done in Markdown *because the product
+    cannot hold it*.
+
+    **Earns its own model**, and the v3 plan argued it: *decided → held →
+    returns on condition → revisited or superseded* is unlike `Item`
+    (open→done), `Facet` (proposed→confirmed→retired) or `Node`.
+
+    **On citing, and a widening of the plan's constraint.** It says *"it must
+    cite a `Revision`, not a `Node`, or a note edited in October silently
+    changes what was on screen in August."* The concern is exactly right and a
+    `Revision` cannot deliver it — one exists only for a note that has been
+    *edited*, and `revise` got its first door on August 21, so almost no node
+    has one and a decision could only cite a note somebody happened to rewrite.
+
+    So this cites three ways at once, and each does a different job:
+
+    - `cited_node` keeps **navigation**, which a snapshot alone loses.
+    - `cited_text` is **the record**, immune to a later edit *and* to the note
+      being deleted — the move this codebase already makes in
+      `DailyFocus.task_text`, `WeeklyOutcome.project_title` and
+      `Facet.cited_text`.
+    - `cited_revision_seq` keeps **exactness** where there is a revision to be
+      exact about, which is what the plan was reaching for.
+
+    **`revisit_when` and `revisit_after` are not the same thing and neither
+    replaces the other.** A named condition is what makes a decision honest and
+    **nothing can check it**; a date is checkable and cruder. Recording only
+    the date would lose the reason, and recording only the condition would mean
+    nothing ever comes back on its own — so both, and the read says plainly
+    which of the two it cannot act on.
+    """
+
+    public_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="decisions"
+    )
+    question = models.TextField()
+    chose = models.TextField()
+    #: What else was on the table. **The half a note cannot keep**: six weeks
+    #: later the alternatives are the part you have forgotten, and *what he
+    #: considered at the time* is a third of S11's done-means.
+    considered = models.TextField(blank=True, default="")
+
+    #: The condition in words. Honest, and uncheckable by anything.
+    revisit_when = models.TextField(blank=True, default="")
+    #: A date, which is crude and is the only half a read can act on.
+    revisit_after = models.DateField(null=True, blank=True)
+
+    decided_at = models.DateTimeField()
+    #: When it came back. A revisited decision stops being due; it is never
+    #: deleted, because *what he considered at the time* needs the time to
+    #: survive.
+    revisited_at = models.DateTimeField(null=True, blank=True)
+    supersedes = models.ForeignKey(
+        "self",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="superseded_by",
+    )
+
+    cited_node = models.ForeignKey(
+        Node,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="decisions",
+    )
+    cited_text = models.TextField(blank=True, default="")
+    cited_revision_seq = models.PositiveIntegerField(null=True, blank=True)
+
+    class Meta:
+        ordering = ("-decided_at",)
+        constraints = [
+            models.CheckConstraint(
+                condition=~Q(chose=""), name="decision_chose_something"
+            ),
+        ]
+
+    def __str__(self):
+        return self.question
+
+
 class Attachment(models.Model):
     public_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     node = models.ForeignKey(Node, on_delete=models.CASCADE, related_name="attachments")

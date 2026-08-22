@@ -181,6 +181,7 @@ share target that lets any app hand text straight to the capture box.
     {% endcomment %}
     <a href="{% url 'concepts' %}" {% if here == 'concepts' or here == 'concept' %}class="here"{% endif %}>Concepts</a>
     <a href="{% url 'sources' %}" {% if here == 'sources' or here == 'source' %}class="here"{% endif %}>Read</a>
+    <a href="{% url 'decisions' %}" {% if here == 'decisions' or here == 'decision' %}class="here"{% endif %}>Decisions</a>
     <a href="{% url 'review' %}" {% if here == 'review' %}class="here"{% endif %}>Pending{% if pending %} <span class="badge">{{ pending }}</span>{% endif %}</a>
     <a href="{% url 'search' %}" {% if here == 'search' %}class="here"{% endif %}>Search</a>
     {% comment %}

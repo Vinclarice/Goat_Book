@@ -1,0 +1,73 @@
+{% extends "mind/base.html" %}
+{% block title %}{{ decision.question }} — Second Mind{% endblock %}
+{% block content %}
+
+{% comment %}
+One decision. *What he considered at the time and not only what he chose* is
+the middle third of S11, so the alternatives sit beside the choice rather than
+behind a link.
+{% endcomment %}
+
+<h1>{{ decision.question }}</h1>
+
+<div class="card">
+  <div class="body"><strong>Chose:</strong> {{ decision.chose }}</div>
+  {% if decision.considered %}
+    <div class="body"><strong>Also considered:</strong> {{ decision.considered }}</div>
+  {% endif %}
+  <div class="meta" style="margin-top:.5rem">
+    decided {{ decision.decided_at|date:"j M Y" }}
+    {% if decision.revisited_at %} · revisited {{ decision.revisited_at|date:"j M Y" }}{% endif %}
+  </div>
+</div>
+
+{% if decision.revisit_when or decision.revisit_after %}
+  <h2>What would bring it back</h2>
+  <div class="card">
+    {% if decision.revisit_when %}
+      <div class="body">{{ decision.revisit_when }}</div>
+      {% comment %}
+      Said out loud, because a condition in words comes back when the person
+      notices and never because Clarice did — and a page that showed it beside
+      a date without saying so implies both are watched.
+      {% endcomment %}
+      <div class="meta" style="margin-top:.5rem">a condition in words — nothing checks this for you</div>
+    {% endif %}
+    {% if decision.revisit_after %}
+      <div class="meta">and a date: {{ decision.revisit_after|date:"j M Y" }}, which does come back on its own</div>
+    {% endif %}
+  </div>
+{% endif %}
+
+{% if decision.cited_text %}
+  <h2>What it was standing on</h2>
+  {% comment %}
+  The snapshot, not the note as it reads now — *a note edited in October
+  silently changes what was on screen in August*. The link goes to the note as
+  it is; the text above it is what was there when this was decided.
+  {% endcomment %}
+  <div class="card">
+    <div class="body">{{ decision.cited_text }}</div>
+    <div class="meta" style="margin-top:.5rem">
+      as it read when this was decided
+      {% if decision.cited_node %}
+        · <a href="{% url 'note' decision.cited_node.public_id %}">the note as it is now</a>
+      {% else %}
+        · that note has since been deleted
+      {% endif %}
+    </div>
+  </div>
+{% endif %}
+
+{% if decision.supersedes %}
+  <p class="meta">replaces <a href="{% url 'decision' decision.supersedes.public_id %}">{{ decision.supersedes.question }}</a></p>
+{% endif %}
+
+{% if not decision.revisited_at %}
+  <form method="post" action="{% url 'decision' decision.public_id %}">
+    {% csrf_token %}
+    <button type="submit">I have looked at this again</button>
+  </form>
+{% endif %}
+
+{% endblock %}

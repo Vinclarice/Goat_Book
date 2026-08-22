@@ -46,7 +46,7 @@ from enum import Enum
 
 from django.utils import timezone
 
-from clarice.search import to_query
+from clarice.search import to_query, to_question_query
 
 from . import queries
 from .detectors.dormant_thread import DEFAULT_MIN_DORMANCY, DEFAULT_MIN_LENGTH
@@ -111,6 +111,11 @@ class Moment:
     #: -- *restore the context around something* -- has a something in it, and
     #: a mode with no anchor is Lookup wearing a different name.
     anchor: Node | None = None
+    #: Whether `text` is a question somebody typed rather than search terms.
+    #: It decides how the words are read: a question's extra words are
+    #: scaffolding and must not narrow, where a search's are the person being
+    #: more specific. `clarice/search.py` owns both readings.
+    text_is_a_question: bool = False
     #: The clock, injected like everywhere else in this app, so a dormancy
     #: floor is testable without waiting eighteen months.
     now: datetime | None = None
@@ -155,13 +160,31 @@ class Result:
 
 def _lexical(moment):
     """PostgreSQL full-text, which is right for *find that chicken recipe*."""
-    query = to_query(moment.text)
+    build = to_question_query if moment.text_is_a_question else to_query
+    query = build(moment.text)
     if query is None:
         return []
-    return [
-        (node, "lexical", f"it says {moment.text}")
-        for node in queries.search_ranked(moment.owner, query)
-    ]
+
+    words = moment.text.split()
+    found = []
+    for node in queries.search_ranked(moment.owner, query):
+        # **The words this note actually has**, not the whole query. A question
+        # is ORed, so naming every term explains an answer with words that are
+        # not in it -- and increment 9 exists so somebody can argue with an
+        # answer rather than acquire one more thing to distrust.
+        body = queries.current_body(node).lower()
+        present = [w for w in words if w.lower() in body]
+        # **Past tense when nothing survived the edit.** `original_content` is
+        # never mutated, so a note can be reached through wording its author
+        # took out -- and "it says" would then be true of the note's history
+        # and false of the note, which is the wrong way round.
+        why = (
+            f"it says {' '.join(present)}"
+            if present
+            else f"it once said {' '.join(words)}"
+        )
+        found.append((node, "lexical", why))
+    return found
 
 
 def _concept(moment):

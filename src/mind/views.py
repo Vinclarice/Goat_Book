@@ -38,7 +38,7 @@ from daily import reads as daily_reads
 from lists import search as lists_search
 from lists.services import TaskConflict
 
-from . import instrumentation, queries, retrieval, services
+from . import ask, instrumentation, queries, retrieval, services
 from .models import (
     ConceptCandidate,
     ConceptType,
@@ -679,6 +679,30 @@ def note(request, public_id):
                 )
             ),
         },
+    )
+
+
+@login_required
+@require_http_methods(["GET"])
+def ask_page(request):
+    """A question box over the retrieval pipeline -- Track E increment 22.
+
+    **Extractive, cited, per-mode**, and every one of the three is a refusal of
+    something easier. Extractive rather than generated, because a second mind
+    that writes new prose about your life is one you have to fact-check.
+    Cited, because without it a person can only distrust an answer rather than
+    argue with it. Per-mode by an enumerable rule rather than a classifier,
+    because a rule can be read and disagreed with.
+
+    **Declined earlier the same day and built once the pipeline existed.** On
+    nothing beneath it this is `search_ranked` with a prompt in front, failing
+    silently -- which is what made the thin version worth refusing.
+    """
+    question = (request.GET.get("q") or "").strip()
+    return render(
+        request,
+        "mind/ask.html",
+        {"q": question, "answer": ask.answer(request.user, question) if question else None},
     )
 
 

@@ -70,6 +70,8 @@ urlpatterns = [
         views.decide_concept,
         name="decide_concept",
     ),
+    # Track E increment 22, the last of the track.
+    path("ask/", views.ask_page, name="ask"),
     path("search/", views.search, name="search"),
     path("search/miss/", views.record_miss, name="record_miss"),
     path("numbers/", views.summary, name="summary"),

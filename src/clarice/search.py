@@ -41,3 +41,36 @@ def to_query(text):
     if not cleaned:
         return None
     return SearchQuery(cleaned, config=CONFIG, search_type=SEARCH_TYPE)
+
+
+def to_question_query(text):
+    """The tsquery for a *question*, which ORs its terms where `to_query` ANDs.
+
+    **A question is not a search, and the difference is the direction the extra
+    words point.** `SEARCH_TYPE` is `websearch` because in a search box two
+    words narrow rather than widen — somebody typing more means something more
+    specific. In a question box the opposite holds: most of *"what did I say
+    about the venue"* is scaffolding, and ANDing it means no note contains
+    *what* and *did* and *say*, so the page reports nothing while the answer
+    sits two lines away.
+
+    **A second builder rather than a flag on the first**, because these are two
+    semantics and not one with a switch — and because `to_query`'s reasoning is
+    correct for the surface it serves and should stay legible there.
+
+    Ranking does the narrowing instead, which is what it is for: a note
+    matching four of five terms outranks one matching one.
+    """
+    cleaned = (text or "").strip()
+    if not cleaned:
+        return None
+    # One `plain` query per word, combined with `|`. **Not `search_type` alone**:
+    # `plainto_tsquery` ANDs its terms exactly as `websearch_to_tsquery` does,
+    # which is easy to assume otherwise and was assumed here first. Only `raw`
+    # accepts an explicit `|`, and `raw` raises on whatever somebody types --
+    # so the OR is built from parts that each cannot.
+    combined = None
+    for word in cleaned.split():
+        one = SearchQuery(word, config=CONFIG, search_type="plain")
+        combined = one if combined is None else combined | one
+    return combined

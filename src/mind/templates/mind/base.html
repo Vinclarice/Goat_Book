@@ -175,6 +175,13 @@ share target that lets any app hand text straight to the capture box.
     <a href="{% url 'concepts' %}" {% if here == 'concepts' or here == 'concept' %}class="here"{% endif %}>Concepts</a>
     <a href="{% url 'review' %}" {% if here == 'review' %}class="here"{% endif %}>Pending{% if pending %} <span class="badge">{{ pending }}</span>{% endif %}</a>
     <a href="{% url 'search' %}" {% if here == 'search' %}class="here"{% endif %}>Search</a>
+    {% comment %}
+    Beside Search rather than behind it, because they answer different
+    questions -- Search finds the note, Ask answers from inside it. A surface
+    reachable only by typing its URL is the un-switched-on seam under a nicer
+    name, and this sequence has shipped that twice.
+    {% endcomment %}
+    <a href="{% url 'ask' %}" {% if here == 'ask' %}class="here"{% endif %}>Ask</a>
     <a href="{% url 'summary' %}" {% if here == 'summary' %}class="here"{% endif %}>Numbers</a>
   </nav>
   {% endwith %}

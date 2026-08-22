@@ -1,0 +1,57 @@
+{% extends "mind/base.html" %}
+{% block title %}Ask — Second Mind{% endblock %}
+{% block content %}
+
+{% comment %}
+Track E increment 22, and the last of the track.
+
+Three things, each a refusal of something easier.
+
+**Extractive** — every passage below is a sentence the person wrote, lifted
+from the note that holds it. Nothing here generates, summarises or paraphrases.
+A second mind that writes new prose about your life is one you have to
+fact-check, and then the store's whole value is gone.
+
+**Cited** — each passage links to its note and carries the retrieval
+pipeline's own reason for reaching it.
+
+**Per-mode** — the page says which kind of remembering it did and why, because
+a rule can be argued with only when you can see which part of it fired.
+{% endcomment %}
+
+<h1>Ask</h1>
+
+<form method="get" action="{% url 'ask' %}">
+  <input type="search" name="q" value="{{ q }}" placeholder="what did I say about…" autofocus>
+  <button type="submit">Ask</button>
+</form>
+
+{% if answer %}
+  {% comment %}
+  Said before the answers rather than after, so a wrong mode is visible at the
+  point it would otherwise be confusing -- a recollection returning what was
+  nearby reads as noise unless the page has already said it went looking
+  around something.
+  {% endcomment %}
+  <p class="meta">{{ answer.why_this_mode }}</p>
+
+  {% if answer.found_anything %}
+    {% for passage in answer.passages %}
+      <div class="card">
+        <div class="body">{{ passage.text }}</div>
+        <div class="meta" style="margin-top:.5rem">
+          <a href="{% url 'note' passage.node.public_id %}">{{ passage.node.captured_at|date:"j M Y" }}</a>
+          · {{ passage.why }}{% if passage.from_earlier_wording %} · in wording since corrected{% endif %}
+        </div>
+      </div>
+    {% endfor %}
+  {% else %}
+    {% comment %}
+    An answer assembled from nothing looks exactly like an answer, which is the
+    failure a question box invites more than any other surface here.
+    {% endcomment %}
+    <p class="meta">Nothing you have written answers that.</p>
+  {% endif %}
+{% endif %}
+
+{% endblock %}

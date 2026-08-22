@@ -588,8 +588,20 @@ waits for increments 7–9 beneath it.
 
 ### Track B — roles and modes
 
-6. **Multi-valued memory-role facets.** Proposed after capture, corrigible,
-   never asked for. D6 settles how the kinds are shaped.
+6. ~~**Multi-valued memory-role facets.**~~ **Shipped August 21, 2026**
+   (`3c62348`), with **D6 answered by a constraint rather than by taste**:
+   `facet_one_live_per_kind` is `unique(node, kind)` over live facets, so one
+   `ROLE` kind could hold exactly one role and roles are multi-valued by
+   definition. The typed-data option was unavailable, not a trade-off. **One
+   value per role**, six of the fourteen, the rest values away rather than work
+   away.
+
+   **Proposal is deferred with a named trigger**, which is the honest half:
+   *proposed after capture* needs a producer, and a role classifier built with
+   no evidence is a proposer whose accept rate nobody can read. `Facet.producer`
+   and the accept-rate machinery exist to judge exactly one. Until then a
+   person says what a memory is — which keeps *never asked for* true for free,
+   because capture is untouched.
 7. ~~**Modes named in code.**~~ **Shipped August 21, 2026** (`061f134`), with
    8 and 9 — they turned out to be one thing. `mind/retrieval.py`: six modes,
    and a `Moment` carrying the mode *and* the present context, because a mode
@@ -610,7 +622,16 @@ waits for increments 7–9 beneath it.
    not running** rather than silently absent, since `sentence-transformers` is
    dev-only (D14). And Lookup's ranking is unchanged, so a regression here
    would be attributable.
-10. **Per-mode measurement**, replacing one blended number. D8.
+10. ~~**Per-mode measurement**, replacing one blended number.~~ **Shipped**
+    (`3c62348`), completing Track B. **D8 answered: two of the four modes have
+    honest signals and two do not**, which is the point of the question rather
+    than a shortfall. Lookup already had the best instrument here. Recollection
+    gets one from the source registered on August 21 — the search page's miss
+    button, borrowed verbatim onto the note page, one `MissContext` value and
+    nothing else. Planning has none *yet*; Resurfacing **cannot**, because a
+    missed one leaves no trace and a rate from dismissals grades the half that
+    leaves evidence. That difference is kept in the numbers, because one is a
+    gap and one is a fact.
 
 ### Track C — observations
 
@@ -781,7 +802,13 @@ waits for increments 7–9 beneath it.
    is honest only if the log can prove it was looking. `MAINTENANCE_RAN` is the
    precedent. **Part 3's sobriety refusal is the same decision** in the place a
    person will feel it.
-6. **D6. Are roles new `FacetKind` values, or one kind with typed data?**
+6. ~~**D6. Are roles new `FacetKind` values, or one kind with typed data?**~~
+   **Answered August 21, 2026 — values, and `facet_one_live_per_kind` decided
+   it.** `unique(node, kind)` over live facets means one kind holds one role,
+   and roles are multi-valued by definition. The question below stands as
+   asked; the answer is that it was not a judgement call in the end.
+
+   Original text:
    `FacetKind` says a new kind should be a value rather than a table — but
    fourteen kinds each with their own validation is a different proposition from
    three, and they are multi-valued by design. `design-concept.md` owns the
@@ -789,7 +816,12 @@ waits for increments 7–9 beneath it.
 7. **D7. Is URL intake worth reopening SSRF surface?** An allowlist or an egress
    proxy is the price. The alternative is storing a URL as text and fetching
    nothing — cheaper, and much less useful.
-8. **D8. What are the four metrics?** Lookup, planning, recollection and
+8. ~~**D8. What are the four metrics?**~~ **Answered August 21, 2026 — there
+   are two.** Lookup and Recollection have honest signals; Planning has none
+   yet and Resurfacing cannot have one. Saying so in `/numbers/` is the
+   increment rather than a gap in it.
+
+   Original text: Lookup, planning, recollection and
    resurfacing fail differently, and **a missed resurfacing leaves no trace at
    all.** If one of the four has no honest signal, say so rather than grading it
    by proxy.

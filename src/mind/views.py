@@ -41,6 +41,7 @@ from lists.services import TaskConflict
 from . import instrumentation, queries, services
 from .models import (
     ConceptCandidate,
+    ConceptType,
     ConnectionHypothesis,
     Facet,
     FacetKind,
@@ -447,6 +448,11 @@ def concept(request, public_id):
             "concept": canonical,
             "nodes": queries.nodes_mentioning(request.user, canonical),
             "aliases": canonical.aliases.filter(retired_at__isnull=True),
+            # Every value, not a curated few. The set is small and closed, and
+            # offering four of seven would leave three unreachable in exactly
+            # the way all seven have been until now.
+            "kinds": ConceptType.choices,
+            "is_a_person": canonical.concept_type == ConceptType.PERSON,
         },
     )
 
@@ -627,6 +633,66 @@ def note(request, public_id):
                 for occasion in recall.context_of(request.user, found).occasions
             ],
             "what_came_of_it": _phrased(recall.since(request.user, found)),
+        },
+    )
+
+
+@login_required
+@require_http_methods(["POST"])
+def say_concept_kind(request, public_id):
+    """Say what kind of thing this is -- Track E increment 20.
+
+    `ConceptType` has had seven values and one writer since the first slice.
+    Production holds eleven concepts and every one is `unknown`, which is not a
+    judgement anybody made -- it is the absence of a control.
+    """
+    found = ConceptCandidate.objects.filter(
+        public_id=public_id, owner=request.user, retired_at__isnull=True
+    ).first()
+    if found is None:
+        return redirect("concepts")
+
+    try:
+        services.say_what_kind(found, kind=request.POST.get("concept_type", ""))
+    except services.MindError:
+        # Refused rather than coerced to `UNKNOWN`, which would be
+        # indistinguishable from the state this exists to end.
+        pass
+    return redirect("concept", public_id=public_id)
+
+
+@login_required
+def person(request, public_id):
+    """One person, across everything you have written -- Track E increment 20.
+
+    **What this adds over the concept page** are the two joins the plan names.
+    A concept page lists the notes that mention something; neither the
+    commitments that grew out of those notes nor the shape of a name across
+    time is reachable from that list, and both are what makes a person more
+    than a tag.
+
+    **Not a person, not this page.** A page called *people* rendering a motif
+    would mean nothing, so it redirects to the concept page -- the concept is
+    real and there is somewhere right for it to be.
+    """
+    found = ConceptCandidate.objects.filter(
+        public_id=public_id, owner=request.user, retired_at__isnull=True
+    ).first()
+    if found is None:
+        return redirect("concepts")
+
+    canonical = queries.canonical_concept(found)
+    if canonical.concept_type != ConceptType.PERSON:
+        return redirect("concept", public_id=public_id)
+
+    return render(
+        request,
+        "mind/person.html",
+        {
+            "person": canonical,
+            "nodes": queries.nodes_mentioning(request.user, canonical),
+            "commitments": queries.commitments_involving(request.user, canonical),
+            "months": queries.when_they_came_up(request.user, canonical),
         },
     )
 

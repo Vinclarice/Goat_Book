@@ -1,0 +1,71 @@
+{% extends "mind/base.html" %}
+{% block title %}{{ person.label }} — Second Mind{% endblock %}
+{% block content %}
+
+{% comment %}
+One person, across everything you have written — Track E increment 20.
+
+**What this adds over the concept page** are the two joins the plan names. A
+concept page lists the notes that mention something; neither the commitments
+that grew out of those notes nor the shape of a name across time is reachable
+from that list, and both are what make a person more than a tag.
+
+`ConceptType` had seven values and one writer until increment 20 — production
+held eleven concepts, every one `unknown`, which was never a judgement anybody
+made. It was the absence of a control.
+{% endcomment %}
+
+<h1>{{ person.label }}</h1>
+<div class="meta">a person</div>
+
+<h2>What you have committed to</h2>
+{% if commitments %}
+  {% comment %}
+  The join a list of mentions cannot give: notes about somebody become tasks,
+  and the tasks are the part with consequences.
+  {% endcomment %}
+  {% for facet in commitments %}
+    <div class="card">
+      <div class="body">
+        <a href="{% url 'note' facet.node.public_id %}">{{ facet.task.text }}</a>
+      </div>
+      <div class="meta" style="margin-top:.5rem">
+        {% if facet.task.status == "completed" %}finished{% elif facet.task.status == "archived" %}put away{% else %}open{% endif %}
+        {% if facet.task.due_date %} · due {{ facet.task.due_date|date:"j M Y" }}{% endif %}
+      </div>
+    </div>
+  {% endfor %}
+{% else %}
+  <p class="meta">Nothing you wrote about them has become a commitment.</p>
+{% endif %}
+
+<h2>When they have come up</h2>
+{% if months %}
+  {% comment %}
+  Counts per month, not a smoothed curve or a rate. A count is a fact somebody
+  can check against their own memory; a smoothed number is one nobody can
+  argue with. Twenty notes in one week and twenty across two years read
+  identically in a flat list, and this is the difference.
+  {% endcomment %}
+  <div class="card">
+    {% for month, seen in months %}
+      <div class="body">{{ month|date:"M Y" }} · {{ seen }} note{{ seen|pluralize }}</div>
+    {% endfor %}
+  </div>
+{% else %}
+  <p class="meta">Nothing mentions them yet.</p>
+{% endif %}
+
+<h2>What you wrote</h2>
+{% for node in nodes %}
+  <div class="card">
+    <div class="body">
+      <a href="{% url 'note' node.public_id %}">{{ node.original_content|truncatechars:200 }}</a>
+    </div>
+    <div class="meta" style="margin-top:.5rem">{{ node.captured_at|date:"j M Y" }}</div>
+  </div>
+{% empty %}
+  <p class="meta">Nothing yet.</p>
+{% endfor %}
+
+{% endblock %}

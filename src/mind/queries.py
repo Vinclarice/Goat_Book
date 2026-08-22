@@ -259,6 +259,53 @@ def confirmed_mentions_of(concept: ConceptCandidate) -> QuerySet[Mention]:
     ).select_related("node")
 
 
+def commitments_involving(owner, concept: ConceptCandidate) -> QuerySet[Facet]:
+    """Confirmed commitments that grew out of notes mentioning this concept.
+
+    The first of the two joins Track E increment 20 names, and the one a list
+    of mentions cannot give: notes about somebody become tasks, and the tasks
+    are the part with consequences.
+
+    **Confirmed facets only, and live nodes only.** A proposal is the system's
+    guess about what a note was, and a deleted note's commitment is not a way
+    back to its content.
+    """
+    return (
+        Facet.objects.filter(
+            kind=FacetKind.ACTIONABLE,
+            confirmed_at__isnull=False,
+            task__isnull=False,
+            node__in=nodes_mentioning(owner, concept),
+        )
+        .select_related("node", "task")
+        .order_by("-confirmed_at")
+    )
+
+
+def when_they_came_up(owner, concept: ConceptCandidate) -> list[tuple[datetime, int]]:
+    """Months in which this concept was mentioned, and how often, oldest first.
+
+    The second join increment 20 names. A name across time is what a second
+    mind should be good at, and a flat list of mentions does not show it --
+    twenty notes in one week and twenty across two years read identically.
+
+    **Months rather than a smoothed curve or a rate.** A count per month is a
+    fact somebody can check against their own memory; anything smoothed is a
+    number nobody can argue with, which `principles.md` warns about wherever a
+    reading might be mistaken for evidence.
+    """
+    from django.db.models.functions import TruncMonth
+
+    return [
+        (row["month"], row["seen"])
+        for row in nodes_mentioning(owner, concept)
+        .annotate(month=TruncMonth("captured_at"))
+        .values("month")
+        .annotate(seen=Count("pk"))
+        .order_by("month")
+    ]
+
+
 def connections_of(node: Node) -> list[tuple[str, Node]]:
     """The live notes this one is linked to, in either direction.
 

@@ -544,6 +544,34 @@ def confirm_concept(
     return concept
 
 
+@transaction.atomic
+def say_what_kind(concept: ConceptCandidate, *, kind: str) -> ConceptCandidate:
+    """Say what kind of thing a concept is — Track E increment 20.
+
+    `ConceptType` has seven values and until this existed nothing wrote
+    anything but `UNKNOWN`: production held eleven concepts, every one of them
+    untyped, because no surface could say otherwise. The field was in the
+    August 21 inventory's *declared-but-never-written vocabulary*.
+
+    **No event, and that is decided rather than forgotten.** A type is
+    corrigible by design — the substrate brief refuses *asking what a thing is
+    at capture*, because the answer arrives later and changes. Increment 1 drew
+    the same line for the log: *a log recording every keystroke of a task's
+    text is a log nobody can read*, and every correction of a corrigible
+    property is that, written where it cannot be corrected.
+    `ConceptCandidate.confirmed_at` already holds the decision that matters,
+    which is that this is a thing at all.
+
+    Raises rather than coercing an unknown value: a typo silently becoming
+    `UNKNOWN` would be indistinguishable from the state this exists to end.
+    """
+    if kind not in ConceptType.values:
+        raise MindError(f"{kind!r} is not a kind of thing")
+    concept.concept_type = kind
+    concept.save(update_fields=["concept_type"])
+    return concept
+
+
 def retire_concept(
     concept: ConceptCandidate, *, now: datetime, actor: str
 ) -> ConceptCandidate:

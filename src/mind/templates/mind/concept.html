@@ -21,6 +21,35 @@ structure.
   {% endif %}
 </div>
 
+{% comment %}
+Track E increment 20. `ConceptType` has seven values and had one writer since
+the first slice: production held eleven concepts, every one `unknown`, which
+was never a judgement anybody made -- it was the absence of this control.
+
+Every value is offered rather than a curated few. The set is small and closed,
+and showing four of seven would leave three unreachable in exactly the way all
+seven have been.
+{% endcomment %}
+<form method="post" action="{% url 'say_concept_kind' concept.public_id %}">
+  {% csrf_token %}
+  <label for="concept_type" class="meta">What kind of thing is this?</label>
+  <select id="concept_type" name="concept_type">
+    {% for value, label in kinds %}
+      <option value="{{ value }}"{% if value == concept.concept_type %} selected{% endif %}>{{ label }}</option>
+    {% endfor %}
+  </select>
+  <button type="submit">Save</button>
+</form>
+
+{% if is_a_person %}
+  {% comment %}
+  Findability. A page reachable only by typing its URL is the un-switched-on
+  seam under a nicer name, and this sequence has shipped that twice -- the
+  calendar and the bills month.
+  {% endcomment %}
+  <p><a href="{% url 'person' concept.public_id %}">Everything about them</a></p>
+{% endif %}
+
 {% for node in nodes %}
   <div class="card">
     <div class="quote">{{ node.original_content }}</div>

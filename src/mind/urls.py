@@ -57,6 +57,14 @@ urlpatterns = [
     ),
     path("concepts/", views.concepts, name="concepts"),
     path("concepts/<uuid:public_id>/", views.concept, name="concept"),
+    # Track E increment 20: saying what kind of thing something is, and the
+    # page a person earns by being one.
+    path(
+        "concepts/<uuid:public_id>/kind/",
+        views.say_concept_kind,
+        name="say_concept_kind",
+    ),
+    path("people/<uuid:public_id>/", views.person, name="person"),
     path(
         "concepts/<uuid:public_id>/decide/",
         views.decide_concept,

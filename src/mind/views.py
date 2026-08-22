@@ -38,7 +38,7 @@ from daily import reads as daily_reads
 from lists import search as lists_search
 from lists.services import TaskConflict
 
-from . import instrumentation, queries, services
+from . import instrumentation, queries, retrieval, services
 from .models import (
     ConceptCandidate,
     ConceptType,
@@ -799,26 +799,42 @@ def search(request):
         days_total = matching_days.count()
         days = list(matching_days[:RECENT_LIMIT])
 
-        matching = queries.search_ranked(request.user, query)
+        # **This page declares itself a Lookup** -- Track B increment 7. The
+        # mode is not decoration: it is what admits a note the Discovery floors
+        # would refuse, and "Mum's birthday, 14 March" is twenty-four
+        # characters against a `MIN_LENGTH` of 120. The failure that matters
+        # here is a miss, and every floor is a way to produce one.
+        found = retrieval.retrieve(
+            retrieval.Moment(
+                owner=request.user, mode=retrieval.Mode.LOOKUP, text=q
+            ),
+            limit=RECENT_LIMIT,
+        )
         # Counted before slicing, because the count is the point: a page that
         # returns thirty of thirty-five and says nothing is a page that invites
         # the miss button below it to be pressed for a note it simply did not
         # show. That records a truncation as a retrieval failure, in the one
         # signal where the right answer is known.
-        total = matching.count()
-        nodes = list(matching[:RECENT_LIMIT])
+        total = queries.search_ranked(request.user, query).count()
+        nodes = [result.node for result in found]
         current = queries.current_text_matches(nodes, query)
         results = [
             {
-                "node": node,
-                "body": queries.current_body(node),
+                "node": result.node,
+                "body": queries.current_body(result.node),
+                # Increment 9. Not decoration: it is the only thing that lets
+                # somebody argue with an eligibility rule rather than learning
+                # to distrust the page -- and the concept generator can return
+                # a note without the typed word in it at all, which is baffling
+                # unless the page says why.
+                "why": result.why,
                 # Matched only in text since edited away. Kept as a result --
                 # the original is preserved on purpose -- and labelled, so the
                 # word somebody typed not being in the note they are shown is
                 # explained rather than baffling.
-                "superseded": node.pk not in current,
+                "superseded": result.node.pk not in current,
             }
-            for node in nodes
+            for result in found
         ]
     return render(
         request,

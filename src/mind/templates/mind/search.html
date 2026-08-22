@@ -34,7 +34,7 @@
         pages shipped with, reachable only from one link nobody found.
         {% endcomment %}
         <div class="body"><a href="{% url 'note' result.node.public_id %}">{{ result.body }}</a></div>
-        <div class="meta" style="margin-top:.5rem">{{ result.node.captured_at|date:"j M Y" }}{% if result.superseded %} · matched an earlier version of this note{% endif %}</div>
+        <div class="meta" style="margin-top:.5rem">{{ result.node.captured_at|date:"j M Y" }} · matched because {{ result.why }}{% if result.superseded %} · in an earlier version of this note{% endif %}</div>
       </div>
     {% endfor %}
   {% endif %}

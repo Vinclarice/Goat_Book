@@ -78,6 +78,15 @@ re-add it here.
   remain**: *The first question*, *The wider horizons*, *The invitation bar*
   and *Background repair*.
 
+  **Two of those seven delivered less than their own definition**, found by
+  re-scoring on August 22 rather than by anyone noticing at the time. *Unify*
+  lists four things and one shipped — its acceptance was *"S13 and S14 reach
+  works"* and neither does; *Recollection* is two of five. The temporal
+  substrate was delivered and called Unify. **What is missing is named in
+  [`product-stories.md`](product-stories.md)'s re-score**, and it is three
+  nouns rather than a vague remainder: typed node-to-day links,
+  `FacetKind.GOAL` wired to `Project.outcome`, and search's fifth increment.
+
 - ~~**The temporal substrate is the active work.**~~ **Closed August 22, 2026,
   shipped and verified in production as `nightjar`**
   (`DEPLOYED-2026-08-22/0101`, image `clarice:ec2c4cb7e084`, all five `mind`
@@ -92,10 +101,11 @@ re-add it here.
   in the stub because they are about behaviour that is now live rather than
   about work — **D16 is the one with a clock running**, since every observation
   Track C records is stamped UTC and the longer that runs the more data is
-  stamped against a decision nobody made. And **`product-stories.md` has not
-  been re-scored** against what now exists: Unify's own acceptance was *"S13
-  and S14 reach works"* and that was never checked, so the score below the v3
-  entry is stale rather than wrong.
+  stamped against a decision nobody made. And ~~**`product-stories.md` has not
+  been re-scored**~~ — **re-scored August 22, and nothing moved: 8 · 5 · 6
+  unchanged.** Every remaining require is a specific noun the substrate sits
+  beneath rather than satisfies, and the re-score is what turned up that
+  *Unify* had claimed an acceptance it did not meet.
 
 - ~~**Release M — *Usable*, v3's first delivery release.**~~ **Closed August 20,
   2026, shipped and verified in production as `moorhen`**

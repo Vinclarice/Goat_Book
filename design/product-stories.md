@@ -146,6 +146,43 @@ Design personas, not descriptions of the real people using Clarice.
 
 ## Loop 1 — Do
 
+## Re-scored after `nightjar`, August 22, 2026 — and nothing moved
+
+**Thirty-one commits, five migrations, and the score is unchanged: 8 · 5 · 6.**
+Recorded at the top because it is the least comfortable thing this file says
+and burying it would be the same failure it exists to prevent.
+
+**Every remaining require is a specific noun, and the substrate is underneath
+all of them rather than any of them.** Checked one at a time:
+
+| Story | Its require | Did `nightjar` touch it? |
+|---|---|---|
+| S13 | reach across **sources and reviews** | No. Reviews are still outside the index and `Source` does not exist |
+| S14 | **typed links** from a node into the day and project objects | No. `around()` joins on *time*, `since()` on *provenance* — a note still does not carry its day |
+| S15 | **`Source`** | No |
+| S16 | S13, S14, S15 and S11 underneath it | No, by consequence |
+| S1 | **approval that is not a person** | No |
+| S8, S11, S12 | longer horizons, `Decision`, project retrospective | Not attempted |
+
+**The honest reading is not that the work was wasted.** These stories measure
+end-to-end outcomes for a person, and `nightjar` built the layer beneath them:
+a log that can answer *when*, reads that cross both cores, retrieval that knows
+why it is being asked, and the surfaces that make any of it visible. S14's
+require went from *a model short* to *one relationship short* in an earlier
+release and stayed there — the relationship is still not built.
+
+**The uncomfortable half is that a release claimed an acceptance it did not
+meet.** v3's *Unify* says **"Acceptance: S13 and S14 reach works"** and lists
+four things; one shipped. The temporal substrate was delivered and called
+Unify, and nobody checked the other three bullets — typed node-to-day links,
+`FacetKind.GOAL` wired to `Project.outcome`, and search's fifth increment.
+*Recollection* is 2 of 5 by the same count. `roadmap.md` said both had
+delivered until this re-score; it no longer does.
+
+**What this file is for**, and it did its job: a scoreboard nobody re-reads is
+a scoreboard that flatters. The gap between *thirty-one commits* and *nothing
+moved* is exactly the reading a stale score would have hidden.
+
 ### S1. Sam's first four minutes
 
 > Sam follows a link, reads what Clarice is, makes an account, and is doing

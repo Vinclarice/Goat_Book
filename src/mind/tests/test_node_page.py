@@ -486,3 +486,53 @@ def test_a_correction_shows_up_in_what_came_of_the_note(signed_in, note):
     correct(signed_in, note, "ask Maya about the parking")
 
     assert "corrected" in page(signed_in, note).content.decode()
+
+
+def test_withheld_notes_are_counted_rather_than_listed_one_by_one(signed_in, owner, note):
+    """R5 withholds a deleted note's content and keeps its event, which is
+    right -- capturing it was a real act. Rendering each one as *a note that is
+    no longer shown* is not: on a real page it produced dozens of identical
+    rows that buried everything else.
+
+    Counted rather than dropped, because dropping them would quietly shrink a
+    morning, and the whole point of keeping the events is that they happened.
+    """
+    for text in ("one", "two", "three"):
+        gone = services.capture(
+            owner,
+            content=f"regretted {text}",
+            captured_at=later(minutes=5),
+            source=Node.Source.WEB,
+            actor="vince",
+        )
+        services.delete_node(gone, now=later(days=1), actor="vince")
+
+    body = page(signed_in, note).content.decode()
+
+    assert "3 notes here are no longer shown" in body
+    assert body.count("a note that is no longer shown") == 0
+
+
+def test_repeated_events_with_nothing_to_name_are_counted_too(signed_in, owner, note):
+    """The second face of the withheld-rows defect, found the same way.
+
+    An event with no note and no task renders as its phrase alone, so seven
+    names confirmed in one sitting became seven identical rows reading *a name
+    confirmed*. Real acts, unlike the withheld ones -- but a page cannot be
+    read through repetition either way, and a count says the same thing.
+    """
+    from mind.models import ConceptType
+
+    for label in ("one", "two", "three"):
+        concept = services.propose_concept(
+            owner,
+            label=label,
+            concept_type=ConceptType.UNKNOWN,
+            now=later(minutes=5),
+            actor="system",
+        )
+        services.confirm_concept(concept, now=later(minutes=5), actor="vince")
+
+    body = page(signed_in, note).content.decode()
+
+    assert "a name confirmed × 3" in body

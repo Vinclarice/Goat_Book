@@ -529,6 +529,44 @@ def _phrased(development_chain):
     )
 
 
+def _occasion(occasion):
+    """One occasion, with its withheld subjects counted rather than listed.
+
+    R5 withholds a deleted or archived note's content and keeps its event,
+    which is right -- capturing it was a real act. Rendering each one as *a
+    note that is no longer shown* is not: on a real page it produced dozens of
+    identical rows that buried everything else.
+
+    **Counted, not dropped.** Dropping them would quietly shrink a morning, and
+    the reason the events are kept at all is that they happened.
+    """
+    shown = [n for n in occasion.neighbours if not n.subject_withheld]
+    withheld = len(occasion.neighbours) - len(shown)
+
+    # Rows that name something keep their own line. Rows that cannot -- an
+    # event with no note and no task renders as its phrase alone -- are grouped
+    # by phrase, because seven names confirmed in one sitting is seven
+    # identical lines and a page cannot be read through repetition. The same
+    # defect as the withheld count above, one variant over, and found the same
+    # way: by looking at the page.
+    named = [_readable(n) for n in shown if n.node is not None or n.task is not None]
+    bare = {}
+    for neighbour in shown:
+        if neighbour.node is None and neighbour.task is None:
+            phrase = phrase_for(neighbour.event_type)
+            bare[phrase] = bare.get(phrase, 0) + 1
+
+    return {
+        "began": occasion.began,
+        "ended": occasion.ended,
+        "moments": [_readable(m) for m in occasion.moments],
+        "neighbours": named,
+        "also": sorted(bare.items()),
+        "withheld": withheld,
+        "omitted": occasion.omitted,
+    }
+
+
 def _readable(neighbour):
     """One `Neighbour`, with its phrase already chosen.
 
@@ -622,17 +660,24 @@ def note(request, public_id):
             # moments and merges the ones close enough to be one sitting, which
             # is exactly the resolution the decision says no caller should
             # re-derive.
-            "occasions": [
-                {
-                    "began": occasion.began,
-                    "ended": occasion.ended,
-                    "moments": [_readable(m) for m in occasion.moments],
-                    "neighbours": [_readable(n) for n in occasion.neighbours],
-                    "omitted": occasion.omitted,
-                }
-                for occasion in recall.context_of(request.user, found).occasions
-            ],
+            "occasions": [_occasion(occasion) for occasion in
+                          recall.context_of(request.user, found).occasions],
             "what_came_of_it": _phrased(recall.since(request.user, found)),
+            # **This page declares itself a Recollection** -- Track B increment
+            # 7. It was already doing one ad hoc: the fragment, what was
+            # nearby, what came of it, with no name for the kind of
+            # remembering that is. What naming it adds is the material the
+            # other sections cannot reach -- a note a year away that a person
+            # confirmed is about the same thing, which no temporal window will
+            # ever find. The failure that matters here is context too thin to
+            # resume, so nothing is filtered for length or dormancy.
+            "related": retrieval.retrieve(
+                retrieval.Moment(
+                    owner=request.user,
+                    mode=retrieval.Mode.RECOLLECTION,
+                    anchor=found,
+                )
+            ),
         },
     )
 

@@ -322,3 +322,179 @@ def test_the_search_page_says_why_each_note_appeared(signed_in, owner):
     body = signed_in.get("/mind/search/", {"q": "chicken"}).content.decode()
 
     assert "matched" in body.lower()
+
+
+# ---------------------------------------------------------------------------
+# Recollection — the fourth mode, and the one increment 22 actually needs
+# ---------------------------------------------------------------------------
+
+
+def test_recollection_needs_something_to_recollect(db, owner):
+    """A mode with no anchor is Lookup with a different name. *Restore the
+    context around something* has a something in it."""
+    with pytest.raises(ValueError):
+        retrieval.Moment(owner=owner, mode=retrieval.Mode.RECOLLECTION)
+
+
+def test_it_returns_what_was_written_around_the_same_time(db, owner):
+    """The failure that matters here is **context too thin to resume**, which
+    is the opposite of Discovery's. So the temporal index proposes, and
+    nothing about length or dormancy is asked."""
+    anchor = a_note(owner, "ask Maya about the venue")
+    a_note(owner, "the caterer called back", when=later(minutes=20))
+
+    found = retrieval.retrieve(
+        retrieval.Moment(
+            owner=owner, mode=retrieval.Mode.RECOLLECTION, anchor=anchor, now=WRITTEN
+        )
+    )
+
+    assert "the caterer called back" in [r.node.original_content for r in found]
+
+
+def test_a_short_note_nearby_is_still_context(db, owner):
+    """Twenty-four characters is a fact about a note, not about whether it
+    helps somebody resume. Discovery's floors would drop it and Discovery is
+    right to; here they would produce the exact failure the mode names."""
+    anchor = a_note(owner, "ask Maya about the venue")
+    a_note(owner, "14 March", when=later(minutes=5))
+
+    found = retrieval.retrieve(
+        retrieval.Moment(
+            owner=owner, mode=retrieval.Mode.RECOLLECTION, anchor=anchor, now=WRITTEN
+        )
+    )
+
+    assert "14 March" in [r.node.original_content for r in found]
+
+
+def test_it_returns_what_is_about_the_same_things(db, owner):
+    """Confirmed concepts, not similarity. A person said these are about the
+    same thing, which is provenance -- and D4's refusal applies here as much
+    as in `since()`: a close embedding is not a connection anybody made."""
+    concept = services.propose_concept(
+        owner, label="Maya", concept_type=ConceptType.UNKNOWN, now=WRITTEN, actor="s"
+    )
+    services.confirm_concept(concept, now=WRITTEN, actor="vince")
+    anchor = a_note(owner, "ask about the venue")
+    distant = a_note(owner, "she prefers the small room", when=later(days=400))
+    for node in (anchor, distant):
+        services.propose_mention(
+            node,
+            concept,
+            index_version="manual",
+            origin=InferenceOrigin.EXPLICIT,
+            now=node.captured_at,
+            actor="vince",
+        )
+
+    found = retrieval.retrieve(
+        retrieval.Moment(
+            owner=owner, mode=retrieval.Mode.RECOLLECTION, anchor=anchor, now=WRITTEN
+        )
+    )
+
+    assert "she prefers the small room" in [r.node.original_content for r in found]
+
+
+def test_a_note_about_nothing_in_common_is_not_context(db, owner):
+    """The refusal that keeps this from being *everything you ever wrote*.
+    Written a year away, sharing no confirmed concept, connected by nothing
+    anybody recorded."""
+    anchor = a_note(owner, "ask Maya about the venue")
+    a_note(owner, "the car needs a service", when=later(days=400))
+
+    found = retrieval.retrieve(
+        retrieval.Moment(
+            owner=owner, mode=retrieval.Mode.RECOLLECTION, anchor=anchor, now=WRITTEN
+        )
+    )
+
+    assert "the car needs a service" not in [r.node.original_content for r in found]
+
+
+def test_the_thing_being_recollected_is_not_its_own_context(db, owner):
+    anchor = a_note(owner, "ask Maya about the venue")
+
+    found = retrieval.retrieve(
+        retrieval.Moment(
+            owner=owner, mode=retrieval.Mode.RECOLLECTION, anchor=anchor, now=WRITTEN
+        )
+    )
+
+    assert anchor.pk not in [r.node.pk for r in found]
+
+
+def test_recollection_says_why_too(db, owner):
+    anchor = a_note(owner, "ask Maya about the venue")
+    a_note(owner, "the caterer called back", when=later(minutes=20))
+
+    found = retrieval.retrieve(
+        retrieval.Moment(
+            owner=owner, mode=retrieval.Mode.RECOLLECTION, anchor=anchor, now=WRITTEN
+        )
+    )
+
+    assert "around the same time" in found[0].why
+
+
+def test_a_deleted_note_is_not_context_either(db, owner):
+    anchor = a_note(owner, "ask Maya about the venue")
+    gone = a_note(owner, "something regretted", when=later(minutes=20))
+    services.delete_node(gone, now=later(days=1), actor="vince")
+
+    found = retrieval.retrieve(
+        retrieval.Moment(
+            owner=owner, mode=retrieval.Mode.RECOLLECTION, anchor=anchor, now=WRITTEN
+        )
+    )
+
+    assert "something regretted" not in [r.node.original_content for r in found]
+
+
+def test_lookup_does_not_use_the_temporal_index(db, owner):
+    """Generators are per mode, not one pool. Searching for *chicken* must not
+    return everything written near some instant -- that is Recollection's
+    question, and answering it under Lookup is the single implicit contract
+    coming back."""
+    anchor = a_note(owner, "the lemon chicken recipe")
+    a_note(owner, "unrelated thing nearby", when=later(minutes=5))
+
+    found = retrieval.retrieve(
+        retrieval.Moment(owner=owner, mode=retrieval.Mode.LOOKUP, text="chicken")
+    )
+
+    assert [r.node.pk for r in found] == [anchor.pk]
+
+
+def test_the_note_page_declares_itself_a_recollection(signed_in, owner):
+    """The surface was already doing recollection ad hoc -- the fragment, what
+    was nearby, what came of it -- without naming it. Increment 7's whole point
+    is that a surface says which kind of remembering it is doing.
+
+    **Asserted on something only the mode can produce.** The first version of
+    this test looked for a note written twenty minutes later, which
+    `context_of` already put on the page as an *event*: it passed without the
+    wiring existing. A note a year away sharing a confirmed concept is
+    reachable by no other section.
+    """
+    concept = services.propose_concept(
+        owner, label="Maya", concept_type=ConceptType.UNKNOWN, now=WRITTEN, actor="s"
+    )
+    services.confirm_concept(concept, now=WRITTEN, actor="vince")
+    anchor = a_note(owner, "ask about the venue")
+    distant = a_note(owner, "she prefers the small room", when=later(days=400))
+    for node in (anchor, distant):
+        services.propose_mention(
+            node,
+            concept,
+            index_version="manual",
+            origin=InferenceOrigin.EXPLICIT,
+            now=node.captured_at,
+            actor="vince",
+        )
+
+    body = signed_in.get(f"/mind/notes/{anchor.public_id}/").content.decode()
+
+    assert "she prefers the small room" in body
+    assert "it is also about Maya" in body

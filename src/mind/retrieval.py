@@ -41,7 +41,7 @@ with the evidence attached, not a settlement of the Attention Policy.
 """
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import Enum
 
 from django.utils import timezone
@@ -107,6 +107,10 @@ class Moment:
     owner: object
     mode: Mode
     text: str = ""
+    #: What is being recollected. Recollection is the one mode whose question
+    #: -- *restore the context around something* -- has a something in it, and
+    #: a mode with no anchor is Lookup wearing a different name.
+    anchor: Node | None = None
     #: The clock, injected like everywhere else in this app, so a dormancy
     #: floor is testable without waiting eighteen months.
     now: datetime | None = None
@@ -114,6 +118,8 @@ class Moment:
     def __post_init__(self):
         if not isinstance(self.mode, Mode):
             raise ValueError(f"{self.mode!r} is not a kind of remembering")
+        if self.mode is Mode.RECOLLECTION and self.anchor is None:
+            raise ValueError("recollection needs something to recollect")
 
     @property
     def when(self):
@@ -179,9 +185,68 @@ def _concept(moment):
     return found
 
 
-#: The generators that run, in the order they are consulted. Order decides only
-#: which explanation survives deduplication, never rank.
-GENERATORS = (_lexical, _concept)
+def _written_around(moment):
+    """Notes captured near one of the anchor's own moments.
+
+    Track A's `context_of` decides what *near* means, including merging moments
+    close enough to be one sitting -- D19's resolution, reused rather than
+    re-derived, which is the reason that read exists.
+
+    **Only in Recollection.** Under Lookup this would return everything
+    written near some instant, which is a different question answered under
+    the wrong heading -- the single implicit contract coming back.
+    """
+    from clarice import recall
+
+    found = []
+    for occasion in recall.context_of(
+        moment.owner, moment.anchor, window=RECOLLECTION_WINDOW
+    ).occasions:
+        for neighbour in occasion.neighbours:
+            if neighbour.node is not None:
+                found.append(
+                    (neighbour.node, "temporal", "you wrote it around the same time")
+                )
+    return found
+
+
+def _shares_a_concept(moment):
+    """Notes confirmed to be about something this one is also about.
+
+    **Confirmed concepts, never similarity.** A person said these are about
+    the same thing, which is a record; a close embedding is a guess, and D4's
+    refusal applies here exactly as it does in `since()`.
+    """
+    found = []
+    for label in queries.confirmed_concept_labels(moment.anchor):
+        for concept in queries.confirmed_concepts(moment.owner).filter(
+            label__iexact=label
+        ):
+            for node in queries.nodes_mentioning(moment.owner, concept):
+                found.append(
+                    (node, "concept", f"it is also about {concept.label}")
+                )
+    return found
+
+
+#: How far *around the same time* reaches when restoring context. Wider than
+#: `recall.DEFAULT_WINDOW`, and deliberately: the failure that matters here is
+#: **context too thin to resume**, so the cost of one extra note is far below
+#: the cost of a missing one. The opposite trade from Discovery.
+RECOLLECTION_WINDOW = timedelta(hours=12)
+
+
+#: Which indexes each mode consults, in the order they are asked. Order decides
+#: only which explanation survives deduplication, never rank.
+#:
+#: **Per mode rather than one pool**, which is increment 8's actual content: the
+#: temporal index answering a Lookup would return everything written near some
+#: instant, and that is Recollection's question under the wrong heading.
+GENERATORS = {
+    Mode.LOOKUP: (_lexical, _concept),
+    Mode.DISCOVERY: (_lexical, _concept),
+    Mode.RECOLLECTION: (_written_around, _shares_a_concept),
+}
 
 
 # ---------------------------------------------------------------------------
@@ -213,14 +278,33 @@ def _eligible_for_discovery(node, moment):
     return moment.when - node.captured_at >= DEFAULT_MIN_DORMANCY
 
 
-#: Per mode, and the missing ones are missing on purpose: Recollection,
-#: Planning, Reflection and Resurfacing each need context this module does not
-#: yet take — outcomes, a period, a present. Falling back to Lookup's "admit
+def _eligible_for_recollection(node, moment):
+    """Everything reached, except the thing being recollected.
+
+    **No floors, and for the opposite reason to Lookup's.** There the failure
+    is a miss; here it is *context too thin to resume*, so the cost of one
+    extra note sits far below the cost of a missing one. A twenty-four
+    character note is not less useful for being short — *"14 March"* beside a
+    venue question is exactly the fragment that lets somebody pick the thread
+    up.
+
+    **The narrowing has already happened**, which is why this rule is one line.
+    Recollection's generators reach only along recorded adjacency and confirmed
+    concepts, so a note about nothing in common was never a candidate. Doing it
+    with an eligibility rule instead would have meant admitting everything and
+    then arguing it back down.
+    """
+    return node.pk != moment.anchor.pk
+
+
+#: Per mode, and the missing ones are missing on purpose: Planning, Reflection
+#: and Resurfacing each need context this module does not yet take — outcomes, a period, a present. Falling back to Lookup's "admit
 #: everything" would be four modes quietly sharing one contract, which is the
 #: state Part 2 exists to end. They raise instead.
 ELIGIBILITY = {
     Mode.LOOKUP: _eligible_for_lookup,
     Mode.DISCOVERY: _eligible_for_discovery,
+    Mode.RECOLLECTION: _eligible_for_recollection,
 }
 
 
@@ -237,6 +321,7 @@ def _rank_for_lookup(results, moment):
 RANKING = {
     Mode.LOOKUP: _rank_for_lookup,
     Mode.DISCOVERY: _rank_for_lookup,
+    Mode.RECOLLECTION: _rank_for_lookup,
 }
 
 
@@ -258,7 +343,7 @@ def retrieve(moment, *, limit=30):
 
     admit = ELIGIBILITY[mode]
     seen = {}
-    for generator in GENERATORS:
+    for generator in GENERATORS[mode]:
         for node, found_by, why in generator(moment):
             if node.pk in seen or not admit(node, moment):
                 continue

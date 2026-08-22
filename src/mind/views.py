@@ -584,6 +584,21 @@ def note(request, public_id):
             "node": found,
             "body": queries.current_body(found),
             "labels": queries.confirmed_concept_labels(found),
+            # Earlier wordings, oldest first. Shown rather than hidden: a
+            # surface that concealed what it corrected would be an edit box,
+            # and the reason revisions are kept at all is being able to see
+            # them. `original_content` is the first entry and is never a
+            # `Revision` row -- it is what the note said before any of them.
+            "earlier": [
+                revision.body
+                for revision in found.revisions.order_by("seq")[
+                    : found.revisions.count() - 1
+                ]
+            ]
+            if found.revisions.exists()
+            else [],
+            "first_said": found.original_content,
+            "was_corrected": found.revisions.exists(),
             "connections": [
                 {"relation": relation_phrase_for(relation), "node": other}
                 for relation, other in queries.connections_of(found)
@@ -614,6 +629,43 @@ def note(request, public_id):
             "what_came_of_it": _phrased(recall.since(request.user, found)),
         },
     )
+
+
+@login_required
+@require_http_methods(["POST"])
+def revise_note(request, public_id):
+    """Correct what a note says — Track E increment 21.
+
+    **The door `revise` never had.** The service, the model and the search
+    integration have been complete and tested since the first slice, and
+    `Revision` is empty in production because nothing could write one — one of
+    the two dark symbols the August 21 inventory found reading most
+    convincingly as working.
+
+    **`original_content` is untouched, which is the design and not a
+    limitation.** What was first written survives every correction, and search
+    finding a word somebody edited out is that working rather than a bug —
+    which is why the page shows the earlier wording rather than hiding it.
+
+    **`/privacy/` leans on this.** *"You can see what is held, correct it, take
+    a copy, or have it deleted"*, with anything the interface does not cover
+    done by hand. Correction has been the hand-done one; now it is not.
+    """
+    node = queries.live_nodes(request.user).filter(public_id=public_id).first()
+    if node is None:
+        raise Http404("no such note")
+
+    body = request.POST.get("body", "")
+    if body.strip():
+        # Refused rather than silently emptying a note: `EmptyNode` is the rule
+        # at capture, and a correction that emptied one would walk round it.
+        services.revise(
+            node,
+            body=body.strip(),
+            now=timezone.now(),
+            actor=request.user.get_username(),
+        )
+    return redirect("note", public_id=public_id)
 
 
 @login_required

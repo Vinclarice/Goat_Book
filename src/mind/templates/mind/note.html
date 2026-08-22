@@ -37,6 +37,39 @@ designed twice.
   </div>
 </div>
 
+{% comment %}
+Track E increment 21. `revise` was complete, tested and unreachable since the
+first slice -- `Revision` is empty in production because nothing could write
+one. `/privacy/` promises correction and says what the interface does not cover
+is done by hand; this is the half that stops being done by hand.
+{% endcomment %}
+<form method="post" action="{% url 'revise_note' node.public_id %}">
+  {% csrf_token %}
+  <label for="body" class="meta">Correct it</label>
+  <textarea id="body" name="body" rows="3">{{ body }}</textarea>
+  <button type="submit">Save</button>
+</form>
+
+{% if was_corrected %}
+  <h2>What it said before</h2>
+  {% comment %}
+  Shown rather than hidden. A surface that concealed what it corrected would be
+  an edit box, and being able to see them is the reason revisions are kept --
+  `original_content` is never mutated, so search finding a word somebody edited
+  out is that design working rather than a bug.
+  {% endcomment %}
+  <div class="card">
+    <div class="body">{{ first_said|linebreaksbr }}</div>
+    <div class="meta" style="margin-top:.5rem">as first written</div>
+  </div>
+  {% for wording in earlier %}
+    <div class="card">
+      <div class="body">{{ wording|linebreaksbr }}</div>
+      <div class="meta" style="margin-top:.5rem">a later wording, since corrected</div>
+    </div>
+  {% endfor %}
+{% endif %}
+
 {% if connections %}
   <h2>Linked to</h2>
   {% comment %}

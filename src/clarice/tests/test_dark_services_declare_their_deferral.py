@@ -4,14 +4,20 @@
 nothing calls it**, and an undeclared deferral gets a named trigger or a
 deletion. This is that rule with teeth, for the app where it kept happening.
 
-**The finding that shaped it.** Twelve services in `src/mind/` have no
-production caller, and eleven are the **undo half of a live pair** -- `capture`
+**The finding that shaped it.** Twelve services in `src/mind/` had no
+production caller, and eleven were the **undo half of a live pair** -- `capture`
 has seven callers and `revise`, `delete_node`, `purge_node` and `archive_node`
-have none; `link` has two and `unlink` none; `resolve_question` has two and
+had none; `link` has two and `unlink` none; `resolve_question` has two and
 `reopen_question` none; `confirm_concept` has three and `merge_concept` none.
-So the inventory is not twelve pieces of dead code. **It is one missing surface,
-listed eleven times**, and deleting them would delete half of eleven features
-immediately before building the node page that needs them.
+
+**`revise` is the first one to come back.** Track E increment 21 gave it the
+door its declaration named, and this file found out the way it was built to:
+`test_nothing_here_has_quietly_come_alive` failed, and the fix was deleting a
+comment that had become untrue. Eleven left.
+
+So the inventory was never twelve pieces of dead code. **It is one missing
+surface, listed eleven times**, and deleting them would have deleted half of
+eleven features immediately before building the node page that needs them.
 
 Which is why these are declared rather than removed. The declaration is the
 thing the principle actually requires, and it goes where a reader meets the
@@ -36,7 +42,7 @@ from django.test import SimpleTestCase
 SRC = pathlib.Path(__file__).resolve().parents[2]
 SERVICES = SRC / "mind" / "services.py"
 
-#: The twelve, each with the live half whose absence of an undo it represents,
+#: The eleven still dark, each with the live half whose absence of an undo it represents,
 #: or None where it is not an undo half at all.
 #:
 #: **Kept as a list rather than derived**, for the reason `NOT_DRILLED` and
@@ -45,7 +51,6 @@ SERVICES = SRC / "mind" / "services.py"
 #: service is caught by `test_every_dark_service_is_declared`, and one that
 #: gains a caller is caught by `test_nothing_here_has_quietly_come_alive`.
 DARK = {
-    "revise": "capture",
     "delete_node": "capture",
     "purge_node": "capture",
     "archive_node": "capture",

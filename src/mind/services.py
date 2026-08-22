@@ -449,11 +449,6 @@ def reopen_question(node: Node, *, now: datetime, actor: str) -> None:
 
 
 @transaction.atomic
-# DARK: no production caller. The correction half of `capture`, which has seven callers.
-# Trigger: Track E increment 21 in `temporal-substrate-plan.md` -- the
-# correction surface on the node page. `/privacy/` promises correction and
-# says outright that what the interface does not cover is done by hand, so
-# this is a deferral rather than a gap in a promise.
 def revise(node: Node, *, body: str, actor: str, now: datetime) -> Revision:
     """Add a revision, leaving the original capture untouched.
 
@@ -464,6 +459,22 @@ def revise(node: Node, *, body: str, actor: str, now: datetime) -> Revision:
     """
     _require_live(node)
     locked = Node.objects.select_for_update().get(pk=node.pk)
+
+    # **Saying the same thing again is not a correction.** C4's shape, one
+    # module over: `set_intention` recorded a no-op save on an endpoint whose
+    # own docstring promised idempotence, and every blur re-save wrote a
+    # permanent row into a table that refuses `DELETE`. A correction surface is
+    # exactly where a double-submit happens, so the guard arrives with the door
+    # (Track E increment 21) rather than after somebody finds the duplicates.
+    #
+    # Returns the standing revision rather than None, so a caller can treat
+    # "already said that" and "now says that" the same way.
+    current = locked.revisions.order_by("-seq").first()
+    if current is not None and current.body == body:
+        return current
+    if current is None and locked.original_content == body:
+        return None
+
     next_seq = (locked.revisions.aggregate(high=Max("seq"))["high"] or 0) + 1
 
     revision = Revision.objects.create(

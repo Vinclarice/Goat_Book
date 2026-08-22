@@ -51,6 +51,10 @@ urlpatterns = [
     # already taken by `tag_node` -- and a noun in the path is worth the
     # eight characters when the surface is meant to be linked to.
     path("notes/<uuid:public_id>/", views.note, name="note"),
+    # The door `revise` never had -- Track E increment 21.
+    path(
+        "notes/<uuid:public_id>/revise/", views.revise_note, name="revise_note"
+    ),
     path("concepts/", views.concepts, name="concepts"),
     path("concepts/<uuid:public_id>/", views.concept, name="concept"),
     path(

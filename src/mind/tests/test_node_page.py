@@ -387,3 +387,102 @@ def test_each_occasion_says_when_it_was(signed_in, owner, note):
     body = page(signed_in, note).content.decode()
 
     assert "4 May 2026" in body
+
+
+# ---------------------------------------------------------------------------
+# Track E increment 21 — the correction surface
+# ---------------------------------------------------------------------------
+
+
+def correct(client, node, text):
+    return client.post(f"/mind/notes/{node.public_id}/revise/", {"body": text})
+
+
+def revisions_of(node):
+    from mind.models import Revision
+
+    return Revision.objects.filter(node=node).count()
+
+
+def test_a_note_can_be_corrected(signed_in, note):
+    """`revise` has existed, complete and tested, with no caller since the
+    first slice -- one of the two dark symbols that read most convincingly as
+    working. `Revision` is empty in production because nothing could write one.
+    """
+    correct(signed_in, note, "ask Maya about the venue and the parking")
+
+    assert "and the parking" in page(signed_in, note).content.decode()
+
+
+def test_correcting_leaves_what_was_first_said(signed_in, note):
+    """`original_content` is never mutated, which is the whole design: what was
+    first written survives a correction, and search finding it later is that
+    working rather than a bug."""
+    correct(signed_in, note, "ask Maya about the parking")
+
+    note.refresh_from_db()
+    assert note.original_content == "ask Maya about the venue"
+
+
+def test_the_earlier_wording_is_still_readable(signed_in, note):
+    """A correction surface that hid what was corrected would be an edit box,
+    not a record. The point of keeping revisions is being able to see them."""
+    correct(signed_in, note, "ask Maya about the parking")
+
+    body = page(signed_in, note).content.decode()
+
+    assert "ask Maya about the venue" in body
+
+
+def test_saving_the_same_words_twice_is_not_two_corrections(signed_in, note):
+    """C4's shape, one module over. `set_intention` recorded a no-op save until
+    August 21; `revise` writes a `Revision` and a permanent `REVISED` event on
+    every call, and a correction surface is exactly where a double-submit
+    happens."""
+    correct(signed_in, note, "ask Maya about the parking")
+    correct(signed_in, note, "ask Maya about the parking")
+
+    assert revisions_of(note) == 1
+
+
+def test_an_empty_correction_is_refused(signed_in, note):
+    """A node needs content -- `EmptyNode` is the rule at capture, and a
+    correction that emptied one would walk round it."""
+    correct(signed_in, note, "   ")
+
+    assert revisions_of(note) == 0
+
+
+def test_correcting_needs_a_post(signed_in, note):
+    response = signed_in.get(f"/mind/notes/{note.public_id}/revise/")
+
+    assert response.status_code == 405
+
+
+def test_nobody_corrects_another_persons_note(client, other_owner, note):
+    client.force_login(other_owner)
+    correct(client, note, "not yours to change")
+
+    assert revisions_of(note) == 0
+
+
+def test_a_deleted_note_cannot_be_corrected(signed_in, note):
+    services.delete_node(note, now=later(days=1), actor="vince")
+    correct(signed_in, note, "too late")
+
+    assert revisions_of(note) == 0
+
+
+def test_correcting_requires_signing_in(client, note):
+    correct(client, note, "who am I")
+
+    assert revisions_of(note) == 0
+
+
+def test_a_correction_shows_up_in_what_came_of_the_note(signed_in, note):
+    """`REVISED` is a person's act, so `PERSON_EVENTS` already admits it --
+    which means the life of a note now includes its own corrections without
+    anything being added to `recall.py`."""
+    correct(signed_in, note, "ask Maya about the parking")
+
+    assert "corrected" in page(signed_in, note).content.decode()

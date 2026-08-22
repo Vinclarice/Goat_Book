@@ -678,22 +678,28 @@ waits for increments 7–9 beneath it.
     out the way it was built to — the contract failed, and the fix was deleting
     a declaration that had become untrue. Eleven still dark, and the node page
     is the named trigger for five of them.
-22. **Ask-your-memory.** The question box over Part 2's pipeline —
-    extractive, cited, per-mode. Last in the track because it is Part 2's
-    face and wants increments 7–9 beneath it.
+22. ~~**Ask-your-memory.**~~ **Shipped August 21, 2026** (`1344cee`), which
+    completes Track E. `/mind/ask/`, in the nav beside Search.
 
-    **Declined August 21, then partly unblocked the same day.** The refusal is
-    kept because the reasoning still holds for what remains: built on nothing,
-    the question box is `search_ranked` with a prompt in front of it — one
-    blended ordering, unable to say where an answer came from, and **the
-    failure would be silent**.
+    **Declined that morning and built that evening, and both were right.** On
+    nothing beneath it the box is `search_ranked` with a prompt in front,
+    failing silently; once 7–9 and Recollection existed the objection stopped
+    applying. Recorded this way rather than tidied, because the refusal was
+    the correct answer to the question actually asked at the time.
 
-    **7, 8 and 9 shipped that evening** (`061f134`), so the pipeline beneath it
-    now exists for two modes. **What it still wants is the other four**:
-    Recollection is the one this increment actually needs, and it has no
-    eligibility rules — `retrieval.retrieve` raises on it by design. A question
-    box answering in Lookup mode would be the thin version wearing the
-    architecture's clothes.
+    **Extractive** — a passage is a sentence the person wrote, lifted with its
+    offsets; nothing generates or paraphrases, asserted directly by every
+    passage being a substring of what was written. **Cited** — each links to
+    its note and carries the pipeline's reason. **Per-mode by an enumerable
+    rule**, not a classifier: a *when* or *what else* question is a
+    Recollection anchored on the best Lookup hit, and the page says which
+    fired so a wrong choice is visible.
+
+    **A question is not a search**, and `clarice/search.py` now owns both
+    readings. `websearch` ANDs, which is right where more words mean more
+    specific and exactly wrong where most of the sentence is scaffolding.
+
+
 
 ## Open decisions — Vince's, not this document's
 

@@ -23,6 +23,7 @@ the trigger is the backstop that closes the race between two concurrent writers.
 from __future__ import annotations
 
 import hashlib
+from dataclasses import dataclass, field
 import re
 import uuid as uuid_module
 from datetime import datetime, timedelta
@@ -62,6 +63,7 @@ from .models import (
     NodeSource,
     RetrievalMiss,
     Revision,
+    Source,
 )
 
 # ---------------------------------------------------------------------------
@@ -173,6 +175,7 @@ def capture(
     import_key: str | None = None,
     attachments: Sequence[AttachmentSpec] = (),
     session=None,
+    came_from=None,
 ) -> Node:
     """Record something, and return the node — new or already existing.
 
@@ -212,6 +215,7 @@ def capture(
         source=source,
         import_key=import_key,
         session=session,
+        came_from=came_from,
     )
 
     for spec in attachments:
@@ -365,6 +369,86 @@ def _propose_any_commitment(node: Node, *, now: datetime, actor: str) -> Facet |
 # predicate; a predicate's own output should not outlive the predicate.
 QUESTION_RESOLVED = "resolved"
 NOT_A_QUESTION = "not_a_question"
+
+
+@dataclass(frozen=True)
+class Grew:
+    """What came out of something you read — S15's other half."""
+
+    notes: list = field(default_factory=list)
+    tasks: list = field(default_factory=list)
+
+    @property
+    def has_anything(self):
+        return bool(self.notes or self.tasks)
+
+
+@transaction.atomic
+def record_source(owner, *, title: str, url: str = "", author: str = "", now: datetime) -> Source:
+    """Record something you read — S15.
+
+    **Idempotent on the URL**, because a person reads an article, notes
+    something, comes back a week later and notes something else. Two rows would
+    split what grew out of it in half, which is the whole value of the model.
+
+    A title is required and a URL is not: a row with a URL and no title is a
+    bookmark, and what this records is something you read, which you can name.
+    """
+    if not title.strip():
+        raise MindError("a source needs a title")
+    if url.strip():
+        existing = Source.objects.filter(owner=owner, url=url.strip()).first()
+        if existing is not None:
+            return existing
+    return Source.objects.create(
+        owner=owner,
+        title=title.strip(),
+        url=url.strip(),
+        author=author.strip(),
+        created_at=now,
+    )
+
+
+def what_grew_from(source) -> "Grew":
+    """The notes that came out of a source, and the tasks those became.
+
+    **The tasks are reached rather than stored**, along the chain the merger
+    already records: `Node` → confirmed actionable `Facet` → `Item`. A source
+    carrying its own task list would be a copy free to disagree with it.
+
+    Live notes only. A source page is not a way round `live_nodes`.
+    """
+    from . import queries
+
+    notes = list(
+        queries.live_nodes(source.owner).filter(came_from=source).order_by("captured_at")
+    )
+    tasks = [
+        facet.task
+        for facet in Facet.objects.filter(
+            node__in=notes, kind=FacetKind.ACTIONABLE, task__isnull=False
+        )
+        .exclude(confirmed_at=None)
+        .select_related("task")
+        .order_by("confirmed_at")
+    ]
+    return Grew(notes=notes, tasks=tasks)
+
+
+def what_a_task_was_read_in(task):
+    """The source a task ultimately came out of, if it came out of one.
+
+    *Six months later he can still tell where they came from.* Read along task,
+    facet, node, source rather than stored on the task -- the chain exists, and
+    a copy would be free to disagree with it.
+    """
+    facet = (
+        Facet.objects.filter(task=task, node__isnull=False)
+        .exclude(confirmed_at=None)
+        .select_related("node__came_from")
+        .first()
+    )
+    return facet.node.came_from if facet is not None else None
 
 
 @transaction.atomic

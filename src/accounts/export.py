@@ -37,6 +37,7 @@ from lists.models import (
 from mind import queries as mind_queries
 from mind.models import (
     CaptureSession,
+    Source,
     ActivityEvent,
     Attachment,
     ConceptCandidate,
@@ -96,6 +97,9 @@ EXPORT_KEYS = {
     PlanningSession: "planning_sessions",
     WeeklyOutcome: "week_outcomes",
     Node: "nodes",
+    # What somebody read -- S15. An archive that lost it would keep every
+    # note and forget where any of them came from.
+    Source: "sources",
     # A sitting's own record -- Track D increment 13. Provenance rather than
     # content, and exported for exactly that reason: without it a person's
     # archive says when each fragment was written and not that forty of them
@@ -232,6 +236,7 @@ def _payload(user, *, now):
         "week_outcomes": _rows(WeeklyOutcome.objects.filter(owner=user)),
         "knowledge": {
             "nodes": _rows(nodes),
+            "sources": _rows(Source.objects.filter(owner=user)),
             "capture_sessions": _rows(
                 CaptureSession.objects.filter(owner=user)
             ),

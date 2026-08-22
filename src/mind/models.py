@@ -67,6 +67,22 @@ class Node(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     source = models.CharField(max_length=16, choices=NodeSource)
+    #: The external thing this note came out of, when it came out of one — S15.
+    #:
+    #: **Deliberately not called `source`**, which is taken and means something
+    #: else: `NodeSource` is the *capture channel* — mobile, web, import —
+    #: and S15's entry names that collision as the reason the story was
+    #: impossible. Two fields called source, one a channel and one an article,
+    #: is how a reader comes to believe the wrong one.
+    #:
+    #: `SET_NULL`: a note outlives the record of what it was read in.
+    came_from = models.ForeignKey(
+        "Source",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="notes",
+    )
     #: The sitting this fragment came out of, when it came out of one.
     #:
     #: **Provenance, not containment** -- Track D increment 13. A dump is not a
@@ -175,6 +191,56 @@ class Revision(models.Model):
 
     def __str__(self) -> str:
         return f"{self.node_id}@{self.seq}"
+
+
+class Source(models.Model):
+    """Something you read, which notes can come out of — S15.
+
+    **It earns a model on `architecture-trajectory.md` §4's test**, which the
+    v3 plan's table did not cover:
+
+    - **Its life cycle is unlike anything else here.** A source exists *before*
+      any note about it, produces notes over years, and outlives every one of
+      them. A `Node` is captured, revised, archived, deleted; a `Facet` is
+      proposed, confirmed, retired; an `Item` is open then done. None of those
+      is *a thing in the world you keep returning to*.
+    - **A `Node` with a kind is the tempting answer and it is wrong.** A node is
+      something *you wrote*, and S15's whole gap is that this starts with an
+      article somebody else wrote.
+    - **Unlike `Bill` it is not a sidecar**, because there is no existing row
+      for it to hang off.
+
+    **`url` is text and nothing ever fetches it** — D7's answer already made:
+    storing one is most of the value, and fetching reopens SSRF surface on a
+    one-host deployment where the interesting targets are that host and the
+    link-local metadata endpoint.
+    """
+
+    public_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="sources"
+    )
+    title = models.TextField()
+    #: Text, never fetched. See the class docstring and D7.
+    url = models.TextField(blank=True, default="")
+    author = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField()
+
+    class Meta:
+        ordering = ("-created_at",)
+        constraints = [
+            # One row per thing a person read. Coming back to an article a week
+            # later and noting something else must not split what grew out of
+            # it in half -- which is the whole value of the model.
+            models.UniqueConstraint(
+                fields=("owner", "url"),
+                condition=~Q(url=""),
+                name="source_url_unique_per_owner",
+            ),
+        ]
+
+    def __str__(self):
+        return self.title
 
 
 class Attachment(models.Model):

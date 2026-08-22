@@ -83,6 +83,9 @@ urlpatterns = [
     # Track E increment 22, the last of the track.
     # Track D increment 14, safe only because increment 13 shipped first.
     # Track D increment 15: two entrances, and only the words earned.
+    # S15: something you read, and what grew out of it.
+    path("sources/", views.sources, name="sources"),
+    path("sources/<uuid:public_id>/", views.source, name="source"),
     path("start/", views.start, name="start"),
     path("dump/", views.dump, name="dump"),
     path("dump/done/", views.finish_dump, name="finish_dump"),

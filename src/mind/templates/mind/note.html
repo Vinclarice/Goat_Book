@@ -130,6 +130,14 @@ is becomes answerable later, when the answer exists.
   {% endfor %}
 {% endif %}
 
+{% if came_from %}
+  {% comment %}
+  S15. The link goes both ways or the source page is only reachable by
+  somebody already on it.
+  {% endcomment %}
+  <p class="meta">read in <a href="{% url 'source' came_from.public_id %}">{{ came_from.title }}</a></p>
+{% endif %}
+
 {% if surrounding.has_anything %}
   <h2>Written into</h2>
   {% comment %}

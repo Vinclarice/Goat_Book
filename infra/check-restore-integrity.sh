@@ -156,7 +156,12 @@ done
 # still valid, while now forbidding a duplicate among archived rows -- which the
 # application deliberately allows, since archiving a task and writing it again
 # is an ordinary thing to do.
-for index in unique_active_item unique_active_arealess_item unique_open_checklist_step_text
+# `source_url_unique_per_owner` joins them because `record_source`'s
+# idempotence argument names it: coming back to an article a week later and
+# noting something else must not create a second row, or what grew out of it
+# splits in half. The service filters first, which races; the index is what
+# actually guarantees it, and losing it is silently wrong rather than visibly.
+for index in unique_active_item unique_active_arealess_item unique_open_checklist_step_text source_url_unique_per_owner
 do
   got=$(query "SELECT count(*) FROM pg_index i JOIN pg_class c ON c.oid = i.indexrelid
                WHERE c.relname = '$index'

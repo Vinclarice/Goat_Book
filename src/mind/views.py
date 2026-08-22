@@ -42,6 +42,7 @@ from lists.services import TaskConflict
 from . import ask, instrumentation, queries, reflection, retrieval, services
 from .models import (
     Attachment,
+    Source,
     ConceptCandidate,
     MissContext,
     ConceptType,
@@ -718,6 +719,10 @@ def note(request, public_id):
             # records, the week's commitments from that week's rows. Storing
             # them would be three copies free to disagree with their sources.
             "surrounding": recall.what_surrounded(request.user, found),
+            # S15's other end. A note that came out of something you read says
+            # so, and links back -- otherwise the source page is the only way
+            # to know and you would have to already be there.
+            "came_from": found.came_from,
             # **This page declares itself a Recollection** -- Track B increment
             # 7. It was already doing one ad hoc: the fragment, what was
             # nearby, what came of it, with no name for the kind of
@@ -834,6 +839,55 @@ def finish_dump(request):
         request,
         "mind/dump_done.html",
         {"shown": shown, "kept": session.fragments.count() if session else 0},
+    )
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def sources(request):
+    """What you have read -- S15.
+
+    A `GET` lists them; a `POST` records one. On the same route because
+    recording a source is one line of a form above the list it joins, not a
+    surface of its own.
+    """
+    if request.method == "POST" and request.POST.get("title", "").strip():
+        try:
+            services.record_source(
+                request.user,
+                title=request.POST.get("title", ""),
+                url=request.POST.get("url", ""),
+                author=request.POST.get("author", ""),
+                now=timezone.now(),
+            )
+        except services.MindError:
+            pass
+        return redirect("sources")
+
+    return render(
+        request,
+        "mind/sources.html",
+        {"sources": Source.objects.filter(owner=request.user)},
+    )
+
+
+@login_required
+@require_http_methods(["GET"])
+def source(request, public_id):
+    """One thing you read, and everything that grew out of it -- S15.
+
+    **The tasks are reached rather than stored**, along the chain the merger
+    already records, so this page cannot disagree with the task core about what
+    came of anything.
+    """
+    found = Source.objects.filter(public_id=public_id, owner=request.user).first()
+    if found is None:
+        raise Http404("no such source")
+
+    return render(
+        request,
+        "mind/source.html",
+        {"source": found, "grew": services.what_grew_from(found)},
     )
 
 

@@ -1,0 +1,42 @@
+{% extends "mind/base.html" %}
+{% block title %}{{ source.title }} — Second Mind{% endblock %}
+{% block content %}
+
+{% comment %}
+S15's done-means: *the source shows everything that grew out of it.* The tasks
+are reached along node, confirmed actionable facet, item rather than stored
+here, so this page cannot disagree with the task core about what came of
+anything.
+{% endcomment %}
+
+<h1>{{ source.title }}</h1>
+<div class="meta">
+  {% if source.author %}{{ source.author }}{% endif %}
+  {% if source.url %} · <a href="{{ source.url }}" rel="noopener noreferrer">{{ source.url }}</a>{% endif %}
+</div>
+
+{% if grew.has_anything %}
+  {% if grew.tasks %}
+    <h2>What you did about it</h2>
+    {% for task in grew.tasks %}
+      <div class="card">
+        <div class="body">{{ task.text }}</div>
+        <div class="meta" style="margin-top:.5rem">
+          {% if task.status == "completed" %}finished{% elif task.status == "archived" %}put away{% else %}open{% endif %}
+        </div>
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  <h2>What you wrote</h2>
+  {% for note in grew.notes %}
+    <div class="card">
+      <div class="body"><a href="{% url 'note' note.public_id %}">{{ note.original_content|truncatechars:200 }}</a></div>
+      <div class="meta" style="margin-top:.5rem">{{ note.captured_at|date:"j M Y" }}</div>
+    </div>
+  {% endfor %}
+{% else %}
+  <p class="meta">Nothing has come out of this yet.</p>
+{% endif %}
+
+{% endblock %}

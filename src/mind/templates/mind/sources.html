@@ -1,0 +1,32 @@
+{% extends "mind/base.html" %}
+{% block title %}What you have read — Second Mind{% endblock %}
+{% block content %}
+
+{% comment %}
+S15. The URL is text and nothing ever fetches it — D7's answer already made:
+storing one is most of the value, and fetching reopens SSRF surface on a
+one-host deployment.
+{% endcomment %}
+
+<h1>What you have read</h1>
+
+<form method="post" action="{% url 'sources' %}">
+  {% csrf_token %}
+  <input type="text" name="title" placeholder="what did you read?" required>
+  <input type="url" name="url" placeholder="where is it (optional)">
+  <input type="text" name="author" placeholder="who wrote it (optional)">
+  <button type="submit">Add</button>
+</form>
+
+{% for item in sources %}
+  <div class="card">
+    <div class="body"><a href="{% url 'source' item.public_id %}">{{ item.title }}</a></div>
+    <div class="meta" style="margin-top:.5rem">
+      {% if item.author %}{{ item.author }} · {% endif %}{{ item.created_at|date:"j M Y" }}
+    </div>
+  </div>
+{% empty %}
+  <p class="meta">Nothing recorded yet.</p>
+{% endfor %}
+
+{% endblock %}

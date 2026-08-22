@@ -33,7 +33,7 @@ from django.templatetags.static import static
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
-from clarice import recall
+from clarice import orientation, recall
 from clarice.search import to_query
 from daily import reads as daily_reads
 from lists import search as lists_search
@@ -825,6 +825,26 @@ def finish_dump(request):
         request,
         "mind/dump_done.html",
         {"shown": shown, "kept": session.fragments.count() if session else 0},
+    )
+
+
+@login_required
+@require_http_methods(["GET"])
+def start(request):
+    """Two entrances, and only the words their own material has earned.
+
+    Track D increment 15, and the answer to `commercial-blueprint.md`'s
+    long-open *explain the six invented concepts somewhere in the product,
+    once*. A tour was the obvious answer and the plan refuses it: a concept
+    explained before it exists is a word attached to nothing.
+    """
+    return render(
+        request,
+        "mind/start.html",
+        {
+            "new_here": orientation.is_new_here(request.user),
+            "concepts": orientation.what_their_material_demonstrates(request.user),
+        },
     )
 
 

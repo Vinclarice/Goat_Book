@@ -1,0 +1,55 @@
+{% extends "mind/base.html" %}
+{% block title %}Start here — Second Mind{% endblock %}
+{% block content %}
+
+{% comment %}
+Track D increment 15. Two entrances, and an explanation of only what is there.
+
+**The obvious answer is a tour and the plan refuses it.** A concept explained
+before it exists is a word attached to nothing, and *explaining a Compass that
+is not there turns personalisation back into the tutorial it replaced.*
+
+So the lower half is a read over the person's own material. It empties as it
+succeeds, which is the property a tour cannot have.
+{% endcomment %}
+
+<h1>Start here</h1>
+
+{% if new_here %}
+  <p class="meta">Two ways in. Neither is better; they suit different moods.</p>
+{% endif %}
+
+<div class="card">
+  <div class="body"><a href="{% url 'capture' %}">Quick start</a></div>
+  <div class="meta" style="margin-top:.5rem">
+    One thought, written down. Takes a few seconds and nothing is asked of you.
+  </div>
+</div>
+
+<div class="card">
+  <div class="body"><a href="{% url 'dump' %}">Empty my head</a></div>
+  <div class="meta" style="margin-top:.5rem">
+    Everything on your mind, one thing at a time. Nothing comes back until you
+    say you are done.
+  </div>
+</div>
+
+{% if concepts %}
+  <h2>Words this uses, and what yours are</h2>
+  {% comment %}
+  Only what their own material demonstrates. Each one names the thing of theirs
+  it is about, because a concept explained without pointing at anything is a
+  definition, and definitions are what nobody reads.
+  {% endcomment %}
+  {% for concept in concepts %}
+    <div class="card">
+      <div class="body"><strong>{{ concept.name }}</strong> — {{ concept.means }}</div>
+      <div class="meta" style="margin-top:.5rem">{{ concept.evidence }}</div>
+    </div>
+  {% endfor %}
+{% elif not new_here %}
+  <p class="meta">Nothing to explain yet — the words this uses will appear here
+  as your own material starts using them.</p>
+{% endif %}
+
+{% endblock %}

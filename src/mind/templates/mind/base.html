@@ -157,6 +157,7 @@ share target that lets any app hand text straight to the capture box.
   {% endcomment %}
   {% with here=request.resolver_match.url_name %}
   <nav>
+    <a href="{% url 'start' %}" {% if here == 'start' %}class="here"{% endif %}>Start</a>
     <a href="{% url 'capture' %}" {% if here == 'capture' %}class="here"{% endif %}>Capture</a>
     {% comment %}
     Beside Capture, because it is the other way material gets in -- and a

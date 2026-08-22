@@ -67,6 +67,22 @@ class Node(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     source = models.CharField(max_length=16, choices=NodeSource)
+    #: The sitting this fragment came out of, when it came out of one.
+    #:
+    #: **Provenance, not containment** -- Track D increment 13. A dump is not a
+    #: container node, so the relation points this way and nothing points back
+    #: as content: deleting the session record would leave every fragment
+    #: exactly where it is, which is the test of whether it is content.
+    #:
+    #: `SET_NULL` for the same reason. A fragment outlives the record of how it
+    #: arrived.
+    session = models.ForeignKey(
+        "CaptureSession",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="fragments",
+    )
 
     # Stable key from the source system, so re-running an import cannot
     # duplicate. Null for material captured directly.
@@ -338,6 +354,44 @@ def entry_body(entry) -> str:
         for part in (entry.intentions, entry.gratitude, entry.happenings)
         if part
     )
+
+
+class CaptureSession(models.Model):
+    """One sitting of emptying your head — Track D increment 13.
+
+    **Earns its own model** by `architecture-trajectory.md` §4's test, and the
+    v3 plan says why in one line: *a session has duration, completion state, a
+    budget, prompt provenance and a processing flag. A shared timestamp carries
+    none of them.*
+
+    **A dump is not a container node**, which is the distinction this exists to
+    keep. `NodeSource.THREAD` is a semantic conclusion distilled from several
+    memories and participates in the graph; a session is provenance and does
+    not. Nothing searches a session, nothing links to one, and retiring it
+    would leave every fragment exactly where it is.
+
+    `processed_at` is a stored flag rather than an inference, and rule 7 is the
+    reason: *the next maintenance run cannot process its forty nodes
+    independently and walk straight around the cap.* A cap that a nightly pass
+    can step around is not a cap.
+    """
+
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="capture_sessions",
+    )
+    started_at = models.DateTimeField()
+    #: When the producers ran over it, once. Null means the sitting is still
+    #: open or was abandoned -- and an abandoned session is not a failure:
+    #: every fragment in it was saved as it was typed.
+    processed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ("-started_at",)
+
+    def __str__(self):
+        return f"{self.owner}: {self.started_at:%Y-%m-%d %H:%M}"
 
 
 class Facet(models.Model):

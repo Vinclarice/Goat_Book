@@ -81,6 +81,9 @@ urlpatterns = [
         name="decide_concept",
     ),
     # Track E increment 22, the last of the track.
+    # Track D increment 14, safe only because increment 13 shipped first.
+    path("dump/", views.dump, name="dump"),
+    path("dump/done/", views.finish_dump, name="finish_dump"),
     path("ask/", views.ask_page, name="ask"),
     path("search/", views.search, name="search"),
     path("search/miss/", views.record_miss, name="record_miss"),

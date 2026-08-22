@@ -721,6 +721,106 @@ def note(request, public_id):
     )
 
 
+def _open_sitting(user, *, now):
+    """This person's open sitting, opened if there is not one.
+
+    A refresh mid-dump is ordinary, and two sittings for one would split the
+    budget the sitting was given.
+    """
+    session = user.capture_sessions.filter(processed_at__isnull=True).first()
+    if session is None:
+        session = services.begin_capture_session(user, now=now)
+    return session
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def dump(request):
+    """Empty your head -- Track D increment 14.
+
+    **Safe only because increment 13 exists.** Without session-aware budgeting
+    the first dump is the one that teaches somebody to skim past the review
+    surface, and the plan calls that unrecoverable -- which is why the ordering
+    is the feature's safety rather than a preference.
+
+    **A fragment is a submission, not a sentence.** One *keep and continue*,
+    one `Node`, and the person draws the boundaries. Nothing here segments
+    anything: `services._SENTENCE` splits a `DailyEntry` so the journal parser
+    can cite a line, and it has never created a node.
+
+    **A multiline paste gets a preview and a question, never a guess.** This is
+    the surface where somebody is least able to predict what was done with what
+    they typed.
+    """
+    now = timezone.now()
+    session = _open_sitting(request.user, now=now)
+    pending = None
+
+    if request.method == "POST":
+        content = request.POST.get("content", "")
+        split = request.POST.get("split")
+        lines = [line.strip() for line in content.splitlines() if line.strip()]
+
+        if not content.strip():
+            pass
+        elif len(lines) > 1 and split is None:
+            # Asked, not guessed. Nothing is written until the question is
+            # answered -- a preview that had already saved something would be
+            # a notification rather than a question.
+            pending = {"content": content, "lines": lines}
+        elif split == "yes":
+            for index, line in enumerate(lines):
+                services.capture(
+                    request.user,
+                    content=line,
+                    captured_at=now + timedelta(seconds=index),
+                    source=NodeSource.WEB,
+                    actor=request.user.get_username(),
+                    session=session,
+                )
+        else:
+            services.capture(
+                request.user,
+                content=content.strip(),
+                captured_at=now,
+                source=NodeSource.WEB,
+                actor=request.user.get_username(),
+                session=session,
+            )
+
+    return render(
+        request,
+        "mind/dump.html",
+        {
+            "session": session,
+            "pending": pending,
+            "kept": session.fragments.count(),
+        },
+    )
+
+
+@login_required
+@require_http_methods(["POST"])
+def finish_dump(request):
+    """End the sitting, which is the only moment anything comes back.
+
+    Rules 3 to 7 in one call: the producers run once over the whole sitting,
+    aggregated and capped, and the session is marked processed so the nightly
+    pass cannot reach its fragments one at a time and walk around the budget.
+    """
+    session = request.user.capture_sessions.filter(processed_at__isnull=True).first()
+    shown = (
+        services.end_capture_session(session, now=timezone.now(), owner=request.user)
+        if session is not None
+        else []
+    )
+    return render(
+        request,
+        "mind/dump_done.html",
+        {"shown": shown, "kept": session.fragments.count() if session else 0},
+    )
+
+
 @login_required
 @require_http_methods(["GET"])
 def ask_page(request):

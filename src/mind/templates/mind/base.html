@@ -159,6 +159,12 @@ share target that lets any app hand text straight to the capture box.
   <nav>
     <a href="{% url 'capture' %}" {% if here == 'capture' %}class="here"{% endif %}>Capture</a>
     {% comment %}
+    Beside Capture, because it is the other way material gets in -- and a
+    surface reachable only by typing its URL is the un-switched-on seam under a
+    nicer name.
+    {% endcomment %}
+    <a href="{% url 'dump' %}" {% if here == 'dump' %}class="here"{% endif %}>Dump</a>
+    {% comment %}
     Two renames, both removing a collision rather than improving a word.
 
     "Things" is the odd one out: the view, the URL name and the template have

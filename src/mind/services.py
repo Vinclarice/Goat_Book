@@ -41,6 +41,7 @@ from .commitments import find_commitment
 CAPTURE_COMMITMENT = "capture_commitment"
 JOURNAL_COMMITMENT = "journal_commitment"
 from .models import (
+    CaptureSession,
     Facet,
     FacetKind,
     entry_body,
@@ -170,6 +171,7 @@ def capture(
     public_id: uuid_module.UUID | None = None,
     import_key: str | None = None,
     attachments: Sequence[AttachmentSpec] = (),
+    session=None,
 ) -> Node:
     """Record something, and return the node — new or already existing.
 
@@ -208,6 +210,7 @@ def capture(
         captured_at=captured_at,
         source=source,
         import_key=import_key,
+        session=session,
     )
 
     for spec in attachments:
@@ -226,7 +229,15 @@ def capture(
         },
     )
 
-    _propose_any_commitment(node, now=captured_at, actor=actor)
+    # **Rule 2: during a dump, create nothing that requires attention.**
+    #
+    # *Call the dentist by Friday* would normally offer a commitment on the way
+    # back, which is right for one thought and wrong forty times in two
+    # minutes -- that is the surface teaching somebody to skim past it, and the
+    # plan calls that unrecoverable. The producers run once at the end
+    # instead, over the whole sitting, under a budget.
+    if session is None:
+        _propose_any_commitment(node, now=captured_at, actor=actor)
     return node
 
 
@@ -572,6 +583,99 @@ MEMORY_ROLES = (
 #: keeps the other half of the increment true without any effort: *never asked
 #: for* — capture is untouched.
 ROLE_PROPOSAL_IS_DEFERRED = True
+
+
+#: What a whole sitting may materialise. Five is the plan's working number.
+#:
+#: **A budget on findings, never on fragments.** Every fragment is kept and
+#: stays searchable; what is capped is how much of it comes back asking for
+#: something. *Nothing valuable is discarded, because the person wrote
+#: memories, not proposals.*
+SESSION_TOTAL_BUDGET = 5
+
+#: And no single producer may fill it. One loud proposer taking all five slots
+#: is the same inbox with fewer rows.
+SESSION_PRODUCER_BUDGET = 2
+
+#: How many are shown at once, which is a different question from how many were
+#: kept -- and collapsing the two is how a cap quietly becomes a queue. **No
+#: slow-release backlog**: the rest are simply there, not scheduled.
+SESSION_ATTENTION_BUDGET = 3
+
+
+@transaction.atomic
+def begin_capture_session(owner, *, now: datetime) -> CaptureSession:
+    """Open a sitting — Track D increment 13.
+
+    Before any surface can dump into one, which is the ordering the plan calls
+    *the whole safety of the feature*.
+    """
+    return CaptureSession.objects.create(owner=owner, started_at=now)
+
+
+@transaction.atomic
+def end_capture_session(session, *, now: datetime, owner=None) -> list:
+    """Run the producers over a whole sitting, once, under a budget.
+
+    Returns what is worth showing immediately — at most
+    `SESSION_ATTENTION_BUDGET` of the at most `SESSION_TOTAL_BUDGET`
+    materialised.
+
+    **Aggregated across the session, not per fragment**, which is rule 4 and
+    the failure a dump invites most: *forty fragments about one project must
+    not become forty findings about it.*
+
+    **Idempotent by `processed_at`**, which is rule 7: a cap the nightly pass
+    can step around is not a cap.
+    """
+    if owner is not None and session.owner_id != owner.pk:
+        raise NotYours("that session belongs to someone else")
+    if session.processed_at is not None:
+        return []
+
+    materialised = []
+    per_producer = {}
+    for node in session.fragments.order_by("captured_at", "pk"):
+        if len(materialised) >= SESSION_TOTAL_BUDGET:
+            break
+        # The per-producer budget is checked **before** the call, so a
+        # producer cannot exceed it -- and `_propose_any_commitment` already
+        # returns None when it finds nothing, so a separate read-only pass
+        # would only be a second way to ask the same question.
+        producer = CAPTURE_COMMITMENT
+        if per_producer.get(producer, 0) >= SESSION_PRODUCER_BUDGET:
+            continue
+        facet = _propose_any_commitment(
+            node, now=now, actor=session.owner.get_username()
+        )
+        if facet is None:
+            continue
+        per_producer[producer] = per_producer.get(producer, 0) + 1
+        materialised.append(facet)
+
+    session.processed_at = now
+    session.save(update_fields=["processed_at"])
+    return materialised[:SESSION_ATTENTION_BUDGET]
+
+
+def run_producers_over_unprocessed(owner, *, now: datetime) -> list:
+    """The maintenance pass, and what it must not touch.
+
+    **A processed session's fragments are skipped**, which is rule 7 in the one
+    place it matters: the nightly run reaching those forty nodes one at a time
+    would walk straight around the budget the sitting was given.
+
+    A fragment outside any session is reached as before. The flag narrows what
+    maintenance skips, never what it does.
+    """
+    proposed = []
+    for node in Node.objects.filter(
+        owner=owner, deleted_at__isnull=True, archived_at__isnull=True
+    ).exclude(session__processed_at__isnull=False):
+        facet = _propose_any_commitment(node, now=now, actor=owner.get_username())
+        if facet is not None:
+            proposed.append(facet)
+    return proposed
 
 
 @transaction.atomic

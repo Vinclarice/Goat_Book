@@ -1,0 +1,33 @@
+{% extends "mind/base.html" %}
+{% block title %}Done — Second Mind{% endblock %}
+{% block content %}
+
+{% comment %}
+What comes back, and how little of it.
+
+**Two budgets, and this page is the second one.** At most five things were
+materialised from the whole sitting and at most three are shown here -- because
+what was kept and what is asked about now are different questions, and
+collapsing them is how a cap becomes a queue.
+
+**Nothing valuable was discarded.** Every fragment is saved and searchable and
+can produce a finding the moment a future context makes it relevant. What is
+capped is attention, never the corpus.
+{% endcomment %}
+
+<h1>Done</h1>
+<p class="meta">{{ kept }} thing{{ kept|pluralize }} kept, and all of it searchable.</p>
+
+{% if shown %}
+  <h2>Worth a look now</h2>
+  {% for facet in shown %}
+    <div class="card">
+      <div class="body">{{ facet.node.original_content }}</div>
+      <div class="meta" style="margin-top:.5rem">{{ facet.reason }}</div>
+    </div>
+  {% endfor %}
+{% else %}
+  <p class="meta">Nothing in there is asking for anything.</p>
+{% endif %}
+
+{% endblock %}

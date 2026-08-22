@@ -1,0 +1,57 @@
+{% extends "mind/base.html" %}
+{% block title %}Empty your head — Second Mind{% endblock %}
+{% block content %}
+
+{% comment %}
+Track D increment 14.
+
+**Safe only because increment 13 shipped first.** Without session-aware
+budgeting the first dump is the one that teaches somebody to skim past the
+review surface, and that is not recoverable -- which is why the plan calls the
+ordering the whole safety of the feature.
+
+**Nothing comes back until the sitting ends.** That is rule 2, and it is the
+only reason a box like this is bearable: forty proposals arriving mid-flow is
+the inbox this design exists to refuse.
+{% endcomment %}
+
+<h1>Empty your head</h1>
+<p class="meta">
+  Everything on your mind. No decisions about what any of it is — nothing here
+  will ask you anything until you are done.
+</p>
+
+{% if pending %}
+  {% comment %}
+  A multiline paste is a product decision, not a parsing one. Nothing has been
+  written yet: a preview that had already saved something would be a
+  notification rather than a question.
+  {% endcomment %}
+  <div class="card">
+    <div class="body">That looks like {{ pending.lines|length }} separate things.</div>
+    <ul>
+      {% for line in pending.lines %}<li>{{ line }}</li>{% endfor %}
+    </ul>
+    <form method="post" action="{% url 'dump' %}">
+      {% csrf_token %}
+      <input type="hidden" name="content" value="{{ pending.content }}">
+      <button type="submit" name="split" value="yes">Keep them separately</button>
+      <button type="submit" name="split" value="no">Keep it as one</button>
+    </form>
+  </div>
+{% endif %}
+
+<form method="post" action="{% url 'dump' %}">
+  {% csrf_token %}
+  <textarea name="content" rows="4" autofocus placeholder="what is on your mind that is not written down anywhere?"></textarea>
+  <button type="submit">Keep and continue</button>
+</form>
+
+<p class="meta">{{ kept }} kept so far.</p>
+
+<form method="post" action="{% url 'finish_dump' %}">
+  {% csrf_token %}
+  <button type="submit">I am done</button>
+</form>
+
+{% endblock %}

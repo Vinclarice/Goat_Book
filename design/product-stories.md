@@ -150,9 +150,10 @@ Design personas, not descriptions of the real people using Clarice.
 
 **Thirty-one commits, five migrations, and the score is unchanged: 8 · 5 · 6.**
 
-> **Corrected the same day: 9 · 4 · 6.** Finishing what *Unify* could honestly
-> finish moved **S14 to *works*** (`a01a7b4`) — the first story to move since
-> August 20. The table below is what the re-score found *before* that work; it
+> **Corrected the same day: 10 · 4 · 5.** Finishing what *Unify* could honestly
+> finish moved **S14 to *works*** (`a01a7b4`), and `Source` moved **S15 out of
+> *impossible*** (`59d83b7`) — the first two to move since August 20, and S15
+> the first out of *impossible* since the merger. The table below is what the re-score found *before* that work; it
 > is kept as written because the finding that produced it is the point.
 Recorded at the top because it is the least comfortable thing this file says
 and burying it would be the same failure it exists to prevent.
@@ -782,7 +783,11 @@ link and this verdict should be re-examined.
 **Done means:** the task remembers the external source it came from, and the
 source shows everything that grew out of it.
 
-**Verdict: impossible.** There is nothing to attach an article to. `NodeSource`
+**Verdict: works** since August 22, 2026 — see the requires below. What
+follows is the reasoning from while it was impossible, kept because the gap it
+identifies is exactly what the fix closed.
+
+**Formerly impossible.** There is nothing to attach an article to. `NodeSource`
 (`mind/models.py:30`) is a capture-channel label — mobile, web — not external
 material, and no model records a thing you read.
 
@@ -796,7 +801,29 @@ proposed it — which looks adjacent and is not: the material is his *own*, and
 this story starts with an article somebody else wrote. That is the whole of the
 gap, and nothing in the planning assistant touched it.
 
-**Requires:** `Source`, and links from it to what grew out of it.
+~~**Requires:** `Source`, and links from it to what grew out of it.~~
+**Verdict: works**, moved from *impossible* on August 22, 2026 (`59d83b7`,
+`ffb…`) — **the second story to move today, and the first out of *impossible*
+since the merger.**
+
+`Source` earns its own model on §4's test and the argument is in the model: it
+exists *before* any note about it, produces notes over years, and outlives
+every one of them, which is unlike `Node`, `Facet` or `Item`. **A `Node` with a
+kind was the tempting answer and this story already said why it is wrong** —
+*the material is his own, and this starts with an article somebody else wrote.*
+
+**Both directions are reads, not stored copies.** What grew from a source
+reaches its tasks along `Node` → confirmed `Facet` → `Item`; what a task was
+read in walks the same chain backwards. A source carrying its own task list
+would be free to disagree with the task core.
+
+**`Node.came_from`, not `Node.source`** — the collision this entry named as the
+reason the story was stuck. Two fields called *source*, one a capture channel
+and one an article, is how a reader comes to believe the wrong one.
+
+**Verified by walking the journey**, not only by tests: an article recorded,
+three notes written out of it, one accepted as a commitment, and both ends
+answering.
 
 ### S16. The past arrives when it is useful
 

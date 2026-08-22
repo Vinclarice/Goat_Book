@@ -672,12 +672,17 @@ waits for increments 7–9 beneath it.
 
     **15 to 18 are not done**: orientation belongs to v3's *Usable* release,
     attachments and email intake are open, and URL intake is gated on **D7**.
-15. **Orientation built on it, as one of two entrances** — *quick start* beside
-    *empty my head* — explaining only the concepts the person's own material
-    demonstrates. This carries the invitation bar's third item, and v3's
-    *Usable* release holds it.
-16. **Switch attachments on** — upload path, size limit, content-type handling,
-    storage.
+15. ~~**Orientation built on it, as one of two entrances.**~~ **Shipped August
+    21, 2026** (`c029331`), at `/mind/start/`. **A read rather than a script**,
+    so it explains only what somebody has produced and empties as it succeeds —
+    on seeded data it explains three of the six and says nothing about the
+    other three. This closes `commercial-blueprint.md`'s long-open *explain the
+    six invented concepts somewhere in the product, once*.
+16. ~~**Switch attachments on.**~~ **Shipped August 21, 2026** (`91d5af7`), and
+    **D9 answered: the bytes are a row.** Export, purge and the restore drill
+    then hold without any of them knowing files exist, and no fourth processor
+    joins the three `/privacy/` names. Allowlist, 10MB, served as attachments
+    rather than inline.
 17. ~~**URL intake**, if D7 says the SSRF surface is worth it.~~ **Closed
     August 21, 2026 — D7 says not yet**, and the increment's own wording made
     a refusal one of its outcomes. A URL is still captured and searched as
@@ -877,11 +882,16 @@ waits for increments 7–9 beneath it.
    page's `RetrievalMiss` button verbatim — *"there was more to that
    morning"* — giving one of the four modes an honest miss signal through a
    mechanism the codebase already trusts.
-9. **D9. Where do attachment bytes live, and what does that do to the published
-   promises?** Storage adds a processor or a volume, and `/privacy/`'s named
-   list is test-held. **Export and deletion shipped August 16 exporting every
-   owned *row*** — files are not rows, so an attachment that cannot be exported
-   or purged breaks a promise that currently holds.
+9. ~~**D9. Where do attachment bytes live?**~~ **Answered August 21, 2026:
+   they are a row.** The question named its own deciding consideration — export
+   and deletion ship every owned *row*, so a file that is not one breaks a
+   promise that currently holds. As a row, export, purge and the restore drill
+   all hold without knowing files exist, and `/privacy/`'s *three companies,
+   each doing one job* stays true.
+
+   **Postgres is not a blob store and that is the cost**, accepted at this
+   scale — one person, a personal corpus, a managed backed-up database. The
+   trigger for revisiting is `MAX_ATTACHMENT_BYTES` starting to hurt.
 10. ~~**D10. Email intake — scope it, or defer with a trigger?**~~ **Answered
     August 21, 2026: deferred, with a trigger that can fire.**
 

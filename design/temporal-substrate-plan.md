@@ -678,8 +678,14 @@ waits for increments 7–9 beneath it.
     *Usable* release holds it.
 16. **Switch attachments on** — upload path, size limit, content-type handling,
     storage.
-17. **URL intake**, if D7 says the SSRF surface is worth it.
-18. **Email intake**, or a recorded deferral with a trigger.
+17. ~~**URL intake**, if D7 says the SSRF surface is worth it.~~ **Closed
+    August 21, 2026 — D7 says not yet**, and the increment's own wording made
+    a refusal one of its outcomes. A URL is still captured and searched as
+    text, which is most of the value; fetching waits on a second user or a
+    recorded miss.
+18. ~~**Email intake**, or a recorded deferral with a trigger.~~ **Closed
+    August 21, 2026 as the second of those** — D10, deferred with a trigger
+    that is observable in the corpus rather than in an opinion.
 
 ### Track E — the reading surfaces (added August 21)
 
@@ -833,9 +839,30 @@ waits for increments 7–9 beneath it.
    fourteen kinds each with their own validation is a different proposition from
    three, and they are multi-valued by design. `design-concept.md` owns the
    Attention Policy this feeds.
-7. **D7. Is URL intake worth reopening SSRF surface?** An allowlist or an egress
-   proxy is the price. The alternative is storing a URL as text and fetching
-   nothing — cheaper, and much less useful.
+7. ~~**D7. Is URL intake worth reopening SSRF surface?**~~ **Answered August
+   21, 2026: not yet, and the answer is a refusal with a trigger rather than a
+   deferral.**
+
+   **What tips it is the shape of the failure, not the cost of the fix.** An
+   allowlist or an egress proxy is affordable. But server-side fetching on a
+   one-host deployment means the application makes outbound requests to
+   addresses a person supplies, and the interesting SSRF targets are on that
+   host and on DigitalOcean's link-local metadata endpoint. A mistake there is
+   not a bad row — it is credential disclosure, on the machine that also holds
+   every note.
+
+   **And the cheap half is most of the value.** Storing a URL as text, captured
+   and searchable, is what makes *"that recipe I saved"* findable at all;
+   fetching adds the body. `/mind/` already accepts a URL as content today and
+   the Android share target already sends one, so nothing is missing that a
+   person would notice as absent.
+
+   **The trigger, so this can fire:** when Clarice has more than one human user,
+   or when a recipe URL somebody saved is recorded as a retrieval miss because
+   its text was not searchable. The first is a real change in the threat model;
+   the second is evidence from the one instrument this project trusts. Either
+   makes an egress proxy worth its weight — and `MissContext.SEARCH` already
+   records the second without anything being built.
 8. ~~**D8. What are the four metrics?**~~ **Answered August 21, 2026 — there
    are two.** Lookup and Recollection have honest signals; Planning has none
    yet and Resurfacing cannot have one. Saying so in `/numbers/` is the
@@ -855,9 +882,25 @@ waits for increments 7–9 beneath it.
    list is test-held. **Export and deletion shipped August 16 exporting every
    owned *row*** — files are not rows, so an attachment that cannot be exported
    or purged breaks a promise that currently holds.
-10. **D10. Email intake — scope it, or defer with a trigger?** Deferring without
-    one is what `roadmap.md`'s Track D refuses, and `principles.md` now says a
-    trigger that cannot fire is a refusal.
+10. ~~**D10. Email intake — scope it, or defer with a trigger?**~~ **Answered
+    August 21, 2026: deferred, with a trigger that can fire.**
+
+    **The mail transport already runs in one direction only.** Resend sends;
+    nothing receives. Inbound means a webhook endpoint with no session behind
+    it, address-to-account mapping, spoofing (anybody can put your address in a
+    `From:` header), attachment handling, and a spam surface — on an
+    unauthenticated route, which is the one class of endpoint this project
+    throttles by name.
+
+    **What makes it a deferral rather than a refusal** is that unlike D7 the
+    hazard is contained: a bad inbound message writes a note, and a note can be
+    deleted. It is real work rather than a real risk.
+
+    **The trigger:** when a capture arrives by being forwarded somewhere else
+    first — a note whose content is an email somebody re-typed or pasted — or
+    when the phone is not the fastest route in for material that already lives
+    in a mailbox. Both are observable in the corpus rather than in an opinion,
+    which is what `principles.md` means by a trigger that can fire.
 11. ~~**D11. What shape is a per-occasion proposal budget?**~~ **Answered
     August 20, 2026: two budgets, and no backlog.** A *processing* budget
     bounding what is materialized at all, and an *attention* budget bounding

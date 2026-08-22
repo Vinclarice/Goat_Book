@@ -42,8 +42,9 @@ from django.test import SimpleTestCase
 SRC = pathlib.Path(__file__).resolve().parents[2]
 SERVICES = SRC / "mind" / "services.py"
 
-#: The eleven still dark, each with the live half whose absence of an undo it represents,
-#: or None where it is not an undo half at all.
+#: The ten still dark, each with the live half whose absence of an undo it
+#: represents, or None where it is not an undo half at all. Eleven until
+#: August 22, 2026, when D15 gave `mark_reviewed` a caller.
 #:
 #: **Kept as a list rather than derived**, for the reason `NOT_DRILLED` and
 #: `PERSON_EVENTS` are: a set computed from the code cannot fail when something

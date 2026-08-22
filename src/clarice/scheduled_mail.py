@@ -30,6 +30,8 @@ last is a scheduler with two definitions.
 
 import logging
 
+from django.utils import timezone
+
 from clarice import clocks
 
 
@@ -87,7 +89,31 @@ def deliver_once_a_day(
                 continue
 
             if local_now.hour < until_hour:
-                message = compose(user, today)
+                # **Activated, not merely computed** -- D16, and the defect
+                # that made it necessary. Passing `today` in is not enough:
+                # the reads underneath `compose` convert their own timestamps
+                # with `timezone.localtime`, which reads the *active* zone --
+                # and a management command has none, so every recipient got
+                # `settings.TIME_ZONE` whatever zone they chose.
+                #
+                # The cost was live. `send_closing_nudge` asks
+                # `planned_in_week` what was finished today; for a recipient
+                # west of the setting, a task finished at 21:00 was dated
+                # *tomorrow* and failed *on or before today*, so the mail read
+                # **"You finished 0 of 2"** an hour after they finished one.
+                #
+                # `accounts.auth._resolve_scoped_token` already made this
+                # exact move for token requests, and for the same stated
+                # reason: activate where the owner first becomes known, rather
+                # than asking every read to remember. This is that seam for
+                # scheduled mail -- there is no middleware out here.
+                #
+                # `override` rather than the middleware's activate/deactivate
+                # pair, because this runs in a loop: `deactivate` clears, where
+                # `override` restores what it found. One recipient must not be
+                # able to change the zone the next one is composed in.
+                with timezone.override(clocks.zone_for(user)):
+                    message = compose(user, today)
                 if message is not None:
                     deliver(user, *message)
                     sent += 1

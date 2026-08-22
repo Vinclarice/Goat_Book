@@ -493,6 +493,52 @@ check is the one deliberate exception: its skew is **absorbed** with an extra
 day of slack rather than removed, because it is an alerting path where a false
 alarm is the expensive failure. It says so in place and in the allowlist.
 
+### D16, part two — the same defect in the task core, and this one was posting
+
+**Found by asking whether the rule held anywhere else**, the same afternoon.
+The AST guard deliberately does not scan the task core, because there
+`timezone.localdate()` is correct: the viewer *is* the subject. **Except where
+there is no viewer.**
+
+`scheduled_mail.deliver_once_a_day` worked out each recipient's local day and
+passed it down, and that is not enough. **The reads underneath convert their own
+timestamps.** `review.reads._local_date` calls `timezone.localtime`, which reads
+the *active* zone — and a management command has no middleware, so every
+recipient was composed in `settings.TIME_ZONE` whatever zone they had chosen.
+`America/New_York` is both the setting and the default, so anybody who had never
+changed theirs was right by coincidence, which is how it stayed hidden.
+
+**For a recipient west of the setting it was posting a false number.**
+`send_closing_nudge` asks `planned_in_week` what was finished today; a Los
+Angeles task finished at 21:00 is 00:00 in New York, dated **tomorrow**, and
+fails *finished on or before today*. The mail read:
+
+> You finished 0 of 2.
+
+an hour after they finished one. **Reproduced before it was fixed**, and the
+test asserting it is `TheNudgeCountsInTheRecipientsClockTest`.
+
+**Why the existing nine tests missed it, which is the same sentence twice in one
+day.** The recipient was on the default zone and finished at 15:00 — a zone that
+matches the setting and an hour where every clock agrees. Exactly the pair that
+let `what_surrounded` ship. **A fixture that picks a convenient hour has quietly
+chosen the passing case**, and that is now the thing to distrust first when a
+suite is green over a clock.
+
+**Fixed at the seam rather than at the reads**, which is a move this codebase
+has already made once: `accounts.auth._resolve_scoped_token` activates the
+owner's zone where the owner first becomes known, written after six token
+endpoints each forgot to despite a docstring asking them to. The mailer now
+composes inside `timezone.override(clocks.zone_for(user))` — `override` and not
+the middleware's activate/deactivate pair, because this runs in a **loop** and
+`deactivate` clears where `override` restores. One recipient must not be able to
+change the zone the next one is composed in.
+
+**The digest shared the exposure and had no test at all** —
+`deliver_once_a_day` was only ever exercised through its two commands. It has
+its own now, at the mailer level where the defect actually lived, so a third
+scheduled message inherits the guarantee instead of the bug.
+
 ## The week you can plan, and the material you can find — August 19–20, 2026, `lapwing`
 
 Release L, across two deployments and verified in production on August 20 at

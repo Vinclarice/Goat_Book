@@ -249,6 +249,29 @@ That policy is per user. Each account carries a `time_zone` and day-boundary
 logic reads the zone activated for the request; `settings.TIME_ZONE` is the
 anonymous fallback, not the definition of anyone's day.
 
+**Passing the date down is not enough where there is no request.** Reads convert
+their own timestamps — `timezone.localtime` and `localdate` read the *active*
+zone, which the middleware sets and a management command does not have. So a
+scheduled job must **activate the owner's zone**, not merely compute their date:
+`clarice.scheduled_mail` composes inside `timezone.override`, and
+`accounts.auth._resolve_scoped_token` does the same for token requests. Activate
+where the owner first becomes known, rather than asking every read to remember —
+six token endpoints each forgot to when the asking was a docstring.
+
+**And whose clock is not always the reader's.** *Today* is a question about the
+person looking; *which day was this written on* is a property of the record, and
+must give the same answer to anybody, or to nobody at all in a nightly pass.
+That second question is `clarice.clocks.day_for(owner, instant)`, which takes the
+owner and the instant and nothing else. Both of the above were found the same
+day, in code that had shipped and been scored as working.
+
+**A fixture that picks a convenient hour has chosen the passing case.** Both
+defects survived their tests for one reason: every fixture captured at UTC
+midday, on the default zone, where all the clocks agree. Green over a clock
+means nothing until a test runs in a zone that is not the setting, at an hour
+where the dates disagree. Applies past clocks — wherever a test picks a value
+freely, ask what the awkward value would have been.
+
 ### The server owns business meaning; clients render and submit intent
 
 Clients display the task, capture and date decisions the server made rather

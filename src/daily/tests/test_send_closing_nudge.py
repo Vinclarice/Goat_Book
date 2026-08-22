@@ -144,3 +144,66 @@ class SendClosingNudgeTest(TestCase):
         self.assertEqual(mail.outbox, [])
         self.vince.refresh_from_db()
         self.assertIsNone(self.vince.last_closing_nudge_date)
+
+
+
+class TheNudgeCountsInTheRecipientsClockTest(TestCase):
+    """**D16, one core over, in the place with no viewer at all.**
+
+    `review.reads._local_date` converts `completed_at` with
+    `timezone.localtime`, which reads the zone the **middleware** activated for
+    the current request. A management command has no request and no middleware,
+    so it silently gets `settings.TIME_ZONE` — `America/New_York` — for every
+    recipient, whatever zone they chose.
+
+    The class above never noticed because its recipient is on the default zone
+    and finishes at 15:00. **Two convenient choices**, exactly the pair that let
+    `what_surrounded` ship broken: a zone that matches the setting, and an hour
+    where every clock agrees.
+
+    So this recipient is in **Los Angeles**, three hours behind the setting, and
+    finishes at **21:00** — which is already tomorrow in New York, and so is
+    dated tomorrow, and so fails *finished on or before today* for a task
+    finished an hour before the mail went out.
+    """
+
+    def setUp(self):
+        self.vince = User.objects.create_user(
+            "vince", "vince@example.com", "a secure password"
+        )
+        self.vince.closing_nudge = True
+        self.vince.time_zone = "America/Los_Angeles"
+        self.vince.save(update_fields=["closing_nudge", "time_zone"])
+        self.list_ = List.objects.create(owner=self.vince, title="Home")
+
+    def pin(self, text, *, finished_at_hour=None):
+        task = list_services.create_item(self.list_, text)
+        services.pin_task(self.vince, TUESDAY, task)
+        if finished_at_hour is not None:
+            list_services.complete_item(task)
+            Item.objects.filter(pk=task.pk).update(
+                completed_at=timezone.make_aware(
+                    datetime.combine(TUESDAY, datetime.min.time())
+                    + timedelta(hours=finished_at_hour),
+                    ZoneInfo("America/Los_Angeles"),
+                )
+            )
+        return task
+
+    def run_at(self, hour):
+        evening = timezone.make_aware(
+            datetime.combine(TUESDAY, datetime.min.time()) + timedelta(hours=hour),
+            ZoneInfo("America/Los_Angeles"),
+        )
+        with timezone.override(ZoneInfo("UTC")):
+            call_command(
+                "send_closing_nudge", stdout=StringIO(), now=evening.isoformat()
+            )
+
+    def test_a_task_finished_this_evening_counts_as_finished(self):
+        self.pin("Pay rent", finished_at_hour=21)
+        self.pin("Call the plumber")
+
+        self.run_at(hour=22)
+
+        self.assertIn("1 of 2", mail.outbox[0].body)

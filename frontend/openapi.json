@@ -3353,6 +3353,50 @@
         "title": "BriefCommitmentOut",
         "type": "object"
       },
+      "BriefDecisionOut": {
+        "description": "A choice made while looking at this project's material \u2014 **S16**.\n\n`superseded` rather than omitting the ones that were replaced: *what he\nlearned last time* includes the answer he later changed, and hiding it would\nremove the part that makes keeping the record worth anything.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          },
+          "chose": {
+            "title": "Chose",
+            "type": "string"
+          },
+          "considered": {
+            "title": "Considered",
+            "type": "string"
+          },
+          "decided_at": {
+            "title": "Decided At",
+            "type": "string"
+          },
+          "superseded": {
+            "title": "Superseded",
+            "type": "boolean"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "question",
+          "chose",
+          "considered",
+          "decided_at",
+          "superseded",
+          "reason"
+        ],
+        "title": "BriefDecisionOut",
+        "type": "object"
+      },
       "BriefItemOut": {
         "description": "One retrieved note, with the evidence that selected it.\n\n`reason` is not decoration. Without it the interface can only say\n\"related\", which is the unfalsifiable label this whole mechanic exists to\navoid -- `precision.md`'s point is that a person can check \"these share\nthree words appearing in none of your other notes\" and cannot check a\nscore.",
         "properties": {
@@ -3390,6 +3434,45 @@
         "title": "BriefItemOut",
         "type": "object"
       },
+      "BriefSourceOut": {
+        "description": "Something read that this project's material came out of \u2014 **S16**.\n\n`reason` is a fact rather than a score, like `BriefItemOut`'s and for the\nsame argument: the person can check *a note here came out of it* and cannot\ncheck a number.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "author": {
+            "title": "Author",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "note_count": {
+            "title": "Note Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "author",
+          "url",
+          "reason",
+          "note_count"
+        ],
+        "title": "BriefSourceOut",
+        "type": "object"
+      },
       "ProjectBriefOut": {
         "properties": {
           "material": {
@@ -3412,12 +3495,38 @@
             },
             "title": "Commitments",
             "type": "array"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/BriefSourceOut"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "decisions": {
+            "items": {
+              "$ref": "#/components/schemas/BriefDecisionOut"
+            },
+            "title": "Decisions",
+            "type": "array"
+          },
+          "provenance_says": {
+            "title": "Provenance Says",
+            "type": "string"
+          },
+          "abandon_if": {
+            "title": "Abandon If",
+            "type": "string"
           }
         },
         "required": [
           "material",
           "questions",
-          "commitments"
+          "commitments",
+          "sources",
+          "decisions",
+          "provenance_says",
+          "abandon_if"
         ],
         "title": "ProjectBriefOut",
         "type": "object"

@@ -21,8 +21,15 @@ import { apiV1 } from "../../api/client";
  * That is also why opening one records nothing, unlike `/mind/review/`, which
  * stamps `first_surfaced_at` on purpose.
  *
- * Three sections because a piece of prior thinking, a loose end and a dated
- * commitment are three different things to do something about.
+ * Three sections became five on August 22, 2026 — **S16's other two nouns**.
+ * The story's done-means is *notes, decisions and sources*, and this reached one
+ * of three from `kestrel` until `Source` and `Decision` shipped hours apart.
+ *
+ * **The two new sections are reached through recorded provenance**, not through
+ * a second retrieval: a source is here because a note above came out of it, a
+ * decision because it cites one. So each reason is a fact the person can check
+ * rather than a score they must trust — the same argument the material section
+ * makes, one model over.
  */
 export function ProjectBrief({
   projectId,
@@ -45,8 +52,17 @@ export function ProjectBrief({
     },
   });
 
+  /* Five sections now, and all five have to be empty for the brief to be.
+     Missing one here would have shown "nothing bears on this" above a list of
+     decisions, which is the sort of contradiction a reader stops trusting a
+     surface over. */
   const empty =
-    data && !data.material.length && !data.questions.length && !data.commitments.length;
+    data &&
+    !data.material.length &&
+    !data.questions.length &&
+    !data.commitments.length &&
+    !data.sources.length &&
+    !data.decisions.length;
 
   return (
     <section className="mt-6 border-t border-border pt-4">
@@ -55,7 +71,7 @@ export function ProjectBrief({
           {isFetching ? "Looking…" : "What bears on this?"}
         </Button>
         <span className="text-sm text-muted-foreground">
-          Prior notes, unanswered questions and dated work — nothing is changed
+          Prior notes, questions, what you read, what you decided — nothing is changed
         </span>
       </div>
 
@@ -86,6 +102,86 @@ export function ProjectBrief({
             items={data.material}
             blurb="Notes that share wording appearing in almost none of your others."
           />
+          {data.decisions.length > 0 && (
+            <div>
+              <h3 className="text-sm font-bold">What you decided</h3>
+              {/* `considered` is the half a note cannot keep: eighteen months
+                  later the alternatives are the part you have forgotten, and
+                  S11 exists because of it. */}
+              <p className="text-sm text-muted-foreground">
+                Choices made while looking at this material, and what else was on the table.
+              </p>
+              <ul className="mt-2 space-y-2">
+                {data.decisions.map((decision) => (
+                  <li
+                    key={decision.id}
+                    className="rounded-lg border border-border px-3 py-2"
+                  >
+                    <p className="text-sm font-medium">{decision.question}</p>
+                    <p className="text-sm">
+                      Chose: {decision.chose}
+                      {/* Shown but marked. A replaced decision presented as
+                          current is worse than omitting it -- and omitting it
+                          would remove the part that makes keeping the record
+                          worth anything. */}
+                      {decision.superseded && (
+                        <span className="text-muted-foreground"> — later replaced</span>
+                      )}
+                    </p>
+                    {decision.considered && (
+                      <p className="text-sm text-muted-foreground">
+                        Over: {decision.considered}
+                      </p>
+                    )}
+                    <p className="mt-1 text-xs text-muted-foreground">{decision.reason}</p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {data.sources.length > 0 && (
+            <div>
+              <h3 className="text-sm font-bold">What you read</h3>
+              <p className="text-sm text-muted-foreground">
+                Sources this material came out of — reached through what you wrote, not by title.
+              </p>
+              <ul className="mt-2 space-y-2">
+                {data.sources.map((source) => (
+                  <li
+                    key={source.id}
+                    className="rounded-lg border border-border px-3 py-2"
+                  >
+                    <p className="text-sm">
+                      {source.title}
+                      {source.author && (
+                        <span className="text-muted-foreground"> — {source.author}</span>
+                      )}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">{source.reason}</p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {data.provenance_says && (
+            /* D5's discipline, one axis over: an empty section cannot
+               distinguish "nothing bears on this" from "nothing records where
+               it came from", and today the second is the true one. The read
+               carries the sentence so two surfaces cannot phrase one silence
+               differently. */
+            <p className="text-sm text-muted-foreground">{data.provenance_says}</p>
+          )}
+          {data.abandon_if && (
+            /* S10's second clause -- "still there when he is deciding whether
+               to continue" -- and the brief is the moment of deciding. The
+               field has existed since S10 shipped and the payload dropped it,
+               so nobody ever saw it here. Last, because it is the question you
+               ask after reading the rest rather than before. */
+            <div className="rounded-lg border border-border px-3 py-2">
+              <h3 className="text-sm font-bold">What would tell you it went wrong</h3>
+              <p className="text-sm">{data.abandon_if}</p>
+            </div>
+          )}
           {data.commitments.length > 0 && (
             <div>
               <h3 className="text-sm font-bold">Already committed</h3>

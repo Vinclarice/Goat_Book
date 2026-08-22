@@ -1618,6 +1618,30 @@ export interface components {
             due_date: string | null;
         };
         /**
+         * BriefDecisionOut
+         * @description A choice made while looking at this project's material — **S16**.
+         *
+         *     `superseded` rather than omitting the ones that were replaced: *what he
+         *     learned last time* includes the answer he later changed, and hiding it would
+         *     remove the part that makes keeping the record worth anything.
+         */
+        BriefDecisionOut: {
+            /** Id */
+            id: string;
+            /** Question */
+            question: string;
+            /** Chose */
+            chose: string;
+            /** Considered */
+            considered: string;
+            /** Decided At */
+            decided_at: string;
+            /** Superseded */
+            superseded: boolean;
+            /** Reason */
+            reason: string;
+        };
+        /**
          * BriefItemOut
          * @description One retrieved note, with the evidence that selected it.
          *
@@ -1639,6 +1663,28 @@ export interface components {
             /** Distinctive Terms */
             distinctive_terms: string[];
         };
+        /**
+         * BriefSourceOut
+         * @description Something read that this project's material came out of — **S16**.
+         *
+         *     `reason` is a fact rather than a score, like `BriefItemOut`'s and for the
+         *     same argument: the person can check *a note here came out of it* and cannot
+         *     check a number.
+         */
+        BriefSourceOut: {
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+            /** Author */
+            author: string;
+            /** Url */
+            url: string;
+            /** Reason */
+            reason: string;
+            /** Note Count */
+            note_count: number;
+        };
         /** ProjectBriefOut */
         ProjectBriefOut: {
             /** Material */
@@ -1647,6 +1693,14 @@ export interface components {
             questions: components["schemas"]["BriefItemOut"][];
             /** Commitments */
             commitments: components["schemas"]["BriefCommitmentOut"][];
+            /** Sources */
+            sources: components["schemas"]["BriefSourceOut"][];
+            /** Decisions */
+            decisions: components["schemas"]["BriefDecisionOut"][];
+            /** Provenance Says */
+            provenance_says: string;
+            /** Abandon If */
+            abandon_if: string;
         };
         /** AreaProjectIn */
         AreaProjectIn: {

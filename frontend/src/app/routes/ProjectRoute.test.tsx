@@ -383,6 +383,49 @@ describe("ProjectRoute", () => {
       },
     ],
     commitments: [{ id: 7, text: "Draft the booking form copy", due_date: "2026-09-01" }],
+    /* S16's other two nouns, unblocked on August 22 2026 when Source and
+       Decision shipped hours apart. The story's done-means is "notes,
+       decisions and sources"; this payload carried one of three until then. */
+    sources: [
+      {
+        id: "33333333-3333-3333-3333-333333333333",
+        title: "Booking systems for small venues",
+        author: "R. Iyer",
+        url: "",
+        reason:
+          "you read this, and 2 notes here came out of it, including: The booking form should collect…",
+        note_count: 2,
+      },
+    ],
+    decisions: [
+      {
+        id: "44444444-4444-4444-4444-444444444444",
+        question: "How do we take bookings?",
+        chose: "A form on the site",
+        considered: "Keep the inbox and triage it",
+        decided_at: "2026-07-02T09:00:00-04:00",
+        superseded: false,
+        reason:
+          "you decided this while looking at: The booking form should collect the venue…",
+      },
+    ],
+    provenance_says: "",
+    abandon_if: "Three months with no booking taken through it",
+  };
+
+  /* Every field the payload declares, because it declares them all. Written
+     out rather than derived from BRIEF so that a new section added to one does
+     not silently appear in the other -- the empty case is the one where a
+     missing key would crash the panel rather than merely under-render it, which
+     is exactly what happened when sources and decisions were added. */
+  const EMPTY_BRIEF = {
+    material: [],
+    questions: [],
+    commitments: [],
+    sources: [],
+    decisions: [],
+    provenance_says: "",
+    abandon_if: "",
   };
 
   function briefPageFetch(brief: object = BRIEF, detail: object = projectDetailData()) {
@@ -416,9 +459,15 @@ describe("ProjectRoute", () => {
     await screen.findByDisplayValue("Website Relaunch");
     await user.click(screen.getByRole("button", { name: /what bears on this/i }));
 
+    /* `findAllByText` since August 22 2026, and the ambiguity is real rather
+       than a test artefact: a source's reason cites one of the surfaced notes,
+       so that note's opening words legitimately appear twice on the page --
+       once as the note and once inside the citation naming it. Asserting a
+       count would be worse, since it would break whenever a section is added.
+       This asserts the note is present; the section tests below assert where. */
     expect(
-      await screen.findByText(/booking form should collect the venue/i),
-    ).toBeInTheDocument();
+      (await screen.findAllByText(/booking form should collect the venue/i)).length,
+    ).toBeGreaterThan(0);
     expect(screen.getByText(/which payment provider/i)).toBeInTheDocument();
     expect(screen.getByText(/draft the booking form copy/i)).toBeInTheDocument();
   });
@@ -445,13 +494,104 @@ describe("ProjectRoute", () => {
     expect(reasons[0]).toHaveTextContent("payment, provider");
   });
 
+  it("offers the sources this project's material came out of", async () => {
+    /* S16's second noun. Reached through `Node.came_from` -- a column somebody
+       wrote -- rather than by matching the source's title against the purpose,
+       which would be a similarity score wearing a causal word. */
+    const user = userEvent.setup();
+    vi.spyOn(globalThis, "fetch").mockImplementation(briefPageFetch());
+
+    renderAt("3");
+    await screen.findByDisplayValue("Website Relaunch");
+    await user.click(screen.getByRole("button", { name: /what bears on this/i }));
+
+    expect(
+      await screen.findByText(/booking systems for small venues/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/2 notes here came out of it/i)).toBeInTheDocument();
+  });
+
+  it("offers the decisions taken while looking at it", async () => {
+    /* S16's third noun, and the half a note cannot keep: `considered` is what
+       you have forgotten eighteen months later. */
+    const user = userEvent.setup();
+    vi.spyOn(globalThis, "fetch").mockImplementation(briefPageFetch());
+
+    renderAt("3");
+    await screen.findByDisplayValue("Website Relaunch");
+    await user.click(screen.getByRole("button", { name: /what bears on this/i }));
+
+    expect(await screen.findByText(/how do we take bookings/i)).toBeInTheDocument();
+    expect(screen.getByText(/keep the inbox and triage it/i)).toBeInTheDocument();
+  });
+
+  it("marks a decision that was later replaced", async () => {
+    /* Superseded decisions come with the brief on purpose -- "what he learned
+       last time" includes the answer he changed. Shown but marked, because a
+       replaced decision presented as current is worse than omitting it. */
+    const user = userEvent.setup();
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      briefPageFetch({
+        ...BRIEF,
+        decisions: [{ ...BRIEF.decisions[0], superseded: true }],
+      }),
+    );
+
+    renderAt("3");
+    await screen.findByDisplayValue("Website Relaunch");
+    await user.click(screen.getByRole("button", { name: /what bears on this/i }));
+
+    expect(await screen.findByText(/later replaced/i)).toBeInTheDocument();
+  });
+
+  it("says when nothing records where the material came from", async () => {
+    /* D5's discipline, one axis over. An empty section cannot distinguish
+       "nothing bears on this" from "nothing records its provenance", and today
+       the second is the true one -- both columns got their first writing
+       surface the day before this shipped. */
+    const user = userEvent.setup();
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      briefPageFetch({
+        ...BRIEF,
+        sources: [],
+        decisions: [],
+        provenance_says:
+          "none of the notes here record where they came from or what you decided from them, so nothing can be reached that way yet",
+      }),
+    );
+
+    renderAt("3");
+    await screen.findByDisplayValue("Website Relaunch");
+    await user.click(screen.getByRole("button", { name: /what bears on this/i }));
+
+    expect(
+      await screen.findByText(/record where they came from/i),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps the abandonment condition in front of you while deciding", async () => {
+    /* S10's second clause -- "still there when he is deciding whether to
+       continue" -- which the brief payload dropped from the day the field was
+       added until August 22 2026. The brief is the moment of deciding. */
+    const user = userEvent.setup();
+    vi.spyOn(globalThis, "fetch").mockImplementation(briefPageFetch());
+
+    renderAt("3");
+    await screen.findByDisplayValue("Website Relaunch");
+    await user.click(screen.getByRole("button", { name: /what bears on this/i }));
+
+    expect(
+      await screen.findByText(/three months with no booking taken through it/i),
+    ).toBeInTheDocument();
+  });
+
   it("says why a brief is empty when the project has no purpose", async () => {
     /* An empty brief and an unanchored one look identical and mean opposite
        things: "nothing of yours bears on this" versus "you have not told me
        what this is". */
     const user = userEvent.setup();
     vi.spyOn(globalThis, "fetch").mockImplementation(
-      briefPageFetch({ material: [], questions: [], commitments: [] }),
+      briefPageFetch(EMPTY_BRIEF),
     );
 
     renderAt("3");
@@ -465,7 +605,7 @@ describe("ProjectRoute", () => {
     const user = userEvent.setup();
     vi.spyOn(globalThis, "fetch").mockImplementation(
       briefPageFetch(
-        { material: [], questions: [], commitments: [] },
+        EMPTY_BRIEF,
         projectDetailData({ purpose: "Ship the booking form." }),
       ),
     );

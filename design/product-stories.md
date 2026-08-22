@@ -927,21 +927,54 @@ item carries the terms that selected it, which **is** this story's *"each saying
 why it surfaced"*. Nothing is changed on his behalf — a brief assembles what is
 already his, so it has no confirm gate and records nothing on being read.
 
-**What still bends, and one of the two is a refusal.** It is *asked for, never
-pushed* — `enabled` stays false until the button is pressed, because the
-Attention Policy permits a queue only inside a ritual the person chose to open —
-where the story's own sentence is *"without asking"*. **That tension is the
-story's to resolve, not the code's**, and it is the same shape as S7's: the
-product has a considered position and the journey was written before it. The
-other gap is plain: the brief reaches **notes only**, because `Source` (S15) and
-`Decision` (S11) do not exist, so *"notes, decisions and sources"* is one of
-three. It is also still limited by the corpus rather than the code — 41 nodes,
-19 of them visible to the detectors.
+**What still bends, and one of the two is a refusal.** It is *asked for, never pushed* —
+`enabled` stays false until the button is pressed, because the Attention Policy permits a
+queue only inside a ritual the person chose to open — where the story's own sentence is
+*"without asking"*. **That tension is the story's to resolve, not the code's**, and it is
+the same shape as S7's: the product has a considered position and the journey was written
+before it. ~~The other gap is plain: the brief reaches **notes only**, because `Source`
+(S15) and `Decision` (S11) do not exist, so *"notes, decisions and sources"* is one of
+three.~~
 
-**Requires:** S15 and S11 for the other two nouns, S13 and S14 still underneath,
-and a decision on whether *"without asking"* survives contact with the Attention
-Policy. This is the story that makes a second brain feel like one, and it is
-worthless before the corpus exists.
+**The second gap closed on August 22, 2026.** `Source` and `Decision` shipped hours apart
+that day and the brief now reaches all three nouns: *You wrote about this before*, *What
+you decided* and *What you read*, each carrying a reason.
+
+**Reached through recorded provenance, not through a second retrieval**, which is the part
+worth keeping. A source is offered because a note the brief already surfaced *came from*
+it; a decision because it *cites* one. Both are columns somebody wrote, so the reason is a
+fact — *you read this, and a note here came out of it* — rather than a score, which is
+exactly what *"each saying why it surfaced"* asks for. **What that refuses**: a source
+whose title resembles the purpose is not reached, because matching on it would be a
+similarity score wearing a causal word, and it would need an index this design has twice
+declined to build.
+
+**Superseded decisions come too, marked.** *What he learned last time* includes the answer
+he later changed; showing only the survivor would remove the part that makes keeping the
+record worth anything.
+
+**And it swept up a dark field on the way.** `ProjectBrief.abandon_if` had been set since
+S10 shipped, with a docstring reading *"a field nobody sees at the moment of deciding is a
+field that may as well not exist"* — and `ProjectBriefOut` never carried it, so nobody saw
+it. **The object warning against the bug had the bug**; the brief is the moment of
+deciding, and S10's second clause now actually appears there.
+
+**Verdict: still bends, and now on exactly one thing — a decision that is not the code's.**
+*Without asking* against *asked for, never pushed*. Everything in the done-means is met and
+demonstrated in a browser.
+
+**One require came off on inspection rather than by being built.** S13 was listed as
+underneath this, and it is not: S13 is about the **search box** reaching sources and
+reviews, where this is the **project brief**, which uses `material_bearing_on` and never
+touches search. The dependency was assumed, not checked.
+
+**Requires:** ~~S15 and S11 for the other two nouns~~ **done**; ~~S13~~ **not actually a
+dependency, see above**; S14 **done**; and a decision on whether *"without asking"*
+survives contact with the Attention Policy — **the only thing left.** It is also still
+limited by the corpus rather than the code: `Node.came_from` and `Decision.cited_node` both
+got their first writing surface on August 21–22, so almost nothing carries provenance yet,
+and the brief **says so** rather than showing an empty section that could mean either
+thing.
 
 ### S17. Priya leaves
 

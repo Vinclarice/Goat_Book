@@ -615,10 +615,82 @@ class BriefCommitmentOut(Schema):
     due_date: str | None
 
 
+class BriefSourceOut(Schema):
+    """Something read that this project's material came out of — **S16**.
+
+    `reason` is a fact rather than a score, like `BriefItemOut`'s and for the
+    same argument: the person can check *a note here came out of it* and cannot
+    check a number.
+    """
+
+    id: str
+    title: str
+    author: str
+    url: str
+    reason: str
+    note_count: int
+
+
+class BriefDecisionOut(Schema):
+    """A choice made while looking at this project's material — **S16**.
+
+    `superseded` rather than omitting the ones that were replaced: *what he
+    learned last time* includes the answer he later changed, and hiding it would
+    remove the part that makes keeping the record worth anything.
+    """
+
+    id: str
+    question: str
+    chose: str
+    considered: str
+    decided_at: str
+    superseded: bool
+    reason: str
+
+
 class ProjectBriefOut(Schema):
     material: list[BriefItemOut]
     questions: list[BriefItemOut]
     commitments: list[BriefCommitmentOut]
+    #: **S16's other two nouns.** The story's done-means is *notes, decisions
+    #: and sources*, and this payload carried one of three until August 22,
+    #: 2026 — because `Source` and `Decision` did not exist until that day.
+    sources: list[BriefSourceOut]
+    decisions: list[BriefDecisionOut]
+    #: Why the two sections above are empty, when they are and it is not
+    #: because nothing bears on the project. D5's discipline, one axis over.
+    provenance_says: str
+    #: **S10's second clause**, which this payload dropped from the day the
+    #: field was added until August 22, 2026. `ProjectBrief.abandon_if` says *a
+    #: field nobody sees at the moment of deciding is a field that may as well
+    #: not exist* — and nobody saw it, because it stopped here.
+    abandon_if: str
+
+
+def _brief_source_out(each):
+    return {
+        "id": str(each.source.public_id),
+        "title": each.source.title,
+        "author": each.source.author,
+        "url": each.source.url,
+        "reason": each.reason,
+        "note_count": len(each.through),
+    }
+
+
+def _brief_decision_out(each):
+    return {
+        "id": str(each.decision.public_id),
+        "question": each.decision.question,
+        "chose": each.decision.chose,
+        "considered": each.decision.considered,
+        "decided_at": each.decision.decided_at.isoformat(),
+        # Whether a later decision replaced this one. `revisited_at` alone would
+        # not say: looking again and changing your mind are different acts, and
+        # only the second supersedes.
+        "superseded": each.decision.superseded_by.exists(),
+        "reason": each.reason,
+    }
 
 
 def _brief_item_out(item):
@@ -661,6 +733,10 @@ def project_brief(request, project_id: int):
             }
             for task in brief.commitments
         ],
+        "sources": [_brief_source_out(each) for each in brief.sources],
+        "decisions": [_brief_decision_out(each) for each in brief.decisions],
+        "provenance_says": brief.provenance_says,
+        "abandon_if": brief.abandon_if,
     }
 
 

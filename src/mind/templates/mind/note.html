@@ -130,6 +130,31 @@ is becomes answerable later, when the answer exists.
   {% endfor %}
 {% endif %}
 
+{% if surrounding.has_anything %}
+  <h2>Written into</h2>
+  {% comment %}
+  S14, and the last of v3's *Unify* that could be built honestly. A read rather
+  than stored links: the day comes from `captured_at`, the project along
+  node-facet-item-area-project, and the week's commitments from that week's own
+  rows. Three stored copies would be three things free to drift from what they
+  copy.
+  {% endcomment %}
+  <div class="card">
+    {% if surrounding.day %}
+      <div class="body">the day you wrote <a href="/app/day/{{ surrounding.day.date|date:'Y-m-d' }}">{{ surrounding.day.date|date:"j M Y" }}</a></div>
+    {% endif %}
+    {% if surrounding.project %}
+      <div class="body">inside <strong>{{ surrounding.project.title }}</strong></div>
+    {% endif %}
+    {% if surrounding.intention %}
+      <div class="meta" style="margin-top:.5rem">that week you meant to: {{ surrounding.intention }}</div>
+    {% endif %}
+    {% for outcome in surrounding.outcomes %}
+      <div class="meta">committed to: {{ outcome.text }}</div>
+    {% endfor %}
+  </div>
+{% endif %}
+
 <h2>What came of it</h2>
 {% if what_came_of_it.has_anything %}
   {% for development in what_came_of_it.developments %}

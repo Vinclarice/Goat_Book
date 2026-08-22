@@ -367,6 +367,78 @@ QUESTION_RESOLVED = "resolved"
 NOT_A_QUESTION = "not_a_question"
 
 
+@transaction.atomic
+def make_it_the_goal(node: Node, project, *, now: datetime, actor: str) -> Facet:
+    """Say that this note is what a project is for -- v3's *Unify*.
+
+    **`FacetKind.GOAL` has been declared since the merger and nothing ever
+    wrote one**, which put it in the August 21 inventory's
+    *declared-but-never-written vocabulary*. `EPISTEMIC` was in exactly that
+    position and `_set_epistemic_status` below is the precedent this follows.
+
+    **What it buys is the direction that did not exist.**
+    `Project.desired_outcome` is a text field somebody types. A `GOAL` facet
+    says *this note is that outcome*, so the sentence a person actually wrote
+    -- with its capture time, its concepts and its own life -- becomes the
+    project's stated end rather than a paraphrase living in a second place,
+    free to drift from it.
+
+    `origin=EXPLICIT`, always, for the reason `_set_epistemic_status` gives: a
+    decision nobody can tell from a guess is one nobody can argue with later.
+
+    **One live goal per node**, which is `facet_one_live_per_kind` doing what
+    it was built for -- changing your mind is a change, not a second opinion
+    beside the first.
+    """
+    _require_live(node)
+    if project.owner_id != node.owner_id:
+        raise NotYours("that project belongs to someone else")
+
+    facet = node.facets.filter(
+        kind=FacetKind.GOAL, retired_at__isnull=True
+    ).first()
+    already = facet is not None and facet.data.get("project") == project.pk
+    if facet is None:
+        facet = Facet.objects.create(
+            node=node,
+            kind=FacetKind.GOAL,
+            origin=InferenceOrigin.EXPLICIT,
+            confirmed_at=now,
+            data={"project": project.pk},
+        )
+    elif not already:
+        facet.data = {**facet.data, "project": project.pk}
+        facet.origin = InferenceOrigin.EXPLICIT
+        facet.confirmed_at = now
+        facet.save(update_fields=["data", "origin", "confirmed_at"])
+
+    # The note's own words become the project's stated end. Written through
+    # rather than mirrored on a schedule: two copies that drift is the failure
+    # this is meant to remove, not one it should introduce.
+    # Imported here rather than at module scope, the way this file already
+    # reaches for `queries` twice below: the two are paired and a top-level
+    # import would make the cycle real.
+    from . import queries
+
+    body = queries.current_body(node)
+    if project.desired_outcome != body:
+        project.desired_outcome = body
+        project.save(update_fields=["desired_outcome"])
+
+    if not already:
+        # Guarded, like every emitter since C4. A corrigible property re-saved
+        # is not a second act, and this writes where DELETE is refused.
+        _record(
+            node.owner,
+            EventType.FACET_CONFIRMED,
+            node=node,
+            occurred_at=now,
+            actor=actor,
+            payload={"kind": FacetKind.GOAL, "project": project.pk},
+        )
+    return facet
+
+
 def _set_epistemic_status(node: Node, status: str, *, now: datetime, actor: str) -> Facet:
     """Record what a person decided about a note's epistemic standing.
 

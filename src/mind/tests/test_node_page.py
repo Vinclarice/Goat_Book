@@ -536,3 +536,38 @@ def test_repeated_events_with_nothing_to_name_are_counted_too(signed_in, owner, 
     body = page(signed_in, note).content.decode()
 
     assert "a name confirmed × 3" in body
+
+
+def test_it_says_what_the_note_was_written_into(signed_in, owner, note):
+    """S14's done-means, and v3's *Unify*: *the note carries the day it belongs
+    to, the project it was inside and what she had committed to that week.*"""
+    from daily import services as daily_services
+    from lists.models import List, Project
+    from review import services as review_services
+
+    daily_services.write_entry(owner, WRITTEN.date(), happenings="a hard week")
+    project = Project.objects.create(owner=owner, title="The wedding")
+    area = List.objects.create(owner=owner, title="Venue", project=project)
+    facet = services.propose_facet(
+        note,
+        kind=FacetKind.ACTIONABLE,
+        data={},
+        now=later(hours=1),
+        actor="vince",
+        reason="looks like a commitment",
+    )
+    services.confirm_actionable(facet, area=area, now=later(hours=1), actor="vince")
+    review_services.set_intention(owner, WRITTEN.date(), "Finish the chapter")
+
+    body = page(signed_in, note).content.decode()
+
+    assert "The wedding" in body
+    assert "Finish the chapter" in body
+
+
+def test_a_note_written_into_nothing_says_nothing_about_it(signed_in, note):
+    """The section is absent rather than three empty labels -- the failure this
+    project shipped twice in a week."""
+    body = page(signed_in, note).content.decode()
+
+    assert "Written into" not in body

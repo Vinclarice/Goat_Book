@@ -709,6 +709,15 @@ def note(request, public_id):
             "occasions": [_occasion(occasion) for occasion in
                           recall.context_of(request.user, found).occasions],
             "what_came_of_it": _phrased(recall.since(request.user, found)),
+            # S14's done-means, and v3's *Unify*: the day it belongs to, the
+            # project it was inside, and what was committed to that week.
+            #
+            # **A read, where the plan asks for typed links** -- Part 1 says
+            # facts, not derivations, and all three are derivable: the day from
+            # `captured_at`, the project along the chain the merger already
+            # records, the week's commitments from that week's rows. Storing
+            # them would be three copies free to disagree with their sources.
+            "surrounding": recall.what_surrounded(request.user, found),
             # **This page declares itself a Recollection** -- Track B increment
             # 7. It was already doing one ad hoc: the fragment, what was
             # nearby, what came of it, with no name for the kind of

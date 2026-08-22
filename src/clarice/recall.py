@@ -518,6 +518,80 @@ def _around_the_cluster(owner, cluster, window, limit_each_side, own_life, alrea
     return ordered[: len(ordered) - omitted], omitted
 
 
+@dataclass(frozen=True)
+class Surrounding:
+    """What a note was written into — S14, and v3's *Unify*.
+
+    The story's done-means in three fields: *the day it belongs to, the project
+    it was inside and what she had committed to that week.*
+    """
+
+    day: object | None
+    project: object | None
+    intention: str
+    outcomes: list = field(default_factory=list)
+
+    @property
+    def has_anything(self):
+        return bool(self.day or self.project or self.intention or self.outcomes)
+
+
+def what_surrounded(owner, node):
+    """The day, the project and the week's commitments around one note.
+
+    **A read, where *Unify* asks for "typed links" — and that is deliberate.**
+    Part 1 of the same brief says *facts, not derivations: nothing may write a
+    row a read could have produced*, and all three are derivable:
+
+    - the **day** is `captured_at`'s date, so a stored link would be a second
+      answer to a question the timestamp already settles, free to disagree;
+    - the **project** comes along `Node` → confirmed actionable `Facet` →
+      `Item` → `List` → `Project`, which the merger already records in columns;
+    - the **week's commitments** are that week's intention and outcomes.
+
+    **The differentiator survives and the rows do not.** *A graph that accretes
+    from what you were already doing* is what a read over existing columns
+    gives; writing the links would accrete rows instead.
+
+    **What this cannot answer**, and it is S14's question rather than this
+    module's: a note written *during* a project and about it, which never
+    became a task, is inside no project here — because nothing records that it
+    was, and guessing from timing is the derivation this refuses.
+    """
+    from daily.models import DailyEntry
+    from mind.models import Facet
+    from review.models import WeeklyIntention, WeeklyOutcome
+    from review.weeks import week_start_for
+
+    day = DailyEntry.objects.filter(
+        owner=owner, date=node.captured_at.date()
+    ).first()
+
+    project = None
+    facet = (
+        Facet.objects.filter(node=node, task__isnull=False)
+        .exclude(confirmed_at=None)
+        .select_related("task__list__project")
+        .first()
+    )
+    if facet is not None and facet.task.list is not None:
+        project = facet.task.list.project
+
+    week = week_start_for(node.captured_at.date())
+    intention = (
+        WeeklyIntention.objects.filter(owner=owner, week_start=week)
+        .values_list("text", flat=True)
+        .first()
+    )
+    outcomes = list(
+        WeeklyOutcome.objects.filter(owner=owner, week_start=week).order_by("position")
+    )
+
+    return Surrounding(
+        day=day, project=project, intention=intention or "", outcomes=outcomes
+    )
+
+
 def _event_id(excluding):
     if isinstance(excluding, ActivityEvent):
         return excluding.pk

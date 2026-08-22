@@ -85,6 +85,9 @@ urlpatterns = [
     # Track D increment 15: two entrances, and only the words earned.
     # S15: something you read, and what grew out of it.
     # S11: a decision comes back.
+    # D17. Hyphenated and spelled out, because this is a URL somebody may
+    # bookmark on the day it showed them something.
+    path("this-time-before/", views.this_time_before, name="this_time_before"),
     path("decisions/", views.decisions, name="decisions"),
     path("decisions/<uuid:public_id>/", views.decision, name="decision"),
     path("sources/", views.sources, name="sources"),

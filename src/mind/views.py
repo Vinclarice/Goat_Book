@@ -854,6 +854,90 @@ def finish_dump(request):
 
 
 @login_required
+def this_time_before(request):
+    """What you were doing on this date in previous years — **D17**.
+
+    **The one surface nobody has to ask anything on.** Every other read in this
+    core answers a question somebody typed; this one is cued by the date, which
+    is the cheapest present a person has. `Mode.RESURFACING` is the same thing
+    behind the retrieval contract, and both go through
+    `recall.this_time_before`, so a page and an interruption cannot disagree
+    about what today's anniversary is.
+
+    **This page has no length floor and `Mode.RESURFACING` does, and that is the
+    point rather than a discrepancy.** Noticed on the rendered page, where a
+    one-word note reading *milk* sits above a real one — and it should. The
+    floor exists because Resurfacing's named failure is *interrupting for
+    nothing*, and nothing here interrupts: somebody opened this. A page you
+    asked for is Lookup's trade, where every floor is a way to produce a miss
+    and *milk* is a true thing that happened that morning. Withholding it would
+    be a surface quietly editing somebody's own day.
+
+    Said out loud because it looks like an oversight and is one edit from
+    becoming one.
+
+    **What it will not do is imply a year was empty.** A year you were recording
+    that holds nothing on this day, and a year before you were recording at all,
+    are different facts about somebody's life, and an empty page states neither.
+    The read carries the sentence; this only prints it.
+
+    **`?on=` names the day**, defaulting to the owner's today. Two reasons, and
+    the second is the load-bearing one. *What was I doing last Christmas* is a
+    real question this read can already answer, and refusing it would be
+    withholding a capability that costs one line. And a page whose only input is
+    `timezone.now()` cannot be tested without freezing the clock — which
+    `principles.md` refuses in exactly these words: *pass dates and times into
+    domain logic rather than reading the current time inside it.* Read the clock
+    once, at the edge, and let the edge be told otherwise.
+    """
+    on = _parse_optional_date(request.GET.get("on")) or clocks.today_for(request.user)
+    before = recall.this_time_before(request.user, on=on)
+    return render(
+        request,
+        "mind/this_time_before.html",
+        {
+            "here": "this_time_before",
+            "on": on,
+            "before": before,
+            "years": [_readable_anniversary(year) for year in before.years],
+        },
+    )
+
+
+def _readable_anniversary(anniversary):
+    """One year, phrased, and grouped the way an occasion is.
+
+    Reuses `_readable_occasion`'s two repairs rather than restating them,
+    because both were found on a real page and both apply here harder: a whole
+    day is a wider net than a six-hour neighbourhood, so it holds more withheld
+    notes and more bare rows. Twelve identical *name confirmed* lines is what
+    this page looks like without the grouping.
+    """
+    shown = [n for n in anniversary.neighbours if not n.subject_withheld]
+    withheld = len(anniversary.neighbours) - len(shown)
+
+    named = [_readable(n) for n in shown if n.node is not None or n.task is not None]
+    bare = {}
+    for neighbour in shown:
+        if neighbour.node is None and neighbour.task is None:
+            phrase = phrase_for(neighbour.event_type)
+            bare[phrase] = bare.get(phrase, 0) + 1
+
+    return {
+        "year": anniversary.year,
+        "day": anniversary.day,
+        "years_ago": anniversary.years_ago,
+        # Said here rather than in the template, and taken from `retrieval` so
+        # the page and a Resurfacing result's `why` cannot drift apart.
+        "how_long_ago": retrieval.how_long_ago(anniversary.years_ago),
+        "neighbours": named,
+        "also": sorted(bare.items()),
+        "withheld": withheld,
+        "omitted": anniversary.omitted,
+    }
+
+
+@login_required
 @require_http_methods(["GET", "POST"])
 def decisions(request):
     """What you chose, over what, and what would bring it back — S11.

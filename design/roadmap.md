@@ -114,8 +114,9 @@ re-add it here.
   taught are in [`roadmap-history.md`](roadmap-history.md); the spec is a stub.
 
   **What it leaves, and neither is a shortfall.** ~~**Six decisions stay
-  open**~~ **five**, in the stub, because they are about behaviour that is now
-  live rather than about work. ~~**D16 is the one with a clock running**, since
+  open**~~ **four**, in the stub, because they are about behaviour that is now
+  live rather than about work. **D17 closed August 22 and built something**:
+  the cyclic axis, which turned `Mode.RESURFACING` from a refusal into a mode. ~~**D16 is the one with a clock running**, since
   every observation Track C records is stamped UTC~~ — **answered August 22:
   the clock is the person's**, and the stated symptom was wrong. Track C's days
   were always local; the UTC date was in S14's note-to-day join, where it had

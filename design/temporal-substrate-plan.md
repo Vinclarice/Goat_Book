@@ -17,14 +17,15 @@ thousand lines do not.
 the usual shape. They are not open *work*; they are open questions about
 behaviour that is now live, and a four-line stub would have quietly dropped
 them. ~~**D16 is the one with a clock running.**~~ **D16 answered August 22,
-2026** — the clock is the person's, and answering it turned up a live defect in
-S14. Five remain.
+2026** — the clock is the person's, and answering it turned up live defects in
+S14 and in the closing nudge. **D17 answered the same day**, and it needed D16
+underneath it. Four remain.
 
 ## The decisions still open
 
-**Five, and they survive the stub deliberately.** They are not open *work* —
+**Four, and they survive the stub deliberately.** They are not open *work* —
 every increment shipped — but open questions about behaviour that is now live,
-and a four-line stub would have quietly dropped them. The fourteen that were
+and a four-line stub would have quietly dropped them. The fifteen that were
 answered are in [`roadmap-history.md`](roadmap-history.md) with their
 reasoning.
 
@@ -69,14 +70,18 @@ reasoning.
     days were always the person's, because they key on `DailyEntry.date`. The
     clock was running two modules over.
 
-17. **D17. Does Resurfacing include cyclic cues?** The time axis as drafted
-    is linear — `around()`, `since()`, windows — but human temporal cueing is
-    substantially cyclic: *this time last year*, anniversaries, the same
-    Sunday evening. An on-this-day read over `occurred_at` and `captured_at`
-    is pure derivation from recorded facts — no ML, no floors, no budget —
-    and is exactly Resurfacing's "cued by the person's present," where the
-    present includes the date. Leaving the axis linear leaves the cheapest
-    honest resurfacing unbuilt. Registered August 21.
+17. ~~**D17. Does Resurfacing include cyclic cues?**~~ **Answered August 22,
+    2026: yes**, and it built the mode. The read is
+    [`recall.this_time_before`](../src/clarice/recall.py) and it derives from
+    `occurred_at` alone, so there was no row to write and nothing to backfill.
+    **`Mode.RESURFACING` had raised `NotImplementedError` since Track B
+    increment 8**, for want of *"a present"* — and the present turns out to be
+    the date, which everybody already has. Surfaced at `/mind/this-time-before/`.
+
+    **It needed D16 first**, which is why the ordering mattered: an anniversary
+    is a claim about a calendar day, and a calendar day does not exist until
+    somebody says whose clock it is on. Narrative in
+    [`roadmap-history.md`](roadmap-history.md).
 
 18. **D18. Is a neighbourhood clock-bounded or episode-bounded?** The ±6h
     window is a proxy: episodes in a life are bounded by gaps in activity,

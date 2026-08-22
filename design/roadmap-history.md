@@ -539,6 +539,64 @@ change the zone the next one is composed in.
 its own now, at the mailer level where the defect actually lived, so a third
 scheduled message inherits the guarantee instead of the bug.
 
+### D17 — the cyclic axis, and the mode that had been refusing since increment 8
+
+**Answered August 22, 2026: yes**, and answering it built `Mode.RESURFACING`
+rather than merely deciding about it.
+
+**The refusal it ended was five weeks old and was right.** Track B increment 8
+gave five of the six modes their own eligibility rules and left Resurfacing
+raising `NotImplementedError`, with the reason stated exactly: it *"needs
+context this module does not yet take — outcomes, a period, **a present**."*
+Falling back to Lookup's *admit everything* would have been four modes sharing
+one contract, which is the state Part 2 exists to end.
+
+**The present turns out to be the date**, which every person already has and
+which costs nothing to know. *This time last year* is human temporal cueing at
+its cheapest and most reliable, it derives from `occurred_at` alone — so Part
+1's *facts, not derivations* holds with no row to write and no backfill to run —
+and it needs no ML, no threshold anybody has to defend, no budget and nothing
+switched on. That last part is why it could ship while **D14 is still open**: an
+anniversary is a recorded fact, not a similarity score.
+
+**It could not have been built before D16.** An anniversary is a claim about a
+calendar day, and a calendar day does not exist until somebody says whose clock
+it is on. `this_time_before` builds each year's window in the owner's zone;
+verified in a browser, where a note written at 19:00 New York — 23:00 UTC, so
+*the next day* by the old rule — lands on the day it was written.
+
+**The absence discipline is the design rather than a caveat.** Three states, and
+collapsing any two is the mistake: an **anniversary**; a **silent year**, where
+you were recording and that day holds nothing; and a year **before the record**,
+where you were not recording at all. The last two are indistinguishable in an
+empty list and are completely different facts about somebody's life. This is
+D5's shape and Track C's *"an unrecorded night is not a sober one"*, one axis
+over. The page reads:
+
+> nothing recorded on this day in 2024; you were not recording yet in 2022 and 2021.
+
+**February 29 matches exactly and is never slid** to the 28th or to March 1.
+Both are guesses about what somebody meant, and the whole reason this read was
+affordable is that it needed none. The years that could not hold the date are
+named instead.
+
+**Two things the browser found that the tests had not.**
+
+The page shows a one-word note reading *milk* and the **mode does not**, which
+looks like a discrepancy and is the opposite trade taken deliberately. Nothing
+here interrupts — somebody opened the page — so it is Lookup's bargain, where
+every floor is a way to produce a miss and *milk* is a true thing that happened
+that morning. A surface withholding it would be quietly editing somebody's own
+day. Now documented and asserted, because it is one edit from becoming the
+oversight it resembles.
+
+And **two tests passed only because the calendar agreed with them**: the page
+read `timezone.now()` and the fixtures were dated to the real today, so they
+would have started failing tomorrow. `?on=` now names the day — which
+`principles.md` asks for in these words, *pass dates and times into domain logic
+rather than reading the current time inside it*, and which incidentally answers
+*what was I doing last Christmas*.
+
 ## The week you can plan, and the material you can find — August 19–20, 2026, `lapwing`
 
 Release L, across two deployments and verified in production on August 20 at

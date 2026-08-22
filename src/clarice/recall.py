@@ -652,3 +652,204 @@ def _neighbour(event):
         entry_id=event.entry_id,
         payload=event.payload,
     )
+
+
+# ---------------------------------------------------------------------------
+# The cyclic axis -- D17.
+# ---------------------------------------------------------------------------
+
+#: How many previous years an anniversary read looks back over by default.
+#:
+#: Five, and the number is a judgement about attention rather than about data.
+#: The cost of the sixth year is not a query; it is a page that reads as an
+#: archive instead of a cue, and `Mode.RESURFACING`'s named failure is
+#: *interrupting for nothing*. Overridable per call, because a page somebody
+#: opened to browse the past wants a different answer from one interrupting.
+DEFAULT_YEARS_BACK = 5
+
+#: Per year, for the same reason `around()` caps per side rather than in total:
+#: one busy anniversary must not crowd out the four quieter ones underneath it.
+DEFAULT_PER_YEAR = 10
+
+
+@dataclass(frozen=True)
+class Anniversary:
+    """One previous year's version of the same calendar day."""
+
+    year: int
+    #: The date itself, in the owner's calendar -- so a surface can name the
+    #: weekday, which is a large part of what makes an anniversary land.
+    day: object
+    years_ago: int
+    #: Chronological through that day, the ordering `Around` uses and for the
+    #: same reason: time is the one ordering a task completion and a captured
+    #: note genuinely share.
+    neighbours: list = field(default_factory=list)
+    #: How many the per-year cap left out. A count, never a flag -- "two more"
+    #: and "two hundred more" are different years.
+    omitted: int = 0
+
+    @property
+    def has_anything(self):
+        return bool(self.neighbours or self.omitted)
+
+
+@dataclass(frozen=True)
+class ThisTimeBefore:
+    """What this owner's log holds for this calendar day in previous years.
+
+    **Three states and never two.** An anniversary; a year that was being
+    recorded and held nothing that day; and a year before the record begins.
+    The last two are indistinguishable in an empty list and are completely
+    different facts -- one is *you wrote nothing that day*, the other is *there
+    was nothing to write in*. Collapsing them is Track C's unrecorded-night
+    mistake on the cyclic axis.
+    """
+
+    on: object
+    #: Nearest year first. *Cued by the person's present* -- last year is the
+    #: year the present most resembles.
+    years: list = field(default_factory=list)
+    #: Years the log covers where this day holds nothing.
+    silent_years: list = field(default_factory=list)
+    #: Years earlier than anything recorded at all.
+    before_the_record: list = field(default_factory=list)
+    #: Years where this calendar date did not exist -- February 29 only.
+    no_such_date: list = field(default_factory=list)
+
+    @property
+    def has_anything(self):
+        return bool(self.years)
+
+    @property
+    def absence_says(self):
+        """The sentence, assembled here rather than by whoever renders it.
+
+        Track C's rule: a count and its meaning must not be able to travel
+        separately, because two surfaces phrasing one silence differently is
+        how one of them ends up implying the wrong thing.
+        """
+        parts = []
+        if self.silent_years:
+            parts.append(
+                "nothing recorded on this day in " + _and_list(self.silent_years)
+            )
+        if self.before_the_record:
+            parts.append(
+                "you were not recording yet in " + _and_list(self.before_the_record)
+            )
+        if self.no_such_date:
+            parts.append("there was no February 29 in " + _and_list(self.no_such_date))
+        return "; ".join(parts)
+
+
+def _and_list(years):
+    names = [str(year) for year in years]
+    if len(names) == 1:
+        return names[0]
+    return ", ".join(names[:-1]) + " and " + names[-1]
+
+
+def this_time_before(owner, *, on, years=DEFAULT_YEARS_BACK, per_year=DEFAULT_PER_YEAR):
+    """The same calendar day in previous years -- **D17's cyclic cue**.
+
+    *This time last year* is the cheapest honest resurfacing available, and it
+    is **pure derivation**: every anniversary here was already in the log, so
+    Part 1's *facts, not derivations* holds without a row to write or a backfill
+    to run. No ranking, no floors, no budget, nothing to switch on.
+
+    **The day is the owner's, which is D16 and is not incidental.** An
+    anniversary is a claim about a calendar day, and a calendar day does not
+    exist until somebody says whose clock it is on. Each year's window is built
+    in the owner's zone and converted to instants, so an event at 21:00 in Los
+    Angeles falls on the day it happened rather than on the UTC day after --
+    which is the defect `what_surrounded` carried until this morning.
+
+    **Built per year rather than by matching month and day in SQL.** Extracting
+    month and day from a timestamp is a database-side conversion that would need
+    the zone passed into it anyway, and could not report which years were
+    *silent* -- which is half of what this returns. A few bounded range queries
+    over an indexed column is the cheaper honest shape.
+
+    **February 29 matches exactly and is never slid to the 28th or to March 1.**
+    Both are guesses about what somebody meant, and the whole reason this read
+    is affordable is that it needed no guesses. The years that could not hold the
+    date are named instead.
+    """
+    from . import clocks
+
+    if years < 0:
+        raise ValueError("years cannot be negative")
+    if per_year < 1:
+        raise ValueError("per_year must leave room for at least one event")
+
+    zone = clocks.zone_for(owner)
+    earliest = (
+        ActivityEvent.objects.filter(owner=owner, event_type__in=PERSON_EVENTS)
+        .order_by("occurred_at")
+        .values_list("occurred_at", flat=True)
+        .first()
+    )
+    first_recorded_year = (
+        clocks.day_for(owner, earliest).year if earliest is not None else None
+    )
+
+    found, silent, unrecorded, impossible = [], [], [], []
+    for years_ago in range(1, years + 1):
+        year = on.year - years_ago
+        try:
+            day = on.replace(year=year)
+        except ValueError:
+            # February 29 in a common year. Not an absence of records; an
+            # absence of the date, which is a different thing to be told.
+            impossible.append(year)
+            continue
+
+        if first_recorded_year is None or year < first_recorded_year:
+            unrecorded.append(year)
+            continue
+
+        rows = list(
+            ActivityEvent.objects.filter(
+                owner=owner,
+                event_type__in=PERSON_EVENTS,
+                occurred_at__gte=_start_of(day, zone),
+                occurred_at__lt=_start_of(day + timedelta(days=1), zone),
+            )
+            .select_related("node", "task")
+            .defer("node__search_original", "task__search_document")
+            .order_by("occurred_at", "id")
+        )
+        if not rows:
+            silent.append(year)
+            continue
+
+        found.append(
+            Anniversary(
+                year=year,
+                day=day,
+                years_ago=years_ago,
+                # Truncated from the *end* of the day, keeping the morning: a
+                # day reads forward, and somebody handed only the last ten
+                # events of a busy day has been handed its tail.
+                neighbours=[_neighbour(event) for event in rows[:per_year]],
+                omitted=max(0, len(rows) - per_year),
+            )
+        )
+
+    return ThisTimeBefore(
+        on=on,
+        years=found,
+        silent_years=silent,
+        before_the_record=unrecorded,
+        no_such_date=impossible,
+    )
+
+
+def _start_of(day, zone):
+    """Midnight on ``day`` in ``zone``, as an aware instant.
+
+    The conversion D16 made available. Doing it here rather than in SQL keeps
+    the query a plain bounded range over an indexed column.
+    """
+    return datetime.combine(day, datetime.min.time(), tzinfo=zone)

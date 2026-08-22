@@ -1,0 +1,62 @@
+{% extends "mind/base.html" %}
+{% block title %}Then — Second Mind{% endblock %}
+{% block content %}
+
+{% comment %}
+D17, the cyclic axis. The whole page is cued by the date and asks for nothing.
+
+The absence lines are not a footnote and are not conditional on the page being
+empty: a year you were recording that held nothing on this day, and a year
+before you were recording at all, are different facts, and a page that shows two
+anniversaries and silently omits the third year has implied the third was empty.
+{% endcomment %}
+
+<h1>Then</h1>
+<p class="meta">{{ on|date:"l j F Y" }} — what this day held before.</p>
+
+{% for year in years %}
+  <h2>{{ year.how_long_ago|capfirst }}</h2>
+  <p class="meta">{{ year.day|date:"l j F Y" }}</p>
+
+  {% for neighbour in year.neighbours %}
+    <div class="card">
+      <div class="body">
+        {% if neighbour.node %}<a href="{% url 'note' neighbour.node.public_id %}">{{ neighbour.node.original_content|truncatechars:160 }}</a>{% else %}{{ neighbour.task.text }}{% endif %}
+      </div>
+      <div class="meta" style="margin-top:.5rem">
+        {{ neighbour.occurred_at|date:"H:i" }} · {{ neighbour.phrase }}{% if neighbour.origin == "reconstructed" %} · recalled{% endif %}
+      </div>
+    </div>
+  {% endfor %}
+
+  {% comment %}
+  Grouped rather than repeated, and counted rather than dropped -- the two
+  repairs `_readable_occasion` already carries, for the same reason. A whole day
+  is a wider net than a six-hour neighbourhood, so it holds more of both.
+  {% endcomment %}
+  {% if year.also %}
+    <p class="meta">
+      also that day:
+      {% for phrase, count in year.also %}{{ phrase }}{% if count > 1 %} ×{{ count }}{% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}
+    </p>
+  {% endif %}
+  {% if year.withheld %}
+    <p class="meta">{{ year.withheld }} more about {{ year.withheld|pluralize:"a note,notes" }} you have since removed.</p>
+  {% endif %}
+  {% if year.omitted %}
+    <p class="meta">{{ year.omitted }} more later that day, not shown.</p>
+  {% endif %}
+{% empty %}
+  <p>Nothing from this day in earlier years.</p>
+{% endfor %}
+
+{% if before.absence_says %}
+  {% comment %}
+  The sentence is assembled by the read, not here. Track C's rule: a count and
+  its meaning must not be able to travel separately, because two surfaces
+  phrasing one silence differently is how one of them implies the wrong thing.
+  {% endcomment %}
+  <p class="meta">{{ before.absence_says }}.</p>
+{% endif %}
+
+{% endblock %}

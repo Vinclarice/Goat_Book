@@ -182,6 +182,13 @@ share target that lets any app hand text straight to the capture box.
     <a href="{% url 'concepts' %}" {% if here == 'concepts' or here == 'concept' %}class="here"{% endif %}>Concepts</a>
     <a href="{% url 'sources' %}" {% if here == 'sources' or here == 'source' %}class="here"{% endif %}>Read</a>
     <a href="{% url 'decisions' %}" {% if here == 'decisions' or here == 'decision' %}class="here"{% endif %}>Decisions</a>
+    {% comment %}
+    D17. In the navigation rather than only on a dashboard, for the reason Ask
+    is beside Search: a surface reachable only by typing its URL is the
+    un-switched-on seam under a nicer name, and this sequence has shipped that
+    twice.
+    {% endcomment %}
+    <a href="{% url 'this_time_before' %}" {% if here == 'this_time_before' %}class="here"{% endif %}>Then</a>
     <a href="{% url 'review' %}" {% if here == 'review' %}class="here"{% endif %}>Pending{% if pending %} <span class="badge">{{ pending }}</span>{% endif %}</a>
     <a href="{% url 'search' %}" {% if here == 'search' %}class="here"{% endif %}>Search</a>
     {% comment %}

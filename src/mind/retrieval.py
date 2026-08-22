@@ -252,6 +252,78 @@ def _shares_a_concept(moment):
     return found
 
 
+#: How many previous years Resurfacing is cued by. `recall`'s own default, and
+#: named here rather than reached for, because the trade is this mode's: the
+#: cost of the sixth year is not a query, it is an interruption that reads as an
+#: archive. See `Mode.RESURFACING`'s named failure.
+RESURFACING_YEARS = 5
+
+#: Generous per year, unlike the read's own default. Deduplication and the
+#: eligibility floor happen *above* the generator, so a day with fifteen events
+#: on it must not be truncated to ten before anything has decided which of them
+#: is worth an interruption.
+RESURFACING_PER_YEAR = 50
+
+#: How a distance in years is said. Spelled out rather than formatted, because
+#: "1 years ago today" is the kind of thing that makes a person stop believing
+#: the rest of the sentence. Public, because the page and the `why` string say
+#: the same thing and must not drift into saying it two ways.
+_HOW_LONG_AGO = {
+    1: "a year ago today",
+    2: "two years ago today",
+    3: "three years ago today",
+    4: "four years ago today",
+    5: "five years ago today",
+}
+
+
+def how_long_ago(years):
+    return _HOW_LONG_AGO.get(years, f"{years} years ago today")
+
+
+def _on_this_day(moment):
+    """Notes from this calendar day in previous years — **D17's cyclic cue**.
+
+    **The present this mode was waiting for turns out to be the date.** Track B
+    increment 8 left Resurfacing raising `NotImplementedError` because it
+    *"needs context this module does not yet take — outcomes, a period, a
+    present"*, and the cheapest honest present is the one every person already
+    has. *This time last year* is a recorded fact rather than a similarity
+    score, which is why this mode could ship while D14 is still open.
+
+    **`recall.this_time_before` rather than a query here**, for the reason
+    `_written_around` defers to `context_of`: the hard part is which calendar
+    day, in whose clock, and that is D16's answer and belongs beside it. The
+    log is the right index either way — `capture` records `CAPTURED` with
+    `occurred_at=captured_at`, so an imported note carries the thought's own
+    time and not the import's.
+    """
+    from clarice import recall
+    from clarice import clocks
+
+    found = []
+    before = recall.this_time_before(
+        moment.owner,
+        on=clocks.day_for(moment.owner, moment.when),
+        years=RESURFACING_YEARS,
+        per_year=RESURFACING_PER_YEAR,
+    )
+    for anniversary in before.years:
+        for neighbour in anniversary.neighbours:
+            # `None` where the note was deleted or archived: `_neighbour`
+            # withholds it, which is R5's rule and exactly right here. A note
+            # somebody erased must not be the thing that interrupts them.
+            if neighbour.node is not None:
+                found.append(
+                    (
+                        neighbour.node,
+                        "anniversary",
+                        f"you wrote this {how_long_ago(anniversary.years_ago)}",
+                    )
+                )
+    return found
+
+
 #: How far *around the same time* reaches when restoring context. Wider than
 #: `recall.DEFAULT_WINDOW`, and deliberately: the failure that matters here is
 #: **context too thin to resume**, so the cost of one extra note is far below
@@ -269,6 +341,7 @@ GENERATORS = {
     Mode.LOOKUP: (_lexical, _concept),
     Mode.DISCOVERY: (_lexical, _concept),
     Mode.RECOLLECTION: (_written_around, _shares_a_concept),
+    Mode.RESURFACING: (_on_this_day,),
 }
 
 
@@ -320,14 +393,36 @@ def _eligible_for_recollection(node, moment):
     return node.pk != moment.anchor.pk
 
 
-#: Per mode, and the missing ones are missing on purpose: Planning, Reflection
-#: and Resurfacing each need context this module does not yet take — outcomes, a period, a present. Falling back to Lookup's "admit
-#: everything" would be four modes quietly sharing one contract, which is the
-#: state Part 2 exists to end. They raise instead.
+def _eligible_for_resurfacing(node, moment):
+    """Long enough to be worth an interruption. **Nobody asked for this one.**
+
+    The opposite trade from Lookup, where the person knows what they wrote and
+    every floor is a way to produce a miss. Here the named failure is
+    *interrupting for nothing*, and something arriving unbidden has to earn it —
+    so Discovery's length floor applies, for Discovery's reason.
+
+    **No dormancy floor, because the generator is one.** A note reaches this
+    mode only by being a year old on today's date, which is a stronger and more
+    honest signal than 548 days of silence: the anniversary is a fact about the
+    calendar rather than a threshold somebody picked.
+    """
+    return len(queries.current_body(node)) >= DEFAULT_MIN_LENGTH
+
+
+#: Per mode, and the missing ones are missing on purpose: Planning and
+#: Reflection each need context this module does not yet take — outcomes, and a
+#: period. Falling back to Lookup's "admit everything" would be three modes
+#: quietly sharing one contract, which is the state Part 2 exists to end. They
+#: raise instead.
+#:
+#: **Resurfacing was the third of these and is answered — D17, August 22,
+#: 2026.** The present it was waiting for is the date, which every person
+#: already has, and `_on_this_day` is the whole of it.
 ELIGIBILITY = {
     Mode.LOOKUP: _eligible_for_lookup,
     Mode.DISCOVERY: _eligible_for_discovery,
     Mode.RECOLLECTION: _eligible_for_recollection,
+    Mode.RESURFACING: _eligible_for_resurfacing,
 }
 
 
@@ -345,6 +440,7 @@ RANKING = {
     Mode.LOOKUP: _rank_for_lookup,
     Mode.DISCOVERY: _rank_for_lookup,
     Mode.RECOLLECTION: _rank_for_lookup,
+    Mode.RESURFACING: _rank_for_lookup,
 }
 
 

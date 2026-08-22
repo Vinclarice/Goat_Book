@@ -149,6 +149,11 @@ Design personas, not descriptions of the real people using Clarice.
 ## Re-scored after `nightjar`, August 22, 2026 — and nothing moved
 
 **Thirty-one commits, five migrations, and the score is unchanged: 8 · 5 · 6.**
+
+> **Corrected the same day: 9 · 4 · 6.** Finishing what *Unify* could honestly
+> finish moved **S14 to *works*** (`a01a7b4`) — the first story to move since
+> August 20. The table below is what the re-score found *before* that work; it
+> is kept as written because the finding that produced it is the point.
 Recorded at the top because it is the least comfortable thing this file says
 and burying it would be the same failure it exists to prevent.
 
@@ -171,8 +176,15 @@ why it is being asked, and the surfaces that make any of it visible. S14's
 require went from *a model short* to *one relationship short* in an earlier
 release and stayed there — the relationship is still not built.
 
-**The uncomfortable half is that a release claimed an acceptance it did not
-meet.** v3's *Unify* says **"Acceptance: S13 and S14 reach works"** and lists
+**And one acceptance was unreachable inside its own release, which is an
+ordering error rather than an oversight.** *Unify* says **"S13 and S14 reach
+works"**. S14 now does. **S13 cannot**, because its require is *reach across
+sources and reviews* and `Source` is delivered by *Recollection* — **a later
+release**. A release cannot accept on a noun a later one provides, and nobody
+noticed because nobody re-scored.
+
+**The other uncomfortable half is that a release claimed an acceptance it did
+not meet.** v3's *Unify* says **"Acceptance: S13 and S14 reach works"** and lists
 four things; one shipped. The temporal substrate was delivered and called
 Unify, and nobody checked the other three bullets — typed node-to-day links,
 `FacetKind.GOAL` wired to `Project.outcome`, and search's fifth increment.
@@ -725,7 +737,11 @@ has not been on this list since August 18.
 and what she had committed to that week — and she reached it without having filed
 it anywhere by hand.
 
-**Verdict: bends.** `Node` carries `captured_at` separately from `created_at` —
+**Verdict: works** since August 22, 2026 — see the requires below. The
+reasoning that follows is what it looked like while it bent, kept because the
+distinction it draws is the one the fix turns on.
+
+**Formerly bends.** `Node` carries `captured_at` separately from `created_at` —
 the thought's own time, not the row's — plus `Revision` history, confirmed
 concepts, and a `Facet` linking to the `Item` it became. So a note does know when
 it was written, and what it turned into.
@@ -734,10 +750,29 @@ What it does not know is the **surrounding**: no link to the `DailyEntry` for
 that day, or to the `Project` it was inside, so "what had she committed to that
 week" is not answerable from the note.
 
-**Requires:** typed links from a node into the day and project domain objects.
-**This is still the differentiator** — the graph accreting from what you were
-already doing rather than being built by hand — and it is now one relationship
-short rather than a model short.
+~~**Requires:** typed links from a node into the day and project domain
+objects.~~ **Verdict: works**, moved from *bends* on August 22, 2026 (`a01a7b4`)
+— **the first story to move since August 20.**
+
+**Built as a read rather than as stored links, and that is a deviation from
+this require's own wording.** `recall.what_surrounded` answers all three parts
+of the done-means: the day from `captured_at`, the project along `Node` →
+confirmed actionable `Facet` → `Item` → `List` → `Project`, and the week's
+commitments from that week's rows. The note page shows them.
+
+**Why a read and not the links this asked for.** The same brief's Part 1 says
+*facts, not derivations — nothing may write a row a read could have produced*,
+and every one of the three is derivable. A stored day link would be a second
+answer to a question `captured_at` already settles, free to disagree with it.
+**The differentiator survives and the rows do not**: *a graph that accretes
+from what you were already doing* is what a read over existing columns gives,
+where writing the links would accrete rows instead.
+
+**One thing a read cannot do**, and it is worth stating because it may reopen
+this: a note written *during* a project and about it, which never became a
+task, is inside no project — nothing records that it was, and guessing from
+timing is the derivation this refuses. If that case matters, it needs a stored
+link and this verdict should be re-examined.
 
 ### S15. Reading produces work
 

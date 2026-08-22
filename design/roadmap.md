@@ -87,6 +87,22 @@ re-add it here.
   nouns rather than a vague remainder: typed node-to-day links,
   `FacetKind.GOAL` wired to `Project.outcome`, and search's fifth increment.
 
+  **Two of the three closed the same day** (`a01a7b4`), and **S14 reached
+  *works* — the first story to move since August 20.** The node-to-day
+  relationship shipped as a **read** rather than stored links, because Part 1's
+  *facts, not derivations* rules out storing what `captured_at` and the
+  existing provenance chain already answer.
+
+  **The third is refused rather than pending.** Search's fifth increment gates
+  itself on *"the mechanism having been used against real material for long
+  enough to say the sections are the right sections"* — two days against
+  forty-seven notes is not that.
+
+  **And *Unify*'s acceptance was unreachable inside its own release**, which is
+  an ordering error worth keeping: it asks for S13, whose require needs
+  `Source`, which *Recollection* delivers **later**. A release cannot accept on
+  a noun a later one provides.
+
 - ~~**The temporal substrate is the active work.**~~ **Closed August 22, 2026,
   shipped and verified in production as `nightjar`**
   (`DEPLOYED-2026-08-22/0101`, image `clarice:ec2c4cb7e084`, all five `mind`

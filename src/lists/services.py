@@ -908,6 +908,38 @@ FOREIGN_PROJECT_ERROR = "That project isn't yours"
 
 
 @transaction.atomic
+def set_desired_outcome(project, text):
+    """What done looks like.
+
+    A service rather than a line in the API handler, which is where this field
+    has been written since August 20. **Not a refactor for its own sake**: it
+    is `abandon_if`'s twin, that one needs a service for `brief_for` to read
+    against, and one of a pair living in the API while the other lives here is
+    how two fields that must stay distinguishable start drifting apart.
+    """
+    project.desired_outcome = (text or "").strip()
+    project.save(update_fields=["desired_outcome"])
+    return project
+
+
+def set_abandonment_condition(project, text):
+    """What would tell him it went wrong -- S10, and D4's answer.
+
+    Separate from `desired_outcome` because **a tripwire you cannot tell from
+    an ambition can never be checked**. See `Project.abandon_if`.
+    """
+    project.abandon_if = (text or "").strip()
+    project.save(update_fields=["abandon_if"])
+    return project
+
+
+def set_project_notes(project, text):
+    """Working notes on a project. Optional, like everything else here."""
+    project.notes = (text or "").strip()
+    project.save(update_fields=["notes"])
+    return project
+
+
 def create_project(owner, title, due_date=None, purpose=""):
     """A new, standalone project -- project-workspace-plan.md 2.
 

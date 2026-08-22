@@ -43,6 +43,10 @@ export function ProjectRoute() {
   // areas.
   const [purpose, setPurpose] = useState("");
   const [outcome, setOutcome] = useState("");
+  // What going wrong looks like — S10, and D4's answer that this is not
+  // the outcome above. A tripwire you cannot tell from an ambition can
+  // never be checked, so it gets its own box rather than sharing one.
+  const [abandonIf, setAbandonIf] = useState("");
 
   const queryKey = ["project", id];
 
@@ -80,6 +84,7 @@ export function ProjectRoute() {
     // would go uncontrolled and React would warn on the first keystroke.
     setPurpose(data.purpose ?? "");
     setOutcome(data.desired_outcome ?? "");
+    setAbandonIf(data.abandon_if ?? "");
   }, [data, id]);
 
   // Only fetched for the "add an area" picker.
@@ -188,6 +193,31 @@ export function ProjectRoute() {
       );
     },
     onError: () => setError("Couldn't save that outcome."),
+  });
+
+  // Its own control and its own save, mirroring the outcome above for the
+  // reason given there: they are answers a person gives at different moments,
+  // and one button writing both would make "save" mean whichever box was
+  // touched last.
+  const updateAbandonIf = useMutation({
+    mutationFn: async (next: string) => {
+      const { data, error } = await apiV1.PATCH("/api/v1/projects/{project_id}", {
+        params: { path: { project_id: id } },
+        body: { abandon_if: next },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (updated) => {
+      setError(null);
+      if (updated) setAbandonIf(updated.abandon_if);
+      queryClient.setQueryData(queryKey, (current: typeof data) =>
+        current && updated
+          ? { ...current, abandon_if: updated.abandon_if }
+          : current,
+      );
+    },
+    onError: () => setError("Couldn't save that."),
   });
 
   // Parked, not finished. A boolean on the same PATCH as `is_completed`,
@@ -316,6 +346,11 @@ export function ProjectRoute() {
     updatePurpose.mutate(purpose);
   }
 
+  function handleSaveAbandonIf(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    updateAbandonIf.mutate(abandonIf);
+  }
+
   function handleSaveOutcome(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     updateOutcome.mutate(outcome);
@@ -336,6 +371,8 @@ export function ProjectRoute() {
   // never enables the button and never writes.
   const purposeChanged = purpose.trim() !== (data.purpose ?? "").trim();
   const outcomeChanged = outcome.trim() !== (data.desired_outcome ?? "").trim();
+  const abandonIfChanged =
+    abandonIf.trim() !== (data.abandon_if ?? "").trim();
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
@@ -442,10 +479,9 @@ export function ProjectRoute() {
               abstract ones, and concrete nouns are what the rare-term gate can
               select on.
 
-              **S10's abandonment condition still has no box of its own** and
-              is still invited into the purpose above. Whether it earns one is
-              D4 in `planning-assistant-v2-plan.md`, and adding this field does
-              not answer it. */}
+              **S10's abandonment condition has its own box below**, since
+              August 22 — D4 answered, and answered *two fields*: a tripwire you
+              cannot tell from an ambition can never be checked. */}
           <form onSubmit={handleSaveOutcome} className="mt-3">
             <label
               htmlFor="project-outcome"
@@ -469,6 +505,39 @@ export function ProjectRoute() {
                 disabled={updateOutcome.isPending || !outcomeChanged}
               >
                 Save outcome
+              </Button>
+            </div>
+          </form>
+
+          {/* What going wrong looks like — S10's done-means, and the field its
+              verdict turned on. Deliberately *below* the outcome and not
+              beside it: they are the two ends of how a project finishes, and
+              reading one immediately after the other is what makes the
+              distinction obvious rather than a matter of remembering which box
+              is which. */}
+          <form onSubmit={handleSaveAbandonIf} className="mt-3">
+            <label
+              htmlFor="project-abandon-if"
+              className="block text-sm text-muted-foreground"
+            >
+              What would tell you it went wrong
+            </label>
+            <textarea
+              id="project-abandon-if"
+              rows={2}
+              value={abandonIf}
+              onChange={(event) => setAbandonIf(event.target.value)}
+              placeholder="What would mean this is worth stopping?"
+              className="mt-1 w-full rounded-lg border border-border bg-input px-2 py-1 text-sm"
+            />
+            <div className="flex flex-wrap items-center gap-2 mt-1">
+              <Button
+                type="submit"
+                size="sm"
+                variant="secondary"
+                disabled={updateAbandonIf.isPending || !abandonIfChanged}
+              >
+                Save
               </Button>
             </div>
           </form>

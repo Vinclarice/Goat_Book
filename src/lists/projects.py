@@ -81,6 +81,11 @@ class ProjectBrief:
     material: list
     questions: list
     commitments: object
+    #: What would tell him it went wrong -- S10's done-means asks for it to be
+    #: *"still there when he is deciding whether to continue"*, and the brief is
+    #: what a project page offers when somebody opens it. A field nobody sees
+    #: at the moment of deciding is a field that may as well not exist.
+    abandon_if: str = ""
 
 
 def brief_for(owner, project) -> ProjectBrief:
@@ -127,6 +132,11 @@ def brief_for(owner, project) -> ProjectBrief:
         material=rest,
         questions=questions,
         commitments=commitments_for(owner, project),
+        # Carried, never retrieved against. The anchor above is *purpose and
+        # outcome* -- what the project is for and what done looks like -- and
+        # adding what going wrong looks like would pull material toward the
+        # failure rather than the work.
+        abandon_if=project.abandon_if,
     )
 
 

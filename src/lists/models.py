@@ -599,6 +599,28 @@ class Project(models.Model):
     # project ends; deciding them apart risks two text areas nobody fills, and
     # that decision is not made here.
     desired_outcome = models.TextField(blank=True, default="")
+    #: What would tell him it went wrong -- S10, and **D4's answer: this is not
+    #: `desired_outcome`.**
+    #:
+    #: D4 asked whether they are one field, since both describe how a project
+    #: ends and *deciding them apart risks two text areas nobody fills*. They
+    #: are two, and the deciding argument is not aesthetic: **a tripwire you
+    #: cannot tell from an ambition can never be checked.** Merged, nothing can
+    #: ever ask *has the abandonment condition been met?* because nothing can
+    #: tell which half of the text is the condition -- which removes the only
+    #: thing the field is for.
+    #:
+    #: They also have different readers. `desired_outcome` answers *are we
+    #: there?*; this answers *should we stop?*, which is the question v3's
+    #: *first question* release is built around.
+    #:
+    #: D4's real risk is answered by optionality rather than by merging, the
+    #: way `purpose` already answers it: two empty boxes cost nothing, and one
+    #: confused box costs the story.
+    abandon_if = models.TextField(blank=True, default="")
+    #: S10's other missing third. Not in the story's done-means, which turns on
+    #: the abandonment condition -- named in its requires, and the same shape.
+    notes = models.TextField(blank=True, default="")
     due_date = models.DateField(blank=True, null=True)
     is_completed = models.BooleanField(default=False)
     completed_at = models.DateTimeField(blank=True, null=True)

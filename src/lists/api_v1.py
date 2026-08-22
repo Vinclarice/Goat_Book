@@ -442,6 +442,10 @@ class ProjectOut(Schema):
     purpose: str
     # Same blank-not-null contract as `purpose` above, and for the same reason.
     desired_outcome: str
+    # What going wrong looks like -- S10, and D4's answer that this is not
+    # `desired_outcome`. Same contract again.
+    abandon_if: str
+    notes: str
     due_date: str | None
     is_completed: bool
     completed_at: str | None
@@ -497,6 +501,8 @@ class ProjectUpdateIn(Schema):
     # Same shape as `purpose`, same reason: "" is its cleared state, so None
     # means only "not mentioned".
     desired_outcome: str | None = None
+    abandon_if: str | None = None
+    notes: str | None = None
     due_date: str | None = None
     is_completed: bool | None = None
     # A boolean like `is_completed` rather than a verb route, because both
@@ -534,6 +540,8 @@ def _project_out(project, areas=None):
         "title": project.title,
         "purpose": project.purpose,
         "desired_outcome": project.desired_outcome,
+        "abandon_if": project.abandon_if,
+        "notes": project.notes,
         "paused_at": (
             project.paused_at.isoformat() if project.paused_at else None
         ),
@@ -705,6 +713,12 @@ def update_project(request, project_id: int, payload: ProjectUpdateIn):
     if payload.desired_outcome is not None:
         project.desired_outcome = payload.desired_outcome.strip()
         fields.append("desired_outcome")
+    if payload.abandon_if is not None:
+        project.abandon_if = payload.abandon_if.strip()
+        fields.append("abandon_if")
+    if payload.notes is not None:
+        project.notes = payload.notes.strip()
+        fields.append("notes")
     if "due_date" in payload.dict(exclude_unset=True):
         project.due_date = _parse_date(payload.due_date)
         fields.append("due_date")

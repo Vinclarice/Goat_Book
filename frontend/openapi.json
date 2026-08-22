@@ -3109,6 +3109,14 @@
             "title": "Desired Outcome",
             "type": "string"
           },
+          "abandon_if": {
+            "title": "Abandon If",
+            "type": "string"
+          },
+          "notes": {
+            "title": "Notes",
+            "type": "string"
+          },
           "due_date": {
             "anyOf": [
               {
@@ -3171,6 +3179,8 @@
           "title",
           "purpose",
           "desired_outcome",
+          "abandon_if",
+          "notes",
           "due_date",
           "is_completed",
           "completed_at",
@@ -3253,6 +3263,28 @@
               }
             ],
             "title": "Desired Outcome"
+          },
+          "abandon_if": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Abandon If"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
           },
           "due_date": {
             "anyOf": [

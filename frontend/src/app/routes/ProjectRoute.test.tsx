@@ -30,6 +30,8 @@ function projectDetailData(overrides: Record<string, unknown> = {}) {
     is_completed: false,
     completed_at: null,
     desired_outcome: "",
+    abandon_if: "",
+    notes: "",
     paused_at: null,
     created_at: "2026-08-10T09:00:00-04:00",
     open_task_count: 0,
@@ -215,6 +217,78 @@ describe("ProjectRoute", () => {
       "The booking form is live.",
     );
     await user.click(screen.getByRole("button", { name: "Save outcome" }));
+
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.some(([request]) => {
+          const req = request as Request;
+          return req.method === "PATCH" && req.url.includes("/api/v1/projects/3");
+        }),
+      ).toBe(true);
+    });
+  });
+
+  /* What going wrong looks like -- S10, and D4 answered as *two fields*. Its
+     own box and its own save, because a tripwire you cannot tell from an
+     ambition can never be checked. */
+  it("shows what would tell you a project went wrong", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      projectPageFetch(
+        projectDetailData({ abandon_if: "Three months with no chapter." }),
+      ),
+    );
+
+    renderAt("3");
+
+    expect(
+      await screen.findByDisplayValue("Three months with no chapter."),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps the abandonment condition apart from the outcome", async () => {
+    /* The distinction the whole story is about. Two boxes with two values, so
+       neither can be mistaken for the other. */
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      projectPageFetch(
+        projectDetailData({
+          desired_outcome: "A finished draft.",
+          abandon_if: "Three months with no chapter.",
+        }),
+      ),
+    );
+
+    renderAt("3");
+
+    expect(await screen.findByLabelText("What done looks like")).toHaveValue(
+      "A finished draft.",
+    );
+    expect(
+      screen.getByLabelText("What would tell you it went wrong"),
+    ).toHaveValue("Three months with no chapter.");
+  });
+
+  it("saves an abandonment condition", async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const request = input as Request;
+      const url = typeof input === "string" ? input : request.url;
+      if (url.includes("/api/v1/nav")) return jsonResponse(NAV);
+      if (request.method === "PATCH") {
+        return jsonResponse(
+          projectDetailData({ abandon_if: "Three months with no chapter." }),
+        );
+      }
+      return jsonResponse(projectDetailData());
+    });
+
+    renderAt("3");
+    await screen.findByDisplayValue("Website Relaunch");
+
+    await user.type(
+      screen.getByLabelText("What would tell you it went wrong"),
+      "Three months with no chapter.",
+    );
+    await user.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => {
       expect(

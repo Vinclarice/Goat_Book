@@ -1546,6 +1546,10 @@ export interface components {
             purpose: string;
             /** Desired Outcome */
             desired_outcome: string;
+            /** Abandon If */
+            abandon_if: string;
+            /** Notes */
+            notes: string;
             /** Due Date */
             due_date: string | null;
             /** Is Completed */
@@ -1593,6 +1597,10 @@ export interface components {
             purpose?: string | null;
             /** Desired Outcome */
             desired_outcome?: string | null;
+            /** Abandon If */
+            abandon_if?: string | null;
+            /** Notes */
+            notes?: string | null;
             /** Due Date */
             due_date?: string | null;
             /** Is Completed */

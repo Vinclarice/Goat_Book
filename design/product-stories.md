@@ -150,11 +150,12 @@ Design personas, not descriptions of the real people using Clarice.
 
 **Thirty-one commits, five migrations, and the score is unchanged: 8 · 5 · 6.**
 
-> **Corrected the same day: 11 · 3 · 5.** Finishing what *Unify* could honestly
+> **Corrected the same day: 12 · 3 · 4.** Finishing what *Unify* could honestly
 > finish moved **S14 to *works*** (`a01a7b4`), and `Source` moved **S15 out of
 > *impossible*** (`59d83b7`), and D4's answer moved **S10 to *works***
-> (`804d6e8`). Three in a day, after two days of none — and S15 the first out
-> of *impossible* since the merger. The table below is what the re-score found *before* that work; it
+> (`804d6e8`), and `Decision` moved **S11 out of *impossible*** (`9648d9b`).
+> **Four in a day, after two days of none** — two of them out of *impossible*,
+> where none had moved since the merger. The table below is what the re-score found *before* that work; it
 > is kept as written because the finding that produced it is the point.
 Recorded at the top because it is the least comfortable thing this file says
 and burying it would be the same failure it exists to prevent.
@@ -650,8 +651,11 @@ not in the done-means.
 what he considered at the time and not only what he chose, and find decisions
 past their reconsideration trigger without hunting for them.
 
-**Verdict: impossible**, unchanged, and re-read against `kestrel` rather than
-assumed. No concept exists.
+**Verdict: works** since August 22, 2026 — see the requires below. What
+follows is the reasoning from while it was impossible.
+
+**Formerly impossible**, re-read against `kestrel` rather than assumed. No
+concept exists.
 
 **The "comes back" half now has a working precedent**, which is the only thing
 that moved: `unresolved_questions_in_context` (`mind/queries.py:688`) reports how
@@ -662,9 +666,32 @@ no alternatives-considered and no reconsideration trigger, which are two of this
 story's three parts. But the retrieval that would serve those parts is no longer
 hypothetical either.
 
-**Requires:** `Decision` as a first-class record. Note this story is not
-hypothetical — `architecture-trajectory.md` §7 and §8 are exactly this practice,
-done in Markdown because the product cannot hold it.
+~~**Requires:** `Decision` as a first-class record.~~ **Verdict: works**, moved
+from *impossible* on August 22, 2026 (`9648d9b`) — **the fourth story to move
+today, and the second out of *impossible*.**
+
+All three parts of the done-means: `decisions_citing` reaches a decision from
+the note that provoked it, `considered` keeps what was on the table beside what
+was chosen, and `decisions_to_revisit` finds the dated ones without hunting.
+
+**The plan's constraint was widened rather than followed literally**, and it is
+the one judgement here worth arguing with. It says a decision *must cite a
+`Revision`, not a `Node`* — the concern being that a note edited in October
+silently changes what was on screen in August. **A `Revision` cannot deliver
+that**: one exists only for an *edited* note, and `revise` got its first door on
+August 21, so a decision could only ever cite a note somebody happened to
+rewrite. So it cites three ways — the node for navigation, a **text snapshot**
+for the record, and the revision seq for exactness where there is one.
+
+**Proved rather than asserted**: a note seeded six weeks back, a decision citing
+it, the note then corrected from *three hours* to *four*. The note page reads
+four; the decision still reads three, and links to the note as it is now.
+
+**`revisit_when` and `revisit_after` are both kept**, because neither replaces
+the other: a condition in words is what makes a decision honest and **nothing
+can check it**, a date is checkable and cruder. The read returns the dated ones,
+counts the rest, and says out loud that a condition comes back when the person
+notices rather than when Clarice does.
 
 ### S12. The project ends and explains itself
 

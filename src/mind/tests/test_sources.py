@@ -37,7 +37,7 @@ import pytest
 
 from lists.models import List
 from mind import services
-from mind.models import FacetKind, Node, Source
+from mind.models import Facet, FacetKind, Node, Source
 
 
 NOW = datetime.datetime(2026, 5, 4, 9, 0, tzinfo=datetime.timezone.utc)
@@ -259,3 +259,60 @@ def test_a_source_is_in_the_export(db, owner, article):
     payload = export._payload(owner, now=timezone.now())
 
     assert payload["knowledge"]["sources"]
+
+
+# ---------------------------------------------------------------------------
+# Getting a note into one, which nothing could do until now
+# ---------------------------------------------------------------------------
+
+
+def test_you_can_write_a_note_from_the_source_page(signed_in, owner, article):
+    """**The half that would have left this a seam.** `came_from` existed and
+    no surface could set it, which is the state `principles.md` now calls a
+    deferral wearing a completion's clothes.
+
+    The box is on the source page rather than a picker on the capture page,
+    because that is the shape of the act: you are reading the thing, and notes
+    come out of it while you are there.
+    """
+    signed_in.post(
+        f"/mind/sources/{article.public_id}/",
+        {"content": "the switching cost is the meeting after"},
+    )
+
+    node = Node.objects.get(original_content="the switching cost is the meeting after")
+    assert node.came_from == article
+
+
+def test_a_note_written_there_shows_up_there(signed_in, owner, article):
+    signed_in.post(
+        f"/mind/sources/{article.public_id}/", {"content": "an idea"}
+    )
+
+    body = signed_in.get(f"/mind/sources/{article.public_id}/").content.decode()
+
+    assert "an idea" in body
+
+
+def test_an_empty_note_writes_nothing(signed_in, owner, article):
+    signed_in.post(f"/mind/sources/{article.public_id}/", {"content": "   "})
+
+    assert not Node.objects.filter(came_from=article).exists()
+
+
+def test_you_cannot_write_into_another_persons_source(client, other_owner, article):
+    client.force_login(other_owner)
+    client.post(f"/mind/sources/{article.public_id}/", {"content": "not mine"})
+
+    assert not Node.objects.filter(came_from=article).exists()
+
+
+def test_a_note_written_from_a_source_still_proposes_a_commitment(signed_in, owner, article):
+    """Capture's own behaviour is unchanged by arriving through a source --
+    this is a different door into the same act, not a different act."""
+    signed_in.post(
+        f"/mind/sources/{article.public_id}/",
+        {"content": "email the author by Friday"},
+    )
+
+    assert Facet.objects.filter(kind=FacetKind.ACTIONABLE).exists()

@@ -872,7 +872,7 @@ def sources(request):
 
 
 @login_required
-@require_http_methods(["GET"])
+@require_http_methods(["GET", "POST"])
 def source(request, public_id):
     """One thing you read, and everything that grew out of it -- S15.
 
@@ -883,6 +883,24 @@ def source(request, public_id):
     found = Source.objects.filter(public_id=public_id, owner=request.user).first()
     if found is None:
         raise Http404("no such source")
+
+    if request.method == "POST":
+        # **The box is here rather than a picker on the capture page**, because
+        # that is the shape of the act: you are reading the thing, and notes
+        # come out of it while you are there. Without this `came_from` would be
+        # a column no surface could set -- the seam `principles.md` now calls a
+        # deferral wearing a completion's clothes.
+        content = request.POST.get("content", "")
+        if content.strip():
+            services.capture(
+                request.user,
+                content=content,
+                captured_at=timezone.now(),
+                source=NodeSource.WEB,
+                actor=request.user.get_username(),
+                came_from=found,
+            )
+        return redirect("source", public_id=public_id)
 
     return render(
         request,

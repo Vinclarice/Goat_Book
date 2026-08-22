@@ -15,6 +15,17 @@ anything.
   {% if source.url %} · <a href="{{ source.url }}" rel="noopener noreferrer">{{ source.url }}</a>{% endif %}
 </div>
 
+{% comment %}
+The box is here rather than a picker on the capture page, because that is the
+shape of the act: you are reading the thing, and notes come out of it while you
+are there.
+{% endcomment %}
+<form method="post" action="{% url 'source' source.public_id %}">
+  {% csrf_token %}
+  <textarea name="content" rows="3" placeholder="what came out of this?"></textarea>
+  <button type="submit">Keep</button>
+</form>
+
 {% if grew.has_anything %}
   {% if grew.tasks %}
     <h2>What you did about it</h2>

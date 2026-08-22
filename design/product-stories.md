@@ -150,10 +150,11 @@ Design personas, not descriptions of the real people using Clarice.
 
 **Thirty-one commits, five migrations, and the score is unchanged: 8 · 5 · 6.**
 
-> **Corrected the same day: 10 · 4 · 5.** Finishing what *Unify* could honestly
+> **Corrected the same day: 11 · 3 · 5.** Finishing what *Unify* could honestly
 > finish moved **S14 to *works*** (`a01a7b4`), and `Source` moved **S15 out of
-> *impossible*** (`59d83b7`) — the first two to move since August 20, and S15
-> the first out of *impossible* since the merger. The table below is what the re-score found *before* that work; it
+> *impossible*** (`59d83b7`), and D4's answer moved **S10 to *works***
+> (`804d6e8`). Three in a day, after two days of none — and S15 the first out
+> of *impossible* since the merger. The table below is what the re-score found *before* that work; it
 > is kept as written because the finding that produced it is the point.
 Recorded at the top because it is the least comfortable thing this file says
 and burying it would be the same failure it exists to prevent.
@@ -577,7 +578,11 @@ days. No model, no service, no field.
 **Done means:** the purpose and the abandonment condition live with the project,
 and are still there when he is deciding whether to continue.
 
-**Verdict: bends**, moved from *impossible* by `kestrel` increment 3. The old
+**Verdict: works** since August 22, 2026 — see the requires below. What
+follows is the reasoning from while it bent, kept because the distinction it
+draws is exactly what the two fields preserve.
+
+**Formerly bends**, moved from *impossible* by `kestrel` increment 3. The old
 verdict — *"there is no description field at all"* — is the citation this
 re-score existed to catch: `Project.purpose` (`lists/models.py:450`) is end to
 end, model to text area, and the comment above it names this story as the reason
@@ -609,8 +614,32 @@ against what going wrong looks like — is D4 in
 [`planning-assistant-v2-plan.md`](planning-assistant-v2-plan.md), and is open.
 If it does, this story's remaining requires is one field rather than two.
 
-**Requires:** the remaining two of the three — notes, and an abandonment
-condition that is its own field, unless D4 folds the second into the outcome.
+~~**Requires:** the remaining two of the three — notes, and an abandonment
+condition that is its own field, unless D4 folds the second into the outcome.~~
+**Verdict: works**, moved from *bends* on August 22, 2026 (`804d6e8`) — **the
+third story to move today.**
+
+**D4 answered: two fields, not one.** Its worry was real — *deciding them apart
+risks two text areas nobody fills* — and the argument against merging is not
+aesthetic. **A tripwire you cannot tell from an ambition can never be checked.**
+Merged, nothing can ever ask *has the abandonment condition been met?*, because
+nothing can tell which half of the text is the condition, which removes the
+only thing the field is for. And the two have different readers:
+`desired_outcome` answers *are we there?*, `abandon_if` answers *should we
+stop?* — the question v3's *first question* release is built around.
+
+**D4's risk is answered by optionality rather than by merging**, the way
+`purpose` already answers it: two empty boxes cost nothing, one confused box
+costs the story.
+
+**Still there when he is deciding**, which is the done-means' second half:
+`brief_for` carries it, so it is on the project page rather than in a settings
+form somebody visits once. **Carried, never retrieved against** — the anchor
+stays purpose and outcome, because pulling material toward the failure rather
+than the work is not what a brief is for.
+
+Notes shipped alongside it: the other missing third, named in this require and
+not in the done-means.
 
 ### S11. A decision comes back
 

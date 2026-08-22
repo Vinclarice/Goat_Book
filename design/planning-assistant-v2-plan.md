@@ -366,9 +366,17 @@ Local and explainable, in the vision's own phrasing —
    answering one question is the drift §4 exists to prevent. **The likely
    resolution is that they are different questions** — the intention is a
    sentence about the week, an outcome is a thing that will be true by Friday.
-4. **Is "desired outcome" the same field as S10's abandonment condition?** Both
-   describe how a project ends; deciding them apart risks two text areas nobody
-   fills.
+4. ~~**Is "desired outcome" the same field as S10's abandonment condition?**~~
+   **Answered August 22, 2026: two fields** (`804d6e8`), and taken by Claude at
+   Vince's direction rather than by Vince.
+
+   The worry was right — *deciding them apart risks two text areas nobody
+   fills* — and it is answered by optionality rather than by merging, the way
+   `purpose` already answers it. What decides it is that **a tripwire you
+   cannot tell from an ambition can never be checked**: merged, nothing can
+   ever ask whether the condition has been met, because nothing can tell which
+   half of the text is the condition. They also have different readers —
+   *are we there?* against *should we stop?*
 5. **Does deciding in place open the review's read-only rule (S7)?** The
    read-only rule is *why* the numbers are trustworthy. Writing through the
    owning core's services — the resolution already found for pinning a task — is

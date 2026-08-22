@@ -118,10 +118,13 @@ re-add it here.
   about work — **D16 is the one with a clock running**, since every observation
   Track C records is stamped UTC and the longer that runs the more data is
   stamped against a decision nobody made. And ~~**`product-stories.md` has not
-  been re-scored**~~ — **re-scored August 22, and nothing moved: 8 · 5 · 6
-  unchanged.** Every remaining require is a specific noun the substrate sits
-  beneath rather than satisfies, and the re-score is what turned up that
-  *Unify* had claimed an acceptance it did not meet.
+  been re-scored**~~ — **re-scored August 22, and the substrate moved nothing.**
+  Every remaining require was a specific noun the substrate sits beneath rather
+  than satisfies, and the re-score is what turned up that *Unify* had claimed
+  an acceptance it did not meet. **Four stories moved later that day** on work
+  aimed at those nouns; the score itself is in
+  [`product-stories.md`](product-stories.md) and is deliberately not repeated
+  here, which is a rule this line broke once already.
 
 - ~~**Release M — *Usable*, v3's first delivery release.**~~ **Closed August 20,
   2026, shipped and verified in production as `moorhen`**

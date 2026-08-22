@@ -59,20 +59,29 @@ verdicts after two releases moved one.
 
 ## The score
 
-**8 work · 5 bend · 6 impossible** — from 7 · 6 · 6, 4 · 9 · 6 and 3 · 10 · 6
-earlier on August 20, 3 · 9 · 7 on August 19, 3 · 6 · 10 on August 16, and 2 · 2 · 15 on
-August 12.
+**12 work · 3 bend · 4 impossible** — from 8 · 5 · 6 earlier on August 22, and
+7 · 6 · 6, 4 · 9 · 6 and 3 · 10 · 6 on August 20, 3 · 9 · 7 on August 19,
+3 · 6 · 10 on August 16, and 2 · 2 · 15 on August 12.
 
-**The impossible pile is now six, and it is the honest shape of what is left:**
+**This table was stale for a day and said 8 · 5 · 6**, while the re-score note
+below it recorded the four moves that had already happened. Fixed August 22.
+Worth saying rather than quietly correcting, because it is exactly the failure
+this file exists to catch — *a scoreboard nobody re-reads is a scoreboard that
+flatters* — and it flattered in the harder direction, hiding finished work
+rather than claiming unfinished work. The rule it broke is the one two lines
+down: the score lives here, so this is the copy that has to move first.
+
+**The impossible pile is four, and it is the honest shape of what is left:**
 signing up needs a policy decision, not code; the quarter and the project
-retrospective are unbuilt reads; and `Decision`, `Source` and billing are three
-models nobody has started. Nothing in it is waiting on a form any more.
+retrospective are unbuilt reads; and billing is a model nobody has started.
+`Decision` and `Source` came out of it on August 22. Nothing in it is waiting on
+a form any more, and nothing in it is waiting on a model except S19.
 
 | | journeys |
 |---|---|
-| **Works** | S2 the phone morning · S3 planning against capacity · S4 durable capture · S5 closing the day · S6 the honest weekly review · S7 acting on the review · S9 the week · S17 leaving with your data |
-| **Bends** | S10 a project's why · S13 finding what you wrote · S14 a note that knows when · S16 the past arriving · S18 bringing your history |
-| **Impossible** | S1 signing up · S8 the quarter · S11 a decision returning · S12 a project explaining itself · S15 reading producing work · S19 paying |
+| **Works** | S2 the phone morning · S3 planning against capacity · S4 durable capture · S5 closing the day · S6 the honest weekly review · S7 acting on the review · S9 the week · S10 a project's why · S11 a decision returning · S14 a note that knows when · S15 reading producing work · S17 leaving with your data |
+| **Bends** | S13 finding what you wrote · S16 the past arriving · S18 bringing your history |
+| **Impossible** | S1 signing up · S8 the quarter · S12 a project explaining itself · S19 paying |
 
 **This score lives here and nowhere else.** Other documents link to it; they do
 not quote it.

@@ -70,10 +70,32 @@ re-add it here.
   there rather than here: personal tool with an intent to invite, the wedge
   deferred until invited people can say what they would miss, and mobile
   collapsing rather than resolving.
-  [`temporal-substrate-plan.md`](temporal-substrate-plan.md) is claimed with it
-  as the focused spec for the substrate, contextual retrieval, observations and
-  intake. **Nothing in either has started**; *Close L* is v3's own first
-  release and is the entry below.
+  [`temporal-substrate-plan.md`](temporal-substrate-plan.md) was claimed with
+  it as the focused spec for the substrate, contextual retrieval, observations
+  and intake, and **shipped entire on August 22 as `nightjar`** — see the entry
+  below. Of v3's own releases, *Close L*, *Usable*, *The day*, *Capture*,
+  *Unify*, *Contextual retrieval* and *Recollection* have delivered; **four
+  remain**: *The first question*, *The wider horizons*, *The invitation bar*
+  and *Background repair*.
+
+- ~~**The temporal substrate is the active work.**~~ **Closed August 22, 2026,
+  shipped and verified in production as `nightjar`**
+  (`DEPLOYED-2026-08-22/0101`, image `clarice:ec2c4cb7e084`, all five `mind`
+  migrations applied and none pending). *Making memory a memory* — the time
+  axis, contextual retrieval, structured observations and intake, across five
+  tracks and thirty-one commits.
+
+  The narrative, the thirteen decisions it answered and the seven things it
+  taught are in [`roadmap-history.md`](roadmap-history.md); the spec is a stub.
+
+  **What it leaves, and neither is a shortfall.** **Six decisions stay open**
+  in the stub because they are about behaviour that is now live rather than
+  about work — **D16 is the one with a clock running**, since every observation
+  Track C records is stamped UTC and the longer that runs the more data is
+  stamped against a decision nobody made. And **`product-stories.md` has not
+  been re-scored** against what now exists: Unify's own acceptance was *"S13
+  and S14 reach works"* and that was never checked, so the score below the v3
+  entry is stale rather than wrong.
 
 - ~~**Release M — *Usable*, v3's first delivery release.**~~ **Closed August 20,
   2026, shipped and verified in production as `moorhen`**

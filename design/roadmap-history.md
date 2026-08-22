@@ -82,6 +82,354 @@ written marks across the month, and the bills month totalled 1264.99 USD and
 40.00 GBP **apart**. That pass is the entry below in `roadmap.md`; it found two
 copy defects and no broken page.
 
+## The temporal substrate — August 20–22, 2026, `nightjar`
+
+Thirty-one commits over two days, verified in production at 01:01 on August 22
+(`DEPLOYED-2026-08-22/0101`, image `clarice:ec2c4cb7e084`, `mind` 0021–0025
+applied with none pending). **The knowledge core had no way to open a note; it
+came out of this with a face and a memory.**
+
+The spec was [`temporal-substrate-plan.md`](temporal-substrate-plan.md), now a
+stub. Its five tracks all closed.
+
+**What shipped**
+
+- **Track A — the time axis.** The one append-only log learned a *life*
+  vocabulary beside its note one; `lists`, `daily` and `review` emit through
+  `clarice/life_log.py`; `backfill_life_log` reconstructed what carried its own
+  recorded timestamp and invented nothing; and `around()` and `since()` read
+  it. **All twenty-one existing reads were adjacency in meaning**; these are
+  adjacency in time and in provenance.
+- **Track B — retrieval that knows why it is being asked.** Six modes named,
+  the indexes demoted from final judges to candidate generators, eligibility
+  per mode, and every result saying why it appeared. Measured per mode.
+- **Track C — structured observations**, proposed from journal prose by rules
+  rather than a model, and read with the denominator stated.
+- **Track D — intake.** Session-aware budgeting *before* any dump surface
+  existed, then the dump, then attachments, then orientation.
+- **Track E — the reading surfaces**: the node page, the correction surface,
+  the person page, the question box.
+
+**Thirteen of nineteen decisions answered**, four of them taken by Claude at
+Vince's direction rather than by Vince and marked as such in the plan. Six
+survive the stub because they are about live behaviour rather than about work.
+
+**What it taught**
+
+- **A slice nothing calls is not closed**, which became a principle
+  (`principles.md`, *Deliver vertical slices*) rather than a lesson. Twelve
+  services in `src/mind/` had no production caller and **eleven were the undo
+  half of a live pair** — `capture` had seven callers and `revise`,
+  `delete_node`, `archive_node` had none. So the inventory was never twelve
+  pieces of dead code: **it was one missing surface, listed eleven times**, and
+  deleting them would have deleted half of eleven features immediately before
+  building the page that needed them.
+- **The order of an increment can be the whole safety of it.** Track D ships
+  budgeting before the dump surface, because the first dump is the one that
+  teaches somebody to skim past the review surface and that is not
+  recoverable.
+- **A refusal is a deliverable.** Increment 22 was declined in the morning and
+  built in the evening, and the refusal was right both times — on nothing
+  beneath it the question box is `search_ranked` with a prompt in front,
+  failing *silently*, which is the property that made the thin version worth
+  refusing. D7 closed the same way: not the cost of the fix but the shape of
+  the failure, since server-side fetching on a one-host deployment risks
+  credential disclosure on the machine holding every note.
+- **A test caught a non-negotiable refusal being violated in code.** Track C's
+  *other recorded mornings* was implemented as mornings whose previous day was
+  absent from the drinking set — which admits every morning after a night
+  nobody wrote in. **That is the sobriety inference itself**, and the test that
+  caught it did so on its first run.
+- **Four defects were fixed in a table that refuses `UPDATE` and `DELETE`
+  before any of them could fire**, and the reason none had is not that they
+  were mild: production's task core was too thin to reach them. The same
+  emptiness that makes the substrate hard to demonstrate is what kept the
+  permanent record clean.
+- **Three project-wide guards were added and each has already caught
+  something**: emitter idempotency, restore-drill coverage, and a dark-service
+  contract that failed the moment `revise` gained a caller.
+- **The browser found what green tests could not** — three times. A page
+  listing its own capture under *what else was going on*; the log's vocabulary
+  (`facet_confirmed`, `task_completed`) put in front of a person; and thirteen
+  identical rows reading *a note that is no longer shown*.
+
+**The thirteen decisions this answered**, with the reasoning each was
+settled on, are kept below rather than in the stub — they are the record
+of what was decided, which is exactly what a history file is for.
+
+1. ~~**D1. Which direction does the seam run?**~~ **Answered August 20, 2026:
+   a module in `clarice/` belonging to neither core** —
+   [`clarice/life_log.py`](../src/clarice/life_log.py), the placement
+   `clarice/search.py` has and `clarice/scheduled_mail.py` took a week later.
+   **The payoff is an import that does not happen:** `lists`, `daily` and
+   `review` name none of `mind`, `ActivityEvent` or `EventType`, because the
+   vocabulary is re-exported there.
+
+   **The cycle argument does not apply and was not the reason.** Both
+   directions already exist — `lists/projects.py` imports `mind.queries` at
+   module scope, and `mind` imports `lists` in three places. What decided it is
+   that three apps creating rows would restate the emit rules three times, and
+   two definitions of one thing is how they come to disagree.
+
+   **A second answer travelled with it: both or neither.** `record` is called
+   inside the caller's own atomic block and raises rather than swallowing, so a
+   completion whose event could not be written is not a completion. Swallowing
+   would make the log a sample and leave every read over it with a silent hole
+   — the failure `MAINTENANCE_RAN` exists one layer up to prevent. This needed
+   `complete_item` to become atomic, which it was not: two saves and a spawn,
+   each committing alone.
+
+2. ~~**D2. How far back does backfill reach, and how is a reconstructed event
+   marked?**~~ **Answered August 20, 2026 — and taken by Claude at Vince's
+   direction rather than by Vince, which is worth saying because this list is
+   his.**
+
+   **How far back: as far as the data goes, and no date cutoff.** The limit is
+   not age, it is whether a timestamp exists; a horizon would discard real
+   records to satisfy a number nobody chose.
+
+   **The mark: `ActivityEvent.origin`, a column**, copying `Facet.origin`'s
+   split as this entry suggested. **A column rather than a payload key**,
+   because every read will want to label or exclude reconstructions and a JSONB
+   lookup with no index is not what that should cost — and in an append-only
+   table the cheap choice is the unfixable one. Distinct from `InferenceOrigin`
+   and deliberately not reusing it: that one asks whether a thing was stated or
+   inferred, which is about *content*. This is about *witness*.
+
+   **The guess-nothing instinct held.** Defect 2's misdated routine records
+   were left alone rather than reconstructed, and this follows it: four of the
+   ten events have no honest source and are simply absent. **Under-recording is
+   the safe direction** — a log that says less than happened can be added to,
+   and one that says more cannot be corrected.
+
+3. ~~**D3. Payload snapshot, or foreign key only?**~~ **Answered for slice 1
+   only, August 20, 2026: a foreign key where one exists, and the payload for
+   what has none.** The week's Monday is the single payload key slice 1 has,
+   because a week is neither a task nor a day's entry — and a subject column
+   invented for one cadence is a column the monthly and quarterly horizons
+   would not fit.
+
+   **Nothing snapshots a subject it could join to.** `WeeklyOutcome` already
+   keeps its own text and its project's title; `DailyFocus.task_text` already
+   snapshots the one case where a snapshot is the point. A third copy in an
+   append-only row is a copy that can never be corrected, which is the one
+   place a wrong value would outlive its fix. **Still open for later slices**,
+   where an event may genuinely have no row behind it.
+
+4. **D4. What makes a later event *bear on* an earlier node?** The rule
+   deciding whether *what developed afterward* is a recollection or a list of
+   everything since.
+
+   ~~**An answer shape registered August 21**~~ — **answered and shipped
+   August 21, 2026** (`c2d5b72`). The shape below is what was built, unchanged: the one honest development chain exists as fact —
+   `Node` → actionable facet → `Item` → that task's later life events — and
+   confirmed mentions and edges carry dates too. *Development along recorded
+   provenance* is answerable without inventing anything; it is the
+   similarity-based "bears on" that is not. Answered this way, `since()`
+   ships narrow and honest, and increment 5's "stopping at four" outcome is
+   only for the wide version.
+
+   **What shipped adds one refusal the shape did not name**: edges reach
+   forward and never backward. An edge drawn *toward* a note is the other
+   note's development, and following it would quietly make *"what developed
+   from X"* and *"what has since mentioned X"* the same question — the slide
+   this decision exists to stop, one size smaller.
+
+6. ~~**D6. Are roles new `FacetKind` values, or one kind with typed data?**~~
+   **Answered August 21, 2026 — values, and `facet_one_live_per_kind` decided
+   it.** `unique(node, kind)` over live facets means one kind holds one role,
+   and roles are multi-valued by definition. The question below stands as
+   asked; the answer is that it was not a judgement call in the end.
+
+   Original text:
+   `FacetKind` says a new kind should be a value rather than a table — but
+   fourteen kinds each with their own validation is a different proposition from
+   three, and they are multi-valued by design. `design-concept.md` owns the
+   Attention Policy this feeds.
+
+7. ~~**D7. Is URL intake worth reopening SSRF surface?**~~ **Answered August
+   21, 2026: not yet, and the answer is a refusal with a trigger rather than a
+   deferral.**
+
+   **What tips it is the shape of the failure, not the cost of the fix.** An
+   allowlist or an egress proxy is affordable. But server-side fetching on a
+   one-host deployment means the application makes outbound requests to
+   addresses a person supplies, and the interesting SSRF targets are on that
+   host and on DigitalOcean's link-local metadata endpoint. A mistake there is
+   not a bad row — it is credential disclosure, on the machine that also holds
+   every note.
+
+   **And the cheap half is most of the value.** Storing a URL as text, captured
+   and searchable, is what makes *"that recipe I saved"* findable at all;
+   fetching adds the body. `/mind/` already accepts a URL as content today and
+   the Android share target already sends one, so nothing is missing that a
+   person would notice as absent.
+
+   **The trigger, so this can fire:** when Clarice has more than one human user,
+   or when a recipe URL somebody saved is recorded as a retrieval miss because
+   its text was not searchable. The first is a real change in the threat model;
+   the second is evidence from the one instrument this project trusts. Either
+   makes an egress proxy worth its weight — and `MissContext.SEARCH` already
+   records the second without anything being built.
+
+8. ~~**D8. What are the four metrics?**~~ **Answered August 21, 2026 — there
+   are two.** Lookup and Recollection have honest signals; Planning has none
+   yet and Resurfacing cannot have one. Saying so in `/numbers/` is the
+   increment rather than a gap in it.
+
+   Original text: Lookup, planning, recollection and
+   resurfacing fail differently, and **a missed resurfacing leaves no trace at
+   all.** If one of the four has no honest signal, say so rather than grading it
+   by proxy.
+
+   **One source registered August 21:** recollection can borrow the search
+   page's `RetrievalMiss` button verbatim — *"there was more to that
+   morning"* — giving one of the four modes an honest miss signal through a
+   mechanism the codebase already trusts.
+
+9. ~~**D9. Where do attachment bytes live?**~~ **Answered August 21, 2026:
+   they are a row.** The question named its own deciding consideration — export
+   and deletion ship every owned *row*, so a file that is not one breaks a
+   promise that currently holds. As a row, export, purge and the restore drill
+   all hold without knowing files exist, and `/privacy/`'s *three companies,
+   each doing one job* stays true.
+
+   **Postgres is not a blob store and that is the cost**, accepted at this
+   scale — one person, a personal corpus, a managed backed-up database. The
+   trigger for revisiting is `MAX_ATTACHMENT_BYTES` starting to hurt.
+
+10. ~~**D10. Email intake — scope it, or defer with a trigger?**~~ **Answered
+    August 21, 2026: deferred, with a trigger that can fire.**
+
+    **The mail transport already runs in one direction only.** Resend sends;
+    nothing receives. Inbound means a webhook endpoint with no session behind
+    it, address-to-account mapping, spoofing (anybody can put your address in a
+    `From:` header), attachment handling, and a spam surface — on an
+    unauthenticated route, which is the one class of endpoint this project
+    throttles by name.
+
+    **What makes it a deferral rather than a refusal** is that unlike D7 the
+    hazard is contained: a bad inbound message writes a note, and a note can be
+    deleted. It is real work rather than a real risk.
+
+    **The trigger:** when a capture arrives by being forwarded somewhere else
+    first — a note whose content is an email somebody re-typed or pasted — or
+    when the phone is not the fastest route in for material that already lives
+    in a mailbox. Both are observable in the corpus rather than in an opinion,
+    which is what `principles.md` means by a trigger that can fire.
+
+11. ~~**D11. What shape is a per-occasion proposal budget?**~~ **Answered
+    August 20, 2026: two budgets, and no backlog.** A *processing* budget
+    bounding what is materialized at all, and an *attention* budget bounding
+    what is shown now — see Part 4's flow. **The slow-release option was
+    rejected on principle rather than on cost**: a queue dribbling out hundreds
+    of findings is the Second Mind inbox this design refuses. And the scoping
+    correction is the load-bearing half — **the budget covers every
+    attention-producing mechanism**, including the synchronous commitment
+    parser, not only the five connection detectors. The per-capture caps stay;
+    they are correct for a capture.
+
+12. ~~**D12. Is a dump a container node?**~~ **Answered August 20, 2026: no —
+    a `CaptureSession` record.** `NodeSource.THREAD` is a semantic conclusion
+    that participates in the graph; a dump is provenance. The session earns its
+    own model under §4 because it has a life cycle and behaviour nodes do not,
+    and a shared timestamp cannot carry duration, completion, a budget, prompts
+    or processing state. Each node gets an optional session reference and no
+    graph edges.
+
+13. ~~**D13. Is voice intake in scope?**~~ **Answered August 20, 2026: not in
+    the first slice, and the path is preserved.** Typed dumping validates the
+    interaction first. Audio needs attachment storage, export, deletion and a
+    privacy disclosure before it needs transcription — and **storing audio
+    without searchable text does not deliver the assembly a dump is for.**
+    Transcription remains an ML-policy question for `design-concept.md`, not an
+    engineering one.
+
+19. ~~**D19. Does recollection anchor on instants or subjects?**~~
+    **Answered and shipped August 21, 2026** (`b15b77c`): **both, and the
+    subject read is built on the instant one.** `around()` stays the
+    primitive; `clarice.recall.context_of` unions it over the subject's own
+    moments — its log events plus those of any task it grew into, which is
+    `since()`'s provenance chain reaching back to include the capture.
+
+    **The resolution the entry warned about turned out to be overlap.** Two
+    moments twenty minutes apart produce nearly identical neighbourhoods, and
+    a caller unioning them naively either shows everything twice or loses
+    which moment each belongs to — both silent. So moments within a window of
+    each other are **one occasion**, an occasion keeps its moments because a
+    merged one has no single timestamp, and an event near two occasions is
+    reported at the earlier one: the first time something turned up beside a
+    subject is the fact worth keeping.
+
+    **The caller it named was the note page**, which had anchored on
+    `captured_at` because that was the one timestamp to hand — so a note
+    turned into a task two months later had a second moment nothing could
+    see.
+
+## What this refuses
+
+- **An event bus, domain events, or Django signals.** Facts, not derivations.
+- **Moving `Item` into `Node`.** The inversion is conceptual;
+  `architecture-trajectory.md` §7 is untouched.
+- **Asking what a thing is at capture.** Roles are proposed and corrigible.
+  Anything else rebuilds the `Capture → Idea → Task` pipeline Heron deleted,
+  with fourteen new nouns instead of three.
+- **Exclusive folders.** Roles are multi-valued; a recipe from Mum for Christmas
+  is three roles and not a filing conflict.
+- **One final ranking across modes**, and one blended metric over them.
+- **A stored attention tier.** It is derived at read time on purpose, because "a
+  stored tier is a second source of truth for something that changes with every
+  capture."
+- **Deciding the Attention Policy.** Part 2 proposes to `design-concept.md`.
+- **Causal language over observations**, and reading an unrecorded night as a
+  sober one.
+- **Overhauling unified search.** It is the correct foundation; this sits above
+  it.
+- **A brain dump surface before session-aware budgeting exists.** The order is
+  the whole safety of the feature.
+- **Splitting a submission silently.** A fragment is what the person submitted.
+  Multiline paste gets a preview and a question, never a guess.
+- **A proposal backlog.** No queue slowly releasing session findings — that is
+  the inbox this design refuses, on a timer.
+- **A dump as a container node.** Provenance is a session record, not graph
+  content.
+- **Inventing history.** No event without a recorded timestamp on the source row.
+- **A second event log.** `ActivityEvent` gains a vocabulary, not a sibling.
+- **A generated answer.** Ask-your-memory returns passages that cite
+  themselves, ranked and mode-aware; composing prose over them is an
+  ML-policy question for `design-concept.md`, and nothing in this plan opens
+  it. *Nothing generated anywhere* is a property this product has on purpose.
+
+## A correction this brief owed `product-stories.md`, since made
+
+That file's three-loop table said *"The second brain is not a fourth loop. It is
+the memory of the third one."* Vince's call, August 20, 2026: **that was wrong**
+— memory is the substrate, and the three loops are tempos of reading and writing
+it. **Corrected in `product-stories.md` the same day**, which owns the fact.
+
+## Where the facts live
+
+Whether this is active, deferred or open is [`roadmap.md`](roadmap.md)'s. What
+order the work goes in and toward what is
+[`clarice-v3-plan.md`](clarice-v3-plan.md)'s. What shipped and how it was
+verified is [`roadmap-history.md`](roadmap-history.md)'s. **The Attention
+Policy, salience, and what each core owns are `design-concept.md`'s**, in Second
+Mind's own `docs/` — Part 2 proposes to it and does not restate it. Literal
+retrieval is [`search-plan.md`](search-plan.md)'s. How the product scores is
+[`product-stories.md`](product-stories.md)'s.
+
+**Verified before the deploy**, all at `ec2c4cb`: 1676 Django tests OK, 1018
+passed and 6 xfailed under pytest, `makemigrations --check` clean. **Verified
+after**: site 200, the running image tagged with the commit, all five
+migrations applied with none pending, and every new route answering.
+
+**What it leaves open, and none of it is a shortfall.** Six decisions, of which
+**D16 is the one with a clock running** — every observation Track C records is
+stamped UTC, and if a morning should be the person's morning then the longer
+that runs the more data is stamped against a decision nobody made.
+`product-stories.md` also needs re-scoring against what now exists; Unify's own
+acceptance was *"S13 and S14 reach works"* and that was never checked.
+
 ## The week you can plan, and the material you can find — August 19–20, 2026, `lapwing`
 
 Release L, across two deployments and verified in production on August 20 at

@@ -41,6 +41,25 @@ class LoginOut(Schema):
     email: str
 
 
+#: Named rather than inlined so the Android client's string and the test's
+#: assertion cannot drift apart, and so the reversal this plan promises -- "the
+#: day a signed release can carry a TOTP field" -- has one place to happen.
+SECOND_FACTOR_REQUIRED = (
+    "This account has a second factor, so it cannot trade a password for a "
+    "token here. Create a token on the web at /accounts/settings/ and paste it "
+    "into the app."
+)
+
+
+def _has_a_second_factor(user) -> bool:
+    """Whether anything is armed. An unconfirmed device is somebody halfway
+    through enrolling, and locking them out of their phone would be a lock they
+    did not set."""
+    from django_otp import devices_for_user
+
+    return any(devices_for_user(user, confirmed=True))
+
+
 @router.post("/login", response={200: LoginOut}, auth=None)
 def log_in(request, payload: LoginIn):
     """Trade a password for a token, once. design/android-login-plan.md.
@@ -69,6 +88,26 @@ def log_in(request, payload: LoginIn):
     # Cleared explicitly instead, the same way
     # ClearLockoutPasswordResetConfirmView already does after a reset.
     axes_reset(username=user.username)
+    # **The other door -- `admin-mfa-plan.md` 2.1.** This endpoint starts no
+    # session, so every session-based gate misses it: a second factor on
+    # `/admin/` while a password alone still mints a ninety-day token is a
+    # second factor on one of two doors.
+    #
+    # **Refused rather than extended.** The obvious fix is a `totp` field and a
+    # third box on the Connect screen, and it is not merely more work, it is
+    # unavailable: `assembleRelease` produces nothing usable until the signing
+    # keystore exists, and that is Vince's to generate by hand. Accepting a
+    # field no shipped client can send would leave the bypass open for as long
+    # as the keystore does not exist.
+    #
+    # **A specific refusal, not the generic 401 above.** That one is deliberately
+    # indistinguishable across wrong-password, no-such-account and deactivated;
+    # this is a correct password on a real account, and saying so is what stops
+    # somebody resetting a password that was never the problem. It leaks that
+    # the account has a second factor, to somebody who has just proved they
+    # know its password.
+    if _has_a_second_factor(user):
+        raise HttpError(403, SECOND_FACTOR_REQUIRED)
     # The Android client's own fixed default -- token-scopes-plan.md: nobody
     # should have to understand scopes to log into the app they're holding,
     # and a bounded expiry means a lost phone isn't a standing, unbounded

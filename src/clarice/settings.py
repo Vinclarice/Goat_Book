@@ -222,8 +222,19 @@ ADMINS = [("Vince", os.environ.get("DJANGO_ADMIN_EMAIL", "vincentjg01@gmail.com"
 INSTALLED_APPS = [
     # Must come before django.contrib.admin: it overrides the built-in
     # admin's templates to render the themed UI (see UNFOLD below).
-    "unfold",
-    "django.contrib.admin",
+    #
+    # `BasicAppConfig` rather than the default one, since August 23, 2026:
+    # unfold's `DefaultAppConfig.ready()` assigns `admin.site` outright, which
+    # silently discarded the second-factor site `default_site` had just built.
+    # `BasicAppConfig` is unfold's own hook for a project that supplies its own
+    # site -- same app, no swap. See `clarice/admin.py`.
+    "unfold.apps.BasicAppConfig",
+    # Not "django.contrib.admin": `clarice.admin.VerifiedAdminConfig` is the
+    # same app with `default_site` pointed at the second-factor gate. See
+    # that module for why this is the hook rather than assigning
+    # `admin.site.__class__`, which django-otp's README suggests and which
+    # breaks the lazy proxy.
+    "clarice.admin.VerifiedAdminConfig",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",

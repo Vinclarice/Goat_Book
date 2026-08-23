@@ -1,6 +1,7 @@
 # A second factor on the accounts that can read everything
 
-Vince · plan · written August 19, 2026 · **not started**
+Vince · plan · written August 19, 2026 · **increments 1, 2 and 4 shipped;
+3 is Vince's and is not done, so 4 must not deploy yet**
 
 ## What this closes
 
@@ -161,7 +162,32 @@ it backwards means deploying a lock and then discovering you are outside it.
 | 1 | Apps, migrations, middleware. **No enforcement.** | its own deploy |
 | 2 | Enrolment and recovery codes at `/accounts/security/` | 1, or just after |
 | 3 | **Vince enrols in production** | nothing — it is a person's step |
-| 4 | Enforcement, **and** closing 2.1 together | one deploy, after 3 |
+| 4 | ~~Enforcement, **and** closing 2.1 together~~ **built August 23, 2026** | one deploy, after 3 |
+
+**Increment 4 is written and merged and must not deploy until 3 is done.**
+Checked on August 23: `vince-admin` in production has no TOTP device and no
+recovery codes. Enrolment is already live at `/accounts/security/`, so this is
+two minutes rather than a blocker — and because that page sits outside the
+admin, deploying enforcement first would be an inconvenience rather than the
+lockout this ordering was written to prevent. The ordering is still right; the
+consequence of getting it wrong is smaller than it reads.
+
+**Two things the design did not anticipate, both found by running it.**
+
+**`admin.site.__class__ = VerifiedAdminSite` does not work**, which is
+django-otp's own README recipe. `django.contrib.admin.site` is a
+`DefaultAdminSite` — a lazy proxy — so the assignment replaces the *proxy's*
+class and every admin request afterwards redirects to the login page whatever
+the permissions say. `AdminConfig.default_site` is the supported hook.
+
+**And `default_site` alone is not enough, because unfold swaps the site too.**
+`unfold.apps.DefaultAppConfig.ready()` assigns `admin.site = UnfoldAdminSite()`
+outright, landing after `default_site` has resolved and discarding it — the gate
+was installed and an unverified superuser still walked in. Unfold ships
+`BasicAppConfig` for precisely this: same app, no swap. So `INSTALLED_APPS` names
+that, and `VerifiedAdminSite` subclasses `UnfoldAdminSite` rather than
+`AdminSite`. **§2.5 said unfold overrides admin templates; it also overrides the
+site**, and that is the sharper version of the same warning.
 
 **4 is one deploy and not two.** Between enforcing the admin and refusing
 `/api/v1/login`, a password alone still mints a ninety-day token — a window
@@ -200,8 +226,11 @@ enormous move — but it does mean the answer to
 `security-and-resilience-plan.md` D5, what stands in front of port 22, is part
 of this control's strength rather than a separate topic.
 
-Write the break-glass procedure down **before** increment 4 ships, not after.
-The moment it is needed is the worst moment to work it out.
+~~Write the break-glass procedure down **before** increment 4 ships, not
+after.~~ **Written August 23, 2026, before it shipped** — in
+[`MIGRATION.md`](../MIGRATION.md) under *Break-glass: locked out of the admin*,
+with the three situations in the order to try them. The moment it is needed is
+the worst moment to work it out.
 
 ## 6. What this plan refuses
 

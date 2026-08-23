@@ -58,6 +58,27 @@ re-add it here.
 
 ## Open now
 
+- **The invitation bar — v3's remaining readiness gate, claimed August 23,
+  2026.** [`clarice-v3-plan.md`](clarice-v3-plan.md) lists three things *"the
+  substrate somebody else's month would depend on"*, and invitations became real
+  the same morning, so the bar stopped being hypothetical.
+  [`security-and-resilience-plan.md`](security-and-resilience-plan.md) owns two
+  of the three and **was unclaimed by this file until now**, which is its own
+  small version of the seam problem.
+
+  **MFA on the admin is built** —
+  [`admin-mfa-plan.md`](admin-mfa-plan.md) increment 4, its top-ranked item.
+  **It must not deploy until Vince enrols in production**, which is increment 3
+  and takes two minutes at `/accounts/security/`.
+
+  **The restore drill has still never been run**, and is the other one. The
+  August 1 pass compared 18 tables at 53 migrations; there are 77 now, plus the
+  `vector` extension and `ActivityEvent`'s append-only triggers.
+  `MIGRATION.md` states the consequence itself: a restore missing all of that
+  passes the drill as written and fails on the first write. Vince's to run — it
+  needs WSL, the ssh key and a paid scratch cluster.
+
+
 - **Clarice v3 is the plan, claimed August 20, 2026.**
   [`clarice-v3-plan.md`](clarice-v3-plan.md) is the authority on **what order
   the work goes in and toward what**, replacing `commercial-blueprint.md` Part

@@ -54,11 +54,18 @@ class VerificationStateIsAvailableTest(TestCase):
 
 
 class NothingIsEnforcedYetTest(TestCase):
-    """The deliberate no-op, asserted so that closing it is visible.
+    """~~The deliberate no-op, asserted so that closing it is visible.~~
 
-    Increment 4 turns this red, on purpose, and replaces it with its opposite.
-    Until then it is what stops this increment from silently locking somebody
-    out of production between deploys.
+    **Closed August 23, 2026 by increment 4, exactly as this said it would be:**
+    *"Increment 4 turns this red, on purpose, and replaces it with its
+    opposite."* It did, and the replacement is
+    `accounts/tests/test_admin_second_factor.py`.
+
+    Kept as a class rather than deleted because the assertion inverts rather
+    than disappears: what increment 1 needed to prove was that it changed
+    nothing, and what matters now is that the thing it deliberately did not do
+    has since been done. A deletion would leave no trace that the no-op was
+    ever a decision.
     """
 
     def setUp(self):
@@ -66,12 +73,12 @@ class NothingIsEnforcedYetTest(TestCase):
             "vince", "vince@example.com", PASSWORD
         )
 
-    def test_a_superuser_still_reaches_the_admin_with_a_password_alone(self):
+    def test_a_password_alone_no_longer_reaches_the_admin(self):
         self.client.force_login(self.admin)
 
         response = self.client.get(reverse("admin:index"))
 
-        self.assertEqual(response.status_code, 200)
+        self.assertNotEqual(response.status_code, 200)
 
 
 class EnrolmentTest(TestCase):

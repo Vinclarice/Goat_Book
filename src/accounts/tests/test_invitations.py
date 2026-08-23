@@ -51,6 +51,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from accounts.models import Invitation, User
+from clarice.testing import sign_into_the_admin
 
 
 class MintingAnInvitationTest(TestCase):
@@ -258,7 +259,7 @@ class JoiningTest(TestCase):
         self.assertEqual(User.objects.filter(username="vince").count(), 1)
 
     def test_somebody_already_signed_in_is_not_offered_it(self):
-        self.client.force_login(self.vince)
+        sign_into_the_admin(self.client, self.vince)
 
         response = self.client.get(self.url)
 
@@ -302,7 +303,7 @@ class ThereIsSomewhereToMintOneTest(TestCase):
         self.vince = User.objects.create_superuser(
             "vince", "vince@example.com", "a secure password"
         )
-        self.client.force_login(self.vince)
+        sign_into_the_admin(self.client, self.vince)
 
     def test_invitations_are_in_the_admin(self):
         response = self.client.get("/admin/accounts/invitation/")

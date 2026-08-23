@@ -1,6 +1,7 @@
 from django.test import TestCase
 
 from accounts.models import User
+from clarice.testing import sign_into_the_admin
 
 
 PASSWORD = "correct horse battery staple 47!"
@@ -11,7 +12,7 @@ class UserAdminTest(TestCase):
         self.admin = User.objects.create_superuser(
             "admin", "admin@example.com", PASSWORD
         )
-        self.client.force_login(self.admin)
+        sign_into_the_admin(self.client, self.admin)
 
     def test_user_changelist_renders(self):
         response = self.client.get("/admin/accounts/user/")

@@ -114,3 +114,30 @@ class CrossCoreTestCase(TestCase):
 
 def days(n):
     return datetime.timedelta(days=n)
+
+
+def sign_into_the_admin(client, user):
+    """Log in *and* verify — what reaching `/admin/` costs since August 23, 2026.
+
+    `admin-mfa-plan.md` increment 4 made `is_verified()` part of
+    `AdminSite.has_permission`, so `force_login` alone no longer opens the
+    admin. Six existing tests found that out at once, which is the gate working:
+    the meaning of *signed in as an admin* genuinely changed, and a helper is
+    better than six copies of the same two extra lines.
+
+    A confirmed device and `otp_login` rather than a code round trip: what these
+    tests are about is the page they are asking for, and TOTP itself is proved
+    in `accounts/tests/test_admin_second_factor.py`.
+    """
+    from django_otp import login as otp_login
+    from django_otp.plugins.otp_totp.models import TOTPDevice
+
+    device = TOTPDevice.objects.create(user=user, name="test phone", confirmed=True)
+    client.force_login(user)
+    # `otp_login` writes the device into the session, which is what
+    # `is_verified()` reads. It needs a request-shaped object; the test client's
+    # session is reachable through this dance and nothing simpler works.
+    session = client.session
+    session["otp_device_id"] = device.persistent_id
+    session.save()
+    return device

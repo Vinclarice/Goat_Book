@@ -324,6 +324,45 @@ the server is untouched. Revert the code changes (`git checkout` the
 previous commit), rebuild, and redeploy with the old playbook -- your data
 is still there.
 
+## Break-glass: locked out of the admin
+
+**Written before enforcement shipped rather than after** — `admin-mfa-plan.md`
+§5: *the moment it is needed is the worst moment to work it out.*
+
+Since August 23, 2026 `/admin/` requires a second factor as well as a staff
+account. Three situations, in the order to try them.
+
+**1. You have your recovery codes.** Sign in as usual and enter one at
+`/accounts/verify/` instead of a TOTP code. Each is single-use and using one
+spends it. Re-issue a fresh batch afterwards at `/accounts/security/`.
+
+**2. You can still sign into the app, but have neither phone nor codes.**
+Enrolment lives at `/accounts/security/`, which is behind login and *not* behind
+the admin — that is deliberate, and it is what keeps this an inconvenience
+rather than a lockout. Delete the stale device first (step 3), then enrol again.
+
+**3. Nothing else works.** One route, and it needs shell on the droplet:
+
+```bash
+ssh elspeth@vinclarice.com
+docker exec clarice ./manage.py shell -c "
+from django_otp.plugins.otp_totp.models import TOTPDevice
+from django_otp.plugins.otp_static.models import StaticDevice
+TOTPDevice.objects.filter(user__username='vince-admin').delete()
+StaticDevice.objects.filter(user__username='vince-admin').delete()
+"
+```
+
+Then sign in — with no confirmed device the admin sends you to
+`/accounts/verify/`, which offers enrolment — and set it up again.
+
+**This is also the bound on what the control is worth, and worth stating rather
+than leaving implicit.** Shell access to the droplet is equivalent to bypassing
+the second factor. That does not make it pointless: it moves the bar from *knows
+a password* to *has shell on the host*, which is an enormous move. But it does
+mean what stands in front of port 22 is part of this control's strength rather
+than a separate topic — `security-and-resilience-plan.md` D5.
+
 ## Notes
 
 Scoped out in `design/subtasks-plan.md` (Step 2), which is now a stub -- so these

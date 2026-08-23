@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% load frontend_tags %}
+
+{% comment %}
+admin-mfa-plan.md increment 4. This application's own page rather than the
+admin's login form, because unfold overrides admin templates and OTPAdminSite's
+bundled form would render into one that does not know about it (2.5).
+
+One box for both kinds of code. A TOTP code and a recovery code are the same
+act -- prove it is you -- and asking which kind somebody is holding is a
+question they should not have to answer while locked out.
+{% endcomment %}
+
+{% block title %}Confirm it's you · Clarice{% endblock %}
+
+{% block content %}
+  <section class="mx-auto max-w-md py-10">
+    <div class="rounded-xl border border-border bg-card p-6 sm:p-8 space-y-5">
+      <div class="space-y-1">
+        <p class="text-xs font-bold uppercase tracking-wide text-accent">One more step</p>
+        <h1 class="text-2xl font-bold">Confirm it's you</h1>
+      </div>
+
+      {% if has_a_device %}
+        <p class="text-sm text-muted-foreground">
+          Enter the code from your authenticator app, or one of your recovery codes.
+        </p>
+
+        <form method="post" class="space-y-4">
+          {% csrf_token %}
+          <div class="space-y-1">
+            <label for="code" class="text-sm font-bold">Code</label>
+            {% comment %}
+            inputmode numeric rather than type=number: a recovery code is not a
+            number, and type=number would strip a leading zero from a TOTP code,
+            which is one in ten of them.
+            {% endcomment %}
+            <input
+              id="code"
+              name="code"
+              inputmode="numeric"
+              autocomplete="one-time-code"
+              autofocus
+              class="w-full rounded-lg border border-border bg-input px-3 py-1.5"
+            >
+            {% if error %}
+              <div class="text-sm text-destructive">{{ error }}</div>
+            {% endif %}
+          </div>
+
+          <button
+            class="touch-target w-full min-h-11 rounded-sm border border-text bg-text font-sans text-sm font-semibold text-bg transition-colors hover:bg-transparent hover:text-text"
+            type="submit"
+          >
+            Confirm
+          </button>
+        </form>
+      {% else %}
+        {% comment %}
+        The recoverable half of the ordering mistake the plan warns about:
+        enforcement deployed before enrolment is an inconvenience rather than a
+        lockout, because enrolling lives out here rather than behind the admin.
+        {% endcomment %}
+        <p class="text-sm text-muted-foreground">
+          This account doesn't have a second factor set up yet, and the admin
+          needs one. Setting it up takes a minute.
+        </p>
+        <a class="touch-target inline-flex min-h-11 items-center rounded-sm border border-text bg-text px-5 font-sans text-sm font-semibold text-bg transition-colors hover:bg-transparent hover:text-text"
+           href="{% url 'security' %}">Set up a second factor</a>
+      {% endif %}
+    </div>
+  </section>
+{% endblock %}

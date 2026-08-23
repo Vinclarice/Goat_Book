@@ -4,6 +4,7 @@ import logging
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import login, update_session_auth_hash
+from django_otp import devices_for_user, login as otp_login
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import PasswordChangeForm
 from django.http import HttpResponseRedirect
@@ -360,6 +361,52 @@ def tokens(request):
             # redirect has nowhere else to carry it.
             "raw_token": request.session.pop("raw_token", None),
         },
+    )
+
+
+@login_required
+def verify(request):
+    """Prove it is you, on a page this application owns — increment 4.
+
+    **Not the admin's login form.** §2.5: unfold overrides admin templates, so
+    `OTPAdminSite`'s bundled form would render into one that does not know about
+    it. This costs a view and buys a screen that looks like the rest.
+
+    **One box for both kinds of code.** A TOTP code and a recovery code are the
+    same act — *prove it is you* — and asking which kind somebody is holding is
+    a question they should not have to answer while locked out. Every confirmed
+    device is offered the string in turn.
+
+    **Throttling is the device's own**, and that is §2.4's finding rather than
+    an omission here: `django-axes` counts failures at `authenticate()` and this
+    is not that, so the five-attempt lockout does not cover the second factor at
+    all. `ThrottlingMixin` does, backing off 1, 2, 4, 8 seconds, and it is on by
+    default. `verify_token` consults it, so calling that is the whole
+    protection.
+
+    **Somebody with no device is sent to enrol rather than told no.** Enrolment
+    lives outside the admin at `/accounts/security/`, which is what keeps
+    deploying enforcement before enrolling a five-minute inconvenience instead
+    of a lockout.
+    """
+    devices = list(devices_for_user(request.user, confirmed=True))
+    error = ""
+
+    if request.method == "POST":
+        code = request.POST.get("code", "").strip()
+        for device in devices:
+            if device.verify_token(code):
+                otp_login(request, device)
+                return redirect(request.GET.get("next") or "/admin/")
+        # One message for a wrong code, an expired one and a spent recovery
+        # code. They are three things to us and one thing to somebody holding a
+        # phone, and naming which would say whether the string was ever valid.
+        error = "That code didn't work. Try the next one your app shows."
+
+    return render(
+        request,
+        "accounts/verify.html",
+        {"error": error, "has_a_device": bool(devices)},
     )
 
 

@@ -29,6 +29,9 @@ urlpatterns = [
     path("password/change/", views.change_password, name="change_password"),
     # A second factor, self-service for the same reason the tokens page
     # below is: design/admin-mfa-plan.md.
+    # Increment 4. Beside enrolment rather than inside the admin -- see
+    # accounts.views.verify and admin-mfa-plan.md 2.5.
+    path("verify/", views.verify, name="verify"),
     path("security/", views.security, name="security"),
     path("tokens/", views.tokens, name="tokens"),
     path("tokens/new/", views.new_token, name="new_token"),

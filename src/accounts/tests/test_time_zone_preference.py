@@ -8,6 +8,7 @@ import json
 from django.test import TestCase
 
 from accounts.forms import AccountSettingsForm
+from clarice.testing import sign_into_the_admin
 from accounts.models import DEFAULT_TIME_ZONE, User
 
 
@@ -19,7 +20,7 @@ class TimeZonePreferenceApiTest(TestCase):
         self.user = User.objects.create_user(
             "alice", "alice@example.com", PASSWORD
         )
-        self.client.force_login(self.user)
+        sign_into_the_admin(self.client, self.user)
 
     def patch(self, **overrides):
         payload = {
@@ -82,7 +83,7 @@ class TimeZoneOptionsApiTest(TestCase):
         # Served rather than built in the browser: Intl's list and the
         # server's tzdata can disagree, and the disagreement would surface
         # as a validation error on a zone the picker offered.
-        self.client.force_login(self.user)
+        sign_into_the_admin(self.client, self.user)
 
         response = self.client.get("/api/v1/time-zones")
 
@@ -135,7 +136,7 @@ class TimeZoneInAdminTest(TestCase):
         self.admin = User.objects.create_superuser(
             "admin", "admin@example.com", PASSWORD
         )
-        self.client.force_login(self.admin)
+        sign_into_the_admin(self.client, self.admin)
 
     def test_the_change_form_exposes_the_zone(self):
         # UserAdmin declares explicit fieldsets, so a new field is invisible

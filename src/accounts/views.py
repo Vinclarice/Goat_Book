@@ -397,6 +397,10 @@ def verify(request):
         for device in devices:
             if device.verify_token(code):
                 otp_login(request, device)
+                # `next` off the query string on the POST too: the form posts
+                # back to the same URL, so it survives -- and without honouring
+                # it, verifying would drop somebody on the admin index having
+                # asked for a particular page.
                 return redirect(request.GET.get("next") or "/admin/")
         # One message for a wrong code, an expired one and a spent recovery
         # code. They are three things to us and one thing to somebody holding a

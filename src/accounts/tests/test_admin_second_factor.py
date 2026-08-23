@@ -71,6 +71,63 @@ class TheAdminAsksForASecondFactorTest(TestCase):
             "the password itself must be accepted, or the test below proves nothing",
         )
 
+    def test_an_unverified_admin_is_sent_to_verify_rather_than_back_to_login(self):
+        """**The loop this was shipped with, found in a production log.**
+
+        Django's `AdminSite.login` redirects to the index only when
+        `has_permission()` — which is exactly what is false here. So an
+        authenticated staff account with no verified device went `/admin/` →
+        `/admin/login/` → log in → `/admin/` → `/admin/login/`, and the log
+        shows five successful logins in a row. It reads as *my password is not
+        working*; it was the second factor with nothing pointing at it.
+
+        **`/accounts/verify/` existed and nothing routed to it** — the
+        un-switched-on seam this project keeps shipping, committed by the change
+        that was meant to close one.
+        """
+        self.sign_in()
+
+        response = self.client.get("/admin/", follow=True)
+
+        # Two hops -- `/admin/` -> `/admin/login/` -> `/accounts/verify/` --
+        # because the first is Django's own `admin_view` plumbing and reusing it
+        # is better than reimplementing it. What matters is where somebody ends
+        # up, so the chain is followed rather than its first step asserted.
+        self.assertEqual(response.redirect_chain[-1][0].split("?")[0],
+                         reverse("verify"))
+
+    def test_it_comes_back_to_where_it_was_going(self):
+        """A verify page that dumped you on the index would lose the page you
+        asked for, which is the thing `next` exists for.
+
+        Encoded, because a changelist with filters carries a query of its own
+        and an unencoded `next` truncates at its first `&`."""
+        self.sign_in()
+
+        response = self.client.get("/admin/accounts/user/", follow=True)
+
+        self.assertIn("next=%2Fadmin%2Faccounts%2Fuser%2F",
+                      response.redirect_chain[-1][0])
+
+    def test_verifying_returns_you_to_the_page_you_asked_for(self):
+        device = a_confirmed_device(self.vince)
+        self.sign_in()
+
+        response = self.client.post(
+            reverse("verify") + "?next=/admin/accounts/user/",
+            {"code": code_for(device)},
+        )
+
+        self.assertEqual(response["Location"], "/admin/accounts/user/")
+
+    def test_somebody_not_signed_in_at_all_still_gets_the_login_form(self):
+        """Only an *authenticated* staff account is redirected. A stranger has
+        no business being told a second factor exists."""
+        response = self.client.get("/admin/", follow=True)
+
+        self.assertEqual(response.redirect_chain[-1][0].split("?")[0],
+                         "/admin/login/")
+
     def test_a_superuser_with_the_right_password_is_still_turned_away(self):
         """**The whole control.** Correct password, real session, no verified
         device — and `/admin/` does not open."""

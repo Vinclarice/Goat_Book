@@ -28,7 +28,11 @@ moves the bar from *knows a password* to *has shell on the host*, which is an
 enormous move and not an unlimited one.
 """
 
+from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.contrib.admin.apps import AdminConfig
+from django.shortcuts import redirect
+from django.urls import reverse
+from django.utils.http import urlencode
 from unfold.sites import UnfoldAdminSite
 
 
@@ -41,6 +45,37 @@ class VerifiedAdminSite(UnfoldAdminSite):
         the existing check, never instead of it.
         """
         return super().has_permission(request) and request.user.is_verified()
+
+    def login(self, request, extra_context=None):
+        """Send an unverified admin to `/accounts/verify/`, not back to a form.
+
+        **Found in a production log, hours after this shipped.** Django's
+        `AdminSite.login` redirects to the index only when `has_permission()` —
+        which is precisely what is false for somebody who has a password and no
+        second factor. So the sequence was `/admin/` → `/admin/login/` → log in
+        → `/admin/` → `/admin/login/`, and the log shows five successful logins
+        in a row. It reads to the person as *my password is not working*.
+
+        **`/accounts/verify/` existed and nothing pointed at it** — the
+        un-switched-on seam this codebase keeps shipping, committed by the very
+        change meant to close one. Building the page is not wiring it up;
+        `principles.md` says check for a caller, not for existence.
+
+        **Only for somebody already authenticated and staff.** A stranger gets
+        the ordinary login form: that a second factor exists is not a fact worth
+        handing to somebody who has not proved they hold an account.
+        """
+        user = request.user
+        if user.is_authenticated and user.is_active and user.is_staff:
+            target = request.GET.get(REDIRECT_FIELD_NAME) or reverse(
+                "admin:index", current_app=self.name
+            )
+            # `urlencode`, not an f-string: a `next` carrying a query of its
+            # own -- a changelist with filters, which is most of them -- would
+            # otherwise truncate at its first `&`.
+            query = urlencode({REDIRECT_FIELD_NAME: target})
+            return redirect(f"{reverse('verify')}?{query}")
+        return super().login(request, extra_context)
 
 
 class VerifiedAdminConfig(AdminConfig):

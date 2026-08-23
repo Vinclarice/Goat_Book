@@ -620,6 +620,24 @@ class Project(models.Model):
     abandon_if = models.TextField(blank=True, default="")
     #: S10's other missing third. Not in the story's done-means, which turns on
     #: the abandonment condition -- named in its requires, and the same shape.
+    #: What he would do differently — **S12's fourth clause**.
+    #:
+    #: **A field rather than a `Retrospective` model**, by
+    #: `architecture-trajectory.md` §4's test: *a concept earns its own model
+    #: when it has a different life cycle, not when it has a different name.*
+    #: This is written once when a project closes and edited afterwards, which
+    #: is exactly `purpose`, `desired_outcome` and `abandon_if`'s life cycle. It
+    #: does not propose, confirm or retire; nothing schedules it; nothing else
+    #: points at it.
+    #:
+    #: **The rest of the retrospective is derived and this is not**, which is
+    #: the whole reason it needs storing: planned-versus-met, what was set
+    #: aside, the notes and the decisions are all reads over rows that already
+    #: exist, and *what I would do differently* is the one thing no row can
+    #: answer. Part 1's *facts, not derivations* cuts the other way here — a
+    #: judgement a person makes is a fact, and there is nowhere else to put it.
+    learned = models.TextField(blank=True, default="")
+
     notes = models.TextField(blank=True, default="")
     due_date = models.DateField(blank=True, null=True)
     is_completed = models.BooleanField(default=False)

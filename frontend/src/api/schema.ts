@@ -160,6 +160,35 @@ export interface paths {
         patch: operations["lists_api_v1_update_project"];
         trace?: never;
     };
+    "/api/v1/projects/{project_id}/retrospective": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Project Retrospective
+         * @description What a project came to, assembled rather than remembered — **S12**.
+         *
+         *     **Its own route rather than part of the brief**, and the split is the point:
+         *     a brief prompts a project that is *running* and may answer topically; a
+         *     retrospective is a record of one that is over, and every item in it is a row
+         *     somebody wrote. Same argument that gave the brief its own route, one state
+         *     later.
+         *
+         *     Reads only. There is nothing to confirm and nothing to stamp — see
+         *     `projects.Retrospective`.
+         */
+        get: operations["lists_api_v1_project_retrospective"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{project_id}/brief": {
         parameters: {
             query?: never;
@@ -1607,6 +1636,67 @@ export interface components {
             is_completed?: boolean | null;
             /** Is Paused */
             is_paused?: boolean | null;
+            /** Learned */
+            learned?: string | null;
+        };
+        /**
+         * ProjectRetrospectiveOut
+         * @description What a project came to — **S12**.
+         *
+         *     Week by week rather than one pair of numbers: a project that started well
+         *     and stalled and one that ground along evenly have the same totals, and only
+         *     the first is worth knowing about.
+         */
+        ProjectRetrospectiveOut: {
+            /** Weeks */
+            weeks: components["schemas"]["RetroWeekOut"][];
+            /** Met */
+            met: number;
+            /** Unfinished */
+            unfinished: number;
+            /** Set Aside */
+            set_aside: number;
+            /** Notes */
+            notes: components["schemas"]["RetroNoteOut"][];
+            /** Decisions */
+            decisions: components["schemas"]["RetroDecisionOut"][];
+            /** Learned */
+            learned: string;
+            /** Quiet Says */
+            quiet_says: string;
+        };
+        /** RetroDecisionOut */
+        RetroDecisionOut: {
+            /** Id */
+            id: string;
+            /** Question */
+            question: string;
+            /** Chose */
+            chose: string;
+            /** Considered */
+            considered: string;
+            /** Decided At */
+            decided_at: string;
+        };
+        /** RetroNoteOut */
+        RetroNoteOut: {
+            /** Id */
+            id: string;
+            /** Text */
+            text: string;
+            /** Captured At */
+            captured_at: string;
+        };
+        /** RetroWeekOut */
+        RetroWeekOut: {
+            /** Week Start */
+            week_start: string;
+            /** Met */
+            met: number;
+            /** Unfinished */
+            unfinished: number;
+            /** Set Aside */
+            set_aside: number;
         };
         /** BriefCommitmentOut */
         BriefCommitmentOut: {
@@ -1664,6 +1754,20 @@ export interface components {
             distinctive_terms: string[];
         };
         /**
+         * BriefLessonOut
+         * @description What an earlier finished project taught — **S12's *kept for next time***.
+         *
+         *     Named with its project, because a lesson with no source is an aphorism.
+         */
+        BriefLessonOut: {
+            /** Project Id */
+            project_id: number;
+            /** Project Title */
+            project_title: string;
+            /** Learned */
+            learned: string;
+        };
+        /**
          * BriefSourceOut
          * @description Something read that this project's material came out of — **S16**.
          *
@@ -1699,6 +1803,8 @@ export interface components {
             decisions: components["schemas"]["BriefDecisionOut"][];
             /** Provenance Says */
             provenance_says: string;
+            /** Learned Before */
+            learned_before: components["schemas"]["BriefLessonOut"][];
             /** Abandon If */
             abandon_if: string;
         };
@@ -3252,6 +3358,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProjectOut"];
+                };
+            };
+        };
+    };
+    lists_api_v1_project_retrospective: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectRetrospectiveOut"];
                 };
             };
         };

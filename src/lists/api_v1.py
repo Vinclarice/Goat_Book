@@ -509,6 +509,10 @@ class ProjectUpdateIn(Schema):
     # answer "which state is this project in" and two spellings of one idea is
     # the near-identical-controls problem C2 found in the task UI.
     is_paused: bool | None = None
+    #: **S12's fourth clause.** Written after the work stops rather than
+    #: with the completion, because the lesson arrives while reading what the
+    #: retrospective shows.
+    learned: str | None = None
 
 
 class AreaProjectIn(Schema):
@@ -541,6 +545,7 @@ def _project_out(project, areas=None):
         "purpose": project.purpose,
         "desired_outcome": project.desired_outcome,
         "abandon_if": project.abandon_if,
+        "learned": project.learned,
         "notes": project.notes,
         "paused_at": (
             project.paused_at.isoformat() if project.paused_at else None
@@ -648,6 +653,17 @@ class BriefDecisionOut(Schema):
     reason: str
 
 
+class BriefLessonOut(Schema):
+    """What an earlier finished project taught — **S12's *kept for next time***.
+
+    Named with its project, because a lesson with no source is an aphorism.
+    """
+
+    project_id: int
+    project_title: str
+    learned: str
+
+
 class ProjectBriefOut(Schema):
     material: list[BriefItemOut]
     questions: list[BriefItemOut]
@@ -660,6 +676,11 @@ class ProjectBriefOut(Schema):
     #: Why the two sections above are empty, when they are and it is not
     #: because nothing bears on the project. D5's discipline, one axis over.
     provenance_says: str
+    #: What earlier finished projects taught. Delivered on the **brief**
+    #: rather than the retrospective, because *next time* is a different
+    #: project from the one that learned it — and the brief is what somebody
+    #: opens while a project is still running.
+    learned_before: list[BriefLessonOut]
     #: **S10's second clause**, which this payload dropped from the day the
     #: field was added until August 22, 2026. `ProjectBrief.abandon_if` says *a
     #: field nobody sees at the moment of deciding is a field that may as well
@@ -703,6 +724,103 @@ def _brief_item_out(item):
     }
 
 
+class RetroWeekOut(Schema):
+    week_start: str
+    met: int
+    unfinished: int
+    set_aside: int
+
+
+class RetroNoteOut(Schema):
+    id: str
+    text: str
+    captured_at: str
+
+
+class RetroDecisionOut(Schema):
+    id: str
+    question: str
+    chose: str
+    considered: str
+    decided_at: str
+
+
+class ProjectRetrospectiveOut(Schema):
+    """What a project came to — **S12**.
+
+    Week by week rather than one pair of numbers: a project that started well
+    and stalled and one that ground along evenly have the same totals, and only
+    the first is worth knowing about.
+    """
+
+    weeks: list[RetroWeekOut]
+    met: int
+    unfinished: int
+    set_aside: int
+    notes: list[RetroNoteOut]
+    decisions: list[RetroDecisionOut]
+    learned: str
+    #: One sentence rather than a run of empty rows — see
+    #: `projects.Retrospective.quiet_weeks_before_closing`.
+    quiet_says: str
+
+
+@router.get(
+    "/projects/{project_id}/retrospective", response=ProjectRetrospectiveOut
+)
+def project_retrospective(request, project_id: int):
+    """What a project came to, assembled rather than remembered — **S12**.
+
+    **Its own route rather than part of the brief**, and the split is the point:
+    a brief prompts a project that is *running* and may answer topically; a
+    retrospective is a record of one that is over, and every item in it is a row
+    somebody wrote. Same argument that gave the brief its own route, one state
+    later.
+
+    Reads only. There is nothing to confirm and nothing to stamp — see
+    `projects.Retrospective`.
+    """
+    project = project_reader.project_for(request.user, project_id)
+    if project is None:
+        raise HttpError(404, "Project not found.")
+
+    looking_back = project_reader.retrospective_for(request.user, project)
+    return {
+        "weeks": [
+            {
+                "week_start": week.week_start.isoformat(),
+                "met": week.met,
+                "unfinished": week.unfinished,
+                "set_aside": week.set_aside,
+            }
+            for week in looking_back.weeks
+        ],
+        "met": looking_back.met,
+        "unfinished": looking_back.unfinished,
+        "set_aside": looking_back.set_aside,
+        "notes": [
+            {
+                "id": str(node.public_id),
+                "text": node.original_content,
+                "captured_at": node.captured_at.isoformat(),
+            }
+            for node in looking_back.notes
+        ],
+        "decisions": [
+            {
+                "id": str(decision.public_id),
+                "question": decision.question,
+                "chose": decision.chose,
+                "considered": decision.considered,
+                "decided_at": decision.decided_at.isoformat(),
+            }
+            for decision in looking_back.decisions
+        ],
+        "learned": looking_back.learned,
+        "quiet_says": looking_back.quiet_says,
+    }
+
+
 @router.get("/projects/{project_id}/brief", response=ProjectBriefOut)
 def project_brief(request, project_id: int):
     """What bears on this project, asked for rather than implied.
@@ -735,6 +853,14 @@ def project_brief(request, project_id: int):
         ],
         "sources": [_brief_source_out(each) for each in brief.sources],
         "decisions": [_brief_decision_out(each) for each in brief.decisions],
+        "learned_before": [
+            {
+                "project_id": each.project.id,
+                "project_title": each.project.title,
+                "learned": each.learned,
+            }
+            for each in brief.learned_before
+        ],
         "provenance_says": brief.provenance_says,
         "abandon_if": brief.abandon_if,
     }
@@ -789,6 +915,12 @@ def update_project(request, project_id: int, payload: ProjectUpdateIn):
     if payload.desired_outcome is not None:
         project.desired_outcome = payload.desired_outcome.strip()
         fields.append("desired_outcome")
+    if payload.learned is not None:
+        # **S12.** Its own field on the same PATCH as the other prose, unlike
+        # `is_completed` above, which needs a service because it stamps. This
+        # only sets text.
+        project.learned = payload.learned.strip()
+        fields.append("learned")
     if payload.abandon_if is not None:
         project.abandon_if = payload.abandon_if.strip()
         fields.append("abandon_if")

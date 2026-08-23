@@ -31,6 +31,7 @@ function projectDetailData(overrides: Record<string, unknown> = {}) {
     completed_at: null,
     desired_outcome: "",
     abandon_if: "",
+    learned: "",
     notes: "",
     paused_at: null,
     created_at: "2026-08-10T09:00:00-04:00",
@@ -409,6 +410,13 @@ describe("ProjectRoute", () => {
           "you decided this while looking at: The booking form should collect the venue…",
       },
     ],
+    learned_before: [
+      {
+        project_id: 9,
+        project_title: "The old site",
+        learned: "Start with the deposit rules, not the form layout.",
+      },
+    ],
     provenance_says: "",
     abandon_if: "Three months with no booking taken through it",
   };
@@ -424,6 +432,7 @@ describe("ProjectRoute", () => {
     commitments: [],
     sources: [],
     decisions: [],
+    learned_before: [],
     provenance_says: "",
     abandon_if: "",
   };
@@ -583,6 +592,174 @@ describe("ProjectRoute", () => {
     expect(
       await screen.findByText(/three months with no booking taken through it/i),
     ).toBeInTheDocument();
+  });
+
+  it("carries what earlier finished projects taught", async () => {
+    /* S12's "kept for next time". A lesson stored where only its own finished
+       project can show it has been filed, not kept -- and the moment it matters
+       is the next project, which is the one whose brief this is. */
+    const user = userEvent.setup();
+    vi.spyOn(globalThis, "fetch").mockImplementation(briefPageFetch());
+
+    renderAt("3");
+    await screen.findByDisplayValue("Website Relaunch");
+    await user.click(screen.getByRole("button", { name: /what bears on this/i }));
+
+    expect(
+      await screen.findByText(/start with the deposit rules/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/from the old site/i)).toBeInTheDocument();
+  });
+
+  /* The retrospective -- S12.
+
+     Unlike the brief it loads without being asked, and the difference is the
+     Attention Policy rather than an inconsistency: the policy permits a queue
+     inside a ritual somebody chose to open, and marking a project complete is
+     that ritual. Having just declared the work over, being shown what it came
+     to is the thing asked for. */
+  const RETRO = {
+    weeks: [
+      { week_start: "2026-03-02", met: 2, unfinished: 1, set_aside: 0 },
+      { week_start: "2026-03-09", met: 0, unfinished: 0, set_aside: 0 },
+      { week_start: "2026-03-16", met: 1, unfinished: 0, set_aside: 2 },
+    ],
+    met: 3,
+    unfinished: 1,
+    set_aside: 2,
+    notes: [
+      {
+        id: "55555555-5555-5555-5555-555555555555",
+        text: "The form needs a deposit field.",
+        captured_at: "2026-03-03T09:00:00-04:00",
+      },
+    ],
+    decisions: [
+      {
+        id: "66666666-6666-6666-6666-666666666666",
+        question: "Deposit up front?",
+        chose: "Yes, 20%",
+        considered: "Invoice afterwards",
+        decided_at: "2026-03-04T09:00:00-04:00",
+      },
+    ],
+    learned: "",
+    quiet_says: "Then 8 weeks with nothing pinned to a day for it, before you marked it done",
+  };
+
+  function retroPageFetch(retro: object = RETRO) {
+    const detail = projectDetailData({ is_completed: true });
+    return (input: RequestInfo | URL, _init?: RequestInit) => {
+      const url = typeof input === "string" ? input : (input as Request).url;
+      if (url.includes("/api/v1/nav")) return jsonResponse(NAV);
+      if (url.includes("/retrospective")) return jsonResponse(retro);
+      if (url.includes("/brief")) return jsonResponse(BRIEF);
+      return jsonResponse(detail);
+    };
+  }
+
+  it("does not offer a retrospective while the project is running", async () => {
+    /* "What did this come to" only has an answer once the answer has stopped
+       changing. Before that it is a status report, which the brief already is. */
+    vi.spyOn(globalThis, "fetch").mockImplementation(briefPageFetch());
+
+    renderAt("3");
+    await screen.findByDisplayValue("Website Relaunch");
+
+    expect(screen.queryByText(/what this came to/i)).not.toBeInTheDocument();
+  });
+
+  it("shows what the project came to once it is complete", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(retroPageFetch());
+
+    renderAt("3");
+
+    expect(await screen.findByText(/what this came to/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/finished 3 of the 4 things you pinned/i),
+    ).toBeInTheDocument();
+  });
+
+  it("says set-aside separately, because it is not a shortfall", async () => {
+    /* A pin dropped on purpose was a decision, and folding it into the
+       denominator would report deliberate pruning as slippage. Same honest
+       denominator the weekly review keeps. */
+    vi.spyOn(globalThis, "fetch").mockImplementation(retroPageFetch());
+
+    renderAt("3");
+
+    expect(
+      await screen.findByText(/set aside 2 more on purpose/i),
+    ).toBeInTheDocument();
+  });
+
+  it("shows every week including the ones with nothing in them", async () => {
+    /* A fortnight of silence in the middle of a quarter is the most legible
+       thing a retrospective can show, and a list of only the busy weeks hides
+       exactly that. */
+    vi.spyOn(globalThis, "fetch").mockImplementation(retroPageFetch());
+
+    renderAt("3");
+
+    expect(await screen.findByText("2026-03-09")).toBeInTheDocument();
+  });
+
+  it("says a long silence before closing in one line, not twenty rows", async () => {
+    /* Found in a browser: the first version rendered every week up to the
+       close, which put twenty-two empty rows under a three-week project nobody
+       had got round to marking done -- and made it read as a six-month one. */
+    vi.spyOn(globalThis, "fetch").mockImplementation(retroPageFetch());
+
+    renderAt("3");
+
+    expect(
+      await screen.findByText(/8 weeks with nothing pinned/i),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the decisions and the notes that became work", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(retroPageFetch());
+
+    renderAt("3");
+
+    expect(await screen.findByText(/deposit up front/i)).toBeInTheDocument();
+    expect(screen.getByText(/needs a deposit field/i)).toBeInTheDocument();
+  });
+
+  it("lets him add what he would do differently", async () => {
+    /* The one thing on the page no row can answer, which is why it is the only
+       stored part of an otherwise entirely derived read.
+
+       The body is captured in the mock rather than read off the call: every
+       sibling test here asserts only method-and-URL, because openapi-fetch
+       passes a single `Request` and its body is not on the arguments. Cloning
+       it inside the mock is what makes this assert the sentence actually
+       travelled rather than merely that a PATCH happened. */
+    const user = userEvent.setup();
+    const answered = retroPageFetch();
+    const bodies: string[] = [];
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const request = input as Request;
+      if (request instanceof Request && request.method === "PATCH") {
+        bodies.push(await request.clone().text());
+      }
+      return answered(input, init);
+    });
+
+    renderAt("3");
+    const box = await screen.findByLabelText(/what would you do differently/i);
+    await user.type(box, "Deposit rules first.");
+    // Scoped to its own form: the abandonment-condition box also has a plain
+    // "Save", and scoping is truer than renaming one of them to suit a query.
+    await user.click(
+      within(box.closest("form") as HTMLFormElement).getByRole("button", {
+        name: "Save",
+      }),
+    );
+
+    await waitFor(() => {
+      expect(bodies.join(" ")).toContain("Deposit rules first.");
+    });
   });
 
   it("says why a brief is empty when the project has no purpose", async () => {
@@ -766,6 +943,10 @@ describe("ProjectRoute", () => {
       const request = input as Request;
       const url = typeof input === "string" ? input : request.url;
       if (url.includes("/api/v1/nav")) return jsonResponse(NAV);
+      // Completing the project mounts the retrospective (S12), so this mock
+      // has to answer that request too -- without it the panel receives a
+      // project payload, and the route it lives on goes down with it.
+      if (url.includes("/retrospective")) return jsonResponse(RETRO);
       if (request.method === "PATCH") completed = true;
       return jsonResponse(projectDetailData({ is_completed: completed }));
     });

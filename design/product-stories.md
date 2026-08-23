@@ -59,7 +59,7 @@ verdicts after two releases moved one.
 
 ## The score
 
-**12 work · 3 bend · 4 impossible** — from 8 · 5 · 6 earlier on August 22, and
+**13 work · 3 bend · 3 impossible** — from 12 · 3 · 4 and 8 · 5 · 6 earlier on August 22, and
 7 · 6 · 6, 4 · 9 · 6 and 3 · 10 · 6 on August 20, 3 · 9 · 7 on August 19,
 3 · 6 · 10 on August 16, and 2 · 2 · 15 on August 12.
 
@@ -71,17 +71,18 @@ flatters* — and it flattered in the harder direction, hiding finished work
 rather than claiming unfinished work. The rule it broke is the one two lines
 down: the score lives here, so this is the copy that has to move first.
 
-**The impossible pile is four, and it is the honest shape of what is left:**
-signing up needs a policy decision, not code; the quarter and the project
-retrospective are unbuilt reads; and billing is a model nobody has started.
-`Decision` and `Source` came out of it on August 22. Nothing in it is waiting on
-a form any more, and nothing in it is waiting on a model except S19.
+**The impossible pile is three, and it is the honest shape of what is left:**
+signing up needs a policy decision, not code; the quarter is an unbuilt read;
+and billing is a model nobody has started. `Decision`, `Source` and the project
+retrospective all came out of it on August 22. **Nothing left in it is blocked
+on code the way S12 was** — one needs a policy, one needs a business, and the
+quarter needs longer horizons than anybody here has data for.
 
 | | journeys |
 |---|---|
-| **Works** | S2 the phone morning · S3 planning against capacity · S4 durable capture · S5 closing the day · S6 the honest weekly review · S7 acting on the review · S9 the week · S10 a project's why · S11 a decision returning · S14 a note that knows when · S15 reading producing work · S17 leaving with your data |
+| **Works** | S2 the phone morning · S3 planning against capacity · S4 durable capture · S5 closing the day · S6 the honest weekly review · S7 acting on the review · S9 the week · S10 a project's why · S11 a decision returning · S12 a project explaining itself · S14 a note that knows when · S15 reading producing work · S17 leaving with your data |
 | **Bends** | S13 finding what you wrote · S16 the past arriving · S18 bringing your history |
-| **Impossible** | S1 signing up · S8 the quarter · S12 a project explaining itself · S19 paying |
+| **Impossible** | S1 signing up · S8 the quarter · S19 paying |
 
 **This score lives here and nowhere else.** Other documents link to it; they do
 not quote it.
@@ -736,11 +737,65 @@ None of that is what this story asks for. `services.complete_project` still
 sets two fields and writes no record, and nothing reads a project's history back
 at the moment it ends.
 
-**Requires:** what completing a project produces — a retrospective read over its
-life, and somewhere to keep his own account of it. **This is still the story
-that makes the two cores one product**, and it is now half-built rather than
-unstarted: the link between projects and knowledge records exists and is in
-daily use.
+~~**Requires:** what completing a project produces — a retrospective read over
+its life, and somewhere to keep his own account of it.~~
+
+**Verdict: works, August 22, 2026 — the third story out of *impossible* in one
+day, and the last one that was blocked on code rather than on a decision.**
+
+**All four clauses.** `retrospective_for` (`lists/projects.py`) reports
+planned-versus-met week by week across a project's life, counts what was
+deliberately set aside separately, lists the notes that became work here and the
+decisions taken on them, and `Project.learned` holds his own account.
+`/api/v1/projects/{id}/retrospective` serves it and `ProjectRetrospective.tsx`
+shows it on completion.
+
+**Planned-versus-met is not read from outcomes, and settling that was the first
+real question.** `WeeklyOutcome` records what was *chosen* and never what became
+of it — there is no met state on that model — so a retrospective built on
+outcomes would have had to invent the judgement. `DailyFocus` already carries
+it, and `planned_in_week` already makes it. **So the judgement was extracted
+rather than copied**: `review.reads.what_became_of` is now one function with two
+callers, because a second copy would have drifted the first time either changed
+and done it silently, both going on returning plausible numbers.
+
+**Judged at each week's end, which is the rule the whole read hangs on.** A task
+finished the following Tuesday was unfinished when the week closed. A
+retrospective that judged at read time would quietly rewrite every past week
+into a success, and the figure would move each time he opened it.
+
+**Notes and decisions come from recorded provenance, and that is the line
+between a brief and a retrospective.** The brief asks *what bears on this?* and
+may answer topically, because a running project wants prompting and a plausible
+prompt costs little. A retrospective is a **record**: it follows `Node → Facet →
+Item → List → Project`, so every item in it is a row somebody wrote. A
+retrospective that was partly guessed is one he would have to check, and
+checking it is the work he wanted not to do.
+
+**`learned` is a field, not a `Retrospective` model**, by §4's test: written once
+at close and edited after, which is `purpose` and `abandon_if`'s life cycle
+exactly. It is also **the only stored part of an otherwise entirely derived
+read** — every other clause is a fold over rows that already exist, and *what I
+would do differently* is the one thing no row can answer.
+
+**And *kept for next time* is delivered on the brief, not here.** A lesson
+stored where only its own finished project can show it has been filed rather
+than kept; the moment it matters is the next project, and the brief is what
+somebody opens while one is running. It arrives named with the project that
+taught it, because a lesson with no source is an aphorism.
+
+**One thing only the browser found.** The first version rendered every week up
+to the close, which put **twenty-two empty rows** under a three-week project
+nobody had got round to marking done — and made it read as a six-month one.
+Silence *inside* the work is the finding and keeps a row each; silence *after*
+it is one fact and gets one sentence: *"Then 22 weeks with nothing pinned to a
+day for it, before you marked it done."* Counted rather than dropped, which is
+the *no silent caps* rule, and not padded either.
+
+**This was the story that makes the two cores one product**, and what made it
+buildable was the merger paying off twice in one day: `Decision` shipped that
+morning, and the provenance chain it walks is the same one S16's brief started
+walking an hour earlier.
 
 ---
 

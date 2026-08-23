@@ -19,6 +19,7 @@ import { colorForKey } from "../../agenda";
 import { apiV1 } from "../../api/client";
 import { RequestFailed, statusOf } from "../../api/failure";
 import { ProjectBrief } from "./ProjectBrief";
+import { ProjectRetrospective } from "./ProjectRetrospective";
 import { ProjectComposition } from "./ProjectComposition";
 import { RouteFailure } from "./RouteFailure";
 
@@ -557,6 +558,11 @@ export function ProjectRoute() {
               the "needs a purpose" explanation the moment it stops being
               true. */}
           <ProjectBrief projectId={id} hasPurpose={Boolean(purpose.trim())} />
+          {/* S12, and only once the work has stopped. A retrospective of a
+              running project is a status report, which the brief above already
+              is; "what did this come to" only has an answer once the answer has
+              stopped changing. */}
+          {data.is_completed && <ProjectRetrospective projectId={id} />}
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">
           {/* Said on the page, because a parked project that looked identical

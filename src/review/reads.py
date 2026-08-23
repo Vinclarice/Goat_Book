@@ -125,7 +125,7 @@ def planned_in_week(owner, week_start, week_end):
     for -- but the numerator can quietly fall, which is why §8 has
     completing a review stamp the figure it reported.
     """
-    met, unfinished, set_aside = [], [], []
+    buckets = {"met": [], "unfinished": [], "set_aside": []}
     for focus in (
         DailyFocus.objects.filter(
             owner=owner,
@@ -135,16 +135,40 @@ def planned_in_week(owner, week_start, week_end):
         .select_related("task", "entry")
         .order_by("entry__date", "position", "id")
     ):
-        released_on = _local_date(focus.released_at)
-        if released_on is not None and released_on <= week_end:
-            set_aside.append(focus)
-            continue
-        finished_on = _local_date(focus.task.completed_at if focus.task else None)
-        if finished_on is not None and finished_on <= week_end:
-            met.append(focus)
-        else:
-            unfinished.append(focus)
-    return Planned(met=met, unfinished=unfinished, set_aside=set_aside)
+        buckets[what_became_of(focus, week_end)].append(focus)
+    return Planned(**buckets)
+
+
+#: The three things a pin can have become, by the end of the week it was made in.
+BECAME = ("met", "unfinished", "set_aside")
+
+
+def what_became_of(focus, week_end) -> str:
+    """What one pin came to, judged at ``week_end``. One of `BECAME`.
+
+    **Extracted so there is one definition of this, not two** — August 22,
+    2026, when the project retrospective (S12) needed the same judgement across
+    a project's life rather than across one week. `principles.md`: one rule, one
+    authoritative definition. A second copy would have drifted the first time
+    either caller changed, and the drift would be silent, because both would
+    keep returning plausible numbers.
+
+    **Judged at the week's end rather than at read time**, which is the whole
+    reason this is a function of a date: a task finished the following Tuesday
+    was unfinished when the week closed, and a pin dropped three weeks later
+    was a real commitment while the week was running. A past week's figure must
+    not move.
+
+    A pin whose task has since been permanently deleted counts as unfinished:
+    `DailyFocus.task` is SET_NULL and there is nothing left to ask.
+    """
+    released_on = _local_date(focus.released_at)
+    if released_on is not None and released_on <= week_end:
+        return "set_aside"
+    finished_on = _local_date(focus.task.completed_at if focus.task else None)
+    if finished_on is not None and finished_on <= week_end:
+        return "met"
+    return "unfinished"
 
 
 def written_in_week(owner, week_start, week_end):

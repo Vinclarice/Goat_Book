@@ -417,6 +417,41 @@
         ]
       }
     },
+    "/api/v1/projects/{project_id}/retrospective": {
+      "get": {
+        "operationId": "lists_api_v1_project_retrospective",
+        "summary": "Project Retrospective",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectRetrospectiveOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "What a project came to, assembled rather than remembered \u2014 **S12**.\n\n**Its own route rather than part of the brief**, and the split is the point:\na brief prompts a project that is *running* and may answer topically; a\nretrospective is a record of one that is over, and every item in it is a row\nsomebody wrote. Same argument that gave the brief its own route, one state\nlater.\n\nReads only. There is nothing to confirm and nothing to stamp \u2014 see\n`projects.Retrospective`.",
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/projects/{project_id}/brief": {
       "get": {
         "operationId": "lists_api_v1_project_brief",
@@ -3318,9 +3353,162 @@
               }
             ],
             "title": "Is Paused"
+          },
+          "learned": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Learned"
           }
         },
         "title": "ProjectUpdateIn",
+        "type": "object"
+      },
+      "ProjectRetrospectiveOut": {
+        "description": "What a project came to \u2014 **S12**.\n\nWeek by week rather than one pair of numbers: a project that started well\nand stalled and one that ground along evenly have the same totals, and only\nthe first is worth knowing about.",
+        "properties": {
+          "weeks": {
+            "items": {
+              "$ref": "#/components/schemas/RetroWeekOut"
+            },
+            "title": "Weeks",
+            "type": "array"
+          },
+          "met": {
+            "title": "Met",
+            "type": "integer"
+          },
+          "unfinished": {
+            "title": "Unfinished",
+            "type": "integer"
+          },
+          "set_aside": {
+            "title": "Set Aside",
+            "type": "integer"
+          },
+          "notes": {
+            "items": {
+              "$ref": "#/components/schemas/RetroNoteOut"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "decisions": {
+            "items": {
+              "$ref": "#/components/schemas/RetroDecisionOut"
+            },
+            "title": "Decisions",
+            "type": "array"
+          },
+          "learned": {
+            "title": "Learned",
+            "type": "string"
+          },
+          "quiet_says": {
+            "title": "Quiet Says",
+            "type": "string"
+          }
+        },
+        "required": [
+          "weeks",
+          "met",
+          "unfinished",
+          "set_aside",
+          "notes",
+          "decisions",
+          "learned",
+          "quiet_says"
+        ],
+        "title": "ProjectRetrospectiveOut",
+        "type": "object"
+      },
+      "RetroDecisionOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          },
+          "chose": {
+            "title": "Chose",
+            "type": "string"
+          },
+          "considered": {
+            "title": "Considered",
+            "type": "string"
+          },
+          "decided_at": {
+            "title": "Decided At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "question",
+          "chose",
+          "considered",
+          "decided_at"
+        ],
+        "title": "RetroDecisionOut",
+        "type": "object"
+      },
+      "RetroNoteOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "captured_at": {
+            "title": "Captured At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "captured_at"
+        ],
+        "title": "RetroNoteOut",
+        "type": "object"
+      },
+      "RetroWeekOut": {
+        "properties": {
+          "week_start": {
+            "title": "Week Start",
+            "type": "string"
+          },
+          "met": {
+            "title": "Met",
+            "type": "integer"
+          },
+          "unfinished": {
+            "title": "Unfinished",
+            "type": "integer"
+          },
+          "set_aside": {
+            "title": "Set Aside",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "week_start",
+          "met",
+          "unfinished",
+          "set_aside"
+        ],
+        "title": "RetroWeekOut",
         "type": "object"
       },
       "BriefCommitmentOut": {
@@ -3434,6 +3622,30 @@
         "title": "BriefItemOut",
         "type": "object"
       },
+      "BriefLessonOut": {
+        "description": "What an earlier finished project taught \u2014 **S12's *kept for next time***.\n\nNamed with its project, because a lesson with no source is an aphorism.",
+        "properties": {
+          "project_id": {
+            "title": "Project Id",
+            "type": "integer"
+          },
+          "project_title": {
+            "title": "Project Title",
+            "type": "string"
+          },
+          "learned": {
+            "title": "Learned",
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_id",
+          "project_title",
+          "learned"
+        ],
+        "title": "BriefLessonOut",
+        "type": "object"
+      },
       "BriefSourceOut": {
         "description": "Something read that this project's material came out of \u2014 **S16**.\n\n`reason` is a fact rather than a score, like `BriefItemOut`'s and for the\nsame argument: the person can check *a note here came out of it* and cannot\ncheck a number.",
         "properties": {
@@ -3514,6 +3726,13 @@
             "title": "Provenance Says",
             "type": "string"
           },
+          "learned_before": {
+            "items": {
+              "$ref": "#/components/schemas/BriefLessonOut"
+            },
+            "title": "Learned Before",
+            "type": "array"
+          },
           "abandon_if": {
             "title": "Abandon If",
             "type": "string"
@@ -3526,6 +3745,7 @@
           "sources",
           "decisions",
           "provenance_says",
+          "learned_before",
           "abandon_if"
         ],
         "title": "ProjectBriefOut",

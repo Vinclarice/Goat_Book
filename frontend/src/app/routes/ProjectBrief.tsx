@@ -62,7 +62,8 @@ export function ProjectBrief({
     !data.questions.length &&
     !data.commitments.length &&
     !data.sources.length &&
-    !data.decisions.length;
+    !data.decisions.length &&
+    !data.learned_before.length;
 
   return (
     <section className="mt-6 border-t border-border pt-4">
@@ -158,6 +159,29 @@ export function ProjectBrief({
                       )}
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">{source.reason}</p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {data.learned_before.length > 0 && (
+            <div>
+              <h3 className="text-sm font-bold">What earlier projects taught you</h3>
+              {/* S12's "kept for next time". A lesson stored where only its own
+                  finished project can show it has been filed, not kept -- and
+                  the moment it matters is the next project, which is this one.
+                  Named with its source, because a lesson with no source is an
+                  aphorism and he cannot judge whether it still applies. */}
+              <ul className="mt-2 space-y-2">
+                {data.learned_before.map((lesson) => (
+                  <li
+                    key={lesson.project_id}
+                    className="rounded-lg border border-border px-3 py-2"
+                  >
+                    <p className="text-sm">{lesson.learned}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      from {lesson.project_title}
+                    </p>
                   </li>
                 ))}
               </ul>

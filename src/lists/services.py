@@ -965,6 +965,24 @@ def create_project(owner, title, due_date=None, purpose=""):
 
 
 @transaction.atomic
+def record_what_was_learned(project, text):
+    """What he would do differently — **S12's fourth clause**.
+
+    Its own verb rather than a field on the completion call, because the two
+    happen at different moments: a project is marked done when the work stops,
+    and the lesson arrives while looking at what the retrospective shows. Making
+    one write both would mean closing a project demanded a sentence nobody has
+    thought of yet, which is the toll `confirm_actionable` refuses to charge for
+    filing.
+
+    **Editable and never cleared by anything else.** A learning lost at the next
+    state change is worse than none, because he would stop writing them.
+    """
+    project.learned = (text or "").strip()
+    project.save(update_fields=["learned"])
+    return project
+
+
 def complete_project(project):
     """Mark a project done, without touching a single one of its tasks.
 

@@ -983,8 +983,23 @@ def record_what_was_learned(project, text):
     return project
 
 
+@transaction.atomic
 def complete_project(project):
     """Mark a project done, without touching a single one of its tasks.
+
+    **The decorator was missing from the day this was written**, and it is the
+    only one of the four project state changes that lacked it -- `reopen`,
+    `pause` and `resume` all have it. `select_for_update()` below needs a
+    transaction and Postgres refuses it outside one, so `PATCH
+    /api/v1/projects/{id}` with `is_completed` returned a 500 in production
+    from Release D until August 23, 2026.
+
+    **Every unit test covering it passed the whole time**, because Django's
+    `TestCase` wraps each test in a transaction and so supplied exactly the
+    thing the code was missing. A test that provides the conditions production
+    code depends on cannot discover that it depends on them. The browser suite
+    found it; `tests/test_completing_a_project_outside_a_transaction.py` now
+    holds it in a second rather than a minute.
 
     Charter rule 5 -- a project references its tasks, it does not own their
     status. Someone finishing a project has said the *grouping* is done; if

@@ -1,24 +1,34 @@
-"""Completing a project 500s in production — **found by the browser suite**.
+"""Completing a project needs no transaction opened for it — and briefly did.
 
-`services.complete_project` locks its row with `select_for_update()` and is the
-**only one of its four siblings without `@transaction.atomic`**:
-`reopen_project`, `pause_project` and `resume_project` all have it. Postgres
-refuses `SELECT … FOR UPDATE` outside a transaction, so the call raises
-`TransactionManagementError` and `PATCH /api/v1/projects/{id}` returns a 500.
+`services.complete_project` locks its row with `select_for_update()`, which
+Postgres refuses outside a transaction, so without `@transaction.atomic` the
+call raises `TransactionManagementError` and `PATCH /api/v1/projects/{id}`
+returns a 500.
 
-**It has been live since Release D**, and every unit test covering it passed the
-whole time — because Django's `TestCase` wraps each test in a transaction, which
-supplies the very thing the code is missing. That is the failure mode this file
-exists to close: **a test that provides the conditions the production code
-depends on cannot discover that the code depends on them.**
+**It lost that decorator for four hours on August 23, 2026, and to a slip worth
+naming.** S12 inserted `record_what_was_learned` immediately above it by
+anchoring a text replacement on `def complete_project(project):` — which placed
+the new function **between the decorator and its def**. The new function
+silently acquired it and this one lost it. Nothing looked wrong: both read
+correctly in isolation, and the diff showed an addition rather than a move.
+**Anchoring an insertion on a `def` line is unsafe wherever a decorator can sit
+above it.**
+
+**Every unit test covering completion still passed**, because Django's
+`TestCase` wraps each test in a transaction and so supplied exactly the thing
+the code had lost. That is the failure this file closes: **a test that provides
+the conditions production code depends on cannot discover that it depends on
+them.**
 
 **`TransactionTestCase`, deliberately**, which commits rather than wrapping. It
 is slower and it is the only kind of test that can see this.
 
-**Found on August 23, 2026 by `functional_tests`**, run before a deploy because
-routing and session handling had changed. Two smoke tests had been failing on
-this; the suite is not part of the ordinary edit-and-test loop, which is how a
-live 500 stayed invisible while five other suites were green.
+**It never reached production.** CI's browser job failed on the commit that
+introduced it and on the next, and the fix went out in the same deploy — so the
+`LIVE` before it and the `LIVE` after it both have the decorator. An earlier
+version of this docstring said it had been live since Release D; that was wrong,
+and the correction is the interesting part, because the browser suite that
+caught it locally is the same one CI had already gone red on.
 """
 
 from django.db import transaction

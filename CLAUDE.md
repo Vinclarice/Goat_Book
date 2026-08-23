@@ -160,6 +160,18 @@ reported as green from a local run whose summary said `411 passed`. The failure
 was a React component throwing inside a test whose mock returned the wrong
 shape, which is a passing test *and* a broken render at the same time.
 
+**The same three runs were red on the browser job too, and reading only the
+summary hid that as well** — the conclusion drawn at the time was that CI had
+stopped running that job, when in fact it had caught a real regression within
+the hour. `gh run view <id>` per job, before believing anything about CI.
+
+**And the regression it caught is its own trap: anchoring a text insertion on a
+`def` line steals any decorator above it.** A new function inserted before
+`def complete_project` landed *between* that def and its `@transaction.atomic`,
+so the new function acquired it and the old one lost it. Both read correctly in
+isolation and the diff showed an addition rather than a move. **Anchor above the
+decorator, or below the previous function's last line.**
+
 **Two Python runners, and both are real.** The task core runs on
 `manage.py test`; the knowledge core arrived with 500-odd pytest-style tests and
 stays on `pytest`, because converting them would be a large mechanical rewrite

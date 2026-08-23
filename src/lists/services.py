@@ -964,7 +964,6 @@ def create_project(owner, title, due_date=None, purpose=""):
     )
 
 
-@transaction.atomic
 def record_what_was_learned(project, text):
     """What he would do differently — **S12's fourth clause**.
 
@@ -977,6 +976,12 @@ def record_what_was_learned(project, text):
 
     **Editable and never cleared by anything else.** A learning lost at the next
     state change is worse than none, because he would stop writing them.
+
+    **No `@transaction.atomic`**, matching `set_abandonment_condition` and unlike
+    `set_desired_outcome`: one `save()` is already atomic. It briefly had one --
+    `complete_project`'s, taken by accident when this was inserted above it --
+    and keeping a decorator acquired that way would be making a decision out of
+    a slip.
     """
     project.learned = (text or "").strip()
     project.save(update_fields=["learned"])
@@ -987,19 +992,25 @@ def record_what_was_learned(project, text):
 def complete_project(project):
     """Mark a project done, without touching a single one of its tasks.
 
-    **The decorator was missing from the day this was written**, and it is the
-    only one of the four project state changes that lacked it -- `reopen`,
-    `pause` and `resume` all have it. `select_for_update()` below needs a
-    transaction and Postgres refuses it outside one, so `PATCH
-    /api/v1/projects/{id}` with `is_completed` returned a 500 in production
-    from Release D until August 23, 2026.
+    **The decorator went missing for four hours on August 23, 2026, and it was
+    stolen rather than forgotten.** S12 inserted `record_what_was_learned`
+    immediately above this function by anchoring a text replacement on
+    `def complete_project(project):` -- which put the new function *between this
+    decorator and its def*, so `record_what_was_learned` silently acquired it
+    and this lost it. `select_for_update()` below needs a transaction, so
+    `PATCH /api/v1/projects/{id}` with `is_completed` began returning a 500.
 
-    **Every unit test covering it passed the whole time**, because Django's
-    `TestCase` wraps each test in a transaction and so supplied exactly the
-    thing the code was missing. A test that provides the conditions production
-    code depends on cannot discover that it depends on them. The browser suite
-    found it; `tests/test_completing_a_project_outside_a_transaction.py` now
-    holds it in a second rather than a minute.
+    **Anchoring an insertion on a `def` line is unsafe whenever a decorator can
+    sit above it**, and nothing about the edit looked wrong afterwards: both
+    functions read correctly in isolation and the diff showed an addition, not a
+    move.
+
+    **Every unit test covering it still passed**, because Django's `TestCase`
+    wraps each test in a transaction and so supplied exactly the thing the code
+    had lost. A test that provides the conditions production code depends on
+    cannot discover that it depends on them. CI's browser job caught it within
+    the hour; `tests/test_completing_a_project_outside_a_transaction.py` now
+    holds it in a second rather than the minute that suite costs.
 
     Charter rule 5 -- a project references its tasks, it does not own their
     status. Someone finishing a project has said the *grouping* is done; if

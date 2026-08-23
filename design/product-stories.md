@@ -59,7 +59,8 @@ verdicts after two releases moved one.
 
 ## The score
 
-**13 work · 3 bend · 3 impossible** — from 12 · 3 · 4 and 8 · 5 · 6 earlier on August 22, and
+**13 work · 4 bend · 2 impossible** — from 13 · 3 · 3 and 12 · 3 · 4 on August 22,
+8 · 5 · 6 earlier that day, and
 7 · 6 · 6, 4 · 9 · 6 and 3 · 10 · 6 on August 20, 3 · 9 · 7 on August 19,
 3 · 6 · 10 on August 16, and 2 · 2 · 15 on August 12.
 
@@ -71,18 +72,22 @@ flatters* — and it flattered in the harder direction, hiding finished work
 rather than claiming unfinished work. The rule it broke is the one two lines
 down: the score lives here, so this is the copy that has to move first.
 
-**The impossible pile is three, and it is the honest shape of what is left:**
-signing up needs a policy decision, not code; the quarter is an unbuilt read;
-and billing is a model nobody has started. `Decision`, `Source` and the project
-retrospective all came out of it on August 22. **Nothing left in it is blocked
-on code the way S12 was** — one needs a policy, one needs a business, and the
-quarter needs longer horizons than anybody here has data for.
+**The impossible pile is two: the quarter and billing.** One is an unbuilt read
+that wants longer horizons than there is data for; the other is a model nobody
+has started, and nobody will until there is a business. `Decision`, `Source` and
+the project retrospective came out of the pile on August 22, and signing up on
+August 23. **Nothing left in it is blocked on a decision** — that was S1, and it
+was taken.
+
+**Three of the four bends are now one question each, and none of them is code.**
+S1 and S16 both wait on the same thing: whether a stranger, or an unrequested
+interruption, is what this product is for. S18 is import.
 
 | | journeys |
 |---|---|
 | **Works** | S2 the phone morning · S3 planning against capacity · S4 durable capture · S5 closing the day · S6 the honest weekly review · S7 acting on the review · S9 the week · S10 a project's why · S11 a decision returning · S12 a project explaining itself · S14 a note that knows when · S15 reading producing work · S17 leaving with your data |
-| **Bends** | S13 finding what you wrote · S16 the past arriving · S18 bringing your history |
-| **Impossible** | S1 signing up · S8 the quarter · S19 paying |
+| **Bends** | S1 signing up · S13 finding what you wrote · S16 the past arriving · S18 bringing your history |
+| **Impossible** | S8 the quarter · S19 paying |
 
 **This score lives here and nowhere else.** Other documents link to it; they do
 not quote it.
@@ -217,8 +222,9 @@ moved* is exactly the reading a stale score would have hidden.
 first screen offers one obvious thing to do rather than six concepts, and within
 four minutes he has captured a thought and planned a day.
 
-**Verdict: still impossible, and now for one reason instead of four.**
-Re-checked August 18, 2026, after three of its four requires shipped.
+~~**Verdict: still impossible, and now for one reason instead of four.**~~
+Re-checked August 18, 2026, after three of its four requires shipped; **the
+fourth shipped on August 23 and the verdict is below.**
 
 **Closed:** the landing page is no longer a login form; `/app/day` teaches a
 brand-new account instead of showing it three empty states it cannot act on;
@@ -226,22 +232,43 @@ and signup verifies an address — `accounts/tokens.py` signs a single-use link,
 `emails.send_activation_email` is the message this module never had, and the
 two waits are told apart at the login form rather than blurred into one.
 
-**Open, and load-bearing:** `is_active` is still approval and approval is still
-a person. Vince's call, August 18, and a defensible one while the site is
-invitation-only and `roadmap.md` still lists a privacy policy as unwritten — but
-this story's done-means says *without waiting for a human*, so it cannot be
-scored on anything else. `email_confirmed_at` now carries confirmation so the
-two facts are separable, which is what makes closing this later a change of
-policy rather than of design.
+~~**Open, and load-bearing:** `is_active` is still approval and approval is
+still a person.~~ **Closed August 23, 2026 — invitation links** (Vince's call,
+asked and answered). He mints one, whoever holds it signs up, and the account
+works immediately: the approval happened when the link was made, so there is a
+person in the story and **nobody in the loop**.
 
-**What the shipped half is worth**, since "impossible" now hides it: he learns
-the form worked, learns what he is waiting for, and can recover a lost
-confirmation email himself. Before, he signed up and was told nothing at all.
+**The separation built a week early paid off exactly as predicted.** This entry
+said *"`email_confirmed_at` now carries confirmation so the two facts are
+separable, which is what makes closing this later a change of policy rather than
+of design."* It was: an invited account is active at once, and the confirmation
+mail still goes and still stamps `email_confirmed_at`. **Four minutes does not
+include a round trip to an inbox.**
+
+**Public self-service was the other way to close it and is refused.** It is what
+this story literally describes and it is five lines; the posture answered on
+August 20 is *personal tool with an intent to invite*, and that is the reason.
+Not the privacy policy — **that argument was made and it was wrong**: `/terms/`
+and `/privacy/` have both been live for some time, and the claim they were
+unwritten came from a stale line in `CLAUDE.md`, since fixed.
+
+**Verdict: bends, moved from *impossible*.** Every clause of the done-means is
+met and was walked end to end in a browser — invitation link, form, signed in,
+landed on a first-run day page reading *"Start with one thing you mean to do"*.
+
+**What it bends on is who Sam is.** The personas call him *a stranger*, and a
+stranger with no invitation still lands in the same queue as before. So the
+journey completes for **Priya**, who is invited, and not for **Sam**, who is
+not. That is the shape S16 bends on too, and it is the same call: the product
+has a considered position and the journey was written before it. **Not scored as
+*works*, because "he" in this story is a stranger and the entry may not decide
+that for itself.**
 
 **Requires:** ~~self-service signup with email verification~~, ~~a first-run
 path~~, ~~an empty state that teaches~~, ~~a landing page that is not a login
-form~~ — and the one that remains: **approval that is not a person**, or a
-decision that this story is not the target after all.
+form~~, ~~approval that is not a person~~ — **all five shipped.** What remains is
+not a require: **a decision about whether the stranger is the target**, which is
+what the original line offered as the alternative all along.
 
 ### S2. Priya's morning, on a phone
 

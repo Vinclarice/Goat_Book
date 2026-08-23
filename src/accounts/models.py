@@ -1,6 +1,7 @@
 import hashlib
 import secrets
 from datetime import timedelta
+import uuid
 from functools import lru_cache
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError, available_timezones
 
@@ -371,3 +372,96 @@ class PersonalAccessToken(models.Model):
             expires_at=expires_at,
         )
         return instance, raw
+
+
+class Invitation(models.Model):
+    """A link that makes an account without a person in the loop — **S1**.
+
+    S1's last require was *approval that is not a person*, and this is the
+    answer taken on August 23, 2026. Vince mints one, whoever holds it signs up,
+    and the account works immediately: the approval happened when the link was
+    made, so there is a person in the story and **nobody in the loop**.
+
+    **Not public self-service**, which was the other way to close it and is five
+    lines. Refused because the posture answered on August 20 is *personal tool
+    with an intent to invite*, and because terms and a privacy policy are still
+    unwritten — opening signup to strangers before those exist would be
+    collecting other people's data with nothing published about what happens to
+    it.
+
+    **It earns its own model**, by §4's test rather than by having a name.
+    `accounts/tokens.py` is stateless on the argument that *"a token whose whole
+    existence is 'this URL is valid until it is used' has no life cycle at
+    all."* An invitation does have one — minted, held, redeemed or expired or
+    revoked — and it is worth listing: *who have I invited, and did they come?*
+    is a question only a table answers.
+
+    **Charter compliance** (`architecture-trajectory.md` §4):
+
+    - Rule 1, owned at birth: `created_by` is non-null from this migration.
+    - Rule 2, public identifier: `public_id`, and here it is also the
+      credential. A UUID4 is 122 bits of randomness, so guessing one is not a
+      threat; what it buys over a hashed secret is that the link stays
+      **re-displayable**, and a lost link that nobody can see is dead is worse
+      than one that can be read off the page again.
+    - Rule 3, snapshot: none needed. Nothing here is a copy of something that
+      can change underneath it.
+    - Rule 6, deletion: **revoked, not deleted.** Deleting the row would make
+      *who have I invited* quietly unanswerable, which is the question the model
+      exists for.
+    """
+
+    #: Fourteen days. Long enough to survive a holiday, short enough that a
+    #: forwarded link found in an old inbox is dead. The window is the whole
+    #: protection, since holding the link is all it takes to use it.
+    LIFETIME = timedelta(days=14)
+
+    public_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    created_by = models.ForeignKey(
+        "accounts.User", related_name="invitations_sent", on_delete=models.CASCADE
+    )
+    #: Who it is for, in Vince's own words.
+    #:
+    #: **Not an email address, deliberately.** Binding the invitation to one
+    #: means a typo kills it and a forward is refused, and he already chooses
+    #: who to send it to. This is so *he* can tell two open invitations apart a
+    #: fortnight later.
+    note = models.CharField(max_length=100, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    redeemed_at = models.DateTimeField(null=True, blank=True)
+    redeemed_by = models.ForeignKey(
+        "accounts.User",
+        related_name="invitation_used",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    revoked_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ("-created_at", "-id")
+
+    def save(self, *args, **kwargs):
+        if not self.expires_at:
+            self.expires_at = timezone.now() + self.LIFETIME
+        return super().save(*args, **kwargs)
+
+    @property
+    def is_usable(self) -> bool:
+        return (
+            self.redeemed_at is None
+            and self.revoked_at is None
+            and self.expires_at > timezone.now()
+        )
+
+    @property
+    def path(self) -> str:
+        """The invitation's own URL path. Absolute URLs need a request."""
+        from django.urls import reverse
+
+        return reverse("join", kwargs={"public_id": self.public_id})
+
+    def __str__(self):
+        who = self.note or "someone"
+        return f"invitation for {who} ({'live' if self.is_usable else 'spent'})"

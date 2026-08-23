@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% comment %}
+Every dead invitation lands here: expired, already used, revoked, and one that
+never existed. Four things to us and one thing to whoever is holding the link.
+
+`activate`'s page makes the same choice against account enumeration. Here the id
+is a UUID4 and cannot be walked, so the reason is a different one: the holder of
+a *forwarded* copy should not learn whether somebody else got there first, and
+nobody in any of the four cases can do anything except ask for another link.
+
+So there is no self-service recovery button, unlike the activation page — the
+person who can help is the person who sent it, and inventing a "request access"
+form here would be public signup by the back door.
+{% endcomment %}
+
+{% block title %}That invitation isn't usable · Clarice{% endblock %}
+
+{% block content %}
+  <section class="mx-auto max-w-md py-10">
+    <div class="rounded-sm border border-border bg-card p-6 sm:p-8 space-y-5">
+      <h1 class="font-sans text-2xl font-bold tracking-tight">That invitation is no longer usable</h1>
+      <p class="text-muted-foreground">
+        Invitations can only be used once, and they expire after a couple of
+        weeks. Ask whoever sent it for a fresh link.
+      </p>
+      <div class="flex flex-wrap items-center gap-4 pt-1">
+        <a class="touch-target inline-flex min-h-11 items-center rounded-sm border border-text bg-text px-5 font-sans text-sm font-semibold text-bg transition-colors hover:bg-transparent hover:text-text"
+           href="{% url 'home' %}">What Clarice is</a>
+        <a class="touch-target inline-flex min-h-11 items-center text-sm text-accent hover:underline"
+           href="{% url 'login' %}">Log in</a>
+      </div>
+    </div>
+  </section>
+{% endblock %}

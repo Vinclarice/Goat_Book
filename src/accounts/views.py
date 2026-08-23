@@ -3,7 +3,7 @@ import logging
 
 from django.conf import settings
 from django.contrib import messages
-from django.contrib.auth import update_session_auth_hash
+from django.contrib.auth import login, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import PasswordChangeForm
 from django.http import HttpResponseRedirect
@@ -26,9 +26,10 @@ from accounts.emails import (
     send_support_message,
 )
 from accounts.forms import ContactForm, LoginForm, SignUpForm, TokenForm
+from accounts.services import redeem_invitation
 from accounts.mfa import enrolment_qr, issue_recovery_codes
 from django_otp.plugins.otp_totp.models import TOTPDevice
-from accounts.models import PersonalAccessToken, User
+from accounts.models import Invitation, PersonalAccessToken, User
 from accounts.tokens import activation_token
 
 
@@ -204,6 +205,61 @@ def signup(request):
         )
 
     return render(request, "accounts/signup.html", {"form": form})
+
+
+def join(request, public_id):
+    """Signing up through an invitation — **S1's last require, closed**.
+
+    S1's done-means asks for *a usable workspace without waiting for a human*,
+    and until now `is_active` was approval and approval was a person. The
+    approval still is a person: it happens when Vince mints the link. **What is
+    gone is the person in the loop**, which is the clause the story actually
+    makes.
+
+    **The account is active immediately, and the confirmation mail still
+    goes.** `is_active` and `email_confirmed_at` were separated a week ago for
+    exactly this — S1's own entry called it *"what makes closing this later a
+    change of policy rather than of design."* Vince vouched for the person,
+    which is what activation records; nobody has yet proved the address receives
+    mail, which is what confirmation records, and the digest and password reset
+    both need it. Four minutes does not include a round trip to an inbox.
+
+    **Signed in on success**, unlike `activate`. There it would have been a way
+    past approval; here the invitation *is* the approval, so the alternative is
+    a working account behind a login form the person has no reason to expect.
+
+    **Every dead invitation renders the same page** — expired, redeemed, revoked
+    and never-existed are four things to us and one thing to whoever is holding
+    the link: *ask for another*. Same choice `activate` makes, and here it also
+    avoids telling the holder of a forwarded copy whether somebody else got
+    there first.
+    """
+    if request.user.is_authenticated:
+        return redirect("dashboard")
+
+    invitation = Invitation.objects.filter(public_id=public_id).first()
+    if invitation is None or not invitation.is_usable:
+        return render(request, "accounts/invitation_spent.html")
+
+    form = SignUpForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        user = redeem_invitation(invitation, form)
+        # Before the mail: a failing SMTP server must not cost somebody the
+        # session their invitation just bought them. `_send_activation` already
+        # swallows and logs, and the same reasoning applies one step earlier.
+        #
+        # **The backend is named**, because `login` can only infer one from a
+        # user that came back from `authenticate` and this one came from a
+        # form. `AxesBackend` is first in the list and is the wrong answer here:
+        # it exists to count failed *credential* attempts, and there were no
+        # credentials to check -- the invitation was the credential.
+        login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+        _send_activation(request, user)
+        return redirect("dashboard")
+
+    return render(
+        request, "accounts/join.html", {"form": form, "invitation": invitation}
+    )
 
 
 def activate(request, uidb64, token):

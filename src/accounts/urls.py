@@ -6,6 +6,9 @@ from . import views
 
 urlpatterns = [
     path("signup/", views.signup, name="signup"),
+    # S1. Signing up through an invitation, which activates immediately --
+    # the approval happened when the link was minted. See accounts.views.join.
+    path("join/<uuid:public_id>/", views.join, name="join"),
     # Confirming the address is what activates an account now; there is no
     # admin step. See accounts.views.activate and accounts.tokens.
     path(

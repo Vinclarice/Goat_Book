@@ -23,7 +23,7 @@ from decimal import Decimal
 from io import BytesIO
 from uuid import UUID
 
-from accounts.models import PersonalAccessToken, User
+from accounts.models import Invitation, PersonalAccessToken, User
 from daily.models import DailyEntry, DailyFocus
 from lists.models import (
     Bill,
@@ -78,6 +78,13 @@ SECRETS = frozenset({"password", "token_hash"})
 EXPORT_KEYS = {
     User: "account",
     PersonalAccessToken: "tokens",
+    # Who this person invited, and whether they came -- S1. Exported rather
+    # than withheld even though `public_id` is the credential: an invitation is
+    # a single-use, expiring link to an account with nothing in it, the export
+    # goes to the person who minted it, and the same id is already on their own
+    # admin page. Withholding it would make *who have I invited* one of the few
+    # questions their archive could not answer.
+    Invitation: "invitations",
     List: "areas",
     Project: "projects",
     Item: "items",
@@ -208,6 +215,7 @@ def _payload(user, *, now):
             # connected, which is a fact about the account rather than a
             # separate kind of record.
             "tokens": _rows(user.tokens.all()),
+            "invitations": _rows(user.invitations_sent.all()),
         },
         "tasks": {
             "areas": _rows(List.objects.filter(owner=user)),

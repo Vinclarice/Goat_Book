@@ -101,9 +101,17 @@ could become a task without a filing question.
 **There is no open production defect list.** All ten from the August 12 audit
 closed on August 15; what they were and what fixed them is in
 `design/roadmap-history.md`. When there is a list again it lives in
-`design/commercial-blueprint.md` Part 1 and **is not copied here.** The
-commercial substrate's next pieces are terms, a privacy policy, and the three
-open decisions in that file's Part 9.
+`design/commercial-blueprint.md` Part 1 and **is not copied here.**
+
+~~The commercial substrate's next pieces are terms, a privacy policy, and the
+three open decisions in that file's Part 9.~~ **All five of those landed and
+this line went stale — corrected August 23, 2026.** `/terms/` and `/privacy/`
+are live and linked from both signup forms, and Part 9 closed on August 20. The
+line cost something before it was noticed: it was quoted as a reason in a
+recommendation about opening public signup, and the reason was false. **Which is
+this file's own warning, a second time** — see the paragraph above about the
+defect list. Do not restate what
+[`design/commercial-blueprint.md`](design/commercial-blueprint.md) owns.
 
 **The rule that protected the merger has expired, recorded here so it is not
 reapplied**: *nothing here grows to serve Second Mind — no new endpoint, no

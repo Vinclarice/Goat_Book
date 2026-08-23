@@ -15,6 +15,7 @@ signed-link email flow has to exist.
 from datetime import timedelta
 
 from django.db import connection, transaction
+from django.utils import timezone
 
 from accounts import emails
 from mind.models import ActivityEvent
@@ -161,3 +162,26 @@ def purge_account(user, *, now):
     if address:
         emails.confirm_account_erased(username=username, email=address)
     return removed
+
+
+@transaction.atomic
+def redeem_invitation(invitation, form):
+    """Create the invited account and spend the invitation, together — **S1**.
+
+    **One transaction, and that is the whole reason this is a service rather
+    than four lines in the view.** An account created against an invitation that
+    was not marked spent is a second way in; an invitation marked spent with no
+    account behind it is a link somebody paid for and cannot use. Neither is
+    recoverable by hand from the outside.
+
+    `is_active` is set here rather than in `SignUpForm.save`, which stays the
+    public form's behaviour: a stranger with no invitation still waits.
+    """
+    user = form.save(commit=False)
+    user.is_active = True
+    user.save()
+
+    invitation.redeemed_at = timezone.now()
+    invitation.redeemed_by = user
+    invitation.save(update_fields=["redeemed_at", "redeemed_by"])
+    return user

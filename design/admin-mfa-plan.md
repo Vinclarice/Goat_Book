@@ -1,7 +1,7 @@
 # A second factor on the accounts that can read everything
 
-Vince · plan · written August 19, 2026 · **increments 1, 2 and 4 shipped;
-3 is Vince's and is not done, so 4 must not deploy yet**
+Vince · plan · written August 19, 2026 · **all four increments done;
+3 confirmed in production August 23, 2026**
 
 ## What this closes
 
@@ -161,12 +161,20 @@ it backwards means deploying a lock and then discovering you are outside it.
 |---|---|---|
 | 1 | Apps, migrations, middleware. **No enforcement.** | its own deploy |
 | 2 | Enrolment and recovery codes at `/accounts/security/` | 1, or just after |
-| 3 | **Vince enrols in production** | nothing — it is a person's step |
+| 3 | ~~**Vince enrols in production**~~ **done August 23, 2026** | nothing — it is a person's step |
 | 4 | ~~Enforcement, **and** closing 2.1 together~~ **built August 23, 2026** | one deploy, after 3 |
 
-**Increment 4 is written and merged and must not deploy until 3 is done.**
-Checked on August 23: `vince-admin` in production has no TOTP device and no
-recovery codes. Enrolment is already live at `/accounts/security/`, so this is
+~~**Increment 4 is written and merged and must not deploy until 3 is
+done.**~~ **3 is done** — `vince-admin` in production carries a confirmed TOTP
+device and ten recovery codes, verified rather than taken on report.
+
+**And verifying it was worth doing, because the first attempt enrolled the wrong
+account.** The device landed on `Vrbeall01` — the account actually used daily,
+and not a staff account — while `vince-admin`, the only account the gate applies
+to, still had none. Deploying then would have produced exactly the lockout this
+ordering exists to prevent. **Which is the argument for `roadmap.md`'s open
+question about retiring the second admin account**: a staff login used twice a
+month is one whose second factor will be missing at the moment it is needed. Enrolment is already live at `/accounts/security/`, so this is
 two minutes rather than a blocker — and because that page sits outside the
 admin, deploying enforcement first would be an inconvenience rather than the
 lockout this ordering was written to prevent. The ordering is still right; the
@@ -205,8 +213,10 @@ round: two commits, one deploy.
    once and shown once. Plus the two regression tests the interactions demand:
    an export archive contains neither the device key nor any static token
    (2.2), and `purge_account` removes the devices and says so (2.3).
-3. Not a code change. Recorded when done, with the recovery codes stored
-   somewhere that is not the laptop holding the password.
+3. ~~Not a code change. Recorded when done, with the recovery codes stored
+   somewhere that is not the laptop holding the password.~~ **Done August 23,
+   2026**, and checked against production rather than reported: one confirmed
+   `TOTPDevice` and ten unspent recovery tokens on `vince-admin`.
 4. A superuser with a correct password and no verified device is refused by
    `/admin/`, proved by a test that authenticates successfully and is still
    turned away — **not** by a test that fails to authenticate, which would pass

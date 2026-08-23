@@ -66,10 +66,16 @@ re-add it here.
   of the three and **was unclaimed by this file until now**, which is its own
   small version of the seam problem.
 
-  **MFA on the admin is built** —
-  [`admin-mfa-plan.md`](admin-mfa-plan.md) increment 4, its top-ranked item.
-  **It must not deploy until Vince enrols in production**, which is increment 3
-  and takes two minutes at `/accounts/security/`.
+  **MFA on the admin is built and enrolled** —
+  [`admin-mfa-plan.md`](admin-mfa-plan.md) increment 4, its top-ranked item;
+  increment 3 confirmed in production on August 23, 2026. **Ready to deploy.**
+
+  **One question it left open.** Enrolment first landed on `Vrbeall01`, the
+  account in daily use, which is not staff — while `vince-admin`, the only one
+  the gate applies to, had none. Both carry a factor now, and the better end
+  state is probably one account rather than two: a staff login used twice a
+  month is one whose second factor will be missing at the moment it is needed.
+  Vince's call, and not a thing to slip into a deploy.
 
   **The restore drill has still never been run**, and is the other one. The
   August 1 pass compared 18 tables at 53 migrations; there are 77 now, plus the

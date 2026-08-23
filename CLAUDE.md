@@ -145,6 +145,21 @@ pnpm --dir frontend test
 pnpm --dir frontend build
 ```
 
+**`pnpm test` can print `411 passed` and exit 1.** Vitest reports *unhandled
+errors* — an exception thrown during a render that no assertion caught — in a
+separate block from the test tally, and fails the run on them while the tally
+still reads green. CI checks the exit code; a human reading the summary line
+does not. **Read `$?`, not the last line**, and that goes for every runner here:
+
+```powershell
+pnpm --dir frontend test -- --run; echo "EXIT = $LASTEXITCODE"
+```
+
+It cost a deploy on August 23, 2026: three commits went out with CI red, each
+reported as green from a local run whose summary said `411 passed`. The failure
+was a React component throwing inside a test whose mock returned the wrong
+shape, which is a passing test *and* a broken render at the same time.
+
 **Two Python runners, and both are real.** The task core runs on
 `manage.py test`; the knowledge core arrived with 500-odd pytest-style tests and
 stays on `pytest`, because converting them would be a large mechanical rewrite

@@ -42,6 +42,61 @@ function projectDetailData(overrides: Record<string, unknown> = {}) {
   };
 }
 
+/* The retrospective -- S12.
+
+   Unlike the brief it loads without being asked, and the difference is the
+   Attention Policy rather than an inconsistency: the policy permits a queue
+   inside a ritual somebody chose to open, and marking a project complete is
+   that ritual. Having just declared the work over, being shown what it came
+   to is the thing asked for. */
+const RETRO = {
+  weeks: [
+    { week_start: "2026-03-02", met: 2, unfinished: 1, set_aside: 0 },
+    { week_start: "2026-03-09", met: 0, unfinished: 0, set_aside: 0 },
+    { week_start: "2026-03-16", met: 1, unfinished: 0, set_aside: 2 },
+  ],
+  met: 3,
+  unfinished: 1,
+  set_aside: 2,
+  notes: [
+    {
+      id: "55555555-5555-5555-5555-555555555555",
+      text: "The form needs a deposit field.",
+      captured_at: "2026-03-03T09:00:00-04:00",
+    },
+  ],
+  decisions: [
+    {
+      id: "66666666-6666-6666-6666-666666666666",
+      question: "Deposit up front?",
+      chose: "Yes, 20%",
+      considered: "Invoice afterwards",
+      decided_at: "2026-03-04T09:00:00-04:00",
+    },
+  ],
+  learned: "",
+  quiet_says: "Then 8 weeks with nothing pinned to a day for it, before you marked it done",
+};
+
+
+/* Everything the project page fetches that is *not* the project.
+ *
+ * **One place, because three separate hand-rolled mocks broke on one new
+ * sub-component in a single day.** Each of these mocks ends with a catch-all
+ * returning the project payload, so a request nobody anticipated does not fail
+ * loudly — it succeeds with the wrong shape, and the component reading it takes
+ * the whole route down. `ProjectRetrospective` reading `data.weeks.length` off a
+ * project is what that looks like.
+ *
+ * Returns null when the URL is the project's own, which is the caller's to
+ * answer because only the caller knows what state it is testing.
+ */
+function sideRequests(url: string) {
+  if (url.includes("/api/v1/nav")) return jsonResponse(NAV);
+  if (url.includes("/retrospective")) return jsonResponse(RETRO);
+  return null;
+}
+
 const NAV = {
   areas: [],
   projects: [],
@@ -55,7 +110,8 @@ const NAV = {
 function projectPageFetch(data: object = projectDetailData()) {
   return (input: RequestInfo | URL) => {
     const url = typeof input === "string" ? input : (input as Request).url;
-    if (url.includes("/api/v1/nav")) return jsonResponse(NAV);
+    const side = sideRequests(url);
+    if (side) return side;
     return jsonResponse(data);
   };
 }
@@ -155,7 +211,8 @@ describe("ProjectRoute", () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const request = input as Request;
       const url = typeof input === "string" ? input : request.url;
-      if (url.includes("/api/v1/nav")) return jsonResponse(NAV);
+      const side = sideRequests(url);
+      if (side) return side;
       if (request.method === "PATCH") {
         return jsonResponse(projectDetailData({ purpose: "Ship the booking form." }));
       }
@@ -201,7 +258,8 @@ describe("ProjectRoute", () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const request = input as Request;
       const url = typeof input === "string" ? input : request.url;
-      if (url.includes("/api/v1/nav")) return jsonResponse(NAV);
+      const side = sideRequests(url);
+      if (side) return side;
       if (request.method === "PATCH") {
         return jsonResponse(
           projectDetailData({ desired_outcome: "The booking form is live." }),
@@ -273,7 +331,8 @@ describe("ProjectRoute", () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const request = input as Request;
       const url = typeof input === "string" ? input : request.url;
-      if (url.includes("/api/v1/nav")) return jsonResponse(NAV);
+      const side = sideRequests(url);
+      if (side) return side;
       if (request.method === "PATCH") {
         return jsonResponse(
           projectDetailData({ abandon_if: "Three months with no chapter." }),
@@ -306,7 +365,8 @@ describe("ProjectRoute", () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const request = input as Request;
       const url = typeof input === "string" ? input : request.url;
-      if (url.includes("/api/v1/nav")) return jsonResponse(NAV);
+      const side = sideRequests(url);
+      if (side) return side;
       if (request.method === "PATCH") {
         return jsonResponse(
           projectDetailData({ paused_at: "2026-08-19T09:00:00-04:00" }),
@@ -440,8 +500,11 @@ describe("ProjectRoute", () => {
   function briefPageFetch(brief: object = BRIEF, detail: object = projectDetailData()) {
     return (input: RequestInfo | URL) => {
       const url = typeof input === "string" ? input : (input as Request).url;
-      if (url.includes("/api/v1/nav")) return jsonResponse(NAV);
+      // Its own override first, then the shared ones: several tests below vary
+      // the brief on purpose, and a shared answer would quietly win.
       if (url.includes("/brief")) return jsonResponse(brief);
+      const side = sideRequests(url);
+      if (side) return side;
       return jsonResponse(detail);
     };
   }
@@ -611,49 +674,15 @@ describe("ProjectRoute", () => {
     expect(screen.getByText(/from the old site/i)).toBeInTheDocument();
   });
 
-  /* The retrospective -- S12.
-
-     Unlike the brief it loads without being asked, and the difference is the
-     Attention Policy rather than an inconsistency: the policy permits a queue
-     inside a ritual somebody chose to open, and marking a project complete is
-     that ritual. Having just declared the work over, being shown what it came
-     to is the thing asked for. */
-  const RETRO = {
-    weeks: [
-      { week_start: "2026-03-02", met: 2, unfinished: 1, set_aside: 0 },
-      { week_start: "2026-03-09", met: 0, unfinished: 0, set_aside: 0 },
-      { week_start: "2026-03-16", met: 1, unfinished: 0, set_aside: 2 },
-    ],
-    met: 3,
-    unfinished: 1,
-    set_aside: 2,
-    notes: [
-      {
-        id: "55555555-5555-5555-5555-555555555555",
-        text: "The form needs a deposit field.",
-        captured_at: "2026-03-03T09:00:00-04:00",
-      },
-    ],
-    decisions: [
-      {
-        id: "66666666-6666-6666-6666-666666666666",
-        question: "Deposit up front?",
-        chose: "Yes, 20%",
-        considered: "Invoice afterwards",
-        decided_at: "2026-03-04T09:00:00-04:00",
-      },
-    ],
-    learned: "",
-    quiet_says: "Then 8 weeks with nothing pinned to a day for it, before you marked it done",
-  };
-
   function retroPageFetch(retro: object = RETRO) {
     const detail = projectDetailData({ is_completed: true });
     return (input: RequestInfo | URL, _init?: RequestInit) => {
       const url = typeof input === "string" ? input : (input as Request).url;
-      if (url.includes("/api/v1/nav")) return jsonResponse(NAV);
+      // Same rule: this one varies the retrospective.
       if (url.includes("/retrospective")) return jsonResponse(retro);
       if (url.includes("/brief")) return jsonResponse(BRIEF);
+      const side = sideRequests(url);
+      if (side) return side;
       return jsonResponse(detail);
     };
   }
@@ -848,7 +877,8 @@ describe("ProjectRoute", () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const request = input as Request;
       const url = typeof input === "string" ? input : request.url;
-      if (url.includes("/api/v1/nav")) return jsonResponse(NAV);
+      const side = sideRequests(url);
+      if (side) return side;
       if (request.method === "PATCH" && url.includes("/project")) {
         return jsonResponse({ id: 1, title: "Design" });
       }
@@ -913,7 +943,8 @@ describe("ProjectRoute", () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const request = input as Request;
       const url = typeof input === "string" ? input : request.url;
-      if (url.includes("/api/v1/nav")) return jsonResponse(NAV);
+      const side = sideRequests(url);
+      if (side) return side;
       if (request.method === "POST" && url.includes("/areas")) {
         return jsonResponse({ id: 9, title: "Legal" });
       }
@@ -942,7 +973,8 @@ describe("ProjectRoute", () => {
     vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const request = input as Request;
       const url = typeof input === "string" ? input : request.url;
-      if (url.includes("/api/v1/nav")) return jsonResponse(NAV);
+      const side = sideRequests(url);
+      if (side) return side;
       // Completing the project mounts the retrospective (S12), so this mock
       // has to answer that request too -- without it the panel receives a
       // project payload, and the route it lives on goes down with it.
@@ -972,6 +1004,11 @@ describe("ProjectRoute", () => {
         navFetches += 1;
         return jsonResponse(NAV);
       }
+      // Counting nav is this test's own business; everything else the page
+      // fetches is not. Without this the catch-all below answers
+      // `/retrospective` with a project and the route goes down.
+      const side = sideRequests(url);
+      if (side) return side;
       if (request.method === "PATCH") completed = true;
       return jsonResponse(projectDetailData({ is_completed: completed }));
     });
@@ -990,7 +1027,8 @@ describe("ProjectRoute", () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const request = input as Request;
       const url = typeof input === "string" ? input : request.url;
-      if (url.includes("/api/v1/nav")) return jsonResponse(NAV);
+      const side = sideRequests(url);
+      if (side) return side;
       if (request.method === "DELETE") return jsonResponse({ deleted: 3 });
       return jsonResponse(projectDetailData());
     });
@@ -1020,7 +1058,8 @@ describe("ProjectRoute", () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const request = input as Request;
       const url = typeof input === "string" ? input : request.url;
-      if (url.includes("/api/v1/nav")) return jsonResponse(NAV);
+      const side = sideRequests(url);
+      if (side) return side;
       if (request.method === "PATCH") {
         return jsonResponse(projectDetailData({ title: "Website Relaunch v2" }));
       }
@@ -1054,7 +1093,8 @@ describe("ProjectRoute", () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const request = input as Request;
       const url = typeof input === "string" ? input : request.url;
-      if (url.includes("/api/v1/nav")) return jsonResponse(NAV);
+      const side = sideRequests(url);
+      if (side) return side;
       if (request.method === "PATCH") {
         return jsonResponse(projectDetailData({ due_date: "2026-11-12" }));
       }
@@ -1125,7 +1165,8 @@ describe("ProjectRoute", () => {
     vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const request = input as Request;
       const url = typeof input === "string" ? input : request.url;
-      if (url.includes("/api/v1/nav")) return jsonResponse(NAV);
+      const side = sideRequests(url);
+      if (side) return side;
       if (request.method === "POST" && url.includes("/areas")) {
         return jsonResponse({ id: 9, title: "Legal" });
       }

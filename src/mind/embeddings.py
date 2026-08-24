@@ -258,7 +258,3 @@ class PostgresSentenceIndex:
         # against each other, with the id tiebreak making the list assertable.
         matches.sort(key=lambda m: (-m.score, m.node_id))
         return matches[:limit]
-
-
-def default_index() -> PostgresSentenceIndex:
-    return PostgresSentenceIndex()

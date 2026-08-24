@@ -381,7 +381,14 @@ repeated to call incidental* move.
   the database layer, which suits this codebase's habit of pushing invariants
   into SQL (`tstzrange` exclusion constraints, needing `btree_gist`).
 
-**Acceptance: S8, S10 and S12 reach *works*.**
+~~**Acceptance: S8, S10 and S12 reach *works*.**~~ **Met August 23, 2026.**
+S10 and S12 reached *works* on the 22nd, S8 on the 23rd — and S8 needed no new
+model: `recent_weeks` took a horizon parameter and `over_weeks` summed above it,
+which is this release's own *one instrument parameterised by horizon* arriving
+literally.
+
+**Calendar events were not built**, and the bullet said *if scoped* — it was
+not, and the acceptance never named it.
 
 ### Recollection — the second brain feels like one
 

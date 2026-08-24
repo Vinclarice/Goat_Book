@@ -1950,4 +1950,215 @@ describe("ReviewRoute", () => {
     // thing living happily beside the proposal and must not be asserted away.
     expect(screen.getByRole("heading", { name: "Next week" })).toBeInTheDocument();
   });
+
+  /* Zooming out — S8, and v3's "wider horizons".
+
+     Asked for rather than loaded, and for the same reason the project brief is:
+     twelve weeks means twelve planned_in_week and twelve habits_in_week, and
+     the weekly page is opened far more often than "how did the quarter go" is
+     asked. */
+  const QUARTER = {
+    weeks: [
+      {
+        week_start: "2026-04-06",
+        is_shown_week: false,
+        planned_met: null,
+        planned_total: null,
+        habits_met: null,
+        habits_expected: null,
+      },
+      {
+        week_start: "2026-04-13",
+        is_shown_week: false,
+        planned_met: null,
+        planned_total: null,
+        habits_met: null,
+        habits_expected: null,
+      },
+      {
+        week_start: "2026-04-20",
+        is_shown_week: false,
+        planned_met: null,
+        planned_total: null,
+        habits_met: null,
+        habits_expected: null,
+      },
+      {
+        week_start: "2026-04-27",
+        is_shown_week: false,
+        planned_met: null,
+        planned_total: null,
+        habits_met: null,
+        habits_expected: null,
+      },
+      {
+        week_start: "2026-05-04",
+        is_shown_week: false,
+        planned_met: null,
+        planned_total: null,
+        habits_met: null,
+        habits_expected: null,
+      },
+      {
+        week_start: "2026-05-11",
+        is_shown_week: false,
+        planned_met: null,
+        planned_total: null,
+        habits_met: null,
+        habits_expected: null,
+      },
+      {
+        week_start: "2026-05-18",
+        is_shown_week: false,
+        planned_met: null,
+        planned_total: null,
+        habits_met: null,
+        habits_expected: null,
+      },
+      {
+        week_start: "2026-05-25",
+        is_shown_week: false,
+        planned_met: null,
+        planned_total: null,
+        habits_met: null,
+        habits_expected: null,
+      },
+      {
+        week_start: "2026-06-01",
+        is_shown_week: false,
+        planned_met: null,
+        planned_total: null,
+        habits_met: null,
+        habits_expected: null,
+      },
+      {
+        week_start: "2026-06-08",
+        is_shown_week: false,
+        planned_met: 2,
+        planned_total: 3,
+        habits_met: 1,
+        habits_expected: 2,
+      },
+      {
+        week_start: "2026-06-15",
+        is_shown_week: false,
+        planned_met: 2,
+        planned_total: 3,
+        habits_met: 1,
+        habits_expected: 2,
+      },
+      {
+        week_start: "2026-06-22",
+        is_shown_week: true,
+        planned_met: 2,
+        planned_total: 3,
+        habits_met: 1,
+        habits_expected: 2,
+      },
+    ],
+    planned_met: 6,
+    planned_total: 9,
+    habits_met: 3,
+    habits_expected: 6,
+    weeks_counted: 3,
+    weeks_before_the_record: 9,
+    denominator_says:
+      "Out of 3 of the 12 weeks — you were not recording for the other 9",
+  };
+
+  function horizonFetch(horizon: object = QUARTER) {
+    return (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : (input as Request).url;
+      if (url.includes("/horizon")) return jsonResponse(horizon);
+      // A week with history behind it, because the trend section -- which the
+      // quarter sits inside -- is absent for an account that has none. That is
+      // deliberate rather than incidental: `recent_weeks` returns null only for
+      // weeks before this owner's first trace, so the section hides for a
+      // brand-new account and for nobody else.
+      return jsonResponse(
+        weekData({
+          recent_weeks: [
+            {
+              week_start: "2026-06-22",
+              is_shown_week: true,
+              planned_met: 2,
+              planned_total: 3,
+              habits_met: 1,
+              habits_expected: 2,
+            },
+          ],
+        }),
+      );
+    };
+  }
+
+  it("does not fetch a quarter until it is asked for", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(horizonFetch());
+
+    renderAt("/review");
+    await screen.findByText(/recent weeks/i);
+
+    expect(
+      fetchSpy.mock.calls.some(([request]) => {
+        const url =
+          typeof request === "string" ? request : (request as Request).url;
+        return url.includes("/horizon");
+      }),
+    ).toBe(false);
+  });
+
+  it("adds the quarter up when asked", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(horizonFetch());
+
+    renderAt("/review");
+    await userEvent.click(
+      await screen.findByRole("button", { name: /how did the quarter go/i }),
+    );
+
+    expect(await screen.findByText(/6 of 9/)).toBeInTheDocument();
+  });
+
+  it("says what the quarter could not see", async () => {
+    /* S8's own sentence: weeks with no data read as absent rather than zero.
+       A figure printed without it would be read as "of the whole quarter". */
+    vi.spyOn(globalThis, "fetch").mockImplementation(horizonFetch());
+
+    renderAt("/review");
+    await userEvent.click(
+      await screen.findByRole("button", { name: /how did the quarter go/i }),
+    );
+
+    expect(
+      await screen.findByText(/you were not recording for the other 9/i),
+    ).toBeInTheDocument();
+  });
+
+  it("says nothing at all when the whole horizon is empty", async () => {
+    /* Rather than "0 of 0", which is the least trustworthy number a page about
+       trustworthy denominators could print. */
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      horizonFetch({
+        ...QUARTER,
+        planned_met: null,
+        planned_total: null,
+        habits_met: null,
+        habits_expected: null,
+        weeks_counted: 0,
+        weeks_before_the_record: 12,
+        denominator_says: "",
+      }),
+    );
+
+    renderAt("/review");
+    await userEvent.click(
+      await screen.findByRole("button", { name: /how did the quarter go/i }),
+    );
+
+    expect(
+      await screen.findByText(/nothing recorded in these twelve weeks/i),
+    ).toBeInTheDocument();
+  });
+
 });

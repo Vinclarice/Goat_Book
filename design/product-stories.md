@@ -59,7 +59,8 @@ verdicts after two releases moved one.
 
 ## The score
 
-**13 work · 4 bend · 2 impossible** — from 13 · 3 · 3 and 12 · 3 · 4 on August 22,
+**14 work · 4 bend · 1 impossible** — from 13 · 4 · 2 earlier on August 23,
+13 · 3 · 3 and 12 · 3 · 4 on August 22,
 8 · 5 · 6 earlier that day, and
 7 · 6 · 6, 4 · 9 · 6 and 3 · 10 · 6 on August 20, 3 · 9 · 7 on August 19,
 3 · 6 · 10 on August 16, and 2 · 2 · 15 on August 12.
@@ -72,12 +73,16 @@ flatters* — and it flattered in the harder direction, hiding finished work
 rather than claiming unfinished work. The rule it broke is the one two lines
 down: the score lives here, so this is the copy that has to move first.
 
-**The impossible pile is two: the quarter and billing.** One is an unbuilt read
-that wants longer horizons than there is data for; the other is a model nobody
-has started, and nobody will until there is a business. `Decision`, `Source` and
-the project retrospective came out of the pile on August 22, and signing up on
-August 23. **Nothing left in it is blocked on a decision** — that was S1, and it
-was taken.
+**The impossible pile is one, and it is billing.** A model nobody has started
+and nobody will until there is a business — which v3 does not merely defer but
+**refuses**, while the personal-tool answer stands. So the pile is empty of
+everything this plan intends to build.
+
+`Decision`, `Source` and the project retrospective came out of it on August 22;
+signing up and the quarter on August 23. **The quarter was the last one blocked
+on code**, and it turned out to need no new model at all: the weekly instrument
+widened, and the null-not-zero discipline carried up exactly as its `Requires`
+line said it would.
 
 **Three of the four bends are now one question each, and none of them is code.**
 S1 and S16 both wait on the same thing: whether a stranger, or an unrequested
@@ -85,9 +90,9 @@ interruption, is what this product is for. S18 is import.
 
 | | journeys |
 |---|---|
-| **Works** | S2 the phone morning · S3 planning against capacity · S4 durable capture · S5 closing the day · S6 the honest weekly review · S7 acting on the review · S9 the week · S10 a project's why · S11 a decision returning · S12 a project explaining itself · S14 a note that knows when · S15 reading producing work · S17 leaving with your data |
+| **Works** | S2 the phone morning · S3 planning against capacity · S4 durable capture · S5 closing the day · S6 the honest weekly review · S7 acting on the review · S8 the quarter · S9 the week · S10 a project's why · S11 a decision returning · S12 a project explaining itself · S14 a note that knows when · S15 reading producing work · S17 leaving with your data |
 | **Bends** | S1 signing up · S13 finding what you wrote · S16 the past arriving · S18 bringing your history |
-| **Impossible** | S8 the quarter · S19 paying |
+| **Impossible** | S19 paying |
 
 **This score lives here and nowhere else.** Other documents link to it; they do
 not quote it.
@@ -554,11 +559,47 @@ on it calls the core that owns the record.
 reviews and routine history, and weeks with no data read as absent rather than
 zero.
 
-**Verdict: impossible.** `WeeklyReview` is the only review model;
-`TREND_WEEKS = 5`.
+~~**Verdict: impossible.** `WeeklyReview` is the only review model;
+`TREND_WEEKS = 5`.~~
 
-**Requires:** longer-horizon reviews reusing the weekly model. The
-null-not-zero discipline already exists in `review/reads.py` and must carry up.
+**Verdict: works, August 23, 2026** — and both halves of that citation were the
+whole design brief rather than an obstacle. `WeeklyReview` is *still* the only
+review model, and `TREND_WEEKS` is *still* 5.
+
+**One instrument parameterised by horizon, not five instruments**, which is v3's
+own framing for this release. `recent_weeks` takes a week count instead of
+reading a constant; `over_weeks` sums above it. No new model, no second review,
+nothing recorded — the same refusal `recent_weeks` already made: *no new table
+and no new record.*
+
+**The whole story is the denominator, and there are three states rather than
+two.** A quarter that divided by twelve would divide by weeks somebody was not
+here:
+
+- **before the record** — `planned_total` is `None`, and is *not* counted;
+- **recorded and empty** — `0`, and *is* counted, because being present and
+  planning nothing is a fact about the quarter;
+- **recorded** — a real figure.
+
+Collapsing the first two is reading an unrecorded night as a sober one, three
+axes over. `denominator_says` carries the sentence — *"Out of 3 of the 12 weeks
+— you were not recording for the other 9"* — and is empty when there is nothing
+to explain, because a read that always apologises teaches somebody to skip the
+one time it matters.
+
+**And it reuses the weekly judgement rather than recounting.** A week's figure
+is fixed at that week's end: a task finished the following Tuesday was
+unfinished when the week closed. A quarter counting completions across ninety
+days would quietly turn every slipped week into a met one, and the number would
+improve each time somebody caught up. That is asserted, not assumed.
+
+**Its own route and asked for**, like the project brief and for the same reason:
+twelve weeks is twelve `planned_in_week` and twelve `habits_in_week`, and the
+weekly page is opened far more often than *how did the quarter go* is asked.
+
+**Requires:** ~~longer-horizon reviews reusing the weekly model. The
+null-not-zero discipline already exists in `review/reads.py` and must carry
+up.~~ **Both done** — and the second was the point rather than the caveat.
 
 ### S9. Priya plans a week, not just a day
 

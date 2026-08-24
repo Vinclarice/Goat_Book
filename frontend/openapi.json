@@ -1740,6 +1740,52 @@
         ]
       }
     },
+    "/api/v1/review/{day}/horizon": {
+      "get": {
+        "operationId": "review_api_v1_review_horizon",
+        "summary": "Review Horizon",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "day",
+            "schema": {
+              "format": "date",
+              "title": "Day",
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "in": "query",
+            "name": "horizon",
+            "schema": {
+              "default": "quarter",
+              "title": "Horizon",
+              "type": "string"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HorizonOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Whether the shape of the last three months matched what he said \u2014 S8.\n\n**Its own route rather than more of `WeekOut`.** Twelve weeks means twelve\n`planned_in_week` and twelve `habits_in_week`, and the weekly page is opened\nfar more often than the question *how did the quarter go* is asked. Same\nargument that gave the project brief its own route.\n\nReads only, records nothing, and proposes nothing \u2014 there is nothing here\nthat is not already this person's.",
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/review": {
       "get": {
         "operationId": "review_api_v1_get_current_week",
@@ -5215,6 +5261,154 @@
         "title": "LogIn",
         "type": "object"
       },
+      "HorizonOut": {
+        "description": "A stretch of weeks added up \u2014 **S8**.\n\n`weeks_counted` and `weeks_before_the_record` travel with the figures rather\nthan beside them, because a count that can be separated from what it was out\nof is a count somebody reads as *of the whole quarter*. `denominator_says`\nis the sentence, assembled by the read so two surfaces cannot phrase one\nsilence differently.",
+        "properties": {
+          "weeks": {
+            "items": {
+              "$ref": "#/components/schemas/WeekSummaryOut"
+            },
+            "title": "Weeks",
+            "type": "array"
+          },
+          "planned_met": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planned Met"
+          },
+          "planned_total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planned Total"
+          },
+          "habits_met": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Habits Met"
+          },
+          "habits_expected": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Habits Expected"
+          },
+          "weeks_counted": {
+            "title": "Weeks Counted",
+            "type": "integer"
+          },
+          "weeks_before_the_record": {
+            "title": "Weeks Before The Record",
+            "type": "integer"
+          },
+          "denominator_says": {
+            "title": "Denominator Says",
+            "type": "string"
+          }
+        },
+        "required": [
+          "weeks",
+          "planned_met",
+          "planned_total",
+          "habits_met",
+          "habits_expected",
+          "weeks_counted",
+          "weeks_before_the_record",
+          "denominator_says"
+        ],
+        "title": "HorizonOut",
+        "type": "object"
+      },
+      "WeekSummaryOut": {
+        "description": "One row of the trend, or a row saying there is nothing to show.\n\nEvery figure is nullable, and that is the contract rather than an\noversight: a week from before the owner had anything recorded reads as\nno data, not as nought. `daily-operating-system-vision.md` asks for\ntrustworthy denominators, and \"0 of 0\" for a week somebody was not here\nfor is the least trustworthy number a page could print.",
+        "properties": {
+          "week_start": {
+            "format": "date",
+            "title": "Week Start",
+            "type": "string"
+          },
+          "is_shown_week": {
+            "title": "Is Shown Week",
+            "type": "boolean"
+          },
+          "planned_met": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planned Met"
+          },
+          "planned_total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planned Total"
+          },
+          "habits_met": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Habits Met"
+          },
+          "habits_expected": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Habits Expected"
+          }
+        },
+        "required": [
+          "week_start",
+          "is_shown_week",
+          "planned_met",
+          "planned_total",
+          "habits_met",
+          "habits_expected"
+        ],
+        "title": "WeekSummaryOut",
+        "type": "object"
+      },
       "BlockerOut": {
         "description": "An open question standing in the way of a chosen outcome.\n\n`outcome_text` is the evidence for the word \"blocker\" -- naming what it\nblocks is what stops this being a list of questions with an adjective.\n`came_back` is how many later notes returned to it, from the read that\nwaited since increment 1 for a caller willing to pay one retrieval per\nquestion; a ritual asking about five is where that cost is finally worth it.",
         "properties": {
@@ -6280,74 +6474,6 @@
           "review"
         ],
         "title": "WeekOut",
-        "type": "object"
-      },
-      "WeekSummaryOut": {
-        "description": "One row of the trend, or a row saying there is nothing to show.\n\nEvery figure is nullable, and that is the contract rather than an\noversight: a week from before the owner had anything recorded reads as\nno data, not as nought. `daily-operating-system-vision.md` asks for\ntrustworthy denominators, and \"0 of 0\" for a week somebody was not here\nfor is the least trustworthy number a page could print.",
-        "properties": {
-          "week_start": {
-            "format": "date",
-            "title": "Week Start",
-            "type": "string"
-          },
-          "is_shown_week": {
-            "title": "Is Shown Week",
-            "type": "boolean"
-          },
-          "planned_met": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Planned Met"
-          },
-          "planned_total": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Planned Total"
-          },
-          "habits_met": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Habits Met"
-          },
-          "habits_expected": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Habits Expected"
-          }
-        },
-        "required": [
-          "week_start",
-          "is_shown_week",
-          "planned_met",
-          "planned_total",
-          "habits_met",
-          "habits_expected"
-        ],
-        "title": "WeekSummaryOut",
         "type": "object"
       },
       "WrittenDayOut": {

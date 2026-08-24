@@ -565,6 +565,81 @@ def _week_out(owner, day):
     }
 
 
+class HorizonOut(Schema):
+    """A stretch of weeks added up — **S8**.
+
+    `weeks_counted` and `weeks_before_the_record` travel with the figures rather
+    than beside them, because a count that can be separated from what it was out
+    of is a count somebody reads as *of the whole quarter*. `denominator_says`
+    is the sentence, assembled by the read so two surfaces cannot phrase one
+    silence differently.
+    """
+
+    weeks: list[WeekSummaryOut]
+    planned_met: int | None
+    planned_total: int | None
+    habits_met: int | None
+    habits_expected: int | None
+    weeks_counted: int
+    weeks_before_the_record: int
+    denominator_says: str
+
+
+#: What a client may ask for. **A named set rather than any integer**: the
+#: horizons this instrument is designed for are a month and a quarter, and an
+#: open parameter would let somebody ask for 400 weeks of `planned_in_week`
+#: without anybody having decided that was reasonable.
+HORIZONS = {
+    "month": reads.MONTH_WEEKS,
+    "quarter": reads.QUARTER_WEEKS,
+}
+
+
+@router.get("/review/{day}/horizon", response=HorizonOut)
+def review_horizon(request, day: date, horizon: str = "quarter"):
+    """Whether the shape of the last three months matched what he said — S8.
+
+    **Its own route rather than more of `WeekOut`.** Twelve weeks means twelve
+    `planned_in_week` and twelve `habits_in_week`, and the weekly page is opened
+    far more often than the question *how did the quarter go* is asked. Same
+    argument that gave the project brief its own route.
+
+    Reads only, records nothing, and proposes nothing — there is nothing here
+    that is not already this person's.
+    """
+    owner = request.user
+    # The path names a date and the read wants its Monday -- the same shape
+    # every other route here uses, and the reason none of them has an ownership
+    # check to forget: a record is addressed by (user, week), never by an id.
+    week_start = week_start_for(day)
+    if horizon not in HORIZONS:
+        raise HttpError(422, f"horizon must be one of {sorted(HORIZONS)}")
+
+    summary = reads.over_weeks(
+        owner, week_start, timezone.localdate(), weeks=HORIZONS[horizon]
+    )
+    return {
+        "weeks": [
+            {
+                "week_start": week.week_start,
+                "is_shown_week": week.is_shown_week,
+                "planned_met": week.planned_met,
+                "planned_total": week.planned_total,
+                "habits_met": week.habits_met,
+                "habits_expected": week.habits_expected,
+            }
+            for week in summary.weeks
+        ],
+        "planned_met": summary.planned_met,
+        "planned_total": summary.planned_total,
+        "habits_met": summary.habits_met,
+        "habits_expected": summary.habits_expected,
+        "weeks_counted": summary.weeks_counted,
+        "weeks_before_the_record": summary.weeks_before_the_record,
+        "denominator_says": summary.denominator_says,
+    }
+
+
 @router.get("/review", response=WeekOut)
 def get_current_week(request):
     return _week_out(request.user, timezone.localdate())

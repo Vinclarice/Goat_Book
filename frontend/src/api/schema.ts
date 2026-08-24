@@ -990,6 +990,34 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/review/{day}/horizon": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Review Horizon
+         * @description Whether the shape of the last three months matched what he said — S8.
+         *
+         *     **Its own route rather than more of `WeekOut`.** Twelve weeks means twelve
+         *     `planned_in_week` and twelve `habits_in_week`, and the weekly page is opened
+         *     far more often than the question *how did the quarter go* is asked. Same
+         *     argument that gave the project brief its own route.
+         *
+         *     Reads only, records nothing, and proposes nothing — there is nothing here
+         *     that is not already this person's.
+         */
+        get: operations["review_api_v1_review_horizon"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/review": {
         parameters: {
             query?: never;
@@ -2466,6 +2494,61 @@ export interface components {
             amount: number;
         };
         /**
+         * HorizonOut
+         * @description A stretch of weeks added up — **S8**.
+         *
+         *     `weeks_counted` and `weeks_before_the_record` travel with the figures rather
+         *     than beside them, because a count that can be separated from what it was out
+         *     of is a count somebody reads as *of the whole quarter*. `denominator_says`
+         *     is the sentence, assembled by the read so two surfaces cannot phrase one
+         *     silence differently.
+         */
+        HorizonOut: {
+            /** Weeks */
+            weeks: components["schemas"]["WeekSummaryOut"][];
+            /** Planned Met */
+            planned_met: number | null;
+            /** Planned Total */
+            planned_total: number | null;
+            /** Habits Met */
+            habits_met: number | null;
+            /** Habits Expected */
+            habits_expected: number | null;
+            /** Weeks Counted */
+            weeks_counted: number;
+            /** Weeks Before The Record */
+            weeks_before_the_record: number;
+            /** Denominator Says */
+            denominator_says: string;
+        };
+        /**
+         * WeekSummaryOut
+         * @description One row of the trend, or a row saying there is nothing to show.
+         *
+         *     Every figure is nullable, and that is the contract rather than an
+         *     oversight: a week from before the owner had anything recorded reads as
+         *     no data, not as nought. `daily-operating-system-vision.md` asks for
+         *     trustworthy denominators, and "0 of 0" for a week somebody was not here
+         *     for is the least trustworthy number a page could print.
+         */
+        WeekSummaryOut: {
+            /**
+             * Week Start
+             * Format: date
+             */
+            week_start: string;
+            /** Is Shown Week */
+            is_shown_week: boolean;
+            /** Planned Met */
+            planned_met: number | null;
+            /** Planned Total */
+            planned_total: number | null;
+            /** Habits Met */
+            habits_met: number | null;
+            /** Habits Expected */
+            habits_expected: number | null;
+        };
+        /**
          * BlockerOut
          * @description An open question standing in the way of a chosen outcome.
          *
@@ -2958,33 +3041,6 @@ export interface components {
             /** Recent Weeks */
             recent_weeks: components["schemas"]["WeekSummaryOut"][];
             review: components["schemas"]["ReviewOut"];
-        };
-        /**
-         * WeekSummaryOut
-         * @description One row of the trend, or a row saying there is nothing to show.
-         *
-         *     Every figure is nullable, and that is the contract rather than an
-         *     oversight: a week from before the owner had anything recorded reads as
-         *     no data, not as nought. `daily-operating-system-vision.md` asks for
-         *     trustworthy denominators, and "0 of 0" for a week somebody was not here
-         *     for is the least trustworthy number a page could print.
-         */
-        WeekSummaryOut: {
-            /**
-             * Week Start
-             * Format: date
-             */
-            week_start: string;
-            /** Is Shown Week */
-            is_shown_week: boolean;
-            /** Planned Met */
-            planned_met: number | null;
-            /** Planned Total */
-            planned_total: number | null;
-            /** Habits Met */
-            habits_met: number | null;
-            /** Habits Expected */
-            habits_expected: number | null;
         };
         /**
          * WrittenDayOut
@@ -4198,6 +4254,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StandingsOut"];
+                };
+            };
+        };
+    };
+    review_api_v1_review_horizon: {
+        parameters: {
+            query?: {
+                horizon?: string;
+            };
+            header?: never;
+            path: {
+                day: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HorizonOut"];
                 };
             };
         };

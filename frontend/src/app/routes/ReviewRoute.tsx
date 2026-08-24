@@ -596,6 +596,97 @@ function figure(met: number | null, total: number | null): string {
  * rather than a new kind of claim: the six analytical questions
  * architecture-trajectory.md §4 names have their home in release F.
  */
+/**
+ * Zooming out to a quarter — **S8**, and v3's *wider horizons*.
+ *
+ * **Asked for rather than loaded**, and for the same reason the project brief
+ * is: twelve weeks means twelve `planned_in_week` and twelve `habits_in_week`,
+ * and the weekly page is opened far more often than *how did the quarter go* is
+ * asked.
+ *
+ * **The same rows as the weekly trend**, because it is the same instrument over
+ * a longer window — `RecentWeeks` is reused rather than reimplemented, which is
+ * what *one instrument parameterised by horizon* means when it reaches a
+ * screen.
+ *
+ * **The denominator travels with the figure.** S8's done-means is *weeks with
+ * no data read as absent rather than zero*, and a total printed without the
+ * sentence beneath it is read as *of the whole quarter*. The read composes that
+ * sentence so two surfaces cannot phrase one silence differently.
+ */
+function Horizon({ day }: { day: string }) {
+  const [asked, setAsked] = useState(false);
+
+  const { data, isFetching } = useQuery({
+    queryKey: ["review-horizon", day],
+    enabled: asked,
+    queryFn: async () => {
+      const { data, error } = await apiV1.GET(
+        "/api/v1/review/{day}/horizon",
+        { params: { path: { day }, query: { horizon: "quarter" } } },
+      );
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  return (
+    <section className="space-y-2 border-t border-border pt-3">
+      {/* Its own heading, because the twelve weeks include the five above and
+          the overlap reads as an accident without one. Kept rather than
+          removed: the five-week trend is the weekly ritual's own context and
+          is there whether or not anybody zooms out, and collapsing it when the
+          quarter opens would move a surface this release did not come to
+          change. The repetition is the price of the quarter being the same
+          instrument rather than a different one. */}
+      <h3 className="text-sm font-bold">Zooming out</h3>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={() => setAsked(true)}
+          disabled={isFetching}
+        >
+          {isFetching ? "Looking back…" : "How did the quarter go?"}
+        </Button>
+        <span className="text-sm text-muted-foreground">
+          The last twelve weeks, on the same figures as above
+        </span>
+      </div>
+
+      {data &&
+        (data.weeks_counted === 0 ? (
+          /* Never "0 of 0" for a quarter nobody was here for -- the least
+             trustworthy number a page about trustworthy denominators could
+             print. The weekly rows make the same refusal one level down. */
+          <p className="text-sm text-muted-foreground">
+            Nothing recorded in these twelve weeks.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">
+              <span className="font-medium text-foreground">
+                {figure(data.planned_met, data.planned_total)}
+              </span>{" "}
+              planned ·{" "}
+              <span className="font-medium text-foreground">
+                {figure(data.habits_met, data.habits_expected)}
+              </span>{" "}
+              habits
+            </p>
+            {data.denominator_says && (
+              <p className="text-sm text-muted-foreground">
+                {data.denominator_says}.
+              </p>
+            )}
+            <RecentWeeks weeks={data.weeks} />
+          </div>
+        ))}
+    </section>
+  );
+}
+
+
 function RecentWeeks({ weeks }: { weeks: WeekSummary[] }) {
   return (
     <ul className="space-y-1">
@@ -1124,6 +1215,10 @@ export function ReviewRoute() {
         <section className="space-y-2">
           <h2 className="text-sm font-bold">Recent weeks</h2>
           <RecentWeeks weeks={data.recent_weeks} />
+          {/* S8, under the five weeks rather than beside them: the quarter is
+              the same question one zoom out, and asking it from anywhere else
+              would make it look like a different instrument. */}
+          <Horizon day={data.week_start} />
         </section>
       )}
 

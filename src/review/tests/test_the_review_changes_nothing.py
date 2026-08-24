@@ -184,6 +184,12 @@ class TheReviewDecidesNothingTest(TestCase):
         for exactly that reason -- asking what the week would look like without
         Thursday is a question, and a question that persisted would be a plan
         somebody has to undo.
+
+        **The horizon is a fourth**, added for S8, and the same reasoning
+        covers it twice over: it is a GET, and it is the weekly instrument over
+        a longer window rather than a new thing to write. `over_weeks` records
+        nothing at all -- there is no quarterly review model and this release
+        deliberately did not add one.
         """
         from review.api_v1 import router
 
@@ -198,6 +204,7 @@ class TheReviewDecidesNothingTest(TestCase):
                 "DELETE /weeks/{day}/outcomes/{outcome_id}",
                 "GET /review",
                 "GET /review/{day}",
+                "GET /review/{day}/horizon",
                 "GET /weeks/{day}/draft",
                 "PATCH /review/{day}",
                 "PATCH /weeks/{day}/outcomes/{outcome_id}",

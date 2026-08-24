@@ -10,7 +10,7 @@ that touched one in order to describe it would be a page view inventing
 history. `test_reading_a_week_writes_nothing` holds that as a statement
 about executed SQL rather than about intent.
 """
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
 from django.db.models import F, Q
@@ -544,8 +544,14 @@ def first_trace_for(owner):
     return min(candidates) if candidates else None
 
 
-def recent_weeks(owner, shown_week_start, today):
+def recent_weeks(owner, shown_week_start, today, *, weeks=TREND_WEEKS):
     """The shown week and the four before it, as two figures each.
+
+    **`weeks` is a parameter since S8**, and the release's framing is why:
+    *one instrument parameterised by horizon, not five instruments.* A month and
+    a quarter are the same question over a longer window, and the moment this
+    needed a second function the framing would already have been lost. The
+    default is unchanged, so the weekly page asks exactly what it asked before.
 
     No new table and no new record: it is the same `planned_in_week` and
     `habits_in_week` the page already runs, four more times. That is the
@@ -562,13 +568,13 @@ def recent_weeks(owner, shown_week_start, today):
         for review in WeeklyReview.objects.filter(
             owner=owner,
             week_start__gte=shown_week_start
-            - timedelta(days=DAYS_IN_WEEK * (TREND_WEEKS - 1)),
+            - timedelta(days=DAYS_IN_WEEK * (weeks - 1)),
             week_start__lte=shown_week_start,
             completed_at__isnull=False,
         )
     }
     summaries = []
-    for offset in range(TREND_WEEKS - 1, -1, -1):
+    for offset in range(weeks - 1, -1, -1):
         week_start = shown_week_start - timedelta(days=DAYS_IN_WEEK * offset)
         week_end = week_start + timedelta(days=DAYS_IN_WEEK - 1)
         is_shown = week_start == shown_week_start
@@ -1280,3 +1286,105 @@ def carryover_for(owner, day, *, today):
     ]
     found.sort(key=lambda each: not each.serves_an_outcome)
     return found
+
+
+# How far a quarter looks back. Twelve because S8 says twelve -- close enough to
+# three months to be called one, and a round number of weeks rather than a
+# ragged calendar quarter, which is what lets the weekly instrument be reused
+# unchanged.
+QUARTER_WEEKS = 12
+
+# And a month, for the same instrument. Four weeks is not a calendar month
+# either, and for the same reason: a horizon that does not divide into weeks
+# cannot reuse a weekly figure without inventing part of one.
+MONTH_WEEKS = 4
+
+
+@dataclass(frozen=True)
+class HorizonSummary:
+    """A stretch of weeks, added up, with what it could not see said out loud.
+
+    **S8**, and the whole of it is the denominator. A quarter that divided by
+    twelve would divide by weeks somebody was not here, which is the mistake
+    `WeekSummary` already refuses one level down -- *"a week before somebody was
+    using Clarice is not a week in which they planned nothing."*
+
+    **Three states, not two.** *Before the record* has no figures and is not
+    counted. *Recorded and empty* has zeroes and is counted, because being
+    present and planning nothing is a fact about the quarter. *Recorded* is a
+    real figure. Collapsing the first two is reading an unrecorded night as a
+    sober one, three axes over.
+    """
+
+    #: Every week in the horizon, oldest first, absent ones included -- the same
+    #: `WeekSummary` rows the weekly trend renders. The aggregate is above them
+    #: rather than instead of them: a pair of numbers cannot show a quarter that
+    #: started well and stalled.
+    weeks: list = field(default_factory=list)
+    planned_met: object = None
+    planned_total: object = None
+    habits_met: object = None
+    habits_expected: object = None
+    #: Weeks that had something to say -- the denominator, stated.
+    weeks_counted: int = 0
+    #: Weeks before this owner left any trace at all. Named rather than folded
+    #: into the count, because *you were not here* and *you did nothing* are
+    #: different facts and only one of them is about the quarter.
+    weeks_before_the_record: int = 0
+
+    @property
+    def has_anything(self):
+        return bool(self.weeks_counted)
+
+    @property
+    def denominator_says(self):
+        """Why the figures are out of what they are out of.
+
+        Empty when there is nothing to explain: a read that always printed a
+        caveat would teach somebody to skip the one time it mattered.
+        """
+        if not self.weeks_before_the_record or not self.has_anything:
+            return ""
+        total = self.weeks_counted + self.weeks_before_the_record
+        return (
+            f"Out of {self.weeks_counted} of the {total} weeks — you were not "
+            f"recording for the other {self.weeks_before_the_record}"
+        )
+
+
+def over_weeks(owner, ending_week_start, today, *, weeks=QUARTER_WEEKS):
+    """A horizon's worth of weeks, added up — **S8**.
+
+    **No new table, no new record and no second review model**, which is the
+    require: *longer-horizon reviews reusing the weekly model.* This is
+    `recent_weeks` over a wider window with a sum on top, and the figures it
+    adds are the ones each week reported.
+
+    **That last part is load-bearing rather than incidental.** A week's figure
+    is judged at that week's end -- a task finished the following Tuesday was
+    unfinished when the week closed -- so a quarter that counted completions
+    across ninety days would quietly turn every slipped week into a met one, and
+    the number would improve every time somebody caught up. Reusing the weekly
+    judgement is what stops a quarter flattering itself.
+
+    **A week with no figures is not counted**, and how many there were is
+    returned rather than dropped. See `HorizonSummary`.
+    """
+    summaries = recent_weeks(owner, ending_week_start, today, weeks=weeks)
+    counted = [week for week in summaries if week.planned_total is not None]
+
+    if not counted:
+        return HorizonSummary(
+            weeks=summaries,
+            weeks_before_the_record=len(summaries),
+        )
+
+    return HorizonSummary(
+        weeks=summaries,
+        planned_met=sum(week.planned_met for week in counted),
+        planned_total=sum(week.planned_total for week in counted),
+        habits_met=sum(week.habits_met or 0 for week in counted),
+        habits_expected=sum(week.habits_expected or 0 for week in counted),
+        weeks_counted=len(counted),
+        weeks_before_the_record=len(summaries) - len(counted),
+    )

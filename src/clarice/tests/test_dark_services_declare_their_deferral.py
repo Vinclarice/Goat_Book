@@ -67,6 +67,14 @@ DARK = {
     "resolve_retrieval_miss": None,
     "expire_stale_hypotheses": None,
     "commitments_without_tasks": None,
+    # The three `test_the_list_is_the_whole_list` found on August 24, 2026,
+    # none of them an undo half and none a leftover: two writers-and-readers
+    # whose surfaces were never built, and one pass nothing schedules. All
+    # three post-date the file, which is exactly what the hardcoded list could
+    # not notice on its own.
+    "what_a_task_was_read_in": None,
+    "make_it_the_goal": None,
+    "run_producers_over_unprocessed": None,
 }
 
 
@@ -91,6 +99,20 @@ def callers_of(name, sources):
     """
     pattern = re.compile(rf"\w*services\.{re.escape(name)}\s*\(")
     return [p for p in sources if pattern.search(p.read_text(encoding="utf-8"))]
+
+
+def public_services(source):
+    """Every module-level `def` in `services.py` that is not private.
+
+    Module-level only -- `^def` rather than `\\s*def` -- because a nested
+    helper is reached through the function that encloses it, and a method on a
+    dataclass is not a service.
+    """
+    return [
+        name
+        for name in re.findall(r"^def (\w+)\(", source, re.MULTILINE)
+        if not name.startswith("_")
+    ]
 
 
 def internal_callers_of(name, source):
@@ -146,6 +168,36 @@ class DarkServicesTest(SimpleTestCase):
                     or "Decide before wiring" in declaration,
                     f"{name} is declared dark without naming a trigger or a decision",
                 )
+
+    def test_the_list_is_the_whole_list(self):
+        """`DARK` is discovered rather than trusted, which is the half this
+        file claimed and did not have.
+
+        Its docstring said the list *"fails both ways -- a new dark service is
+        caught by `test_every_dark_service_is_declared`"*. It was not: that
+        test iterates `DARK`, so it can only notice a name somebody has already
+        written down. A service that goes dark **after** this file was written
+        was invisible to every test in it, which is the failure mode the file
+        exists to prevent, one level up.
+
+        Three had, and none was a leftover -- they are the same *undo half of
+        a live pair* shape the module docstring describes, plus one scheduled
+        pass nothing schedules.
+        """
+        undeclared = sorted(
+            name
+            for name in public_services(self.source)
+            if not callers_of(name, self.sources)
+            and not internal_callers_of(name, self.source)
+            and name not in DARK
+        )
+
+        self.assertEqual(
+            undeclared,
+            [],
+            f"{undeclared} have no caller and are not declared -- add each to "
+            f"DARK with a trigger, or delete it",
+        )
 
     def test_nothing_here_has_quietly_come_alive(self):
         """The other direction, and the happier failure.

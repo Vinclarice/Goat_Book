@@ -566,6 +566,12 @@ def what_grew_from(source) -> "Grew":
     return Grew(notes=notes, tasks=tasks)
 
 
+# DARK: no production caller. **Not an undo half** -- a read whose surface was
+# never built. `Source` and `came_from` are live and `grew_from` above has a
+# caller, so the chain this walks is real; nothing asks a *task* the question.
+# Trigger: anywhere a task is read in the task core saying where it came from
+# -- which is the second half of *six months later he can still tell*, and the
+# half `product-stories.md` scores.
 def what_a_task_was_read_in(task):
     """The source a task ultimately came out of, if it came out of one.
 
@@ -583,6 +589,13 @@ def what_a_task_was_read_in(task):
 
 
 @transaction.atomic
+# DARK: no production caller. **Not an undo half** -- a writer with no surface,
+# which is why `FacetKind.GOAL` is still never written in production: this
+# function is what would end that, and nothing calls it. A plan reading *GOAL
+# was wired* is reading the writer, not a write.
+# Trigger: the project surface choosing a note as the outcome -- one control
+# beside `Project.desired_outcome`, whose text field is the second place this
+# exists to stop drifting from.
 def make_it_the_goal(node: Node, project, *, now: datetime, actor: str) -> Facet:
     """Say that this note is what a project is for -- v3's *Unify*.
 
@@ -990,6 +1003,15 @@ def end_capture_session(session, *, now: datetime, owner=None) -> list:
     return materialised[:SESSION_ATTENTION_BUDGET]
 
 
+# DARK: no production caller. The most misleading of the three -- **this one
+# reads as a live safety mechanism.** Its docstring says what *"the nightly
+# run"* must not touch; the nightly run is `run_mind_maintenance`, which calls
+# `extract_concepts` and `run_detectors` and never this. So rule 7 is enforced
+# by nothing having been built to break it, rather than by this.
+# Decide before wiring: switching it on makes the nightly pass propose
+# commitments over every unsessioned node, which is a behaviour change and not
+# a repair -- and `_propose_any_commitment` is the synchronous producer the
+# session budgets were written to bound in the first place.
 def run_producers_over_unprocessed(owner, *, now: datetime) -> list:
     """The maintenance pass, and what it must not touch.
 

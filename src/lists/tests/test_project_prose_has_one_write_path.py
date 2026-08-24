@@ -20,7 +20,11 @@ next change to either half, which is exactly what the service was created to
 make impossible. These tests assert the *route*, because the route is the
 thing that was supposed to change.
 
-`set_project_notes` is here for the same reason and by the same omission.
+`set_project_notes` is here for the same reason and by the same omission,
+and so is `record_what_was_learned` -- which the first pass at this left
+behind, on a comment claiming it had no service to route to. It has had one
+since August 23. The comment was written without looking, which is the same
+mistake one layer up from the one being fixed.
 """
 
 import json
@@ -114,3 +118,17 @@ class ProjectProseWritePathTest(TestCase):
         setter.assert_called_once()
         self.project.refresh_from_db()
         self.assertEqual(self.project.desired_outcome, "")
+
+    def test_a_learning_is_written_through_its_service(self):
+        """S12's fourth clause, and the one the first pass missed."""
+        with mock.patch.object(
+            services,
+            "record_what_was_learned",
+            wraps=services.record_what_was_learned,
+        ) as setter:
+            response = self.patch({"learned": "  Ship the form first.  "})
+
+        self.assertEqual(response.status_code, 200)
+        setter.assert_called_once()
+        self.project.refresh_from_db()
+        self.assertEqual(self.project.learned, "Ship the form first.")

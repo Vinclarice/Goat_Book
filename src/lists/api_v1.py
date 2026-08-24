@@ -912,13 +912,6 @@ def update_project(request, project_id: int, payload: ProjectUpdateIn):
         # means only "not mentioned". See ProjectUpdateIn.
         project.purpose = payload.purpose.strip()
         fields.append("purpose")
-    if payload.learned is not None:
-        # **S12.** Its own field on the same PATCH as the other prose, unlike
-        # `is_completed` above, which needs a service because it stamps. This
-        # only sets text, and unlike the three below it has no service to
-        # route to -- nothing reads it against a twin.
-        project.learned = payload.learned.strip()
-        fields.append("learned")
     if "due_date" in payload.dict(exclude_unset=True):
         project.due_date = _parse_date(payload.due_date)
         fields.append("due_date")
@@ -939,6 +932,13 @@ def update_project(request, project_id: int, payload: ProjectUpdateIn):
         services.set_abandonment_condition(project, payload.abandon_if)
     if payload.notes is not None:
         services.set_project_notes(project, payload.notes)
+    # **S12**, and it belongs here with the rest. An earlier pass left this one
+    # assigned in the handler on the stated grounds that it had no service to
+    # route to -- it has had `record_what_was_learned` since August 23, and the
+    # comment saying otherwise was written without looking. The same omission
+    # as the three above, found the same way.
+    if payload.learned is not None:
+        services.record_what_was_learned(project, payload.learned)
 
     return _project_out(project_reader.project_for(request.user, project_id))
 

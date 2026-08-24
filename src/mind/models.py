@@ -30,8 +30,17 @@ from pgvector.django import HnswIndex, VectorField
 class NodeSource(models.TextChoices):
     WEB = "web"
     MOBILE = "mobile"
+    # DARK: never written. `/mind/share/` pre-fills the capture form and
+    # deliberately does not save -- `views.share` argues that writing a note
+    # from a link tap takes the decision away for no benefit -- so the person
+    # submits it themselves and it is recorded as `WEB`. Which is honest: it
+    # was a web capture. Trigger: a share target that writes without the form.
     SHARE = "share"
     IMPORT = "import"
+    # DARK: never written. `/api/v1/capture` writes `MOBILE` or `WEB` from
+    # `from_a_phone`, so even the API does not use this -- it is for a caller
+    # that is neither, which today there is none of. Trigger: a token client
+    # that is not the phone and not the SPA.
     API = "api"
     # A meta-node distilled from a confirmed thread. Distinct provenance worth
     # recording: it was not captured, it was concluded.
@@ -508,9 +517,16 @@ class FacetKind(models.TextChoices):
     FEAR = "fear", "Fear"
     DESIRE = "desire", "Something I want"
     PREFERENCE = "preference", "Preference"
+    # DARK: never written. Ten of the twelve roles have something that proposes
+    # them; these two do not, which is the docstring's own warning above coming
+    # true at a scale of two rather than fourteen. Trigger: an extractor that
+    # proposes it, or a person's facet surface offering it.
     MEDIA = "media", "Media"
     GOAL = "goal", "Goal"
     EPISTEMIC = "epistemic", "Epistemic status"
+    # DARK: never written. See `MEDIA` above -- these are the two of twelve
+    # roles nothing proposes. Trigger: an extractor that proposes it, or a
+    # person's facet surface offering it.
     CONCEPT = "concept", "Concept"
 
 
@@ -819,8 +835,18 @@ class EdgeRelation(models.TextChoices):
     RELATES_TO = "relates_to"
     ANSWERS = "answers"
     MEMBER_OF = "member_of"
+    # DARK: never written. All three, and the docstring above says why without
+    # having noticed: they *"exist because recording evolving thought is a
+    # manual act"*, and there is no manual act because there is no surface for
+    # one. They wait on the same node page that `link` and `unlink` do -- one
+    # missing surface, counted again. Trigger: the node page's manual link
+    # surface.
     CONTRADICTS = "contradicts"
+    # DARK: never written. See `CONTRADICTS` above for why all three are.
+    # Trigger: the node page's manual link surface.
     SUPERSEDES = "supersedes"
+    # DARK: never written. See `CONTRADICTS` above for why all three are.
+    # Trigger: the node page's manual link surface.
     DEVELOPED_FROM = "developed_from"
 
 
@@ -878,6 +904,16 @@ class HypothesisResolution(models.TextChoices):
     CONFIRMED = "confirmed"
     DISMISSED = "dismissed"
     EXPIRED = "expired"
+    # DARK: never written. `confirm_hypothesis` and `dismiss_hypothesis` write
+    # the first two and `expire_stale_hypotheses` the third; nothing renames a
+    # hypothesis, so nothing resolves one this way. Trigger: a path that renames
+    # a hypothesis rather than confirming or dismissing it.
+    #
+    # `EXPIRED` above is a **different** and worse case, already declared at
+    # `mind/instrumentation.py` -- it has three writers and all three are
+    # themselves dark, which is why `/numbers/` reported an `expired` count
+    # that was structurally zero. Not catchable here: a scan cannot tell a
+    # write from a read.
     RENAMED = "renamed"
 
 
@@ -1344,6 +1380,11 @@ class SentenceEmbedding(models.Model):
 
 class MissContext(models.TextChoices):
     SEARCH = "search"
+    # DARK: never written. The two miss buttons that exist are the search page's
+    # and the note page's, which write `SEARCH` and `RECOLLECTION`. There is
+    # none on the capture surface, which is what this value is for -- *I came
+    # here to write something down and could not find what it was about.*
+    # Trigger: a miss button on the capture surface.
     CAPTURE = "capture"
     # Track B increment 10, and the source D8 registered on August 21: the
     # search page's miss button, borrowed verbatim onto the note page --

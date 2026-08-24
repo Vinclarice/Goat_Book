@@ -269,6 +269,13 @@ def references(text):
     for node in ast.walk(tree):
         if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name):
             found.add((module_behind(node.value.id, imported, modules), node.attr))
+        elif isinstance(node, ast.Attribute) and isinstance(node.value, ast.Attribute):
+            # The last two links of a longer chain. `Item.Status.ACTIVE` is
+            # three deep, and reading only the first two says `Status` is a
+            # thing `Item` has and stops -- which reported every value of six
+            # enums unwritten, `Item.Status.ACTIVE` included. Cheap, and it can
+            # only ever add a caller, never remove one.
+            found.add((node.value.attr, node.attr))
         elif isinstance(node, ast.Name) and node.id in imported:
             found.add(imported[node.id])
     return found

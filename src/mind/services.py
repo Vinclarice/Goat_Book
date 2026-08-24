@@ -1996,6 +1996,20 @@ def confirm_hypothesis(
     # A thread: its own node, with the members belonging to it. Depth stays at
     # one, so a member that is already a container or already a member cannot
     # join — checked up front to give a clear error rather than a trigger's.
+    #
+    # **`EventType.THREAD_ARTICULATED` is never written, and this is the act it
+    # names.** Found August 24, 2026 by the enum sweep in
+    # `clarice/tests/test_dark_enum_values_declare_their_deferral.py`, which
+    # could not register it: `clarice/recall.py` lists the type among the
+    # person's own acts and `mind/views.py` carries its label *"a thread
+    # named"*, so it is mentioned — read by two places, written by none. The
+    # thread node below is created with `NodeSource.THREAD`, which **is**
+    # written, so the log records the node and not the articulating.
+    #
+    # Deliberately not fixed in passing. What the append-only log records is a
+    # product decision rather than a tidy-up, and `ActivityEvent` is the one
+    # table in this application a mistake cannot be taken back out of.
+    # Vince's call.
     thread = Node.objects.create(
         owner=hypothesis.owner,
         original_content=hypothesis.label,

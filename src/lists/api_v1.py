@@ -912,26 +912,33 @@ def update_project(request, project_id: int, payload: ProjectUpdateIn):
         # means only "not mentioned". See ProjectUpdateIn.
         project.purpose = payload.purpose.strip()
         fields.append("purpose")
-    if payload.desired_outcome is not None:
-        project.desired_outcome = payload.desired_outcome.strip()
-        fields.append("desired_outcome")
     if payload.learned is not None:
         # **S12.** Its own field on the same PATCH as the other prose, unlike
         # `is_completed` above, which needs a service because it stamps. This
-        # only sets text.
+        # only sets text, and unlike the three below it has no service to
+        # route to -- nothing reads it against a twin.
         project.learned = payload.learned.strip()
         fields.append("learned")
-    if payload.abandon_if is not None:
-        project.abandon_if = payload.abandon_if.strip()
-        fields.append("abandon_if")
-    if payload.notes is not None:
-        project.notes = payload.notes.strip()
-        fields.append("notes")
     if "due_date" in payload.dict(exclude_unset=True):
         project.due_date = _parse_date(payload.due_date)
         fields.append("due_date")
     if fields:
         project.save(update_fields=fields)
+
+    # Through their services rather than assigned here, which is the entire
+    # reason those services were written -- `set_desired_outcome` says so in
+    # its own docstring, and the call site was never switched over, so the pair
+    # it exists to keep distinguishable had one half in each place for two
+    # days. The services strip and store `""` for the cleared state, so `None`
+    # still means only *not mentioned*.
+    #
+    # After the title check, so a 409 on an empty title writes none of them.
+    if payload.desired_outcome is not None:
+        services.set_desired_outcome(project, payload.desired_outcome)
+    if payload.abandon_if is not None:
+        services.set_abandonment_condition(project, payload.abandon_if)
+    if payload.notes is not None:
+        services.set_project_notes(project, payload.notes)
 
     return _project_out(project_reader.project_for(request.user, project_id))
 

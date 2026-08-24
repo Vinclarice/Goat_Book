@@ -85,14 +85,27 @@ Vince's calls, recorded once because several documents are downstream:
 
 ## How v3 is scored
 
-[`product-stories.md`](product-stories.md), and nothing else. It stands at
-**3 works · 10 bends · 6 impossible** and that file owns the number; the
+[`product-stories.md`](product-stories.md), and nothing else. ~~It stands at
+**3 works · 10 bends · 6 impossible** and that file owns the number~~ — **that
+file owns the number and this file quoted it anyway, which is the thing the
+sentence itself says not to do.** Struck August 24, 2026, four days stale by
+then and nine verdicts wrong. **[Read it there](product-stories.md).** The
 releases below name which stories each is trying to move, so the score can
 contradict the plan rather than the plan grading itself.
 
-Two of the six impossible are refused rather than pursued: **S1** wants the
+~~Two of the six impossible are refused rather than pursued: **S1** wants the
 approval gate removed, which is a policy decision already taken the other way,
-and **S19** is billing. v3's reachable ceiling is therefore **17 of 19**.
+and **S19** is billing. v3's reachable ceiling is therefore **17 of 19**.~~
+**Both halves are now wrong, and the second one matters.** S1 was closed on
+August 23 by invitation links rather than by removing the gate, so it is a
+*bend* and was never the permanent exclusion this claimed; S19 is **refused**,
+which is now its own verdict rather than a footnote on *impossible*.
+
+**And the ceiling is 15, not 17** —
+[`clarice-v4-plan.md`](clarice-v4-plan.md) §The finding that makes v4 necessary
+at all, August 22, 2026, which owns that correction and the arithmetic behind
+it. It is left here as a strike rather than a repaired number because a plan
+overstating its own ceiling by two is the finding that produced v4.
 
 ## What v3 inherits, and why it is cheaper than it looks
 
@@ -428,8 +441,12 @@ defect now; it does not need a release to be fixed in.
 
 ## What v3 refuses
 
-- **Billing, pricing, packaging and entitlements**, while the personal-tool
-  answer stands. S19 stays impossible and is not a gap.
+- **Billing, pricing, packaging and entitlements**, ~~while the personal-tool
+  answer stands. S19 stays impossible and is not a gap.~~ **and no longer
+  *while*** — commerce was refused outright on August 22, 2026, and S19's
+  verdict is **refused** rather than impossible as of August 24. The refusal
+  here was always the right call; what changed is that it stopped being
+  conditional on an answer that has now been given.
 - **Removing the approval gate.** Invitation-only is deliberate.
 - **Analytics.** Its only job was telling whether a wedge landed.
 - **A rewrite, or merging `Node` into `Item` or the reverse.**

@@ -59,7 +59,8 @@ verdicts after two releases moved one.
 
 ## The score
 
-**14 work · 4 bend · 1 impossible** — from 13 · 4 · 2 earlier on August 23,
+**14 work · 4 bend · 0 impossible · 1 refused** — from 14 · 4 · 1 on August 23,
+13 · 4 · 2 earlier that day,
 13 · 3 · 3 and 12 · 3 · 4 on August 22,
 8 · 5 · 6 earlier that day, and
 7 · 6 · 6, 4 · 9 · 6 and 3 · 10 · 6 on August 20, 3 · 9 · 7 on August 19,
@@ -73,10 +74,20 @@ flatters* — and it flattered in the harder direction, hiding finished work
 rather than claiming unfinished work. The rule it broke is the one two lines
 down: the score lives here, so this is the copy that has to move first.
 
-**The impossible pile is one, and it is billing.** A model nobody has started
-and nobody will until there is a business — which v3 does not merely defer but
-**refuses**, while the personal-tool answer stands. So the pile is empty of
-everything this plan intends to build.
+**The fourth pile is new, and nothing moved into it.** S19 was **reclassified**
+on August 24, 2026, not re-scored: no code changed and no verdict was re-read.
+[`clarice-v4-plan.md`](clarice-v4-plan.md) obliged it when commerce became a
+refusal rather than a deferral, so that *impossible* keeps meaning **no path
+exists at any cost short of new code** rather than *nobody is going to*. **The
+denominator is still 19** — whether a refused story should leave it is that
+plan's open decision V4, and Vince's, not this file's to take by arithmetic.
+
+~~**The impossible pile is one, and it is billing.**~~ **The impossible pile is
+empty, and billing is refused** — corrected August 24, 2026. A model nobody has
+started and nobody will until there is a business, and there is not going to be
+one. Struck rather than rewritten because the sentence was right about the model
+and wrong about the reason: it called billing *impossible*, which prices a cost,
+when what is true is that somebody decided against it.
 
 `Decision`, `Source` and the project retrospective came out of it on August 22;
 signing up and the quarter on August 23. **The quarter was the last one blocked
@@ -92,7 +103,8 @@ interruption, is what this product is for. S18 is import.
 |---|---|
 | **Works** | S2 the phone morning · S3 planning against capacity · S4 durable capture · S5 closing the day · S6 the honest weekly review · S7 acting on the review · S8 the quarter · S9 the week · S10 a project's why · S11 a decision returning · S12 a project explaining itself · S14 a note that knows when · S15 reading producing work · S17 leaving with your data |
 | **Bends** | S1 signing up · S13 finding what you wrote · S16 the past arriving · S18 bringing your history |
-| **Impossible** | S19 paying |
+| **Impossible** | — |
+| **Refused** | S19 paying |
 
 **This score lives here and nowhere else.** Other documents link to it; they do
 not quote it.
@@ -114,6 +126,10 @@ Each story is written against the **target** product and then run against the
 - **Works** — a real user could do this today.
 - **Bends** — possible, but the product fights them.
 - **Impossible** — no path exists at any cost short of new code.
+- **Refused** — a path could be built and will not be. Added August 24, 2026.
+  Not a lesser *impossible*: the first three describe the code, this one
+  describes a decision, and collapsing them is how a refusal comes to read as a
+  backlog item nobody has got to yet.
 
 The *impossible* pile is the argument, and the "requires" lines added together
 are the target model. Stories are journeys rather than atomic feature cards
@@ -1151,13 +1167,32 @@ becomes a real one.
 twice, subscribing changes his limits without his data moving, and cancelling
 leaves him able to read and export.
 
-**Verdict: impossible.** No billing, plan, entitlement or trial concept.
+~~**Verdict: impossible.** No billing, plan, entitlement or trial concept.~~
+**Verdict: refused — August 24, 2026.** Still no billing, plan, entitlement or
+trial concept, and there will not be: commerce was refused rather than deferred
+on August 22, 2026 — Vince's call, recorded in
+[`clarice-v4-plan.md`](clarice-v4-plan.md) and at
+[`commercial-blueprint.md`](commercial-blueprint.md) Part 9 #1.
+
+**The code did not move and the verdict did**, which is the whole reason the
+fourth pile exists — see §The score. This is the same treatment S1's entry
+already gives public self-service: say *refused* out loud, so an answered
+question stops reading as an unstarted one.
 
 ---
 
 ## What the stories add up to
 
-**19 stories: 3 work, 10 bend, 6 impossible.**
+~~**19 stories: 3 work, 10 bend, 6 impossible.**~~ **A second copy of the score,
+struck August 24, 2026.** It was written on August 12 and never moved again,
+so it had been contradicting §The score by eleven verdicts — inside the file
+whose own rule, four lines under that table, is that the score lives in one
+place and other documents link to it. **The rule was broken here first, by this
+file, against itself.**
+
+Struck rather than updated on purpose: a number in this section would only go
+stale a second time. What follows is the reading, and the reading is what this
+section is for.
 
 **The August 16 reading of this section was that almost none of the movement had
 been aimed at these stories** — the merger and Heron were about capture surfaces

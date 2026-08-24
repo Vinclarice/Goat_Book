@@ -99,8 +99,10 @@ re-add it here.
   the work goes in and toward what**, replacing `commercial-blueprint.md` Part
   6's phases 2–5. Eight releases toward one destination — *Clarice is the
   instrument by which accumulated experience produces fewer, more honest
-  commitments* — scored against [`product-stories.md`](product-stories.md) with
-  a reachable ceiling of 17 of 19.
+  commitments* — scored against [`product-stories.md`](product-stories.md) ~~with
+  a reachable ceiling of 17 of 19.~~ **with a reachable ceiling of 15 of 19, not
+  the 17 v3 claims** — [`clarice-v4-plan.md`](clarice-v4-plan.md) owns that
+  correction, made August 22 and restated here unstruck for two days.
 
   **Three decisions of Part 9 were answered the same day** and are recorded
   there rather than here: personal tool with an intent to invite, the wedge

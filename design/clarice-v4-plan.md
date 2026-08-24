@@ -33,21 +33,31 @@ commerce and this decision does not answer it in either direction.
 
 `principles.md`: **a trigger that cannot fire is a refusal, and should be
 recorded as one.** Four places still carry the commercial question as live, and
-each is now a deferral that will never resolve:
+each is now a deferral that will never resolve. **Three of the four are done —
+two on August 24, 2026 (`e8be06b`) and the third the same day**; the fourth is
+V3 below and is not this file's call:
 
-- **`commercial-blueprint.md` Part 9 #2, the wedge.** Currently *deferred with a
+- ~~**`commercial-blueprint.md` Part 9 #2, the wedge.** Currently *deferred with a
   trigger*, and its body is unstruck and still reads *"A+B together is the
   recommendation."* A wedge is a go-to-market concept; with commerce refused it
-  is moot **whatever the guest question decides.** Strike it as refused.
-- **`roadmap.md`'s *Only if Clarice becomes a business*** — billing, support
+  is moot **whatever the guest question decides.** Strike it as refused.~~
+  **Done August 24, 2026** — Part 9 #2 reads *"Refused August 22, 2026, as a
+  consequence of #1."*
+- ~~**`roadmap.md`'s *Only if Clarice becomes a business*** — billing, support
   operations, deeper legal requirements, horizontal scaling, *"out of scope until
   the public-readiness bar is genuinely met."* The bar is no longer the gate;
-  the answer is no. Rewrite as a refusal.
-- **`product-stories.md`'s S19.** It sits in *impossible* as a story that can
+  the answer is no. Rewrite as a refusal.~~ **Done August 24, 2026** — the
+  heading is struck and the section says the bar is no longer the gate, *"because
+  the answer is no rather than not yet."*
+- ~~**`product-stories.md`'s S19.** It sits in *impossible* as a story that can
   never move, which quietly makes the score's denominator carry a permanent one.
   **Mark it refused rather than impossible** — the same treatment S1 already
   argues for — so *impossible* keeps meaning *no path exists at any cost short
-  of new code* rather than *nobody is going to*.
+  of new code* rather than *nobody is going to*.~~ **Done August 24, 2026.**
+  S19's verdict is *refused*, and the score grew a fourth pile with the
+  distinction written into its legend. **The denominator was deliberately left
+  alone** — that is V4, and answering it by arithmetic while tidying would have
+  been taking a decision rather than recording one.
 - **`commercial-blueprint.md`'s title and remit.** Parts 4 (architecture
   verdicts) and 8 (refusals) are live and load-bearing and cited elsewhere; Parts
   6 and 7 were already superseded, and Part 9 closes with this. **The file is
@@ -56,19 +66,31 @@ each is now a deferral that will never resolve:
   file's — but leaving a live authority under a dead name is how a reader comes
   to trust a stale decision beside a live refusal.
 
-**This is the one piece of work in this document that is unambiguously ready**,
-and it is an afternoon.
+~~**This is the one piece of work in this document that is unambiguously ready**,
+and it is an afternoon.~~ **It was, and it took two** — August 24, 2026. What is
+left of it is the fourth bullet, which is V3 and belongs to
+[`design/README.md`](README.md).
 
 ## The finding that makes v4 necessary at all
 
 [`product-stories.md`](product-stories.md) is **the only score measuring the
-product rather than the process**, and it stands at **12 works · 3 bends ·
+product rather than the process**, and ~~it stands at **12 works · 3 bends ·
 4 impossible**. Bends are **S13**, **S16**, **S18**; impossible is **S1**, **S8**,
-**S12**, **S19**.
+**S12**, **S19**.~~ **that sentence quoted it, which that file's own rule forbids,
+and the quote was stale within a day** — S1 bends and S8 and S12 reached *works*
+on August 23. Corrected August 24, 2026: **the score is linked and not
+repeated.**
+
+**The ceiling below did not move, and checking that is why this is more than
+tidying.** It was 12 works plus the three stories v3's remaining releases name —
+S8, S12, S16 — which is 15. Two of those three have since delivered, so the sum
+is now 14 works plus S16, which is **still 15.** The arithmetic changed route and
+arrived in the same place, so the finding stands on its own rather than on the
+numbers that first produced it.
 
 v3 states its reachable ceiling as 17 of 19. **Executed exactly as written it
-tops out at 15**, because its remaining releases name S8, S12 and S16 and
-nothing else:
+tops out at 15**, because its remaining releases named S8, S12 and S16 and
+nothing else — S8 and S12 have since delivered, leaving S16:
 
 - **S13 is orphaned.** It was *Unify*'s acceptance, and that acceptance was
   unreachable inside its own release — it required `Source`, delivered later.

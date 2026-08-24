@@ -401,12 +401,20 @@ embeddings with a measured shadow evaluation. `mind/models.py` is the authority.
 
 ## Part 9 — Decisions only Vince can make
 
-1. **Is Clarice a business, a product with users, or a personal tool?** Phases 3
-   through 5 are conditional on this and nothing else. The audit cannot answer it
-   and neither can the roadmap.
-2. **Which wedge?** A+B together is the recommendation; C is the delivery model
-   most compatible with where the code is today. They are not mutually exclusive
-   but they order the work differently.
+1. ~~**Is Clarice a business, a product with users, or a personal tool?**~~
+   **Answered August 22, 2026: a personal tool, and commerce is refused rather
+   than deferred.** Billing, pricing, packaging, entitlements, a wedge and a
+   market are off, and not pending a trigger. **The guest question is separate
+   and stays open** — whether anybody else ever uses Clarice is V1 in
+   [`clarice-v4-plan.md`](clarice-v4-plan.md), and this decision answers it in
+   neither direction.
+2. ~~**Which wedge?**~~ **Refused August 22, 2026, as a consequence of #1.**
+   ~~A+B together is the recommendation; C is the delivery model most
+   compatible with where the code is today.~~ A wedge is a go-to-market
+   concept, so with commerce refused it is moot **whatever the guest question
+   decides** — which is why this is struck as refused rather than left
+   deferred with a trigger that can never fire. `principles.md`: a trigger
+   that cannot fire is a refusal, and should be recorded as one.
 3. ~~**Second brain: invest or retire?**~~ **Answered August 13, 2026: invest,
    elsewhere.** Part 2 carries the reasoning; the consequence for this document
    is that Phase 2 is largely cancelled.

@@ -455,9 +455,15 @@ runs coexist. Cheap, and it should not wait for anything above it.
   a trigger that fired. Items whose trigger has not fired stay in §6.
 - **Re-litigating pile 3.** An entry there is closed until its stated trigger
   fires, and the trigger is the thing to argue with, not the verdict.
-- **Treating the restore drill as done because a script exists.** It has never
-  been run against a restore. `architecture-trajectory.md` §6's own line
-  applies: a backup nobody has restored is a belief, not a control.
+- **Treating the restore drill as done because a script exists.**
+  ~~It has never been run against a restore.~~ **It was run on August 19, 2026
+  — the first pass entitled to the word** — with an empty step-4 diff across 42
+  tables and thirteen behavioural checks at step 5; the checks were audited and
+  repaired on August 21 without provisioning a cluster. [`MIGRATION.md`](../MIGRATION.md)
+  owns that record. The refusal still stands as written, because what it
+  refuses is the *reasoning*: `architecture-trajectory.md` §6's line is that a
+  backup nobody has restored is a belief rather than a control, and a drill
+  certifies the schema it ran against rather than the one deployed today.
 - **Automating the two processor deletions before D1 is answered.**
 
 ## Open decisions — Vince's, not this document's

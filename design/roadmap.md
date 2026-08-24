@@ -66,9 +66,10 @@ re-add it here.
   of the three and **was unclaimed by this file until now**, which is its own
   small version of the seam problem.
 
-  **MFA on the admin is built and enrolled** —
-  [`admin-mfa-plan.md`](admin-mfa-plan.md) increment 4, its top-ranked item;
-  increment 3 confirmed in production on August 23, 2026. **Ready to deploy.**
+  ~~**MFA on the admin is built and enrolled.** Ready to deploy.~~ **Deployed
+  and live August 23, 2026 as `petrel`** (`DEPLOYED-2026-08-23/1510`) —
+  [`admin-mfa-plan.md`](admin-mfa-plan.md) increment 4, its top-ranked item,
+  with increment 3 confirmed in production the same day.
 
   **One question it left open.** Enrolment first landed on `Vrbeall01`, the
   account in daily use, which is not staff — while `vince-admin`, the only one
@@ -77,12 +78,20 @@ re-add it here.
   month is one whose second factor will be missing at the moment it is needed.
   Vince's call, and not a thing to slip into a deploy.
 
-  **The restore drill has still never been run**, and is the other one. The
-  August 1 pass compared 18 tables at 53 migrations; there are 77 now, plus the
-  `vector` extension and `ActivityEvent`'s append-only triggers.
-  `MIGRATION.md` states the consequence itself: a restore missing all of that
-  passes the drill as written and fails on the first write. Vince's to run — it
-  needs WSL, the ssh key and a paid scratch cluster.
+  ~~**The restore drill has still never been run**, and is the other one. The
+  August 1 pass compared 18 tables at 53 migrations~~ — **wrong since the day
+  it was written: the drill ran on August 19, 2026 and passed**, the first pass
+  entitled to the word, with an empty step-4 diff across 42 tables and
+  behavioural checks at step 5. Its checks were audited and repaired on August
+  21, and `clarice/tests/test_restore_integrity_covers_the_schema.py` now fails
+  if the checked list falls behind the declared constraints.
+  [`MIGRATION.md`](../MIGRATION.md) owns that record and this file should not
+  have carried a second copy of it.
+
+  **What is true is narrower and still Vince's**: a drill certifies the schema
+  it ran against, and that schema is now several migrations old. Re-running
+  needs WSL, the ssh key and a paid scratch cluster — worth doing when the
+  schema has moved enough to be worth re-proving, not on a calendar.
 
 
 - **Clarice v3 is the plan, claimed August 20, 2026.**
@@ -592,10 +601,26 @@ to Track D, because writing something down is not deciding to build it.
   August 13, 2026**, and built further there than these lines imagined. Its ML
   policy is stricter than the AI line was; v1 ships no generation at all.
 
-### Only if Clarice becomes a business
+### ~~Only if Clarice becomes a business~~ — refused August 22, 2026
 
-Billing, support operations, deeper legal requirements and horizontal scaling
-remain out of scope until the public-readiness bar is genuinely met.
+~~Billing, support operations, deeper legal requirements and horizontal scaling
+remain out of scope until the public-readiness bar is genuinely met.~~
+
+**Clarice is not going to be pushed toward commercialization.** Vince's call,
+August 22, 2026, recorded in full at `commercial-blueprint.md` Part 9 #1 and
+[`clarice-v4-plan.md`](clarice-v4-plan.md). Billing, pricing, packaging,
+entitlements, a wedge and a market are **refused rather than deferred** — the
+public-readiness bar is no longer the gate, because the answer is no rather
+than not yet.
+
+**This heading was a deferral whose trigger can never fire**, which
+`principles.md` says is a refusal and should be recorded as one. Kept as a
+struck heading rather than deleted, so the reasoning survives for anyone who
+remembers the section.
+
+**The guest question is separate and open** — whether anybody other than Vince
+ever uses Clarice is V1 in `clarice-v4-plan.md`, and it is not answered here in
+either direction.
 
 ## Settled boundaries
 

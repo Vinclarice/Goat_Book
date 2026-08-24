@@ -323,6 +323,56 @@ def test_the_unseen_rate_separates_a_neglected_surface_from_a_bad_detector(owner
     assert performance.accept_rate is None
 
 
+def test_a_closed_window_nothing_expired_is_not_an_unseen_rate_of_zero(owner):
+    """The `MAINTENANCE_RAN` distinction, one page up: *ran and found none* is
+    not *never ran*.
+
+    `expire_stale_hypotheses` is the only thing that marks a proposal expired
+    and **nothing in production calls it** -- it is declared dark. So `expired`
+    is structurally zero on live data, and a zero here reads as *the review
+    surface is being kept up with* when it means *nothing measures whether it
+    is*. This proposal's window closed months ago and no pass came for it.
+    """
+    ignored = _hypothesis(owner)
+    services.surface_hypothesis(
+        ignored, now=JAN, actor="vince", review_window=timedelta(days=1)
+    )
+
+    [performance] = instrumentation.detector_performance(owner, now=NOW)
+
+    assert performance.overdue == 1
+    assert performance.unseen_rate is None
+
+
+def test_an_expiry_pass_that_ran_still_reports_its_number(owner):
+    """The other side of the same rule, so the honesty does not cost the
+    measurement: once something has actually expired the rate is real."""
+    ignored = _hypothesis(owner)
+    services.surface_hypothesis(
+        ignored, now=JAN, actor="vince", review_window=timedelta(days=1)
+    )
+    services.expire_stale_hypotheses(owner, now=NOW, unsurfaced_after=timedelta(days=30))
+
+    [performance] = instrumentation.detector_performance(owner, now=NOW)
+
+    assert performance.overdue == 0
+    assert performance.unseen_rate == 1.0
+
+
+def test_a_proposal_still_inside_its_window_is_not_overdue(owner):
+    """Waiting is not neglect. A window that has not closed yet says nothing
+    about whether anything expires."""
+    fresh = _hypothesis(owner)
+    services.surface_hypothesis(
+        fresh, now=NOW, actor="vince", review_window=timedelta(days=21)
+    )
+
+    [performance] = instrumentation.detector_performance(owner, now=NOW)
+
+    assert performance.overdue == 0
+    assert performance.unseen_rate == 0.0
+
+
 def test_the_miss_trend_is_bucketed_oldest_first(owner):
     services.record_retrieval_miss(
         owner, query_text="that thing about delay", now=NOW - timedelta(days=100)

@@ -51,8 +51,11 @@ def _entry(owner, text):
     return entry
 
 
-def _by_producer(owner):
-    return {p.producer: p for p in instrumentation.producer_performance(owner)}
+def _by_producer(owner, *, now=None):
+    return {
+        p.producer: p
+        for p in instrumentation.producer_performance(owner, now=now)
+    }
 
 
 def test_a_capture_commitment_names_its_producer(owner):
@@ -168,3 +171,23 @@ def test_the_worst_rate_now_sees_every_producer(owner):
 
     conditions = {c.name: c for c in instrumentation.retirement_gate(owner, now=NOW)}
     assert not conditions["accept rates hold"].met
+
+
+def test_a_parser_has_no_unseen_rate_at_all(owner):
+    """The template has promised this since August 19 and the code never did
+    it.
+
+    `summary.html` says *"'Never seen' is blank for a parser rather than zero
+    ... a zero would read as a measurement that was taken"* -- but
+    `unseen_rate` only returned `None` when nothing had been proposed, so a
+    parser with proposals returned `0/n` and the page printed `0`. An
+    actionable facet has no review window: it is never applied until
+    confirmed, so silence costs nothing and there is nothing to expire.
+    """
+    _capture(owner, "Dentist on 4 June.")
+
+    [parser] = _by_producer(owner, now=NOW).values()
+
+    assert parser.proposed == 1
+    assert parser.has_review_window is False
+    assert parser.unseen_rate is None

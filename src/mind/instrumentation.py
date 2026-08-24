@@ -52,6 +52,15 @@ class DetectorPerformance:
     dismissed: int
     expired: int
     pending: int
+    #: Proposals whose review window closed while they were still undecided.
+    #: **`None` means nobody asked**, not zero: the ranking path reads only
+    #: `accept_rate`, and threading a clock through it would touch four call
+    #: sites to compute a number none of them looks at.
+    overdue: int | None = None
+    #: Whether silence can ever mean anything for this producer. An actionable
+    #: facet is never applied until confirmed, so nothing expires and a
+    #: `0` in the unseen column would be a measurement nobody took.
+    has_review_window: bool = True
 
     @property
     def producer(self) -> str:
@@ -92,11 +101,55 @@ class DetectorPerformance:
         A high value says the review surface is not being opened often enough, which
         is a fact about the person's habits rather than about the detector — worth
         separating so a neglected surface is not mistaken for a bad mechanic.
+
+        **`None` wherever the number would not be a measurement**, which is the
+        `MAINTENANCE_RAN` distinction applied one page up: *ran and found none*
+        must not render the same as *nothing ever ran*. Three such cases, and
+        the middle one is why this was rewritten:
+
+        - **No review window.** A parser's silence costs nothing, so there is
+          nothing for it to be unseen *against*. `summary.html` has promised
+          this since August 19 and the code returned `0/n` instead.
+        - **Windows have closed and nothing marked them expired.** Only
+          `expire_stale_hypotheses` writes `EXPIRED` and nothing in production
+          calls it, so `expired` is structurally zero on live data — a page
+          reporting `0` there was reporting that the review surface is kept up
+          with, on evidence that cannot exist.
+        - **No clock was supplied**, so whether a window has closed is unknown.
+
+        **A non-zero `expired` settles it on its own**, and that ordering is
+        load-bearing rather than an optimisation: something having expired is
+        proof the mechanism ran, so the rate is a measurement whether or not
+        this reading was given a clock. Only a *zero* needs the clock, because
+        only a zero is ambiguous between the two readings.
         """
-        return self.expired / self.proposed if self.proposed else None
+        if not self.has_review_window or not self.proposed:
+            return None
+        if self.expired:
+            return self.expired / self.proposed
+        if self.overdue is None or self.overdue:
+            return None
+        return 0.0
+
+    @property
+    def unseen_note(self) -> str:
+        """Why the unseen column is blank, for a reader who would otherwise
+        read a dash as *zero, measured*. Empty when the rate is real."""
+        if not self.has_review_window:
+            return "no review window — nothing to expire"
+        if self.expired or not self.proposed:
+            return ""
+        if self.overdue is None:
+            return "not measured on this reading"
+        if self.overdue:
+            return (
+                f"{self.overdue} past their review window and still unexpired "
+                f"— nothing in production expires proposals"
+            )
+        return ""
 
 
-def producer_performance(owner) -> list[DetectorPerformance]:
+def producer_performance(owner, *, now=None) -> list[DetectorPerformance]:
     """Every producer that has ever proposed anything, best accept rate first.
 
     **One list, deliberately, and it is what D3 needs.** Rationing the review's
@@ -127,6 +180,10 @@ def producer_performance(owner) -> list[DetectorPerformance]:
             dismissed=row["dismissed"],
             expired=0,
             pending=row["pending"],
+            # Not an omission and not a zero measurement: a facet has no window,
+            # so `unseen_rate` refuses to be a number at all for these rows.
+            overdue=0,
+            has_review_window=False,
         )
         for row in (
             Facet.objects.filter(kind=FacetKind.ACTIONABLE)
@@ -144,7 +201,7 @@ def producer_performance(owner) -> list[DetectorPerformance]:
             )
         )
     ]
-    rows.extend(detector_performance(owner))
+    rows.extend(detector_performance(owner, now=now))
     # Undecided producers sort last, as they do within either half: an accept
     # rate of None means "no evidence", which should not outrank a measured one
     # in either direction.
@@ -152,8 +209,26 @@ def producer_performance(owner) -> list[DetectorPerformance]:
     return rows
 
 
-def detector_performance(owner) -> list[DetectorPerformance]:
-    """Every detector that has ever proposed anything, best accept rate first."""
+def detector_performance(owner, *, now=None) -> list[DetectorPerformance]:
+    """Every detector that has ever proposed anything, best accept rate first.
+
+    ``now`` is optional because two different questions are asked of this read
+    and only one of them needs a clock. `/numbers/` reports whether proposals
+    are going unseen, which cannot be answered without knowing which windows
+    have closed; `queries._demotion_case` rations review slots by accept rate,
+    which has no clock in it. **Omitting it yields `overdue=None`**, and
+    `unseen_rate` then reports nothing rather than a zero it did not measure.
+    """
+    overdue = (
+        {
+            "overdue": Count(
+                "id",
+                filter=Q(resolved_at__isnull=True, review_window_expires_at__lt=now),
+            )
+        }
+        if now is not None
+        else {}
+    )
     rows = (
         ConnectionHypothesis.objects.filter(owner=owner)
         .values("detector")
@@ -163,6 +238,7 @@ def detector_performance(owner) -> list[DetectorPerformance]:
             dismissed=Count("id", filter=Q(resolution=HypothesisResolution.DISMISSED)),
             expired=Count("id", filter=Q(resolution=HypothesisResolution.EXPIRED)),
             pending=Count("id", filter=Q(resolved_at__isnull=True)),
+            **overdue,
         )
         .order_by("detector")
     )
@@ -175,6 +251,7 @@ def detector_performance(owner) -> list[DetectorPerformance]:
             dismissed=row["dismissed"],
             expired=row["expired"],
             pending=row["pending"],
+            overdue=row.get("overdue"),
         )
         for row in rows
     ]
@@ -265,7 +342,7 @@ def retirement_gate(owner, *, now: datetime) -> list[GateCondition]:
     # Every producer, not only the detectors. While this read hypotheses alone,
     # a commitment parser accepting nothing could not lower the worst rate --
     # so the gate could report health for a system half of which was unmeasured.
-    performances = [p for p in producer_performance(owner) if p.decided]
+    performances = [p for p in producer_performance(owner, now=now) if p.decided]
     worst = min((p.accept_rate for p in performances), default=None)
 
     trend = retrieval_miss_trend(owner, now=now, periods=6)
@@ -589,7 +666,7 @@ def lab_summary(owner, *, now: datetime) -> dict:
         # while reading as though it covered all of it. A producer that ships
         # without a row here is the unswitched seam this repository keeps
         # catching.
-        "detectors": producer_performance(owner),
+        "detectors": producer_performance(owner, now=now),
         # Per mode, never blended -- Track B increment 10. Beside the producer
         # rows rather than among them, because those grade a machine that
         # proposes and these grade retrieval, and one table over both would be

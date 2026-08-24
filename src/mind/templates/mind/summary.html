@@ -65,6 +65,13 @@ other on an undertaking, and their false positives look nothing alike.
 review window -- it is never applied until confirmed, so silence costs nothing
 and there is nothing to expire -- and a zero would read as a measurement that
 was taken.
+
+**That paragraph described this page for five days and the code did not do it**,
+which is why the cell now carries its reason. `unseen_rate` only returned None
+when nothing had been proposed, so a parser printed `0`; and since nothing in
+production expires a proposal, a detector printed `0` too -- the page reporting
+that the review surface was being kept up with, on evidence that cannot exist.
+Blank now has a stated cause rather than three silent ones.
 {% endcomment %}
 {% if detectors %}
 <table>
@@ -76,7 +83,8 @@ was taken.
     <td>{{ d.proposed }}</td>
     <td>{{ d.confirmed }}</td>
     <td>{{ d.dismissed }}</td>
-    <td>{% if d.unseen_rate is None %}—{% else %}{{ d.expired }}{% endif %}</td>
+    <td>{% if d.unseen_rate is None %}<span class="meta" title="{{ d.unseen_note }}">—</span>
+        {% else %}{{ d.expired }}{% endif %}</td>
     {% comment %}
     None, never zero. "No evidence yet" and "wrong every time" call for opposite
     responses, so they must not render the same.

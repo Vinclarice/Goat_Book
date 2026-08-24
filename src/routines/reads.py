@@ -46,6 +46,12 @@ def paused_routines_for(owner):
     return list(Routine.objects.filter(owner=owner, is_active=False))
 
 
+# DARK: no production caller. The read half of a live pair --
+# `services._occurrence_for_writing` has two callers and does the same lookup
+# with `select_for_update`, so every production path that wants an occurrence
+# wants to write to it.
+# Trigger: a routines surface that reads an occurrence without changing it --
+# a history view, or a brief saying whether today's routine has been done.
 def occurrence_for(owner, routine, day):
     """This owner's occurrence for the period ``day`` falls in, or None.
 

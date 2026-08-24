@@ -156,6 +156,15 @@ def next_weekday(today, weekday):
     return today + timedelta(days=ahead or 7)
 
 
+# DARK: no production caller. **Not dead -- the server half of a mirrored
+# rule.** `frontend/src/agenda.ts:71` says so at its own copy: *"Mirrors
+# lists.agenda.snooze_presets -- see there for the edge cases."* The SPA
+# computes the menu, and this is the reference the edge cases are reasoned and
+# tested against.
+# Decision registered: `mirrored-rules-brief.md` owns whether the mirror
+# collapses to one side. Deleting this half would leave the TypeScript as the
+# only statement of the two ambiguous days, which is the divergence that brief
+# was written about.
 def snooze_presets(today):
     """The due dates the snooze menu offers, relative to ``today``.
 
@@ -270,6 +279,13 @@ def list_summaries(user):
     return summaries
 
 
+# DARK: no production caller. The same shape as `snooze_presets` above:
+# `frontend/src/agenda.ts:182` exports its own `tagSummaries`, which is what
+# `AgendaWorkspace.tsx` renders. This half stopped being called when the
+# sidebar moved into the SPA and nothing said so.
+# Decision registered: `mirrored-rules-brief.md`, as above. The counting rule
+# -- open items only, so a tag with nothing left does not clutter the sidebar
+# -- is the part worth keeping stated in both languages or in neither.
 def tag_summaries(items):
     """Tag names used by the given open items, with counts, A-Z.
 

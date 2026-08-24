@@ -135,6 +135,15 @@ EXPORT_KEYS = {
 OWNED_APPS = ("accounts", "lists", "daily", "routines", "review", "mind")
 
 
+# DARK: no production caller. **Deliberately so -- this one holds a published
+# promise from the test suite rather than from the export.**
+# `_payload` hand-enumerates every model; this enumerates every model that
+# *exists*, and `test_export.py` asserts the second is a subset of the first.
+# That is what makes `/privacy/`'s "everything" true, and the privacy template
+# cites this function by name for exactly that reason.
+# Decision registered: production-dark on purpose, permanently. Deleting it
+# would not break the export -- it would unhold the promise, silently, and the
+# next model added to an owned app would go unexported with nothing failing.
 def owned_models():
     """Every concrete model in this account's apps, minus what nobody owns.
 
@@ -153,6 +162,11 @@ def owned_models():
     return found
 
 
+# DARK: no production caller. The other half of the guard above -- the
+# completeness test needs to know which key each model should have arrived
+# under, and `EXPORT_KEYS` is the only place that says.
+# Decision registered: production-dark on purpose, permanently, for the reason
+# `owned_models` gives in full.
 def export_key(model):
     """The payload key this model's rows travel under."""
     return EXPORT_KEYS[model]

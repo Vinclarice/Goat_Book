@@ -253,12 +253,6 @@ def confirmed_concept_labels(node: Node) -> list[str]:
     return labels
 
 
-def confirmed_mentions_of(concept: ConceptCandidate) -> QuerySet[Mention]:
-    return Mention.objects.filter(
-        concept=concept, confirmed_at__isnull=False
-    ).select_related("node")
-
-
 def commitments_involving(owner, concept: ConceptCandidate) -> QuerySet[Facet]:
     """Confirmed commitments that grew out of notes mentioning this concept.
 

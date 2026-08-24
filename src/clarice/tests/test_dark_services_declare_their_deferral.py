@@ -42,6 +42,20 @@ from django.test import SimpleTestCase
 SRC = pathlib.Path(__file__).resolve().parents[2]
 SERVICES = SRC / "mind" / "services.py"
 
+#: Reads and helpers outside `mind/services.py` that nothing calls either.
+#:
+#: **Why these modules and not every module.** The rule is about code somebody
+#: wrote to be called; a view is reached from a URLconf without parentheses, a
+#: model method through the ORM, a management command by name -- each needs a
+#: different notion of *caller*, and one scanner over all of them would be four
+#: heuristics wearing a trenchcoat. These four are plain function modules where
+#: a call looks like a call.
+ELSEWHERE = {
+    "lists/agenda.py": ("snooze_presets", "tag_summaries"),
+    "routines/reads.py": ("occurrence_for",),
+    "accounts/export.py": ("owned_models", "export_key"),
+}
+
 #: The ten still dark, each with the live half whose absence of an undo it
 #: represents, or None where it is not an undo half at all. Eleven until
 #: August 22, 2026, when D15 gave `mark_reviewed` a caller.
@@ -113,6 +127,45 @@ def public_services(source):
         for name in re.findall(r"^def (\w+)\(", source, re.MULTILINE)
         if not name.startswith("_")
     ]
+
+
+def aliases_for(modname, text):
+    """Every name a module is reachable by in one file.
+
+    `from lists import projects as project_reader` is the case that makes this
+    necessary: a bare module-name regex reported three live functions in
+    `lists/projects.py` as dark, because every call site says
+    `project_reader.project_for(...)`. A guard that cannot see an alias would
+    invite declarations onto working code, which is the failure this file calls
+    worse than no declaration at all.
+    """
+    names = {modname}
+    for match in re.finditer(r"from\s+[\w.]+\s+import\s+([^\n(]+)", text):
+        for part in match.group(1).split(","):
+            bits = part.strip().split()
+            if len(bits) == 3 and bits[1] == "as" and bits[0] == modname:
+                names.add(bits[2])
+    for match in re.finditer(rf"import\s+[\w.]*\b{modname}\s+as\s+(\w+)", text):
+        names.add(match.group(1))
+    return names
+
+
+def callers_in_module(modname, name, sources):
+    """`<alias>.name(`, or a direct `from ... import name` and a bare call."""
+    for path, text in sources.items():
+        for alias in aliases_for(modname, text):
+            if re.search(rf"(?<![\w.]){alias}\.{re.escape(name)}\s*\(", text):
+                return [path]
+        for match in re.finditer(
+            rf"from\s+[\w.]*\b{modname}\s+import\s+([^\n(]+)", text
+        ):
+            for part in match.group(1).split(","):
+                bits = part.strip().split()
+                if bits and bits[0] == name:
+                    local = bits[-1]
+                    if re.search(rf"(?<![\w.]){local}\s*\(", text):
+                        return [path]
+    return []
 
 
 def internal_callers_of(name, source):
@@ -214,6 +267,54 @@ class DarkServicesTest(SimpleTestCase):
                     [],
                     f"{name} now has a caller -- remove its DARK declaration",
                 )
+
+    def test_the_wider_registry_is_declared_and_whole(self):
+        """The same rule past `mind/services.py`, where it stopped.
+
+        August 24's discovery test covered one file, so five functions in three
+        other modules were dark and unguarded -- including two the plan corpus
+        had listed for two days without anything failing. Both directions
+        again: a name that goes dark is caught, and one that gains a caller is
+        caught.
+        """
+        for rel, declared in ELSEWHERE.items():
+            path = SRC / rel
+            source = path.read_text(encoding="utf-8")
+            sources = {
+                other: other.read_text(encoding="utf-8", errors="ignore")
+                for other in production_sources()
+                if other != path
+            }
+
+            with self.subTest(module=rel):
+                dark = [
+                    name
+                    for name in public_services(source)
+                    if not callers_in_module(path.stem, name, sources)
+                    and not internal_callers_of(name, source)
+                ]
+                self.assertEqual(
+                    sorted(dark),
+                    sorted(declared),
+                    f"{rel}: the dark set has moved -- declare a new one with a "
+                    f"trigger, or remove the declaration of one that came alive",
+                )
+
+            for name in declared:
+                with self.subTest(module=rel, function=name):
+                    declaration = re.search(
+                        rf"((?:^# .*\n)+)def {re.escape(name)}\(", source, re.MULTILINE
+                    )
+                    self.assertTrue(
+                        declaration
+                        and "# DARK: no production caller." in declaration.group(1)
+                        and (
+                            "Trigger:" in declaration.group(1)
+                            or "Decision registered:" in declaration.group(1)
+                            or "Decide before wiring" in declaration.group(1)
+                        ),
+                        f"{rel}:{name} is dark without saying so and naming a trigger",
+                    )
 
     def test_the_live_halves_are_still_live(self):
         """The pairing is the whole argument for declaring rather than

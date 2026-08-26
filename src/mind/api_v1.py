@@ -355,6 +355,23 @@ class SearchOut(Schema):
     notes_total: int
 
 
+# DARK: no client. Nothing calls this -- the SPA links to `/mind/search/`, the
+# server-rendered page, and Android does not search at all. `/api/v1/search`
+# appears in `frontend/src/api/schema.ts` only because that file is generated
+# from this one.
+#
+# **Provable here, where it usually is not.** An endpoint's absent caller
+# normally proves little, since a token in somebody's keystore or a script can
+# call it without this repository knowing. The `auth=` below is what closes
+# that: session only, so the sole possible caller is a browser holding a
+# session, and the only browser code is the SPA.
+#
+# Kept rather than deleted because it is not a spare -- it is the same read the
+# page performs, and `SEARCH_LIMIT` above exists so the two cannot disagree.
+# Deleting it would make the SPA's eventual search a rebuild rather than a call.
+# Trigger: the SPA searching in its own surface instead of linking out to the
+# knowledge core's page -- which `search-plan.md`'s D4 declined to do as a
+# command palette, on the grounds that a cleared precondition is not a trigger.
 @router.get(
     "/search",
     response=SearchOut,

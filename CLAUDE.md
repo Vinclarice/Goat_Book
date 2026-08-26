@@ -254,6 +254,55 @@ pnpm --dir frontend build                                   # it loads the real 
 `src/lists/static/frontend/`, so without a rebuild they will happily pass
 against stale JavaScript. `HEADED=1` runs them in a visible browser.
 
+**This suite flakes, rarely, and the failure names the wrong test.** Twice on
+August 26, 2026 — once locally, once on CI. What it looks like:
+
+```
+django.db.utils.OperationalError: deadlock detected
+CommandError: Database test_clarice_… couldn't be flushed
+django.db.utils.IntegrityError: duplicate key value violates unique
+    constraint "accounts_user_username_…"
+```
+
+**Two errors, neither in the test that caused them.** `StaticLiveServerTestCase`
+serves each request on its own thread while `_fixture_teardown` truncates every
+table from the main one. `TRUNCATE` takes `ACCESS EXCLUSIVE`; a request still
+running holds `ACCESS SHARE`; reach for the tables in different orders and
+Postgres kills one of them. The flush then fails, so the tables keep their rows
+and the *next* test dies in `setUp` on a duplicate username. The test named in
+the output is the victim, not the cause.
+
+**Diagnose it as a flake only by evidence, never by re-running until green.**
+CLAUDE.md already carries the cost of the opposite habit: three commits went out
+with CI red because the browser job's failure was read as noise, and it had
+caught a real regression. The evidence that says *flake* is (a) the deadlock and
+flush messages above, and (b) the same commit passing on a re-run with nothing
+changed — `gh run rerun <id> --failed`.
+
+**What was tried and did not work**, so it is not tried again. Waiting for the
+page before teardown looks like the fix and is not:
+
+- `wait_for_load_state("networkidle")` reports the page's *current* state, so a
+  page that went idle once after loading returns from it immediately, however
+  many XHRs React has fired since. Measured: `/api/v1/day` outstanding before
+  the call and still outstanding after it.
+- Counting requests and waiting for the set to empty costs the full timeout,
+  because at least one request per page never reports finished to Playwright —
+  `failure=None`, `redirected_to=None`, no service worker involved. Ten seconds
+  a test, for nothing.
+- **And nothing is the right word.** `pg_stat_activity` at teardown says the
+  live server's connections are `idle`, not `active` and not
+  `idle in transaction` — the server has finished; the browser's bookkeeping is
+  the artifact. Waiting on the browser cannot close a window that is already
+  shut on the side that matters.
+
+So the window is genuinely narrow and genuinely server-side, and no cheap
+client-side wait addresses it. **If it becomes frequent enough to be worth
+fixing**, the lever is the flush rather than the browser: make
+`_fixture_teardown` retry once on `OperationalError`, or hold the live server's
+threads open until they drain. Both are more machinery than two occurrences
+justify.
+
 CI runs all of the above across five jobs — `django`, `mind`, `browser`,
 `frontend`, `android`. **Keep the Django app list above matched to
 `.github/workflows/ci.yml`.** It has been out of step twice, and both times the

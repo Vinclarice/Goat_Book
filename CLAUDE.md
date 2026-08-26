@@ -424,6 +424,14 @@ his.** Three tags, each meaning a different thing:
 - `DEPLOYED-<YYYY-MM-DD>/<HHMM>` — a permanent record of one deployment
   event. Ask for the time if you do not have it; do not guess, and check
   the name is free, because these collide silently.
+  **Local time, and say the offset in the message** — every tag from
+  `DEPLOYED-2026-08-23/1510` back does, and this line exists because it was
+  the one thing the convention never wrote down: a time reported as *11:45pm*
+  was a UTC reading of 19:45 local, tagged `/2345`, and renamed the same
+  evening. Both are the same instant and only one is consistent with the
+  others. **Annotated, not lightweight**, for the same reason the codename is:
+  `git describe` ignores a lightweight tag, so the command this file tells you
+  to confirm a build with cannot see it.
 - The bird codename — a permanent annotated release tag, applied when a
   release is verified in production, describing what shipped and how.
 

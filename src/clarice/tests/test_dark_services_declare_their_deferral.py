@@ -10,10 +10,17 @@ has seven callers and `revise`, `delete_node`, `purge_node` and `archive_node`
 had none; `link` has two and `unlink` none; `resolve_question` has two and
 `reopen_question` none; `confirm_concept` has three and `merge_concept` none.
 
-**`revise` is the first one to come back.** Track E increment 21 gave it the
+**`revise` was the first one to come back.** Track E increment 21 gave it the
 door its declaration named, and this file found out the way it was built to:
 `test_nothing_here_has_quietly_come_alive` failed, and the fix was deleting a
-comment that had become untrue. Eleven left.
+comment that had become untrue.
+
+**`unlink` was the second, on August 26, 2026**, when the note page's
+connections section got a "Not this" button on each card -- the exact trigger
+its declaration named, two days after it was written. Three `EdgeRelation`
+values went live in the same commit and the companion enum guard caught those.
+**Both directions have now fired in anger**, which is the argument for a guard
+over an inventory: an inventory would still be listing all four.
 
 So the inventory was never twelve pieces of dead code. **It is one missing
 surface, listed eleven times**, and deleting them would have deleted half of
@@ -141,9 +148,15 @@ LIVE = {
     ("runner", "run_import"): "re-export chain",
 }
 
-#: The ten still dark, each with the live half whose absence of an undo it
-#: represents, or None where it is not an undo half at all. Eleven until
-#: August 22, 2026, when D15 gave `mark_reviewed` a caller.
+#: The ones still dark, each with the live half whose absence of an undo it
+#: represents, or None where it is not an undo half at all.
+#:
+#: **The count used to be in this sentence and is not any more.** It read *"the
+#: ten still dark"* while the dict held thirteen -- three were added on August 24
+#: and the prose was not, in the file whose entire subject is a declaration
+#: outliving what it declares. `len(DARK)` is exact and free; a number written
+#: out is a second copy of a fact, which is the mistake `design/README.md` spends
+#: a table preventing.
 #:
 #: **Kept as a list rather than derived**, for the reason `NOT_DRILLED` and
 #: `PERSON_EVENTS` are: a set computed from the code cannot fail when something
@@ -154,7 +167,9 @@ DARK = {
     "delete_node": "capture",
     "purge_node": "capture",
     "archive_node": "capture",
-    "unlink": "link",
+    # `unlink` came off this list on August 26, 2026, when the note page's
+    # connections section gained a "Not this" button -- the trigger its own
+    # declaration named. Ten left.
     "reopen_question": "resolve_question",
     "merge_concept": "confirm_concept",
     "confirm_mention": "propose_mention",

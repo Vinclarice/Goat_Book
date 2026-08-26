@@ -65,6 +65,14 @@ urlpatterns = [
         views.recollection_was_thin,
         name="recollection_was_thin",
     ),
+    # The manual half of the graph, and the door four dark symbols named:
+    # `unlink`, and `EdgeRelation`'s three hand-made relations.
+    path(
+        "notes/<uuid:public_id>/relate/", views.relate_note, name="relate_note"
+    ),
+    path(
+        "notes/<uuid:public_id>/unrelate/", views.unrelate_note, name="unrelate_note"
+    ),
     path("concepts/", views.concepts, name="concepts"),
     path("concepts/<uuid:public_id>/", views.concept, name="concept"),
     # Track E increment 20: saying what kind of thing something is, and the

@@ -1749,9 +1749,10 @@ def link(
 
 
 @transaction.atomic
-# DARK: no production caller. The undo half of `link`, which has two callers.
-# Trigger: Track E increment 19's connections section. Until then
-# `EDGE_REMOVED` is a vocabulary word nothing can write.
+# Dark until August 26, 2026, when the connections section its declaration
+# named -- "Track E increment 19's connections section" -- got a "Not this"
+# button on each card. `mind.views.unrelate_note` is the caller, and
+# `EDGE_REMOVED` stopped being a vocabulary word nothing could write.
 def unlink(edge: Edge, *, now: datetime, actor: str) -> None:
     payload = {
         "from_node": edge.from_node_id,

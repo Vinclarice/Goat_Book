@@ -48,11 +48,14 @@ from .models import (
     MissContext,
     ConceptType,
     ConnectionHypothesis,
+    Edge,
+    EdgeRelation,
     Facet,
     FacetKind,
     Node,
     NodeSource,
 )
+from .services import MindError
 
 RECENT_LIMIT = 30
 REVIEW_LIMIT = 5
@@ -665,6 +668,14 @@ def note(request, public_id):
             node=found, retired_at__isnull=True, kind__in=services.MEMORY_ROLES
         ).values_list("kind", flat=True)
     )
+    connections = queries.connections_of(found)
+    related = retrieval.retrieve(
+        retrieval.Moment(
+            owner=request.user,
+            mode=retrieval.Mode.RECOLLECTION,
+            anchor=found,
+        )
+    )
     return render(
         request,
         "mind/note.html",
@@ -699,8 +710,28 @@ def note(request, public_id):
             "first_said": found.original_content,
             "was_corrected": found.revisions.exists(),
             "connections": [
-                {"relation": relation_phrase_for(relation), "node": other}
-                for relation, other in queries.connections_of(found)
+                {
+                    "relation": relation_phrase_for(edge.relation),
+                    "node": other,
+                    # Carried so each connection can be taken back where it is
+                    # read. `unlink` takes the edge, and asking the template to
+                    # find it again from two nodes and a phrase would be a
+                    # second answer to a question `connections_of` already
+                    # answered.
+                    "edge": edge,
+                }
+                for edge, other in connections
+            ],
+            "candidates": _linkable(
+                found, related, connections, owner=request.user
+            ),
+            # What this note may be joined to, and how -- the manual half of
+            # the graph. Both lists are deliberately small: the relations are
+            # the ones a person asserts rather than every value the enum holds,
+            # and the candidates are what this page already surfaced.
+            "relations": [
+                {"value": relation, "label": relation_phrase_for(relation)}
+                for relation in MANUAL_RELATIONS
             ],
             # **"Else" means else.** Anything whose subject is this note is
             # filtered out -- its own capture first of all, which the first
@@ -742,15 +773,63 @@ def note(request, public_id):
             # confirmed is about the same thing, which no temporal window will
             # ever find. The failure that matters here is context too thin to
             # resume, so nothing is filtered for length or dormancy.
-            "related": retrieval.retrieve(
-                retrieval.Moment(
-                    owner=request.user,
-                    mode=retrieval.Mode.RECOLLECTION,
-                    anchor=found,
-                )
-            ),
+            "related": related,
         },
     )
+
+
+#: The relations a person asserts by hand, which is not every relation there is.
+#:
+#: `RELATES_TO` and `ANSWERS` are what the detectors propose and
+#: `confirm_hypothesis` writes; `MEMBER_OF` is how a thread holds its members and
+#: is structural rather than a claim about meaning. Offering all six would invite
+#: somebody to hand-build a thread out of an edge, which `_check_member_of_depth`
+#: then refuses for reasons no form explains.
+#:
+#: These three are the ones `EdgeRelation`'s docstring says *"exist because
+#: recording evolving thought is a manual act"*, and until this list they had
+#: never been written.
+MANUAL_RELATIONS = (
+    EdgeRelation.SUPERSEDES,
+    EdgeRelation.CONTRADICTS,
+    EdgeRelation.DEVELOPED_FROM,
+)
+
+
+def _linkable(node, related, connections, *, owner, limit=RECENT_LIMIT):
+    """Notes this one could be joined to: what the page surfaced first, then
+    recent ones, minus itself and whatever it is already joined to.
+
+    **Candidates rather than a picker**, which is the decision worth recording.
+    Choosing which notes bear on this one is what retrieval is for and the page
+    has just done it, so a search box beside that answer would be a second
+    opinion on the same question -- one the person has to phrase themselves at
+    the moment they are least able to.
+
+    **Retrieval orders the list; it does not bound it.** The first version let
+    retrieval decide membership, and a test written before the code caught what
+    that costs: a note whose neighbours retrieval does not surface could never
+    be linked to anything at all, so the form silently disappeared on exactly
+    the notes a person is most likely to be reconciling. Recency fills the rest,
+    which is predictable in a way relevance is not -- *the thing I wrote just
+    before this one* is a real way to find a note.
+
+    The bound that remains is honest: `limit` recent notes, and no way to reach
+    something older that retrieval missed. **Trigger for changing it**: wanting
+    to link to a note you can name and this list cannot reach -- and the fix is
+    then a search field feeding this same list, not a second form.
+    """
+    already = {other.pk for _, other in connections}
+    chosen = {}
+    for candidate in [result.node for result in related] + list(
+        queries.live_nodes(owner)[: limit + len(already) + 1]
+    ):
+        if candidate.pk == node.pk or candidate.pk in already:
+            continue
+        chosen.setdefault(candidate.pk, candidate)
+        if len(chosen) >= limit:
+            break
+    return list(chosen.values())
 
 
 def _open_sitting(user, *, now):
@@ -1339,6 +1418,88 @@ def revise_note(request, public_id):
             body=body.strip(),
             now=timezone.now(),
             actor=request.user.get_username(),
+        )
+    return redirect("note", public_id=public_id)
+
+
+@login_required
+@require_http_methods(["POST"])
+def relate_note(request, public_id):
+    """Say how this note relates to another one — by hand, which is the point.
+
+    **The manual act `EdgeRelation` was built for.** That enum's docstring says
+    `CONTRADICTS`, `SUPERSEDES` and `DEVELOPED_FROM` *"exist because recording
+    evolving thought is a manual act — which is the actual argument for typed
+    relations rather than one untyped link"*, and until this view there was no
+    manual act. All three were declared dark on August 24, 2026 naming this
+    surface as their trigger, along with `unlink` below.
+
+    **The target comes from what the page already surfaced**, not from a picker
+    or a search box. Deciding which notes bear on this one is the page's whole
+    job — retrieval, the time neighbourhood, the connections already made — so a
+    picker would be a second opinion on the question it just answered. It also
+    stays honest as the corpus grows: the list is bounded by what was retrieved
+    rather than by how much has been written.
+
+    **Ownership is checked on the target, not only on the subject.** This is the
+    rarer shape `principles.md` asks an isolation test for — a surface taking
+    *two* ids, where the second is the one that could leak. `live_nodes` is
+    per-owner, so a public_id belonging to somebody else simply does not
+    resolve.
+    """
+    node = queries.live_nodes(request.user).filter(public_id=public_id).first()
+    if node is None:
+        raise Http404("no such note")
+
+    other = (
+        queries.live_nodes(request.user)
+        .filter(public_id=request.POST.get("other") or None)
+        .first()
+    )
+    relation = request.POST.get("relation")
+    if other is not None and relation in EdgeRelation.values:
+        try:
+            services.link(
+                node,
+                other,
+                relation=relation,
+                now=timezone.now(),
+                actor=request.user.get_username(),
+            )
+        except MindError:
+            # A note related to itself, or a `member_of` that would nest two
+            # deep. The service is the authority on both and says no; a person
+            # who picked the same note from a list does not need a stack trace
+            # for it. Guards fail closed and quietly here because nothing was
+            # lost -- the page comes back with the connection simply not made.
+            pass
+    return redirect("note", public_id=public_id)
+
+
+@login_required
+@require_http_methods(["POST"])
+def unrelate_note(request, public_id):
+    """Take back a connection — `unlink`'s door.
+
+    **This is what lets the form above ship without a confirmation.**
+    `principles.md`: *undo has to exist, not merely be conceivable*, and where
+    there is none the act needs a confirmation whatever it looks like in
+    principle. The undo is here, on the same card as the thing it undoes.
+
+    Scoped by `owner` rather than by walking from the note, because the id
+    posted is an edge's. Filtering by the note would have been the natural
+    shape and would have missed edges pointing *at* it.
+    """
+    node = queries.live_nodes(request.user).filter(public_id=public_id).first()
+    if node is None:
+        raise Http404("no such note")
+
+    edge = Edge.objects.filter(
+        pk=request.POST.get("edge") or None, owner=request.user
+    ).first()
+    if edge is not None:
+        services.unlink(
+            edge, now=timezone.now(), actor=request.user.get_username()
         )
     return redirect("note", public_id=public_id)
 

@@ -300,8 +300,15 @@ def when_they_came_up(owner, concept: ConceptCandidate) -> list[tuple[datetime, 
     ]
 
 
-def connections_of(node: Node) -> list[tuple[str, Node]]:
+def connections_of(node: Node) -> list[tuple[Edge, Node]]:
     """The live notes this one is linked to, in either direction.
+
+    **Returns the edge rather than its relation**, since August 26, 2026, when
+    the connections list gained a way to take one back. `unlink` takes an
+    `Edge`, and a caller handed only `edge.relation` had to go and find it
+    again from two nodes and a string -- which is a second, weaker answer to
+    the question this function already answered exactly. The relation is still
+    one attribute away.
 
     Both directions, unlike `clarice.recall.since`, and the difference is the
     question each answers. `since()` asks *what came out of this*, so following
@@ -316,10 +323,10 @@ def connections_of(node: Node) -> list[tuple[str, Node]]:
     found = []
     for edge in node.edges_out.select_related("to_node"):
         if edge.to_node_id in live:
-            found.append((edge.relation, edge.to_node))
+            found.append((edge, edge.to_node))
     for edge in node.edges_in.select_related("from_node"):
         if edge.from_node_id in live:
-            found.append((edge.relation, edge.from_node))
+            found.append((edge, edge.from_node))
     return found
 
 

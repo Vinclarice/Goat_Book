@@ -835,18 +835,11 @@ class EdgeRelation(models.TextChoices):
     RELATES_TO = "relates_to"
     ANSWERS = "answers"
     MEMBER_OF = "member_of"
-    # DARK: never written. All three, and the docstring above says why without
-    # having noticed: they *"exist because recording evolving thought is a
-    # manual act"*, and there is no manual act because there is no surface for
-    # one. They wait on the same node page that `link` and `unlink` do -- one
-    # missing surface, counted again. Trigger: the node page's manual link
-    # surface.
+    # The three the docstring above means by "a manual act". Dark until August
+    # 26, 2026 -- declared with a trigger on the 24th, and the trigger fired two
+    # days later when the note page got the form that writes them.
     CONTRADICTS = "contradicts"
-    # DARK: never written. See `CONTRADICTS` above for why all three are.
-    # Trigger: the node page's manual link surface.
     SUPERSEDES = "supersedes"
-    # DARK: never written. See `CONTRADICTS` above for why all three are.
-    # Trigger: the node page's manual link surface.
     DEVELOPED_FROM = "developed_from"
 
 

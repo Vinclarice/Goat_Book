@@ -94,14 +94,15 @@ DARK_VALUES = {
     # are the two that do not.
     ("FacetKind", "MEDIA"): "an extractor or a person's facet surface proposing it",
     ("FacetKind", "CONCEPT"): "an extractor or a person's facet surface proposing it",
-    # The three relations `EdgeRelation`'s docstring says *"exist because
-    # recording evolving thought is a manual act"* -- and there is no manual
-    # act, because there is no link surface. They wait on the same node page as
-    # `link` and `unlink` in `DARK`, which is the eleven-times-one-surface
-    # finding again, in a second shape.
-    ("EdgeRelation", "CONTRADICTS"): "the node page's manual link surface",
-    ("EdgeRelation", "SUPERSEDES"): "the node page's manual link surface",
-    ("EdgeRelation", "DEVELOPED_FROM"): "the node page's manual link surface",
+    # `EdgeRelation.CONTRADICTS`, `SUPERSEDES` and `DEVELOPED_FROM` came off
+    # this list on August 26, 2026 -- **two days after going on it.** Each was
+    # declared with the trigger *"the node page's manual link surface"*, that
+    # surface was built, and this test failed in the direction it exists for,
+    # naming all three in the same run that `DARK` gave up `unlink`.
+    #
+    # **The registry is two days old and has already been right twice**, which
+    # is the argument for a guard over an inventory: an inventory of dark
+    # symbols would still say these were dark.
     # `confirm_hypothesis` and `dismiss_hypothesis` write the first two and
     # `expire_stale_hypotheses` the third. Nothing renames a hypothesis, so
     # nothing resolves one this way.
@@ -199,9 +200,14 @@ class DarkEnumValuesTest(SimpleTestCase):
         that has stopped being true."""
         for enum, member in sorted(DARK_VALUES):
             with self.subTest(enum=enum, member=member):
-                self.assertNotIn(
-                    (enum, member),
-                    self.named,
+                # `assertFalse` rather than `assertNotIn`, which prints the
+                # whole container it searched: the named set is every
+                # attribute reference in `src/`, and the first time this
+                # fired it produced 179KB of failure output for a
+                # one-line finding. A guard nobody can read the failure of
+                # is a guard people learn to skim.
+                self.assertFalse(
+                    (enum, member) in self.named,
                     f"{enum}.{member} is written now -- remove its declaration",
                 )
 

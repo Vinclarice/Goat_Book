@@ -102,8 +102,50 @@ is becomes answerable later, when the answer exists.
     <div class="card">
       <div class="body"><a href="{% url 'note' link.node.public_id %}">{{ link.node.original_content|truncatechars:120 }}</a></div>
       <div class="meta" style="margin-top:.5rem">{{ link.relation }}</div>
+      {% comment %}
+      The undo, on the same card as the thing it undoes. `principles.md` says
+      undo has to exist rather than be conceivable, and where there is none the
+      act needs a confirmation -- so this button is exactly what lets the form
+      below ask nothing before making a link.
+      {% endcomment %}
+      <form method="post" action="{% url 'unrelate_note' node.public_id %}">
+        {% csrf_token %}
+        <input type="hidden" name="edge" value="{{ link.edge.pk }}">
+        <button type="submit" class="linkish">Not this</button>
+      </form>
     </div>
   {% endfor %}
+{% endif %}
+
+{% if candidates %}
+  <h2>Say how this relates</h2>
+  {% comment %}
+  The manual half of the graph -- `EdgeRelation`'s last three values, which
+  its docstring says exist because recording evolving thought is a manual act,
+  and which nothing had ever written.
+
+  The candidate list is what this page already surfaced rather than a search
+  box: which
+  notes bear on this one is the question retrieval just answered, and asking
+  the person to phrase it again would be a second opinion on it. `_linkable`
+  in the view carries the reasoning and the trigger for changing it.
+  {% endcomment %}
+  <form method="post" action="{% url 'relate_note' node.public_id %}">
+    {% csrf_token %}
+    <label for="relation" class="meta">This note</label>
+    <select id="relation" name="relation">
+      {% for relation in relations %}
+        <option value="{{ relation.value }}">{{ relation.label }}</option>
+      {% endfor %}
+    </select>
+    <label for="other" class="meta">this one</label>
+    <select id="other" name="other">
+      {% for candidate in candidates %}
+        <option value="{{ candidate.public_id }}">{{ candidate.original_content|truncatechars:80 }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit">Record it</button>
+  </form>
 {% endif %}
 
 {% if related %}

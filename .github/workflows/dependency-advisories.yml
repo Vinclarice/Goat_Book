@@ -1,0 +1,116 @@
+name: Dependency advisories
+
+# `security-and-resilience-plan.md` 1.1, which calls this **"the only genuinely
+# absent control in this document"** -- everything else there is a decided thing
+# that drifted or a deferred thing whose trigger fired. `requirements.txt` pins
+# every version exactly, which is right, and `.github/` held `ci.yml` and
+# `backup-freshness.yml` and nothing else: no Dependabot config, no `pip-audit`,
+# no `pnpm audit`, no advisory feed. **Exact pinning without an advisory
+# mechanism means the pins age silently and the notification path is somebody
+# else telling you.**
+#
+# It was already true when this was written. The first run of this scanner
+# against the tree reported thirteen advisories over nine packages, Django
+# 5.2.16 among them (PYSEC-2026-3717, fixed in 5.2.17) -- the framework serving
+# production.
+#
+# **A separate workflow rather than a job in `ci.yml`**, following
+# `backup-freshness.yml`: this asks a question about the world rather than about
+# the commit, and its answer changes when a stranger publishes an advisory, not
+# when somebody pushes.
+#
+# **What reads the result**: GitHub emails the repository owner when a scheduled
+# workflow fails. Same path as the backup check, and the reason that one is a
+# workflow rather than a cron job on the droplet -- it is the one notification
+# route here that needs nothing new set up.
+#
+# **Proved before it was trusted**, which the plan asks for by name and which
+# `infra/*.sh` is the argument for: four shell scripts here were wrong from the
+# day each was written because none had ever been run. Both directions, August
+# 26, 2026:
+#
+# - A **seeded known-vulnerable pin** -- `django==3.2.0` alone in a
+#   requirements file -- reports 37 advisories, six of them critical, and exits
+#   **1**.
+# - A **clean pin** -- `six==1.17.0` -- reports *"No issues found"* and exits
+#   **0**. Worth proving separately: a check that cannot go green is a check
+#   that will be filtered into a folder, and the first attempt at this proof
+#   used `requests==2.32.4`, which is not clean -- the scanner resolves
+#   transitively and its `idna` carries one.
+# - The **real command below**, against this tree, exits 1 on 27 advisories
+#   over 16 packages.
+#
+# That last one means **this workflow fails on its first scheduled run**, and
+# that is the control working rather than a fault in it. The plan predicted
+# exactly this: *"exact pinning without an advisory mechanism means the pins
+# age silently."*
+
+on:
+  schedule:
+    # 06:40 UTC daily. Daily rather than weekly because an advisory is not
+    # discovered on a schedule, and off the hour for the reason the backup
+    # check gives: shared-runner queues are worst at :00. Two and a half hours
+    # before that check, so two failures in one morning arrive as two mails
+    # about two things rather than one confusing batch.
+    - cron: "40 6 * * *"
+  # So it can be proved without waiting a day, and re-run by hand the moment
+  # somebody suspects it. The same reason the backup check has this.
+  workflow_dispatch:
+
+jobs:
+  advisories:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Scan every dependency set we can resolve
+        # **The scanner floats where the pins do not**, which is deliberate and
+        # is the opposite of this repository's usual rule. A pinned scanner
+        # scans with a frozen idea of what a vulnerability is, so pinning the
+        # thing whose whole job is knowing about last night's advisory would
+        # defeat it. Build inputs stay pinned exactly; this one input is
+        # allowed to move.
+        #
+        # `osv-scanner` rather than `pip-audit` plus `pnpm audit`: one tool over
+        # both lockfiles gives one exit status and one report, and OSV is the
+        # database the other two increasingly read anyway.
+        #
+        # **Dev dependencies are in scope and fail the run**, which is a
+        # decision rather than laziness. They never reach production -- but they
+        # execute on this runner, and `backup-freshness.yml` puts a
+        # DigitalOcean token on a runner just like it. A compromised dev
+        # dependency is a real path to a real credential.
+        run: |
+          docker run --rm -v "${{ github.workspace }}:/src:ro" \
+            ghcr.io/google/osv-scanner:latest scan source \
+            --lockfile /src/requirements.txt \
+            --lockfile /src/requirements-dev.txt \
+            --lockfile /src/requirements-embeddings.txt \
+            --lockfile /src/frontend/pnpm-lock.yaml
+
+      # **Android is not covered here, and that is a declared gap rather than an
+      # oversight.** The plan's acceptance names three dependency sets and this
+      # workflow reaches two.
+      #
+      # `osv-scanner` was run against `android/` and reports
+      # *"no package sources found"*: it reads `gradle.lockfile`, and this build
+      # has none -- dependencies are declared in `gradle/libs.versions.toml`, a
+      # version catalog, which no advisory scanner parses.
+      #
+      # Closing it means enabling Gradle dependency locking
+      # (`dependencyLocking { lockAllConfigurations() }` plus a
+      # `--write-locks` run), which is a real change to how the Android build
+      # resolves and adds a lock refresh to every dependency bump. That is a
+      # decision about somebody's build, not a line in a scanner.
+      #
+      # **Trigger**: the next time the Android dependencies are deliberately
+      # bumped, or the first advisory that lands on one of them by another
+      # route. Until then the phone's dependency set is unwatched and this
+      # comment is the only thing saying so.
+      - name: Say what this run did not cover
+        # Not a failure -- a line in the log of every green run, so the gap is
+        # visible where the coverage is claimed rather than only in a plan.
+        run: |
+          echo "Covered: Python (3 requirement files), pnpm (frontend)."
+          echo "NOT covered: Gradle/Android -- no lockfile to scan."
+          echo "See the comment above this step for the trigger to close it."

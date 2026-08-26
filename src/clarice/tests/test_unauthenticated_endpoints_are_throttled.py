@@ -142,3 +142,78 @@ class UnauthenticatedEndpointsAreThrottledTest(SimpleTestCase):
         synchronously. Same shape as the login hole, lower severity, and named
         here so it is covered rather than remembered."""
         self.assertIn("/accounts/password/reset/", throttled_exact_paths())
+
+
+class TheAdminDoorIsRateLimitedTest(SimpleTestCase):
+    """`security-and-resilience-plan.md` 1.4, which asks to ride along here.
+
+    django-axes covers credential stuffing by username, so the residual is thin
+    -- enumeration and blunt request volume -- and the limit is set to match
+    that thinness rather than to be strict. `/admin/` is a prefix rather than an
+    exact path, so the sweep above cannot see it and it gets its own assertions.
+
+    **A limit that made the admin unusable would be the worse bug**, and the
+    thing that makes a generous one safe is in this template's own header:
+    nothing here serves `/static/`, so whitenoise answers every stylesheet
+    through gunicorn under a different path. An admin page load is one request
+    against this block, not thirty.
+    """
+
+    def prefix_block(self):
+        """`location ^~ /admin/`, which beats regex blocks and is what keeps a
+        later `location ~ \\.php$`-shaped rule from reaching in front of it."""
+        config = NGINX_TEMPLATE.read_text(encoding="utf-8")
+        match = re.search(
+            r"location\s*\^~\s*/admin/\s*\{(?P<body>[^}]*)\}", config, re.MULTILINE
+        )
+        return match.group("body") if match else ""
+
+    def test_the_admin_prefix_has_its_own_block(self):
+        self.assertNotEqual(self.prefix_block(), "")
+
+    def test_it_spends_a_rate_limit(self):
+        self.assertIn("limit_req", self.prefix_block())
+
+    def test_it_answers_429(self):
+        self.assertIn("limit_req_status 429", self.prefix_block())
+
+    def test_the_admin_password_reset_redirect_is_not_swallowed(self):
+        """`clarice/urls.py` carries a load-bearing comment about ordering:
+        `admin/password_reset/` is registered *before* `admin.site.urls`
+        because the admin's own login template renders its "Forgot your
+        password?" link with `{% url 'admin_password_reset' %}`, which renders
+        nothing at all when the name does not resolve.
+
+        That is Django's ordering and this block is nginx's, so the two cannot
+        collide -- but the path is a password reset, which the zone above
+        throttles for mail reasons, and it must not end up counted twice
+        against two different budgets. Asserted rather than reasoned about,
+        because the exact-match rule for it already exists and exact beats
+        prefix in nginx whatever the order in the file.
+        """
+        self.assertIn("/accounts/password/reset/", throttled_exact_paths())
+
+
+class TheServerDoesNotAnnounceItsVersionTest(SimpleTestCase):
+    """`security-and-resilience-plan.md` 1.8, one line, riding along with 1.4.
+
+    Unset means nginx emits its exact version in the `Server` header and on its
+    own error pages, which is what a scanner fingerprints on to choose an
+    exploit to try. Turning it off is not a control by itself -- it removes a
+    free hint.
+    """
+
+    def test_server_tokens_is_off(self):
+        config = NGINX_TEMPLATE.read_text(encoding="utf-8")
+
+        self.assertIn("server_tokens off;", config)
+
+    def test_it_is_set_where_both_server_blocks_inherit_it(self):
+        """At the top level rather than inside one `server`. The port-80 block
+        only redirects, but it answers strangers too, and a directive set in
+        one block would leave the other announcing the version.
+        """
+        config = NGINX_TEMPLATE.read_text(encoding="utf-8")
+        before_any_server = config[: config.index("server {")]
+
+        self.assertIn("server_tokens off;", before_any_server)

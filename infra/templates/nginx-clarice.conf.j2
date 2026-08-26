@@ -1,6 +1,16 @@
 # Managed by Ansible (infra/deploy-playbook.yaml).
 # Certbot obtains certificates but never edits this file.
 
+# security-and-resilience-plan.md 1.8. Unset, nginx puts its exact version in
+# the Server header and on its own error pages, which is what a scanner
+# fingerprints on to pick which exploit to try. Not a control on its own --
+# it removes a free hint.
+#
+# At the top level so both server blocks inherit it. The port-80 block only
+# redirects, but it answers strangers too, and setting this inside one block
+# would leave the other announcing the version.
+server_tokens off;
+
 # First line of defense against brute-forcing login/signup: throttle by
 # client IP before the request even reaches Django. django-axes (see
 # clarice/settings.py) is the second line, locking out an *account*
@@ -48,6 +58,53 @@ limit_req_zone $binary_remote_addr zone=clarice_contact:10m rate=10r/m;
 # Not keyed on method: unlike /, this path has no GET worth serving -- a
 # GET returns 405, so throttling every method costs nothing real.
 limit_req_zone $binary_remote_addr zone=clarice_api_login:10m rate=5r/m;
+
+# POST /api/v1/capture -- security-and-resilience-plan.md 2.3. Authenticated,
+# so this is not a stranger's endpoint and the realistic failure is not an
+# attacker: the bearer lives ninety days in an Android Keystore and the offline
+# queue on the other end is *designed* to retry. A retry loop or a leaked token
+# writes unbounded Node rows against a droplet with one core and 458MB.
+# architecture-trajectory.md 6 defers broad API rate limiting until /api/v1/
+# serves somebody untrusted, and says one route can meet the trigger alone.
+# This one has, by a different argument than that section anticipated.
+#
+# The numbers come from what the phone actually does, not from a round number.
+# QueueDrainer.drain() walks the queue serially with no delay between items, so
+# a backlog of N is N requests as fast as the round-trips allow -- which makes
+# `burst` the number that has to cover a real backlog and leaves the sustained
+# rate biting only a runaway. Sixty is generous against a corpus of 47 nodes
+# total; thirty a minute is half a write a second sustained, and legitimate use
+# is bursty and then idle.
+#
+# Refusing is safe here in a way it is not everywhere, and both halves were
+# checked rather than assumed. CaptureContract.dispositionFor maps 429 -- with
+# every other unrecognised status -- to RETRY_LATER, so a refusal cannot
+# discard a capture. And it cannot strand one: an attempt is charged,
+# DEFAULT_CEILING is five, but CaptureWorker backs off exponentially from
+# thirty seconds and 30r/m puts fifteen tokens back in that window, so the
+# retry meets a refilled bucket.
+#
+# Idempotency does most of the work anyway: capture collides on public_id, so
+# the *retry* half of the worry writes no rows at all. This bounds distinct
+# keys -- abuse, or a client bug minting new ones.
+limit_req_zone $binary_remote_addr zone=clarice_capture:10m rate=30r/m;
+
+# /admin/ -- security-and-resilience-plan.md 1.4, riding along with the above.
+# django-axes covers credential stuffing by username, so the residual is thin:
+# enumeration and blunt request volume. The limit is set to match that
+# thinness rather than to be strict, because a limit that made the admin
+# unusable would be the worse bug.
+#
+# What makes a generous limit safe is in this file's own header: nothing here
+# serves /static/, so whitenoise answers every stylesheet and script through
+# gunicorn under a different path. An admin page load is one request against
+# this zone rather than thirty.
+#
+# Moving /admin/ off the default path is refused and the plan records why: it
+# is obscurity rather than a control, its marginal value against axes and the
+# second factor is near zero, and it disturbs the admin_password_reset
+# ordering clarice/urls.py carries a load-bearing comment about.
+limit_req_zone $binary_remote_addr zone=clarice_admin:10m rate=120r/m;
 
 # The landing page is also a login form: accounts.views.LandingLoginView is a
 # LoginView, so POST / authenticates exactly as POST /accounts/login/ does.
@@ -171,6 +228,44 @@ server {
     # makes this safe to leave alone.
     location = /api/v1/login {
         limit_req zone=clarice_api_login burst=3 nodelay;
+        limit_req_status 429;
+
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Exact match, and the literal path ClariceApi.kt posts to. The phone's
+    # own endpoint: see the clarice_capture zone above for why the burst is
+    # the number that matters and why a 429 here cannot lose a capture.
+    location = /api/v1/capture {
+        limit_req zone=clarice_capture burst=60 nodelay;
+        # 429 rather than nginx's default 503. dispositionFor treats both as
+        # RETRY_LATER so the phone behaves identically -- this is about the
+        # log being honest with whoever reads it, since the service is
+        # available and declining rather than unavailable.
+        limit_req_status 429;
+
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # `^~`, which stops nginx considering any regex block for a path under
+    # here -- there are none today, and the prefix is what a later one would
+    # otherwise be able to reach in front of.
+    #
+    # /admin/password_reset/ is registered before admin.site.urls in
+    # clarice/urls.py and redirects to /accounts/password/reset/, which has
+    # its own exact-match rule above. Exact beats prefix in nginx whatever the
+    # order in this file, so the redirect target keeps its mail budget and is
+    # not counted twice.
+    location ^~ /admin/ {
+        limit_req zone=clarice_admin burst=60 nodelay;
         limit_req_status 429;
 
         proxy_pass http://127.0.0.1:8000;

@@ -222,7 +222,46 @@ written, which is the rule working in the other direction: `revise` gained a
 door, `FacetKind.GOAL` was wired, and `ConceptType`'s non-default values gained a
 live `<select>`.
 
-Still dark at `9120a27`, all verified by counting non-test callers:
+**Closed August 24–26, 2026, and the list below is kept as the record of what
+was found rather than of what is left.** Every item in it is now either declared
+at its own definition, deleted, or corrected — and **the instrument had to be
+fixed before the list could be used at all**, which is the finding that matters
+more than any entry.
+
+**Widening the scan by hand, as this section asks, would have declared live code
+dark.** Pointed at every plain-function module in `src/`, it reported 41 dark
+functions; six were live, each invisible for a different reason — a parenthesised
+multi-line import (three of them in `accounts/emails.py`, under `/privacy/`'s
+"everything" promise), a callback passed without parentheses, a caller sitting in
+the one file the scan excluded, and a re-export chain. Callers are parsed rather
+than matched now, and `LIVE` holds the six so it cannot regress. **A live function
+reported dark invites a `# DARK:` comment onto working code, which this project
+already calls worse than no declaration at all.**
+
+Then the module list itself was the same mistake one level up — a hardcoded list
+of *modules*, written the day after learning that a hardcoded list of *functions*
+cannot notice a new one. Modules are discovered now, over 69 of them and 350
+functions, and the *"four heuristics wearing a trenchcoat"* argument for not
+doing so turned out half wrong: once callers are parsed, **a view referenced in
+a URLconf is visible**, because `urls.py` names it. It found one thing nobody had
+listed — `mind/embeddings.py`'s `default_index`, deleted.
+
+**The enum half needed a weaker claim, honestly stated.** Nine values are
+declared; the scan proves *never mentioned* rather than *never written*, because
+`Q(resolution=EXPIRED)` and `_resolve(…, EXPIRED)` are the same shape to a
+parser. It is scoped to the knowledge core, since three of the four ways a value
+gets written — a form offering the whole enum, a field default, a client posting
+the string — are invisible to Python, and a guard exempting four things is one
+whose silence means little.
+
+**One real gap came out of it**, and it is left as a question rather than a fix:
+`EventType.THREAD_ARTICULATED` is **read and never written**. `confirm_hypothesis`
+creates the thread node and logs no event for having done it, while
+`clarice/recall.py` lists the type among the person's own acts. Recorded at
+`confirm_hypothesis`; what the append-only log records is Vince's call, and
+`ActivityEvent` is the one table a mistake cannot be taken back out of.
+
+~~Still dark at `9120a27`, all verified by counting non-test callers:~~
 
 - **The declared registry is eleven**, held by
   `clarice/tests/test_dark_services_declare_their_deferral.py`, failing in both
@@ -246,8 +285,23 @@ Still dark at `9120a27`, all verified by counting non-test callers:
   `MissContext.CAPTURE`, `EventType.THREAD_ARTICULATED`.
 - **D14 and D15 are two of these wearing decision numbers.**
 
-Each gets a named trigger or a deletion. Deleting the design note loses nothing;
-the note was the load-bearing part.
+~~Each gets a named trigger or a deletion. Deleting the design note loses nothing;
+the note was the load-bearing part.~~ **Done.** Two things qualify that rule as
+written, both learned by applying it:
+
+- **The three `Project` setters came off the list on their own**, in `9af1282`
+  and `f59be42`, before this pass reached them. The scan finds them live.
+- **A dark enum value cannot simply be deleted**, unlike a dark function. Every
+  one sits inside a `CheckConstraint` over live tables, so removing a member is a
+  migration rather than a deletion — which makes *declare* the cheap option here
+  and *delete* the expensive one, the reverse of the usual argument.
+
+**What this track is now**: a guard that discovers rather than a list that is
+trusted, in three files —
+`clarice/tests/test_dark_services_declare_their_deferral.py`,
+`clarice/tests/test_dark_enum_values_declare_their_deferral.py`, and the
+declarations themselves. It has already caught things twice in both directions,
+which is the shape a standing track should have.
 
 ### Background repair — standing track
 

@@ -66,6 +66,25 @@ re-add it here.
   of the three and **was unclaimed by this file until now**, which is its own
   small version of the seam problem.
 
+  **Five of its seven ranked items are closed as of August 26, 2026** — MFA
+  (August 23, as `petrel`), then dependency advisories, HSTS, the enforcing CSP,
+  and the nginx trio of `/api/v1/capture`, `/admin/` and `server_tokens`. That
+  plan owns the detail and it is not restated here.
+
+  **What is left is three things and only one of them is code.** The restore
+  drill re-run is Vince's — WSL, the ssh key and a paid scratch cluster. 1.7,
+  *seeing that any of it fires*, got more urgent by being worked around: there
+  are four rate limits now and still nothing reading the log they fire into.
+  And 2.2, processor erasure, is gated on that plan's D1.
+
+  **The advisory job found something on its first look, and it is the most
+  actionable thing here**: `django==5.2.16` carries PYSEC-2026-3717, CVSS 6.9,
+  fixed in 5.2.17 — the framework serving production. The instrument shipped;
+  the bump has not.
+
+  **None of the nginx or HSTS work is live until the playbook runs**, and it is
+  behind fourteen other commits.
+
   ~~**MFA on the admin is built and enrolled.** Ready to deploy.~~ **Deployed
   and live August 23, 2026 as `petrel`** (`DEPLOYED-2026-08-23/1510`) —
   [`admin-mfa-plan.md`](admin-mfa-plan.md) increment 4, its top-ranked item,

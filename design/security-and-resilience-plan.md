@@ -109,7 +109,24 @@ neither reviewable nor reproducible, and a rebuild would not restore it.
 
 ## Pile 1 — nobody has named these
 
-### 1.1 Nothing tells you when a pin becomes an advisory
+### ~~1.1 Nothing tells you when a pin becomes an advisory~~ — closed August 26, 2026
+
+`.github/workflows/dependency-advisories.yml`, scheduled daily, failing into the
+same mailbox `backup-freshness.yml` reaches. **Proved both directions before it
+was trusted** — a seeded `django==3.2.0` gives 37 advisories and exit 1, a clean
+`six==1.17.0` gives exit 0.
+
+**It found something on the first look, which is this item's own prediction:**
+27 advisories over 16 packages, including **Django 5.2.16 — PYSEC-2026-3717,
+CVSS 6.9, fixed in 5.2.17**, the framework serving production. The instrument
+shipped; **the bump has not, and is Vince's next call.**
+
+**Two of the three sets, not three.** Android is a declared gap: `osv-scanner`
+reads `gradle.lockfile` and this build has none, declaring dependencies in a
+version catalog no scanner parses. The trigger to close it is recorded in the
+workflow.
+
+~~Original text follows.~~
 
 `requirements.txt` pins every version exactly, which is right. `.github/`
 contains `ci.yml` and `backup-freshness.yml` and nothing else: no Dependabot
@@ -127,7 +144,14 @@ three dependency sets — Python, pnpm, Gradle — and reaches the same inbox
 known-vulnerable pin before it is trusted, the same way the login throttle was
 proved by running nginx rather than by reading the template.
 
-### 1.2 The CSP's promotion condition has no observer
+### ~~1.2 The CSP's promotion condition has no observer~~ — closed August 26, 2026
+
+Promoted to enforcing on evidence already held, which is the second of the two
+ways out below. `functional_tests.ContentSecurityPolicyTest` loads both shells in
+real Chromium every CI run; the browser suite passed against a freshly built
+bundle. The *must not appear yet* assertion inverted in the same commit.
+
+~~Original text follows.~~
 
 `clarice/middleware.py` ships `Content-Security-Policy-Report-Only`, and both
 it and `architecture-trajectory.md` §6 say enforcement follows "once real use
@@ -172,7 +196,13 @@ ref is not an ancestor of what is currently `LIVE`. It must be overridable —
 this is a speed bump, not a lock, and the playbook builds from the working tree
 on purpose.
 
-### 1.4 `/admin/` has no rate limit
+### ~~1.4 `/admin/` has no rate limit~~ — closed August 26, 2026
+
+`location ^~ /admin/`, 120r/m with `burst=60`, deliberately generous: the
+residual is enumeration and volume, and a limit that made the admin unusable
+would be the worse bug. Rode along with 2.3 exactly as this item asks.
+
+~~Original text follows.~~
 
 It falls through to nginx's catch-all. django-axes covers credential stuffing
 by username, so the residual is thin: enumeration and blunt request volume.
@@ -219,7 +249,13 @@ scopes contain the damage — that token reaches the holder's own day, agenda an
 captures, never `/admin/` — but the bypass is real and the spec closes it in
 the same deploy as the enforcement.
 
-### 1.6 HSTS is one hour, and the condition to raise it was met weeks ago
+### ~~1.6 HSTS is one hour~~ — closed August 26, 2026
+
+A year, with `SECURE_HSTS_INCLUDE_SUBDOMAINS`. Preload deliberately absent and
+**asserted absent**, so turning it on has to be argued — it stays D4. The habit
+this item names is now held by a test rather than by memory.
+
+~~Original text follows.~~
 
 `settings.py` sets `SECURE_HSTS_SECONDS = 3600` under a comment saying to start
 small and raise it "only once HTTPS is confirmed working end-to-end, per
@@ -275,7 +311,12 @@ reports a total — enough to answer "is anything happening", which is currently
 unanswerable. Alerting on a threshold is a second step and needs a baseline
 this does not yet have.
 
-### 1.8 `server_tokens` is unset
+### ~~1.8 `server_tokens` is unset~~ — closed August 26, 2026
+
+`server_tokens off;` at the top level, so both server blocks inherit it — the
+port-80 block only redirects but it answers strangers too.
+
+~~Original text follows.~~
 
 nginx therefore emits its version in the `Server` header and on its own error
 pages, which is what a scanner fingerprints on to pick an exploit. One line,
@@ -290,17 +331,28 @@ the logs, which is 1.7.
 
 ## Where to spend first
 
+**Five of these seven closed between August 23 and 26, 2026** — MFA as
+`petrel`, then advisories, HSTS, the enforcing CSP and the nginx trio. What is
+left is 2 (Vince's), 6 and 7, and the order below is kept unstruck because the
+*reasoning* is what dates well; only the items do not.
+
+**One of them got more urgent by being worked around.** 1.7 — the rate limits
+firing into a file nobody reads — now has two more limits firing into it, since
+2.3 and 1.4 added `/api/v1/capture` and `/admin/`. Four rate limits and no
+reader is a worse ratio than two, and the item's own argument said it is worth
+more once there is more to watch. There is more to watch.
+
 The piles are a taxonomy, not an order. Under both lenses together:
 
-1. **1.5, MFA on the admin.** Highest consequence, least defended, and nothing
+1. ~~**1.5, MFA on the admin.**~~ **Shipped August 23, 2026 as `petrel`.** Highest consequence, least defended, and nothing
    else in this document changes that ratio.
 2. **2.1, the restore drill.** Confirmed in scope, and it is the whole database
    recovery path.
-3. **1.1, dependency advisories.** Cheap, and the only absent control.
-4. **1.6 and 1.2, HSTS and enforcing CSP.** Both are a line each, both have
+3. ~~**1.1, dependency advisories.** Cheap, and the only absent control.~~ **Done August 26, 2026, and it found Django 5.2.16 carrying an advisory.**
+4. ~~**1.6 and 1.2, HSTS and enforcing CSP.**~~ **Both done August 26, 2026.** Both are a line each, both have
    their promotion condition already met, and 1.2 is safest to do *now*
    precisely because the application currently has nothing for it to break.
-5. **2.3, 1.4 and 1.8**, the two rate limits and `server_tokens`, together —
+5. ~~**2.3, 1.4 and 1.8**, the two rate limits and `server_tokens`, together —~~ **Done August 26, 2026, and they were one change exactly as this line said.**
    they are all one nginx template and should be one change.
 6. **1.7, seeing that any of it fires.** Deliberately below the controls rather
    than above them: it is worth more once there is more to watch, and its
@@ -385,7 +437,20 @@ steps a purge does not perform, with the argument for why they are manual, so
 the gap is visible at the function rather than only in a roadmap. Whether it
 becomes automated is D1 below.
 
-### 2.3 `/api/v1/capture` is unthrottled
+### ~~2.3 `/api/v1/capture` is unthrottled~~ — closed August 26, 2026
+
+`rate=30r/m`, `burst=60 nodelay`, `limit_req_status 429`. **The rate is argued
+from `QueueDrainer.drain()`** rather than chosen round, as this item asks: the
+drain is serial with no gap, so burst is what covers a backlog. **Proved by
+running nginx** — 100 rapid requests, 61 passed, 39 refused 429.
+
+**The first proof was wrong in the flattering direction** and is worth keeping:
+the stub used `return 200`, which is a rewrite-phase directive and
+short-circuits before `limit_req` runs at preaccess, so every request passed and
+the limiter read as working *and* generous. A harness that never reaches the
+thing it tests reports success.
+
+~~Original text follows.~~
 
 It falls through nginx's catch-all. Authenticated by token or session, so not a
 stranger's endpoint — and the realistic failure is not an attacker. The bearer

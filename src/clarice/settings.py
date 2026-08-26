@@ -50,9 +50,30 @@ if not DEBUG:
     # (see infra/provision-postgres.sh and MIGRATION.md).
     database_url = os.environ["DJANGO_DATABASE_URL"]
     # Only takes effect over real HTTPS; browsers ignore this header over
-    # plain HTTP. Start small and only raise it once HTTPS is confirmed
-    # working end-to-end, per Django's own warning on this setting.
-    SECURE_HSTS_SECONDS = 3600
+    # plain HTTP.
+    #
+    # ~~Start small and only raise it once HTTPS is confirmed working
+    # end-to-end, per Django's own warning on this setting.~~ Raised from one
+    # hour to a year on August 26, 2026 -- security-and-resilience-plan.md 1.6.
+    # HTTPS has been confirmed end to end for weeks: certbot renews
+    # automatically and the playbook exercises it. At one hour the header was
+    # close to decorative, since somebody returning the next day had no
+    # protection against a downgrade at all, which is the attack it is for.
+    #
+    # The plan names the habit rather than this instance, and the habit is
+    # worth more: a conservative default with a condition attached needs
+    # somebody holding the condition, or it becomes permanent by inattention.
+    # Two turned up the same week -- this and the CSP's report-only mode. Both
+    # are now held by an assertion rather than by memory.
+    SECURE_HSTS_SECONDS = 31536000
+    # Nothing is served from a subdomain today, which is exactly when this is
+    # cheap to turn on: it forbids a future `staging.` or `api.` from being
+    # reachable over plain HTTP before anybody builds one.
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    # `SECURE_HSTS_PRELOAD` is deliberately not here. Browsers ship the preload
+    # list, so withdrawal takes months rather than a deploy -- a genuinely
+    # hard-to-reverse choice, which by principles.md is one to make on evidence
+    # rather than on the way past. It is that plan's D4.
 
     # We sit behind an nginx reverse proxy that terminates TLS and talks
     # to us over plain HTTP, so Django needs to trust this header to know

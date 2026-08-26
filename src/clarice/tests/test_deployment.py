@@ -86,3 +86,62 @@ class TestDatabaseNameTest(SimpleTestCase):
 
         self.assertLessEqual(len(name), 63)
         self.assertRegex(name, r"^[a-z][a-z0-9_]*$")
+
+
+class HstsIsLongEnoughToProtectAnyoneTest(SimpleTestCase):
+    """`security-and-resilience-plan.md` 1.6.
+
+    `settings.py` started at one hour under a comment saying to raise it "only
+    once HTTPS is confirmed working end-to-end, per Django's own warning."
+    HTTPS has been confirmed for weeks -- certbot renews automatically and the
+    playbook exercises it -- and at one hour the header is close to decorative:
+    somebody returning the next day has no protection against a downgrade at
+    all, which is the attack it exists for.
+
+    **The plan names the habit rather than the instance, and the habit is the
+    reason this is a test.** *"A conservative default with a condition attached
+    needs somebody holding the condition, or it becomes permanent by
+    inattention."* Two of these were found the same week -- this and the CSP's
+    report-only mode. An assertion is what holds a condition when nobody is.
+
+    **Preload is deliberately absent.** It is a different decision and a
+    genuinely hard one to reverse -- browsers ship the list, so withdrawal takes
+    months -- and it belongs to that plan's D4 rather than riding along here.
+
+    Read from the source rather than from `settings`, because the values live in
+    the `not DEBUG` branch and the suite runs on the other side of it. The
+    pattern is `test_unauthenticated_endpoints_are_throttled.py`'s: a guarantee
+    that no import in this process can see.
+    """
+
+    def production_branch(self):
+        """The `not DEBUG` branch with its comments stripped.
+
+        Stripping matters for `test_preload_is_not_set`, which asserts a name
+        is *absent*: the comment explaining why preload is absent names it, so
+        the first version of that test failed against the very sentence that
+        makes the decision legible. An assertion about code should not be able
+        to be broken by prose about the code.
+        """
+        from pathlib import Path
+
+        settings_source = (
+            Path(__file__).resolve().parents[1] / "settings.py"
+        ).read_text(encoding="utf-8")
+        branch = settings_source[: settings_source.index("\nelse:")]
+        return "\n".join(
+            line for line in branch.splitlines() if not line.strip().startswith("#")
+        )
+
+    def test_hsts_lasts_a_year(self):
+        self.assertIn("SECURE_HSTS_SECONDS = 31536000", self.production_branch())
+
+    def test_it_covers_subdomains(self):
+        self.assertIn(
+            "SECURE_HSTS_INCLUDE_SUBDOMAINS = True", self.production_branch()
+        )
+
+    def test_preload_is_not_set(self):
+        """Asserted absent rather than merely not asserted present, so turning
+        it on has to be a decision somebody takes here and argues for."""
+        self.assertNotIn("SECURE_HSTS_PRELOAD", self.production_branch())

@@ -1,4 +1,19 @@
 Django==5.2.17
+# A transitive of Django's (`sqlparse>=0.3.1`), pinned here explicitly because
+# the advisory scan cannot see it otherwise and 0.5.5 carries four -- CVE-2026-
+# 54284, -59893, -59894 and -71491, three denial-of-service and one escaping
+# flaw in the Python/PHP output modes.
+#
+# **None of the four is reachable here**, which is why this is hygiene rather
+# than a fix. Every one needs attacker-supplied SQL *text* to reach
+# `sqlparse.parse()` or `.format()`, and Django only calls it in four places:
+# the test runner's debug formatting, `prepare_sql_script` (developer-authored
+# SQL, from a migration), and the sqlite3 and mysql introspection backends,
+# which this deployment does not use. Nothing here passes user input to it.
+#
+# Pinned rather than left to resolve, because "whatever Django's floor allows"
+# is how 0.5.5 was installed in the first place.
+sqlparse==0.6.0
 django-ninja==1.6.2
 gunicorn==26.0.0
 whitenoise==6.12.0

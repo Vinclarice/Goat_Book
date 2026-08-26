@@ -40,10 +40,17 @@ name: Dependency advisories
 # - The **real command below**, against this tree, exits 1 on 27 advisories
 #   over 16 packages.
 #
-# That last one means **this workflow fails on its first scheduled run**, and
-# that is the control working rather than a fault in it. The plan predicted
-# exactly this: *"exact pinning without an advisory mechanism means the pins
-# age silently."*
+# ~~That last one means **this workflow fails on its first scheduled run**~~ —
+# it did, and everything it found is now fixed: Django to 5.2.17, an explicit
+# `sqlparse==0.6.0` pin, and a `pnpm update` that cleared all seven npm
+# advisories. **The tree is clean as of August 26, 2026** — 73 resolved Python
+# packages and 613 npm ones, both `No issues found`.
+#
+# That matters more than it sounds. **A check that is permanently red is a check
+# somebody filters into a folder**, which is `security-and-resilience-plan.md`
+# 1.7's whole complaint about the rate limits, arriving here within hours of
+# this file being written. Green has to be the normal state or the mail means
+# nothing.
 
 on:
   schedule:
@@ -63,7 +70,50 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Scan every dependency set we can resolve
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Resolve exactly what pip would install
+        # **Scanning the requirement files was wrong, and wrong in both
+        # directions.** The first version of this workflow pointed the scanner
+        # at `requirements*.txt` directly. Those files pin direct dependencies
+        # and say nothing about transitive ones, so the scanner resolved the
+        # rest itself and landed on versions nobody installs -- it reported
+        # `idna 3.9.0`, `pygments 2.9.0` and `torch 2.9.1` while the environment
+        # actually held 3.18, 2.20.0 and 2.13.0.
+        #
+        # Three false alarms would only have been noise. **The same blind spot
+        # hid a real one**: `sqlparse` is a transitive of Django's, never
+        # appeared in any of those scans, and was on 0.5.5 with four advisories
+        # against it. A security control that reports what is not there and
+        # stays silent about what is has failed in the way that matters.
+        #
+        # `--dry-run --ignore-installed --report` asks pip to do its real
+        # resolution and describe the result without downloading a wheel. It
+        # takes about eight seconds for the whole tree, `torch` included, and
+        # what comes out is the exact set a clean install produces.
+        #
+        # `requirements-dev.txt` is the only input because it reaches the other
+        # two with `-r`: production, test and embeddings in one resolution.
+        run: |
+          python -m pip install --dry-run --ignore-installed --quiet \
+            --report resolution.json -r requirements-dev.txt
+          mkdir -p resolved
+          python - <<'PY'
+          import json, pathlib
+          report = json.loads(pathlib.Path("resolution.json").read_text(encoding="utf-8"))
+          lines = sorted(
+              f"{item['metadata']['name']}=={item['metadata']['version']}"
+              for item in report["install"]
+          )
+          pathlib.Path("resolved/requirements.txt").write_text(
+              "\n".join(lines) + "\n", encoding="utf-8", newline="\n"
+          )
+          print(f"resolved {len(lines)} packages")
+          PY
+
+      - name: Scan what would actually be installed
         # **The scanner floats where the pins do not**, which is deliberate and
         # is the opposite of this repository's usual rule. A pinned scanner
         # scans with a frozen idea of what a vulnerability is, so pinning the
@@ -72,8 +122,12 @@ jobs:
         # allowed to move.
         #
         # `osv-scanner` rather than `pip-audit` plus `pnpm audit`: one tool over
-        # both lockfiles gives one exit status and one report, and OSV is the
+        # both files gives one exit status and one report, and OSV is the
         # database the other two increasingly read anyway.
+        #
+        # `pnpm-lock.yaml` is passed as it stands, unlike the Python side: it is
+        # a real lockfile with resolved versions, so there is nothing to infer
+        # and nothing to get wrong.
         #
         # **Dev dependencies are in scope and fail the run**, which is a
         # decision rather than laziness. They never reach production -- but they
@@ -83,9 +137,7 @@ jobs:
         run: |
           docker run --rm -v "${{ github.workspace }}:/src:ro" \
             ghcr.io/google/osv-scanner:latest scan source \
-            --lockfile /src/requirements.txt \
-            --lockfile /src/requirements-dev.txt \
-            --lockfile /src/requirements-embeddings.txt \
+            --lockfile /src/resolved/requirements.txt \
             --lockfile /src/frontend/pnpm-lock.yaml
 
       # **Android is not covered here, and that is a declared gap rather than an
@@ -111,6 +163,8 @@ jobs:
         # Not a failure -- a line in the log of every green run, so the gap is
         # visible where the coverage is claimed rather than only in a plan.
         run: |
-          echo "Covered: Python (3 requirement files), pnpm (frontend)."
+          echo "Covered: Python, as pip would resolve it -- production, test"
+          echo "  and embeddings, transitive dependencies included."
+          echo "Covered: pnpm (frontend), from its own lockfile."
           echo "NOT covered: Gradle/Android -- no lockfile to scan."
           echo "See the comment above this step for the trigger to close it."

@@ -25,17 +25,37 @@ from django.test import TestCase
 from accounts.models import User
 
 
-HEADER = "Content-Security-Policy-Report-Only"
+HEADER = "Content-Security-Policy"
 
 
 class ContentSecurityPolicyHeaderTest(TestCase):
-    def test_the_policy_is_report_only_for_now(self):
+    def test_the_policy_is_enforced(self):
+        """~~`test_the_policy_is_report_only_for_now`~~ — inverted August 26,
+        2026, which is `security-and-resilience-plan.md` 1.2's acceptance
+        criterion and the reason this reads as it does.
+
+        **A report-only policy with no collector is a seam that is not switched
+        on**, and the observation rather than the feature was the thing left
+        dark: `CSP_DIRECTIVES` has no `report-uri` and no `report-to`, so
+        violations landed in the console of whoever had devtools open, which was
+        nobody. The promotion condition — *"once real use has stayed quiet"* —
+        could not be observed to have been met, and so never would be.
+
+        Promoted on evidence already held rather than by building a collector to
+        then ignore. `ThemeScriptNonceTest` below loads both shells in real
+        Chromium and asserts nothing was reported *and* that the theme script
+        actually ran, every CI run — which is a stronger signal than a quiet
+        console somebody happens to look at.
+        """
         response = self.client.get("/")
 
         self.assertIn(HEADER, response)
-        # The enforcing header must not appear yet: shipping both would make
-        # the report-only one pointless and could break a page.
-        self.assertNotIn("Content-Security-Policy", response.headers.keys())
+        # And the report-only header must not appear any more: shipping both
+        # would leave a policy that reports and a policy that enforces
+        # disagreeing silently, which is worse than either alone.
+        self.assertNotIn(
+            "Content-Security-Policy-Report-Only", response.headers.keys()
+        )
 
     def test_it_locks_down_the_directives_that_matter(self):
         policy = self.client.get("/").headers[HEADER]

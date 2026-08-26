@@ -293,17 +293,29 @@ class ProjectJourneyTest(BrowserTest):
 
 
 class ContentSecurityPolicyTest(BrowserTest):
-    """The report-only policy, checked by the suite instead of by a person.
+    """The policy, checked by the suite instead of by a person.
 
-    Report-only means the browser writes violations to the console and
+    ~~Report-only means the browser writes violations to the console and
     renders the page anyway. That is only useful if somebody looks -- so this
-    looks. A real Chromium loads the two shells and the assertion is that it
-    reported nothing, which is the difference between a policy that is known
-    to fit and one that merely has not broken anything visibly yet.
+    looks.~~ **Enforcing since August 26, 2026**, and this class is the reason
+    it could be promoted at all: `security-and-resilience-plan.md` 1.2 found
+    that the stated promotion condition -- *"once the browser console has
+    stayed quiet through real use"* -- could never be met, because there is no
+    `report-uri` and so "the console" meant the console of whoever had devtools
+    open, which was nobody. **The evidence was here the whole time**, checked
+    every CI run rather than whenever someone happened to look, which is why
+    the answer was to promote rather than to build a collector and then ignore
+    it.
+
+    What the assertions mean has quietly strengthened with the promotion. Under
+    report-only, no violations meant *nothing would have been blocked*; under
+    enforcement it means **nothing was blocked**, on a page that then went on
+    to render and be asserted about. The listener is unchanged and still
+    catches both, since Chromium keeps the phrase in either message.
 
     This is the check that would catch an inline script added later without a
-    nonce, or a stylesheet moved to a CDN, at the point it is introduced
-    rather than whenever someone next opens devtools.
+    nonce, or a stylesheet moved to a CDN, at the point it is introduced --
+    and now at the point it would break the page rather than merely be noted.
     """
 
     def setUp(self):

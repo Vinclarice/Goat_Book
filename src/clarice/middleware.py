@@ -9,11 +9,24 @@ import secrets
 # One place, so the header and the template tag that consumes the nonce
 # cannot drift into disagreeing about what is allowed.
 #
-# Report-only for now -- see clarice/tests/test_content_security_policy.py
-# for what that does and does not defer. Switching to enforcement is a
-# one-line change to the header name, and should happen once the browser
-# console has stayed quiet through real use.
-CSP_HEADER = "Content-Security-Policy-Report-Only"
+# ~~Report-only for now ... switching to enforcement is a one-line change to
+# the header name, and should happen once the browser console has stayed quiet
+# through real use.~~ **Enforcing since August 26, 2026** --
+# security-and-resilience-plan.md 1.2.
+#
+# That promotion condition could never have been met, and noticing why is the
+# useful part: CSP_DIRECTIVES below has no report-uri and no report-to, so
+# "the browser console" meant the console of whoever had devtools open, which
+# was nobody. A report-only policy with no collector is a seam that is not
+# switched on -- and the thing left dark here was an *observation* rather than
+# a feature, which is why it went unnoticed longer.
+#
+# Promoted on evidence already held rather than by building a collector and
+# then not reading it: test_content_security_policy.py loads both shells in
+# real Chromium, asserts nothing was reported, and separately asserts the
+# theme script actually ran -- every CI run, rather than whenever somebody
+# happens to look.
+CSP_HEADER = "Content-Security-Policy"
 
 CSP_DIRECTIVES = (
     "default-src 'self'",

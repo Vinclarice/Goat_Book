@@ -546,9 +546,19 @@ runs coexist. Cheap, and it should not wait for anything above it.
    droplet reaches, in order to remove a manual step taken a handful of times a
    year. The manual answer is defensible; it needs saying out loud rather than
    arriving by default.
-2. **D2. Enforcing CSP, or a report collector first?** 1.2 recommends enforcing
+2. ~~**D2. Enforcing CSP, or a report collector first?** 1.2 recommends enforcing
    on the Chromium test's evidence. The collector is the more cautious path and
-   costs an endpoint.
+   costs an endpoint.~~ **Answered by doing it — enforcing, August 26, 2026**,
+   and struck on the 26th once the sweep noticed the decision had outlived its
+   own answer. 1.2 took the recommendation: no collector, no endpoint, promoted
+   on evidence `functional_tests.ContentSecurityPolicyTest` was already
+   collecting in real Chromium every CI run. Confirmed from outside the host in
+   `DEPLOYED-2026-08-26/1945` — the header is `Content-Security-Policy`, not
+   `Report-Only`, nonce intact.
+
+   **Worth leaving visible rather than deleting**: a decision can be answered by
+   shipping and stay open on paper, which is the same drift as an unstruck
+   increment and is harder to spot, because nothing about the code looks wrong.
 3. **D3. Does §6's ordering of long-retention backups behind staging stand?**
    Seven days is the real bound on undoing a bad migration, and the drill shows
    that rehearsal does not need staging.

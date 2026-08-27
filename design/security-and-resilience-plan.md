@@ -103,11 +103,16 @@ the owner taken from the session, stated at `review/api_v1.py:402`. It is the
 one place the argument is a comment rather than a test, and worth one test that
 two users asking for the same date get their own.
 
-**Not visible from this repository:** the playbook manages no `ufw`, no
+~~**Not visible from this repository:** the playbook manages no `ufw`, no
 firewall rules and no SSH configuration. That may be a DigitalOcean cloud
 firewall set out of band, which is fine — but it is not in code, so it is
 neither reviewable nor reproducible, and a rebuild would not restore it.
-**Open question for Vince**, not an assertion of a gap.
+**Open question for Vince**, not an assertion of a gap.~~ **Looked at on August
+27, 2026 — D5 below has the answer and this paragraph does not repeat it.** The
+guess was right and the emphasis was wrong: there is a cloud firewall, it
+permits tcp/22 from everywhere, `ufw` is inactive, and **what is actually in
+front of SSH is key-only authentication.** Still not in code, which was the
+other half of the question and remains true.
 
 ## Pile 1 — nobody has named these
 
@@ -639,10 +644,57 @@ runs coexist. Cheap, and it should not wait for anything above it.
    revocable. **Not a deferral with a trigger** — this is a no, and it should be
    re-argued from scratch if it ever comes up again rather than treated as
    waiting.
-5. **D5. What is in front of port 22, and is it in code?** The playbook manages
+5. ~~**D5. What is in front of port 22, and is it in code?** The playbook manages
    no firewall and no SSH configuration. If the answer is a DigitalOcean cloud
    firewall, that is a fine answer and should be written down, because a
-   rebuild from this repository would not reproduce it.
+   rebuild from this repository would not reproduce it.~~ **Answered August 27,
+   2026, by looking.** It was the right guess and the wrong emphasis.
+
+   **There is a DigitalOcean cloud firewall** — `d3fff165-9490-4619-b805-8b34fc3e8b89`,
+   created July 31, 2026, attached to droplet `585969543`. Its inbound rules
+   are **tcp/22, tcp/80 and tcp/443, each from `0.0.0.0/0` and `::/0`**.
+   Outbound is unrestricted: icmp, all tcp, all udp, anywhere.
+
+   **`ufw` on the host is inactive.**
+
+   **So nothing restricts *who* can reach SSH.** The firewall narrows the
+   surface to three ports, which is real and worth having — it is why the
+   database, the container runtime and everything else on that box are
+   unreachable — but it is not a control on SSH access, and the question asked
+   what is *in front of* port 22.
+
+   **What is actually in front of it is key-only authentication.**
+   `sshd -T` reports `passwordauthentication no`. That is the whole control, and
+   it is a good one: an open port with no password to guess is what most of the
+   internet runs on, and it makes fail2ban and friends largely moot.
+
+   **The check that nearly went wrong, recorded because it will recur.**
+   Reading `/etc/ssh/sshd_config.d/` showed `60-cloudimg-settings.conf:
+   PasswordAuthentication no` and a **`50-cloud-init.conf` that is root-only
+   and could not be read**. `sshd` takes the *first* obtained value and the
+   include sits at the top, so **50 beats 60** — a file nobody could see could
+   have reversed the answer, and cloud-init writes that exact key in that exact
+   file on some images. **`sshd -T` is the answer to this class of question**,
+   because it reports the effective configuration rather than a fragment of it.
+
+   **This matters more here than the reasoning above suggests.**
+   `roadmap-history.md`'s `petrel` entry records that **shell on this droplet is
+   equivalent to bypassing the admin's second factor** — so key-only SSH is not
+   merely one control among several, it is the floor the whole MFA effort
+   stands on.
+
+   **And it is not in code**, which was the second half of the question and is
+   still true. A rebuild from this repository reproduces the droplet and not the
+   firewall. **Worth doing and not urgent**: `infra/provision-postgres.sh`
+   already drives `doctl databases firewalls`, so `doctl compute firewall` is
+   the same tool one noun over, against a project that already holds the
+   credential.
+
+   **Narrowing tcp/22 to a home address is refused for now**, and recorded so it
+   is not proposed as an obvious improvement. It is how somebody locks
+   themselves out of their only production host — a dynamic address, no second
+   route in, and no staging to rehearse against. If it is ever done it wants a
+   console fallback confirmed first.
 
    **Still open August 26, 2026, and deliberately — the answer is a fact nobody
    has looked up.** Put to Vince during the decision sweep and left open on

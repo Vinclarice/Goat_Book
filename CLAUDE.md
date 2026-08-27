@@ -359,6 +359,24 @@ including on jobs that never touch the knowledge core.
 
 Never `npx tsc`; the build's `tsc --noEmit` is the type check.
 
+**Quoting a remote command through PowerShell eats your quotes.**
+`ssh host 'grep -E "^(a|b)" /etc/f'` loses the single quotes before `ssh` sees
+them, and the remote shell answers ``syntax error near unexpected token `(' ``.
+Double quotes outside and single inside works — `ssh host "grep -rE 'a|b'
+/etc/f"` — or choose a pattern with no shell metacharacters at all.
+
+**And `sudo` over `ssh` needs a terminal.** `ssh host 'sudo ...'` answers *"a
+terminal is required to read the password"*; `ssh -t` allocates one. Both cost a
+command each on August 27, 2026, while answering D5.
+
+**Ask a daemon for its effective configuration rather than reading its files.**
+`/etc/ssh/sshd_config.d/60-cloudimg-settings.conf` said
+`PasswordAuthentication no` and a root-only `50-cloud-init.conf` sat above it —
+and `sshd` takes the **first** value it obtains, so the file nobody could read
+would have won. `sudo sshd -T` reports what is actually in force. The general
+shape: a config directory plus an include order is not something to resolve by
+eye.
+
 **Writing a file from Python here produces CRLF, and git will hide it.**
 `pathlib.write_text` and `open(...,'w')` default to `newline=None`, which
 translates `

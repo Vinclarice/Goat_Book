@@ -40,6 +40,14 @@ jobs:
       DJANGO_DATABASE_URL: postgresql://clarice:clarice@localhost:5432/clarice
     steps:
       - uses: actions/checkout@v4
+        with:
+          # test_every_release_is_in_the_record.py reads the release tags,
+          # and checkout fetches none of them at the default fetch-depth: 1
+          # -- so without this the guard would pass while seeing nothing at
+          # all. Its positive control fails loudly if this is ever removed,
+          # which is the whole reason that control exists.
+          fetch-tags: true
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: "3.14"

@@ -10,6 +10,30 @@ status line that could rot; eleven index rows said theirs had. **So a shipped
 plan is now a stub** — four lines saying what it was, when it shipped, and where
 its narrative went. *"Crane shipped August 2, 2026"* cannot drift.
 
+### A header may state a decision. It may never state a tally.
+
+**Added August 26, 2026**, after an audit found nine documents carrying a false
+claim and every header among them was a **tally** — *not started*, *all nineteen
+are answered*, *four of five done*. Three plans had read *not started* for six
+days over shipped increments, which
+[`recommendations-2026-08-21.md`](recommendations-2026-08-21.md) §5 had named as
+it was happening; the same three shipped and nobody went back to line 3.
+
+**A tally is a derived fact, and a derived fact written down is a second copy.**
+The increments and decisions in a plan are the status. Counting them into the
+header creates something that has to be re-counted every time one of them moves,
+and the moving is what nobody remembers to follow.
+
+**This is the stub rule, extended to open plans.** A stub cannot drift because
+*it is* its status and there is nothing to update. An open plan gets the same
+treatment: **a date, a subject, and nothing about progress.** Read the strikes.
+
+**A decision is different and stays.** *Deliberately deferred*, *refused*, *for
+the redesign and not for now*, *deliberately half a plan* — none of those can be
+derived from the increments, and each is the single most useful thing its header
+says. The test is whether counting the items below could produce the sentence.
+If it could, delete the sentence.
+
 **Stubs rather than deletions**, for a measurable reason: 251 comments across
 `src/`, `frontend/`, `android/` and `infra/` cite these plans by name and
 section as provenance for reasoning each comment already states in full. The
@@ -29,23 +53,32 @@ file has to resolve; its three hundred lines do not. 11,002 lines became roughly
 | [`product-stories.md`](product-stories.md) | What the product is *for*, as behaviour, and **the only score measuring the product rather than the process** |
 | [`daily-operating-system-vision.md`](daily-operating-system-vision.md) | Product direction for the task core: the premise, the thesis, and the rules the Daily Page must not break |
 
-## Open — designed but not done
+## Open — the plans that are not yet stubs
+
+**The `State` column says what a plan cannot say about itself** — why it is
+deferred, whose trigger it waits on, what it is for, whether to trust it. It
+**does not say how far along it is**, and that is deliberate as of August 26,
+2026: it used to, and it was wrong in four of its eight rows, in both
+directions. **How far along a plan is, is the plan's own strikes**, and the
+answer to *is this current?* is now *open the file*, one click away, rather than
+a copy here that has to be re-read every time an increment moves.
 
 | Document | State |
 |---|---|
 | [`staging-environment-plan.md`](staging-environment-plan.md) | Designed Aug 11, **deliberately deferred** Aug 12. The `is_debug()` fix shipped; the droplet waits for the trigger the plan names |
 | [`android-release-signing-plan.md`](android-release-signing-plan.md) | Build is wired; **the keystore is Vince's to generate by hand**, with the `keytool` command the plan carries |
 | [`mirrored-rules-brief.md`](mirrored-rules-brief.md) | Written Aug 18 **for the redesign, not for now.** Eight rules hand-ported across three languages; the divergence is demonstrated, and `bucket_for` turns out to be a payload gap rather than an architecture |
-| [`security-and-resilience-plan.md`](security-and-resilience-plan.md) | Written Aug 19, **claimed by `roadmap.md` Aug 23; five of its seven ranked items closed between Aug 23 and 26** — MFA as `petrel`, then dependency advisories, HSTS, the enforcing CSP, and the nginx trio. **Two are left and only one is code**: 1.7, four rate limits firing into a log nothing reads, and 2.2, processor erasure, gated on its D1. The restore drill re-run is Vince's. Sorts the surface into what nobody named, what has ripened, and what is settled — rather than a checklist. **Adding the adversary lens reordered it: MFA on the admin outranks the restore drill**, which is second and confirmed in scope. Five decisions open; nothing in it waits on staging |
-| [`planning-assistant-v2-plan.md`](planning-assistant-v2-plan.md) | Written Aug 19, **shipped as part of `lapwing` on Aug 20** — the weekly planning session. **Eight of its nine increments have shipped**: the weekly intention made reachable, capacity at day grain, project outcome and pause, the check-in and its session record, outcomes, blockers answered in place, the week laid out and stress-tested, and scenario planning. **Increment 9 is ranking by confirmation history and may never ship** — it is gated on a sample floor the corpus has not cleared, and the plan says not shipping is then the correct outcome rather than a failure. **Nothing generated anywhere**, which was the finding that shaped it. Of seven decisions, **D3 and D4 are both answered** — outcomes earn their own model (`WeeklyOutcome`, reasoned rule by rule at the model itself), and *desired outcome* is a second field rather than S10's abandonment condition. D5 and D6 turned out narrower than posed and are recorded at the code, in `mind/api_v1.py`'s router docstring. **D1, D2 and D7 remain**, and D7 was found by building increment 1 rather than by planning it: two free-text boxes about next week, a few hundred pixels apart. ~~D3 is answered … D1, D2, D4 and D7 remain~~ — **this cell had D3 and D4 the wrong way round until Aug 26** |
-| [`admin-mfa-plan.md`](admin-mfa-plan.md) | Written Aug 19, **all four increments done; shipped and verified in production Aug 23 as `petrel`.** **This is finished work and a candidate for a stub** — the narrative is now in [`roadmap-history.md`](roadmap-history.md) under *A second factor on the admin*. The focused spec for that plan's §1.5. Shaped by four interactions a stock recipe gets wrong, chiefly that **`/api/v1/login` trades a password for a 90-day token and starts no session**, so a session-based gate misses it — and the Android keystore blocks the obvious fix. Four increments; **enrol before enforcing** is the ordering that matters |
-| [`search-plan.md`](search-plan.md) | Written Aug 20, **built and shipped the same day as part of `lapwing`.** **Four of five increments are done and it is usable** — `/mind/search/` answers in three sections from one box, and `GET /api/v1/search` serves the same thing. **All four decisions were answered the same day.** **D3 and D4 are the ones worth reading, and both found something the question had not asked**: D3 asked whether `RetrievalMiss.resolved_node` should widen, and the answer is that nothing has ever populated that field — the fourth un-switched-on seam in a fortnight — while the actual defect was increment 3 having made the retirement gate's miss count ambiguous, fixed before the deploy because a miss cannot be re-interpreted afterwards. D4 said no to the command palette (a cleared precondition is not a trigger) and found that nothing in the task core linked to search at all. Increment 5, the nine deferred fields, is all that is left; it wants real use first, and it is **a deferral rather than a refusal** — one of `clarice-v4-plan.md`'s four corpus-gated ones, each of which has to end fired or written as a refusal. ~~Four decisions open~~ — **this cell said both "all four answered" and "four decisions open"** until Aug 26, a merge artifact from the row's pre-ship version. **Mostly an extension sideways rather than a build**: the knowledge core has had generated `tsvector` columns, `GinIndex`es and a ranked read since before the merger, and the task core has none — which is also how `roadmap.md`'s "no full-text search anywhere in the product" was found stale. **Sectioned results, not one merged ranking**, because `SearchRank` does not compare across two document sets and the failure is silent. Slice 1 is `Item` and `DailyEntry` only, with nine fields deferred by name; five increments, the first two invisible |
+| [`security-and-resilience-plan.md`](security-and-resilience-plan.md) | **Live work, and it is the one to read before touching production.** Ranks the surface by adversary rather than by checklist, and that reordering is the useful part — MFA outranked the restore drill. **Two of its open items are not code**: the restore drill re-run is Vince's, and 2.2 waits on its own D1 |
+| [`planning-assistant-v2-plan.md`](planning-assistant-v2-plan.md) | **Live work.** The forward half of the weekly ritual — v1 finds loose ends, v2 decides what to do about them. **Its measure is decisions removed, not material produced**, and **nothing in it generates anything**, which was the finding that shaped it. Its last increment is gated on a sample floor and may correctly never ship |
+| [`admin-mfa-plan.md`](admin-mfa-plan.md) | **Finished — shipped August 23 as `petrel`; a candidate for a stub.** Kept for the four interactions a stock TOTP recipe gets wrong here, chiefly that **`/api/v1/login` trades a password for a 90-day token and starts no session**, so a session-based gate misses it entirely. **Enrol before enforcing** is the ordering that matters |
+| [`search-plan.md`](search-plan.md) | **Live work.** Full-text search across both cores from one box. **Sectioned results, not one merged ranking**, because `SearchRank` does not compare across two document sets and the failure is silent. **Mostly an extension sideways rather than a build** — the knowledge core had the machinery before the merger and the task core had none. Its last increment is a corpus-gated deferral |
 | [`clarice-v4-plan.md`](clarice-v4-plan.md) | Drafted Aug 22, **deliberately half a plan and not claimed by `roadmap.md`.** Short on purpose: half of it is undecided, so it does not claim Part 8's override the way v3 did. **What is decided is that commerce is refused rather than deferred** — and of the four documents that carried it as live, ~~all four were rewritten as refusals on Aug 24~~ — **three were**, the wedge and the roadmap section first and **`product-stories.md`'s S19 later the same day**, which is where the score grew a fourth pile: *refused* is not a lesser *impossible*, and the denominator deliberately did not move. **The fourth is this file's own call** — whether `commercial-blueprint.md` is renamed, split or headed, v4's V3 — and it is open. **What is open is V1, the fork**: whether anybody other than Vince ever uses Clarice. The spine is the work that is correct either way, which is what lets the question stay open honestly. Two findings carry it: **v3 executed exactly as written tops out at 15 of 19, not the 17 it claims**, because S13 is orphaned and S18 is named by no release; and **four corpus-gated deferrals wait on material one user will not produce**, which makes importing Vince's own archive a spine item rather than a guest one. Its most useful section is about the documents rather than the code — four things they called open and were not, and it acquired a fifth of its own within two days |
 
-**Three of these rows are active rather than designed-and-waiting** — the
-planning assistant's second version, search, and the security plan — and each
-says which parts have shipped. They become stubs like the others when they
-close, and the distinction disappears with them, which is the point of stubs.
+**Some of these are live work and some have never been started, and this table
+deliberately does not say which.** That was the change of August 26, 2026: the
+distinction is real but it moves weekly, and a weekly fact in a monthly document
+is a fact that will be wrong. Each becomes a stub when it closes, and the
+question disappears with it — which is the point of stubs.
 
 ~~**`temporal-substrate-plan.md`** had a row here reading **not started**~~ —
 **removed August 26, 2026. It shipped entire on August 22 as `nightjar`** and

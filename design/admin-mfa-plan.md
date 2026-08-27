@@ -1,7 +1,8 @@
 # A second factor on the accounts that can read everything
 
-Vince · plan · written August 19, 2026 · **all four increments done;
-3 confirmed in production August 23, 2026**
+Vince · plan · written August 19, 2026 · **shipped and closed August 23, 2026
+as `petrel`** · the narrative is in
+[`roadmap-history.md`](roadmap-history.md) under *A second factor on the admin*
 
 ## What this closes
 

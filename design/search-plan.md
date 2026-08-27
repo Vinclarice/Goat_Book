@@ -1,9 +1,6 @@
 # Unified search — focused spec
 
-Vince · focused spec · written August 20, 2026 · **increments 1–4 shipped the
-same day as part of `lapwing`; increment 5 is a corpus-gated deferral** ·
-header corrected August 26, 2026, having read **not started** for six days
-beside four shipped increments
+Vince · focused spec · written August 20, 2026 · **status is the strikes below**
 
 ## What this is
 

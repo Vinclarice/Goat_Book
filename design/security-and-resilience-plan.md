@@ -1,9 +1,6 @@
 # Security, resilience and reliability — what is unnamed, and what has ripened
 
-Vince · plan · written August 19, 2026 · **claimed by `roadmap.md` August 23,
-2026; five of its seven ranked items closed between August 23 and 26** ·
-header corrected August 26, 2026, having read **not started** while the body
-below recorded five closures
+Vince · plan · written August 19, 2026 · **status is the strikes below**
 
 ## What this is
 

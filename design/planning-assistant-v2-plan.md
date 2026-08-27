@@ -1,9 +1,6 @@
 # Planning assistant v2 — the forward half of the weekly ritual
 
-Vince · plan · written August 19, 2026 · **increments 1–8 shipped August 20,
-2026 as part of `lapwing`; increment 9 is gated on a sample floor the corpus
-has not cleared** · header corrected August 26, 2026, having read **not
-started** for six days beside eight shipped increments
+Vince · plan · written August 19, 2026 · **status is the strikes below**
 
 ## What this is
 

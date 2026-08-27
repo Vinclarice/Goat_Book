@@ -1304,7 +1304,13 @@ one-line summary did not carry.
   the append-only trigger and watching the catalogue check report `ok` while the
   UPDATE it exists to refuse was accepted.
 
-## Code review findings — closed from August 18, 2026
+## Code review findings — closed from August 18, 2026, `ibis`
+
+**The codename was attached on August 26, 2026**, by the guard described at the
+end of this file: this entry is `ibis`'s narrative and had never said so, so
+nothing could get from the tag to the story. Sixteen findings, D1 through D17,
+plus three production incidents that arrived while the work was in flight and
+two defects those incidents exposed.
 
 Findings from [`code-review-2026-08-16.md`](code-review-2026-08-16.md), taken in
 the order that review ranked them. **The review itself gets no status lines** —
@@ -2070,6 +2076,40 @@ conclusion already held**, which is the shape of motivated reasoning, and a
 third would have been cargo. What replaced it is a priority rather than a
 prohibition, and it lives in `CLAUDE.md`.
 
+## The Second Mind merger — August 15, 2026, `godwit`
+
+**Written into this file on August 26, 2026**, from its tag, by the guard at the
+end of this file. It had no entry at all — the largest single piece of work this
+project has done, and the record held its name nowhere. What follows is the tag
+and no more; the merger's *standing consequences* are `CLAUDE.md`'s
+*The shape of the application*, which is current and is not restated here.
+
+**All five steps of Second Mind's `two-cores.md`, from separate project to one
+application.** The knowledge core at `src/mind/` behind this site's own login,
+its corpus moved and re-pointed, facets landing with **the actionable one as the
+sole exception to soft-apply** — and a deploy on the **existing playbook,
+unchanged**, which is the clearest evidence available that it was a merge rather
+than a co-location.
+
+**What the merger turned out to require, and did not set out to do.** A task can
+stand on its own: `Item.list` became nullable and `Item.owner` had to exist,
+because ownership had been running through the `Area` at some twenty call sites.
+And a **deterministic** commitment parser reads a date out of a capture and
+offers it below the box, one tap to accept, **no filing question asked** — which
+is the rule the deleted `Capture → Idea → Task` pipeline broke.
+
+**Nine of the ten defects in `commercial-blueprint.md` Part 1 closed with it**:
+CI green across five jobs after four days red, token requests using the owner's
+time zone rather than the server's, `/healthz` with `restart_policy`, private
+note text no longer reaching Sentry, migrate-before-recreate in the deploy, an
+error boundary in place of a white screen, and both Android queue defects. **The
+tenth is closed as won't-fix, deliberately.**
+
+**Verified**: 979 Django tests, 573 pytest, 269 frontend, 30 browser, 309
+Android; CI green on `main`; and in production `/healthz` answering ok, the
+deployed OpenAPI schema carrying the nullable `area_id` that proves the agenda
+fix is live, and the deployed bundle byte-identical to the local build.
+
 ## After Dunlin — Release F and six unlettered lines of work, August 6–12, 2026
 
 Six of these seven shipped outside the release structure entirely, which is the
@@ -2679,6 +2719,17 @@ letter sequence, which bird holds which letter, and **which deploys earn a bird
 at all** are in `roadmap.md` under *Release practice*. None of it is restated
 here. A letter is never reused: a follow-up production release receives the next
 bird name, even if it immediately corrects the last.
+
+**A codename with no entry here fails a test.**
+`clarice/tests/test_every_release_is_in_the_record.py` reads the annotated tags
+and this file, and fails when a release has a name and no narrative. It found
+`godwit` and `ibis` on the day it was written — the merger and the code review's
+defect list, both with entries that never said which bird they were — after an
+audit had already found `osprey` and `petrel` with no entries at all. **A guard
+rather than an inventory**: an inventory would list the four, and the guard
+notices the fifth. It selects on the tag being **annotated**, which is the rule
+`CLAUDE.md` already states, so a lightweight working marker is invisible to it
+without needing an exception list.
 
 ~~a release receives three tags — `LIVE`, `DEPLOYED-<date>/<HHMM>` and the bird
 codename — after it is verified in production.~~ **Struck August 26, 2026**,

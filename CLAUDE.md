@@ -24,6 +24,30 @@ restating it.** A restated fact is a fact that will be wrong later; this file
 carried a copy of the production defect list for four days and twice described
 finished work as open.
 
+## Keeping a plan current — strike the increment in the commit that ships it
+
+**Not afterwards, and not in a tidying pass.** An increment that shipped and is
+still unstruck is how three plans came to read *not started* over shipped work
+for six days in August, and how `roadmap-history.md` — the file that is supposed
+to be unable to go stale — came to be missing four releases at once, including
+the Second Mind merger.
+
+**This is the tagging lesson again, and it is worth naming as such.** Tagging
+drifted for exactly one reason: it was written down as a convention and nowhere
+as a step. Documents drift for the same reason. The fix is the same: put it in
+the commit, where there is already a trigger.
+
+So, concretely, in the same commit as the code:
+
+- **Strike the increment or decision in its plan**, with the date. If the answer
+  turned out different from the plan's guess, say so there — `D3` and `D5` were
+  both answered by *building* them and only the code knew for six days.
+- **Never write a tally into a header.** `design/README.md` owns this rule: a
+  header may state a decision, never a count. The strikes are the status.
+- **If the work answered a decision, answer it where the reasoning already is.**
+  `WeeklyOutcome`'s docstring carries D3's answer rule by rule against §4; the
+  plan links to that rather than restating it.
+
 ## Closing a piece of work
 
 Two steps:
@@ -447,6 +471,16 @@ Tagging drifted badly through August — `LIVE` sat five days and thirty commits
 behind production, two deploys went untagged — because it was written down in
 `roadmap.md` as a convention and nowhere as a step. It is a step: when he reports
 a deploy done, verify what is live, then tag it in the same turn.
+
+**And if it earned a bird, write the entry in that same turn too.** The tag
+message is already the narrative — `osprey`'s runs to thirty lines and is better
+than anything reconstructed later would be — so this is a transcription into
+`roadmap-history.md`, not fresh writing, and it takes a minute. **Twelve inches
+was the whole gap**: four releases had a carefully written tag and no entry,
+`godwit` and `ibis` for eleven days, and `osprey` appeared nowhere in `design/`
+at all while having moved four of the nineteen journeys.
+`clarice/tests/test_every_release_is_in_the_record.py` now fails when a codename
+has no narrative, and that guard is why the count is four rather than five.
 
 Note that the playbook builds the image **from the working tree**
 (`delegate_to: 127.0.0.1`), not from a git ref — so what is deployed is

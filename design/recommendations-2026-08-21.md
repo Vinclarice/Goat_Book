@@ -19,7 +19,15 @@ landing rate.
 
 ---
 
-## 1. Make emitter idempotency a tested invariant of the log
+## ~~1. Make emitter idempotency a tested invariant of the log~~ — adopted, struck August 26, 2026
+
+**`src/clarice/tests/test_emitters_are_idempotent.py` exists**, under the exact
+name this item asked for, and the R8 exhaustiveness test has a home too:
+`test_dark_enum_values_declare_their_deferral.py` makes every new `EventType`
+value answer for itself. **Adopted and never struck**, which is the failure this
+file names in its own header — an advisory that cannot close is a nag, and one
+that closes silently is worse, because the next reader re-does the work.
+Original text follows.
 
 **The class of C1–C4, closed structurally rather than case by case.** All four
 committed-code defects in the review are writes (or wrongly-skipped writes)
@@ -74,6 +82,12 @@ and nothing has yet been deleted.
 
 ## 3. Run the test you just wrote
 
+**Open August 26, 2026, and it is a habit with no adoption act** — nothing in
+`principles.md` or `CLAUDE.md` carries it, so there is nothing to point at and
+nothing to strike. **What would close it** is either a sentence in
+`principles.md` (Vince's, the way item 2 went) or a recorded refusal saying the
+existing *watch it fail for the reason you expect* already covers it.
+
 **The cheapest lesson of the review:** increment 4's suite could never have
 run — its node factory uses fields the model doesn't have — and it sat that
 way because no run was ever attempted. The discipline that would have caught
@@ -90,10 +104,25 @@ spend ten minutes on hand mutation probes the way the August 16 review did —
 today's three green mutations (R3) is exactly what that practice exists to
 catch. CI cannot help with either: it never sees uncommitted work.
 
-## 4. The operational debt has aged past its reasons
+## ~~4. The operational debt has aged past its reasons~~ — two of three closed, one refused, struck August 26, 2026
 
-Every item here is already designed and already ranked — the issue is purely
-that none is claimed while feature tracks multiply.
+**Admin MFA shipped August 23, 2026 as `petrel`** — the item's own top pick,
+and it was the cheapest remaining reduction of the worst realistic outcome
+exactly as this said. **Deploy-from-ref is still open** as
+`security-and-resilience-plan.md` §1.3, and the tagging discipline is still what
+holds, as this item predicted.
+
+**The restore drill is where this item was wrong, twice.** It says the drill is
+the only undo for a bad migration — true — and that it should go *"on a cadence
+rather than a memory"*. But it had **already run and passed on August 19**, two
+days before this was written, and `roadmap.md` has since **declined the
+cadence** on stated reasoning: a drill certifies the schema it ran against, so
+it is worth re-running when the schema has moved enough to be worth re-proving,
+**not on a calendar**. Recording that as a refusal rather than leaving the
+recommendation standing, which is what this file's rule asks for.
+
+Original text follows. Every item here is already designed and already ranked —
+the issue is purely that none is claimed while feature tracks multiply.
 
 - **Admin MFA**: `security-and-resilience-plan.md` ranks it above the restore
   drill, the focused spec (`admin-mfa-plan.md`) exists, and neither is
@@ -111,6 +140,16 @@ that none is claimed while feature tracks multiply.
 sequencing nudge, not new design.
 
 ## 5. Close before opening
+
+**Open August 26, 2026 — and its diagnosis recurred verbatim in the five days
+since, which is the strongest evidence any item here has.** This entry names
+*"docs drifting ('not started' beside three shipped increments)"*. On August 26
+an audit found **three plans headed *not started* over shipped increments** —
+search, the planning assistant's v2 and the security plan — plus three
+deployments missing from `roadmap-history.md`, one of them a release that
+appeared nowhere in `design/` at all. Different files, same failure, five days
+later. **What would close it** is a habit nobody can point at yet; what it has
+earned in the meantime is this note.
 
 **The breadth is the risk.** Currently designed-and-open: temporal Tracks A–E,
 v3's eight releases, security, MFA, staging's trigger, terms and

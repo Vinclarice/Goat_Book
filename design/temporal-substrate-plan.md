@@ -27,10 +27,23 @@ answering them rather than by planning them.
 
 ## The decisions still open
 
-**None. All nineteen are answered**, the last six on August 22, 2026. They
-stay listed below with what each turned out to be, because *what the question
-was actually hiding* is the part worth keeping — the reasoning for all of them
-is in [`roadmap-history.md`](roadmap-history.md).
+~~**None. All nineteen are answered**, the last six on August 22, 2026.~~
+**One. Eighteen of the nineteen are answered** — corrected August 26, 2026.
+**D18 is open**, and was open when this line was written; `osprey`'s tag makes
+the same overcount, closing with *"all nineteen substrate decisions closed."*
+[`clarice/recall.py`](../src/clarice/recall.py) still carries
+`DEFAULT_WINDOW = timedelta(hours=6)`, which **is** the clock-bounded proxy D18
+exists to question, so the code was never ambiguous about it.
+
+**Worth keeping rather than quietly renumbering**, because of how it happened:
+the five answered on August 22 were a dependency chain, the chain was the
+interesting part, and the summary was written about the chain rather than about
+the list. A count is not a story and should not be written from one.
+
+The answered eighteen stay listed below with what each turned out to be, because
+*what the question was actually hiding* is the part worth keeping — the
+reasoning for all of them is in
+[`roadmap-history.md`](roadmap-history.md).
 
 5. ~~**D5. Can the log answer absence?**~~ **Answered August 22, 2026: yes, and
    it needs no new row.** The log's own other events are the proof it was
@@ -106,3 +119,18 @@ is in [`roadmap-history.md`](roadmap-history.md).
     "that morning" its real edges — tight on a busy day, wide on a quiet one
     — derived at read time, so the facts-not-derivations line holds. Bears on
     increment 4's API before it hardens. Registered August 21.
+
+    **Still open as of August 26, 2026, and the only one that is.** Twice
+    reported closed and never was — once by the summary above, once by
+    `osprey`'s tag.
+
+    **Its trigger has partly gone**, which is the thing to notice rather than
+    the miscount: it was registered to be answered *"before increment 4's API
+    hardens"*, and that API shipped on August 22 and has been live since.
+    `DEFAULT_WINDOW` is overridable per call, and
+    [`recall.py`](../src/clarice/recall.py) already says why — *the right window
+    is a property of the question and not of the log* — so the API did not
+    harden around the proxy the way the decision feared. **What is left is a
+    read-time question with no deadline**, and by `principles.md`'s rule it now
+    needs either a trigger that can fire or a refusal. Vince's, and this file
+    does not take it.

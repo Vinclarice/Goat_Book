@@ -393,11 +393,18 @@ Local and explainable, in the vision's own phrasing —
    ever ask whether the condition has been met, because nothing can tell which
    half of the text is the condition. They also have different readers —
    *are we there?* against *should we stop?*
-5. **Does deciding in place open the review's read-only rule (S7)?** The
+5. ~~**Does deciding in place open the review's read-only rule (S7)?** The
    read-only rule is *why* the numbers are trustworthy. Writing through the
    owning core's services — the resolution already found for pinning a task — is
-   the shape any yes should take.
-6. **Where does the session live, when its inputs span two rituals?** There are
+   the shape any yes should take.~~ **Answered by building increment 6, August
+   20, 2026, and it took exactly the shape this entry proposed.** The blocker
+   routes live on `/api/v1/` and call `mind`'s own services, so **the core that
+   owns the record still decides what happens to it** — the read stays read-only
+   and the write goes home. Recorded at the code, in
+   [`mind/api_v1.py`](../src/mind/api_v1.py)'s router docstring; struck here
+   August 26, 2026.
+6. ~~**Where does the session live, when its inputs span two rituals?**~~
+   **Answered August 20, 2026 — see the note below the three options.** There are
    already two review surfaces — `/mind/review/` and `/app/review` — and v2
    reads from both. Three answers, and they are not equally cheap:
 
@@ -414,6 +421,17 @@ Local and explainable, in the vision's own phrasing —
    **This is the decision that most changes increment 6**, and it is a design
    question spanning both cores — so `design-concept.md`'s account of the review
    ritual is a party to it, not just this file.
+
+   **Answered by building it, August 20, 2026: the first of the three**, and it
+   turned out narrower than posed. V2 is the task core's forward half, and it
+   reaches the knowledge core's records over `/api/v1/` rather than merging the
+   two surfaces. **The merge was not refused, it was not needed** — what step 3
+   was trying to stop was reaching a *blocker* by a link, and calling the owning
+   core's service closes that without moving the review window that stamps
+   `first_surfaced_at`. Recorded at
+   [`mind/api_v1.py`](../src/mind/api_v1.py); struck August 26, 2026. **The
+   third option is still the honest one against the one-place rule** and stays
+   available if the two review surfaces ever start disagreeing.
 7. **Does the weekly intention duplicate the review's own "Next week" field?**
    **Found by building increment 1, not by planning it.** `WeeklyReview.plan`
    has always carried *"plan for next week"* in the person's own words, and the

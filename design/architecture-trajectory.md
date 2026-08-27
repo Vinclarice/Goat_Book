@@ -494,8 +494,16 @@ and the five open questions in `crane-plan.md` §6. See
 
 What remains genuinely open:
 
-- **Does release G exist?** Everything in it is conditional on deciding that
-  Clarice should have users who are not you.
+- ~~**Does release G exist?** Everything in it is conditional on deciding that
+  Clarice should have users who are not you.~~ **Not answered — rehomed August
+  26, 2026.** This is [`clarice-v4-plan.md`](clarice-v4-plan.md)'s **V1**,
+  *does anybody other than Vince ever use Clarice*, and that file owns it: it
+  prices both branches, names the spine that is correct either way, and is the
+  reason the question can stay open honestly. **The letter G is the stale part**
+  — it was spent on the merger as `godwit` on August 15, 2026, and §5 above
+  records that speculatively attaching a subject to a letter is exactly what
+  this document stopped doing. Two homes for one question is the drift
+  `README.md` exists to prevent, so this one links rather than restates.
 - **Is rich authored content release E, or earlier?** Overtaken in the
   knowledge core, which ships `Node` and `Revision`, and still open in the task
   core, where the trigger it named — real use of written material — now belongs

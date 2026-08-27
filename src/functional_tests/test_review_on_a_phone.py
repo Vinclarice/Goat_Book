@@ -183,13 +183,15 @@ class ReviewOnAPhoneTest(BrowserTest):
                 self.page.get_by_role("heading", level=2, name=heading)
             ).to_be_visible()
         expect(self.page.get_by_label("Reflections")).to_be_visible()
-        # `exact` because two labels on this page now contain "Next week", and
-        # Playwright's get_by_label matches substrings where the component
-        # tests' getByLabelText matches whole strings -- so this read as
-        # unambiguous in one suite and resolved to two elements in the other.
-        # The review's own plan field is the one labelled exactly that.
-        expect(self.page.get_by_label("Next week", exact=True)).to_be_visible()
         expect(self.page.get_by_label("What is next week for?")).to_be_visible()
+        # **One box about the week ahead, not two** --
+        # `planning-assistant-v2-plan.md` D7, August 26, 2026. A textarea
+        # labelled exactly "Next week" lived beside the intention until then,
+        # and the pair of them is what D7 collapsed. Asserted as an absence
+        # because the heading above is still called "Next week" -- the drafted
+        # week is a different thing and stays -- so "gone" has to be said about
+        # the label rather than about the words.
+        expect(self.page.get_by_label("Next week", exact=True)).to_have_count(0)
 
     def test_no_control_is_clipped_off_the_right_edge(self):
         """Visible is not the same as reachable: an element can be visible
@@ -211,15 +213,21 @@ class ReviewOnAPhoneTest(BrowserTest):
 
         self.assertEqual(clipped, [], f"Controls past the {width}px edge: {clipped}")
 
-    def test_the_coming_week_can_be_planned_on_a_phone(self):
-        """Fits is necessary and not sufficient -- the point is using it."""
+    def test_the_review_itself_can_be_written_on_a_phone(self):
+        """Fits is necessary and not sufficient -- the point is using it.
+
+        **Was `test_the_coming_week_can_be_planned_on_a_phone`**, which filled
+        a "Next week" box that D7 retired on August 26, 2026. What it was
+        really proving is that the review's own save works at 375px, and
+        Reflections proves that just as well -- planning the week ahead is the
+        test below, through the intention, which is now the only place it
+        happens.
+        """
         self.a_full_week()
         self.log_in(self.user)
         self.visit("/app/review")
 
-        self.page.get_by_label("Next week", exact=True).fill(
-            "Two mornings on the review"
-        )
+        self.page.get_by_label("Reflections").fill("Quieter than it looked")
         self.page.get_by_role("button", name="Save the review").click()
 
         expect(self.page.get_by_text("Saved.")).to_be_visible()

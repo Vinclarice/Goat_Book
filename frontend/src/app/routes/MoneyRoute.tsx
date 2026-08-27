@@ -571,23 +571,13 @@ export function MoneyRoute() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-4 px-4 py-8">
-      <nav className="flex items-baseline justify-between gap-3">
-        <Link
-          to={`/money/${data.previous_month}`}
-          className="touch-target text-sm text-muted-foreground hover:text-foreground"
-        >
-          ← {monthLabel(data.previous_month)}
-        </Link>
-        <h1 className="font-sans text-xl font-bold">
-          {monthLabel(data.month_start)}
-        </h1>
-        <Link
-          to={`/money/${data.next_month}`}
-          className="touch-target text-sm text-muted-foreground hover:text-foreground"
-        >
-          {monthLabel(data.next_month)} →
-        </Link>
-      </nav>
+      {/* The month is named and not navigated here. Prev/next arrows stood in
+          this spot until August 27, 2026 and moved to the rail, where twelve
+          months are one click each instead of four clicks back to April --
+          Vince's call. Two ways to change month would be one too many. */}
+      <h1 className="font-sans text-xl font-bold">
+        {monthLabel(data.month_start)}
+      </h1>
 
       {/* Above the month, not below it. The page used to end at "No bills due
           this month." with two links, both to other empty months -- a page

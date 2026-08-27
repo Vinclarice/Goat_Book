@@ -15,6 +15,29 @@ import styles from "./sidenav.module.css";
  *
  * See design/side-nav-mockup.html.
  */
+/** The last twelve months, newest first, as first-of-month dates.
+ *
+ * Twelve because a year is the span a person compares against -- *what did
+ * this cost last August* -- and because a longer list stops being scannable
+ * in a rail. Computed rather than fetched: the months a person can look at are
+ * every month, and asking a server which ones exist would make an empty
+ * February unreachable.
+ */
+function recentMonths() {
+  const now = new Date();
+  return Array.from({ length: 12 }, (_, back) => {
+    const date = new Date(now.getFullYear(), now.getMonth() - back, 1);
+    const iso = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-01`;
+    return {
+      iso,
+      label: date.toLocaleDateString(undefined, {
+        month: "long",
+        year: date.getFullYear() === now.getFullYear() ? undefined : "numeric",
+      }),
+    };
+  });
+}
+
 export function SideNav() {
   const location = useLocation();
   const { data } = useQuery({
@@ -32,6 +55,19 @@ export function SideNav() {
   const areas = data?.areas ?? [];
   const projects = data?.projects ?? [];
 
+  /* **Months, but only on Money.** Vince's call, August 27, 2026, against the
+     recommendation that this rail stay contents-only: the month you are
+     reading is what you navigate by there, and prev/next arrows at the top of
+     the page make jumping four months back four clicks.
+     
+     The concern, recorded rather than argued: this rail's own docstring says
+     it says *what is in here*, and a contextual group makes it say two things
+     depending on where you are -- which is the split ViewNav was created to
+     undo. If it starts feeling wrong, the fix is a column on the Money page
+     itself, not more contextual groups. */
+  const onMoney = location.pathname.startsWith("/money");
+  const months = onMoney ? recentMonths() : [];
+
   return (
     <nav className={styles.nav} aria-label="Contents">
       {/* The Views group stood here -- Today, Agenda, Review, Archive -- and is
@@ -44,6 +80,27 @@ export function SideNav() {
           single main navigation any more, which is the point -- there is a bar
           that says which core, a sub-nav that says which surface, and this,
           which says what is in here. */}
+      {months.length > 0 && (
+        <div className={styles.group}>
+          <h3>
+            <Link to="/money" className={styles.headingLink}>
+              Months
+            </Link>
+          </h3>
+          {months.map((each) => (
+            <NavLink
+              key={each.iso}
+              to={`/money/${each.iso}`}
+              className={navLinkClass}
+              title={each.label}
+              end
+            >
+              <span className={styles.name}>{each.label}</span>
+            </NavLink>
+          ))}
+        </div>
+      )}
+
       <div className={styles.group}>
         <h3>Areas</h3>
         {areas.length === 0 && <p className={styles.empty}>No areas yet.</p>}

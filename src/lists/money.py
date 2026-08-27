@@ -26,6 +26,7 @@ question about money.
 from calendar import monthrange
 from collections import defaultdict
 from dataclasses import dataclass
+import datetime
 from datetime import timedelta
 from decimal import Decimal
 
@@ -324,3 +325,140 @@ def _balances(owner, today):
         if before is not None:
             changes[account.currency] += current - before
     return owed, held, owed_change, held_change, unread
+
+
+# ---------------------------------------------------------------------------
+# History, and arithmetic about it
+# ---------------------------------------------------------------------------
+
+#: Below this, no projection is offered. Two points make a line through whatever
+#: noise those two months happened to contain, and that line looks exactly as
+#: confident as one drawn from twelve -- so the refusal is what keeps the rest
+#: worth believing.
+ENOUGH_TO_PROJECT = 3
+
+#: How far ahead. Vince asked for six months, and six is also about as far as an
+#: average-of-recent-change stays honest.
+PROJECT_AHEAD = 6
+
+
+@dataclass(frozen=True)
+class Projection:
+    """Where a balance is heading, if it carries on as it has been.
+
+    **Arithmetic, not a model.** The mean monthly change over the readings
+    there are. Nothing learns, nothing is fitted, and
+    `design-concept.md`'s ML policy is not engaged -- a straight line somebody
+    can check in their head beats a better curve they cannot.
+    """
+
+    #: (month, figure), oldest first.
+    months: list
+    #: The average move a month, negative when falling.
+    monthly_change: Decimal
+    #: How many readings it was drawn from. Travels with the number, because a
+    #: projection whose derivation is invisible is a claim rather than an
+    #: estimate.
+    readings_used: int
+    #: For something owed, the month the line reaches zero -- *at this rate,
+    #: clear in March 2027*. None when it never does, and always None for
+    #: something held, where zero means nothing.
+    clears_on: object
+
+
+@dataclass(frozen=True)
+class HistoryRow:
+    account: object
+    #: {month: figure or None}. **None is a gap, not a zero**: nothing recorded
+    #: and nothing owed are different facts and only one is a number.
+    balances: dict
+    projection: object
+
+
+@dataclass(frozen=True)
+class BalanceHistory:
+    months: list
+    rows: list
+
+
+def _months_back(today, count):
+    """``count`` first-of-months ending with the one ``today`` falls in."""
+    months = []
+    year, month_number = today.year, today.month
+    for _ in range(count):
+        months.append(datetime.date(year, month_number, 1))
+        month_number -= 1
+        if month_number == 0:
+            year, month_number = year - 1, 12
+    return list(reversed(months))
+
+
+def _add_months(start, count):
+    total = start.month - 1 + count
+    return datetime.date(start.year + total // 12, total % 12 + 1, 1)
+
+
+def _project(readings, *, owes):
+    """Carry the average monthly change forward.
+
+    ``readings`` is (month, figure), oldest first, gaps already removed -- a
+    missing month is not a zero and averaging over one would invent a fall
+    nobody had.
+    """
+    if len(readings) < ENOUGH_TO_PROJECT:
+        return None
+
+    first_month, first = readings[0]
+    last_month, last = readings[-1]
+    # Months apart rather than readings apart, so a gap does not make the change
+    # look steeper than it was.
+    span = (last_month.year - first_month.year) * 12 + last_month.month - first_month.month
+    if span == 0:
+        return None
+    change = (last - first) / span
+
+    months, running = [], last
+    clears_on = None
+    for step in range(1, PROJECT_AHEAD + 1):
+        running = running + change
+        when = _add_months(last_month, step)
+        if owes and running <= 0:
+            # A loan does not become a negative loan; it ends. The first month
+            # it reaches zero is the answer, and the rest of the line is zeroes
+            # rather than a debt somebody is owed.
+            running = Decimal("0.00")
+            if clears_on is None:
+                clears_on = when
+        months.append((when, running.quantize(Decimal("0.01"))))
+    return Projection(
+        months=months,
+        monthly_change=change.quantize(Decimal("0.01")),
+        readings_used=len(readings),
+        clears_on=clears_on,
+    )
+
+
+def history_for(owner, *, today, months=12):
+    """Every account's balance over the last ``months``, and where it is going.
+
+    ``today`` is injected rather than read from the clock -- `principles.md`,
+    *pass dates and times into domain logic* -- which is what lets a table for
+    August and a table for September disagree correctly.
+    """
+    window = _months_back(today, months)
+    rows = []
+    for account in Account.objects.filter(owner=owner).prefetch_related("readings"):
+        by_month = {r.on_date: r.amount for r in account.readings.all()}
+        balances = {each: by_month.get(each) for each in window}
+        # Projected from every reading held, not only the ones on screen: a
+        # twelve-month window is a display choice and should not quietly change
+        # the arithmetic.
+        ordered = sorted(by_month.items())
+        rows.append(
+            HistoryRow(
+                account=account,
+                balances=balances,
+                projection=_project(ordered, owes=account.owes),
+            )
+        )
+    return BalanceHistory(months=window, rows=rows)

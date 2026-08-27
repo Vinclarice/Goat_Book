@@ -95,6 +95,9 @@ export function SideNav() {
           <NavLink to="/money/balances" className={navLinkClass} end>
             <span className={styles.name}>Update balances</span>
           </NavLink>
+          <NavLink to="/money/history" className={navLinkClass} end>
+            <span className={styles.name}>History</span>
+          </NavLink>
           {months.map((each) => (
             <NavLink
               key={each.iso}

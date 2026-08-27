@@ -296,19 +296,36 @@ difference between a page and a module.
     caller that needs it, and a read with no caller is the thing this project
     keeps finding.
 
-11. **History, as a table and a graph.** The argument for `paid_amount` and for
-    dated balance readings was *is the electricity creeping up* and *is the loan
-    going down*. Both are being recorded and **neither is read** — data accruing
-    against a promise nobody has kept.
+11. **History, as a table and a graph — and a projection.** Vince: *"a table
+    with accounts listed, and balances over say a 12 month period. And I'd like
+    to have a prediction for the next six months."*
+
+    **The projection is arithmetic and says so.** The average monthly change
+    over the readings there are, carried forward six months. Not a model, not a
+    fit, nothing generative — `design-concept.md`'s ML policy is not engaged
+    because nothing here learns, and a straight line a person can check in their
+    head is worth more here than a better curve they cannot.
+
+    **It refuses under three readings.** Two points make a line through
+    whatever noise those two months happened to contain, and a projection drawn
+    from them looks exactly as confident as one drawn from twelve. *Not enough
+    history yet* is the honest output and the one that keeps the other
+    projections trustworthy.
+
+    **It carries its own basis.** *"From the last 4 months, averaging −250 a
+    month"* travels with the number, because a projection whose derivation is
+    invisible is a claim rather than an estimate.
+
+    **And it names the crossing.** For something owed, the month the line
+    reaches zero is the thing a person actually wants — *at this rate, clear in
+    March 2027* — and it is the one output worth more than the six figures
+    behind it. Suppressed for things held, where zero means nothing.
 
     **The graph is hand-drawn SVG and not a charting library.** A dependency is
     a permanent cost against a handful of sparklines, and this project defers
     dependencies for size on principle — `torch` went that way on August 18.
-    Twelve points on a line need no framework. **Recorded as a decision so it is
-    not re-argued**, and reversible if a real chart is ever wanted.
-
-    **Worth doing last.** A trend over two readings is not a trend; after three
-    monthly passes it earns the screen.
+    Twelve points on a line need no framework. **Recorded so it is not
+    re-argued**, and reversible if a real chart is ever wanted.
 
 ## What is still open
 

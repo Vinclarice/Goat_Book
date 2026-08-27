@@ -721,6 +721,75 @@ def money_landing(request):
     }
 
 
+class ProjectionOut(Schema):
+    """Where a balance is heading, with its own derivation attached."""
+
+    #: [[month, figure], ...] oldest first.
+    months: list[list[str]]
+    monthly_change: str
+    #: What it was drawn from. Shown, because a projection whose derivation is
+    #: invisible is a claim rather than an estimate.
+    readings_used: int
+    #: The month a debt reaches zero, when it does. Null for something held.
+    clears_on: date | None
+
+
+class HistoryRowOut(Schema):
+    account_id: int
+    name: str
+    currency: str
+    owes: bool
+    #: One entry per month in `months`, same order. **Null is a gap, not a
+    #: zero**: nothing recorded and nothing owed are different facts.
+    balances: list[str | None]
+    #: Absent under three readings, deliberately -- two points make a line
+    #: through whatever noise those two months contained.
+    projection: ProjectionOut | None
+
+
+class BalanceHistoryOut(Schema):
+    months: list[date]
+    rows: list[HistoryRowOut]
+
+
+@router.get(
+    "/money/history", response=BalanceHistoryOut, auth=SessionAuthIfLoggedIn()
+)
+def balance_history(request, months: int = 12):
+    """Every account over the last ``months``, and six months of arithmetic."""
+    today = today_for(request.user)
+    found = money_reader.history_for(request.user, today=today, months=months)
+    return {
+        "months": found.months,
+        "rows": [
+            {
+                "account_id": row.account.id,
+                "name": row.account.name,
+                "currency": row.account.currency,
+                "owes": row.account.owes,
+                "balances": [
+                    str(row.balances[each]) if row.balances[each] is not None else None
+                    for each in found.months
+                ],
+                "projection": (
+                    {
+                        "months": [
+                            [when.isoformat(), str(figure)]
+                            for when, figure in row.projection.months
+                        ],
+                        "monthly_change": str(row.projection.monthly_change),
+                        "readings_used": row.projection.readings_used,
+                        "clears_on": row.projection.clears_on,
+                    }
+                    if row.projection is not None
+                    else None
+                ),
+            }
+            for row in found.rows
+        ],
+    }
+
+
 @router.get("/money/accounts/{day}", response=AccountsOut, auth=SessionAuthIfLoggedIn())
 def months_accounts(request, day: date):
     """Every account, with the month's figure and the one before it."""

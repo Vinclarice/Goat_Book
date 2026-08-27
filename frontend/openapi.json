@@ -254,6 +254,42 @@
         ]
       }
     },
+    "/api/v1/money/history": {
+      "get": {
+        "operationId": "lists_api_v1_balance_history",
+        "summary": "Balance History",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "months",
+            "schema": {
+              "default": 12,
+              "title": "Months",
+              "type": "integer"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BalanceHistoryOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Every account over the last ``months``, and six months of arithmetic.",
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      }
+    },
     "/api/v1/money/accounts/{day}": {
       "get": {
         "operationId": "lists_api_v1_months_accounts",
@@ -3060,6 +3096,128 @@
           "unread_accounts"
         ],
         "title": "MoneyLandingOut",
+        "type": "object"
+      },
+      "BalanceHistoryOut": {
+        "properties": {
+          "months": {
+            "items": {
+              "format": "date",
+              "type": "string"
+            },
+            "title": "Months",
+            "type": "array"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/HistoryRowOut"
+            },
+            "title": "Rows",
+            "type": "array"
+          }
+        },
+        "required": [
+          "months",
+          "rows"
+        ],
+        "title": "BalanceHistoryOut",
+        "type": "object"
+      },
+      "HistoryRowOut": {
+        "properties": {
+          "account_id": {
+            "title": "Account Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "owes": {
+            "title": "Owes",
+            "type": "boolean"
+          },
+          "balances": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Balances",
+            "type": "array"
+          },
+          "projection": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProjectionOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "account_id",
+          "name",
+          "currency",
+          "owes",
+          "balances",
+          "projection"
+        ],
+        "title": "HistoryRowOut",
+        "type": "object"
+      },
+      "ProjectionOut": {
+        "description": "Where a balance is heading, with its own derivation attached.",
+        "properties": {
+          "months": {
+            "items": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "title": "Months",
+            "type": "array"
+          },
+          "monthly_change": {
+            "title": "Monthly Change",
+            "type": "string"
+          },
+          "readings_used": {
+            "title": "Readings Used",
+            "type": "integer"
+          },
+          "clears_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clears On"
+          }
+        },
+        "required": [
+          "months",
+          "monthly_change",
+          "readings_used",
+          "clears_on"
+        ],
+        "title": "ProjectionOut",
         "type": "object"
       },
       "AccountOut": {

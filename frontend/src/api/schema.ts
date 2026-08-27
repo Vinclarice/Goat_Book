@@ -159,6 +159,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/money/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Balance History
+         * @description Every account over the last ``months``, and six months of arithmetic.
+         */
+        get: operations["lists_api_v1_balance_history"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/money/accounts/{day}": {
         parameters: {
             query?: never;
@@ -1679,6 +1699,41 @@ export interface components {
             };
             /** Unread Accounts */
             unread_accounts: number;
+        };
+        /** BalanceHistoryOut */
+        BalanceHistoryOut: {
+            /** Months */
+            months: string[];
+            /** Rows */
+            rows: components["schemas"]["HistoryRowOut"][];
+        };
+        /** HistoryRowOut */
+        HistoryRowOut: {
+            /** Account Id */
+            account_id: number;
+            /** Name */
+            name: string;
+            /** Currency */
+            currency: string;
+            /** Owes */
+            owes: boolean;
+            /** Balances */
+            balances: (string | null)[];
+            projection: components["schemas"]["ProjectionOut"] | null;
+        };
+        /**
+         * ProjectionOut
+         * @description Where a balance is heading, with its own derivation attached.
+         */
+        ProjectionOut: {
+            /** Months */
+            months: string[][];
+            /** Monthly Change */
+            monthly_change: string;
+            /** Readings Used */
+            readings_used: number;
+            /** Clears On */
+            clears_on: string | null;
         };
         /** AccountOut */
         AccountOut: {
@@ -3782,6 +3837,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MoneyLandingOut"];
+                };
+            };
+        };
+    };
+    lists_api_v1_balance_history: {
+        parameters: {
+            query?: {
+                months?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BalanceHistoryOut"];
                 };
             };
         };

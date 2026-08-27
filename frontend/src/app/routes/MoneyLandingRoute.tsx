@@ -148,6 +148,12 @@ export function MoneyLandingRoute() {
             This month →
           </Link>
           <Link
+            to="/money/history"
+            className="touch-target text-muted-foreground hover:text-foreground"
+          >
+            History →
+          </Link>
+          <Link
             to="/money/balances"
             className="touch-target text-muted-foreground hover:text-foreground"
           >

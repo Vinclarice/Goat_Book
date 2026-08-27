@@ -8,6 +8,9 @@ from django.utils import timezone
 from clarice import life_log
 
 from lists.models import (
+    Account,
+    AccountKind,
+    BalanceReading,
     CadenceMode,
     Direction,
     ChecklistStep,
@@ -524,6 +527,80 @@ def update_bill(item, *, payee=_KEEP, amount=_KEEP, currency=_KEEP, due_date=_KE
         set_recurrence(item, recurrence)
         item.refresh_from_db()
     return item
+
+
+@transaction.atomic
+def create_account(owner, *, name, kind=None, currency="USD", owes=None,
+                   paid_by=None):
+    """Open something that carries a balance.
+
+    **`owes` defaults from the kind**, because a card and a loan are money you
+    owe and an investment or savings pot is money you have -- and making a
+    person answer that for every account would be asking them to restate what
+    they already said by choosing the kind.
+    """
+    name = (name or "").strip()
+    if not name:
+        raise TaskConflict("An account needs a name.")
+    kind = kind or AccountKind.CARD
+    if kind not in AccountKind.values:
+        raise TaskConflict("Choose a valid kind of account.")
+    if owes is None:
+        owes = kind in (AccountKind.CARD, AccountKind.LOAN)
+    try:
+        return Account.objects.create(
+            owner=owner,
+            name=name,
+            kind=kind,
+            currency=currency,
+            owes=owes,
+            paid_by=paid_by,
+        )
+    except IntegrityError as error:
+        raise TaskConflict(
+            f"There is already an account called {name}."
+        ) from error
+
+
+@transaction.atomic
+def record_balance(account, *, on_date, amount):
+    """What this account came to, in the month ``on_date`` falls in.
+
+    **Snapped to the first of the month**, because a balance is *what it came to
+    in August* rather than what it read at 14:32 on the 31st -- and two readings
+    a day apart would otherwise look like two months.
+
+    **Saving a month twice corrects it.** The ritual is a monthly pass; somebody
+    who mistypes and saves again means *that figure was wrong*, not *here is a
+    second August*. `update_or_create` under the unique constraint, so two
+    browser tabs cannot produce two rows either.
+    """
+    if amount is None:
+        raise TaskConflict("A balance needs a figure.")
+    if amount < 0:
+        # Direction is `Account.owes`, not the sign of the number: a card at
+        # 4,200 and an ISA at 4,200 are both four thousand two hundred.
+        raise TaskConflict(
+            "Enter the balance as a positive figure -- whether it is owed or "
+            "held is the account's own setting."
+        )
+    reading, _ = BalanceReading.objects.update_or_create(
+        account=account,
+        on_date=on_date.replace(day=1),
+        defaults={"amount": amount},
+    )
+    return reading
+
+
+@transaction.atomic
+def close_account(account):
+    """Remove an account and the readings that belong to it.
+
+    Hard delete, per §4 rule 6: unlike a week somebody reviewed, an account's
+    existence answers nothing about whether a practice happened, so there is
+    nothing here that keeping the row would preserve.
+    """
+    account.delete()
 
 
 @transaction.atomic

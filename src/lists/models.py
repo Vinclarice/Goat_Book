@@ -389,6 +389,140 @@ class Item(models.Model):
     def __str__(self):
         return self.text
 
+class AccountKind(models.TextChoices):
+    """What sort of thing carries a balance.
+
+    Open by design, the way `FacetKind` is: new kinds are new values, because
+    the set is expected to grow and a migration per kind would make adding one
+    a decision rather than a note.
+    """
+
+    CARD = "card", "Credit card"
+    LOAN = "loan", "Loan"
+    SAVINGS = "savings", "Savings"
+    INVESTMENT = "investment", "Investment"
+
+
+class Account(models.Model):
+    """A thing with a balance -- a card, a loan, a savings pot, an investment.
+
+    **It earns its own model, and `architecture-trajectory.md` §4 is why.** Its
+    test is a different life cycle, not a different name, and this fails to be a
+    `MoneyLine` on exactly that: a bill is an expected movement on a date that
+    **settles once**; an account is a value that is **re-read forever** and
+    never settles. A card's balance belongs to the card, not to this month's
+    payment.
+
+    **The same model serves debt and investment**, which is the payoff rather
+    than a coincidence. Vince wanted balances for loans and cards, and
+    investments separately; both are *a thing whose value changes, re-read
+    periodically*, differing in sign. One model, one update ritual, one trend.
+
+    **`owes` rather than a negative balance.** A credit card at 4,200 and an ISA
+    at 4,200 are both *four thousand two hundred*, and storing one as negative
+    makes every read carry a sign convention nobody wrote down. This says which
+    direction the number points, once, where it belongs.
+
+    **Optionally tied to a recurring bill.** "Amex" the account and "Pay Amex"
+    the bill are different records with different life cycles, and a person
+    thinks of them as one thing -- so the link exists and is nullable, because
+    an investment has no bill and a card someone pays by hand has none either.
+
+    **Charter compliance** (architecture-trajectory.md §4):
+
+    - Rule 1, owned at birth: `owner` is non-null in the first migration.
+    - Rule 2, public identifier: none. Nothing addresses an account offline.
+    - Rule 3, snapshot: nothing to copy. A reading carries its own figure and
+      its own date; the account carries no derived state at all.
+    - Rule 5, reference never copy: the linked commitment's own fields are read
+      live wherever they are shown.
+    - Rule 6, deletion: **hard delete, with the readings.** An account you
+      closed and removed is not history you are keeping -- unlike a week you
+      reviewed, its existence answers nothing about whether a practice
+      happened. `PlanningSession` keeps its row for that reason and this does
+      not qualify.
+    - Rule 7, index the query: the constraint below covers "this owner's
+      accounts, by name", which is the only read.
+    - Rule 8, template and occurrences: does not apply.
+    """
+
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="accounts"
+    )
+    name = models.CharField(max_length=120)
+    kind = models.CharField(
+        max_length=12, choices=AccountKind.choices, default=AccountKind.CARD
+    )
+    #: Per account rather than per reading: a card is denominated in one
+    #: currency and a balance that changed currency would be a different
+    #: account.
+    currency = models.CharField(max_length=3, default="USD")
+    #: Whether the number is money you owe or money you have. Named rather than
+    #: signed, so no read has to remember a convention.
+    owes = models.BooleanField(default=True)
+    #: The recurring bill this is paid by, when there is one. Null for an
+    #: investment, and for a card nobody pays on a schedule. SET_NULL rather
+    #: than CASCADE: deleting the bill should not delete the debt.
+    paid_by = models.ForeignKey(
+        "RecurringCommitment",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="accounts",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("name",)
+        constraints = [
+            models.UniqueConstraint(
+                fields=("owner", "name"),
+                name="unique_account_name_per_owner",
+            ),
+        ]
+
+    def __str__(self):
+        return self.name
+
+
+class BalanceReading(models.Model):
+    """What an account came to on a date.
+
+    **Its own row rather than a field on the account**, and the reason is the
+    whole point of the feature: *is this loan actually going down* is a question
+    about a series, and a field that gets overwritten each month keeps no series
+    to read. The same argument that gave `MoneyLine.paid_amount` its own column
+    instead of overwriting `amount`.
+
+    **One per account per month**, enforced rather than assumed -- the ritual is
+    a monthly pass, and saving it twice should correct the figure rather than
+    grow a second one.
+
+    **`on_date` is the first of the month it describes.** A balance is *what it
+    came to in August*, not *what it came to at 14:32 on the 31st*; storing the
+    instant would make two readings a day apart look like different months.
+    """
+
+    account = models.ForeignKey(
+        Account, on_delete=models.CASCADE, related_name="readings"
+    )
+    on_date = models.DateField()
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    recorded_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ("-on_date",)
+        constraints = [
+            models.UniqueConstraint(
+                fields=("account", "on_date"),
+                name="one_reading_per_account_per_month",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.account.name} {self.on_date}: {self.amount}"
+
+
 class Direction(models.TextChoices):
     """Which way the money goes.
 

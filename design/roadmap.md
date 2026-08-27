@@ -91,17 +91,32 @@ re-add it here.
   before that night** — the enforcing CSP and the two new rate limits — and
   that is what to watch rather than what to re-check.
 
-  ~~**MFA on the admin is built and enrolled.** Ready to deploy.~~ **Deployed
-  and live August 23, 2026 as `petrel`** (`DEPLOYED-2026-08-23/1510`) —
-  [`admin-mfa-plan.md`](admin-mfa-plan.md) increment 4, its top-ranked item,
-  with increment 3 confirmed in production the same day.
+  ~~**MFA on the admin is built and enrolled.** Ready to deploy.~~ **Closed
+  August 26, 2026. Deployed and live August 23 as `petrel`**
+  (`DEPLOYED-2026-08-23/1510`) — all four increments of
+  [`admin-mfa-plan.md`](admin-mfa-plan.md), which **is now a stub**; the
+  narrative is in [`roadmap-history.md`](roadmap-history.md) under *A second
+  factor on the admin*, and this file does not restate it.
 
-  **One question it left open.** Enrolment first landed on `Vrbeall01`, the
-  account in daily use, which is not staff — while `vince-admin`, the only one
-  the gate applies to, had none. Both carry a factor now, and the better end
-  state is probably one account rather than two: a staff login used twice a
-  month is one whose second factor will be missing at the moment it is needed.
-  Vince's call, and not a thing to slip into a deploy.
+  **Three things it leaves, and all three are Vince's.**
+
+  - **One admin account or two.** Enrolment first landed on `Vrbeall01`, the
+    account in daily use, which is not staff — while `vince-admin`, the only one
+    the gate applies to, had none. Both carry a factor now, and the better end
+    state is probably one account rather than two: **a staff login used twice a
+    month is one whose second factor will be missing at the moment it is
+    needed.** Not a thing to slip into a deploy.
+  - **M2 — where the recovery codes live.** The plan called this *the decision
+    most likely to be skipped and most likely to matter*, and it was written on
+    August 19 and skipped. A password manager is the obvious answer and makes
+    the manager a single point of failure for **both** factors; printed and
+    physical is the honest alternative.
+  - **M1 — does `/api/v1/login` grow a `totp` field?** It refuses today, which
+    was chosen because the Android keystore does not exist and the alternative
+    was therefore unavailable rather than merely more work. **Its trigger is the
+    keystore**, in
+    [`android-release-signing-plan.md`](android-release-signing-plan.md) — worth
+    revisiting the day a signed release can carry the field, and not before.
 
   ~~**The restore drill has still never been run**, and is the other one. The
   August 1 pass compared 18 tables at 53 migrations~~ — **wrong since the day

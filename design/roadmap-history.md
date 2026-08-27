@@ -63,14 +63,65 @@ then and is open now**: `clarice/recall.py` still carries
 question. The plan's own summary line said the same thing and was corrected on
 August 26.
 
-## A second factor on the admin — August 23, 2026, `petrel`
+## A second factor on the admin — August 19–23, 2026, `petrel`
 
-Five commits, verified in production at 15:10 on August 23
-(`DEPLOYED-2026-08-23/1510`, image `clarice:c518bdd29efa`).
-[`admin-mfa-plan.md`](admin-mfa-plan.md) increments 3 and 4: `/admin/` now
-requires a verified device as well as a staff account, and `/api/v1/login`
-refuses an account that has one. **Both in a single deploy**, because splitting
-them leaves a window in which a password alone still mints a ninety-day token.
+Verified in production at 15:10 on August 23 (`DEPLOYED-2026-08-23/1510`, image
+`clarice:c518bdd29efa`). [`admin-mfa-plan.md`](admin-mfa-plan.md) entire, across
+two deploys: increments 1 and 2 on August 19 (`66c1bfd`, live with `osprey`),
+then 3 and 4 on the 23rd. `/admin/` now requires a verified device as well as a
+staff account, and `/api/v1/login` refuses an account that has one. **The last
+two shipped in a single deploy**, because splitting them leaves a window in
+which a password alone still mints a ninety-day token.
+
+**Enrol before enforcing** was the ordering that mattered, and the plan led with
+it: getting it backwards means deploying a lock and then discovering you are
+outside it.
+
+### What shaped it, which was not TOTP
+
+TOTP is a solved problem. **Four interactions in this codebase are not**, and
+they decided the design.
+
+- **`/api/v1/login` is a password-only path to a 90-day token, and it starts no
+  session — so every session-based gate misses it.** A second factor on the web
+  form and on `/admin/` while that endpoint stands is a second factor on one of
+  two doors. The obvious fix — a `totp` field and a third box on the Connect
+  screen — was **unavailable**, because `assembleRelease` produces nothing
+  installable until the keystore in
+  [`android-release-signing-plan.md`](android-release-signing-plan.md) exists
+  and that is Vince's to generate by hand. So the endpoint **refuses** accounts
+  with a confirmed device instead, which costs exactly what it was built to buy
+  and is reversible the day a signed release can carry the field.
+- **The export would not have leaked the seed, but only by accident.**
+  `accounts/export.py` enumerates `OWNED_APPS`, and `otp_totp` and `otp_static`
+  are simply not in it — the right outcome by the wrong mechanism, holding only
+  until somebody adds the labels while tidying. The same lesson as D12, in the
+  opposite direction: **a promise that is not checkable is not true**, so it got
+  a test.
+- **Erasure works by cascade and must keep working by cascade.** Nothing to
+  build; `django-otp`'s devices carry an ordinary `CASCADE`. It got a test
+  anyway, because *the cascade covers it* is a claim about a dependency's field
+  definition, which is the kind of claim that is true until a major version.
+- **`django-axes` cannot see a wrong six-digit code.** Axes counts failures at
+  `authenticate()`, and verifying a token is a second step against an
+  already-authenticated session — so the five-attempt lockout **does not apply
+  to the second factor at all**. `django-otp`'s own `ThrottlingMixin` covers it,
+  confirmed on 1.7.0 rather than assumed: `verify_is_allowed` refuses until
+  `factor × 2^(n-1)` seconds have passed, and it is on by default.
+
+**And two smaller ones.** unfold overrides admin templates, so `OTPAdminSite`'s
+bundled login form would render into a template that does not know about it —
+avoided by verifying on a project-owned view instead. And the enrolment QR is a
+`data:` URI, which `img-src 'self' data:` already permits, so a new control did
+not have to force open the CSP that §1.2 was about to promote to enforcing.
+
+### The design, in one line
+
+**Verification is a project-owned view and the admin only asks a question.**
+`OTPMiddleware` supplies `is_verified()`, an `AdminSite` subclass requires it
+alongside the staff check, and `/accounts/verify/` collects the code in this
+application's own templates. The alternative was fewer lines and bought a
+template collision plus a login screen that looked like neither core.
 
 **Two things the plan did not anticipate, both found by running it.**
 `django-otp`'s own README recipe — `admin.site.__class__ = VerifiedAdminSite` —
@@ -100,6 +151,35 @@ the restore drill has still never been run."* The drill **ran on August 19,
 true is narrower: a drill certifies the schema it ran against, and that schema
 has since moved. The same sentence was live in `roadmap.md` and was struck
 there on the same day it was written.
+
+### Break-glass, and the bound it puts on the whole control
+
+A lost phone and lost recovery codes leave one route: `docker exec clarice
+./manage.py` on the droplet, deleting the device row. **Written down before
+increment 4 shipped rather than after** — [`MIGRATION.md`](../MIGRATION.md)
+under *Break-glass: locked out of the admin*, three situations in the order to
+try them, because the moment it is needed is the worst moment to work it out.
+
+**Stating it is also stating what this control is worth.** Shell access to the
+droplet is equivalent to bypassing the second factor. That does not make MFA
+pointless — it moves the bar from *knows a password* to *has shell on the host*,
+which is an enormous move — but it does mean
+[`security-and-resilience-plan.md`](security-and-resilience-plan.md)'s **D5,
+what stands in front of port 22, is part of this control's strength** rather
+than a neighbouring topic.
+
+### Four refusals, kept because each would otherwise come back
+
+- **Forcing a second factor on ordinary accounts.** Scope is staff, who are the
+  accounts with reach beyond their own data. Ordinary accounts get it as an
+  option when there are enough users for it to matter — and that needs a
+  recovery path designed for people who are not Vince.
+- **SMS.** SIM-swap is real and cheap, and it would need a new outbound provider
+  on a host that cannot even reach SMTP.
+- **Email.** The mailbox is a password-reset target, so it is substantially the
+  same factor wearing a hat.
+- **A remember-this-device cookie**, at this scale: a second credential with its
+  own lifetime and its own theft story, to save one person a code.
 
 ## Security hardening and Django 5.2.17 — August 26, 2026, no codename
 

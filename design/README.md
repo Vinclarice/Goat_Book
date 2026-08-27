@@ -70,7 +70,6 @@ a copy here that has to be re-read every time an increment moves.
 | [`mirrored-rules-brief.md`](mirrored-rules-brief.md) | Written Aug 18 **for the redesign, not for now.** Eight rules hand-ported across three languages; the divergence is demonstrated, and `bucket_for` turns out to be a payload gap rather than an architecture |
 | [`security-and-resilience-plan.md`](security-and-resilience-plan.md) | **Live work, and it is the one to read before touching production.** Ranks the surface by adversary rather than by checklist, and that reordering is the useful part — MFA outranked the restore drill. **Two of its open items are not code**: the restore drill re-run is Vince's, and 2.2 waits on its own D1 |
 | [`planning-assistant-v2-plan.md`](planning-assistant-v2-plan.md) | **Live work.** The forward half of the weekly ritual — v1 finds loose ends, v2 decides what to do about them. **Its measure is decisions removed, not material produced**, and **nothing in it generates anything**, which was the finding that shaped it. Its last increment is gated on a sample floor and may correctly never ship |
-| [`admin-mfa-plan.md`](admin-mfa-plan.md) | **Finished — shipped August 23 as `petrel`; a candidate for a stub.** Kept for the four interactions a stock TOTP recipe gets wrong here, chiefly that **`/api/v1/login` trades a password for a 90-day token and starts no session**, so a session-based gate misses it entirely. **Enrol before enforcing** is the ordering that matters |
 | [`search-plan.md`](search-plan.md) | **Live work.** Full-text search across both cores from one box. **Sectioned results, not one merged ranking**, because `SearchRank` does not compare across two document sets and the failure is silent. **Mostly an extension sideways rather than a build** — the knowledge core had the machinery before the merger and the task core had none. Its last increment is a corpus-gated deferral |
 | [`clarice-v4-plan.md`](clarice-v4-plan.md) | Drafted Aug 22, **deliberately half a plan and not claimed by `roadmap.md`.** Short on purpose: half of it is undecided, so it does not claim Part 8's override the way v3 did. **What is decided is that commerce is refused rather than deferred** — and of the four documents that carried it as live, ~~all four were rewritten as refusals on Aug 24~~ — **three were**, the wedge and the roadmap section first and **`product-stories.md`'s S19 later the same day**, which is where the score grew a fourth pile: *refused* is not a lesser *impossible*, and the denominator deliberately did not move. **The fourth is this file's own call** — whether `commercial-blueprint.md` is renamed, split or headed, v4's V3 — and it is open. **What is open is V1, the fork**: whether anybody other than Vince ever uses Clarice. The spine is the work that is correct either way, which is what lets the question stay open honestly. Two findings carry it: **v3 executed exactly as written tops out at 15 of 19, not the 17 it claims**, because S13 is orphaned and S18 is named by no release; and **four corpus-gated deferrals wait on material one user will not produce**, which makes importing Vince's own archive a spine item rather than a guest one. Its most useful section is about the documents rather than the code — four things they called open and were not, and it acquired a fifth of its own within two days |
 
@@ -103,17 +102,24 @@ until someone promotes them to `commercial-blueprint.md` Part 1.
 Each item is struck when adopted or refused; an advisory that cannot close is
 a nag.
 
-**Twenty-six stubs**, each pointing at
+**Twenty-seven stubs**, each pointing at
 [`roadmap-history.md`](roadmap-history.md), which holds the narrative. Not
 listed individually — that list is the second copy this rewrite removed, and
 `ls design/*.md` gives it.
 
-**Twenty-five are a few lines; `temporal-substrate-plan.md` is a hundred**,
-because it keeps all nineteen of its decisions with what each turned out to be.
-That is deliberate and it is still a stub: what it does not keep is the
-thousand lines of spec. **Eighteen of the nineteen are answered** — D18, whether
-a neighbourhood is clock-bounded or episode-bounded, is open, and
+**Twenty-five are a few lines. Two are longer, and deliberately so** — what
+makes a stub a stub is dropping the spec, not hitting a line count.
+
+`temporal-substrate-plan.md` is a hundred and thirty, because it keeps all
+nineteen of its decisions with what each turned out to be; it dropped a thousand
+lines of spec to get there. **Eighteen of the nineteen are answered** — D18,
+whether a neighbourhood is clock-bounded or episode-bounded, is open, and
 `clarice/recall.py` still carries the ±6h proxy the question exists to doubt.
+
+`admin-mfa-plan.md` is twenty-five, stubbed August 26, 2026, because eleven code
+comments cite it by five different sections and the stub says which — a reader
+arriving from `settings.py` on `§2.4` should not have to guess where the
+reasoning went.
 
 **Eight `.html` mockups** — `agenda`, `archive`, `dashboard`, `projects`,
 `side-nav`, `tasks` from the Tailwind overhaul, and `landing`, `shell` from the

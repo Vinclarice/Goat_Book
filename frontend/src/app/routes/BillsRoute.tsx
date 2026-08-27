@@ -42,7 +42,8 @@ function AddBill({ month }: { month: string }) {
   const [amount, setAmount] = useState("");
   const [currency, setCurrency] = useState("USD");
   const [dueDate, setDueDate] = useState(month);
-  const [repeats, setRepeats] = useState(true);
+  const [recurrence, setRecurrence] = useState("monthly");
+  const [leadDays, setLeadDays] = useState("");
   const [failed, setFailed] = useState<string | null>(null);
 
   const add = useMutation({
@@ -56,7 +57,9 @@ function AddBill({ month }: { month: string }) {
           amount: amount.trim() === "" ? null : amount.trim(),
           currency,
           due_date: dueDate,
-          repeats,
+          recurrence,
+          repeats: recurrence !== "none",
+          lead_days: leadDays.trim() === "" ? 0 : Number(leadDays),
         },
       });
       if (error || !response.ok) {
@@ -133,15 +136,43 @@ function AddBill({ month }: { month: string }) {
           />
         </span>
       </div>
-      <label className="flex items-center gap-2 text-sm">
-        <input
-          type="checkbox"
-          checked={repeats}
-          onChange={(event) => setRepeats(event.target.checked)}
-        />
-        {/* On by default: the canonical bill is rent. */}
-        Repeats every month
-      </label>
+      <div className="flex flex-wrap gap-3">
+        <span className="w-44 space-y-1">
+          <label htmlFor="bill-cadence" className="text-sm">
+            How often
+          </label>
+          {/* The model has had all four of these since Crane; the form used to
+              offer a checkbox, which is why an annual subscription could not
+              be written down at all. */}
+          <select
+            id="bill-cadence"
+            value={recurrence}
+            onChange={(event) => setRecurrence(event.target.value)}
+            className="w-full rounded-lg border border-border bg-input px-3 py-2"
+          >
+            {CADENCES.map((each) => (
+              <option key={each.value} value={each.value}>
+                {each.label}
+              </option>
+            ))}
+          </select>
+        </span>
+        <span className="w-52 space-y-1">
+          <label htmlFor="bill-lead" className="text-sm">
+            Warn me this many days early
+          </label>
+          {/* The reason this module exists. An annual subscription that speaks
+              on the day it renews has already charged you. */}
+          <input
+            id="bill-lead"
+            value={leadDays}
+            onChange={(event) => setLeadDays(event.target.value)}
+            inputMode="numeric"
+            placeholder={recurrence === "annual" ? "30 is usual" : "optional"}
+            className="w-full rounded-lg border border-border bg-input px-3 py-2"
+          />
+        </span>
+      </div>
       {failed && <p className="text-sm text-destructive">{failed}</p>}
       <Button type="submit" disabled={add.isPending}>
         Add bill
@@ -159,7 +190,38 @@ type BillRow = {
   payee: string;
   paid: boolean;
   repeats: boolean;
+  recurrence: string;
+  lead_days: number;
+  overdue: boolean;
+  paid_amount: string | null;
 };
+
+/** How often, in words a person uses. */
+const CADENCES = [
+  { value: "none", label: "Once" },
+  { value: "weekly", label: "Every week" },
+  { value: "monthly", label: "Every month" },
+  { value: "quarterly", label: "Every quarter" },
+  { value: "annual", label: "Every year" },
+];
+
+function cadenceLabel(value: string) {
+  return CADENCES.find((each) => each.value === value)?.label ?? "";
+}
+
+/** Days until a date, in the browser — for display only.
+ *
+ * Deliberately not used to decide anything: whether a bill is *late* is
+ * answered on the server against the owner's own clock, because a date worked
+ * out in a browser is a second opinion on whose day it is. This only phrases a
+ * number the server already stands behind.
+ */
+function daysUntil(iso: string) {
+  const due = new Date(`${iso}T00:00:00`);
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  return Math.round((due.getTime() - now.getTime()) / 86400000);
+}
 
 /** Correcting a bill without leaving the page it is shown on.
  *
@@ -262,6 +324,72 @@ function EditBill({ bill, onDone }: { bill: BillRow; onDone: () => void }) {
         </Button>
       </div>
     </li>
+  );
+}
+
+/** Paying a bill, and saying what actually went out.
+ *
+ * The action the page was missing entirely: it could add and delete and not
+ * pay. One click uses the expected figure, which is the ordinary case; the box
+ * is for the month the bill came to something else.
+ */
+function PayBill({ bill }: { bill: BillRow }) {
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [amount, setAmount] = useState(bill.amount ?? "");
+
+  const pay = useMutation({
+    mutationFn: async () => {
+      const { error, response } = await apiV1.POST(
+        "/api/v1/bills/entry/{task_id}/pay",
+        {
+          params: { path: { task_id: bill.task_id } },
+          body: { amount: amount.trim() === "" ? null : amount.trim() },
+        },
+      );
+      if (error || !response.ok) throw new RequestFailed(response.status);
+    },
+    onSuccess: () => {
+      setOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["bills"] });
+    },
+  });
+
+  if (bill.paid) return null;
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="touch-target text-sm font-medium hover:underline"
+        aria-label={`Pay ${bill.payee || bill.text}`}
+      >
+        Pay
+      </button>
+    );
+  }
+
+  return (
+    <span className="flex flex-wrap items-center gap-2">
+      <label htmlFor={`pay-amount-${bill.task_id}`} className="text-xs">
+        Paid
+      </label>
+      <input
+        id={`pay-amount-${bill.task_id}`}
+        value={amount}
+        onChange={(event) => setAmount(event.target.value)}
+        inputMode="decimal"
+        placeholder="amount"
+        className="w-24 rounded-lg border border-border bg-input px-2 py-1"
+      />
+      <Button size="sm" onClick={() => pay.mutate()} disabled={pay.isPending}>
+        Mark paid
+      </Button>
+      <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>
+        Cancel
+      </Button>
+    </span>
   );
 }
 
@@ -425,6 +553,31 @@ export function BillsRoute() {
                       paid
                     </span>
                   )}
+                  {/* Late, decided on the server against the owner's clock --
+                      see BillRow.overdue_on. The browser only renders it. */}
+                  {bill.overdue && (
+                    <span className="ml-2 rounded bg-destructive/15 px-1.5 py-0.5 text-xs font-medium text-destructive">
+                      overdue
+                    </span>
+                  )}
+                  {/* The warning this module exists for. Shown only inside the
+                      lead time, so an annual subscription is quiet for eleven
+                      months and speaks in the twelfth. */}
+                  {!bill.paid &&
+                    !bill.overdue &&
+                    bill.lead_days > 0 &&
+                    daysUntil(bill.due_date) <= bill.lead_days && (
+                      <span className="ml-2 rounded bg-accent/15 px-1.5 py-0.5 text-xs text-accent">
+                        {daysUntil(bill.due_date) <= 0
+                          ? "due today"
+                          : `in ${daysUntil(bill.due_date)} days`}
+                      </span>
+                    )}
+                  {bill.recurrence !== "none" && (
+                    <span className="ml-2 text-xs text-muted-foreground">
+                      {cadenceLabel(bill.recurrence).toLowerCase()}
+                    </span>
+                  )}
                   {bill.payee && (
                     <span className="ml-2 text-sm text-muted-foreground">
                       {bill.payee}
@@ -436,13 +589,26 @@ export function BillsRoute() {
                     {dayLabel(bill.due_date)}
                   </span>
                   <span className="text-sm">
-                    {bill.amount === null ? (
+                    {bill.paid && bill.paid_amount !== null ? (
+                      <>
+                        {`${bill.paid_amount} ${bill.currency}`}
+                        {/* Only when they differ: saying "paid 64.99, expected
+                            64.99" on every settled bill is noise. */}
+                        {bill.amount !== null &&
+                          bill.amount !== bill.paid_amount && (
+                            <span className="ml-1 text-xs text-muted-foreground">
+                              (expected {bill.amount})
+                            </span>
+                          )}
+                      </>
+                    ) : bill.amount === null ? (
                       // Not "0.00", which would read as free.
                       <span className="text-muted-foreground">no amount</span>
                     ) : (
                       `${bill.amount} ${bill.currency}`
                     )}
                   </span>
+                  <PayBill bill={bill} />
                   <button
                     type="button"
                     onClick={() => setEditing(bill.task_id)}

@@ -413,9 +413,27 @@ class Bill(models.Model):
     item = models.OneToOneField(
         "Item", related_name="bill", on_delete=models.CASCADE
     )
-    #: Optional, because "the water bill, whatever it comes to" is a real
-    #: bill. The *row* is what marks a task as one.
+    #: What it is **expected** to come to. Optional, because "the water bill,
+    #: whatever it comes to" is a real bill. The *row* is what marks a task as
+    #: one.
     amount = models.DecimalField(
+        max_digits=12, decimal_places=2, null=True, blank=True
+    )
+    #: What **actually went out**, recorded when it is paid. Null until then.
+    #:
+    #: **A second number rather than overwriting the first**, because they
+    #: answer different questions and stop being equal the moment somebody pays
+    #: extra -- Vince, August 27, 2026, and it is the ordinary case for a
+    #: variable bill rather than an edge one. Keeping both is what lets the
+    #: month say *still to pay* from expectations and *already paid* from
+    #: facts, and what makes "the electricity bill has been creeping up"
+    #: answerable at all: a field that gets overwritten has no history to read.
+    #:
+    #: **Not its own model.** §4's test is a different life cycle, and this has
+    #: the same one as the amount beside it -- set once, about this occurrence,
+    #: gone when the bill is. A `Payment` table would be a second answer to
+    #: "what did this cost" with nothing extra to say.
+    paid_amount = models.DecimalField(
         max_digits=12, decimal_places=2, null=True, blank=True
     )
     #: Per bill rather than per account, so somebody paying rent in one

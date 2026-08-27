@@ -117,6 +117,53 @@ where it is.** The word *task* does not appear on it.
    fixture repeated. Keyed on `completed_at` now, which survives that archive,
    and the case has its own test rather than staying found-by-accident.
 
+## The second half — August 27, 2026, after use
+
+Vince's, on reading increments 1–4: **the module is Money, not Bills**, and the
+thing it is for is **recurring expenses — especially an annual subscription
+about to renew.** *"When I sign up for an annual subscription, when it's about
+to expire."*
+
+**Bank transactions are refused, by preference rather than by cost.** *"I never
+really liked that and found it too difficult to really use."* So no aggregator,
+no ledger, no reconciliation — which also spares this project the business
+entity, the per-connection fee and the question of what leaves the machine.
+**What is left is most of the value for one person who is already typing bills
+in by hand**: what is due, what is late, what recurs, what it actually cost.
+
+5. ~~**Paying, with what actually went out.**~~ **Done August 27, 2026.** `Bill.amount` currently means both
+   *what it costs* and *what it cost*, which works only while those are equal.
+   A nullable `paid_amount`, set when paid and defaulting to the expected
+   figure, so the common case stays one click. **The two totals get sharper**:
+   *still to pay* from expected amounts, *already paid* from real ones. And it
+   makes *"the electricity bill has been creeping up"* answerable, which a field
+   that gets overwritten never can be.
+6. ~~**Late is a state.**~~ **Done August 27, 2026**, decided on the server
+   against the owner's clock — a browser working out *late* would be a second
+   opinion on whose day it is, which is the defect D16 found in the note-to-day
+   join. Measured against today rather than the month on screen: an unpaid July
+   bill read in September is late, and a paid bill never is.
+   ~~Late is a state.~~ An unpaid bill past its due date reads exactly like one
+   due next week. The agenda has overdue logic; this page has none, which for a
+   bills page is the most important state there is.
+7. ~~**Every cadence, and a warning before it lands.**~~ **Done August 27,
+   2026, and it needed no new machinery at all** — which is the finding, not an
+   aside. `Item.lead_days` already meant *how many days before its due date this
+   should be mentioned*, `agenda.py` already surfaced anything inside its lead
+   time, and `_spawn_next_occurrence` already carried it. **Nothing let a person
+   set it.** So an annual subscription now warns on Bills *and* on the agenda,
+   set once, carried into next year.
+   ~~Every cadence, and a warning before it lands.~~ The model has weekly,
+   monthly, quarterly and annual; the form offers a checkbox. And
+   **`Item.lead_days` already does the whole warning job** — `agenda.py` reads
+   it, `_spawn_next_occurrence` carries it, and its own comment says why it
+   belongs on the task rather than the bill. **Nothing lets a person set it
+   from here**, which is the fourth *the parts exist and nobody joined them* in
+   one evening.
+
+**7 is the one that answers what this is for**, and it needs no new machinery
+at all.
+
 **1 is worth doing whatever happens to the rest**, and it is the one that fixes
 a wrong number rather than a missing button.
 

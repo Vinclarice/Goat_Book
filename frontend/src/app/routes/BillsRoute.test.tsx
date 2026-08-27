@@ -38,6 +38,10 @@ function billsData(overrides: Record<string, unknown> = {}) {
         url: "/api/items/1/",
         paid: false,
         repeats: true,
+        recurrence: "monthly",
+        lead_days: 0,
+        overdue: false,
+        paid_amount: null,
       },
     ],
     due_totals: { USD: "1200.00" },
@@ -99,6 +103,10 @@ describe("BillsRoute", () => {
               url: "/api/items/1/",
               paid: true,
               repeats: false,
+              recurrence: "none",
+              lead_days: 0,
+              overdue: false,
+              paid_amount: "1200.00",
             },
           ],
           due_totals: {},
@@ -136,6 +144,10 @@ describe("BillsRoute", () => {
       url: `/api/items/${task_id}/`,
       paid,
       repeats: false,
+      recurrence: "none",
+      lead_days: 0,
+      overdue: false,
+      paid_amount: null,
     });
     vi.spyOn(globalThis, "fetch").mockImplementation(() =>
       jsonResponse(
@@ -391,6 +403,10 @@ describe("BillsRoute", () => {
                 url: "/api/items/1/",
                 paid: false,
                 repeats: false,
+                recurrence: "none",
+                lead_days: 0,
+                overdue: false,
+                paid_amount: null,
               },
             ],
           }),
@@ -411,6 +427,68 @@ describe("BillsRoute", () => {
     expect(
       screen.queryByRole("button", { name: "the standing bill" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("pays a bill from the page, recording what actually went out", async () => {
+    /* The action the page was missing entirely: it could add a bill and delete
+       a bill and not pay one. And the amount matters -- paying extra must not
+       overwrite what the bill was expected to be. */
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((input) => {
+        const request = input as Request;
+        if (request.method === "POST") return jsonResponse({});
+        return jsonResponse(billsData());
+      });
+
+    renderAt();
+
+    await userEvent.click(await screen.findByRole("button", { name: /Pay Landlord/ }));
+    const row = screen.getByRole("button", { name: "Mark paid" }).closest("li")!;
+    const amount = within(row).getByLabelText("Paid");
+    await userEvent.clear(amount);
+    await userEvent.type(amount, "1250.00");
+    await userEvent.click(within(row).getByRole("button", { name: "Mark paid" }));
+
+    const posted = fetchSpy.mock.calls
+      .map(([request]) => request as Request)
+      .filter((request) => request.url.includes("/pay"));
+    await waitFor(() => expect(posted).toHaveLength(1));
+  });
+
+  it("offers no Pay button on a bill already paid", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        billsData({
+          bills: [
+            {
+              task_id: 1,
+              text: "Rent",
+              due_date: "2026-08-01",
+              amount: "1200.00",
+              currency: "USD",
+              payee: "Landlord",
+              url: "/api/items/1/",
+              paid: true,
+              repeats: false,
+              recurrence: "none",
+              lead_days: 0,
+              overdue: false,
+              paid_amount: "1250.00",
+            },
+          ],
+        }),
+      ),
+    );
+
+    renderAt();
+
+    expect(await screen.findByText("paid")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Pay Landlord/ })).not.toBeInTheDocument();
+    /* What went out, and what it was supposed to be -- shown only because
+       they differ. */
+    expect(screen.getByText(/1250.00 USD/)).toBeInTheDocument();
+    expect(screen.getByText(/expected 1200.00/)).toBeInTheDocument();
   });
 
   it("reports a failure rather than an empty month", async () => {

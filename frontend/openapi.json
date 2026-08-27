@@ -149,6 +149,51 @@
         ]
       }
     },
+    "/api/v1/bills/entry/{task_id}/pay": {
+      "post": {
+        "operationId": "lists_api_v1_pay_bill",
+        "summary": "Pay Bill",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "schema": {
+              "title": "Task Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MonthBillOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Pay a bill from the page it is shown on.\n\n**The action this page was missing entirely.** It could add a bill and\ndelete a bill and not pay one, which is the thing a person does twelve\ntimes more often than both put together.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PayBillIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      }
+    },
     "/api/v1/bills/{day}": {
       "get": {
         "operationId": "lists_api_v1_months_bills",
@@ -2458,6 +2503,29 @@
           "repeats": {
             "title": "Repeats",
             "type": "boolean"
+          },
+          "recurrence": {
+            "title": "Recurrence",
+            "type": "string"
+          },
+          "lead_days": {
+            "title": "Lead Days",
+            "type": "integer"
+          },
+          "paid_amount": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paid Amount"
+          },
+          "overdue": {
+            "title": "Overdue",
+            "type": "boolean"
           }
         },
         "required": [
@@ -2469,7 +2537,11 @@
           "payee",
           "url",
           "paid",
-          "repeats"
+          "repeats",
+          "recurrence",
+          "lead_days",
+          "paid_amount",
+          "overdue"
         ],
         "title": "MonthBillOut",
         "type": "object"
@@ -2506,6 +2578,22 @@
             "default": true,
             "title": "Repeats",
             "type": "boolean"
+          },
+          "recurrence": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recurrence"
+          },
+          "lead_days": {
+            "default": 0,
+            "title": "Lead Days",
+            "type": "integer"
           }
         },
         "required": [
@@ -2567,9 +2655,49 @@
               }
             ],
             "title": "Due Date"
+          },
+          "lead_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lead Days"
+          },
+          "recurrence": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recurrence"
           }
         },
         "title": "EditBillIn",
+        "type": "object"
+      },
+      "PayBillIn": {
+        "description": "What went out, when it is not what was expected.\n\nNull means *what the bill said*, so the ordinary case is one click and the\nfigure is still recorded rather than reconstructed later.",
+        "properties": {
+          "amount": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          }
+        },
+        "title": "PayBillIn",
         "type": "object"
       },
       "MonthOfBillsOut": {

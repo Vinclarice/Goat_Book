@@ -41,6 +41,22 @@ class BillRow:
         """
         return self.task.completed_at is not None
 
+    def overdue_on(self, today):
+        """Unpaid, and the day it was due has gone.
+
+        **Against the owner's own today**, not the month being looked at: an
+        unpaid July bill read in September is late, and reading it in July is
+        not what makes it so. `clarice.clocks.today_for` is the rule, and a
+        date worked out in a browser would be a second opinion on whose day it
+        is -- which is the defect D16 found in the note-to-day join.
+
+        A paid bill is never late, whenever it was paid. *Paid, eventually* is
+        a fact about the past and this is a state about now.
+        """
+        if self.paid or self.task.due_date is None:
+            return False
+        return self.task.due_date < today
+
 
 @dataclass(frozen=True)
 class MonthOfBills:
@@ -116,8 +132,18 @@ def bills_for(owner, day):
             # came to" is as unpriced after paying it as before.
             unpriced += 1
             continue
-        into = paid if row.paid else due
-        into[row.bill.currency] += row.bill.amount
+        if row.paid:
+            # What went out, not what was expected -- they differ the moment
+            # somebody pays extra, and only one of them is what the month cost.
+            # Falls back to the expected figure for bills paid before
+            # `paid_amount` existed.
+            paid[row.bill.currency] += (
+                row.bill.paid_amount
+                if row.bill.paid_amount is not None
+                else row.bill.amount
+            )
+        else:
+            due[row.bill.currency] += row.bill.amount
     return MonthOfBills(
         bills=rows,
         due_totals=dict(due),

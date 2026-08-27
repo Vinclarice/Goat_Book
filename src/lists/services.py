@@ -377,6 +377,8 @@ def create_bill(
     currency="USD",
     due_date=None,
     repeats=True,
+    recurrence=None,
+    lead_days=0,
 ):
     """A bill, made where bills are, without anybody saying "task".
 
@@ -397,20 +399,36 @@ def create_bill(
 
     **Repeating by default**, because the canonical bill is rent and the
     vision document's canonical recurring task is "pay rent every month".
+    `recurrence` names which cadence when it is not monthly; `repeats=False`
+    is the one-off, and is the same thing as `recurrence=NONE`.
+
+    **`lead_days` is how many days early it should start being mentioned**, and
+    it is the reason the money module exists rather than a convenience on top
+    of it: an annual subscription that only speaks on the day it renews has
+    already charged you. Zero is off. The field lives on the task, which its own
+    comment settled -- *a lead time is not a property of costing money* -- and
+    `_spawn_next_occurrence` carries it, so it is set once rather than every
+    renewal.
     """
     payee = (payee or "").strip()
     if not payee:
         # The name is derived from it, so an empty payee is not a blank field
         # to tolerate -- it is a task with no name.
         raise TaskConflict("A bill needs a payee, which is what it gets its name from.")
+    if recurrence is None:
+        recurrence = Item.Recurrence.MONTHLY if repeats else Item.Recurrence.NONE
+    if recurrence not in Item.Recurrence.values:
+        raise TaskConflict("Choose a valid cadence.")
     item = create_item(
         None,
         f"Pay {payee}",
         due_date=due_date,
-        recurrence=Item.Recurrence.MONTHLY if repeats else Item.Recurrence.NONE,
+        recurrence=recurrence,
         owner=owner,
     )
     set_bill(item, amount=amount, currency=currency, payee=payee)
+    if lead_days:
+        set_lead_days(item, lead_days)
     item.refresh_from_db()
     return item
 
@@ -420,7 +438,7 @@ _KEEP = object()
 
 @transaction.atomic
 def update_bill(item, *, payee=_KEEP, amount=_KEEP, currency=_KEEP, due_date=_KEEP,
-                clear_amount=False):
+                lead_days=_KEEP, recurrence=_KEEP, clear_amount=False):
     """Correct a bill where it is shown, across both records it lives in.
 
     **The four fields a bill actually has do not live in one place**: amount,
@@ -469,6 +487,46 @@ def update_bill(item, *, payee=_KEEP, amount=_KEEP, currency=_KEEP, due_date=_KE
         # due-date change is heard rather than a second, quieter path.
         set_due_date(item, due_date)
         item.refresh_from_db()
+    if lead_days is not _KEEP:
+        # Thirty days turns out to be too late once, and then you want sixty.
+        set_lead_days(item, lead_days)
+        item.refresh_from_db()
+    if recurrence is not _KEEP:
+        set_recurrence(item, recurrence)
+        item.refresh_from_db()
+    return item
+
+
+@transaction.atomic
+def pay_bill(item, *, amount=None):
+    """Pay a bill, recording what actually went out.
+
+    **Paying is completing**, and there is no second definition of done: this
+    calls `complete_item`, so the day, the agenda and the review all hear it,
+    and a repeating bill spawns its successor exactly as it would have. What
+    this adds is the number.
+
+    **`amount` defaults to what was expected**, so the ordinary case is one
+    click and the number is still recorded rather than inferred later. Passing a
+    different one is the case that decided the design: paying extra must not
+    overwrite what the bill was *supposed* to be, or the month loses the
+    difference and "this has been creeping up" stops being answerable.
+
+    An unpriced bill can be paid with a real number, which is the moment
+    *"whatever it comes to"* comes to something.
+    """
+    item = Item.objects.select_for_update().get(pk=item.pk)
+    bill = Bill.objects.filter(item=item).first()
+    if bill is None:
+        raise TaskConflict("That task is not a bill.")
+    if amount is not None and amount < 0:
+        raise TaskConflict("A payment cannot be negative.")
+
+    bill.paid_amount = bill.amount if amount is None else amount
+    bill.save(update_fields=["paid_amount"])
+    # After the amount, so a failure here leaves an unpaid bill with a stray
+    # number rather than a paid one with none -- the recoverable direction.
+    complete_item(item)
     return item
 
 

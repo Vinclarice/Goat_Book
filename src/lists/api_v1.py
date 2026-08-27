@@ -28,6 +28,7 @@ from ninja.errors import HttpError
 from accounts import services as account_services
 from accounts.auth import SessionAuthIfLoggedIn, TokenAuth
 from accounts.models import SCOPE_AGENDA_READ
+from clarice.clocks import today_for
 from lists import agenda as agenda_reader
 from lists import bills as bills_reader
 from lists import projects as project_reader
@@ -256,6 +257,18 @@ class MonthBillOut(Schema):
     #: deleting has one meaning or two: removing August's rent is not the same
     #: act as stopping rent.
     repeats: bool
+    #: Which cadence, so the page can say *every year* rather than *repeats*.
+    recurrence: str
+    #: Days of warning, and null when there is none.
+    lead_days: int
+    #: What actually went out, once paid. Null while unpaid -- and different
+    #: from `amount` whenever somebody paid something other than the figure
+    #: the bill carried.
+    paid_amount: str | None
+    #: Unpaid and past its due date. Derived here rather than in the browser so
+    #: that "late" is decided against the owner's own clock -- `clarice.clocks`
+    #: is the rule, and a date computed in a browser is a second opinion.
+    overdue: bool
 
 
 class MonthOfBillsOut(Schema):
@@ -301,6 +314,15 @@ class NewBillIn(Schema):
     #: keeps its payee and currency across occurrences and gets a fresh amount
     #: each time -- see `_spawn_next_occurrence`.
     repeats: bool = True
+    #: Which cadence, when it is not monthly. The model has always had weekly,
+    #: quarterly and annual; the form offered a checkbox, which is why an
+    #: annual subscription could not be expressed at all.
+    recurrence: str | None = None
+    #: Days of warning before it lands. **The reason this module exists**: an
+    #: annual subscription that speaks on the day it renews has already
+    #: charged you. Zero is off, and `agenda.py` already surfaces anything
+    #: inside its lead time.
+    lead_days: int = 0
 
 
 @router.post("/bills", response={201: MonthBillOut}, auth=SessionAuthIfLoggedIn())
@@ -342,6 +364,10 @@ def add_bill(request, payload: NewBillIn):
         "url": reverse("api_item_detail", args=[item.id]),
         "paid": False,
         "repeats": item.recurrence != Item.Recurrence.NONE,
+        "recurrence": item.recurrence,
+        "lead_days": item.lead_days,
+        "paid_amount": None,
+        "overdue": False,
     }
 
 
@@ -360,6 +386,8 @@ class EditBillIn(Schema):
     clear_amount: bool = False
     currency: str | None = None
     due_date: date | None = None
+    lead_days: int | None = None
+    recurrence: str | None = None
 
 
 def _bill_row_out(item):
@@ -378,6 +406,16 @@ def _bill_row_out(item):
         # every paid rent as unpaid. Same rule as `BillRow.paid`.
         "paid": item.completed_at is not None,
         "repeats": item.recurrence != Item.Recurrence.NONE,
+        "recurrence": item.recurrence,
+        "lead_days": item.lead_days,
+        "paid_amount": (
+            str(item.bill.paid_amount) if item.bill.paid_amount is not None else None
+        ),
+        "overdue": (
+            item.completed_at is None
+            and item.due_date is not None
+            and item.due_date < today_for(item.owner)
+        ),
     }
 
 
@@ -402,6 +440,10 @@ def edit_bill(request, task_id: int, payload: EditBillIn):
         fields["currency"] = payload.currency
     if payload.due_date is not None:
         fields["due_date"] = payload.due_date
+    if payload.lead_days is not None:
+        fields["lead_days"] = payload.lead_days
+    if payload.recurrence is not None:
+        fields["recurrence"] = payload.recurrence
     if payload.clear_amount:
         fields["clear_amount"] = True
     elif payload.amount not in (None, ""):
@@ -415,6 +457,43 @@ def edit_bill(request, task_id: int, payload: EditBillIn):
         raise HttpError(409, str(error))
     except services.InvalidTaskTransition as error:
         raise HttpError(409, str(error))
+    return _bill_row_out(item)
+
+
+class PayBillIn(Schema):
+    """What went out, when it is not what was expected.
+
+    Null means *what the bill said*, so the ordinary case is one click and the
+    figure is still recorded rather than reconstructed later.
+    """
+
+    amount: str | None = None
+
+
+@router.post(
+    "/bills/entry/{task_id}/pay", response=MonthBillOut, auth=SessionAuthIfLoggedIn()
+)
+def pay_bill(request, task_id: int, payload: PayBillIn):
+    """Pay a bill from the page it is shown on.
+
+    **The action this page was missing entirely.** It could add a bill and
+    delete a bill and not pay one, which is the thing a person does twelve
+    times more often than both put together.
+    """
+    item = Item.objects.filter(pk=task_id, owner=request.user).first()
+    if item is None:
+        raise HttpError(404, "No such bill.")
+    amount = None
+    if payload.amount not in (None, ""):
+        try:
+            amount = Decimal(payload.amount)
+        except InvalidOperation:
+            raise HttpError(409, "That amount is not a number.")
+    try:
+        item = services.pay_bill(item, amount=amount)
+    except services.TaskConflict as error:
+        raise HttpError(409, str(error))
+    item.refresh_from_db()
     return _bill_row_out(item)
 
 
@@ -470,6 +549,14 @@ def months_bills(request, day: date):
                 "url": reverse("api_item_detail", args=[row.task.id]),
                 "paid": row.paid,
                 "repeats": row.task.recurrence != Item.Recurrence.NONE,
+                "recurrence": row.task.recurrence,
+                "lead_days": row.task.lead_days,
+                "paid_amount": (
+                    str(row.bill.paid_amount)
+                    if row.bill.paid_amount is not None
+                    else None
+                ),
+                "overdue": row.overdue_on(today_for(request.user)),
             }
             for row in found.bills
         ],

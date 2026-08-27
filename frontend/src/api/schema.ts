@@ -82,6 +82,30 @@ export interface paths {
         patch: operations["lists_api_v1_edit_bill"];
         trace?: never;
     };
+    "/api/v1/bills/entry/{task_id}/pay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Pay Bill
+         * @description Pay a bill from the page it is shown on.
+         *
+         *     **The action this page was missing entirely.** It could add a bill and
+         *     delete a bill and not pay one, which is the thing a person does twelve
+         *     times more often than both put together.
+         */
+        post: operations["lists_api_v1_pay_bill"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/bills/{day}": {
         parameters: {
             query?: never;
@@ -1356,6 +1380,14 @@ export interface components {
             paid: boolean;
             /** Repeats */
             repeats: boolean;
+            /** Recurrence */
+            recurrence: string;
+            /** Lead Days */
+            lead_days: number;
+            /** Paid Amount */
+            paid_amount: string | null;
+            /** Overdue */
+            overdue: boolean;
         };
         /**
          * NewBillIn
@@ -1388,6 +1420,13 @@ export interface components {
              * @default true
              */
             repeats: boolean;
+            /** Recurrence */
+            recurrence?: string | null;
+            /**
+             * Lead Days
+             * @default 0
+             */
+            lead_days: number;
         };
         /**
          * EditBillIn
@@ -1413,6 +1452,21 @@ export interface components {
             currency?: string | null;
             /** Due Date */
             due_date?: string | null;
+            /** Lead Days */
+            lead_days?: number | null;
+            /** Recurrence */
+            recurrence?: string | null;
+        };
+        /**
+         * PayBillIn
+         * @description What went out, when it is not what was expected.
+         *
+         *     Null means *what the bill said*, so the ordinary case is one click and the
+         *     figure is still recorded rather than reconstructed later.
+         */
+        PayBillIn: {
+            /** Amount */
+            amount?: string | null;
         };
         /** MonthOfBillsOut */
         MonthOfBillsOut: {
@@ -3348,6 +3402,32 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["EditBillIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MonthBillOut"];
+                };
+            };
+        };
+    };
+    lists_api_v1_pay_bill: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PayBillIn"];
             };
         };
         responses: {

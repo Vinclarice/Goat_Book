@@ -143,19 +143,31 @@ re-add it here.
   narrative is in [`roadmap-history.md`](roadmap-history.md) under *A second
   factor on the admin*, and this file does not restate it.
 
-  **Three things it leaves, and all three are Vince's.**
+  **Three things it left, and two were answered August 26, 2026.**
 
-  - **One admin account or two.** Enrolment first landed on `Vrbeall01`, the
-    account in daily use, which is not staff — while `vince-admin`, the only one
-    the gate applies to, had none. Both carry a factor now, and the better end
-    state is probably one account rather than two: **a staff login used twice a
-    month is one whose second factor will be missing at the moment it is
-    needed.** Not a thing to slip into a deploy.
-  - **M2 — where the recovery codes live.** The plan called this *the decision
-    most likely to be skipped and most likely to matter*, and it was written on
-    August 19 and skipped. A password manager is the obvious answer and makes
-    the manager a single point of failure for **both** factors; printed and
-    physical is the honest alternative.
+  - ~~**One admin account or two.**~~ **Answered: keep both** — and it went
+    against this file's own lean, which is why the reasoning is worth keeping.
+    The argument for merging was that *a staff login used twice a month is one
+    whose second factor will be missing at the moment it is needed*. **That was
+    solved before the question was asked**: both accounts are enrolled, so the
+    freshness risk it named is gone.
+
+    **What is left points the other way.** `django-otp` marks the *session*
+    verified, so a hijacked session on a staff account reaches `/admin/`.
+    Keeping `Vrbeall01` non-staff means **the session left logged in all day is
+    never the session that can reach the admin** — ordinary least privilege, and
+    it survives the compromise the second factor does not.
+
+  - ~~**M2 — where the recovery codes live.**~~ **Answered: the password
+    manager**, and the cost is recorded rather than argued away. The manager is
+    now **a single point of failure for both factors** — whoever opens the vault
+    has the password and the recovery codes together, which is most of the way
+    to no second factor at all.
+
+    **Taken with that understood**, because the alternative was paper and paper
+    is only better while it is findable. **What would change the answer** is the
+    vault stopping being the strongest thing in the chain — and if a printed set
+    is ever made, it belongs somewhere that is not the desk the laptop sits on.
   - **M1 — does `/api/v1/login` grow a `totp` field?** It refuses today, which
     was chosen because the Android keystore does not exist and the alternative
     was therefore unavailable rather than merely more work. **Its trigger is the

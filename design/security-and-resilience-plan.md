@@ -441,8 +441,11 @@ day the policy shipped rather than because anything about the work changed.
 
 *Acceptance:* named in `accounts.services.purge_account`'s documentation as the
 steps a purge does not perform, with the argument for why they are manual, so
-the gap is visible at the function rather than only in a roadmap. Whether it
-becomes automated is D1 below.
+the gap is visible at the function rather than only in a roadmap. ~~Whether it
+becomes automated is D1 below.~~ **D1 was answered on August 26, 2026 —
+manual** — so this item is **no longer gated and is ready to do.** It is the
+acceptance above and nothing more: a docstring, and the argument travelling with
+it.
 
 ### ~~2.3 `/api/v1/capture` is unthrottled~~ — closed August 26, 2026
 
@@ -540,12 +543,28 @@ runs coexist. Cheap, and it should not wait for anything above it.
 
 ## Open decisions — Vince's, not this document's
 
-1. **D1. Does erasure at Sentry and Resend become automated, or stay a
+1. ~~**D1. Does erasure at Sentry and Resend become automated, or stay a
    documented manual step?** Automating means an API credential for each, held
    by the application, able to delete — which widens what a compromise of the
    droplet reaches, in order to remove a manual step taken a handful of times a
    year. The manual answer is defensible; it needs saying out loud rather than
-   arriving by default.
+   arriving by default.~~ **Answered August 26, 2026: it stays manual.**
+
+   **The trade is a permanent widening against an occasional chore, and the
+   chore loses.** Deletion-capable credentials for two processors, sitting on
+   the droplet for the rest of the application's life, so that a step taken a
+   handful of times a year needs no human. **What a host compromise reaches is
+   the thing this plan spends its effort narrowing**, and 2.2's own break-glass
+   reasoning already says shell on that host is the bar everything else sits
+   behind.
+
+   **It was answered out loud rather than by default**, which is what this entry
+   asked for — the manual answer was always the likely one and would otherwise
+   have arrived by nobody doing anything, which is not the same as choosing it.
+
+   **2.2 is unblocked by this and is now ready to do**: its acceptance is a
+   docstring on `purge_account` naming the steps a purge does not perform, with
+   this argument travelling beside it so the gap is visible at the function.
 2. ~~**D2. Enforcing CSP, or a report collector first?** 1.2 recommends enforcing
    on the Chromium test's evidence. The collector is the more cautious path and
    costs an endpoint.~~ **Answered by doing it — enforcing, August 26, 2026**,
@@ -562,15 +581,60 @@ runs coexist. Cheap, and it should not wait for anything above it.
 3. **D3. Does §6's ordering of long-retention backups behind staging stand?**
    Seven days is the real bound on undoing a bad migration, and the drill shows
    that rehearsal does not need staging.
-4. **D4. HSTS preload — yes or no?** 1.6 raises the max-age and adds
+4. ~~**D4. HSTS preload — yes or no?** 1.6 raises the max-age and adds
    `includeSubDomains` without touching this, because preload is submission to
    a list baked into browser binaries and removal takes months. It commits
    every present and future subdomain of `vinclarice.com` to HTTPS forever, and
-   the question is whether any of them will ever need not to be.
+   the question is whether any of them will ever need not to be.~~ **Answered
+   August 26, 2026: no.**
+
+   **What it would buy is one visit.** Preload closes the gap before a browser
+   has ever seen the site's HSTS header — a genuine hole, and one that this
+   site's population of two people crosses roughly twice ever. **What it costs
+   is reversibility**, on a list baked into browser binaries, for every present
+   and future subdomain, for months if it is ever wrong.
+
+   **The asymmetry decides it, and the shape of it is familiar**: an
+   irreversible commitment made on behalf of subdomains that do not exist yet.
+   `staging-environment-plan.md` names one that might —
+   `staging.vinclarice.com` once existed and was renamed away — and a rehearsal
+   environment is exactly the kind of thing somebody wants to reach over plain
+   HTTP at an awkward moment.
+
+   **`max-age=31536000; includeSubDomains` stays and is doing the work.** A
+   year is long, it is live since `DEPLOYED-2026-08-26/1945`, and it is
+   revocable. **Not a deferral with a trigger** — this is a no, and it should be
+   re-argued from scratch if it ever comes up again rather than treated as
+   waiting.
 5. **D5. What is in front of port 22, and is it in code?** The playbook manages
    no firewall and no SSH configuration. If the answer is a DigitalOcean cloud
    firewall, that is a fine answer and should be written down, because a
    rebuild from this repository would not reproduce it.
+
+   **Still open August 26, 2026, and deliberately — the answer is a fact nobody
+   has looked up.** Put to Vince during the decision sweep and left open on
+   purpose: every other decision that day was a judgement, and this one is an
+   observation first. **Guessing it would be worse than leaving it open**, since
+   the whole complaint is that the answer is not written down anywhere.
+
+   **Two things to check, and they take a minute each**: the droplet's page in
+   the DigitalOcean panel for a cloud firewall, and `ufw status` on the host.
+
+   **Whatever the answer, moving it into code is cheaper than this entry
+   assumes**, which is new. The repository already drives DigitalOcean
+   firewalls: [`infra/provision-postgres.sh`](../infra/provision-postgres.sh)
+   locks the database cluster down to the droplet with
+   `doctl databases firewalls append`, and
+   [`infra/restrict-database-user.sh`](../infra/restrict-database-user.sh) adds
+   and removes a temporary rule around its own run. **`doctl compute firewall`
+   is the same tool one noun over**, against a project that already has the
+   credential, the pattern and two scripts to copy.
+
+   **And this is the control break-glass leans on.** `roadmap-history.md`'s
+   `petrel` entry records that shell on the droplet is equivalent to bypassing
+   the second factor, so whatever is in front of port 22 **is** the floor under
+   the MFA work — which is the reason this is a security decision rather than an
+   infrastructure chore.
 
 ## Relationship to other documents
 

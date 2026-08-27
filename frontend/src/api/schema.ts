@@ -1291,6 +1291,8 @@ export interface components {
             payee: string;
             /** Url */
             url: string;
+            /** Paid */
+            paid: boolean;
         };
         /** MonthOfBillsOut */
         MonthOfBillsOut: {
@@ -1311,8 +1313,12 @@ export interface components {
             next_month: string;
             /** Bills */
             bills: components["schemas"]["MonthBillOut"][];
-            /** Totals */
-            totals: {
+            /** Due Totals */
+            due_totals: {
+                [key: string]: string;
+            };
+            /** Paid Totals */
+            paid_totals: {
                 [key: string]: string;
             };
             /** Unpriced */

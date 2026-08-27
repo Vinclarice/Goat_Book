@@ -2334,6 +2334,10 @@
           "url": {
             "title": "Url",
             "type": "string"
+          },
+          "paid": {
+            "title": "Paid",
+            "type": "boolean"
           }
         },
         "required": [
@@ -2343,7 +2347,8 @@
           "amount",
           "currency",
           "payee",
-          "url"
+          "url",
+          "paid"
         ],
         "title": "MonthBillOut",
         "type": "object"
@@ -2372,11 +2377,18 @@
             "title": "Bills",
             "type": "array"
           },
-          "totals": {
+          "due_totals": {
             "additionalProperties": {
               "type": "string"
             },
-            "title": "Totals",
+            "title": "Due Totals",
+            "type": "object"
+          },
+          "paid_totals": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Paid Totals",
             "type": "object"
           },
           "unpriced": {
@@ -2389,7 +2401,8 @@
           "previous_month",
           "next_month",
           "bills",
-          "totals",
+          "due_totals",
+          "paid_totals",
           "unpriced"
         ],
         "title": "MonthOfBillsOut",

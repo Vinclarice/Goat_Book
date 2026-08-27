@@ -46,7 +46,8 @@ export function BillsRoute() {
     return <RouteFailure status={statusOf(error)} onRetry={() => refetch()} />;
   }
 
-  const totals = Object.entries(data.totals);
+  const due = Object.entries(data.due_totals);
+  const paid = Object.entries(data.paid_totals);
 
   return (
     <div className="max-w-2xl mx-auto space-y-4 px-4 py-8">
@@ -85,10 +86,19 @@ export function BillsRoute() {
                 <span className="min-w-0">
                   <Link
                     to={`/tasks/${bill.task_id}`}
-                    className="hover:underline"
+                    className={
+                      bill.paid ? "text-muted-foreground hover:underline" : "hover:underline"
+                    }
                   >
                     {bill.text}
                   </Link>
+                  {/* A word, not a strikethrough: paid is a good outcome and
+                      the month's record of it should not read as cancelled. */}
+                  {bill.paid && (
+                    <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+                      paid
+                    </span>
+                  )}
                   {bill.payee && (
                     <span className="ml-2 text-sm text-muted-foreground">
                       {bill.payee}
@@ -113,16 +123,32 @@ export function BillsRoute() {
           </ul>
 
           {/* One line per currency, never one number: adding 500 USD to 40 GBP
-              produces 540 of nothing. */}
+              produces 540 of nothing.
+
+              And two figures rather than one. A single "total" held what was
+              outstanding, so a month that cost 1264.99 reported 64.99 -- see
+              bills-page-plan.md. What you owe and what the month cost are
+              different questions and the page now answers both out loud. */}
           <div className="space-y-1 border-t border-border pt-2">
-            {totals.map(([code, total]) => (
-              <p key={code} className="text-sm">
+            {due.map(([code, total]) => (
+              <p key={`due-${code}`} className="text-sm">
                 <span className="font-bold">
                   {total} {code}
                 </span>{" "}
-                due this month
+                still to pay
               </p>
             ))}
+            {paid.map(([code, total]) => (
+              <p key={`paid-${code}`} className="text-sm text-muted-foreground">
+                <span className="font-bold">
+                  {total} {code}
+                </span>{" "}
+                already paid
+              </p>
+            ))}
+            {due.length === 0 && paid.length > 0 && (
+              <p className="text-sm">Everything this month is paid.</p>
+            )}
             {data.unpriced > 0 && (
               <p className="text-sm text-muted-foreground">
                 {data.unpriced === 1

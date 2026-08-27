@@ -248,6 +248,10 @@ class MonthBillOut(Schema):
     currency: str
     payee: str
     url: str
+    #: Whether it is settled. Derived from `Item.Status.COMPLETED` rather than
+    #: stored -- there is one definition of paid and the day and the agenda
+    #: already read it.
+    paid: bool
 
 
 class MonthOfBillsOut(Schema):
@@ -258,7 +262,14 @@ class MonthOfBillsOut(Schema):
     #: Per currency, keyed by code. **Never one number**: adding 500 USD to 40
     #: GBP produces 540 of nothing. Empty when nothing is due, because
     #: "nothing" and "0.00" are different and only one deserves a total.
-    totals: dict[str, str]
+    #:
+    #: **Two figures since August 27, 2026**, replacing a single `totals` that
+    #: held what was outstanding and was rendered under the word *total* -- so a
+    #: month that cost 1264.99 reported 64.99. Renamed rather than added to, so
+    #: that every caller had to say which question it was asking.
+    due_totals: dict[str, str]
+    #: What has already gone out this month, per currency.
+    paid_totals: dict[str, str]
     #: How many are counted but not totalled, so the figure above cannot
     #: quietly understate the month.
     unpriced: int
@@ -290,10 +301,16 @@ def months_bills(request, day: date):
                 "currency": row.bill.currency,
                 "payee": row.bill.payee,
                 "url": reverse("api_item_detail", args=[row.task.id]),
+                "paid": row.paid,
             }
             for row in found.bills
         ],
-        "totals": {code: str(total) for code, total in found.totals.items()},
+        "due_totals": {
+            code: str(total) for code, total in found.due_totals.items()
+        },
+        "paid_totals": {
+            code: str(total) for code, total in found.paid_totals.items()
+        },
         "unpriced": found.unpriced,
     }
 

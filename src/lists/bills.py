@@ -22,6 +22,17 @@ class BillRow:
     task: Item
     bill: Bill
 
+    @property
+    def paid(self):
+        """Whether this one is settled.
+
+        **There is no second definition of paid** -- it is
+        `Item.Status.COMPLETED`, the same fact the day and the agenda read, and
+        a bill-shaped copy of it would be a second answer to one question.
+        Derived rather than stored for the same reason: nothing to keep in step.
+        """
+        return self.task.status == Item.Status.COMPLETED
+
 
 @dataclass(frozen=True)
 class MonthOfBills:
@@ -37,7 +48,16 @@ class MonthOfBills:
     """
 
     bills: list
-    totals: dict
+    #: What is **still owed** this month, per currency. Named for the question
+    #: it answers, which the field it replaced was not -- `totals` held exactly
+    #: this and was rendered under the word *total*, so a month that cost
+    #: 1264.99 reported 64.99. See `bills-page-plan.md`, defect 4.
+    due_totals: dict
+    #: What has **already gone out** this month, per currency. Two figures
+    #: rather than one, because a single number has to choose which of *what do
+    #: I owe* and *what did this month cost* it is answering, and cannot say
+    #: which it chose.
+    paid_totals: dict
     #: How many of them have no amount. Counted and not totalled, because "the
     #: water bill, whatever it comes to" is a real bill and a total that
     #: silently omitted it would be a number somebody plans against.
@@ -45,12 +65,20 @@ class MonthOfBills:
 
 
 def bills_for(owner, day):
-    """The bills due in the month containing ``day``, soonest first.
+    """Every bill in the month containing ``day``, soonest first, paid or not.
 
-    Open ones only -- a paid bill is not still due, which is the agenda's own
-    definition of open rather than a second one. Any day of the month asks
-    about the same month, the courtesy `intention_for` and `month_for` already
-    give a week and a month.
+    **Paid ones are included, and used not to be.** The filter said open only,
+    on the reasoning that *a paid bill is not still due, which is the agenda's
+    own definition of open rather than a second one* -- true of an agenda, and
+    wrong here. **Not due and not this month's are different facts**, and this
+    page is asked both *what do I owe* and *what did this month cost*; the old
+    read could answer only the first while appearing to answer both.
+
+    Archived bills stay out. That is not a filter on paid-ness -- it is the
+    task core's own "this is put away" and it means the same thing here.
+
+    Any day of the month asks about the same month, the courtesy
+    `intention_for` and `month_for` already give a week and a month.
     """
     first = day.replace(day=1)
     last = first.replace(day=monthrange(first.year, first.month)[1])
@@ -59,7 +87,7 @@ def bills_for(owner, day):
         BillRow(task=bill.item, bill=bill)
         for bill in Bill.objects.filter(
             item__owner=owner,
-            item__status=Item.Status.ACTIVE,
+            item__status__in=(Item.Status.ACTIVE, Item.Status.COMPLETED),
             item__due_date__gte=first,
             item__due_date__lte=last,
         )
@@ -67,11 +95,20 @@ def bills_for(owner, day):
         .order_by("item__due_date", "item__id")
     ]
 
-    totals = defaultdict(Decimal)
+    due = defaultdict(Decimal)
+    paid = defaultdict(Decimal)
     unpriced = 0
     for row in rows:
         if row.bill.amount is None:
+            # Counted whether or not it is paid: "the water bill, whatever it
+            # came to" is as unpriced after paying it as before.
             unpriced += 1
             continue
-        totals[row.bill.currency] += row.bill.amount
-    return MonthOfBills(bills=rows, totals=dict(totals), unpriced=unpriced)
+        into = paid if row.paid else due
+        into[row.bill.currency] += row.bill.amount
+    return MonthOfBills(
+        bills=rows,
+        due_totals=dict(due),
+        paid_totals=dict(paid),
+        unpriced=unpriced,
+    )

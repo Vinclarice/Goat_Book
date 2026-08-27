@@ -62,7 +62,8 @@ class TheMonthsBillsTest(TestCase):
         found = self.month()
 
         self.assertEqual(found.bills, [])
-        self.assertEqual(found.totals, {})
+        self.assertEqual(found.due_totals, {})
+        self.assertEqual(found.paid_totals, {})
 
     def test_it_lists_the_months_bills_soonest_first(self):
         self.bill("Later", due=datetime.date(2026, 8, 20))
@@ -81,7 +82,7 @@ class TheMonthsBillsTest(TestCase):
         self.bill("Rent", amount="1200.00")
         self.bill("Water", amount="45.50")
 
-        self.assertEqual(self.month().totals, {"USD": Decimal("1245.50")})
+        self.assertEqual(self.month().due_totals, {"USD": Decimal("1245.50")})
 
     def test_currencies_are_totalled_apart_never_together(self):
         """Adding 500 USD to 40 GBP produces 540 of nothing."""
@@ -89,7 +90,8 @@ class TheMonthsBillsTest(TestCase):
         self.bill("Subscription", amount="40.00", currency="GBP")
 
         self.assertEqual(
-            self.month().totals, {"USD": Decimal("500.00"), "GBP": Decimal("40.00")}
+            self.month().due_totals,
+            {"USD": Decimal("500.00"), "GBP": Decimal("40.00")},
         )
 
     def test_an_unpriced_bill_is_counted_and_not_totalled(self):
@@ -100,15 +102,51 @@ class TheMonthsBillsTest(TestCase):
 
         found = self.month()
 
-        self.assertEqual(found.totals, {"USD": Decimal("500.00")})
+        self.assertEqual(found.due_totals, {"USD": Decimal("500.00")})
         self.assertEqual(found.unpriced, 1)
         self.assertEqual(len(found.bills), 2)
 
-    def test_a_paid_bill_is_not_still_due(self):
-        paid = self.bill("Rent")
+    def test_a_paid_bill_stays_in_the_month(self):
+        """**Changed August 27, 2026** -- this asserted the opposite, and the
+        opposite was `bills-page-plan.md`'s defect 3.
+
+        It read `test_a_paid_bill_is_not_still_due`, and the sentence is true:
+        a paid bill is not still due. What was wrong is the conclusion drawn
+        from it -- that it therefore leaves the page. *Not due* and *not this
+        month's* are different facts, and a bills page is asked both
+        *what do I owe* and *what did this month cost.*
+        """
+        paid = self.bill("Rent", amount="1200.00")
         services.complete_item(paid)
 
-        self.assertEqual(self.month().bills, [])
+        found = self.month()
+
+        self.assertEqual([row.task.text for row in found.bills], ["Rent"])
+        self.assertTrue(found.bills[0].paid)
+
+    def test_what_is_still_due_and_what_is_already_paid_are_separate_totals(self):
+        """The defect this increment exists for, as a number.
+
+        Rent paid on the first and internet outstanding: the month **cost**
+        1264.99 and 64.99 is **left**, and the page showed the second under a
+        heading that said total. Two totals rather than one, because a single
+        figure has to pick which question it is answering and cannot say which
+        it picked.
+        """
+        paid = self.bill("Rent", amount="1200.00")
+        services.complete_item(paid)
+        self.bill("Internet", amount="64.99")
+
+        found = self.month()
+
+        self.assertEqual(found.due_totals, {"USD": Decimal("64.99")})
+        self.assertEqual(found.paid_totals, {"USD": Decimal("1200.00")})
+
+    def test_an_unpaid_bill_is_not_marked_paid(self):
+        """The other side of the flag, so `paid` cannot be a constant."""
+        self.bill("Internet", amount="64.99")
+
+        self.assertFalse(self.month().bills[0].paid)
 
     def test_a_task_that_is_not_a_bill_is_not_here(self):
         services.create_item(self.list_, "Ordinary task", due_date=MID_AUGUST)
@@ -122,4 +160,5 @@ class TheMonthsBillsTest(TestCase):
         found = self.month()
 
         self.assertEqual(found.bills, [])
-        self.assertEqual(found.totals, {})
+        self.assertEqual(found.due_totals, {})
+        self.assertEqual(found.paid_totals, {})

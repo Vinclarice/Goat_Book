@@ -35,9 +35,11 @@ function billsData(overrides: Record<string, unknown> = {}) {
         currency: "USD",
         payee: "Landlord",
         url: "/api/items/1/",
+        paid: false,
       },
     ],
-    totals: { USD: "1200.00" },
+    due_totals: { USD: "1200.00" },
+    paid_totals: {},
     unpriced: 0,
     ...overrides,
   };
@@ -73,14 +75,92 @@ describe("BillsRoute", () => {
     // rather than by a text match that could match either.
     const row = (await screen.findByText("Rent")).closest("li")!;
     expect(within(row).getByText("1200.00 USD")).toBeInTheDocument();
-    expect(screen.getByText(/due this month/)).toBeInTheDocument();
+    expect(screen.getByText(/still to pay/)).toBeInTheDocument();
+  });
+
+  it("keeps a paid bill in the month and says so", async () => {
+    /* The defect this increment exists for. `bills_for` filtered to open
+       tasks, borrowing the agenda's definition -- so rent paid on the 1st was
+       gone from the page on the 2nd, and there was no way to confirm from here
+       that it had been paid at all. See bills-page-plan.md, defect 3. */
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        billsData({
+          bills: [
+            {
+              task_id: 1,
+              text: "Rent",
+              due_date: "2026-08-01",
+              amount: "1200.00",
+              currency: "USD",
+              payee: "Landlord",
+              url: "/api/items/1/",
+              paid: true,
+            },
+          ],
+          due_totals: {},
+          paid_totals: { USD: "1200.00" },
+        }),
+      ),
+    );
+
+    renderAt();
+
+    expect(await screen.findByText("Rent")).toBeInTheDocument();
+    expect(screen.getByText("paid")).toBeInTheDocument();
+    expect(screen.getByText("Everything this month is paid.")).toBeInTheDocument();
+  });
+
+  it("says what the month cost apart from what is left to pay", async () => {
+    /* One number could not answer both, and the one it answered was the
+       remainder while the word above it said total: a month that cost 1264.99
+       reported 64.99. */
+    /* Two bills on each side, so neither total equals a single row's amount:
+       with one bill per bucket the figure appears on the row *and* in the
+       total, and a bare text match cannot say which one it found. */
+    const bill = (
+      text: string,
+      amount: string,
+      paid: boolean,
+      task_id: number,
+    ) => ({
+      task_id,
+      text,
+      due_date: "2026-08-10",
+      amount,
+      currency: "USD",
+      payee: "Someone",
+      url: `/api/items/${task_id}/`,
+      paid,
+    });
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        billsData({
+          bills: [
+            bill("Rent", "1200.00", true, 1),
+            bill("Insurance", "300.00", true, 2),
+            bill("Internet", "64.99", false, 3),
+            bill("Water", "35.01", false, 4),
+          ],
+          due_totals: { USD: "100.00" },
+          paid_totals: { USD: "1500.00" },
+        }),
+      ),
+    );
+
+    renderAt();
+
+    expect(await screen.findByText("100.00 USD")).toBeInTheDocument();
+    expect(screen.getByText("still to pay")).toBeInTheDocument();
+    expect(screen.getByText("1500.00 USD")).toBeInTheDocument();
+    expect(screen.getByText("already paid")).toBeInTheDocument();
   });
 
   it("totals each currency apart, never as one number", async () => {
     // Adding 500 USD to 40 GBP produces 540 of nothing.
     vi.spyOn(globalThis, "fetch").mockImplementation(() =>
       jsonResponse(
-        billsData({ totals: { USD: "500.00", GBP: "40.00" } }),
+        billsData({ due_totals: { USD: "500.00", GBP: "40.00" } }),
       ),
     );
 
@@ -111,7 +191,7 @@ describe("BillsRoute", () => {
     // at, and the honest claim is about both.
     vi.spyOn(globalThis, "fetch").mockImplementation(() =>
       jsonResponse(
-        billsData({ totals: { USD: "500.00", GBP: "40.00" }, unpriced: 1 }),
+        billsData({ due_totals: { USD: "500.00", GBP: "40.00" }, unpriced: 1 }),
       ),
     );
 
@@ -136,7 +216,8 @@ describe("BillsRoute", () => {
               url: "/api/items/2/",
             },
           ],
-          totals: {},
+          due_totals: {},
+          paid_totals: {},
           unpriced: 1,
         }),
       ),
@@ -150,7 +231,7 @@ describe("BillsRoute", () => {
 
   it("says nothing is due rather than showing a zero total", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(() =>
-      jsonResponse(billsData({ bills: [], totals: {}, unpriced: 0 })),
+      jsonResponse(billsData({ bills: [], due_totals: {}, paid_totals: {}, unpriced: 0 })),
     );
 
     renderAt();

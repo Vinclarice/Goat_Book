@@ -1,4 +1,5 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router";
 
@@ -237,8 +238,56 @@ describe("BillsRoute", () => {
     renderAt();
 
     expect(
-      await screen.findByText("No bills due this month."),
+      await screen.findByText("Nothing in this month yet. Add one above."),
     ).toBeInTheDocument();
+  });
+
+  it("adds a bill without ever asking for a task", async () => {
+    /* The defect this increment exists for: the page named after the concept
+       could not produce one. The only route was to create a *task* elsewhere,
+       open its detail page and fill in amount and payee. */
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((input) => {
+        const request = input as Request;
+        if (request.method === "POST") {
+          return jsonResponse({}, true, 201);
+        }
+        return jsonResponse(billsData());
+      });
+
+    renderAt();
+
+    await userEvent.type(await screen.findByLabelText("Who it goes to"), "Landlord");
+    await userEvent.type(screen.getByLabelText("Amount"), "1200.00");
+    await userEvent.click(screen.getByRole("button", { name: "Add bill" }));
+
+    const posted = fetchSpy.mock.calls
+      .map(([request]) => request as Request)
+      .filter((request) => request.method === "POST");
+    await waitFor(() => expect(posted).toHaveLength(1));
+
+    /* No title field, because the name comes from the payee on the server.
+       If this ever finds one, the form has started asking a person to know
+       that a bill is a task. */
+    expect(screen.queryByLabelText(/title/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/task/i)).not.toBeInTheDocument();
+  });
+
+  it("offers a way in when the month is empty", async () => {
+    /* The old empty state was "No bills due this month." and two links, both
+       to other months, which were also empty. A dead end on the page a person
+       arrives at wanting to add a bill. */
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        billsData({ bills: [], due_totals: {}, paid_totals: {}, unpriced: 0 }),
+      ),
+    );
+
+    renderAt();
+
+    expect(await screen.findByLabelText("Who it goes to")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add bill" })).toBeInTheDocument();
   });
 
   it("reports a failure rather than an empty month", async () => {

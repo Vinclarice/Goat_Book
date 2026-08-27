@@ -21,6 +21,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/bills": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add Bill
+         * @description Create a bill where bills are.
+         *
+         *     Session-only for the same reason the month read is: a surface the phone
+         *     does not have, and widening the token surface for one it cannot show is the
+         *     un-switched-on seam this project keeps finding.
+         */
+        post: operations["lists_api_v1_add_bill"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/bills/{day}": {
         parameters: {
             query?: never;
@@ -1293,6 +1317,38 @@ export interface components {
             url: string;
             /** Paid */
             paid: boolean;
+        };
+        /**
+         * NewBillIn
+         * @description What adding a bill asks for, and what it deliberately does not.
+         *
+         *     **No task title.** The name is derived from the payee -- `Landlord` becomes
+         *     *Pay Landlord* -- so this surface never asks the person to name a task or to
+         *     know that a bill is one. Vince's call, August 27, 2026.
+         *
+         *     **No Area either.** A bill is not filed; `create_bill` makes a standing
+         *     task, which is what `create_item`'s owner argument exists for.
+         */
+        NewBillIn: {
+            /** Payee */
+            payee: string;
+            /** Amount */
+            amount?: string | null;
+            /**
+             * Currency
+             * @default USD
+             */
+            currency: string;
+            /**
+             * Due Date
+             * Format: date
+             */
+            due_date: string;
+            /**
+             * Repeats
+             * @default true
+             */
+            repeats: boolean;
         };
         /** MonthOfBillsOut */
         MonthOfBillsOut: {
@@ -3166,6 +3222,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MeOut"];
+                };
+            };
+        };
+    };
+    lists_api_v1_add_bill: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewBillIn"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MonthBillOut"];
                 };
             };
         };

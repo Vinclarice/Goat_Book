@@ -16,6 +16,7 @@ See `lists/tests/test_area_vocabulary.py` for the guard.
 """
 from calendar import monthrange
 from datetime import date, datetime, timedelta
+from decimal import Decimal, InvalidOperation
 from typing import Literal
 
 from django.shortcuts import get_object_or_404
@@ -273,6 +274,71 @@ class MonthOfBillsOut(Schema):
     #: How many are counted but not totalled, so the figure above cannot
     #: quietly understate the month.
     unpriced: int
+
+
+class NewBillIn(Schema):
+    """What adding a bill asks for, and what it deliberately does not.
+
+    **No task title.** The name is derived from the payee -- `Landlord` becomes
+    *Pay Landlord* -- so this surface never asks the person to name a task or to
+    know that a bill is one. Vince's call, August 27, 2026.
+
+    **No Area either.** A bill is not filed; `create_bill` makes a standing
+    task, which is what `create_item`'s owner argument exists for.
+    """
+
+    payee: str
+    #: A string like `BillOut.amount`, and null for a bill nobody has priced --
+    #: "the water bill, whatever it comes to" is a real bill and the month
+    #: already counts unpriced ones rather than totalling them.
+    amount: str | None = None
+    currency: str = "USD"
+    due_date: date
+    #: On by default, because the canonical bill is rent. A repeating bill
+    #: keeps its payee and currency across occurrences and gets a fresh amount
+    #: each time -- see `_spawn_next_occurrence`.
+    repeats: bool = True
+
+
+@router.post("/bills", response={201: MonthBillOut}, auth=SessionAuthIfLoggedIn())
+def add_bill(request, payload: NewBillIn):
+    """Create a bill where bills are.
+
+    Session-only for the same reason the month read is: a surface the phone
+    does not have, and widening the token surface for one it cannot show is the
+    un-switched-on seam this project keeps finding.
+    """
+    amount = None
+    if payload.amount not in (None, ""):
+        try:
+            amount = Decimal(payload.amount)
+        except InvalidOperation:
+            # 409 like every other refusal on this router, and a sentence
+            # rather than a field error: the form has one amount box and the
+            # message is what it will show beside it.
+            raise HttpError(409, "That amount is not a number.")
+    try:
+        item = services.create_bill(
+            request.user,
+            payee=payload.payee,
+            amount=amount,
+            currency=payload.currency,
+            due_date=payload.due_date,
+            repeats=payload.repeats,
+        )
+    except services.TaskConflict as error:
+        raise HttpError(409, str(error))
+    bill = item.bill
+    return 201, {
+        "task_id": item.id,
+        "text": item.text,
+        "due_date": item.due_date,
+        "amount": str(bill.amount) if bill.amount is not None else None,
+        "currency": bill.currency,
+        "payee": bill.payee,
+        "url": reverse("api_item_detail", args=[item.id]),
+        "paid": False,
+    }
 
 
 @router.get("/bills/{day}", response=MonthOfBillsOut, auth=SessionAuthIfLoggedIn())

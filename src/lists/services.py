@@ -369,6 +369,53 @@ def set_bill(item, *, amount=None, currency="USD", payee=""):
 
 
 @transaction.atomic
+def create_bill(
+    owner,
+    *,
+    payee,
+    amount=None,
+    currency="USD",
+    due_date=None,
+    repeats=True,
+):
+    """A bill, made where bills are, without anybody saying "task".
+
+    **The task and the sidecar in one transaction**, so the page named after
+    the concept can produce one. Until August 27, 2026 the only route was to
+    create a task elsewhere, open its detail page and fill in amount and payee
+    -- `bills-page-plan.md` has what that cost.
+
+    **The name comes from the payee** and is not asked for: `Landlord` becomes
+    *Pay Landlord*. Vince's call, and the point is that adding a bill should
+    ask about money and dates and nothing else. Renaming afterwards works
+    wherever tasks are renamed; what is removed is the obligation to name one
+    up front.
+
+    **No Area.** `create_item` gained a standing `owner` exactly so a task
+    could exist without being filed, and *which Area does rent go in* is the
+    filing question this surface exists to avoid.
+
+    **Repeating by default**, because the canonical bill is rent and the
+    vision document's canonical recurring task is "pay rent every month".
+    """
+    payee = (payee or "").strip()
+    if not payee:
+        # The name is derived from it, so an empty payee is not a blank field
+        # to tolerate -- it is a task with no name.
+        raise TaskConflict("A bill needs a payee, which is what it gets its name from.")
+    item = create_item(
+        None,
+        f"Pay {payee}",
+        due_date=due_date,
+        recurrence=Item.Recurrence.MONTHLY if repeats else Item.Recurrence.NONE,
+        owner=owner,
+    )
+    set_bill(item, amount=amount, currency=currency, payee=payee)
+    item.refresh_from_db()
+    return item
+
+
+@transaction.atomic
 def clear_bill(item):
     """Stop this task being a bill. The task itself is untouched."""
     Bill.objects.filter(item=item).delete()
@@ -738,6 +785,45 @@ def _spawn_next_occurrence(completed_item, carry_forward_steps=()):
         lead_days=commitment.lead_days,
     )
     next_item.tags.set(commitment.tags.all())
+
+    # **A repeating bill stays a bill.** Added August 27, 2026: nothing here
+    # touched `Bill`, so paying rent produced a plain task for next month and
+    # rent silently stopped appearing on the page that exists to show bills.
+    # Recurrence was built for tasks and the sidecar was added beside it;
+    # neither was wrong and nobody joined them.
+    #
+    # **The payee and the currency carry. The amount does not**, which is
+    # `set_bill`'s own rule and the right one: what a bill comes to is a fact
+    # about *this* occurrence -- last quarter's was 500 and this one is 525 --
+    # so carrying the number forward would state something nobody has been
+    # told. What lands is an unpriced bill from a known payee, which is
+    # exactly what `MonthOfBills.unpriced` counts rather than totals.
+    previous_bill = Bill.objects.filter(item=completed_item).first()
+    if previous_bill is not None:
+        Bill.objects.create(
+            item=next_item,
+            amount=None,
+            currency=previous_bill.currency,
+            payee=previous_bill.payee,
+        )
+
+    # **NOT CARRIED: Facet.** A facet records that a particular thought became
+    # a particular task -- `mind.Facet.task`, whose invariant is that a
+    # confirmed actionable facet has a live task. It is provenance about *one*
+    # occurrence. Copying it would claim the same thought also became next
+    # month's task, and the month after that, which is false and gets less true
+    # every cycle. The original keeps its facet; completing a task does not
+    # delete it, so nothing is orphaned.
+    #
+    # **NOT CARRIED: ActivityEvent.** The life log of what happened to *this*
+    # occurrence. Copying rows forward would fabricate history -- events dated
+    # before the task existed -- and the table is append-only by database
+    # trigger, so it is not a thing to write casually in either direction.
+    #
+    # Both declared rather than left silent, and
+    # `tests/test_a_spawn_accounts_for_everything_on_a_task.py` is why: `Bill`
+    # was correctly not mentioned here either, right up until it turned out to
+    # be a defect that had been live since bills shipped.
 
     # Fresh copies, not carried state: a step that was already ticked off
     # this cycle starts the next one unchecked, the same way the parent

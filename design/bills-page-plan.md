@@ -60,13 +60,29 @@ where it is.** The word *task* does not appear on it.
 
 ## Increments, in order
 
-1. **The read learns about paid.** `bills_for` returns the whole month with a
-   paid flag and two totals; the page shows both and marks what is paid. No
-   write path yet. **The failing test is the month that cost 1264.99 reporting
-   64.99.**
-2. **Adding, on the page.** One form — payee, amount, currency, due date,
-   repeats — behind a service that writes the `Item` and the `Bill` in one
-   transaction. The empty state stops being a dead end.
+1. ~~**The read learns about paid.**~~ **Done August 27, 2026.** The month holds
+   every bill, paid ones marked, and two figures per currency. `totals` was
+   **renamed rather than added to**, so every caller had to say which question
+   it was asking — the defect expressed as a field name.
+2. ~~**Adding, on the page.**~~ **Done August 27, 2026.** `create_bill` writes
+   the `Item` and the `Bill` in one transaction, `POST /api/v1/bills` serves it,
+   and the form asks payee, amount, currency, due date, repeats. **No title
+   box** — the name comes from the payee, and a test asserts the form never
+   grows one. The empty state offers the form instead of two links to other
+   empty months.
+
+   **It turned up a defect that would have sunk the increment.**
+   `_spawn_next_occurrence` never touched `Bill`, so paying a repeating bill
+   produced a plain task next month and **rent silently stopped being a bill**.
+   *Repeats monthly*, on by default, would have shipped a page that emptied
+   itself one payment at a time. Payee and currency now carry and the amount
+   does not, which is `set_bill`'s own rule — what lands is an unpriced bill
+   from a known payee, exactly what `unpriced` was built to count.
+
+   **Nothing was going to catch it.** `set_bill`, `_spawn_next_occurrence` and
+   `bills_for` are each correct; the defect lived in the space between them —
+   the second of that shape in one day, after the miss-review surface in
+   `search-plan.md`.
 3. **Editing in place**, the same fields against an existing bill.
 4. **Deleting**, with the recurring question asked once.
 

@@ -33,6 +33,41 @@
         ]
       }
     },
+    "/api/v1/bills": {
+      "post": {
+        "operationId": "lists_api_v1_add_bill",
+        "summary": "Add Bill",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MonthBillOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Create a bill where bills are.\n\nSession-only for the same reason the month read is: a surface the phone\ndoes not have, and widening the token surface for one it cannot show is the\nun-switched-on seam this project keeps finding.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewBillIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      }
+    },
     "/api/v1/bills/{day}": {
       "get": {
         "operationId": "lists_api_v1_months_bills",
@@ -2351,6 +2386,47 @@
           "paid"
         ],
         "title": "MonthBillOut",
+        "type": "object"
+      },
+      "NewBillIn": {
+        "description": "What adding a bill asks for, and what it deliberately does not.\n\n**No task title.** The name is derived from the payee -- `Landlord` becomes\n*Pay Landlord* -- so this surface never asks the person to name a task or to\nknow that a bill is one. Vince's call, August 27, 2026.\n\n**No Area either.** A bill is not filed; `create_bill` makes a standing\ntask, which is what `create_item`'s owner argument exists for.",
+        "properties": {
+          "payee": {
+            "title": "Payee",
+            "type": "string"
+          },
+          "amount": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          },
+          "currency": {
+            "default": "USD",
+            "title": "Currency",
+            "type": "string"
+          },
+          "due_date": {
+            "format": "date",
+            "title": "Due Date",
+            "type": "string"
+          },
+          "repeats": {
+            "default": true,
+            "title": "Repeats",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "payee",
+          "due_date"
+        ],
+        "title": "NewBillIn",
         "type": "object"
       },
       "MonthOfBillsOut": {

@@ -191,8 +191,12 @@ done
 # vocabulary, and `clarice/life_log.py` raises on a bad value *"rather than
 # failing at the database check constraint three layers down"* -- which names
 # this constraint as the backstop it is deliberately in front of.
-# `bill_amount_not_negative` guards a number somebody plans a month against.
-for constraint in event_type_valid event_origin_valid bill_amount_not_negative
+# `money_line_amount_not_negative` guards a number somebody plans a month
+# against. It was `bill_amount_not_negative` until August 27, 2026, when `Bill`
+# became `MoneyLine` -- and this line was the drill's half of that rename, found
+# by the test that fails when a constraint is in neither the script nor the
+# not-drilled list.
+for constraint in event_type_valid event_origin_valid money_line_amount_not_negative
 do
   got=$(query "SELECT count(*) FROM pg_constraint
                WHERE conname = '$constraint' AND contype = 'c' AND convalidated")
@@ -211,6 +215,14 @@ done
 # `unique_daily_focus_per_entry_task` is the one the backfill's C2 and C3
 # repairs were keyed to: one focus per task **per day** is what makes a second
 # run safe against a table that refuses DELETE.
+#
+# The two money ones joined on August 27, 2026, and both are here rather than in
+# the not-drilled list because **losing them is silent**.
+# `one_reading_per_account_per_month` is what makes the monthly balance pass an
+# update rather than an append: without it, saving August twice leaves two
+# Augusts and every total and projection reading from them is quietly doubled.
+# `unique_account_name_per_owner` is smaller and the same shape -- two accounts
+# called Amex is a total nobody can explain.
 for constraint in \
   unique_daily_entry_per_owner_date \
   unique_daily_focus_per_entry_task \

@@ -327,6 +327,46 @@ difference between a page and a module.
     Twelve points on a line need no framework. **Recorded so it is not
     re-argued**, and reversible if a real chart is ever wanted.
 
+## The third phase — what looking at it turned up, August 27, 2026
+
+Vince, on seeing the module for the first time: *"for income, there needs to be a
+bi-weekly frequency option. And there's like no order to the bills. Like we need
+to have categories to make it easier to look at."*
+
+**Both are things no test could have told either of us**, which is the argument
+for looking at a thing before building more of it.
+
+12. **Fortnightly.** A salary every two weeks is ordinary and the model had no
+    word for it. Cheap, as it turns out: `_nth_occurrence_after` already
+    advances weekly by `timedelta(weeks=n)`, and **recurrence is not one of the
+    rules mirrored across three languages** — the phone does not model it at
+    all — so this is Python and a label in TypeScript. `TIMES_A_YEAR` gains 26.
+
+13. **Categories, and the list belongs to the person.** Vince asked for a fixed
+    list *"however add a setting that lets the user manually edit the list"*,
+    and that second clause changes what this is. **A list somebody can edit is
+    data, not an enum**: it is created, renamed, reordered and deleted on its
+    own schedule, which is §4's life-cycle test met rather than argued around.
+    So `MoneyCategory` earns a table where a `TextChoices` would not.
+
+    **Seeded, not empty.** A person opening a fresh module should find Housing,
+    Utilities, Subscriptions, Insurance, Debt, Transport and Health already
+    there — an empty list plus a form is a chore handed to somebody who came to
+    look at their bills. They are ordinary rows from birth, so renaming or
+    deleting one needs no special case.
+
+    **Nullable on the bill.** *Uncategorised* is a real state and the honest
+    default: a bill added in a hurry should not demand a filing decision, which
+    is the same reason a bill has no Area.
+
+    **Bills only for now** — one or two income lines do not need grouping, and
+    the field lives on the shared record so income can gain it the day there is
+    enough income to sort.
+
+14. **Grouped by category, due date within.** The complaint was that the list
+    has no shape. Headings give the eye somewhere to land, and it makes *what do
+    my subscriptions cost* answerable by looking rather than by adding up.
+
 ## What is still open
 
 **Investments.** The question is not whether to build it but whether balances

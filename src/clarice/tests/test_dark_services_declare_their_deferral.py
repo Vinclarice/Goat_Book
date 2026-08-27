@@ -76,6 +76,12 @@ SERVICES = SRC / "mind" / "services.py"
 #: So this is a registry of declarations, not a list of places to look.
 ELSEWHERE = {
     "lists/agenda.py": ("snooze_presets", "tag_summaries"),
+    # `close_account` joined on August 27, 2026, the day accounts were built:
+    # they can be created and not removed, so a card somebody stops using stays
+    # in the monthly balance pass forever asking for a figure. Its declaration
+    # carries the trigger. Found by this test, on work added hours after it was
+    # cited approvingly -- which is the argument for a guard over a habit.
+    "lists/services.py": ("close_account",),
     "routines/reads.py": ("occurrence_for",),
     "accounts/export.py": ("owned_models", "export_key"),
 }

@@ -97,7 +97,10 @@ class ABillThatWarnsBeforeItLandsTest(TestCase):
                 payee="Adobe",
                 amount=Decimal("10.00"),
                 due_date=MARCH,
-                recurrence="fortnightly",
+                # Was "fortnightly" until August 27, 2026, when that became a
+                # real cadence -- a test asserting a word is invalid is a test
+                # with a shelf life, so this one is deliberately nonsense.
+                recurrence="whenever-i-feel-like-it",
             )
 
     def test_the_lead_time_can_be_changed_later(self):

@@ -3887,6 +3887,7 @@
               "none",
               "daily",
               "weekly",
+              "fortnightly",
               "monthly",
               "quarterly",
               "annual"
@@ -5539,6 +5540,7 @@
               "none",
               "daily",
               "weekly",
+              "fortnightly",
               "monthly",
               "quarterly",
               "annual"

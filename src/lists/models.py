@@ -19,6 +19,10 @@ class Recurrence(models.TextChoices):
     NONE = "none", "Doesn't repeat"
     DAILY = "daily", "Daily"
     WEEKLY = "weekly", "Weekly"
+    #: Added August 27, 2026, because a salary every two weeks is ordinary and
+    #: this had no word for it. Not a special case: `_nth_occurrence_after`
+    #: already advances weekly by whole weeks, so a fortnight is two of them.
+    FORTNIGHTLY = "fortnightly", "Every two weeks"
     MONTHLY = "monthly", "Monthly"
     # Added August 20, 2026 for the commitments that come round least often
     # and are hardest to hold in your head -- a property tax bill due 5
@@ -209,7 +213,11 @@ class Item(models.Model):
     position = models.PositiveIntegerField(default=0)
     tags = models.ManyToManyField('Tag', blank=True, related_name='items')
     recurrence = models.CharField(
-        max_length=10,
+        # 12 rather than 10 since August 27, 2026: "fortnightly" is eleven
+        # characters. The shorter "biweekly" would have fitted and is
+        # ambiguous in English -- twice a week, or every two? -- and a stored
+        # value should say what it means rather than save two bytes.
+        max_length=12,
         choices=Recurrence.choices,
         default=Recurrence.NONE,
     )

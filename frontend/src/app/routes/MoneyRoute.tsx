@@ -248,6 +248,9 @@ type BillRow = {
 const CADENCES = [
   { value: "none", label: "Once" },
   { value: "weekly", label: "Every week" },
+  /* Added August 27, 2026 on seeing the module: a salary every two weeks is
+     ordinary and there was no word for it. */
+  { value: "fortnightly", label: "Every two weeks" },
   { value: "monthly", label: "Every month" },
   { value: "quarterly", label: "Every quarter" },
   { value: "annual", label: "Every year" },

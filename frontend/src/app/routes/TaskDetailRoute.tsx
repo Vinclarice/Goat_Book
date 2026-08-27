@@ -56,6 +56,7 @@ const RECURRENCE_LABELS: Record<TaskRecurrence, string> = {
   none: "Doesn't repeat",
   daily: "Daily",
   weekly: "Weekly",
+  fortnightly: "Every two weeks",
   monthly: "Monthly",
   quarterly: "Quarterly",
   annual: "Annually",

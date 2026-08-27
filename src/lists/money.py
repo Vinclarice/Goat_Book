@@ -199,6 +199,9 @@ SOON = timedelta(days=14)
 #: number must not have.
 TIMES_A_YEAR = {
     Item.Recurrence.WEEKLY: 52,
+    # 26, not 12. A fortnightly figure counted monthly understates the year by
+    # a sixth, which is the sort of error a yearly total exists to avoid.
+    Item.Recurrence.FORTNIGHTLY: 26,
     Item.Recurrence.MONTHLY: 12,
     Item.Recurrence.QUARTERLY: 4,
     Item.Recurrence.ANNUAL: 1,

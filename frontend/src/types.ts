@@ -12,6 +12,7 @@ export type TaskRecurrence =
   | "none"
   | "daily"
   | "weekly"
+  | "fortnightly"
   | "monthly"
   | "quarterly"
   | "annual";

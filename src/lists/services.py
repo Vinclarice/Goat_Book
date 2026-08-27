@@ -591,6 +591,20 @@ def record_balance(account, *, on_date, amount):
 
 
 @transaction.atomic
+# DARK: no production caller. Nothing on the balances screen closes an account,
+# so a card somebody stops using stays in the monthly pass forever, asking for a
+# figure that no longer exists. Trigger: a control for removing an account,
+# which the balances screen is the obvious home for and was not part of what
+# Vince asked for. Declared rather than deleted because the gap is real and
+# one-sided -- accounts can be created and not removed, which is a worse end
+# state than an uncalled function.
+# Two things about where and how this is written, both learned by getting them
+# wrong. It sits *below* the decorator because the guard reads the comment lines
+# immediately preceding `def`, and a declaration above `@transaction.atomic` is
+# invisible to it -- the same decorator-and-def adjacency CLAUDE.md records
+# costing a lost `@transaction.atomic` once already. And it has no blank comment
+# lines, because a bare `#` does not match `^# .*` and silently ends the block,
+# so only the paragraph after it is read.
 def close_account(account):
     """Remove an account and the readings that belong to it.
 
@@ -633,25 +647,15 @@ def create_income(owner, *, payer, amount=None, currency="USD", due_date=None,
 
 
 @transaction.atomic
-def receive_income(item, *, amount=None):
-    """Record that money arrived, and how much.
-
-    **`pay_bill` under the word a person would use.** Receiving is settling, and
-    settling is completing -- so a monthly salary spawns next month's exactly as
-    a monthly bill does, and `completed_at` is what the module reads as *this
-    one has happened*.
-
-    The amount defaults to what was expected, and differs for the same reasons a
-    bill's does: a bonus, a raise, a short month. Recording what actually
-    arrived is what makes a year of income readable rather than a year of
-    guesses.
-    """
-    return pay_bill(item, amount=amount)
-
-
-@transaction.atomic
 def pay_bill(item, *, amount=None):
-    """Pay a bill, recording what actually went out.
+    """Settle a money line, recording what actually moved.
+
+    **Both directions, under the name the commoner one uses.** A `receive_income`
+    alias stood beside this for an hour on August 27, 2026 and was deleted: it
+    delegated here and added a word, the endpoint already settles either
+    direction, and the page already says *Mark received* where it should. A
+    wrapper whose only content is a synonym is a service nothing calls, which
+    this project has a test for -- and that test is what found it.
 
     **Paying is completing**, and there is no second definition of done: this
     calls `complete_item`, so the day, the agenda and the review all hear it,
@@ -990,6 +994,8 @@ def _nth_occurrence_after(base, recurrence, n):
         return base + timedelta(days=n)
     if recurrence == Item.Recurrence.WEEKLY:
         return base + timedelta(weeks=n)
+    if recurrence == Item.Recurrence.FORTNIGHTLY:
+        return base + timedelta(weeks=2 * n)
     # Quarterly and annual are monthly with a multiplier, deliberately: the
     # anchor arithmetic below is the part that is easy to get wrong, and three
     # copies of it would be three chances to.

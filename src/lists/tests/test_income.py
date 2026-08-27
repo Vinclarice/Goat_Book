@@ -102,7 +102,7 @@ class IncomeTest(TestCase):
         what was paid rather than what was expected."""
         salary = self.a_salary()
 
-        services.receive_income(salary, amount=Decimal("3450.00"))
+        services.pay_bill(salary, amount=Decimal("3450.00"))
 
         line = MoneyLine.objects.get(item=salary)
         self.assertEqual(line.paid_amount, Decimal("3450.00"))
@@ -114,7 +114,7 @@ class IncomeTest(TestCase):
         # lines from one payee collide -- see `create_bill`'s own note on why
         # that is accepted rather than designed around.
         second = self.a_salary(amount="500.00", payer="A Client")
-        services.receive_income(second, amount=Decimal("500.00"))
+        services.pay_bill(second, amount=Decimal("500.00"))
 
         found = money_reader.bills_for(self.user, AUGUST)
 

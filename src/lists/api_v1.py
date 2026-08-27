@@ -20,7 +20,7 @@ from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 
 from django.db import transaction
-from typing import Literal
+from typing import Literal, get_args
 
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
@@ -48,9 +48,24 @@ from lists.serializers import (
 router = Router()
 
 TaskStatus = Literal["active", "completed", "archived"]
+#: **Hand-written, and it is a mirror of `Item.Recurrence`.** Adding a value to
+#: the model does not add it here, so the endpoint refuses a cadence the service
+#: accepts -- which is what happened to `fortnightly` on August 27, 2026: four
+#: service tests passed while the API would have rejected every request. Ninja
+#: needs a static type here, so this cannot simply read the enum; what it can do
+#: is fail loudly when the two part company, which the assertion below does.
 TaskRecurrence = Literal[
-    "none", "daily", "weekly", "monthly", "quarterly", "annual"
+    "none", "daily", "weekly", "fortnightly", "monthly", "quarterly", "annual"
 ]
+
+# The mirror, checked at import rather than trusted. A `Literal` cannot be built
+# from a runtime value in a way Ninja will read, so the duplication is real --
+# but a duplication that shouts when it drifts is a different thing from one
+# that waits to be noticed by a person typing a cadence into a form.
+assert set(get_args(TaskRecurrence)) == set(Item.Recurrence.values), (
+    "TaskRecurrence has drifted from Item.Recurrence: "
+    f"{set(Item.Recurrence.values) ^ set(get_args(TaskRecurrence))}"
+)
 #: No "medium": an unmarked task already means ordinary. See lists.models.Priority.
 TaskPriority = Literal["none", "high", "low"]
 BucketKey = Literal["overdue", "today", "week", "later", "someday"]

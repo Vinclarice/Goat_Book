@@ -184,6 +184,50 @@ at all.
 **1 is worth doing whatever happens to the rest**, and it is the one that fixes
 a wrong number rather than a missing button.
 
+## Income — August 27, 2026
+
+**Done the same day**, after *"I think I will want to include income and
+investments."*
+
+**One model, not two.** §4's test is a different life cycle, and income has a
+bill's exactly: it recurs, has a date, has an amount, gets settled, can be late.
+What differs is the sign and whether you act or observe, neither of which is a
+life cycle. So `Bill` became `MoneyLine` with a `direction` — **a rename that
+`makemigrations` wanted to do as a `CreateModel` plus a `DeleteModel`**, which
+would have dropped the table and every bill in it under a filename reading like
+a rename. Hand-written as `RenameModel` and verified against real rows.
+
+**But income is not a task, and that is the difference that shows.** You do not
+tick off being paid, so it is excluded from the day and the agenda — one clause
+at `agenda.open_items_for`, the single selection point both use. It lives on
+Money alone, where it can still be called late.
+
+**The month now answers four questions**: still to pay, already paid, expected
+in, already received. *Did this month balance* is the one that needed the other
+three.
+
+**Two open lines from one payee collide**, because the name is derived from the
+payee and `unique_active_arealess_item` is `(owner, text)` over everything
+unfiled and unarchived. **Accepted rather than designed around** — putting a
+number into every name to serve the rarer case makes *Pay Landlord* worse for
+the common one. Vince's improvement: **the refusal suggests a way through**
+rather than only refusing, and *"Amazon (Prime)"* is a better row than *"Amazon"*
+twice would have been. The constraint pushes toward the clearer name.
+
+**And the form was throwing those sentences away.** Every 409 on this router is
+worded for a person and the page substituted *"could not be added"* for all of
+them. It now reads the server's `detail` and falls back to the status only when
+there is nothing to say, because an unworded failure should not pretend to be
+advice.
+
+## What is still open
+
+**Investments.** The question is not whether to build it but whether balances
+would actually get typed in — Vince abandoned Mint's bank feed because
+reconciling it was work, and a stale investments tab fails the same way by a
+different road. **Tracking contributions rather than balances** is the version
+made of facts you already know at the moment they happen.
+
 ## What this refuses
 
 - **A `Bill` model.** §4 settled it and nothing here needs it.

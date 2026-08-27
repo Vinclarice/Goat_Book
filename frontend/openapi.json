@@ -95,7 +95,7 @@
             }
           }
         },
-        "description": "Correct a bill without leaving the page it is shown on.\n\n**`entry/{id}` rather than `{id}`**, because `/money/bills/{day}` already\ntakes a date in that position and two routes differing only by the type of\none segment is a collision waiting for the first numeric-looking date. The\nread keeps the shorter path; the writes take the longer one.\n\n**Under `/money/` since August 27, 2026.** The resources are still bills --\na bill is one kind of money thing and income will be its sibling, not the\nsame record -- so what moved is the namespace, not the noun. `Bill` keeps\nits name for exactly that reason: a model named after the module would have\nto hold both.",
+        "description": "Correct a bill without leaving the page it is shown on.\n\n**`entry/{id}` rather than `{id}`**, because `/money/bills/{day}` already\ntakes a date in that position and two routes differing only by the type of\none segment is a collision waiting for the first numeric-looking date. The\nread keeps the shorter path; the writes take the longer one.\n\n**Under `/money/` since August 27, 2026.** The resources are still bills --\na bill is one kind of money thing and income will be its sibling, not the\nsame record -- so what moved is the namespace, not the noun. `MoneyLine` keeps\nits name for exactly that reason: a model named after the module would have\nto hold both.",
         "requestBody": {
           "content": {
             "application/json": {
@@ -142,6 +142,41 @@
           }
         },
         "description": "Remove a bill, and say which one is meant when it repeats.\n\n**`whole_series` as a query parameter** rather than a body: a DELETE with a\npayload is legal and poorly supported, and this is one boolean the caller\nalready knows before it asks.\n\nThe default is the narrow act. Deleting August's rent means *not this one*;\nsomebody who meant *stop paying rent* has to say so, because the wider\nanswer is the one that cannot be undone by adding a bill back.",
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      }
+    },
+    "/api/v1/money/income": {
+      "post": {
+        "operationId": "lists_api_v1_add_income",
+        "summary": "Add Income",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MonthBillOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Record money expected in.\n\n**Beside bills under `/money/`, not a second top-level noun** -- which is\nwhat makes Money a module rather than a longer word for one page.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewIncomeIn"
+              }
+            }
+          },
+          "required": true
+        },
         "security": [
           {
             "SessionAuthIfLoggedIn": []
@@ -2504,6 +2539,10 @@
             "title": "Repeats",
             "type": "boolean"
           },
+          "direction": {
+            "title": "Direction",
+            "type": "string"
+          },
           "recurrence": {
             "title": "Recurrence",
             "type": "string"
@@ -2538,6 +2577,7 @@
           "url",
           "paid",
           "repeats",
+          "direction",
           "recurrence",
           "lead_days",
           "paid_amount",
@@ -2682,6 +2722,63 @@
         "title": "EditBillIn",
         "type": "object"
       },
+      "NewIncomeIn": {
+        "description": "What adding income asks for. The mirror of `NewBillIn`, one word apart.\n\n`payer` rather than `payee`, because that is what a person calls the other\nend of money coming toward them -- and the name is derived from it the same\nway: `Acme Ltd` becomes *From Acme Ltd*.",
+        "properties": {
+          "payer": {
+            "title": "Payer",
+            "type": "string"
+          },
+          "amount": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          },
+          "currency": {
+            "default": "USD",
+            "title": "Currency",
+            "type": "string"
+          },
+          "due_date": {
+            "format": "date",
+            "title": "Due Date",
+            "type": "string"
+          },
+          "repeats": {
+            "default": true,
+            "title": "Repeats",
+            "type": "boolean"
+          },
+          "recurrence": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recurrence"
+          },
+          "lead_days": {
+            "default": 0,
+            "title": "Lead Days",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "payer",
+          "due_date"
+        ],
+        "title": "NewIncomeIn",
+        "type": "object"
+      },
       "PayBillIn": {
         "description": "What went out, when it is not what was expected.\n\nNull means *what the bill said*, so the ordinary case is one click and the\nfigure is still recorded rather than reconstructed later.",
         "properties": {
@@ -2738,6 +2835,20 @@
             "title": "Paid Totals",
             "type": "object"
           },
+          "expected_in_totals": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Expected In Totals",
+            "type": "object"
+          },
+          "received_totals": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Received Totals",
+            "type": "object"
+          },
           "unpriced": {
             "title": "Unpriced",
             "type": "integer"
@@ -2750,6 +2861,8 @@
           "bills",
           "due_totals",
           "paid_totals",
+          "expected_in_totals",
+          "received_totals",
           "unpriced"
         ],
         "title": "MonthOfBillsOut",

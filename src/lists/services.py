@@ -9,6 +9,7 @@ from clarice import life_log
 
 from lists.models import (
     CadenceMode,
+    Direction,
     ChecklistStep,
     Item,
     MoneyLine,
@@ -379,6 +380,7 @@ def create_bill(
     repeats=True,
     recurrence=None,
     lead_days=0,
+    direction=Direction.OUT,
 ):
     """A bill, made where bills are, without anybody saying "task".
 
@@ -419,14 +421,41 @@ def create_bill(
         recurrence = Item.Recurrence.MONTHLY if repeats else Item.Recurrence.NONE
     if recurrence not in Item.Recurrence.values:
         raise TaskConflict("Choose a valid cadence.")
-    item = create_item(
-        None,
-        f"Pay {payee}",
-        due_date=due_date,
-        recurrence=recurrence,
-        owner=owner,
-    )
+    incoming = direction == Direction.IN
+    try:
+        item = create_item(
+            None,
+            f"{'From' if incoming else 'Pay'} {payee}",
+            due_date=due_date,
+            recurrence=recurrence,
+            owner=owner,
+        )
+    except TaskConflict:
+        # **Two lines from one payee collide**, because the name is derived from
+        # the payee and `unique_active_arealess_item` is `(owner, text)` over
+        # everything unfiled and not archived. Two Amazon subscriptions, or a
+        # salary and a bonus from the same employer, are the real cases.
+        #
+        # **Accepted rather than designed around.** The alternative is putting
+        # an amount or a number into every name to serve the rarer case, which
+        # makes *Pay Landlord* worse for the common one. What is not acceptable
+        # is `create_item`'s own message -- "You've already got this in your
+        # list" is about a list, and there is no list here.
+        kind = "income" if incoming else "bill"
+        # **A way forward, not just a refusal.** Vince, August 27, 2026:
+        # suggest renaming the second one with a notation of what it is. The
+        # payee *is* the name, so adding the distinguishing word to it solves
+        # the collision and makes the row more readable than it would have been
+        # anyway -- "Amazon (Prime)" and "Amazon (Music)" tell you which is
+        # which on a page where "Amazon" twice would not.
+        raise TaskConflict(
+            f"There is already an open {kind} from {payee}. "
+            f"Add a word to tell them apart -- “{payee} (Prime)”, "
+            f"say -- or edit the existing one."
+        ) from None
     set_bill(item, amount=amount, currency=currency, payee=payee)
+    if direction != Direction.OUT:
+        MoneyLine.objects.filter(item=item).update(direction=direction)
     if lead_days:
         set_lead_days(item, lead_days)
     item.refresh_from_db()
@@ -495,6 +524,54 @@ def update_bill(item, *, payee=_KEEP, amount=_KEEP, currency=_KEEP, due_date=_KE
         set_recurrence(item, recurrence)
         item.refresh_from_db()
     return item
+
+
+@transaction.atomic
+def create_income(owner, *, payer, amount=None, currency="USD", due_date=None,
+                  repeats=True, recurrence=None, lead_days=0):
+    """Money expected in, on a date, usually every month.
+
+    **The same record as a bill, pointed the other way.** §4's test is a
+    different life cycle, and income has a bill's exactly: it recurs, it has a
+    date, it has an amount, it gets settled, it can be late. What differs is the
+    sign and whether you act or observe -- neither of which is a life cycle.
+
+    **The name comes from the payer**, so this asks no more for a task title
+    than the bill form does: `Acme Ltd` becomes *From Acme Ltd*, against a
+    bill's *Pay Landlord*.
+
+    **It will not appear on the day or the agenda.** `agenda.open_items_for`
+    excludes money coming in, because being paid is not something you do and a
+    line you cannot act on is clutter on the surface you use most.
+    """
+    return create_bill(
+        owner,
+        payee=payer,
+        amount=amount,
+        currency=currency,
+        due_date=due_date,
+        repeats=repeats,
+        recurrence=recurrence,
+        lead_days=lead_days,
+        direction=Direction.IN,
+    )
+
+
+@transaction.atomic
+def receive_income(item, *, amount=None):
+    """Record that money arrived, and how much.
+
+    **`pay_bill` under the word a person would use.** Receiving is settling, and
+    settling is completing -- so a monthly salary spawns next month's exactly as
+    a monthly bill does, and `completed_at` is what the module reads as *this
+    one has happened*.
+
+    The amount defaults to what was expected, and differs for the same reasons a
+    bill's does: a bonus, a raise, a short month. Recording what actually
+    arrived is what makes a year of income readable rather than a year of
+    guesses.
+    """
+    return pay_bill(item, amount=amount)
 
 
 @transaction.atomic

@@ -38,6 +38,7 @@ function billsData(overrides: Record<string, unknown> = {}) {
         url: "/api/items/1/",
         paid: false,
         repeats: true,
+        direction: "out",
         recurrence: "monthly",
         lead_days: 0,
         overdue: false,
@@ -46,6 +47,8 @@ function billsData(overrides: Record<string, unknown> = {}) {
     ],
     due_totals: { USD: "1200.00" },
     paid_totals: {},
+    expected_in_totals: {},
+    received_totals: {},
     unpriced: 0,
     ...overrides,
   };
@@ -103,7 +106,8 @@ describe("MoneyRoute", () => {
               url: "/api/items/1/",
               paid: true,
               repeats: false,
-              recurrence: "none",
+              direction: "out",
+      recurrence: "none",
               lead_days: 0,
               overdue: false,
               paid_amount: "1200.00",
@@ -144,6 +148,7 @@ describe("MoneyRoute", () => {
       url: `/api/items/${task_id}/`,
       paid,
       repeats: false,
+      direction: "out",
       recurrence: "none",
       lead_days: 0,
       overdue: false,
@@ -234,6 +239,8 @@ describe("MoneyRoute", () => {
           ],
           due_totals: {},
           paid_totals: {},
+          expected_in_totals: {},
+          received_totals: {},
           unpriced: 1,
         }),
       ),
@@ -247,7 +254,7 @@ describe("MoneyRoute", () => {
 
   it("says nothing is due rather than showing a zero total", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(() =>
-      jsonResponse(billsData({ bills: [], due_totals: {}, paid_totals: {}, unpriced: 0 })),
+      jsonResponse(billsData({ bills: [], due_totals: {}, paid_totals: {}, expected_in_totals: {}, received_totals: {}, unpriced: 0 })),
     );
 
     renderAt();
@@ -273,9 +280,14 @@ describe("MoneyRoute", () => {
 
     renderAt();
 
-    await userEvent.type(await screen.findByLabelText("Who it goes to"), "Landlord");
-    await userEvent.type(screen.getByLabelText("Amount"), "1200.00");
-    await userEvent.click(screen.getByRole("button", { name: "Add bill" }));
+    /* Scoped to the bill form: there are two add forms now, and both ask for
+       an Amount, correctly. The duplication is the page working. */
+    const form = (await screen.findByRole("button", { name: "Add bill" })).closest(
+      "form",
+    )!;
+    await userEvent.type(within(form).getByLabelText("Who it goes to"), "Landlord");
+    await userEvent.type(within(form).getByLabelText("Amount"), "1200.00");
+    await userEvent.click(within(form).getByRole("button", { name: "Add bill" }));
 
     const posted = fetchSpy.mock.calls
       .map(([request]) => request as Request)
@@ -295,7 +307,7 @@ describe("MoneyRoute", () => {
        arrives at wanting to add a bill. */
     vi.spyOn(globalThis, "fetch").mockImplementation(() =>
       jsonResponse(
-        billsData({ bills: [], due_totals: {}, paid_totals: {}, unpriced: 0 }),
+        billsData({ bills: [], due_totals: {}, paid_totals: {}, expected_in_totals: {}, received_totals: {}, unpriced: 0 }),
       ),
     );
 
@@ -403,7 +415,8 @@ describe("MoneyRoute", () => {
                 url: "/api/items/1/",
                 paid: false,
                 repeats: false,
-                recurrence: "none",
+                direction: "out",
+      recurrence: "none",
                 lead_days: 0,
                 overdue: false,
                 paid_amount: null,
@@ -471,7 +484,8 @@ describe("MoneyRoute", () => {
               url: "/api/items/1/",
               paid: true,
               repeats: false,
-              recurrence: "none",
+              direction: "out",
+      recurrence: "none",
               lead_days: 0,
               overdue: false,
               paid_amount: "1250.00",
@@ -489,6 +503,117 @@ describe("MoneyRoute", () => {
        they differ. */
     expect(screen.getByText(/1250.00 USD/)).toBeInTheDocument();
     expect(screen.getByText(/expected 1200.00/)).toBeInTheDocument();
+  });
+
+  it("keeps money in apart from money out", async () => {
+    /* Two sections, not one list with signs in it. And the verbs follow the
+       direction: you pay a bill and you receive income. */
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        billsData({
+          bills: [
+            {
+              task_id: 1,
+              text: "Pay Landlord",
+              due_date: "2026-08-01",
+              amount: "1200.00",
+              currency: "USD",
+              payee: "Landlord",
+              url: "/api/items/1/",
+              paid: false,
+              repeats: true,
+              direction: "out",
+              recurrence: "monthly",
+              lead_days: 0,
+              overdue: false,
+              paid_amount: null,
+            },
+            {
+              task_id: 2,
+              text: "From Acme Ltd",
+              due_date: "2026-08-28",
+              amount: "3200.00",
+              currency: "USD",
+              payee: "Acme Ltd",
+              url: "/api/items/2/",
+              paid: false,
+              repeats: true,
+              direction: "in",
+              recurrence: "monthly",
+              lead_days: 0,
+              overdue: false,
+              paid_amount: null,
+            },
+          ],
+          due_totals: { USD: "1200.00" },
+          expected_in_totals: { USD: "3200.00" },
+        }),
+      ),
+    );
+
+    renderAt();
+
+    expect(await screen.findByText("Coming in")).toBeInTheDocument();
+    expect(screen.getByText("expected in")).toBeInTheDocument();
+    /* The salary offers Receive, the bill offers Pay. A button saying Pay
+       beside a salary would be nonsense. */
+    expect(screen.getByRole("button", { name: /Receive Acme Ltd/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Pay Landlord/ })).toBeInTheDocument();
+  });
+
+  it("adds income through its own form", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((input) => {
+        const request = input as Request;
+        if (request.method === "POST") return jsonResponse({}, true, 201);
+        return jsonResponse(billsData());
+      });
+
+    renderAt();
+
+    await userEvent.type(
+      await screen.findByLabelText("Who it comes from"),
+      "Acme Ltd",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Add income" }));
+
+    const posted = fetchSpy.mock.calls
+      .map(([request]) => request as Request)
+      .filter((request) => request.url.includes("/money/income"));
+    await waitFor(() => expect(posted).toHaveLength(1));
+  });
+
+  it("shows the server's own words when a payee collides", async () => {
+    /* Vince, August 27, 2026: when two money lines collide, suggest renaming
+       the second with a notation. That sentence is written on the server and
+       has to survive the trip -- a generic "could not be added" would throw
+       away the only thing that says what to change. */
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const request = input as Request;
+      if (request.method === "POST") {
+        return jsonResponse(
+          {
+            detail:
+              "There is already an open bill from Amazon. Add a word to tell " +
+              "them apart — “Amazon (Prime)”, say — or edit the existing one.",
+          },
+          false,
+          409,
+        );
+      }
+      return jsonResponse(billsData());
+    });
+
+    renderAt();
+
+    const form = (await screen.findByRole("button", { name: "Add bill" })).closest(
+      "form",
+    )!;
+    await userEvent.type(within(form).getByLabelText("Who it goes to"), "Amazon");
+    await userEvent.click(within(form).getByRole("button", { name: "Add bill" }));
+
+    expect(await screen.findByText(/Amazon \(Prime\)/)).toBeInTheDocument();
   });
 
   it("reports a failure rather than an empty month", async () => {

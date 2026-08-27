@@ -47,7 +47,36 @@ function dayLabel(iso: string) {
  * *Pay Landlord* -- so there is no title box here and nobody has to know that
  * a bill is a task with a sidecar underneath. `money-module-plan.md` has why.
  */
-function AddBill({ month }: { month: string }) {
+/** A refusal the server bothered to word, turned into an Error carrying it.
+ *
+ * Ninja returns `{"detail": "..."}` for an `HttpError`, and the 409s on this
+ * router are all sentences meant for a person. Anything else falls back to the
+ * status, because an unworded failure should not pretend to be advice.
+ */
+async function refusal(response: Response) {
+  try {
+    const body = await response.clone().json();
+    if (typeof body?.detail === "string" && body.detail) {
+      return new Error(body.detail);
+    }
+  } catch {
+    // Not JSON, or already consumed. The status is what is left to say.
+  }
+  return new RequestFailed(response.status);
+}
+
+function AddBill({
+  month,
+  direction = "out",
+}: {
+  month: string;
+  direction?: "out" | "in";
+}) {
+  /* One form, two directions. Money in and money out ask for exactly the same
+     five things -- who, how much, which currency, when, how often -- so a
+     second component would be this one with four words changed and two places
+     to fix a bug in. */
+  const incoming = direction === "in";
   const queryClient = useQueryClient();
   const [payee, setPayee] = useState("");
   const [amount, setAmount] = useState("");
@@ -59,6 +88,21 @@ function AddBill({ month }: { month: string }) {
 
   const add = useMutation({
     mutationFn: async () => {
+      if (incoming) {
+        const { error, response } = await apiV1.POST("/api/v1/money/income", {
+          body: {
+            payer: payee,
+            amount: amount.trim() === "" ? null : amount.trim(),
+            currency,
+            due_date: dueDate,
+            recurrence,
+            repeats: recurrence !== "none",
+            lead_days: leadDays.trim() === "" ? 0 : Number(leadDays),
+          },
+        });
+        if (error || !response.ok) throw await refusal(response);
+        return;
+      }
       const { error, response } = await apiV1.POST("/api/v1/money/bills", {
         body: {
           payee,
@@ -74,7 +118,7 @@ function AddBill({ month }: { month: string }) {
         },
       });
       if (error || !response.ok) {
-        throw new RequestFailed(response.status);
+        throw await refusal(response);
       }
     },
     onSuccess: () => {
@@ -83,8 +127,16 @@ function AddBill({ month }: { month: string }) {
       setFailed(null);
       queryClient.invalidateQueries({ queryKey: ["bills"] });
     },
-    onError: () =>
-      setFailed("That bill could not be added. Check the payee and the amount."),
+    /* **The server's own words, when it has any.** A 409 here carries a
+       sentence written to be read -- "there is already an open bill from
+       Amazon; add a word to tell them apart" -- and replacing it with a
+       generic failure would throw away the only thing that tells somebody
+       what to change. */
+    onError: (caught: Error) =>
+      setFailed(
+        caught.message ||
+          "That could not be added. Check the payee and the amount.",
+      ),
   });
 
   function submit(event: FormEvent) {
@@ -94,14 +146,16 @@ function AddBill({ month }: { month: string }) {
 
   return (
     <form onSubmit={submit} className="space-y-3 rounded-lg border border-border p-3">
-      <h2 className="text-sm font-bold">Add a bill</h2>
+      <h2 className="text-sm font-bold">
+        {incoming ? "Add income" : "Add a bill"}
+      </h2>
       <div className="flex flex-wrap gap-3">
         <span className="min-w-40 flex-1 space-y-1">
-          <label htmlFor="bill-payee" className="text-sm">
-            Who it goes to
+          <label htmlFor={`${direction}-payee`} className="text-sm">
+            {incoming ? "Who it comes from" : "Who it goes to"}
           </label>
           <input
-            id="bill-payee"
+            id={`${direction}-payee`}
             value={payee}
             onChange={(event) => setPayee(event.target.value)}
             required
@@ -109,11 +163,11 @@ function AddBill({ month }: { month: string }) {
           />
         </span>
         <span className="w-32 space-y-1">
-          <label htmlFor="bill-amount" className="text-sm">
+          <label htmlFor={`${direction}-amount`} className="text-sm">
             Amount
           </label>
           <input
-            id="bill-amount"
+            id={`${direction}-amount`}
             value={amount}
             onChange={(event) => setAmount(event.target.value)}
             inputMode="decimal"
@@ -122,11 +176,11 @@ function AddBill({ month }: { month: string }) {
           />
         </span>
         <span className="w-24 space-y-1">
-          <label htmlFor="bill-currency" className="text-sm">
+          <label htmlFor={`${direction}-currency`} className="text-sm">
             Currency
           </label>
           <input
-            id="bill-currency"
+            id={`${direction}-currency`}
             value={currency}
             onChange={(event) => setCurrency(event.target.value.toUpperCase())}
             maxLength={3}
@@ -134,11 +188,11 @@ function AddBill({ month }: { month: string }) {
           />
         </span>
         <span className="w-40 space-y-1">
-          <label htmlFor="bill-due" className="text-sm">
+          <label htmlFor={`${direction}-due`} className="text-sm">
             Due
           </label>
           <input
-            id="bill-due"
+            id={`${direction}-due`}
             type="date"
             value={dueDate}
             onChange={(event) => setDueDate(event.target.value)}
@@ -149,14 +203,14 @@ function AddBill({ month }: { month: string }) {
       </div>
       <div className="flex flex-wrap gap-3">
         <span className="w-44 space-y-1">
-          <label htmlFor="bill-cadence" className="text-sm">
+          <label htmlFor={`${direction}-cadence`} className="text-sm">
             How often
           </label>
           {/* The model has had all four of these since Crane; the form used to
               offer a checkbox, which is why an annual subscription could not
               be written down at all. */}
           <select
-            id="bill-cadence"
+            id={`${direction}-cadence`}
             value={recurrence}
             onChange={(event) => setRecurrence(event.target.value)}
             className="w-full rounded-lg border border-border bg-input px-3 py-2"
@@ -169,13 +223,13 @@ function AddBill({ month }: { month: string }) {
           </select>
         </span>
         <span className="w-52 space-y-1">
-          <label htmlFor="bill-lead" className="text-sm">
+          <label htmlFor={`${direction}-lead`} className="text-sm">
             Warn me this many days early
           </label>
           {/* The reason this module exists. An annual subscription that speaks
               on the day it renews has already charged you. */}
           <input
-            id="bill-lead"
+            id={`${direction}-lead`}
             value={leadDays}
             onChange={(event) => setLeadDays(event.target.value)}
             inputMode="numeric"
@@ -186,7 +240,7 @@ function AddBill({ month }: { month: string }) {
       </div>
       {failed && <p className="text-sm text-destructive">{failed}</p>}
       <Button type="submit" disabled={add.isPending}>
-        Add bill
+        {incoming ? "Add income" : "Add bill"}
       </Button>
     </form>
   );
@@ -201,6 +255,7 @@ type BillRow = {
   payee: string;
   paid: boolean;
   repeats: boolean;
+  direction: string;
   recurrence: string;
   lead_days: number;
   overdue: boolean;
@@ -374,9 +429,14 @@ function PayBill({ bill }: { bill: BillRow }) {
         type="button"
         onClick={() => setOpen(true)}
         className="touch-target text-sm font-medium hover:underline"
-        aria-label={`Pay ${bill.payee || bill.text}`}
+        aria-label={`${bill.direction === "in" ? "Receive" : "Pay"} ${
+          bill.payee || bill.text
+        }`}
       >
-        Pay
+        {/* You pay a bill and you receive income. A button saying Pay beside a
+            salary would be nonsense, and the same endpoint serves both --
+            settling is settling. */}
+        {bill.direction === "in" ? "Receive" : "Pay"}
       </button>
     );
   }
@@ -384,7 +444,7 @@ function PayBill({ bill }: { bill: BillRow }) {
   return (
     <span className="flex flex-wrap items-center gap-2">
       <label htmlFor={`pay-amount-${bill.task_id}`} className="text-xs">
-        Paid
+        {bill.direction === "in" ? "Received" : "Paid"}
       </label>
       <input
         id={`pay-amount-${bill.task_id}`}
@@ -395,7 +455,7 @@ function PayBill({ bill }: { bill: BillRow }) {
         className="w-24 rounded-lg border border-border bg-input px-2 py-1"
       />
       <Button size="sm" onClick={() => pay.mutate()} disabled={pay.isPending}>
-        Mark paid
+        {bill.direction === "in" ? "Mark received" : "Mark paid"}
       </Button>
       <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>
         Cancel
@@ -501,6 +561,13 @@ export function MoneyRoute() {
 
   const due = Object.entries(data.due_totals);
   const paid = Object.entries(data.paid_totals);
+  const expectedIn = Object.entries(data.expected_in_totals);
+  const received = Object.entries(data.received_totals);
+  /* Two sections rather than one mixed list. Money in and money out are read
+     for different reasons -- what do I owe, and what is coming -- and a single
+     column with signs in it makes both harder to scan. */
+  const outgoing = data.bills.filter((bill) => bill.direction !== "in");
+  const incoming = data.bills.filter((bill) => bill.direction === "in");
 
   return (
     <div className="max-w-2xl mx-auto space-y-4 px-4 py-8">
@@ -526,6 +593,7 @@ export function MoneyRoute() {
           this month." with two links, both to other empty months -- a page
           named after a thing you could not make on it. */}
       <AddBill month={data.month_start} />
+      <AddBill month={data.month_start} direction="in" />
 
       {data.bills.length === 0 ? (
         // "Nothing is due" rather than "0.00 is due" — different facts, and
@@ -536,7 +604,7 @@ export function MoneyRoute() {
       ) : (
         <>
           <ul className="space-y-1">
-            {data.bills.map((bill) =>
+            {outgoing.map((bill) =>
               editing === bill.task_id ? (
                 <EditBill
                   key={bill.task_id}
@@ -561,7 +629,7 @@ export function MoneyRoute() {
                       the month's record of it should not read as cancelled. */}
                   {bill.paid && (
                     <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
-                      paid
+                      {bill.direction === "in" ? "received" : "paid"}
                     </span>
                   )}
                   {/* Late, decided on the server against the owner's clock --
@@ -635,6 +703,75 @@ export function MoneyRoute() {
             )}
           </ul>
 
+          {/* Money in, kept apart from money out. They are read for different
+              reasons -- what do I owe, and what is coming -- and one column
+              with signs in it makes both harder to scan. */}
+          {incoming.length > 0 && (
+            <>
+              <h2 className="pt-2 text-sm font-bold">Coming in</h2>
+              <ul className="space-y-1">
+                {incoming.map((bill) =>
+                  editing === bill.task_id ? (
+                    <EditBill
+                      key={bill.task_id}
+                      bill={bill}
+                      onDone={() => setEditing(null)}
+                    />
+                  ) : (
+                    <li
+                      key={bill.task_id}
+                      className="flex flex-wrap items-baseline justify-between gap-3 rounded-lg border border-border px-3 py-2"
+                    >
+                      <span className="min-w-0">
+                        <span className={bill.paid ? "text-muted-foreground" : ""}>
+                          {bill.text}
+                        </span>
+                        {bill.paid && (
+                          <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+                            received
+                          </span>
+                        )}
+                        {bill.overdue && (
+                          <span className="ml-2 rounded bg-destructive/15 px-1.5 py-0.5 text-xs font-medium text-destructive">
+                            not arrived
+                          </span>
+                        )}
+                        {bill.recurrence !== "none" && (
+                          <span className="ml-2 text-xs text-muted-foreground">
+                            {cadenceLabel(bill.recurrence).toLowerCase()}
+                          </span>
+                        )}
+                      </span>
+                      <span className="flex shrink-0 items-baseline gap-3">
+                        <span className="text-sm text-muted-foreground">
+                          {dayLabel(bill.due_date)}
+                        </span>
+                        <span className="text-sm">
+                          {bill.paid && bill.paid_amount !== null
+                            ? `${bill.paid_amount} ${bill.currency}`
+                            : bill.amount === null
+                              ? <span className="text-muted-foreground">no amount</span>
+                              : `${bill.amount} ${bill.currency}`}
+                        </span>
+                        <PayBill bill={bill} />
+                        <button
+                          type="button"
+                          onClick={() => setEditing(bill.task_id)}
+                          className="touch-target text-sm text-muted-foreground hover:text-foreground"
+                          aria-label={`Edit ${bill.payee || bill.text}`}
+                        >
+                          Edit
+                        </button>
+                        <DeleteBill bill={bill} />
+                      </span>
+                    </li>
+                  ),
+                )}
+              </ul>
+            </>
+          )}
+
+
           {/* One line per currency, never one number: adding 500 USD to 40 GBP
               produces 540 of nothing.
 
@@ -643,6 +780,26 @@ export function MoneyRoute() {
               money-module-plan.md. What you owe and what the month cost are
               different questions and the page now answers both out loud. */}
           <div className="space-y-1 border-t border-border pt-2">
+            {incoming.length > 0 && (
+              <>
+                {expectedIn.map(([code, total]) => (
+                  <p key={`in-${code}`} className="text-sm">
+                    <span className="font-bold">
+                      {total} {code}
+                    </span>{" "}
+                    expected in
+                  </p>
+                ))}
+                {received.map(([code, total]) => (
+                  <p key={`got-${code}`} className="text-sm text-muted-foreground">
+                    <span className="font-bold">
+                      {total} {code}
+                    </span>{" "}
+                    already received
+                  </p>
+                ))}
+              </>
+            )}
             {due.map(([code, total]) => (
               <p key={`due-${code}`} className="text-sm">
                 <span className="font-bold">

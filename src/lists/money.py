@@ -30,7 +30,7 @@ from decimal import Decimal
 
 from django.db.models import Q
 
-from lists.models import MoneyLine, Item
+from lists.models import Direction, Item, MoneyLine
 
 
 @dataclass(frozen=True)
@@ -96,6 +96,13 @@ class MonthOfBills:
     #: I owe* and *what did this month cost* it is answering, and cannot say
     #: which it chose.
     paid_totals: dict
+    #: What is **expected in** and has not arrived, per currency.
+    expected_in_totals: dict
+    #: What has **already arrived**, per currency. Kept apart from what is
+    #: expected for the same reason `paid_totals` is kept apart from
+    #: `due_totals`: a figure that mixes the two cannot say whether a month
+    #: balanced or merely looks as though it will.
+    received_totals: dict
     #: How many of them have no amount. Counted and not totalled, because "the
     #: water bill, whatever it comes to" is a real bill and a total that
     #: silently omitted it would be a number somebody plans against.
@@ -139,6 +146,8 @@ def bills_for(owner, day):
 
     due = defaultdict(Decimal)
     paid = defaultdict(Decimal)
+    expected_in = defaultdict(Decimal)
+    received = defaultdict(Decimal)
     unpriced = 0
     for row in rows:
         if row.bill.amount is None:
@@ -146,21 +155,27 @@ def bills_for(owner, day):
             # came to" is as unpriced after paying it as before.
             unpriced += 1
             continue
+        # **Four buckets, not two**, because a salary in the *still to pay*
+        # column would make every month look catastrophic. Direction decides
+        # which pair, settlement decides which of the pair.
+        incoming = row.bill.direction == Direction.IN
         if row.paid:
-            # What went out, not what was expected -- they differ the moment
-            # somebody pays extra, and only one of them is what the month cost.
-            # Falls back to the expected figure for bills paid before
-            # `paid_amount` existed.
-            paid[row.bill.currency] += (
+            # What actually moved, not what was expected -- they differ the
+            # moment somebody pays extra or a bonus lands. Falls back to the
+            # expected figure for rows settled before `paid_amount` existed.
+            settled = (
                 row.bill.paid_amount
                 if row.bill.paid_amount is not None
                 else row.bill.amount
             )
+            (received if incoming else paid)[row.bill.currency] += settled
         else:
-            due[row.bill.currency] += row.bill.amount
+            (expected_in if incoming else due)[row.bill.currency] += row.bill.amount
     return MonthOfBills(
         bills=rows,
         due_totals=dict(due),
         paid_totals=dict(paid),
+        expected_in_totals=dict(expected_in),
+        received_totals=dict(received),
         unpriced=unpriced,
     )

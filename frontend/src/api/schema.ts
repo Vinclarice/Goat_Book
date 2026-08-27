@@ -81,11 +81,34 @@ export interface paths {
          *
          *     **Under `/money/` since August 27, 2026.** The resources are still bills --
          *     a bill is one kind of money thing and income will be its sibling, not the
-         *     same record -- so what moved is the namespace, not the noun. `Bill` keeps
+         *     same record -- so what moved is the namespace, not the noun. `MoneyLine` keeps
          *     its name for exactly that reason: a model named after the module would have
          *     to hold both.
          */
         patch: operations["lists_api_v1_edit_bill"];
+        trace?: never;
+    };
+    "/api/v1/money/income": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add Income
+         * @description Record money expected in.
+         *
+         *     **Beside bills under `/money/`, not a second top-level noun** -- which is
+         *     what makes Money a module rather than a longer word for one page.
+         */
+        post: operations["lists_api_v1_add_income"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/money/bills/entry/{task_id}/pay": {
@@ -1386,6 +1409,8 @@ export interface components {
             paid: boolean;
             /** Repeats */
             repeats: boolean;
+            /** Direction */
+            direction: string;
             /** Recurrence */
             recurrence: string;
             /** Lead Days */
@@ -1464,6 +1489,42 @@ export interface components {
             recurrence?: string | null;
         };
         /**
+         * NewIncomeIn
+         * @description What adding income asks for. The mirror of `NewBillIn`, one word apart.
+         *
+         *     `payer` rather than `payee`, because that is what a person calls the other
+         *     end of money coming toward them -- and the name is derived from it the same
+         *     way: `Acme Ltd` becomes *From Acme Ltd*.
+         */
+        NewIncomeIn: {
+            /** Payer */
+            payer: string;
+            /** Amount */
+            amount?: string | null;
+            /**
+             * Currency
+             * @default USD
+             */
+            currency: string;
+            /**
+             * Due Date
+             * Format: date
+             */
+            due_date: string;
+            /**
+             * Repeats
+             * @default true
+             */
+            repeats: boolean;
+            /** Recurrence */
+            recurrence?: string | null;
+            /**
+             * Lead Days
+             * @default 0
+             */
+            lead_days: number;
+        };
+        /**
          * PayBillIn
          * @description What went out, when it is not what was expected.
          *
@@ -1499,6 +1560,14 @@ export interface components {
             };
             /** Paid Totals */
             paid_totals: {
+                [key: string]: string;
+            };
+            /** Expected In Totals */
+            expected_in_totals: {
+                [key: string]: string;
+            };
+            /** Received Totals */
+            received_totals: {
                 [key: string]: string;
             };
             /** Unpriced */
@@ -3413,6 +3482,30 @@ export interface operations {
         responses: {
             /** @description OK */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MonthBillOut"];
+                };
+            };
+        };
+    };
+    lists_api_v1_add_income: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewIncomeIn"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };

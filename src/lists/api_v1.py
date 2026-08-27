@@ -257,6 +257,10 @@ class MonthBillOut(Schema):
     #: deleting has one meaning or two: removing August's rent is not the same
     #: act as stopping rent.
     repeats: bool
+    #: Which way the money goes -- "out" for a bill, "in" for income. The page
+    #: needs it for the verb: you *pay* a bill and you *receive* income, and a
+    #: button saying Pay beside a salary would be nonsense.
+    direction: str
     #: Which cadence, so the page can say *every year* rather than *repeats*.
     recurrence: str
     #: Days of warning, and null when there is none.
@@ -287,6 +291,12 @@ class MonthOfBillsOut(Schema):
     due_totals: dict[str, str]
     #: What has already gone out this month, per currency.
     paid_totals: dict[str, str]
+    #: What is expected in and has not arrived, per currency.
+    expected_in_totals: dict[str, str]
+    #: What has already arrived, per currency. Apart from what is expected for
+    #: the same reason paid is apart from due: a figure mixing the two cannot
+    #: say whether a month balanced or merely looks as though it will.
+    received_totals: dict[str, str]
     #: How many are counted but not totalled, so the figure above cannot
     #: quietly understate the month.
     unpriced: int
@@ -364,6 +374,7 @@ def add_bill(request, payload: NewBillIn):
         "url": reverse("api_item_detail", args=[item.id]),
         "paid": False,
         "repeats": item.recurrence != Item.Recurrence.NONE,
+        "direction": item.money_line.direction,
         "recurrence": item.recurrence,
         "lead_days": item.lead_days,
         "paid_amount": None,
@@ -406,6 +417,7 @@ def _bill_row_out(item):
         # every paid rent as unpaid. Same rule as `BillRow.paid`.
         "paid": item.completed_at is not None,
         "repeats": item.recurrence != Item.Recurrence.NONE,
+        "direction": item.money_line.direction,
         "recurrence": item.recurrence,
         "lead_days": item.lead_days,
         "paid_amount": (
@@ -474,6 +486,54 @@ class PayBillIn(Schema):
     """
 
     amount: str | None = None
+
+
+class NewIncomeIn(Schema):
+    """What adding income asks for. The mirror of `NewBillIn`, one word apart.
+
+    `payer` rather than `payee`, because that is what a person calls the other
+    end of money coming toward them -- and the name is derived from it the same
+    way: `Acme Ltd` becomes *From Acme Ltd*.
+    """
+
+    payer: str
+    amount: str | None = None
+    currency: str = "USD"
+    due_date: date
+    repeats: bool = True
+    recurrence: str | None = None
+    lead_days: int = 0
+
+
+@router.post(
+    "/money/income", response={201: MonthBillOut}, auth=SessionAuthIfLoggedIn()
+)
+def add_income(request, payload: NewIncomeIn):
+    """Record money expected in.
+
+    **Beside bills under `/money/`, not a second top-level noun** -- which is
+    what makes Money a module rather than a longer word for one page.
+    """
+    amount = None
+    if payload.amount not in (None, ""):
+        try:
+            amount = Decimal(payload.amount)
+        except InvalidOperation:
+            raise HttpError(409, "That amount is not a number.")
+    try:
+        item = services.create_income(
+            request.user,
+            payer=payload.payer,
+            amount=amount,
+            currency=payload.currency,
+            due_date=payload.due_date,
+            repeats=payload.repeats,
+            recurrence=payload.recurrence,
+            lead_days=payload.lead_days,
+        )
+    except services.TaskConflict as error:
+        raise HttpError(409, str(error))
+    return 201, _bill_row_out(item)
 
 
 @router.post(
@@ -555,6 +615,7 @@ def months_bills(request, day: date):
                 "url": reverse("api_item_detail", args=[row.task.id]),
                 "paid": row.paid,
                 "repeats": row.task.recurrence != Item.Recurrence.NONE,
+                "direction": row.bill.direction,
                 "recurrence": row.task.recurrence,
                 "lead_days": row.task.lead_days,
                 "paid_amount": (
@@ -568,6 +629,12 @@ def months_bills(request, day: date):
         ],
         "due_totals": {
             code: str(total) for code, total in found.due_totals.items()
+        },
+        "expected_in_totals": {
+            code: str(total) for code, total in found.expected_in_totals.items()
+        },
+        "received_totals": {
+            code: str(total) for code, total in found.received_totals.items()
         },
         "paid_totals": {
             code: str(total) for code, total in found.paid_totals.items()

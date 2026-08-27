@@ -87,6 +87,14 @@ export function SideNav() {
               Months
             </Link>
           </h3>
+          {/* The monthly pass, above the months rather than among them: it is
+              an action and they are places, and a list that mixes the two is
+              the reading problem this rail already has one of. Vince asked for
+              it here rather than only as a link on Money -- a ritual you do
+              twelve times a year should not need finding. */}
+          <NavLink to="/money/balances" className={navLinkClass} end>
+            <span className={styles.name}>Update balances</span>
+          </NavLink>
           {months.map((each) => (
             <NavLink
               key={each.iso}

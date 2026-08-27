@@ -26,3 +26,41 @@ export class RequestFailed extends Error {
 export function statusOf(error: unknown): number | undefined {
   return error instanceof RequestFailed ? error.status : undefined;
 }
+
+
+/**
+ * A refusal the server bothered to word, as an Error carrying that sentence.
+ *
+ * Ninja answers an `HttpError` with `{"detail": "..."}`, and every 409 on the
+ * money router is a sentence written for a person -- *"there is already an open
+ * bill from Amazon; add a word to tell them apart"*, *"Stocks ISA: that is not a
+ * number"*. Routes were catching those and substituting their own generic
+ * apology, which threw away the only part that says what to change.
+ *
+ * **`error` first, `response` second.** openapi-fetch has already parsed the
+ * body by the time a route sees it, and reading the stream again is both
+ * redundant and fragile -- a `clone()` that a test double implements as
+ * `return this` is not a clone, and the second read can find nothing. Falling
+ * back to the response covers the case where the body was not JSON.
+ *
+ * Anything unworded becomes a `RequestFailed`, because a failure with nothing
+ * to say should not pretend to be advice.
+ */
+export async function refusal(
+  error: unknown,
+  response: Response,
+): Promise<Error> {
+  const parsed = error as { detail?: unknown } | undefined;
+  if (typeof parsed?.detail === "string" && parsed.detail) {
+    return new Error(parsed.detail);
+  }
+  try {
+    const body = await response.clone().json();
+    if (typeof body?.detail === "string" && body.detail) {
+      return new Error(body.detail);
+    }
+  } catch {
+    // Not JSON, or already consumed. The status is what is left to say.
+  }
+  return new RequestFailed(response.status);
+}

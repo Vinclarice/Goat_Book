@@ -135,6 +135,67 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/money/accounts/{day}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Months Accounts
+         * @description Every account, with the month's figure and the one before it.
+         */
+        get: operations["lists_api_v1_months_accounts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/money/accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add Account */
+        post: operations["lists_api_v1_add_account"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/money/balances": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record Balances
+         * @description The monthly pass, saved in one go.
+         *
+         *     **One transaction**, so a bad figure in the fifth box does not leave four
+         *     saved and two not -- which is the failure a batch exists to prevent and
+         *     would otherwise quietly introduce.
+         */
+        post: operations["lists_api_v1_record_balances"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/money/bills/{day}": {
         parameters: {
             query?: never;
@@ -1534,6 +1595,86 @@ export interface components {
         PayBillIn: {
             /** Amount */
             amount?: string | null;
+        };
+        /** AccountOut */
+        AccountOut: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Kind */
+            kind: string;
+            /** Currency */
+            currency: string;
+            /** Owes */
+            owes: boolean;
+            /** Balance */
+            balance: string | null;
+            /** Previous */
+            previous: string | null;
+        };
+        /** AccountsOut */
+        AccountsOut: {
+            /**
+             * Month Start
+             * Format: date
+             */
+            month_start: string;
+            /** Accounts */
+            accounts: components["schemas"]["AccountOut"][];
+            /** Owed Totals */
+            owed_totals: {
+                [key: string]: string;
+            };
+            /** Held Totals */
+            held_totals: {
+                [key: string]: string;
+            };
+        };
+        /** NewAccountIn */
+        NewAccountIn: {
+            /** Name */
+            name: string;
+            /**
+             * Kind
+             * @default card
+             */
+            kind: string;
+            /**
+             * Currency
+             * @default USD
+             */
+            currency: string;
+            /** Owes */
+            owes?: boolean | null;
+        };
+        /**
+         * BalanceIn
+         * @description One month's figure for one account.
+         */
+        BalanceIn: {
+            /** Account Id */
+            account_id: number;
+            /** Amount */
+            amount?: string | null;
+        };
+        /**
+         * BalancesIn
+         * @description The monthly pass, as one request.
+         *
+         *     **A batch because the ritual is a batch.** Vince described sitting down at
+         *     month end and updating every balance; six separate requests would make that
+         *     six chances to be half-done, and a page that is half-saved is worse than one
+         *     that is not saved.
+         */
+        BalancesIn: {
+            /**
+             * On Date
+             * Format: date
+             */
+            on_date: string;
+            /** Readings */
+            readings: components["schemas"]["BalanceIn"][];
         };
         /** MonthOfBillsOut */
         MonthOfBillsOut: {
@@ -3537,6 +3678,76 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MonthBillOut"];
+                };
+            };
+        };
+    };
+    lists_api_v1_months_accounts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                day: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountsOut"];
+                };
+            };
+        };
+    };
+    lists_api_v1_add_account: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewAccountIn"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountOut"];
+                };
+            };
+        };
+    };
+    lists_api_v1_record_balances: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BalancesIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountsOut"];
                 };
             };
         };

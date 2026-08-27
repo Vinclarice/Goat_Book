@@ -220,6 +220,50 @@ them. It now reads the server's `detail` and falls back to the status only when
 there is nothing to say, because an unworded failure should not pretend to be
 advice.
 
+## Balances — August 27, 2026
+
+Vince: *"for those with balances (like loans and credit cards), I'd like to have
+the ability to add the current monthly balance -- typically at the end of the
+month I'll do a review and update all the balances."*
+
+**A different animal, and §4 says so properly this time.** A `MoneyLine` is an
+expected movement on a date that settles once; an `Account` is a value re-read
+forever that never settles. A card's balance belongs to the card, not to this
+month's payment. Both new models carry their charter compliance at the class.
+
+**And investments came free**, which is why the model was worth insisting on.
+Both are *a thing whose value changes, re-read periodically*, differing in sign —
+so a stocks ISA is an account with `owes: false` and is already in the update
+screen and the held total. One build, not two.
+
+**`owes` is a flag, not a negative number.** A card at 4,200 and an ISA at 4,200
+are both four thousand two hundred; storing debt as `-4200` makes every read
+carry a sign convention nobody wrote down, and one place forgetting it produces
+a net worth wrong by twice the balance.
+
+**A reading is a row.** *Is this loan going down* is a question about a series,
+and a field overwritten monthly keeps no series to answer with — the same
+argument that gave `paid_amount` its own column.
+
+**The ritual is a batch, so the endpoint is.** One transaction, so a bad figure
+in the fifth box does not leave four saved and two not. An untouched box means
+*skip me*, never *blank me*. And the boxes start empty with last month shown
+beside them: pre-filling would make an untouched box look like a considered
+answer, which is the thing a monthly review exists to prevent.
+
+**Owed and held are never subtracted.** A net worth is a different claim from
+either, and not one six typed numbers entitle this page to make.
+
+**What the guards caught, and it is the third tonight.**
+`test_every_owned_model_is_named_somewhere_in_the_export` failed on the new
+models: they hold a person's financial data and were absent from the data export
+that `/privacy/` promises. Its docstring anticipated exactly this — *"a model
+added later without an export line fails here rather than being discovered by
+somebody who has already deleted their account."* Exported as
+`accounts_with_balances`, not `accounts`, because the archive already has an
+`account` key for login details and two of those teaches a reader the wrong
+thing.
+
 ## What is still open
 
 **Investments.** The question is not whether to build it but whether balances

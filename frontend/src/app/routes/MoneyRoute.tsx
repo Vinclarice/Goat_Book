@@ -5,7 +5,7 @@ import { Link, useParams } from "react-router";
 import { Button } from "../../components/ui/button";
 
 import { apiV1 } from "../../api/client";
-import { RequestFailed, statusOf } from "../../api/failure";
+import { RequestFailed, refusal, statusOf } from "../../api/failure";
 import { RouteFailure } from "./RouteFailure";
 
 /**
@@ -47,24 +47,6 @@ function dayLabel(iso: string) {
  * *Pay Landlord* -- so there is no title box here and nobody has to know that
  * a bill is a task with a sidecar underneath. `money-module-plan.md` has why.
  */
-/** A refusal the server bothered to word, turned into an Error carrying it.
- *
- * Ninja returns `{"detail": "..."}` for an `HttpError`, and the 409s on this
- * router are all sentences meant for a person. Anything else falls back to the
- * status, because an unworded failure should not pretend to be advice.
- */
-async function refusal(response: Response) {
-  try {
-    const body = await response.clone().json();
-    if (typeof body?.detail === "string" && body.detail) {
-      return new Error(body.detail);
-    }
-  } catch {
-    // Not JSON, or already consumed. The status is what is left to say.
-  }
-  return new RequestFailed(response.status);
-}
-
 function AddBill({
   month,
   direction = "out",
@@ -100,7 +82,7 @@ function AddBill({
             lead_days: leadDays.trim() === "" ? 0 : Number(leadDays),
           },
         });
-        if (error || !response.ok) throw await refusal(response);
+        if (error || !response.ok) throw await refusal(error, response);
         return;
       }
       const { error, response } = await apiV1.POST("/api/v1/money/bills", {
@@ -118,7 +100,7 @@ function AddBill({
         },
       });
       if (error || !response.ok) {
-        throw await refusal(response);
+        throw await refusal(error, response);
       }
     },
     onSuccess: () => {
@@ -575,9 +557,18 @@ export function MoneyRoute() {
           this spot until August 27, 2026 and moved to the rail, where twelve
           months are one click each instead of four clicks back to April --
           Vince's call. Two ways to change month would be one too many. */}
-      <h1 className="font-sans text-xl font-bold">
-        {monthLabel(data.month_start)}
-      </h1>
+      <div className="flex flex-wrap items-baseline justify-between gap-3">
+        <h1 className="font-sans text-xl font-bold">
+          {monthLabel(data.month_start)}
+        </h1>
+        {/* The monthly pass, one click from the month it belongs to. */}
+        <Link
+          to={`/money/balances/${data.month_start}`}
+          className="touch-target text-sm text-muted-foreground hover:text-foreground"
+        >
+          Update balances →
+        </Link>
+      </div>
 
       {/* Above the month, not below it. The page used to end at "No bills due
           this month." with two links, both to other empty months -- a page

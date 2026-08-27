@@ -6,6 +6,7 @@ import { AppLayout } from "./AppLayout";
 import { AgendaRoute } from "./routes/AgendaRoute";
 import { ArchiveRoute } from "./routes/ArchiveRoute";
 import { CalendarRoute } from "./routes/CalendarRoute";
+import { BalancesRoute } from "./routes/BalancesRoute";
 import { MoneyRoute } from "./routes/MoneyRoute";
 import { DayRoute } from "./routes/DayRoute";
 import { DevUiGallery } from "./routes/DevUiGallery";
@@ -103,6 +104,10 @@ export function AppRoutes() {
         <Route path="/calendar/:month" element={<CalendarRoute />} />
         {/* A bill is a task with a sidecar; this is a read over them. */}
         <Route path="/money" element={<MoneyRoute />} />
+        {/* Before /money/:month, or "balances" is read as a date and the
+            monthly pass becomes an unparseable month. */}
+        <Route path="/money/balances" element={<BalancesRoute />} />
+        <Route path="/money/balances/:month" element={<BalancesRoute />} />
         <Route path="/money/:month" element={<MoneyRoute />} />
         {/* The old address, kept working. One person and a bookmark is enough
             reason -- `/capture/` is the precedent for how expensive a moved

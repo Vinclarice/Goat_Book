@@ -26,6 +26,8 @@ from uuid import UUID
 from accounts.models import Invitation, PersonalAccessToken, User
 from daily.models import DailyEntry, DailyFocus
 from lists.models import (
+    Account,
+    BalanceReading,
     MoneyLine,
     ChecklistStep,
     Item,
@@ -93,6 +95,8 @@ EXPORT_KEYS = {
     # its own, which is exactly the shape that goes missing from a list like
     # this. The test above is what caught it.
     MoneyLine: "bills",
+    Account: "accounts_with_balances",
+    BalanceReading: "balances",
     Tag: "tags",
     RecurringCommitment: "commitments",
     DailyEntry: "entries",
@@ -237,6 +241,15 @@ def _payload(user, *, now):
             "items": _rows(Item.objects.filter(owner=user), many_to_many=("tags",)),
             "checklist_steps": _rows(ChecklistStep.objects.filter(owner=user)),
             "bills": _rows(MoneyLine.objects.filter(item__owner=user)),
+            # **Named `accounts_with_balances`, not `accounts`.** The archive
+            # already has an `account` key for the person's own login details,
+            # and two things called account in one payload is how somebody
+            # reading their own export learns the wrong thing about it.
+            "accounts_with_balances": _rows(Account.objects.filter(owner=user)),
+            # Reached through the account rather than by an owner of their own:
+            # a reading belongs to an account and the account belongs to a
+            # person, which is the same shape `bills` uses through its item.
+            "balances": _rows(BalanceReading.objects.filter(account__owner=user)),
             "tags": _rows(Tag.objects.filter(owner=user)),
             "commitments": _rows(
                 RecurringCommitment.objects.filter(owner=user),

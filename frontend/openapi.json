@@ -229,6 +229,111 @@
         ]
       }
     },
+    "/api/v1/money/accounts/{day}": {
+      "get": {
+        "operationId": "lists_api_v1_months_accounts",
+        "summary": "Months Accounts",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "day",
+            "schema": {
+              "format": "date",
+              "title": "Day",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountsOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Every account, with the month's figure and the one before it.",
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      }
+    },
+    "/api/v1/money/accounts": {
+      "post": {
+        "operationId": "lists_api_v1_add_account",
+        "summary": "Add Account",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountOut"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewAccountIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      }
+    },
+    "/api/v1/money/balances": {
+      "post": {
+        "operationId": "lists_api_v1_record_balances",
+        "summary": "Record Balances",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountsOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "The monthly pass, saved in one go.\n\n**One transaction**, so a bad figure in the fifth box does not leave four\nsaved and two not -- which is the failure a batch exists to prevent and\nwould otherwise quietly introduce.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BalancesIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      }
+    },
     "/api/v1/money/bills/{day}": {
       "get": {
         "operationId": "lists_api_v1_months_bills",
@@ -2795,6 +2900,183 @@
           }
         },
         "title": "PayBillIn",
+        "type": "object"
+      },
+      "AccountOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "owes": {
+            "title": "Owes",
+            "type": "boolean"
+          },
+          "balance": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Balance"
+          },
+          "previous": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "currency",
+          "owes",
+          "balance",
+          "previous"
+        ],
+        "title": "AccountOut",
+        "type": "object"
+      },
+      "AccountsOut": {
+        "properties": {
+          "month_start": {
+            "format": "date",
+            "title": "Month Start",
+            "type": "string"
+          },
+          "accounts": {
+            "items": {
+              "$ref": "#/components/schemas/AccountOut"
+            },
+            "title": "Accounts",
+            "type": "array"
+          },
+          "owed_totals": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Owed Totals",
+            "type": "object"
+          },
+          "held_totals": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Held Totals",
+            "type": "object"
+          }
+        },
+        "required": [
+          "month_start",
+          "accounts",
+          "owed_totals",
+          "held_totals"
+        ],
+        "title": "AccountsOut",
+        "type": "object"
+      },
+      "NewAccountIn": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "kind": {
+            "default": "card",
+            "title": "Kind",
+            "type": "string"
+          },
+          "currency": {
+            "default": "USD",
+            "title": "Currency",
+            "type": "string"
+          },
+          "owes": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owes"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "NewAccountIn",
+        "type": "object"
+      },
+      "BalanceIn": {
+        "description": "One month's figure for one account.",
+        "properties": {
+          "account_id": {
+            "title": "Account Id",
+            "type": "integer"
+          },
+          "amount": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          }
+        },
+        "required": [
+          "account_id"
+        ],
+        "title": "BalanceIn",
+        "type": "object"
+      },
+      "BalancesIn": {
+        "description": "The monthly pass, as one request.\n\n**A batch because the ritual is a batch.** Vince described sitting down at\nmonth end and updating every balance; six separate requests would make that\nsix chances to be half-done, and a page that is half-saved is worse than one\nthat is not saved.",
+        "properties": {
+          "on_date": {
+            "format": "date",
+            "title": "On Date",
+            "type": "string"
+          },
+          "readings": {
+            "items": {
+              "$ref": "#/components/schemas/BalanceIn"
+            },
+            "title": "Readings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "on_date",
+          "readings"
+        ],
+        "title": "BalancesIn",
         "type": "object"
       },
       "MonthOfBillsOut": {

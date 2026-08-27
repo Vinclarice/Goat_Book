@@ -15,8 +15,11 @@ same split `Item`/"task" already lives with. Python locals below still read
 See `lists/tests/test_area_vocabulary.py` for the guard.
 """
 from calendar import monthrange
+from collections import defaultdict
 from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
+
+from django.db import transaction
 from typing import Literal
 
 from django.shortcuts import get_object_or_404
@@ -34,7 +37,7 @@ from lists import money as money_reader
 from lists import projects as project_reader
 from lists import services
 from lists.forms import ListTitleForm
-from lists.models import CadenceMode, Item, List
+from lists.models import Account, CadenceMode, Item, List
 from lists.serializers import (
     archive_workspace_data_for,
     area_ref_for,
@@ -585,6 +588,163 @@ def remove_bill(request, task_id: int, whole_series: bool = False):
     except services.TaskConflict as error:
         raise HttpError(409, str(error))
     return 204, None
+
+
+class AccountOut(Schema):
+    id: int
+    name: str
+    kind: str
+    currency: str
+    #: Whether the figure is money owed or money held. **Named, not signed** --
+    #: a card at 4,200 and an ISA at 4,200 are both four thousand two hundred,
+    #: and a negative number would make every reader carry a convention.
+    owes: bool
+    #: This month's figure, if one has been recorded. Null is *not entered yet*,
+    #: which is different from zero and is the state the update screen exists to
+    #: clear.
+    balance: str | None
+    #: The month before's, so the page can say which way it moved without a
+    #: second request.
+    previous: str | None
+
+
+class AccountsOut(Schema):
+    month_start: date
+    accounts: list[AccountOut]
+    #: Per currency, and **owed and held apart**: subtracting one from the other
+    #: is a net worth, which is a different claim from either and not one this
+    #: page makes.
+    owed_totals: dict[str, str]
+    held_totals: dict[str, str]
+
+
+class NewAccountIn(Schema):
+    name: str
+    kind: str = "card"
+    currency: str = "USD"
+    #: Null lets the kind decide -- a card and a loan owe, savings and
+    #: investments hold -- so the common case is two fields rather than four.
+    owes: bool | None = None
+
+
+class BalanceIn(Schema):
+    """One month's figure for one account."""
+
+    account_id: int
+    #: Null means *leave this one alone*, which is what an untouched box on the
+    #: update screen means. Blanking a figure already recorded is not offered:
+    #: nothing is served by being able to un-know what a balance was.
+    amount: str | None = None
+
+
+class BalancesIn(Schema):
+    """The monthly pass, as one request.
+
+    **A batch because the ritual is a batch.** Vince described sitting down at
+    month end and updating every balance; six separate requests would make that
+    six chances to be half-done, and a page that is half-saved is worse than one
+    that is not saved.
+    """
+
+    on_date: date
+    readings: list[BalanceIn]
+
+
+@router.get("/money/accounts/{day}", response=AccountsOut, auth=SessionAuthIfLoggedIn())
+def months_accounts(request, day: date):
+    """Every account, with the month's figure and the one before it."""
+    first = day.replace(day=1)
+    previous = (first - timedelta(days=1)).replace(day=1)
+    accounts = list(
+        Account.objects.filter(owner=request.user).prefetch_related("readings")
+    )
+    owed = defaultdict(Decimal)
+    held = defaultdict(Decimal)
+    rows = []
+    for account in accounts:
+        by_month = {r.on_date: r.amount for r in account.readings.all()}
+        current = by_month.get(first)
+        if current is not None:
+            (owed if account.owes else held)[account.currency] += current
+        rows.append(
+            {
+                "id": account.id,
+                "name": account.name,
+                "kind": account.kind,
+                "currency": account.currency,
+                "owes": account.owes,
+                "balance": str(current) if current is not None else None,
+                "previous": (
+                    str(by_month[previous]) if previous in by_month else None
+                ),
+            }
+        )
+    return {
+        "month_start": first,
+        "accounts": rows,
+        "owed_totals": {code: str(total) for code, total in owed.items()},
+        "held_totals": {code: str(total) for code, total in held.items()},
+    }
+
+
+@router.post("/money/accounts", response={201: AccountOut}, auth=SessionAuthIfLoggedIn())
+def add_account(request, payload: NewAccountIn):
+    try:
+        account = services.create_account(
+            request.user,
+            name=payload.name,
+            kind=payload.kind,
+            currency=payload.currency,
+            owes=payload.owes,
+        )
+    except services.TaskConflict as error:
+        raise HttpError(409, str(error))
+    return 201, {
+        "id": account.id,
+        "name": account.name,
+        "kind": account.kind,
+        "currency": account.currency,
+        "owes": account.owes,
+        "balance": None,
+        "previous": None,
+    }
+
+
+@router.post("/money/balances", response={200: AccountsOut}, auth=SessionAuthIfLoggedIn())
+def record_balances(request, payload: BalancesIn):
+    """The monthly pass, saved in one go.
+
+    **One transaction**, so a bad figure in the fifth box does not leave four
+    saved and two not -- which is the failure a batch exists to prevent and
+    would otherwise quietly introduce.
+    """
+    owned = {
+        account.id: account
+        for account in Account.objects.filter(owner=request.user)
+    }
+    with transaction.atomic():
+        for reading in payload.readings:
+            # An untouched box means leave it alone, not blank it. Nothing is
+            # served by being able to un-know what a balance was.
+            if reading.amount in (None, ""):
+                continue
+            account = owned.get(reading.account_id)
+            if account is None:
+                # Not 404: a batch naming somebody else's account is a bad
+                # request about this batch, and answering per-row would leak
+                # which ids exist.
+                raise HttpError(400, "That is not one of your accounts.")
+            try:
+                services.record_balance(
+                    account,
+                    on_date=payload.on_date,
+                    amount=Decimal(reading.amount),
+                )
+            except InvalidOperation:
+                raise HttpError(409, f"{account.name}: that is not a number.")
+            except services.TaskConflict as error:
+                raise HttpError(409, f"{account.name}: {error}")
+    return months_accounts(request, payload.on_date)
 
 
 @router.get("/money/bills/{day}", response=MonthOfBillsOut, auth=SessionAuthIfLoggedIn())

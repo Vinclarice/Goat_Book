@@ -16,6 +16,65 @@ nineteen journeys. Worth saying rather than quietly filling in, because this is
 the one file the index calls unable to go stale — and it cannot, but it can be
 incomplete, which reads the same to somebody looking for what happened.
 
+## The declare-or-refuse sweep — August 26, 2026
+
+Not a release and not a deploy. **One pass over every open thread in `design/`,
+asking `principles.md`'s question of each**: does this have a trigger, and can
+that trigger fire? Recorded here because it changed the score without changing
+any code, which is the kind of event this file exists to keep.
+
+**It was made possible by answering V1**, and it was not possible before.
+`clarice-v4-plan.md` had the fork open since August 22 — *does anybody other
+than Vince ever use Clarice* — and had correctly said the spine was right either
+way. The answer is **one other person and not the public**, and roughly a third
+of the open threads turned out to be waiting on it.
+
+**Twenty threads went in.** [`recommendations-2026-08-21.md`](recommendations-2026-08-21.md)
+§5 had named the number as the risk on August 21 — *"that exceeds one person's
+landing rate"* — and it was the item nobody adopted.
+
+**Two became refusals.** S1, because public signup is a path that exists, costs
+five lines, and will not be built; S18, because there are no strangers to switch
+and **no archive to import**, which also struck v4's own spine item. Both are
+*refused* rather than *impossible*: the first three verdicts describe the code
+and the fourth describes a decision.
+
+**Three were feelings and became numbers.** Search's fifth increment had gated
+itself on *"long enough to say the sections are the right sections"*; the
+planning assistant's ninth on *"a sample"* with no floor named; D18 on a
+deadline that had already passed without anybody noticing. Each now has a
+condition that can be checked rather than felt — ten misses, twenty confirmed
+outcomes, one neighbourhood that reads wrong. **D14 was the precedent**, having
+had the same defect fixed on August 22 by turning a feeling into a number on a
+page.
+
+**One trigger fired rather than closing.** Staging deferred itself in August on
+the reasoning that *"Clarice does not yet hold real user data"*, and a second
+person's login makes that false. Still deferred, on costs that have not changed
+— but the reasoning is now written down where the next reader can disagree with
+it, instead of standing on a fact that had quietly expired.
+
+### What it taught: the dead code was the missing instrument
+
+**`resolve_retrieval_miss` calls itself the strongest deletion candidate of
+twelve dark services, and it is the opposite of one.** Nothing populates
+`RetrievalMiss.resolved_node`, so a miss is recorded and can never be answered —
+and a *resolved* miss is precisely the evidence that search's fifth increment
+needs and that D14, the semantic index, is measured against. Its own declaration
+names the trigger it is waiting for: *a surface for reviewing misses, which no
+plan claims*.
+
+**So a gate and its instrument were both open, in separate documents, each
+waiting on the other.** The gate said *not enough evidence yet*; the instrument
+said *nothing calls me, consider deleting*. Neither was wrong and nothing
+connected them.
+
+**The generalisation is worth more than the case.** This project is careful
+about declaring dark code and careful about naming triggers, and does both in
+different files — so **a deferral and the thing that would resolve it can each
+be correctly recorded and never meet.** The sweep is what makes them meet, and
+nothing schedules a sweep.
+
 ## The scoreboard runs out of impossible things — August 22–23, 2026, `osprey`
 
 Twenty-one commits, verified in production at 02:58 on August 23

@@ -127,12 +127,29 @@ produce, and **`principles.md` already says what that means**:
 **Each is either a refusal or it needs material, and there are exactly two ways
 to get material**: somebody else brings theirs, or Vince imports his own.
 
-**The second works on both branches**, and it is the observation this session
+~~**The second works on both branches**, and it is the observation this session
 turned up that neither plan contains. S18's importer machinery — `run_import`,
 `existing_keys`, idempotent on an import key — was scoped for *a stranger's
 Todoist export*. Pointed at Vince's own archive instead, it is the only move that
 clears these gates without anybody being invited. **That makes "import" a spine
-item rather than a guest item**, which is not how either plan has it.
+item rather than a guest item**, which is not how either plan has it.~~
+
+**Struck August 26, 2026: there is no archive.** Vince has nothing to import —
+no prior system, no export, no pile of Markdown waiting. The move was reasoned
+from machinery that exists rather than from material that exists, which is the
+same error as building a seam and never switching it on, made one level up.
+
+**So both escape routes are closed and the corpus problem is real rather than
+pending.** Nobody is being invited to bring material, and there is no archive to
+point the importer at. **The corpus is what one person writes, at the rate one
+person writes it** — which is the honest input to every gate below, and the
+reason the sweep of August 26 converted the ones that needed a population into
+refusals and the rest into numbers.
+
+**What survives is narrower and still useful**: the importer machinery is not
+wasted, it is **dark**, and it is declared as such. `S18`'s verdict is now
+*refused* rather than *bends*, so the code has a reason to exist that is a
+record rather than a plan.
 
 ## What is correct on both branches — the spine
 
@@ -390,13 +407,39 @@ a document calls open**, and for the process rule below.
 
 ## Open decisions
 
-**V1. Does anybody other than Vince ever use Clarice?** The fork, and Vince's
+~~**V1. Does anybody other than Vince ever use Clarice?** The fork, and Vince's
 alone. **It does not need answering today** — the spine above is correct either
 way, which is what buys the time. **What it does need is a cost of delay stated
 out loud**, because an undecided question with no cost quietly becomes a no: the
 cost is that four corpus-gated deferrals stay unresolved, three product questions
 stay unanswerable, and `product-stories.md` runs out of moves at 15 of 19 with no
-source of new ones.
+source of new ones.~~
+
+**Answered August 26, 2026: one other person, and not the public.** Clarice is
+Vince's own tool, and his girlfriend has her own login. **Not a product for
+strangers, now or later** — and this is a decision rather than a deferral, so
+every question that was waiting on it is answerable today.
+
+**The answer is not "no", and the difference matters more than the word.** *No
+other users* would have closed a set of questions. *One other user* **fires a
+trigger instead of closing one**: production now holds real data belonging to
+somebody who is not the person who can restore it. Three things follow, and none
+of them was on anybody's list this morning.
+
+- **Invitation links are load-bearing rather than a readiness gate.** They are
+  the entry, permanently, and the only one — `osprey` built the mechanism a
+  person is actually using.
+- **`staging-environment-plan.md`'s trigger has arguably fired.** §6 revives it
+  on *"the project holding real user data worth protecting from an untested
+  migration"*, and it reasoned from *"Clarice does not yet hold real user data"*,
+  which is no longer true. Vince's call, and the argument has changed under it.
+- **The restore drill and the backups stop being self-insurance.** A bad
+  migration now loses somebody else's month. That does not make 2.1 urgent by
+  itself, but it does change who bears the cost of getting it wrong.
+
+**What it does close**: public signup, the wedge, the switching-cost story, and
+anything whose trigger needed a population. Those are refusals now, recorded
+where each lives rather than here.
 
 **V2. If the answer is no, are the three unanswerable questions refused or left
 open?** *"Without asking"*, S11's second opinion, and validation by somebody not

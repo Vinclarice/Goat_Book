@@ -58,6 +58,51 @@ re-add it here.
 
 ## Open now
 
+- **V1 is answered, and it closed three things and opened one — August 26,
+  2026.** *Does anybody other than Vince ever use Clarice?* **One other person,
+  and not the public**: his girlfriend has her own login, and Clarice is not a
+  product for strangers now or later.
+  [`clarice-v4-plan.md`](clarice-v4-plan.md) owns the decision and its
+  consequences; this is the summary and not a second copy.
+
+  **What closed.** Public signup is refused, so **S1 moved to *refused*** and
+  invitation links stopped being a readiness gate and became the permanent
+  entry. **Vince has no archive to import**, which struck v4's spine item and
+  moved **S18 to *refused*** as well — leaving `mind/importers/` as declared
+  dark code with a record rather than a plan behind it.
+  [`product-stories.md`](product-stories.md) owns the score, which moved with no
+  code changing.
+
+  **What opened, and nobody had it on a list this morning.**
+  [`staging-environment-plan.md`](staging-environment-plan.md) §6 revives on
+  *"the project holding real user data"* and reasoned from that being false.
+  **It is true now.** Still deferred there, on stated reasons — but a bad
+  migration now loses somebody else's month, and she cannot restore it or know
+  it happened. **The practical consequence is that re-running the restore drill
+  matters more than it did yesterday**, and it is the same two hours.
+
+- **The declare-or-refuse sweep — done August 26, 2026.** Roughly twenty threads
+  were open across `design/`, which
+  [`recommendations-2026-08-21.md`](recommendations-2026-08-21.md) §5 had called
+  *"more than one person's landing rate"* five days earlier. Every one was asked
+  `principles.md`'s question — **does this have a trigger, and can it fire?**
+
+  **Two were refused** (S1, S18, above). **Three were feelings and are now
+  numbers**: search's fifth increment fires at **ten recorded search misses**,
+  the planning assistant's ninth at **twenty confirmed outcomes**, and D18 at
+  **one neighbourhood that reads wrong**. Each plan owns its own and they are
+  not restated here.
+
+  **And it found a surface nobody had claimed, which is the most useful thing
+  it produced.** `resolve_retrieval_miss` is declared dark and calls itself
+  *"the strongest deletion candidate of the twelve"* — and it is the opposite.
+  Nothing populates `RetrievalMiss.resolved_node`, so **a miss can be recorded
+  and never answered**, and a resolved miss is the evidence under search's fifth
+  increment *and* under D14, the semantic index.
+  [`search-plan.md`](search-plan.md) carries the table. **One small page — your
+  own misses, and what you were actually looking for — is the instrument beneath
+  two gates**, and it reads as dead code only because no plan asked for it.
+
 - **The invitation bar — v3's remaining readiness gate, claimed August 23,
   2026.** [`clarice-v3-plan.md`](clarice-v3-plan.md) lists three things *"the
   substrate somebody else's month would depend on"*, and invitations became real

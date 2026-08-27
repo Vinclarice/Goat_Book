@@ -506,6 +506,31 @@ August 21 while it was happening.
    — if the floor is never cleared, this never ships, and that is the correct
    outcome rather than a failure.
 
+   **The floor was never named, and that is the defect** — found by the
+   declare-or-refuse sweep of August 26, 2026. *A sample* is a feeling, and a
+   gate stated as a feeling cannot be cleared or failed; it can only be
+   revisited by whoever remembers it. D14 had the same shape and was fixed by
+   turning it into a number a page displays.
+
+   **The floor is twenty confirmed `WeeklyOutcome` rows.** An outcome is
+   confirmed from a proposal and carries the evidence that put it there, so
+   twenty of them is twenty times somebody said *yes, that one* over a set —
+   which is exactly the history a ranking would learn from, and it is countable
+   with one query.
+
+   **Twenty is roughly two months of weekly sessions at two or three outcomes
+   each**, so this is a gate that fires in the autumn rather than one that
+   cannot fire. That matters after `clarice-v4-plan.md`'s V1: nobody else is
+   being invited, so **the only sample this will ever have is Vince's**, and the
+   honest question became *when* rather than *whether*.
+
+   **It stays conditional on one thing the count cannot answer.** Ranking is
+   only worth building if more proposals qualify than there are slots. If twenty
+   confirmations arrive and the sessions were never over-full, **the correct
+   outcome is still not shipping it** — `principles.md`'s *predicates before
+   ranking*, and the count is permission to look rather than permission to
+   build.
+
 ## Where the facts live
 
 This plan owns none of them. What is active or open is

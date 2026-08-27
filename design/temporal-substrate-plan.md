@@ -132,5 +132,18 @@ reasoning for all of them is in
     is a property of the question and not of the log* — so the API did not
     harden around the proxy the way the decision feared. **What is left is a
     read-time question with no deadline**, and by `principles.md`'s rule it now
-    needs either a trigger that can fire or a refusal. Vince's, and this file
-    does not take it.
+    needs either a trigger that can fire or a refusal.
+
+    **Given a trigger by the declare-or-refuse sweep, August 26, 2026: one
+    neighbourhood that reads wrong.** Not a count and not a date — the ±6h
+    window is a *proxy for an episode*, and the only evidence a proxy is wrong
+    is a specific occasion where it was: a morning cut in half, or a quiet day
+    where six hours swept in three unrelated things. **One recorded example is
+    enough**, because one is something to argue from and none is not.
+
+    **Deliberately not a refusal**, though that was the easier call. The window
+    is already overridable per call and the module already says the right window
+    belongs to the question — so the design is **half-way to episode-bounding
+    already**, and what remains is only whether any caller should ask for it.
+    That is a question one user can answer from ordinary use, which is what
+    separates it from the ones this sweep refused.

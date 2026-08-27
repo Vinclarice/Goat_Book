@@ -59,7 +59,9 @@ verdicts after two releases moved one.
 
 ## The score
 
-**14 work · 4 bend · 0 impossible · 1 refused** — from 14 · 4 · 1 on August 23,
+**14 work · 2 bend · 0 impossible · 3 refused** — from 14 · 4 · 0 · 1 earlier on
+August 26,
+14 · 4 · 1 on August 23,
 13 · 4 · 2 earlier that day,
 13 · 3 · 3 and 12 · 3 · 4 on August 22,
 8 · 5 · 6 earlier that day, and
@@ -102,9 +104,20 @@ interruption, is what this product is for. S18 is import.
 | | journeys |
 |---|---|
 | **Works** | S2 the phone morning · S3 planning against capacity · S4 durable capture · S5 closing the day · S6 the honest weekly review · S7 acting on the review · S8 the quarter · S9 the week · S10 a project's why · S11 a decision returning · S12 a project explaining itself · S14 a note that knows when · S15 reading producing work · S17 leaving with your data |
-| **Bends** | S1 signing up · S13 finding what you wrote · S16 the past arriving · S18 bringing your history |
+| **Bends** | S13 finding what you wrote · S16 the past arriving |
 | **Impossible** | — |
-| **Refused** | S19 paying |
+| **Refused** | S1 signing up · S18 bringing your history · S19 paying |
+
+**Two moved on August 26, 2026 and no code changed**, which is the second time
+this file has recorded that and the first time it was planned. `clarice-v4-plan.md`'s
+**V1 was answered** — Clarice is Vince's own tool plus one invited person, never
+a product for strangers — and S1 and S18 are what that decides. **Refused, not
+impossible**: a path exists for both and will not be walked.
+
+**The two that remain both bend on the corpus, and the corpus is now known.**
+Nobody is being invited to bring material and there is no archive to import, so
+it grows at the rate one person writes. That is not a reason to re-score them —
+it is the reason their triggers were rewritten as numbers on the same day.
 
 **This score lives here and nowhere else.** Other documents link to it; they do
 not quote it.
@@ -273,9 +286,23 @@ Not the privacy policy — **that argument was made and it was wrong**: `/terms/
 and `/privacy/` have both been live for some time, and the claim they were
 unwritten came from a stale line in `CLAUDE.md`, since fixed.
 
-**Verdict: bends, moved from *impossible*.** Every clause of the done-means is
-met and was walked end to end in a browser — invitation link, form, signed in,
-landed on a first-run day page reading *"Start with one thing you mean to do"*.
+~~**Verdict: bends, moved from *impossible*.**~~ **Verdict: refused — August 26,
+2026**, when `clarice-v4-plan.md`'s V1 was answered: Clarice is Vince's own tool
+plus one invited person, and **not a product for strangers, now or later.**
+
+**A path exists, is five lines, and will not be built** — which is exactly what
+*refused* means and is not a lesser *impossible*. Everything the story asks for
+already works **for an invited person**: the link, the form, the first-run day
+page, all walked end to end in a browser. What will not happen is a stranger
+arriving unbidden, and the entry has now decided that for itself rather than
+leaving it to the reader.
+
+**Invitation is not a stopgap on the way to signup.** V1's answer makes it the
+permanent entry and the only one, which promotes `osprey`'s invitation links
+from a readiness gate to load-bearing product.
+
+The original reasoning follows, because what the verdict *was* explains why the
+score moved without any code changing.
 
 **What it bends on is who Sam is.** The personas call him *a stranger*, and a
 stranger with no invitation still lands in the same queue as before. So the
@@ -1151,7 +1178,19 @@ nobody had noticed because nobody had ever tried
 intact from another product's export, and he is told what could not be carried
 across.
 
-**Verdict: bends.** `src/mind/importers/` reads Markdown files, `.docx` and
+~~**Verdict: bends.**~~ **Verdict: refused — August 26, 2026.** Two facts closed
+it on the same day and it needed both. **V1 was answered** — no strangers, so
+nobody arrives with six years of a competitor to carry across. And **Vince has
+no archive to import**: no prior system, no export, nothing waiting. `v4` had
+made *import your own material* a spine item on the strength of the machinery
+existing; the machinery does exist and **the material does not**, which is the
+seam problem made one level up.
+
+**So the last reader of this journey is nobody**, and that is a decision rather
+than a cost. The importer machinery is not wasted — it is **dark, and declared
+as such**, which is the honest description of code with a reason and no caller.
+
+Original verdict follows. `src/mind/importers/` reads Markdown files, `.docx` and
 JSONL, and `import_material` is a runner that is idempotent on an import key and
 reports what it skipped — the "read a foreign file, land it here without
 duplicating on a re-run" machinery, which is the part that usually costs most.

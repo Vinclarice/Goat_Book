@@ -127,17 +127,55 @@ say which core a person meant, that is the moment to revisit — not before.
    and not as written. The button needed no change; what needed one was what a
    miss *means* once three sections sit above it. See D3, which turned out to
    be a signal-integrity fix rather than a schema decision.
-5. **The wider field set** — the nine deferred above, once the mechanism has
+5. **The wider field set** — the nine deferred above. ~~once the mechanism has
    been used against real material for long enough to say the sections are the
-   right sections. **Still open, and it is a deferral rather than a refusal**:
-   the trigger can fire, it has not. `roadmap.md` called it *refused* on August
-   22 and that word was wrong — corrected there August 26.
-   [`clarice-v4-plan.md`](clarice-v4-plan.md) counts it as one of four
-   corpus-gated deferrals and owns what has to become of it: **fired or written
-   as a refusal, never left saying "may never".**
+   right sections.~~ **Rewritten as a number on August 26, 2026**, by the
+   declare-or-refuse sweep. *Long enough* is a feeling, and D14 had already
+   shown what to do with one of those: turn it into something a page can
+   display.
+
+   **The trigger is ten `RetrievalMiss` rows with `context=SEARCH`.** Every one
+   is a recorded moment where a person's own memory beat the index, carrying the
+   query and — already, without anything being built —
+   `notes_found`, `tasks_found` and `days_found`, which is a count per section
+   at the moment it failed. **That is evidence about whether the sections are
+   the right sections**, and it is being collected now.
+
+   **Ten, because the question is qualitative and the sample only has to be
+   readable.** This is not a statistical gate; it is *enough specific failures
+   to see a pattern in*, and ten queries a person wrote down as failures is
+   plenty to tell "the fields are too narrow" from "the material was never
+   written".
+
+   **The precise version needs something that does not exist**, and this is the
+   sweep's real finding — see below.
 
 Increments 1 and 2 are invisible and low-risk; 3 is where this becomes a
 feature. **Nothing here needs staging**, and nothing here generates anything.
+
+### The missing surface, found by the sweep of August 26, 2026
+
+**A miss is recorded and can never be answered**, because nothing populates
+`RetrievalMiss.resolved_node`. `mind/services.py` has the function —
+`resolve_retrieval_miss`, which attaches the node that was actually being looked
+for — and it is **declared dark**, with its own trigger: *"a surface for
+reviewing misses, which no plan claims — so this is the strongest deletion
+candidate of the twelve."*
+
+**It is the opposite of a deletion candidate.** Its own docstring says what a
+resolved miss is for: *"would a semantic index have surfaced this?"* So:
+
+| Gate | Evidence it needs | Where that evidence comes from |
+|---|---|---|
+| This increment — are the sections right? | misses, with per-section counts | **collected today** |
+| Which of the nine fields matters? | a miss whose target is known | `resolved_node` — **nothing writes it** |
+| **D14**, the semantic index | a miss a semantic index would have caught | `resolved_node` — **the same field** |
+
+**One small surface — a page that lists your own misses and lets you say what
+you were looking for — is the instrument under two gates and part of a third.**
+No plan claims it, which is why it reads as dead code instead of as the missing
+half of the measurement. **Proposed here and not built**: the honest state is
+that the sweep found it, and what claims it is `roadmap.md`'s call.
 
 ## Open decisions — Vince's, not this document's
 

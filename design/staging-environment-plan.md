@@ -136,6 +136,30 @@ hits production, or the project holding real user data worth protecting from an
 untested migration — whichever happens first. §2's decisions stand as the answer
 when it does.
 
+**One of the two has arguably fired — August 26, 2026.** This deferral reasoned
+from *"Clarice does not yet hold real user data whose loss staging protects
+against"*, and that is **no longer true**: `clarice-v4-plan.md`'s V1 was answered
+as *Vince plus one invited person*, and she has her own login and her own month
+in the database.
+
+**The argument has changed rather than collapsed, and the change is about who
+bears the cost.** A bad migration used to lose Vince's own material, which is a
+risk a person is entitled to take with their own tool. It now loses somebody
+else's, and she cannot restore it, read the playbook, or know it happened.
+Against that, the costs §6 named are unchanged and real: a second droplet
+billed monthly, a second set of secrets, a second inventory and TLS cert.
+
+**Still deferred, because a cheaper control covers most of it.**
+[`MIGRATION.md`](../MIGRATION.md)'s restore drill is the actual undo for a bad
+migration — rollback covers code and not the database — and it **ran and passed
+on August 19, 2026**, which is the thing staging would have been rehearsing.
+**What is Vince's now is narrower and sharper**: re-running that drill matters
+more than it did this morning, and it is the same two hours it always was.
+
+**This is not a refusal and should not become one by silence.** The trigger
+fired and the answer was *not yet, for these reasons* — which is a different
+thing, and the reasons are above where the next reader can disagree with them.
+
 Still undecided at that point: whether staging gets its own scheduled backups,
 and whether it runs continuously or is started only for a rehearsal.
 DigitalOcean bills by the hour either way, so the second is a cost decision for

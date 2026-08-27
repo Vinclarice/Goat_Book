@@ -101,6 +101,13 @@ email_delivery = os.environ.get(
     "resend" if not DEBUG else "console",
 )
 if email_delivery == "resend":
+    # PROCESSOR: Resend. Holds delivery records for every message this
+    # application sends -- recipient address, subject, and when it went. Those
+    # survive `accounts.services.purge_account`, which erases this database and
+    # nothing outside it. Clearing them is manual and permanently so, decided
+    # August 26, 2026 as `security-and-resilience-plan.md` D1: automating it
+    # means a delete-capable credential living on the droplet for the rest of
+    # the application's life, to save a step taken a handful of times a year.
     EMAIL_BACKEND = "clarice.mail.ResendBackend"
     # Required *and* non-empty, which os.environ[...] alone does not give:
     # the playbook templates this variable to '' on the other arms, so a
@@ -223,6 +230,13 @@ CONTACT_MAX_PER_HOUR = int(os.environ.get("DJANGO_CONTACT_MAX_PER_HOUR", "5"))
 # clarice.monitoring so it can be tested; this is only the wiring. Absent a
 # DSN nothing is initialised and the SDK is never even imported, which is
 # what keeps development and the test suite from reporting anywhere.
+#
+# PROCESSOR: Sentry. Holds error reports, which carry a user id and whatever
+# request context survived clarice.monitoring's exclusions -- note text is
+# scrubbed there, deliberately, and that is a narrowing rather than an
+# absence. Reports already sent survive `accounts.services.purge_account`.
+# Clearing them is manual and permanently so; see the Resend marker above for
+# the reasoning, which is the same reasoning and one decision.
 ERROR_MONITORING_ENABLED = initialise_error_monitoring(
     dsn=os.environ.get("DJANGO_SENTRY_DSN", ""),
     environment=DEPLOYMENT_ENVIRONMENT,

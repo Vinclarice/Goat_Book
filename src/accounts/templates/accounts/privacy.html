@@ -228,11 +228,13 @@ the DigitalOcean account, not about this repository, so no test can hold it.
       </p>
       <p class="text-muted-foreground">
         <strong class="text-text">One honest limitation.</strong> Deleting your
-        account removes your data from Clarice. It does not yet reach anything
+        account removes your data from Clarice. It does not reach anything
         already sent to Sentry or Resend — an error report from months ago, or
         a delivery record of an email. Those are account-level actions at those
-        two companies and are not automated here yet. If you want them cleared,
-        write to
+        two companies, and they are done by hand on purpose: automating them
+        would mean this application holding a credential able to delete at both,
+        permanently, which is a worse trade than the manual step. If you want
+        them cleared, write to
         <a class="text-accent hover:underline" href="mailto:{{ support_email }}">{{ support_email }}</a>
         and it will be done by hand.
       </p>

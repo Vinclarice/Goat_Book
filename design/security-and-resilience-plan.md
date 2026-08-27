@@ -431,7 +431,7 @@ and `CLAUDE.md` records that this exact file has already been silently broken
 once by CRLF line endings that `git status` hid. Write it with LF explicitly
 and confirm before trusting it.
 
-### 2.2 Erasure at Sentry and Resend is now a published promise
+### ~~2.2 Erasure at Sentry and Resend is now a published promise~~ — closed August 26, 2026
 
 Open in [`roadmap.md`](roadmap.md) as an account-level chore in two consoles.
 As of August 19 there is a live document at `/privacy/` making claims about
@@ -565,6 +565,26 @@ runs coexist. Cheap, and it should not wait for anything above it.
    **2.2 is unblocked by this and is now ready to do**: its acceptance is a
    docstring on `purge_account` naming the steps a purge does not perform, with
    this argument travelling beside it so the gap is visible at the function.
+
+   **Done the same day.** `purge_account`'s docstring names both processors,
+   what each holds, and why clearing them is manual and permanent — and the
+   acceptance turned out to be worth more than a docstring. **Each processor is
+   now declared once at the settings line that configures it**, with a
+   `# PROCESSOR:` marker, the same shape as the knowledge core's `# DARK:`
+   declarations and for the same reason: the declaration goes where a reader
+   meets the thing.
+
+   **`accounts/tests/test_processors_outlive_erasure.py` ties three places
+   together** — the declaration, the docstring, and `/privacy/` — and fails if
+   they part company. **The failure it is built for is a third processor**:
+   adding one is a two-line settings change that silently widens what survives
+   an erasure, and nothing in this repository would previously have noticed.
+
+   **And it found the policy already stale.** `/privacy/` said the processors
+   were *"not automated here yet"*, which promised a plan that D1 had just
+   refused. Corrected to say they are manual on purpose, with the reason —
+   which is what that page's own comment demands of any change to what this
+   application sends.
 2. ~~**D2. Enforcing CSP, or a report collector first?** 1.2 recommends enforcing
    on the Chromium test's evidence. The collector is the more cautious path and
    costs an endpoint.~~ **Answered by doing it — enforcing, August 26, 2026**,

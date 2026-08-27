@@ -129,6 +129,30 @@ def purge_account(user, *, now):
 
     Returns what it removed, per model, so the command that calls this can say
     what it did rather than what existed.
+
+    **What this does not reach, and never will.** It erases this database. Two
+    processors hold personal data outside it and are untouched by everything
+    above:
+
+    - **Sentry** keeps error reports carrying a user id and whatever request
+      context survived `clarice.monitoring`'s exclusions.
+    - **Resend** keeps a delivery record for every message sent -- address,
+      subject, and when.
+
+    **Both are cleared by hand, on request, and that is a decision rather than a
+    gap waiting to be closed** -- `security-and-resilience-plan.md` D1, answered
+    August 26, 2026. Automating it means a delete-capable credential for each,
+    held by this application, for the rest of its life, to remove a step taken a
+    handful of times a year. What a compromise of the host reaches is the thing
+    that plan spends its effort narrowing, so the chore loses.
+
+    `/privacy/` says the same thing to the person it concerns, in those words
+    and under *What leaving looks like*. Both are declared once at the settings
+    lines that configure them, and
+    `accounts/tests/test_processors_outlive_erasure.py` fails if a third
+    processor is ever added without appearing here and there -- which is the
+    failure this is built for, since adding one is two lines and silently
+    widens what survives an erasure.
     """
     owner_id = user.pk
     # Read before anything is destroyed, and sent before the transaction that

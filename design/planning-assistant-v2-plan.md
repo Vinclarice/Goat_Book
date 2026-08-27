@@ -450,11 +450,31 @@ Local and explainable, in the vision's own phrasing —
    week, and nothing reads `WeeklyReview.plan` at all.
 
    **This is the only answer in the August 26 sweep that is work rather than a
-   sentence**, and it is not large: retire the plan field from the review's
-   form and read path, keep the column so existing rows stay readable, and make
-   sure the intention is reachable from the review where the plan used to be.
-   **Not yet done** — recorded here as the decision, and it is `roadmap.md`'s to
-   schedule.
+   sentence**, ~~and it is not large: retire the plan field from the review's
+   form and read path, keep the column so existing rows stay readable~~ —
+   **done the same day, and the sentence above contained a contradiction that
+   doing it exposed.** *Retire the read path* and *keep existing rows readable*
+   cannot both hold: the read is what makes them readable. Resolved toward the
+   careful half.
+
+   **What shipped: the write path is gone, the read is not.**
+
+   - `ReviewIn` no longer accepts `plan`, and `write_review` no longer takes it
+     — **removed rather than left uncalled**, because an unused writer for a
+     retired field is a seam, and a seam gets a declared trigger or a deletion.
+   - `ReviewOut` still returns it, and the review page renders any existing
+     plan **read-only**, under *What you wrote for the week ahead*, pointing at
+     the intention above for anything new.
+   - The column stays. §4 rule 6 — what somebody said on a Sunday is history,
+     not state, which is the same reason `WeeklyReview` has no delete path.
+
+   **Two tests hold the pair, because the halves pull opposite ways** and a
+   later tidy-up could satisfy either alone: `test_the_plan_field_is_retired.py`
+   and two cases in `ReviewRoute.test.tsx`. **No new plans, and no lost ones.**
+
+   **Four existing tests were rewritten rather than deleted** — they had used
+   `plan` as a convenient second field for the partial-write contract and the
+   week-snapping rule, neither of which is about `plan` at all.
 
    **Deleting the column is a separate question and the answer is probably
    never.** *"What I said on Sunday"* is history, and §4's rule 6 is that a row

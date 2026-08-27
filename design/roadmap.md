@@ -86,15 +86,19 @@ re-add it here.
   the bigger one: seventeen, several standing since August 19. Twelve are now
   answered and each is recorded where it lives, not here.
 
-  **Only one produced work rather than a sentence — planning-assistant D7.** The
-  weekly intention and `WeeklyReview.plan` are two free-text boxes about next
+  ~~**Only one produced work rather than a sentence — planning-assistant D7.**~~
+  **Done August 26, 2026.** The review page had two free-text boxes about next
   week a few hundred pixels apart, and nobody wrote the sentence distinguishing
-  them in six days of looking at both. **Collapse to the intention**, which is
-  the one with a life cycle — the Day page reads it and nothing reads the plan.
-  Retire the field from the review's form and read path, **keep the column** so
-  existing rows stay readable.
-  [`planning-assistant-v2-plan.md`](planning-assistant-v2-plan.md) owns the
-  detail. **Not started.**
+  them in six days of looking at both. **Collapsed to the intention**, which is
+  the one with a life cycle — the Day page reads it all week, and nothing read
+  the plan but the form that wrote it.
+
+  **The write path is gone and the read is not**, which is a correction to how
+  this was first written down: *retire the read path* and *keep existing rows
+  readable* cannot both be true. A plan written before today still shows,
+  read-only. [`planning-assistant-v2-plan.md`](planning-assistant-v2-plan.md)
+  owns the detail. **Not live until the next deploy** — it changes the API
+  contract, so the SPA and the schema move together.
 
   **Four are still open and three of them are yours alone**: security D5, which
   is an observation nobody has made yet; M1, gated on the Android keystore; the

@@ -548,39 +548,51 @@ describe("ReviewRoute", () => {
     expect(screen.getByText(/Nothing written/)).toBeInTheDocument();
   });
 
-  it("keeps a plan for the coming week", async () => {
-    const fetchSpy = vi
-      .spyOn(globalThis, "fetch")
-      .mockImplementation((input) => {
-        const request = input as Request;
-        if (request.method === "PATCH") {
-          return jsonResponse(
-            weekData({
-              review: {
-                reflections: "",
-                plan: "Two mornings on the review",
-                completed_at: null,
-                recorded_total: null,
-                recorded_met: null,
-              },
-            }),
-          );
-        }
-        return jsonResponse(weekData());
-      });
+  /* "keeps a plan for the coming week" lived here and is gone --
+     planning-assistant-v2-plan.md D7 retired that write path on August 26,
+     2026. What replaces it is the pair below: the box is not offered, and a
+     plan written before the retirement still shows. */
+
+  it("no longer offers a second box for the week ahead", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(weekData()),
+    );
 
     renderAt("/review");
-    await userEvent.type(
-      await screen.findByLabelText("Next week"),
-      "Two mornings",
-    );
-    await userEvent.click(screen.getByRole("button", { name: "Save the review" }));
+    await screen.findByLabelText("Reflections");
 
-    await waitFor(() => expect(screen.getByText("Saved.")).toBeInTheDocument());
-    const patched = fetchSpy.mock.calls
-      .map(([request]) => request as Request)
-      .filter((request) => request.method === "PATCH");
-    expect(patched).toHaveLength(1);
+    /* By label, because that is what a person reaches for. "What is next
+       week for?" above is the one that survives, and finding it here would
+       mean the wrong control was removed. */
+    expect(screen.queryByLabelText("Next week")).not.toBeInTheDocument();
+    expect(
+      screen.getByLabelText("What is next week for?"),
+    ).toBeInTheDocument();
+  });
+
+  it("still shows a plan written before the field was retired", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        weekData({
+          review: {
+            reflections: "",
+            plan: "Two mornings on the review",
+            completed_at: null,
+            recorded_total: null,
+            recorded_met: null,
+          },
+        }),
+      ),
+    );
+
+    renderAt("/review");
+
+    /* Rendered, and not inside anything editable: retiring the control was
+       not supposed to cost the history, and it was not supposed to leave a
+       way of rewriting it either. */
+    const kept = await screen.findByText("Two mornings on the review");
+    expect(kept).toBeInTheDocument();
+    expect(kept.closest("textarea")).toBeNull();
   });
 
   /* The check-in -- planning-assistant-v2-plan.md increment 4. The forward

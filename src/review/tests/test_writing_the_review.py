@@ -70,36 +70,40 @@ class WritingTheReviewTest(TestCase):
         task.refresh_from_db()
         return task
 
-    def test_a_plan_for_the_coming_week_is_kept(self):
-        response = self.patch({"plan": "Two mornings on the review"})
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(self.week()["review"]["plan"], "Two mornings on the review")
+    # `test_a_plan_for_the_coming_week_is_kept` lived here and is gone --
+    # `planning-assistant-v2-plan.md` D7 retired that write path on August 26,
+    # 2026. What replaces it is
+    # `review/tests/test_the_plan_field_is_retired.py`, which asserts the
+    # opposite. The three tests below used `plan` only as a convenient second
+    # field and now use `reflections`; what each is actually about is unchanged.
 
     def test_writing_one_field_leaves_the_other_alone(self):
         """The same partial-write contract the day has, for the same
-        reason: a page saving one section must not blank another."""
-        self.patch({"plan": "Two mornings on the review"})
+        reason: a page saving one section must not blank another.
 
+        Reflections against the recorded figures now, since `plan` is no
+        longer writable. The contract is the point, not the pair of fields.
+        """
         self.patch({"reflections": "Quieter than last week"})
 
+        self.patch({})
+
         review = self.week()["review"]
-        self.assertEqual(review["plan"], "Two mornings on the review")
         self.assertEqual(review["reflections"], "Quieter than last week")
 
     def test_any_date_in_the_week_writes_the_same_record(self):
-        self.patch({"plan": "Written on the Monday"})
+        self.patch({"reflections": "Written on the Monday"})
 
-        self.patch({"reflections": "Added on the Wednesday"}, week=JULY_29)
+        self.patch({}, week=JULY_29)
 
         self.assertEqual(WeeklyReview.objects.filter(owner=self.alice).count(), 1)
-        self.assertEqual(self.week()["review"]["plan"], "Written on the Monday")
+        self.assertEqual(self.week()["review"]["reflections"], "Written on the Monday")
 
     def test_another_account_has_its_own_review_of_the_same_week(self):
-        self.patch({"plan": "Alice's plan"})
+        self.patch({"reflections": "Alice's week"})
 
         self.client.force_login(self.bob)
-        self.assertEqual(self.week()["review"]["plan"], "")
+        self.assertEqual(self.week()["review"]["reflections"], "")
 
     def test_reading_a_week_does_not_bring_a_review_into_existence(self):
         """An unwritten review is a blank page, not a missing one -- and a
@@ -168,7 +172,7 @@ class WritingTheReviewTest(TestCase):
         self.assertEqual(
             Client().patch(
                 f"/api/v1/review/{JULY_27}",
-                data=json.dumps({"plan": "nope"}),
+                data=json.dumps({"reflections": "nope"}),
                 content_type="application/json",
             ).status_code,
             401,

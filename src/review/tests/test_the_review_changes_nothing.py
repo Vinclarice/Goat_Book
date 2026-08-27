@@ -76,7 +76,7 @@ class TheReviewDecidesNothingTest(TestCase):
         self.client.get(f"/api/v1/review/{JULY_27}")
         self.client.patch(
             f"/api/v1/review/{JULY_27}",
-            data=json.dumps({"plan": "Next week is for the review"}),
+            data=json.dumps({"reflections": "Quieter than it looked"}),
             content_type="application/json",
         )
         self.client.post(f"/api/v1/review/{JULY_27}/complete")

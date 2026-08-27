@@ -768,7 +768,11 @@ export function ReviewRoute() {
   const { week } = useParams();
   const queryClient = useQueryClient();
   const queryKey = ["review", week ?? "current"];
-  const [draft, setDraft] = useState({ reflections: "", plan: "" });
+  // One field since August 26, 2026 -- `plan` was here until
+  // planning-assistant-v2-plan.md D7 retired its write path. The value is
+  // still read from the payload and rendered read-only further down; what
+  // went is the draft that could change it.
+  const [draft, setDraft] = useState({ reflections: "" });
   const [weekIntention, setWeekIntention] = useState("");
   const [intentionError, setIntentionError] = useState<string | null>(null);
   const [intentionSaved, setIntentionSaved] = useState(false);
@@ -797,10 +801,7 @@ export function ReviewRoute() {
   useEffect(() => {
     if (!data || seededFor.current === data.week_start) return;
     seededFor.current = data.week_start;
-    setDraft({
-      reflections: data.review.reflections,
-      plan: data.review.plan,
-    });
+    setDraft({ reflections: data.review.reflections });
     // Seeded from the same effect and on the same key, so navigating to
     // another week reloads all three together. Separate state because it is a
     // separate record with a separate endpoint -- see the mutation below.
@@ -1102,7 +1103,7 @@ export function ReviewRoute() {
     },
   });
 
-  function edit(field: "reflections" | "plan", value: string) {
+  function edit(field: "reflections", value: string) {
     setSaved(false);
     setDraft((current) => ({ ...current, [field]: value }));
   }
@@ -1853,22 +1854,31 @@ export function ReviewRoute() {
           />
         </div>
 
-        <div className="space-y-2">
-          <label htmlFor="review-plan" className="text-sm font-bold">
-            Next week
-          </label>
-          <p className="text-sm text-muted-foreground">
-            What the coming week is for. Nothing here schedules anything —
-            pinning work to a day is still yours to do.
-          </p>
-          <textarea
-            id="review-plan"
-            value={draft.plan}
-            onChange={(event) => edit("plan", event.target.value)}
-            rows={4}
-            className="w-full rounded-lg border border-border bg-input px-3 py-2"
-          />
-        </div>
+        {/* "Next week" was a second textarea here until August 26, 2026 --
+            planning-assistant-v2-plan.md D7. It asked what the coming week was
+            for, a few hundred pixels below "What is next week for?" above,
+            which writes the intention. Two free-text boxes about next week on
+            one page, and nobody could write the sentence distinguishing them.
+
+            The intention won: the Day page reads it all week, where nothing
+            read this but the form that wrote it. What stays is the read --
+            a plan written before that date still shows, because retiring a
+            control was not supposed to cost the history. */}
+        {data.review.plan.trim() !== "" && (
+          <div className="space-y-2">
+            <h3 className="text-sm font-bold">
+              What you wrote for the week ahead
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              Written when the review had its own box for this. It is kept as
+              part of that Sunday&rsquo;s record — set what a week is for at{" "}
+              <span className="font-medium">What is next week for?</span> above.
+            </p>
+            <p className="whitespace-pre-wrap rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm">
+              {data.review.plan}
+            </p>
+          </div>
+        )}
 
         <div className="flex flex-wrap items-center gap-3">
           <Button type="submit" disabled={saveMutation.isPending}>

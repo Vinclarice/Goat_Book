@@ -342,6 +342,10 @@ class ReviewOut(Schema):
     """
 
     reflections: str
+    #: **Read-only since August 26, 2026** -- `planning-assistant-v2-plan.md`
+    #: D7 retired the write path and kept this. Nothing sets it any more; rows
+    #: written before that date hold a person's own sentence about a week, and
+    #: this is what keeps them reachable. `ReviewIn` no longer accepts it.
     plan: str
     completed_at: str | None
     # What the finish rate said when the week was reviewed. Null while it
@@ -352,14 +356,25 @@ class ReviewOut(Schema):
 
 
 class ReviewIn(Schema):
-    """Both fields optional, and absent is not the same as empty.
+    """Optional, and absent is not the same as empty: a field left out keeps
+    its stored value -- see services.write_review.
 
-    The page may save reflections without carrying the plan, so a field
-    left out keeps its stored value -- see services.write_review.
+    **One field, since August 26, 2026.** `plan` was here and is retired --
+    `planning-assistant-v2-plan.md` D7. The review page asked *"what is next
+    week for?"* twice, a few hundred pixels apart, once into `WeeklyIntention`
+    and once into `WeeklyReview.plan`; the intention won because it is the one
+    with a life cycle, read by the Day page all week, where nothing read this
+    but the form that wrote it.
+
+    **Dropped rather than deprecated.** Ninja ignores an unknown key instead of
+    rejecting it, so an old client sending `plan` gets a 200 and no plan --
+    which is the right outcome for the only two clients this application has,
+    both of which ship from this repository. `ReviewOut` still returns the
+    field, and `review/tests/test_the_plan_field_is_retired.py` holds both
+    halves: no new plans, and no lost ones.
     """
 
     reflections: str | None = None
-    plan: str | None = None
 
 
 class WeekOut(Schema):
@@ -665,10 +680,7 @@ def write_review(request, day: date, payload: ReviewIn):
         day,
         **{
             field: value
-            for field, value in (
-                ("reflections", payload.reflections),
-                ("plan", payload.plan),
-            )
+            for field, value in (("reflections", payload.reflections),)
             if value is not None
         },
     )

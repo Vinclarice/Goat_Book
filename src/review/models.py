@@ -60,10 +60,25 @@ class WeeklyReview(models.Model):
     # are: "wrote nothing" and "cleared it" are the same state, so nothing
     # downstream has to handle both.
     reflections = models.TextField(blank=True, default="")
-    # What the coming week is for. Deliberately a person's sentence rather
-    # than a list of tasks the system would then own -- the vision document
-    # asks for "a short planning area", and anything that scheduled work
-    # from here would be the automatic rescheduling it forbids.
+    # What the coming week was for, and **nothing writes this any more** --
+    # `planning-assistant-v2-plan.md` D7, August 26, 2026. `WeeklyIntention`
+    # answers that question now; this page was asking it twice, a few hundred
+    # pixels apart, and the intention is the one with a life cycle because the
+    # Day page reads it all week.
+    #
+    # **Kept rather than dropped, and this is not a dark seam.** Rows written
+    # before that date hold a person's own sentence about a week, which §4's
+    # rule 6 keeps for the same reason `WeeklyReview` has no delete path at all:
+    # what somebody said on a Sunday is history, not state. It is still read --
+    # `ReviewOut` returns it and the review page renders it read-only where one
+    # exists -- so "unused column, drop it" is the wrong reading and
+    # `review/tests/test_the_plan_field_is_retired.py` fails if anybody acts on
+    # it.
+    #
+    # The original reasoning, still true of what is stored: deliberately a
+    # person's sentence rather than a list of tasks the system would then own.
+    # The vision document asks for "a short planning area", and anything that
+    # scheduled work from here would be the automatic rescheduling it forbids.
     plan = models.TextField(blank=True, default="")
     # When the week was reviewed. Null means still open, which is not the
     # same as never started -- the row exists because something was written.

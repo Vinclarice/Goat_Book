@@ -6507,7 +6507,7 @@
         "type": "object"
       },
       "ReviewIn": {
-        "description": "Both fields optional, and absent is not the same as empty.\n\nThe page may save reflections without carrying the plan, so a field\nleft out keeps its stored value -- see services.write_review.",
+        "description": "Optional, and absent is not the same as empty: a field left out keeps\nits stored value -- see services.write_review.\n\n**One field, since August 26, 2026.** `plan` was here and is retired --\n`planning-assistant-v2-plan.md` D7. The review page asked *\"what is next\nweek for?\"* twice, a few hundred pixels apart, once into `WeeklyIntention`\nand once into `WeeklyReview.plan`; the intention won because it is the one\nwith a life cycle, read by the Day page all week, where nothing read this\nbut the form that wrote it.\n\n**Dropped rather than deprecated.** Ninja ignores an unknown key instead of\nrejecting it, so an old client sending `plan` gets a 200 and no plan --\nwhich is the right outcome for the only two clients this application has,\nboth of which ship from this repository. `ReviewOut` still returns the\nfield, and `review/tests/test_the_plan_field_is_retired.py` holds both\nhalves: no new plans, and no lost ones.",
         "properties": {
           "reflections": {
             "anyOf": [
@@ -6519,17 +6519,6 @@
               }
             ],
             "title": "Reflections"
-          },
-          "plan": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Plan"
           }
         },
         "title": "ReviewIn",

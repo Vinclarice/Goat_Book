@@ -26,7 +26,7 @@ _UNSET = object()
 
 
 @transaction.atomic
-def write_review(owner, day, *, reflections=_UNSET, plan=_UNSET):
+def write_review(owner, day, *, reflections=_UNSET):
     """Create or update this owner's review of the week ``day`` falls in.
 
     The week is snapped here rather than trusted from the caller, so a
@@ -36,12 +36,18 @@ def write_review(owner, day, *, reflections=_UNSET, plan=_UNSET):
 
     There is no separate create and update, because somebody writing about
     their week neither knows nor cares whether a row exists yet.
+
+    **`plan` was a second keyword here and is gone** --
+    `planning-assistant-v2-plan.md` D7, August 26, 2026. Removed rather than
+    left accepting a value nobody passes: an unused writer for a retired field
+    is a seam, and this repository's rule is that a seam gets a declared trigger
+    or a deletion. The column and its read survive; see `WeeklyReview.plan`.
     """
     review, _ = WeeklyReview.objects.get_or_create(
         owner=owner, week_start=week_start_for(day)
     )
     updated = []
-    for field, value in (("reflections", reflections), ("plan", plan)):
+    for field, value in (("reflections", reflections),):
         if value is _UNSET:
             continue
         setattr(review, field, value or "")

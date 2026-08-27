@@ -1,6 +1,9 @@
 # Unified search — focused spec
 
-Vince · focused spec · written August 20, 2026 · **not started**
+Vince · focused spec · written August 20, 2026 · **increments 1–4 shipped the
+same day as part of `lapwing`; increment 5 is a corpus-gated deferral** ·
+header corrected August 26, 2026, having read **not started** for six days
+beside four shipped increments
 
 ## What this is
 
@@ -109,22 +112,32 @@ say which core a person meant, that is the moment to revisit — not before.
 
 ## Increments, in order
 
-1. **Index the task core's own material.** Generated columns and `GinIndex` on
+1. ~~**Index the task core's own material.** Generated columns and `GinIndex` on
    `Item` and `DailyEntry`, one migration, plus the per-user isolation tests
    the charter's rule 1 asks for. Nothing user-visible ships; the failing test
-   is a query returning a row it should not yet find.
-2. **A ranked read.** The task core's equivalent of `search_ranked`, in a reads
+   is a query returning a row it should not yet find.~~ **Done August 20,
+   2026** — `lists` 0040 and `daily` 0003.
+2. ~~**A ranked read.** The task core's equivalent of `search_ranked`, in a reads
    module rather than a service — charter rule 4, and `agenda.py` is the
-   precedent. Query-only, no mutation, no view yet.
-3. **One surface, sectioned.** The three lists, counted before slicing the way
-   `mind/views.py` already does. This is the first increment a person can use.
+   precedent. Query-only, no mutation, no view yet.~~ **Done August 20, 2026** —
+   [`lists/search.py`](../src/lists/search.py), and it is a reads module as the
+   charter asked.
+3. ~~**One surface, sectioned.** The three lists, counted before slicing the way
+   `mind/views.py` already does. This is the first increment a person can use.~~
+   **Done August 20, 2026** — `/mind/search/`, and `GET /api/v1/search` serves
+   the same read.
 4. ~~**The miss button, on the unified surface.**~~ **Done August 20, 2026**,
    and not as written. The button needed no change; what needed one was what a
    miss *means* once three sections sit above it. See D3, which turned out to
    be a signal-integrity fix rather than a schema decision.
 5. **The wider field set** — the nine deferred above, once the mechanism has
    been used against real material for long enough to say the sections are the
-   right sections.
+   right sections. **Still open, and it is a deferral rather than a refusal**:
+   the trigger can fire, it has not. `roadmap.md` called it *refused* on August
+   22 and that word was wrong — corrected there August 26.
+   [`clarice-v4-plan.md`](clarice-v4-plan.md) counts it as one of four
+   corpus-gated deferrals and owns what has to become of it: **fired or written
+   as a refusal, never left saying "may never".**
 
 Increments 1 and 2 are invisible and low-risk; 3 is where this becomes a
 feature. **Nothing here needs staging**, and nothing here generates anything.

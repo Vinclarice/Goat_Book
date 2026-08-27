@@ -1,6 +1,9 @@
 # Security, resilience and reliability — what is unnamed, and what has ripened
 
-Vince · plan · written August 19, 2026 · **not started**
+Vince · plan · written August 19, 2026 · **claimed by `roadmap.md` August 23,
+2026; five of its seven ranked items closed between August 23 and 26** ·
+header corrected August 26, 2026, having read **not started** while the body
+below recorded five closures
 
 ## What this is
 
@@ -18,7 +21,9 @@ Deferral decisions and their triggers are owned by
 [`architecture-trajectory.md`](architecture-trajectory.md) §6 and §7; what is
 open is owned by [`roadmap.md`](roadmap.md); the restore procedure is owned by
 [`MIGRATION.md`](../MIGRATION.md). This plan links to them rather than
-restating them, and **is not claimed by `roadmap.md`** until work starts.
+restating them, and ~~**is not claimed by `roadmap.md`** until work starts.~~
+**was claimed on August 23, 2026**, when invitations became real and the
+invitation bar stopped being hypothetical.
 
 ## The posture as found
 
@@ -118,8 +123,13 @@ was trusted** — a seeded `django==3.2.0` gives 37 advisories and exit 1, a cle
 
 **It found something on the first look, which is this item's own prediction:**
 27 advisories over 16 packages, including **Django 5.2.16 — PYSEC-2026-3717,
-CVSS 6.9, fixed in 5.2.17**, the framework serving production. The instrument
-shipped; **the bump has not, and is Vince's next call.**
+CVSS 6.9, fixed in 5.2.17**, the framework serving production. ~~The instrument
+shipped; **the bump has not, and is Vince's next call.**~~ **Both shipped, and
+the bump was taken the same day** (`a9b8434`) — `requirements.txt` pins
+`Django==5.2.17`, live since `DEPLOYED-2026-08-26/1945` and confirmed inside
+the running container. **Taken as hygiene rather than as a security event**:
+nothing said this application reaches the vulnerable path, and a pin that is
+one patch behind an advisory is worth closing without deciding that first.
 
 **Two of the three sets, not three.** Android is a declared gap: `osv-scanner`
 reads `gradle.lockfile` and this build has none, declaring dependencies in a
@@ -209,7 +219,7 @@ by username, so the residual is thin: enumeration and blunt request volume.
 Listed for completeness, and to ride along with 2.3 rather than as its own
 piece of work.
 
-### 1.5 There is no second factor on the account that can read everything
+### ~~1.5 There is no second factor on the account that can read everything~~ — closed August 23, 2026
 
 **The single highest-value item in this document under the adversary lens.**
 

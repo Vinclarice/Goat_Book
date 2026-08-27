@@ -1,6 +1,9 @@
 # Planning assistant v2 — the forward half of the weekly ritual
 
-Vince · plan · written August 19, 2026 · **not started**
+Vince · plan · written August 19, 2026 · **increments 1–8 shipped August 20,
+2026 as part of `lapwing`; increment 9 is gated on a sample floor the corpus
+has not cleared** · header corrected August 26, 2026, having read **not
+started** for six days beside eight shipped increments
 
 ## What this is
 
@@ -360,12 +363,25 @@ Local and explainable, in the vision's own phrasing —
 2. **Does the interactive-path rule bend for a scripted session?** This plan
    says it does not need to. **If v3 wants a free-text turn, that is a
    `design-concept.md` amendment and Vince's to make there.**
-3. **Does a weekly outcome earn its own model?** *For:* several per week, each
+3. ~~**Does a weekly outcome earn its own model?** *For:* several per week, each
    with its own confirmation state and snapshotted evidence. *Against:*
    `WeeklyIntention` already answers *what the week is for*, and two records
    answering one question is the drift §4 exists to prevent. **The likely
    resolution is that they are different questions** — the intention is a
-   sentence about the week, an outcome is a thing that will be true by Friday.
+   sentence about the week, an outcome is a thing that will be true by Friday.~~
+   **Answered August 20, 2026: yes, and the likely resolution was the right
+   one.** Answered by building increment 5 rather than by deciding first.
+
+   **The reasoning lives at the model** —
+   [`review/models.py`](../src/review/models.py)'s `WeeklyOutcome` carries the
+   §4 charter compliance rule by rule, and is not restated here. The one line
+   worth carrying: **one record per owner per week could not hold several**, and
+   folding them together would have made a sentence and a set of commitments
+   share a confirmation state, which is the collapse §4's life-cycle test exists
+   to catch.
+
+   Struck August 26, 2026 — it had read as open for six days while
+   `WeeklyOutcome` existed and a frontend test comment said *D3 answered*.
 4. ~~**Is "desired outcome" the same field as S10's abandonment condition?**~~
    **Answered August 22, 2026: two fields** (`804d6e8`), and taken by Claude at
    Vince's direction rather than by Vince.
@@ -423,25 +439,39 @@ Local and explainable, in the vision's own phrasing —
 **1 to 3 are worth doing whatever happens to the rest**, and none of them needs
 a decision above answered.
 
-1. **The weekly intention becomes writable and visible.** Its write path and the
+**Eight of the nine shipped on August 20, 2026 as part of `lapwing`**, struck
+below on August 26 — they had stood unmarked for six days under a header
+reading *not started*, which is the drift
+[`recommendations-2026-08-21.md`](recommendations-2026-08-21.md) §5 named on
+August 21 while it was happening.
+
+1. ~~**The weekly intention becomes writable and visible.**~~ **Shipped August
+   20, 2026.** Its write path and the
    Day render. Closes S9, which is impossible today for want of a form — the
    model, the service, the read and the Day payload all shipped and nothing can
-   write one. No new concepts, and the ritual cannot open without it.
-2. **Capacity at day grain, on the day surface.** D2's actual sentence — *"you
+   write one. No new concepts, and the ritual cannot open without it. **It also
+   opened D7**, below, which was found by building this and not by planning it.
+2. ~~**Capacity at day grain, on the day surface.**~~ **Shipped August 20,
+   2026.** D2's actual sentence — *"you
    have pinned nine for Tuesday; you have finished more than five on two of the
    last thirty days"* — which v1 shipped at week grain on the review. Belongs on
    the Day page and is independent of the session entirely.
-3. **Project status and desired outcome.** Two fields. Makes *"which projects
+3. ~~**Project status and desired outcome.**~~ **Shipped August 20, 2026.** Two
+   fields. Makes *"which projects
    are active"* answerable by the system, which is what lets step 1 confirm
    rather than ask, and gives retrieval a second anchor beside `purpose`.
-4. **The check-in, and the session record.** The review's forward half opens
+4. ~~**The check-in, and the session record.**~~ **Shipped August 20, 2026.**
+   The review's forward half opens
    with what it believes and takes corrections, including *"this week is
    unusual"*. The first increment with a session to record, so the record lands
    here.
-5. **Outcomes.** Two or three, snapshotted at confirmation, each with cited
-   *why this week*. Pending D3. This is where the ritual gains its spine, and
+5. ~~**Outcomes.**~~ **Shipped August 20, 2026.** Two or three, snapshotted at
+   confirmation, each with cited
+   *why this week*. ~~Pending D3.~~ **D3 was answered by building it** — see
+   below. This is where the ritual gains its spine, and
    every later increment reads from it.
-6. **Carryover and blockers, triaged against the outcomes.** Keep / defer / drop
+6. ~~**Carryover and blockers, triaged against the outcomes.**~~ **Shipped
+   August 20, 2026.** Keep / defer / drop
    in place, and questions filtered to those touching a chosen outcome, with
    dispositions that persist. Pending D5 and **shaped by D6**.
 
@@ -451,10 +481,12 @@ a decision above answered.
    without a caller that justified its cost; and the planning miss, which is one
    enum value on `record_retrieval_miss`. Only acting in place is genuinely new,
    and that is the part D5 governs.
-7. **The draft, scoped and stress-tested.** `draft_week` filtered by outcomes,
+7. ~~**The draft, scoped and stress-tested.**~~ **Shipped August 20, 2026.**
+   `draft_week` filtered by outcomes,
    arranged into day blocks, overloaded days named against derived capacity, and
    work connected to nothing listed rather than cut.
-8. **Scenario planning.** The draft under a constraint.
+8. ~~**Scenario planning.**~~ **Shipped August 20, 2026.** The draft under a
+   constraint.
 9. **Ranking by confirmation history, gated on a sample.** Last, and conditional
    — if the floor is never cleared, this never ships, and that is the correct
    outcome rather than a failure.

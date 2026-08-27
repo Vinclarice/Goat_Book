@@ -77,13 +77,19 @@ re-add it here.
   are four rate limits now and still nothing reading the log they fire into.
   And 2.2, processor erasure, is gated on that plan's D1.
 
-  **The advisory job found something on its first look, and it is the most
+  ~~**The advisory job found something on its first look, and it is the most
   actionable thing here**: `django==5.2.16` carries PYSEC-2026-3717, CVSS 6.9,
   fixed in 5.2.17 — the framework serving production. The instrument shipped;
-  the bump has not.
+  the bump has not.~~ **Both shipped August 26, 2026** — the bump as `a9b8434`,
+  taken as hygiene rather than as a security event, and live the same night.
 
-  **None of the nginx or HSTS work is live until the playbook runs**, and it is
-  behind fourteen other commits.
+  ~~**None of the nginx or HSTS work is live until the playbook runs**, and it is
+  behind fourteen other commits.~~ **All of it went live August 26, 2026**
+  (`DEPLOYED-2026-08-26/1945`), and three of the changes answer for themselves
+  from outside: `Server: nginx` with no version, a year of HSTS, and a CSP that
+  is no longer Report-Only. **Two of them had never met production traffic
+  before that night** — the enforcing CSP and the two new rate limits — and
+  that is what to watch rather than what to re-check.
 
   ~~**MFA on the admin is built and enrolled.** Ready to deploy.~~ **Deployed
   and live August 23, 2026 as `petrel`** (`DEPLOYED-2026-08-23/1510`) —
@@ -131,9 +137,15 @@ re-add it here.
   it as the focused spec for the substrate, contextual retrieval, observations
   and intake, and **shipped entire on August 22 as `nightjar`** — see the entry
   below. Of v3's own releases, *Close L*, *Usable*, *The day*, *Capture*,
-  *Unify*, *Contextual retrieval* and *Recollection* have delivered; **four
+  *Unify*, *Contextual retrieval* and *Recollection* have delivered; ~~**four
   remain**: *The first question*, *The wider horizons*, *The invitation bar*
-  and *Background repair*.
+  and *Background repair*.~~ **Three remain** — *The wider horizons* **met its
+  acceptance on August 23, 2026** as `osprey`, S10 and S12 on the 22nd and S8
+  on the 23rd, and S8 needed no new model at all: `recent_weeks` took a horizon
+  parameter and `over_weeks` summed above it, which is that release's own *one
+  instrument parameterised by horizon* arriving literally. What is left is
+  *The first question*, *The invitation bar* and *Background repair*, and the
+  last two are standing tracks rather than releases.
 
   **Two of those seven delivered less than their own definition**, found by
   re-scoring on August 22 rather than by anyone noticing at the time. *Unify*
@@ -150,10 +162,16 @@ re-add it here.
   *facts, not derivations* rules out storing what `captured_at` and the
   existing provenance chain already answer.
 
-  **The third is refused rather than pending.** Search's fifth increment gates
+  ~~**The third is refused rather than pending.**~~ **The third is deferred,
+  and *refused* was the wrong word — corrected August 26, 2026.** Search's fifth
+  increment gates
   itself on *"the mechanism having been used against real material for long
   enough to say the sections are the right sections"* — two days against
-  forty-seven notes is not that.
+  forty-seven notes is not that. **But a trigger that has not fired is not a
+  trigger that cannot**, which is the distinction `principles.md` draws, and
+  [`clarice-v4-plan.md`](clarice-v4-plan.md) counts this as one of four
+  corpus-gated deferrals it requires to end **fired or written as a refusal**.
+  Calling it refused here skipped that step by vocabulary.
 
   **And *Unify*'s acceptance was unreachable inside its own release**, which is
   an ordering error worth keeping: it asks for S13, whose require needs

@@ -426,13 +426,29 @@ which is why it is last.
 An intent needs a bar or it is a someday. Not features — **the substrate
 somebody else's month would depend on:**
 
-1. **The restore drill run once, end to end.** Never run, and `CLAUDE.md`
-   records it would have died at step 5 on the executable-bit bug, mid-drill.
-2. **MFA enforced on the admin.** Machinery deployed and inert.
+1. ~~**The restore drill run once, end to end.** Never run, and `CLAUDE.md`
+   records it would have died at step 5 on the executable-bit bug, mid-drill.~~
+   **Run August 19, 2026 and passed** — the first pass entitled to the word, an
+   empty step-4 diff across 42 tables and behavioural checks at step 5.
+   [`MIGRATION.md`](../MIGRATION.md) owns that record. **What is still true is
+   narrower**: a drill certifies the schema it ran against, and that schema has
+   since moved. Re-running is Vince's — WSL, the ssh key and a paid scratch
+   cluster — and is worth doing when the schema has moved enough to be worth
+   re-proving, not on a calendar.
+2. ~~**MFA enforced on the admin.** Machinery deployed and inert.~~ **Shipped
+   and live August 23, 2026 as `petrel`.** Enforced on `/admin/` and on
+   `/api/v1/login`, in one deploy, because splitting them leaves a window where
+   a password alone still mints a ninety-day token.
 3. **The six concepts explained** — carried by *Capture*.
 
 The first two are [`security-and-resilience-plan.md`](security-and-resilience-plan.md)'s,
-still unclaimed by `roadmap.md`.
+~~still unclaimed by `roadmap.md`.~~ **claimed by it on August 23, 2026, when
+invitations became real and this bar stopped being hypothetical.** All three
+lines of this track were stale for three days; corrected August 26, 2026.
+
+**What is left of the bar is one item and it is not this list's third.** 1.7 of
+that plan — *seeing that any of it fires* — is the live gap: there are four
+rate limits now and nothing reading the log they fire into.
 
 ### Background repair
 

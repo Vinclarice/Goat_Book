@@ -249,10 +249,13 @@ class MonthBillOut(Schema):
     currency: str
     payee: str
     url: str
-    #: Whether it is settled. Derived from `Item.Status.COMPLETED` rather than
-    #: stored -- there is one definition of paid and the day and the agenda
-    #: already read it.
+    #: Whether it is settled. Derived rather than stored -- there is one
+    #: definition of paid and the day and the agenda already read it.
     paid: bool
+    #: Whether this comes round again. The page needs it to know whether
+    #: deleting has one meaning or two: removing August's rent is not the same
+    #: act as stopping rent.
+    repeats: bool
 
 
 class MonthOfBillsOut(Schema):
@@ -338,6 +341,7 @@ def add_bill(request, payload: NewBillIn):
         "payee": bill.payee,
         "url": reverse("api_item_detail", args=[item.id]),
         "paid": False,
+        "repeats": item.recurrence != Item.Recurrence.NONE,
     }
 
 
@@ -369,7 +373,11 @@ def _bill_row_out(item):
         "currency": bill.currency,
         "payee": bill.payee,
         "url": reverse("api_item_detail", args=[item.id]),
-        "paid": item.status == Item.Status.COMPLETED,
+        # `completed_at`, not the status: a paid *recurring* occurrence is
+        # ARCHIVED rather than COMPLETED, so reading the status would report
+        # every paid rent as unpaid. Same rule as `BillRow.paid`.
+        "paid": item.completed_at is not None,
+        "repeats": item.recurrence != Item.Recurrence.NONE,
     }
 
 
@@ -410,6 +418,30 @@ def edit_bill(request, task_id: int, payload: EditBillIn):
     return _bill_row_out(item)
 
 
+@router.delete(
+    "/bills/entry/{task_id}", response={204: None}, auth=SessionAuthIfLoggedIn()
+)
+def remove_bill(request, task_id: int, whole_series: bool = False):
+    """Remove a bill, and say which one is meant when it repeats.
+
+    **`whole_series` as a query parameter** rather than a body: a DELETE with a
+    payload is legal and poorly supported, and this is one boolean the caller
+    already knows before it asks.
+
+    The default is the narrow act. Deleting August's rent means *not this one*;
+    somebody who meant *stop paying rent* has to say so, because the wider
+    answer is the one that cannot be undone by adding a bill back.
+    """
+    item = Item.objects.filter(pk=task_id, owner=request.user).first()
+    if item is None:
+        raise HttpError(404, "No such bill.")
+    try:
+        services.delete_bill(item, whole_series=whole_series)
+    except services.TaskConflict as error:
+        raise HttpError(409, str(error))
+    return 204, None
+
+
 @router.get("/bills/{day}", response=MonthOfBillsOut, auth=SessionAuthIfLoggedIn())
 def months_bills(request, day: date):
     """What is due this month and what it comes to.
@@ -437,6 +469,7 @@ def months_bills(request, day: date):
                 "payee": row.bill.payee,
                 "url": reverse("api_item_detail", args=[row.task.id]),
                 "paid": row.paid,
+                "repeats": row.task.recurrence != Item.Recurrence.NONE,
             }
             for row in found.bills
         ],

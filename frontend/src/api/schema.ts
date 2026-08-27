@@ -55,7 +55,19 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Remove Bill
+         * @description Remove a bill, and say which one is meant when it repeats.
+         *
+         *     **`whole_series` as a query parameter** rather than a body: a DELETE with a
+         *     payload is legal and poorly supported, and this is one boolean the caller
+         *     already knows before it asks.
+         *
+         *     The default is the narrow act. Deleting August's rent means *not this one*;
+         *     somebody who meant *stop paying rent* has to say so, because the wider
+         *     answer is the one that cannot be undone by adding a bill back.
+         */
+        delete: operations["lists_api_v1_remove_bill"];
         options?: never;
         head?: never;
         /**
@@ -1342,6 +1354,8 @@ export interface components {
             url: string;
             /** Paid */
             paid: boolean;
+            /** Repeats */
+            repeats: boolean;
         };
         /**
          * NewBillIn
@@ -3297,6 +3311,28 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["MonthBillOut"];
                 };
+            };
+        };
+    };
+    lists_api_v1_remove_bill: {
+        parameters: {
+            query?: {
+                whole_series?: boolean;
+            };
+            header?: never;
+            path: {
+                task_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

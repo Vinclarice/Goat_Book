@@ -142,6 +142,48 @@ class TheMonthsBillsTest(TestCase):
         self.assertEqual(found.due_totals, {"USD": Decimal("64.99")})
         self.assertEqual(found.paid_totals, {"USD": Decimal("1200.00")})
 
+    def test_a_paid_repeating_bill_is_still_in_the_month(self):
+        """The bill this page most exists for, and the one a status check
+        would have hidden.
+
+        **Found sideways on August 27, 2026**, while building delete: a
+        completed *recurring* task is `ARCHIVED`, not `COMPLETED`, because
+        `unique_active_arealess_item` will not have the spawned successor
+        sitting beside a live predecessor. So the first version of this read
+        filtered on status and would have hidden every paid rent -- while
+        passing every test, because the fixtures here do not repeat.
+
+        Keyed on `completed_at` instead, which survives that archive.
+        """
+        rent = services.create_bill(
+            self.user,
+            payee="Landlord",
+            amount=Decimal("1200.00"),
+            due_date=MID_AUGUST,
+            repeats=True,
+        )
+
+        services.complete_item(rent)
+
+        found = self.month()
+        rows = {row.task.pk: row for row in found.bills}
+        self.assertIn(
+            rent.pk,
+            rows,
+            "A paid repeating bill left the month. It is archived rather than "
+            "completed, which is a fact about recurrence and not about money.",
+        )
+        self.assertTrue(rows[rent.pk].paid)
+        self.assertEqual(found.paid_totals, {"USD": Decimal("1200.00")})
+
+    def test_a_task_archived_without_being_paid_stays_out(self):
+        """The other side of it: archived means put away, and only
+        `completed_at` means paid."""
+        bill = self.bill("Old subscription", amount="9.00")
+        services.archive_item(bill)
+
+        self.assertEqual(self.month().bills, [])
+
     def test_an_unpaid_bill_is_not_marked_paid(self):
         """The other side of the flag, so `paid` cannot be a constant."""
         self.bill("Internet", amount="64.99")

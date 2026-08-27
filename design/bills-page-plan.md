@@ -97,7 +97,25 @@ where it is.** The word *task* does not appear on it.
    **The write routes are `/bills/entry/{id}`**, because `/bills/{day}` already
    takes a date in that position and two routes differing only by the type of
    one segment is a collision waiting for the first numeric-looking date.
-4. **Deleting**, with the recurring question asked once.
+4. ~~**Deleting**, with the recurring question asked once.~~ **Done August 27,
+   2026.** The narrow act is the default and the wide one has to be chosen:
+   removing August's rent means *not this one*, and only *stop paying rent*
+   cannot be undone by adding a bill back. A one-off bill is deleted without
+   any question, because there is only one thing it could mean.
+
+   **It had the same trap as increment 2 and nearly shipped with it.** A series
+   continues only because completing an occurrence spawns the next one, so
+   deleting this month would have ended the series *silently* -- no next month,
+   nothing to notice until a bill failed to arrive. The successor is created
+   before the occupant is removed.
+
+   **And it exposed a real defect in increment 1.** A completed *recurring*
+   task is `ARCHIVED`, not `COMPLETED` — `complete_item` says why, since
+   `unique_active_arealess_item` will not have a successor beside a live
+   predecessor. So the first version of the month read filtered on status and
+   **would have hidden every paid rent**, while passing every test, because no
+   fixture repeated. Keyed on `completed_at` now, which survives that archive,
+   and the case has its own test rather than staying found-by-accident.
 
 **1 is worth doing whatever happens to the rest**, and it is the one that fixes
 a wrong number rather than a missing button.

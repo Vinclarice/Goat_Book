@@ -111,6 +111,42 @@
             "SessionAuthIfLoggedIn": []
           }
         ]
+      },
+      "delete": {
+        "operationId": "lists_api_v1_remove_bill",
+        "summary": "Remove Bill",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "schema": {
+              "title": "Task Id",
+              "type": "integer"
+            },
+            "required": true
+          },
+          {
+            "in": "query",
+            "name": "whole_series",
+            "schema": {
+              "default": false,
+              "title": "Whole Series",
+              "type": "boolean"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "description": "Remove a bill, and say which one is meant when it repeats.\n\n**`whole_series` as a query parameter** rather than a body: a DELETE with a\npayload is legal and poorly supported, and this is one boolean the caller\nalready knows before it asks.\n\nThe default is the narrow act. Deleting August's rent means *not this one*;\nsomebody who meant *stop paying rent* has to say so, because the wider\nanswer is the one that cannot be undone by adding a bill back.",
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
       }
     },
     "/api/v1/bills/{day}": {
@@ -2418,6 +2454,10 @@
           "paid": {
             "title": "Paid",
             "type": "boolean"
+          },
+          "repeats": {
+            "title": "Repeats",
+            "type": "boolean"
           }
         },
         "required": [
@@ -2428,7 +2468,8 @@
           "currency",
           "payee",
           "url",
-          "paid"
+          "paid",
+          "repeats"
         ],
         "title": "MonthBillOut",
         "type": "object"

@@ -37,6 +37,7 @@ function billsData(overrides: Record<string, unknown> = {}) {
         payee: "Landlord",
         url: "/api/items/1/",
         paid: false,
+        repeats: true,
       },
     ],
     due_totals: { USD: "1200.00" },
@@ -97,6 +98,7 @@ describe("BillsRoute", () => {
               payee: "Landlord",
               url: "/api/items/1/",
               paid: true,
+              repeats: false,
             },
           ],
           due_totals: {},
@@ -133,6 +135,7 @@ describe("BillsRoute", () => {
       payee: "Someone",
       url: `/api/items/${task_id}/`,
       paid,
+      repeats: false,
     });
     vi.spyOn(globalThis, "fetch").mockImplementation(() =>
       jsonResponse(
@@ -335,6 +338,79 @@ describe("BillsRoute", () => {
     /* Back to a row. The add form's own payee box is still on the page, which
        is why the assertion above is scoped to the row and this one is not. */
     expect(screen.getByRole("button", { name: /Edit Landlord/ })).toBeInTheDocument();
+  });
+
+  it("asks which bill is meant before deleting a repeating one", async () => {
+    /* Deleting August's rent is not the same act as stopping rent, and only
+       one of them can be undone by adding a bill back. */
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((input) => {
+        const request = input as Request;
+        if (request.method === "DELETE") return jsonResponse({}, true, 204);
+        return jsonResponse(billsData());
+      });
+
+    renderAt();
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: /Delete Landlord/ }),
+    );
+    /* Nothing has been sent yet: the question comes first. */
+    expect(
+      fetchSpy.mock.calls.filter(
+        ([request]) => (request as Request).method === "DELETE",
+      ),
+    ).toHaveLength(0);
+
+    await userEvent.click(screen.getByRole("button", { name: "just this month" }));
+
+    const deleted = fetchSpy.mock.calls
+      .map(([request]) => request as Request)
+      .filter((request) => request.method === "DELETE");
+    await waitFor(() => expect(deleted).toHaveLength(1));
+    expect(deleted[0].url).toContain("whole_series=false");
+  });
+
+  it("deletes a one-off bill without asking anything", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((input) => {
+        const request = input as Request;
+        if (request.method === "DELETE") return jsonResponse({}, true, 204);
+        return jsonResponse(
+          billsData({
+            bills: [
+              {
+                task_id: 1,
+                text: "Plumber",
+                due_date: "2026-08-04",
+                amount: "90.00",
+                currency: "USD",
+                payee: "Plumber",
+                url: "/api/items/1/",
+                paid: false,
+                repeats: false,
+              },
+            ],
+          }),
+        );
+      });
+
+    renderAt();
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: /Delete Plumber/ }),
+    );
+
+    const deleted = fetchSpy.mock.calls
+      .map(([request]) => request as Request)
+      .filter((request) => request.method === "DELETE");
+    await waitFor(() => expect(deleted).toHaveLength(1));
+    /* No question, because there is only one thing it could mean. */
+    expect(
+      screen.queryByRole("button", { name: "the standing bill" }),
+    ).not.toBeInTheDocument();
   });
 
   it("reports a failure rather than an empty month", async () => {

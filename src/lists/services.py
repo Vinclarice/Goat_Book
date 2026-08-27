@@ -473,6 +473,56 @@ def update_bill(item, *, payee=_KEEP, amount=_KEEP, currency=_KEEP, due_date=_KE
 
 
 @transaction.atomic
+def delete_bill(item, *, whole_series=False):
+    """Remove a bill, and say which bill is meant when it repeats.
+
+    **From the person's side there is no task**, so this removes the whole
+    thing rather than stripping the sidecar and leaving an orphan called
+    "Pay Landlord" in their lists. Vince's decision, August 27, 2026.
+
+    **`whole_series=False` means this month and not the habit.** A series
+    continues only because completing an occurrence spawns the next one -- so
+    deleting this one would end the series *silently*, with no next month and
+    nothing to notice until a bill failed to arrive. The successor is therefore
+    created before this occupant is removed. What somebody means by deleting
+    August's rent is *not this one*; they would have said so if they meant stop
+    paying rent.
+
+    **`whole_series=True` stops it coming round** and leaves every month that
+    already happened alone: the commitment ends, this occurrence goes, and past
+    ones stay because §4 rule 6 keeps a row whose existence answers whether
+    something happened.
+
+    **Archive then delete**, because `delete_archived_item` refuses anything
+    else and that rule is worth going through rather than around -- it is what
+    makes the life log hear a removal the same way everywhere.
+    """
+    item = Item.objects.select_for_update().get(pk=item.pk)
+    if not Bill.objects.filter(item=item).exists():
+        raise TaskConflict("That task is not a bill.")
+
+    repeats = item.recurrence != Item.Recurrence.NONE
+    if repeats and whole_series:
+        # Ends the commitment; the link from this row stays, because it really
+        # was an occurrence of that series.
+        set_recurrence(item, Item.Recurrence.NONE)
+        item.refresh_from_db()
+        repeats = False
+
+    # **Archive first, then spawn.** `unique_active_arealess_item` is
+    # `(owner, text)` over everything not archived, so an unfiled successor
+    # cannot exist beside a live predecessor -- which is exactly why
+    # `complete_item` archives a recurring task rather than leaving it
+    # `COMPLETED`. Ordering it the other way round raises an IntegrityError,
+    # and did.
+    archive_item(item)
+    item.refresh_from_db()
+    if repeats:
+        _spawn_next_occurrence(item)
+    delete_archived_item(item)
+
+
+@transaction.atomic
 def clear_bill(item):
     """Stop this task being a bill. The task itself is untouched."""
     Bill.objects.filter(item=item).delete()

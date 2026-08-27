@@ -158,6 +158,7 @@ type BillRow = {
   currency: string;
   payee: string;
   paid: boolean;
+  repeats: boolean;
 };
 
 /** Correcting a bill without leaving the page it is shown on.
@@ -261,6 +262,79 @@ function EditBill({ bill, onDone }: { bill: BillRow; onDone: () => void }) {
         </Button>
       </div>
     </li>
+  );
+}
+
+/** Removing a bill, and asking which bill is meant when it repeats.
+ *
+ * The narrow act is the default and the wide one has to be chosen: deleting
+ * August's rent means *not this one*, and somebody who meant *stop paying rent*
+ * can say so. The wide answer is the one adding a bill back cannot undo, since
+ * it ends a series that has history behind it.
+ */
+function DeleteBill({ bill }: { bill: BillRow }) {
+  const queryClient = useQueryClient();
+  const [asking, setAsking] = useState(false);
+
+  const remove = useMutation({
+    mutationFn: async (wholeSeries: boolean) => {
+      const { error, response } = await apiV1.DELETE(
+        "/api/v1/bills/entry/{task_id}",
+        {
+          params: {
+            path: { task_id: bill.task_id },
+            query: { whole_series: wholeSeries },
+          },
+        },
+      );
+      if (error || !response.ok) throw new RequestFailed(response.status);
+    },
+    onSuccess: () => {
+      setAsking(false);
+      queryClient.invalidateQueries({ queryKey: ["bills"] });
+    },
+  });
+
+  if (!bill.repeats) {
+    return (
+      <button
+        type="button"
+        onClick={() => remove.mutate(false)}
+        disabled={remove.isPending}
+        className="touch-target text-sm text-muted-foreground hover:text-foreground"
+        aria-label={`Delete ${bill.payee || bill.text}`}
+      >
+        Delete
+      </button>
+    );
+  }
+
+  if (!asking) {
+    return (
+      <button
+        type="button"
+        onClick={() => setAsking(true)}
+        className="touch-target text-sm text-muted-foreground hover:text-foreground"
+        aria-label={`Delete ${bill.payee || bill.text}`}
+      >
+        Delete
+      </button>
+    );
+  }
+
+  return (
+    <span className="flex flex-wrap items-center gap-2 text-sm">
+      <span className="text-muted-foreground">Delete</span>
+      <Button size="sm" variant="secondary" onClick={() => remove.mutate(false)}>
+        just this month
+      </Button>
+      <Button size="sm" variant="secondary" onClick={() => remove.mutate(true)}>
+        the standing bill
+      </Button>
+      <Button size="sm" variant="ghost" onClick={() => setAsking(false)}>
+        Cancel
+      </Button>
+    </span>
   );
 }
 
@@ -377,6 +451,7 @@ export function BillsRoute() {
                   >
                     Edit
                   </button>
+                  <DeleteBill bill={bill} />
                 </span>
               </li>
               ),

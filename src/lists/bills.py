@@ -14,6 +14,8 @@ from collections import defaultdict
 from dataclasses import dataclass
 from decimal import Decimal
 
+from django.db.models import Q
+
 from lists.models import Bill, Item
 
 
@@ -26,12 +28,18 @@ class BillRow:
     def paid(self):
         """Whether this one is settled.
 
-        **There is no second definition of paid** -- it is
-        `Item.Status.COMPLETED`, the same fact the day and the agenda read, and
-        a bill-shaped copy of it would be a second answer to one question.
-        Derived rather than stored for the same reason: nothing to keep in step.
+        **`completed_at`, not a status**, and the difference is not pedantry:
+        a completed *recurring* task is `ARCHIVED` rather than `COMPLETED` --
+        `complete_item` says so, because `unique_active_arealess_item` would
+        otherwise refuse the successor it spawns in the same breath. Reading the
+        status would therefore have hidden every paid rent, which is the bill
+        this page most exists for.
+
+        **There is still no second definition of paid**: `completed_at` is the
+        one the day and the agenda read, and it is cleared by `reopen_item`, so
+        un-paying works without anything here knowing about it.
         """
-        return self.task.status == Item.Status.COMPLETED
+        return self.task.completed_at is not None
 
 
 @dataclass(frozen=True)
@@ -87,10 +95,14 @@ def bills_for(owner, day):
         BillRow(task=bill.item, bill=bill)
         for bill in Bill.objects.filter(
             item__owner=owner,
-            item__status__in=(Item.Status.ACTIVE, Item.Status.COMPLETED),
+            # Open ones, plus anything ever paid -- including the paid
+            # recurring occurrences that are `ARCHIVED` rather than
+            # `COMPLETED`. A task archived *without* being completed is
+            # genuinely put away and stays out.
             item__due_date__gte=first,
             item__due_date__lte=last,
         )
+        .filter(Q(item__status=Item.Status.ACTIVE) | Q(item__completed_at__isnull=False))
         .select_related("item", "item__list")
         .order_by("item__due_date", "item__id")
     ]

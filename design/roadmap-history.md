@@ -7,6 +7,127 @@ The reasoning, deployment record and lessons behind completed work, kept out of
 the active plan so that plan stays scannable. The active plan is
 [`roadmap.md`](roadmap.md).
 
+**Three deployments were missing from this file until August 26, 2026** —
+`osprey`, `petrel` and the August 26 batch, the newest three there were. They
+are written up below from their annotated tags, which were the only account of
+them anywhere: `osprey` in particular appeared **nowhere in `design/`**, not
+here and not in `roadmap.md`, while having moved four of this product's
+nineteen journeys. Worth saying rather than quietly filling in, because this is
+the one file the index calls unable to go stale — and it cannot, but it can be
+incomplete, which reads the same to somebody looking for what happened.
+
+## The scoreboard runs out of impossible things — August 22–23, 2026, `osprey`
+
+Twenty-one commits, verified in production at 02:58 on August 23
+(`DEPLOYED-2026-08-23/0258`, image `clarice:391d7dff2003`), with five
+migrations: `accounts` 0017, `lists` 0045 and 0046, `mind` 0026 and 0027.
+**Four journeys moved, and after it the *impossible* pile held nothing that was
+waiting on code.**
+
+**What shipped**
+
+- **S12, out of impossible — a project explains itself when it ends.** Planned
+  against met, week by week across the project's life and judged at each week's
+  end so that a past week's figure cannot move afterwards. What was
+  deliberately set aside is counted apart from what was simply missed. The
+  notes that became work here and the decisions taken on them are reached
+  through **recorded provenance rather than retrieval** — the distinction the
+  temporal substrate had just paid for. And `Project.learned`, the one thing no
+  row can answer, kept for the next project's brief.
+- **S1, out of impossible — invitation links.** The approval happens **when the
+  link is minted**, so there is a person in the story and nobody left in a
+  loop. `is_active` and `email_confirmed_at` come apart exactly as S1 had
+  predicted they would a week earlier.
+- **S16 and S10 gained their missing halves.** The brief now reaches notes,
+  decisions and sources, each saying why it is there; and it carries the
+  abandonment condition it had until then been **silently dropping**.
+- **Five of the substrate's last decisions** — D5, D14, D15, D16 and D17. Each
+  is kept with what it turned out to be in
+  [`temporal-substrate-plan.md`](temporal-substrate-plan.md), and the
+  narratives are in this file under *The temporal substrate*.
+
+**What it taught: a green unit suite can hide a production 500, and the browser
+suite is where it surfaces.** Run before the deploy, it found a fault live since
+Release D — `complete_project` locked a row outside a transaction, and **every
+unit test passed because `TestCase` supplied the transaction the code was
+missing**. The test environment was standing in for the code. This is the
+concrete case behind `CLAUDE.md`'s rule about anchoring an insertion above a
+decorator rather than on the `def` line, and behind running the browser suite
+when routing or session handling moves.
+
+**One claim in its tag is wrong and is corrected here rather than in the tag.**
+It closes with *"all nineteen substrate decisions closed."* Eighteen were.
+**D18 — whether a neighbourhood is clock-bounded or episode-bounded — was open
+then and is open now**: `clarice/recall.py` still carries
+`DEFAULT_WINDOW = timedelta(hours=6)`, the ±6h proxy the decision exists to
+question. The plan's own summary line said the same thing and was corrected on
+August 26.
+
+## A second factor on the admin — August 23, 2026, `petrel`
+
+Five commits, verified in production at 15:10 on August 23
+(`DEPLOYED-2026-08-23/1510`, image `clarice:c518bdd29efa`).
+[`admin-mfa-plan.md`](admin-mfa-plan.md) increments 3 and 4: `/admin/` now
+requires a verified device as well as a staff account, and `/api/v1/login`
+refuses an account that has one. **Both in a single deploy**, because splitting
+them leaves a window in which a password alone still mints a ninety-day token.
+
+**Two things the plan did not anticipate, both found by running it.**
+`django-otp`'s own README recipe — `admin.site.__class__ = VerifiedAdminSite` —
+**does not work**: `admin.site` is a lazy proxy, so the assignment replaces the
+proxy's class rather than the site's. `AdminConfig.default_site` is the real
+hook, and it is not enough either, because unfold's `DefaultAppConfig.ready()`
+assigns `admin.site` outright and discards it. `BasicAppConfig` is unfold's own
+answer. The plan's §2.5 said unfold overrides admin templates; **it also
+overrides the site.**
+
+**And one thing found in a production log an hour after the first deploy**:
+five successful logins at `/admin/login/` in a row. `AdminSite.login` redirects
+to the index only when `has_permission()`, which is exactly what is false
+without a second factor — so logging in bounced back to the login form and
+**read as a wrong password**. `/accounts/verify/` existed and nothing pointed at
+it. *Building the page is not wiring it up*, which is a rule this codebase
+already had: the change meant to close a seam opened one.
+
+**Enrolment was checked against production rather than taken on report**, and
+that caught the first attempt landing on the wrong account — `Vrbeall01`, in
+daily use and not staff, while `vince-admin` had none. Deploying then would
+have been the lockout the plan's ordering exists to prevent.
+
+**Its tag's closing line is wrong**: *"the invitation bar is now one item short:
+the restore drill has still never been run."* The drill **ran on August 19,
+2026 and passed** — [`MIGRATION.md`](../MIGRATION.md) owns that record. What is
+true is narrower: a drill certifies the schema it ran against, and that schema
+has since moved. The same sentence was live in `roadmap.md` and was struck
+there on the same day it was written.
+
+## Security hardening and Django 5.2.17 — August 26, 2026, no codename
+
+Twenty-one commits, no migrations, verified in production at 19:45
+(`DEPLOYED-2026-08-26/1945`, image `clarice:f6de194e5a72`). The first deploy
+since August 23 and the largest batch in a while: the note page's manual
+linking, **five of the seven ranked items** in
+[`security-and-resilience-plan.md`](security-and-resilience-plan.md), Django
+5.2.17, and a great deal of corrected corpus.
+
+**Three of its changes answer for themselves from outside**, which is why the
+verification is worth keeping: `Server: nginx` with no version, so
+`server_tokens` is off; `Strict-Transport-Security: max-age=31536000;
+includeSubDomains`; and a `Content-Security-Policy` header that is no longer
+Report-Only, nonce intact. `migrate --check` reported nothing pending and
+`/healthz` returned 200.
+
+**Two things had never met production traffic before that night** and are what
+to watch: the enforcing CSP, which can break a page for a person rather than
+for a scanner, and the two new nginx rate limits on `/api/v1/capture` and
+`/admin/`.
+
+**This one has no bird, and that is the rule rather than an omission.** It is
+infrastructure and hygiene, which
+[`architecture-trajectory.md`](architecture-trajectory.md) §6 already says is
+not numbered as a release. The rule that decides it was written down on August
+26 — see *Release conventions* at the end of this file.
+
 ## The day you can actually use — August 20, 2026, `moorhen`
 
 Release M, in one deployment and verified in production on August 20 at 20:30
@@ -2553,9 +2674,16 @@ The ones that are not already stated in a release section above:
 
 ## Release conventions
 
-Releases use alphabetic bird names, and a release receives three tags — `LIVE`,
-`DEPLOYED-<date>/<HHMM>` and the bird codename — after it is verified in
-production. What each tag means is in `CLAUDE.md`; the letter sequence and which
-bird holds which letter are in `roadmap.md` under *Release practice*. Neither is
-restated here. A letter is never reused: a follow-up production release receives
-the next bird name, even if it immediately corrects the last.
+Releases use alphabetic bird names. What each tag means is in `CLAUDE.md`; the
+letter sequence, which bird holds which letter, and **which deploys earn a bird
+at all** are in `roadmap.md` under *Release practice*. None of it is restated
+here. A letter is never reused: a follow-up production release receives the next
+bird name, even if it immediately corrects the last.
+
+~~a release receives three tags — `LIVE`, `DEPLOYED-<date>/<HHMM>` and the bird
+codename — after it is verified in production.~~ **Struck August 26, 2026**,
+because it said every verified deploy is a release and the practice never was.
+**Fourteen of thirty-six deploys carry a bird**, so the selection was real from
+the beginning and only the criterion was missing — which is how three deploys
+came to be absent from this file at once. The criterion now exists and lives in
+`roadmap.md`.

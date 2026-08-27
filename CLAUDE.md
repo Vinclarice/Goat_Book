@@ -415,7 +415,8 @@ you to run it.** Surface it in a fenced `bash` block and stop there — he
 runs it himself and reports back once it's done.
 
 **The deploy is not finished until it is tagged, and this is your job, not
-his.** Three tags, each meaning a different thing:
+his.** Three tags, each meaning a different thing — **the first two always,
+the third only when the deploy is a release:**
 
 - `LIVE` — a moving pointer at the code currently running. **The only tag
   that is ever overwritten** (`git tag -f` plus `git push --force origin
@@ -432,8 +433,15 @@ his.** Three tags, each meaning a different thing:
   others. **Annotated, not lightweight**, for the same reason the codename is:
   `git describe` ignores a lightweight tag, so the command this file tells you
   to confirm a build with cannot see it.
-- The bird codename — a permanent annotated release tag, applied when a
-  release is verified in production, describing what shipped and how.
+- The bird codename — a permanent annotated release tag describing what
+  shipped and how it was verified. **Not every deploy gets one**, and this is
+  the tag to leave off when unsure: the first two are the record and this one
+  is a claim that a body of work finished. `roadmap.md`'s *Release practice*
+  owns the test and is not restated here — the short version is that a release
+  needs a subject you can say in a sentence *and* has to move something a
+  document tracks, and that infrastructure is excluded outright by
+  `architecture-trajectory.md` §6. Fourteen of thirty-six deploys have one.
+  **When it is arguable, it is not a release.**
 
 Tagging drifted badly through August — `LIVE` sat five days and thirty commits
 behind production, two deploys went untagged — because it was written down in

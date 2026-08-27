@@ -658,15 +658,50 @@ either direction.
 
 ## Release practice
 
-Production releases use alphabetic bird codenames: `albatross`, `bittern`,
-`crane`, `dunlin`, `fulmar`, `godwit`, `heron`. **Tag only after production is
-verified.** The letter carries; the bird is chosen when the release ships. The
-sequence skips E — Vince's call, August 3, 2026. Since then `ibis`, `jackdaw`,
-`kestrel` and `lapwing` have taken I, J, K and L, so **M is the current
-letter** and is unclaimed. `lapwing` closed August 20, 2026 — *the week you can
-plan, and the material you can find*. What claims M is whichever of
-[`clarice-v3-plan.md`](clarice-v3-plan.md)'s eight releases ships first, and a
-letter is never reserved for a subject in advance.
+Production releases use alphabetic bird codenames. **Tag only after production
+is verified.** The letter carries; the bird is chosen when the release ships.
+The sequence skips E — Vince's call, August 3, 2026. ~~Since then `ibis`,
+`jackdaw`, `kestrel` and `lapwing` have taken I, J, K and L, so **M is the
+current letter**~~ — **`petrel` took P on August 23, 2026, so Q is the current
+letter** and is unclaimed. A letter is never reserved for a subject in advance.
+
+### Which deploys earn a bird, and which do not
+
+**Not every deploy is a release.** Added August 26, 2026, at Vince's direction,
+because the convention had never said so and one document read as though it
+had — `roadmap-history.md` said *"a release receives three tags after it is
+verified in production"*, which describes every deploy that has ever happened.
+
+**The practice was already selective and only the criterion was missing.**
+Fourteen of thirty-six deploys carry a bird. The other twenty-two are
+follow-ups, corrections and infrastructure, and nobody ever thought they were
+releases — but with nothing written down, the question came up fresh each time
+and was answered by whoever was tagging.
+
+A deploy is a release, and takes the next letter, when **both** hold:
+
+1. **It has a subject** — one sentence naming what shipped, written before the
+   tag rather than assembled from the diff. A batch of whatever was ready is
+   not a subject, however large. `nightjar` is thirty-one commits and one
+   sentence; the August 26 deploy is twenty-one commits and a list.
+2. **It moves something a document tracks** — a verdict in
+   [`product-stories.md`](product-stories.md), a stated acceptance in
+   [`clarice-v3-plan.md`](clarice-v3-plan.md), or an item closing in this file.
+
+**Infrastructure is excluded by an older rule and this does not reopen it.**
+[`architecture-trajectory.md`](architecture-trajectory.md) §6: *infrastructure
+work does not ship features and should not be numbered as a release; it runs
+alongside.* So a deploy that closes five ranked security items is still not a
+release — which is exactly the August 26 case, and the reason it has no bird.
+
+**Everything else still gets `LIVE` and a `DEPLOYED-` tag, with its verification
+in the tag message.** Nothing about the record changes; a deploy without a bird
+is fully accounted for. What the bird adds is a claim that a body of work
+finished, and **that claim is what should be scarce** — fourteen birds across
+five weeks is a legible history, and thirty-six would be a log.
+
+**When it is genuinely arguable, it is not a release.** A release announces
+itself; a deploy you have to argue into being one is a batch you are fond of.
 
 - `LIVE` is a moving tag for the code currently running. It is the only tag
   ever overwritten, which is safe precisely because the position it leaves is

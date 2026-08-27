@@ -6,7 +6,7 @@ is due is a bill you find out about too late. That is the second half of what
 bills needed and the first that is not about bills at all -- "tell me a week
 before" is a sentence about any commitment.
 
-**On `Item`, not on `Bill`.** A lead time is not a property of costing money.
+**On `Item`, not on `MoneyLine`.** A lead time is not a property of costing money.
 Putting it on the sidecar would have made "remind me before the MOT" impossible
 without inventing an amount.
 

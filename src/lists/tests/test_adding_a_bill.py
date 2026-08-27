@@ -8,7 +8,7 @@ empty state was a dead end with two links, both to other empty months.
 **The model is not what changes.** `architecture-trajectory.md` §4 decided a
 bill is a sidecar on `Item` because its life cycle *is* a recurring task's, and
 that stays. What changes is that the surface stops making the person live with
-that decision: this service writes the `Item` and the `Bill` together, and the
+that decision: this service writes the `Item` and the `MoneyLine` together, and the
 form above it asks only about money and dates.
 
 **The name is derived from the payee** -- Vince's call, August 27, 2026 -- so
@@ -27,7 +27,7 @@ from django.test import TestCase
 
 from accounts.models import User
 from lists import services
-from lists.models import Bill, Item
+from lists.models import MoneyLine, Item
 
 AUGUST = datetime.date(2026, 8, 10)
 
@@ -49,7 +49,7 @@ class AddingABillTest(TestCase):
 
         self.assertEqual(item.owner, self.user)
         self.assertEqual(item.due_date, AUGUST)
-        bill = Bill.objects.get(item=item)
+        bill = MoneyLine.objects.get(item=item)
         self.assertEqual(bill.amount, Decimal("1200.00"))
         self.assertEqual(bill.currency, "USD")
         self.assertEqual(bill.payee, "Landlord")
@@ -92,7 +92,7 @@ class AddingABillTest(TestCase):
             self.user, payee="City Utilities", amount=None, due_date=AUGUST
         )
 
-        self.assertIsNone(Bill.objects.get(item=item).amount)
+        self.assertIsNone(MoneyLine.objects.get(item=item).amount)
 
     def test_it_needs_a_payee_because_the_name_depends_on_one(self):
         with self.assertRaises(services.TaskConflict):
@@ -115,7 +115,7 @@ class ARepeatingBillStaysABillTest(TestCase):
     """Paying rent must not stop rent being a bill.
 
     **Found while building increment 2, August 27, 2026, and it would have
-    sunk it.** `_spawn_next_occurrence` never touched `Bill`, so completing a
+    sunk it.** `_spawn_next_occurrence` never touched `MoneyLine`, so completing a
     repeating bill produced a plain task for next month with no sidecar -- and
     a task with no sidecar does not appear on the bills page at all. "Repeats
     monthly", on by default, would have given a page that emptied itself one
@@ -150,7 +150,7 @@ class ARepeatingBillStaysABillTest(TestCase):
         self.assertEqual(following.count(), 1, "the next occurrence should exist")
         nxt = following.get()
         self.assertTrue(
-            Bill.objects.filter(item=nxt).exists(),
+            MoneyLine.objects.filter(item=nxt).exists(),
             "Next month's rent is not a bill, so it will never appear on the "
             "page that exists to show bills.",
         )
@@ -167,7 +167,7 @@ class ARepeatingBillStaysABillTest(TestCase):
         services.complete_item(rent)
 
         nxt = Item.objects.filter(owner=self.user, status=Item.Status.ACTIVE).get()
-        carried = Bill.objects.get(item=nxt)
+        carried = MoneyLine.objects.get(item=nxt)
         self.assertEqual(carried.payee, "Landlord")
         self.assertEqual(carried.currency, "GBP")
         self.assertIsNone(

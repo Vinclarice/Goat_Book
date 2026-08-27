@@ -10,7 +10,7 @@ has no instrument for.
 
 **The existing guards catch the other shape.**
 `test_dark_services_declare_their_deferral.py` asks *does anything call this?*
-That question cannot see a sidecar nobody joined to a copy path: `Bill` had
+That question cannot see a sidecar nobody joined to a copy path: `MoneyLine` had
 callers, plenty of them, and was still dropped on every spawn.
 
 **So this asks the opposite question: does the copy path know about you?** Every
@@ -70,6 +70,6 @@ class ASpawnAccountsForEverythingOnATaskTest(SimpleTestCase):
         has now found five times."""
         found = hangs_off_a_task()
 
-        self.assertIn("Bill", found)
+        self.assertIn("MoneyLine", found)
         self.assertIn("ChecklistStep", found)
         self.assertGreaterEqual(len(found), 3)

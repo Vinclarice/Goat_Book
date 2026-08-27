@@ -11,7 +11,7 @@ from lists.models import (
     CadenceMode,
     ChecklistStep,
     Item,
-    Bill,
+    MoneyLine,
     List,
     Priority,
     Project,
@@ -361,7 +361,7 @@ def set_bill(item, *, amount=None, currency="USD", payee=""):
         raise InvalidTaskTransition("Restore this task before editing it")
     if amount is not None and amount < 0:
         raise TaskConflict("A bill is something owed, so it cannot be negative.")
-    Bill.objects.update_or_create(
+    MoneyLine.objects.update_or_create(
         item=item,
         defaults={"amount": amount, "currency": currency, "payee": payee},
     )
@@ -463,7 +463,7 @@ def update_bill(item, *, payee=_KEEP, amount=_KEEP, currency=_KEEP, due_date=_KE
     item = Item.objects.select_for_update().get(pk=item.pk)
     if item.status == Item.Status.ARCHIVED:
         raise InvalidTaskTransition("Restore this task before editing it")
-    bill = Bill.objects.filter(item=item).first()
+    bill = MoneyLine.objects.filter(item=item).first()
     if bill is None:
         raise TaskConflict("That task is not a bill.")
 
@@ -516,7 +516,7 @@ def pay_bill(item, *, amount=None):
     *"whatever it comes to"* comes to something.
     """
     item = Item.objects.select_for_update().get(pk=item.pk)
-    bill = Bill.objects.filter(item=item).first()
+    bill = MoneyLine.objects.filter(item=item).first()
     if bill is None:
         raise TaskConflict("That task is not a bill.")
     if amount is not None and amount < 0:
@@ -556,7 +556,7 @@ def delete_bill(item, *, whole_series=False):
     makes the life log hear a removal the same way everywhere.
     """
     item = Item.objects.select_for_update().get(pk=item.pk)
-    if not Bill.objects.filter(item=item).exists():
+    if not MoneyLine.objects.filter(item=item).exists():
         raise TaskConflict("That task is not a bill.")
 
     repeats = item.recurrence != Item.Recurrence.NONE
@@ -583,7 +583,7 @@ def delete_bill(item, *, whole_series=False):
 @transaction.atomic
 def clear_bill(item):
     """Stop this task being a bill. The task itself is untouched."""
-    Bill.objects.filter(item=item).delete()
+    MoneyLine.objects.filter(item=item).delete()
     return item
 
 
@@ -952,7 +952,7 @@ def _spawn_next_occurrence(completed_item, carry_forward_steps=()):
     next_item.tags.set(commitment.tags.all())
 
     # **A repeating bill stays a bill.** Added August 27, 2026: nothing here
-    # touched `Bill`, so paying rent produced a plain task for next month and
+    # touched `MoneyLine`, so paying rent produced a plain task for next month and
     # rent silently stopped appearing on the page that exists to show bills.
     # Recurrence was built for tasks and the sidecar was added beside it;
     # neither was wrong and nobody joined them.
@@ -963,9 +963,9 @@ def _spawn_next_occurrence(completed_item, carry_forward_steps=()):
     # so carrying the number forward would state something nobody has been
     # told. What lands is an unpriced bill from a known payee, which is
     # exactly what `MonthOfBills.unpriced` counts rather than totals.
-    previous_bill = Bill.objects.filter(item=completed_item).first()
+    previous_bill = MoneyLine.objects.filter(item=completed_item).first()
     if previous_bill is not None:
-        Bill.objects.create(
+        MoneyLine.objects.create(
             item=next_item,
             amount=None,
             currency=previous_bill.currency,
@@ -986,7 +986,7 @@ def _spawn_next_occurrence(completed_item, carry_forward_steps=()):
     # trigger, so it is not a thing to write casually in either direction.
     #
     # Both declared rather than left silent, and
-    # `tests/test_a_spawn_accounts_for_everything_on_a_task.py` is why: `Bill`
+    # `tests/test_a_spawn_accounts_for_everything_on_a_task.py` is why: `MoneyLine`
     # was correctly not mentioned here either, right up until it turned out to
     # be a defect that had been live since bills shipped.
 

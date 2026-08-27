@@ -23,7 +23,7 @@ plan's table did not cover:
 - **A `Node` with a kind is the tempting answer and it is wrong.** A node is
   something *you wrote*. S15 is explicit that this is the gap: *the material is
   his own, and this story starts with an article somebody else wrote.*
-- **Unlike `Bill` it is not a sidecar**, because there is no existing row for it
+- **Unlike `MoneyLine` it is not a sidecar**, because there is no existing row for it
   to hang off.
 
 **The URL is text and is never fetched**, which is D7's answer already made:

@@ -11,7 +11,7 @@ from django.db.models import Case, Count, F, IntegerField, Q, Value, When
 from django.urls import reverse
 from django.utils import timezone
 
-from lists.models import Item, List, Priority
+from lists.models import Direction, Item, List, Priority
 from lists.serializers import project_ref_for, serialize_item
 
 
@@ -193,9 +193,25 @@ def snooze_presets(today):
 
 
 def open_items_for(user):
-    """Every task the user still has to do, across all of their lists."""
+    """Every task the user still has to do, across all of their lists.
+
+    **Income is not one of them.** A salary is money moving toward you on a
+    date, which the money module tracks and can call late -- but it is not
+    something you *do*, and "Salary" sitting on the day page every month is a
+    line nobody can act on. Vince's call, August 27, 2026: money in belongs to
+    Money only.
+
+    **Bills stay**, deliberately and by the same reasoning. Paying one is a real
+    thing to do on the day it is due, and the agenda is where you would notice
+    it is late.
+
+    Filtered here rather than in each caller because this is the single
+    selection point the day and the agenda both use -- which is why the
+    exclusion costs one clause instead of an audit.
+    """
     return (
         Item.objects.filter(owner=user, status=Item.Status.ACTIVE)
+        .exclude(money_line__direction=Direction.IN)
         .select_related("list")
         .prefetch_related("tags")
         .annotate(

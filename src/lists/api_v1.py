@@ -353,7 +353,7 @@ def add_bill(request, payload: NewBillIn):
         )
     except services.TaskConflict as error:
         raise HttpError(409, str(error))
-    bill = item.bill
+    bill = item.money_line
     return 201, {
         "task_id": item.id,
         "text": item.text,
@@ -392,7 +392,7 @@ class EditBillIn(Schema):
 
 def _bill_row_out(item):
     """One bill, shaped like a row of the month it belongs to."""
-    bill = item.bill
+    bill = item.money_line
     return {
         "task_id": item.id,
         "text": item.text,
@@ -409,7 +409,7 @@ def _bill_row_out(item):
         "recurrence": item.recurrence,
         "lead_days": item.lead_days,
         "paid_amount": (
-            str(item.bill.paid_amount) if item.bill.paid_amount is not None else None
+            str(item.money_line.paid_amount) if item.money_line.paid_amount is not None else None
         ),
         "overdue": (
             item.completed_at is None
@@ -432,7 +432,7 @@ def edit_bill(request, task_id: int, payload: EditBillIn):
 
     **Under `/money/` since August 27, 2026.** The resources are still bills --
     a bill is one kind of money thing and income will be its sibling, not the
-    same record -- so what moved is the namespace, not the noun. `Bill` keeps
+    same record -- so what moved is the namespace, not the noun. `MoneyLine` keeps
     its name for exactly that reason: a model named after the module would have
     to hold both.
     """

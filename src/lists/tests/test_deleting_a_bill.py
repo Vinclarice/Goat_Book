@@ -27,7 +27,7 @@ from django.test import TestCase
 
 from accounts.models import User
 from lists import services
-from lists.models import Bill, Item, RecurringCommitment
+from lists.models import MoneyLine, Item, RecurringCommitment
 
 AUGUST = datetime.date(2026, 8, 10)
 
@@ -58,7 +58,7 @@ class DeletingABillTest(TestCase):
         services.delete_bill(bill)
 
         self.assertFalse(Item.objects.filter(pk=bill.pk).exists())
-        self.assertFalse(Bill.objects.filter(item_id=bill.pk).exists())
+        self.assertFalse(MoneyLine.objects.filter(item_id=bill.pk).exists())
 
     def test_deleting_one_month_leaves_the_series_running(self):
         """The trap. Removing August's rent must not stop rent."""
@@ -84,7 +84,7 @@ class DeletingABillTest(TestCase):
         services.delete_bill(rent)
 
         nxt = self.live().get()
-        carried = Bill.objects.get(item=nxt)
+        carried = MoneyLine.objects.get(item=nxt)
         self.assertEqual(carried.payee, "Landlord")
         self.assertIsNone(carried.amount)
 
@@ -117,7 +117,7 @@ class DeletingABillTest(TestCase):
         # occupant so its successor can exist. What says it was paid is
         # `completed_at`, which is what the month's read keys on.
         self.assertIsNotNone(rent.completed_at)
-        self.assertTrue(Bill.objects.filter(item=rent).exists())
+        self.assertTrue(MoneyLine.objects.filter(item=rent).exists())
 
     def test_it_refuses_a_task_that_is_not_a_bill(self):
         plain = services.create_item(None, "Not a bill", owner=self.user)

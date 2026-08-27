@@ -26,7 +26,7 @@ from uuid import UUID
 from accounts.models import Invitation, PersonalAccessToken, User
 from daily.models import DailyEntry, DailyFocus
 from lists.models import (
-    Bill,
+    MoneyLine,
     ChecklistStep,
     Item,
     List,
@@ -92,7 +92,7 @@ EXPORT_KEYS = {
     # Owned through its task rather than directly -- a sidecar has no owner of
     # its own, which is exactly the shape that goes missing from a list like
     # this. The test above is what caught it.
-    Bill: "bills",
+    MoneyLine: "bills",
     Tag: "tags",
     RecurringCommitment: "commitments",
     DailyEntry: "entries",
@@ -236,7 +236,7 @@ def _payload(user, *, now):
             "projects": _rows(Project.objects.filter(owner=user)),
             "items": _rows(Item.objects.filter(owner=user), many_to_many=("tags",)),
             "checklist_steps": _rows(ChecklistStep.objects.filter(owner=user)),
-            "bills": _rows(Bill.objects.filter(item__owner=user)),
+            "bills": _rows(MoneyLine.objects.filter(item__owner=user)),
             "tags": _rows(Tag.objects.filter(owner=user)),
             "commitments": _rows(
                 RecurringCommitment.objects.filter(owner=user),

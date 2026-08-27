@@ -220,7 +220,7 @@ class Item(models.Model):
     #: off, not "the day itself" -- otherwise every dated task in the product
     #: would join the advance reminder.
     #:
-    #: On the task rather than on `Bill`, because a lead time is not a
+    #: On the task rather than on `MoneyLine`, because a lead time is not a
     #: property of costing money: "remind me before the MOT" is the same
     #: sentence. And it changes nothing about when a thing is *due* --
     #: `bucket_for` is untouched, which also keeps this out of the three
@@ -389,14 +389,36 @@ class Item(models.Model):
     def __str__(self):
         return self.text
 
-class Bill(models.Model):
-    """What a task costs, when the task is a bill.
+class Direction(models.TextChoices):
+    """Which way the money goes.
+
+    **One model with a direction, not two models**, and
+    `architecture-trajectory.md` §4 decides it: *a concept earns its own model
+    when it has a different life cycle, not when it has a different name.*
+    Income recurs, has a date, has an amount, gets settled and can be late --
+    a bill's life cycle in every respect. What differs is the sign, and whether
+    the person acts or observes.
+    """
+
+    OUT = "out", "Money out"
+    IN = "in", "Money in"
+
+
+class MoneyLine(models.Model):
+    """What a task is worth, when the task is money moving.
+
+    **Was `MoneyLine` until August 27, 2026**, renamed when income arrived. The name
+    was accurate while every row was something owed and became actively
+    misleading the moment half of them were salary -- and unlike `List`/Area or
+    `Item`/task, this is not one concept under two words. It is a concept that
+    genuinely widened, which is the case `architecture-trajectory.md` §7's
+    refusal of cosmetic renames does not cover.
 
     **A sidecar, not a primitive**, and `architecture-trajectory.md` §4 is why:
     a bill's life cycle -- arrives, is due, is paid, comes round again -- *is* a
     recurring task's, and `daily-operating-system-vision.md` says so by
     example, with "pay rent every month" as its canonical recurring task. A
-    `Bill` model of its own would contradict the product's own statement and
+    `MoneyLine` model of its own would contradict the product's own statement and
     re-implement recurrence, due dates, completion and snapshotting beside the
     thing that already does them.
 
@@ -411,15 +433,22 @@ class Bill(models.Model):
     """
 
     item = models.OneToOneField(
-        "Item", related_name="bill", on_delete=models.CASCADE
+        "Item", related_name="money_line", on_delete=models.CASCADE
+    )
+    #: Which way it goes. Out is the default because bills came first, and
+    #: because most rows will always be money leaving: a person has one salary
+    #: and a dozen subscriptions.
+    direction = models.CharField(
+        max_length=3, choices=Direction.choices, default=Direction.OUT
     )
     #: What it is **expected** to come to. Optional, because "the water bill,
-    #: whatever it comes to" is a real bill. The *row* is what marks a task as
-    #: one.
+    #: whatever it comes to" is a real bill, and so is a bonus nobody can
+    #: predict. The *row* is what marks a task as money.
     amount = models.DecimalField(
         max_digits=12, decimal_places=2, null=True, blank=True
     )
-    #: What **actually went out**, recorded when it is paid. Null until then.
+    #: What **actually moved**, recorded when it is settled -- paid, for a
+    #: bill; received, for income. Null until then.
     #:
     #: **A second number rather than overwriting the first**, because they
     #: answer different questions and stop being equal the moment somebody pays
@@ -450,7 +479,7 @@ class Bill(models.Model):
             # as at the boundary, because the boundary is not the only writer.
             models.CheckConstraint(
                 condition=Q(amount__isnull=True) | Q(amount__gte=0),
-                name="bill_amount_not_negative",
+                name="money_line_amount_not_negative",
             ),
         ]
 

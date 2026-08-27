@@ -21,7 +21,15 @@ def serialize_checklist_step(step):
 
 
 def _bill_for(item):
-    bill = getattr(item, "bill", None)
+    # **`money_line`, not `bill`** -- the reverse accessor was renamed with the
+    # model on August 27, 2026. A string here is invisible to a symbol rename,
+    # so this returned None for every task until a test caught it, and the
+    # payload said "not a bill" about bills.
+    #
+    # **The payload key stays `bill`**, and that is not an oversight: this is
+    # the task detail's answer to *is this task a bill*, a task's bill is still
+    # a bill, and income is never set from here.
+    bill = getattr(item, "money_line", None)
     if bill is None:
         return None
     return {

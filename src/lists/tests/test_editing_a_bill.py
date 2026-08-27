@@ -23,7 +23,7 @@ from django.test import TestCase
 
 from accounts.models import User
 from lists import services
-from lists.models import Bill
+from lists.models import MoneyLine
 
 AUGUST = datetime.date(2026, 8, 10)
 LATER = datetime.date(2026, 8, 24)
@@ -45,7 +45,7 @@ class EditingABillTest(TestCase):
     def test_it_changes_the_amount(self):
         services.update_bill(self.bill, amount=Decimal("1250.00"))
 
-        self.assertEqual(Bill.objects.get(item=self.bill).amount, Decimal("1250.00"))
+        self.assertEqual(MoneyLine.objects.get(item=self.bill).amount, Decimal("1250.00"))
 
     def test_it_changes_the_due_date_which_lives_on_the_task(self):
         """The one field that is not the sidecar's, and the reason this is a
@@ -58,7 +58,7 @@ class EditingABillTest(TestCase):
     def test_it_changes_payee_and_currency_together(self):
         services.update_bill(self.bill, payee="New Landlord", currency="GBP")
 
-        bill = Bill.objects.get(item=self.bill)
+        bill = MoneyLine.objects.get(item=self.bill)
         self.assertEqual(bill.payee, "New Landlord")
         self.assertEqual(bill.currency, "GBP")
 
@@ -67,7 +67,7 @@ class EditingABillTest(TestCase):
         saving one field must not blank another."""
         services.update_bill(self.bill, amount=Decimal("1250.00"))
 
-        bill = Bill.objects.get(item=self.bill)
+        bill = MoneyLine.objects.get(item=self.bill)
         self.assertEqual(bill.payee, "Landlord")
         self.assertEqual(bill.currency, "USD")
         self.bill.refresh_from_db()
@@ -78,7 +78,7 @@ class EditingABillTest(TestCase):
         water bill, whatever it comes to" is a state somebody chooses."""
         services.update_bill(self.bill, amount=None, clear_amount=True)
 
-        self.assertIsNone(Bill.objects.get(item=self.bill).amount)
+        self.assertIsNone(MoneyLine.objects.get(item=self.bill).amount)
 
     def test_it_refuses_a_negative_amount(self):
         with self.assertRaises(services.TaskConflict):

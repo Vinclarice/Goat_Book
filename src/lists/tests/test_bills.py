@@ -4,7 +4,7 @@
 cycle*, and a bill's -- arrives, is due, is paid, comes round again -- **is** a
 recurring task's. `daily-operating-system-vision.md` settles it by example:
 *"'Pay rent every month' is a recurring task: one discrete commitment whose
-completion creates the next."* A `Bill` primitive would contradict the
+completion creates the next."* A `MoneyLine` primitive would contradict the
 product's own model and re-implement recurrence, due dates, completion and
 snapshotting beside the thing that already does them.
 
@@ -29,7 +29,7 @@ from django.test import Client, TestCase
 
 from accounts.models import User
 from lists import services
-from lists.models import Bill, Item, List
+from lists.models import MoneyLine, Item, List
 
 
 PASSWORD = "a secure password"
@@ -59,7 +59,7 @@ class BillTest(TestCase):
         )
 
     def test_a_task_is_not_a_bill_until_somebody_says_so(self):
-        self.assertFalse(Bill.objects.filter(item=self.task).exists())
+        self.assertFalse(MoneyLine.objects.filter(item=self.task).exists())
 
     def test_marking_one_records_what_it_is_and_what_it_comes_to(self):
         response = self.patch(
@@ -67,7 +67,7 @@ class BillTest(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        bill = Bill.objects.get(item=self.task)
+        bill = MoneyLine.objects.get(item=self.task)
         self.assertEqual(bill.amount, Decimal("500.00"))
         self.assertEqual(bill.payee, "County")
 
@@ -76,7 +76,7 @@ class BillTest(TestCase):
         the marker; the amount is an attribute of it."""
         self.patch({"bill": {"payee": "Utilities"}})
 
-        bill = Bill.objects.get(item=self.task)
+        bill = MoneyLine.objects.get(item=self.task)
         self.assertIsNone(bill.amount)
         self.assertEqual(bill.payee, "Utilities")
 
@@ -85,9 +85,9 @@ class BillTest(TestCase):
 
         self.patch({"bill": {"amount": "525.00", "payee": "County"}})
 
-        self.assertEqual(Bill.objects.filter(item=self.task).count(), 1)
+        self.assertEqual(MoneyLine.objects.filter(item=self.task).count(), 1)
         self.assertEqual(
-            Bill.objects.get(item=self.task).amount, Decimal("525.00")
+            MoneyLine.objects.get(item=self.task).amount, Decimal("525.00")
         )
 
     def test_it_can_stop_being_a_bill(self):
@@ -96,7 +96,7 @@ class BillTest(TestCase):
         response = self.patch({"bill": None})
 
         self.assertEqual(response.status_code, 200)
-        self.assertFalse(Bill.objects.filter(item=self.task).exists())
+        self.assertFalse(MoneyLine.objects.filter(item=self.task).exists())
 
     def test_it_is_serialised_back_so_a_client_can_show_it(self):
         body = self.patch(
@@ -119,7 +119,7 @@ class BillTest(TestCase):
 
         self.assertEqual(response.status_code, 400)
         self.assertIn("bill", response.json()["errors"])
-        self.assertFalse(Bill.objects.filter(item=self.task).exists())
+        self.assertFalse(MoneyLine.objects.filter(item=self.task).exists())
 
     def test_a_negative_amount_is_refused(self):
         """A bill is something owed. A negative one is a refund, which is a
@@ -137,7 +137,7 @@ class BillTest(TestCase):
         response = self.patch({"bill": {"amount": "1.00"}}, task=their_task)
 
         self.assertEqual(response.status_code, 404)
-        self.assertFalse(Bill.objects.filter(item=their_task).exists())
+        self.assertFalse(MoneyLine.objects.filter(item=their_task).exists())
 
     def test_the_bill_goes_when_the_task_does(self):
         """A sidecar with no task is a row nothing can reach."""
@@ -146,4 +146,4 @@ class BillTest(TestCase):
 
         Item.objects.filter(pk=item_id).delete()
 
-        self.assertFalse(Bill.objects.filter(item_id=item_id).exists())
+        self.assertFalse(MoneyLine.objects.filter(item_id=item_id).exists())

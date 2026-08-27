@@ -5,7 +5,7 @@ from Bills to Money: *"if I need to check on financial information, I know
 exactly where to go."* Bills did not become Money -- **bills became part of
 it**, and income is the sibling this file is now named to hold.
 
-**`Bill` keeps its name**, deliberately. A bill is one kind of money thing and
+**`MoneyLine` keeps its name**, deliberately. A bill is one kind of money thing and
 income is another; a model named after the module would have to be both, which
 is the collapse `architecture-trajectory.md` §4 exists to catch. The rename is
 the module and the namespace, not the noun.
@@ -14,7 +14,7 @@ Original docstring follows.
 
 What is due this month, and what it comes to.
 
-A read, not a model. A bill is a task with a `Bill` sidecar -- see that model
+A read, not a model. A bill is a task with a `MoneyLine` sidecar -- see that model
 for why §4 said no to a primitive -- so everything here is a question about
 rows that already exist.
 
@@ -30,13 +30,13 @@ from decimal import Decimal
 
 from django.db.models import Q
 
-from lists.models import Bill, Item
+from lists.models import MoneyLine, Item
 
 
 @dataclass(frozen=True)
 class BillRow:
     task: Item
-    bill: Bill
+    bill: MoneyLine
 
     @property
     def paid(self):
@@ -123,7 +123,7 @@ def bills_for(owner, day):
 
     rows = [
         BillRow(task=bill.item, bill=bill)
-        for bill in Bill.objects.filter(
+        for bill in MoneyLine.objects.filter(
             item__owner=owner,
             # Open ones, plus anything ever paid -- including the paid
             # recurring occurrences that are `ARCHIVED` rather than

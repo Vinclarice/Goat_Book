@@ -216,7 +216,7 @@ class Source(models.Model):
     - **A `Node` with a kind is the tempting answer and it is wrong.** A node is
       something *you wrote*, and S15's whole gap is that this starts with an
       article somebody else wrote.
-    - **Unlike `Bill` it is not a sidecar**, because there is no existing row
+    - **Unlike `MoneyLine` it is not a sidecar**, because there is no existing row
       for it to hang off.
 
     **`url` is text and nothing ever fetches it** — D7's answer already made:

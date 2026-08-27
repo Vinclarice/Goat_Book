@@ -27,7 +27,7 @@ from django.test import TestCase
 from accounts.models import User
 from lists import money as money_reader
 from lists import services
-from lists.models import Bill, Item
+from lists.models import MoneyLine, Item
 
 AUGUST = datetime.date(2026, 8, 10)
 
@@ -56,7 +56,7 @@ class PayingABillTest(TestCase):
         services.pay_bill(self.bill)
 
         self.assertEqual(
-            Bill.objects.get(item=self.bill).paid_amount, Decimal("64.99")
+            MoneyLine.objects.get(item=self.bill).paid_amount, Decimal("64.99")
         )
 
     def test_paying_extra_is_recorded_as_what_it_was(self):
@@ -65,7 +65,7 @@ class PayingABillTest(TestCase):
         what actually left the account."""
         services.pay_bill(self.bill, amount=Decimal("80.00"))
 
-        bill = Bill.objects.get(item=self.bill)
+        bill = MoneyLine.objects.get(item=self.bill)
         self.assertEqual(bill.paid_amount, Decimal("80.00"))
         self.assertEqual(
             bill.amount,
@@ -82,7 +82,7 @@ class PayingABillTest(TestCase):
 
         services.pay_bill(water, amount=Decimal("41.20"))
 
-        self.assertEqual(Bill.objects.get(item=water).paid_amount, Decimal("41.20"))
+        self.assertEqual(MoneyLine.objects.get(item=water).paid_amount, Decimal("41.20"))
 
     def test_the_month_totals_what_went_out_not_what_was_expected(self):
         services.pay_bill(self.bill, amount=Decimal("80.00"))

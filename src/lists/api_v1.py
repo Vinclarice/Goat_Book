@@ -650,6 +650,77 @@ class BalancesIn(Schema):
     readings: list[BalanceIn]
 
 
+class LandingLineOut(Schema):
+    """One money line, as the landing page needs it -- shorter than a month row
+    because a dashboard names things rather than offering every verb."""
+
+    task_id: int
+    text: str
+    payee: str
+    due_date: date
+    amount: str | None
+    currency: str
+    #: Days from today. Negative is overdue, and the page words it rather than
+    #: the reader doing the arithmetic.
+    days: int
+
+
+class MoneyLandingOut(Schema):
+    today: date
+    overdue: list[LandingLineOut]
+    due_soon: list[LandingLineOut]
+    renewing_soon: list[LandingLineOut]
+    yearly_totals: dict[str, str]
+    owed_totals: dict[str, str]
+    held_totals: dict[str, str]
+    #: The move since last month. Negative is down; what that *means* depends
+    #: on which side it is, and the page says so rather than this.
+    owed_change: dict[str, str]
+    held_change: dict[str, str]
+    unread_accounts: int
+
+
+@router.get("/money", response=MoneyLandingOut, auth=SessionAuthIfLoggedIn())
+def money_landing(request):
+    """How the money stands, today.
+
+    **No date in the path.** Every other read here takes one because it is about
+    a month; this one is about *now*, and a landing page addressed by date would
+    invite the question of what last Tuesday's dashboard looked like.
+    """
+    today = today_for(request.user)
+    found = money_reader.landing_for(request.user, today=today)
+
+    def line(row):
+        return {
+            "task_id": row.task.id,
+            "text": row.task.text,
+            "payee": row.bill.payee,
+            "due_date": row.task.due_date,
+            "amount": (
+                str(row.bill.amount) if row.bill.amount is not None else None
+            ),
+            "currency": row.bill.currency,
+            "days": (row.task.due_date - today).days,
+        }
+
+    def money(totals):
+        return {code: str(total) for code, total in totals.items()}
+
+    return {
+        "today": today,
+        "overdue": [line(row) for row in found.overdue],
+        "due_soon": [line(row) for row in found.due_soon],
+        "renewing_soon": [line(row) for row in found.renewing_soon],
+        "yearly_totals": money(found.yearly_totals),
+        "owed_totals": money(found.owed_totals),
+        "held_totals": money(found.held_totals),
+        "owed_change": money(found.owed_change),
+        "held_change": money(found.held_change),
+        "unread_accounts": found.unread_accounts,
+    }
+
+
 @router.get("/money/accounts/{day}", response=AccountsOut, auth=SessionAuthIfLoggedIn())
 def months_accounts(request, day: date):
     """Every account, with the month's figure and the one before it."""

@@ -54,7 +54,7 @@ function billsData(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function renderAt(path = "/money/2026-08-14") {
+function renderAt(path = "/money/month/2026-08-14") {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
@@ -62,7 +62,7 @@ function renderAt(path = "/money/2026-08-14") {
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[path]}>
         <Routes>
-          <Route path="/money/:month" element={<MoneyRoute />} />
+          <Route path="/money/month/:month" element={<MoneyRoute />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,

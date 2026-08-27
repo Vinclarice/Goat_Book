@@ -98,7 +98,7 @@ export function SideNav() {
           {months.map((each) => (
             <NavLink
               key={each.iso}
-              to={`/money/${each.iso}`}
+              to={`/money/month/${each.iso}`}
               className={navLinkClass}
               title={each.label}
               end

@@ -7,6 +7,7 @@ import { AgendaRoute } from "./routes/AgendaRoute";
 import { ArchiveRoute } from "./routes/ArchiveRoute";
 import { CalendarRoute } from "./routes/CalendarRoute";
 import { BalancesRoute } from "./routes/BalancesRoute";
+import { MoneyLandingRoute } from "./routes/MoneyLandingRoute";
 import { MoneyRoute } from "./routes/MoneyRoute";
 import { DayRoute } from "./routes/DayRoute";
 import { DevUiGallery } from "./routes/DevUiGallery";
@@ -77,7 +78,7 @@ function LegacyListRedirect() {
  */
 function RedirectToMonth() {
   const { month } = useParams();
-  return <Navigate to={`/money/${month}`} replace />;
+  return <Navigate to={`/money/month/${month}`} replace />;
 }
 
 export function AppRoutes() {
@@ -103,17 +104,22 @@ export function AppRoutes() {
         <Route path="/calendar" element={<CalendarRoute />} />
         <Route path="/calendar/:month" element={<CalendarRoute />} />
         {/* A bill is a task with a sidecar; this is a read over them. */}
-        <Route path="/money" element={<MoneyRoute />} />
+        {/* **The landing page is the module**, and the month is a view within
+            it -- money-module-plan.md increment 8. /money showed August until
+            August 27, 2026, which meant answering "how am I doing" by reading
+            three lists and doing arithmetic. */}
+        <Route path="/money" element={<MoneyLandingRoute />} />
         {/* Before /money/:month, or "balances" is read as a date and the
             monthly pass becomes an unparseable month. */}
         <Route path="/money/balances" element={<BalancesRoute />} />
         <Route path="/money/balances/:month" element={<BalancesRoute />} />
-        <Route path="/money/:month" element={<MoneyRoute />} />
+        <Route path="/money/month" element={<MoneyRoute />} />
+        <Route path="/money/month/:month" element={<MoneyRoute />} />
         {/* The old address, kept working. One person and a bookmark is enough
             reason -- `/capture/` is the precedent for how expensive a moved
             prefix is once anything points at it, and a redirect costs two
             lines against finding out later. */}
-        <Route path="/bills" element={<Navigate to="/money" replace />} />
+        <Route path="/bills" element={<Navigate to="/money/month" replace />} />
         <Route
           path="/bills/:month"
           element={<RedirectToMonth />}

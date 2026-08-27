@@ -26,11 +26,12 @@ question about money.
 from calendar import monthrange
 from collections import defaultdict
 from dataclasses import dataclass
+from datetime import timedelta
 from decimal import Decimal
 
 from django.db.models import Q
 
-from lists.models import Direction, Item, MoneyLine
+from lists.models import Account, Direction, Item, MoneyLine
 
 
 @dataclass(frozen=True)
@@ -179,3 +180,147 @@ def bills_for(owner, day):
         received_totals=dict(received),
         unpriced=unpriced,
     )
+
+
+# ---------------------------------------------------------------------------
+# The landing read
+# ---------------------------------------------------------------------------
+
+#: How far ahead *soon* reaches. A fortnight because it is the span a person can
+#: still do something about -- long enough to move money, short enough that the
+#: list stays worth reading. Not configurable: a setting nobody changes is a
+#: question asked once and answered forever.
+SOON = timedelta(days=14)
+
+#: How many times a year each cadence lands. `NONE` is absent rather than zero,
+#: so a one-off cannot be counted as costing anything annually -- it happens
+#: once, and inflating the figure a person acts on is the one failure this
+#: number must not have.
+TIMES_A_YEAR = {
+    Item.Recurrence.WEEKLY: 52,
+    Item.Recurrence.MONTHLY: 12,
+    Item.Recurrence.QUARTERLY: 4,
+    Item.Recurrence.ANNUAL: 1,
+}
+
+
+@dataclass(frozen=True)
+class MoneyLanding:
+    """What the module says when you arrive at it.
+
+    **All read, nothing stored.** No row exists because this page does, which is
+    `daily-operating-system-vision.md`'s rule for the Day page and holds for the
+    same reason: a lens over durable records is never out of step with them.
+    """
+
+    #: Owed and past due, every month rather than this one -- an unpaid June
+    #: bill is still owed in August.
+    overdue: list
+    #: Due within `SOON`, **across the month boundary**, which is the thing no
+    #: other read here could answer.
+    due_soon: list
+    #: Inside its own lead time. The reason the module exists.
+    renewing_soon: list
+    #: What every repeating thing costs in a year, per currency.
+    yearly_totals: dict
+    #: The latest balance of everything owed, and of everything held.
+    owed_totals: dict
+    held_totals: dict
+    #: The move since the month before, per currency. Negative is down, which
+    #: for something owed is the good direction and for something held is not --
+    #: the page says which, this only reports the arithmetic.
+    owed_change: dict
+    held_change: dict
+    #: Accounts with no reading in the current month. Counted rather than listed
+    #: so the page can nudge without becoming a second balances screen.
+    unread_accounts: int
+
+
+def landing_for(owner, *, today):
+    """Everything the landing page says, in one pass.
+
+    ``today`` is injected rather than read from the clock -- `principles.md`,
+    *pass dates and times into domain logic* -- which is also what lets this be
+    tested at a month boundary without freezing time.
+    """
+    rows = [
+        BillRow(task=line.item, bill=line)
+        for line in MoneyLine.objects.filter(
+            item__owner=owner, direction=Direction.OUT
+        ).select_related("item")
+    ]
+    open_rows = [row for row in rows if not row.paid and row.task.due_date]
+
+    overdue = sorted(
+        (row for row in open_rows if row.task.due_date < today),
+        key=lambda row: row.task.due_date,
+    )
+    due_soon = sorted(
+        (
+            row
+            for row in open_rows
+            if today <= row.task.due_date <= today + SOON
+        ),
+        key=lambda row: row.task.due_date,
+    )
+    # Inside its lead time and not already in the two lists above: saying a
+    # thing twice on one screen is how a page stops being read.
+    already = {row.task.pk for row in overdue} | {row.task.pk for row in due_soon}
+    renewing = sorted(
+        (
+            row
+            for row in open_rows
+            if row.task.pk not in already
+            and row.task.lead_days
+            and row.task.due_date <= today + timedelta(days=row.task.lead_days)
+        ),
+        key=lambda row: row.task.due_date,
+    )
+
+    yearly = defaultdict(Decimal)
+    for row in rows:
+        times = TIMES_A_YEAR.get(row.task.recurrence)
+        if times is None or row.bill.amount is None:
+            continue
+        yearly[row.bill.currency] += row.bill.amount * times
+
+    owed, held, owed_change, held_change, unread = _balances(owner, today)
+    return MoneyLanding(
+        overdue=overdue,
+        due_soon=due_soon,
+        renewing_soon=renewing,
+        yearly_totals=dict(yearly),
+        owed_totals=dict(owed),
+        held_totals=dict(held),
+        owed_change=dict(owed_change),
+        held_change=dict(held_change),
+        unread_accounts=unread,
+    )
+
+
+def _balances(owner, today):
+    """The latest figures and the move since the month before.
+
+    **An account with no reading contributes nothing and is counted.** Carrying
+    last month's figure forward would report a balance nobody checked as though
+    somebody had, which is the failure the update screen's empty boxes exist to
+    prevent -- the same argument, one layer up.
+    """
+    this_month = today.replace(day=1)
+    previous = (this_month - timedelta(days=1)).replace(day=1)
+    owed, held = defaultdict(Decimal), defaultdict(Decimal)
+    owed_change, held_change = defaultdict(Decimal), defaultdict(Decimal)
+    unread = 0
+    for account in Account.objects.filter(owner=owner).prefetch_related("readings"):
+        by_month = {r.on_date: r.amount for r in account.readings.all()}
+        current = by_month.get(this_month)
+        if current is None:
+            unread += 1
+            continue
+        totals = owed if account.owes else held
+        changes = owed_change if account.owes else held_change
+        totals[account.currency] += current
+        before = by_month.get(previous)
+        if before is not None:
+            changes[account.currency] += current - before
+    return owed, held, owed_change, held_change, unread

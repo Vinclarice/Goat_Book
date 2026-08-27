@@ -264,6 +264,52 @@ somebody who has already deleted their account."* Exported as
 `account` key for login details and two of those teaches a reader the wrong
 thing.
 
+## The second phase — a module rather than a month, August 27, 2026
+
+**The premise was never a month view.** Vince: *"a module is essentially its own
+sort of landing page for relevant information... if I need to check on financial
+information, I know exactly where to go."* What `/money` shows is **August**, and
+answering *how am I doing* from it means reading three lists and doing
+arithmetic. A month view is not a dashboard, and that difference is the
+difference between a page and a module.
+
+8. **The landing page.** `/money` becomes what the module was described as, and
+   the month moves to `/money/month/:month`. What it answers, all of it read
+   rather than stored: **what is overdue right now** across every month, **what
+   is due in the next fortnight** across month boundaries, **what renews soon**,
+   **what is owed and held** with the change since last month, and **whether
+   this month balances**.
+
+   **This is where `paid_by` stops being a seam.** The account-to-bill link was
+   written, accepted by the service and used by nothing — a fifth
+   un-switched-on seam, added hours after a guard about exactly that class. An
+   account listed beside the bill that pays it is what it was for.
+
+9. **What the recurring things cost a year.** Monthly × 12, quarterly × 4,
+   annual × 1. Nobody has that number and it is the one that makes a person
+   cancel something. A read over data already held, and the natural companion
+   to the renewal warnings.
+
+10. **Out of the month box.** *What is due in the next fortnight* crosses month
+    boundaries and nothing can answer it, because every read is keyed to a month.
+    Folded into increment 8 rather than built alone: the landing page is the
+    caller that needs it, and a read with no caller is the thing this project
+    keeps finding.
+
+11. **History, as a table and a graph.** The argument for `paid_amount` and for
+    dated balance readings was *is the electricity creeping up* and *is the loan
+    going down*. Both are being recorded and **neither is read** — data accruing
+    against a promise nobody has kept.
+
+    **The graph is hand-drawn SVG and not a charting library.** A dependency is
+    a permanent cost against a handful of sparklines, and this project defers
+    dependencies for size on principle — `torch` went that way on August 18.
+    Twelve points on a line need no framework. **Recorded as a decision so it is
+    not re-argued**, and reversible if a real chart is ever wanted.
+
+    **Worth doing last.** A trend over two readings is not a trend; after three
+    monthly passes it earns the screen.
+
 ## What is still open
 
 **Investments.** The question is not whether to build it but whether balances

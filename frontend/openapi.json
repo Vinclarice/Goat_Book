@@ -229,6 +229,31 @@
         ]
       }
     },
+    "/api/v1/money": {
+      "get": {
+        "operationId": "lists_api_v1_money_landing",
+        "summary": "Money Landing",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MoneyLandingOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "How the money stands, today.\n\n**No date in the path.** Every other read here takes one because it is about\na month; this one is about *now*, and a landing page addressed by date would\ninvite the question of what last Tuesday's dashboard looked like.",
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      }
+    },
     "/api/v1/money/accounts/{day}": {
       "get": {
         "operationId": "lists_api_v1_months_accounts",
@@ -2900,6 +2925,141 @@
           }
         },
         "title": "PayBillIn",
+        "type": "object"
+      },
+      "LandingLineOut": {
+        "description": "One money line, as the landing page needs it -- shorter than a month row\nbecause a dashboard names things rather than offering every verb.",
+        "properties": {
+          "task_id": {
+            "title": "Task Id",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "payee": {
+            "title": "Payee",
+            "type": "string"
+          },
+          "due_date": {
+            "format": "date",
+            "title": "Due Date",
+            "type": "string"
+          },
+          "amount": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "days": {
+            "title": "Days",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "task_id",
+          "text",
+          "payee",
+          "due_date",
+          "amount",
+          "currency",
+          "days"
+        ],
+        "title": "LandingLineOut",
+        "type": "object"
+      },
+      "MoneyLandingOut": {
+        "properties": {
+          "today": {
+            "format": "date",
+            "title": "Today",
+            "type": "string"
+          },
+          "overdue": {
+            "items": {
+              "$ref": "#/components/schemas/LandingLineOut"
+            },
+            "title": "Overdue",
+            "type": "array"
+          },
+          "due_soon": {
+            "items": {
+              "$ref": "#/components/schemas/LandingLineOut"
+            },
+            "title": "Due Soon",
+            "type": "array"
+          },
+          "renewing_soon": {
+            "items": {
+              "$ref": "#/components/schemas/LandingLineOut"
+            },
+            "title": "Renewing Soon",
+            "type": "array"
+          },
+          "yearly_totals": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Yearly Totals",
+            "type": "object"
+          },
+          "owed_totals": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Owed Totals",
+            "type": "object"
+          },
+          "held_totals": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Held Totals",
+            "type": "object"
+          },
+          "owed_change": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Owed Change",
+            "type": "object"
+          },
+          "held_change": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Held Change",
+            "type": "object"
+          },
+          "unread_accounts": {
+            "title": "Unread Accounts",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "today",
+          "overdue",
+          "due_soon",
+          "renewing_soon",
+          "yearly_totals",
+          "owed_totals",
+          "held_totals",
+          "owed_change",
+          "held_change",
+          "unread_accounts"
+        ],
+        "title": "MoneyLandingOut",
         "type": "object"
       },
       "AccountOut": {

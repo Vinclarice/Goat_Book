@@ -135,6 +135,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/money": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Money Landing
+         * @description How the money stands, today.
+         *
+         *     **No date in the path.** Every other read here takes one because it is about
+         *     a month; this one is about *now*, and a landing page addressed by date would
+         *     invite the question of what last Tuesday's dashboard looked like.
+         */
+        get: operations["lists_api_v1_money_landing"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/money/accounts/{day}": {
         parameters: {
             query?: never;
@@ -1595,6 +1619,66 @@ export interface components {
         PayBillIn: {
             /** Amount */
             amount?: string | null;
+        };
+        /**
+         * LandingLineOut
+         * @description One money line, as the landing page needs it -- shorter than a month row
+         *     because a dashboard names things rather than offering every verb.
+         */
+        LandingLineOut: {
+            /** Task Id */
+            task_id: number;
+            /** Text */
+            text: string;
+            /** Payee */
+            payee: string;
+            /**
+             * Due Date
+             * Format: date
+             */
+            due_date: string;
+            /** Amount */
+            amount: string | null;
+            /** Currency */
+            currency: string;
+            /** Days */
+            days: number;
+        };
+        /** MoneyLandingOut */
+        MoneyLandingOut: {
+            /**
+             * Today
+             * Format: date
+             */
+            today: string;
+            /** Overdue */
+            overdue: components["schemas"]["LandingLineOut"][];
+            /** Due Soon */
+            due_soon: components["schemas"]["LandingLineOut"][];
+            /** Renewing Soon */
+            renewing_soon: components["schemas"]["LandingLineOut"][];
+            /** Yearly Totals */
+            yearly_totals: {
+                [key: string]: string;
+            };
+            /** Owed Totals */
+            owed_totals: {
+                [key: string]: string;
+            };
+            /** Held Totals */
+            held_totals: {
+                [key: string]: string;
+            };
+            /** Owed Change */
+            owed_change: {
+                [key: string]: string;
+            };
+            /** Held Change */
+            held_change: {
+                [key: string]: string;
+            };
+            /** Unread Accounts */
+            unread_accounts: number;
         };
         /** AccountOut */
         AccountOut: {
@@ -3678,6 +3762,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MonthBillOut"];
+                };
+            };
+        };
+    };
+    lists_api_v1_money_landing: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MoneyLandingOut"];
                 };
             };
         };

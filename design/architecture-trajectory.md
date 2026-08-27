@@ -419,6 +419,19 @@ spending decision.
   than in intent.
 - **Independent long-retention encrypted backups with a rehearsed restore.** A
   backup nobody has restored is a belief, not a control.
+
+  **No longer behind staging — August 26, 2026**, answering
+  `security-and-resilience-plan.md`'s D3. **The ordering rested on rehearsal
+  needing somewhere to rehearse**, and the drill of August 19 disproved that by
+  running end to end against a paid scratch cluster and passing. So the second
+  half of this line is *done* and the first half was never the part that needed
+  staging.
+
+  **And the case for it got stronger the same day.** `clarice-v4-plan.md`'s V1
+  was answered as *Vince plus one invited person*, so the managed seven-day
+  window is now the whole bound on undoing a bad migration **against somebody
+  else's data**. A migration whose damage is noticed on day eight is not
+  recoverable, and she cannot notice it, restore it, or know it happened.
 - **CI-built immutable images, health and readiness checks, and a rollback
   runbook.**
 
@@ -508,10 +521,23 @@ What remains genuinely open:
   knowledge core, which ships `Node` and `Revision`, and still open in the task
   core, where the trigger it named — real use of written material — now belongs
   to `src/mind/` and so may never fire here at all.
-- **Does the charter go into `principles.md`?** §4 is a set of design standards
+- ~~**Does the charter go into `principles.md`?** §4 is a set of design standards
   and that is what `principles.md` is for; its stated bar is "a concrete project
   example **or** prevents a named risk," and every rule clears the second half —
   so this is a judgement about timing, not eligibility. The original argument
   for waiting was that three rules cited designs rather than shipped code. That
   is no longer true, so the question is now live rather than answered by
-  default.
+  default.~~ **Answered August 26, 2026: it stays here, and `principles.md`
+  links to it.**
+
+  **Eligibility was never the question and the citations are.** Around
+  forty-five comments across `src/` and `frontend/` cite `architecture-trajectory.md`
+  **§4** by that name and number, and several models — `WeeklyOutcome`,
+  `PlanningSession`, `Item`'s sidecars — carry rule-by-rule compliance against
+  it. **Moving the text makes every one of those cite a section that is not
+  there**, and the file resolving is not the same as the section resolving.
+
+  **What the move was for was discoverability**, and a line in `principles.md`
+  pointing here buys that for nothing. Which is this tree's own rule arriving at
+  its own question: *if a document needs a fact it does not own, link to the
+  owner rather than restating it.*

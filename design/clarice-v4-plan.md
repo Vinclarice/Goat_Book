@@ -441,18 +441,46 @@ of them was on anybody's list this morning.
 anything whose trigger needed a population. Those are refusals now, recorded
 where each lives rather than here.
 
-**V2. If the answer is no, are the three unanswerable questions refused or left
+~~**V2. If the answer is no, are the three unanswerable questions refused or left
 open?** *"Without asking"*, S11's second opinion, and validation by somebody not
 invested. **Refusing them is a legitimate answer and leaving them open forever is
-not** — the same rule that produced this file's commerce refusal applies to them.
+not** — the same rule that produced this file's commerce refusal applies to them.~~
+**Answered August 26, 2026: all three refused.**
 
-**V3. Does `commercial-blueprint.md` get renamed, split, or headed?** Its live
-parts outlive its title. `design/README.md`'s call.
+**One invited person who is not building it cannot validate a product thesis**,
+and that is the whole of it. A second login is not a cohort, a second opinion,
+or a reader whose reaction means the design was right. **The alternative was
+leaving them open indefinitely**, which this entry already said is not a
+legitimate answer — and `principles.md` agrees in general terms: a trigger that
+cannot fire is a refusal.
 
-**V4. Does the score's denominator change when a story is refused?**
+**Where each lands is where it already lives**, not here.
+[`product-stories.md`](product-stories.md) owns *"without asking"* and S11's
+second opinion; the third was never anybody's but this file's.
+
+~~**V3. Does `commercial-blueprint.md` get renamed, split, or headed?** Its live
+parts outlive its title. `design/README.md`'s call.~~ **Answered August 26,
+2026: headed.**
+
+**Thirty code comments cite that file by name and by part number**, so a rename
+makes every one of them point at nothing and a split multiplies the problem
+across the documents the parts move to. **The actual problem is a reader
+trusting the title**, and a header fixes exactly that for the cost of a
+paragraph — which is the same trade the stub rule already makes everywhere else
+in this tree.
+
+~~**V4. Does the score's denominator change when a story is refused?**
 `product-stories.md` is 19 stories with S19 permanently immovable and S1
 policy-blocked. A refused story counted in the denominator makes the score read
-worse than the product is, forever.
+worse than the product is, forever.~~ **Answered August 26, 2026: it does not —
+and the practice changes instead.**
+
+**The question contained a false premise, which is the useful part.** The score
+is four piles — *works, bends, impossible, refused* — and that line loses
+nothing and reads worse than nothing only when somebody compresses it to *"14 of
+19"*. **The denominator was never the problem; the fraction was.** So nineteen
+stories stay nineteen stories, three of them decided rather than missed, and the
+rule is that **the score is never quoted as a fraction.**
 
 ## Risks with no answer yet
 

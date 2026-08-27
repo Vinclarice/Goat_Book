@@ -357,9 +357,20 @@ Local and explainable, in the vision's own phrasing —
 
 1. **D1 reopened?** Not answerable yet by its own terms. **This plan assumes
    no** and builds the two prose slots as empty, named seams.
-2. **Does the interactive-path rule bend for a scripted session?** This plan
+2. ~~**Does the interactive-path rule bend for a scripted session?** This plan
    says it does not need to. **If v3 wants a free-text turn, that is a
-   `design-concept.md` amendment and Vince's to make there.**
+   `design-concept.md` amendment and Vince's to make there.**~~ **Answered
+   August 26, 2026: no, and it did not need to.**
+
+   **Eight shipped increments settled it by not wanting it.** The session works
+   by correction rather than questionnaire, and every proposal cites the passage
+   that caused it — so the place a free-text turn would have gone kept turning
+   out to be a place where a specific, citable question was better. **Nothing
+   generated anywhere** stays a property this product has on purpose rather than
+   one it has not got round to breaking.
+
+   **Not a deferral**: if a free-text turn is ever wanted, it is an amendment to
+   `design-concept.md` in the Second Mind documents and starts there, not here.
 3. ~~**Does a weekly outcome earn its own model?** *For:* several per week, each
    with its own confirmation state and snapshotted evidence. *Against:*
    `WeeklyIntention` already answers *what the week is for*, and two records
@@ -429,8 +440,28 @@ Local and explainable, in the vision's own phrasing —
    [`mind/api_v1.py`](../src/mind/api_v1.py); struck August 26, 2026. **The
    third option is still the honest one against the one-place rule** and stays
    available if the two review surfaces ever start disagreeing.
-7. **Does the weekly intention duplicate the review's own "Next week" field?**
-   **Found by building increment 1, not by planning it.** `WeeklyReview.plan`
+7. ~~**Does the weekly intention duplicate the review's own "Next week"
+   field?**~~ **Answered August 26, 2026: yes, collapse to the intention.**
+
+   **The plan's own test decided it** — *if that distinction cannot be written
+   on the page in a sentence, there is one field here and not two* — and nobody
+   has written the sentence in six days of looking at both boxes. **The
+   intention is the one with a life cycle**: the Day page reads it through the
+   week, and nothing reads `WeeklyReview.plan` at all.
+
+   **This is the only answer in the August 26 sweep that is work rather than a
+   sentence**, and it is not large: retire the plan field from the review's
+   form and read path, keep the column so existing rows stay readable, and make
+   sure the intention is reachable from the review where the plan used to be.
+   **Not yet done** — recorded here as the decision, and it is `roadmap.md`'s to
+   schedule.
+
+   **Deleting the column is a separate question and the answer is probably
+   never.** *"What I said on Sunday"* is history, and §4's rule 6 is that a row
+   whose existence answers *did this happen* keeps its row.
+
+   The original reasoning follows. **Found by building increment 1, not by
+   planning it.** `WeeklyReview.plan`
    has always carried *"plan for next week"* in the person's own words, and the
    intention now sits on the same page asking a question a person could answer
    the same way twice. Two free-text boxes about next week, a few hundred pixels

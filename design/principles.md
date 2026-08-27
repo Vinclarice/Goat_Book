@@ -236,6 +236,24 @@ not imagined.
 
 ## Application design
 
+### A new model answers to the charter, and the charter is not here
+
+**Before adding a model to either core, read
+[`architecture-trajectory.md`](architecture-trajectory.md) §4** — eight rules, an
+owner at birth, snapshots against renames, deletion behaviour, and the test that
+decides the question at all: *a concept earns its own model when it has a
+different life cycle, not when it has a different name.* The knowledge core's
+equivalent authority is `design-concept.md` in the Second Mind documents.
+
+**Linked and deliberately not moved here — August 26, 2026.** §4 belongs in this
+file by subject; it stays where it is because **around forty-five code comments
+cite it as `architecture-trajectory.md` §4**, and several models carry
+rule-by-rule compliance against those numbers. Moving the text would leave every
+one of them citing a section that is not there — and *the file resolving is not
+the same as the section resolving*. What the move was for was discoverability,
+and this paragraph buys that for nothing, which is the corpus's own rule about
+linking to an owner rather than restating it.
+
 ### Inject the clock; do not freeze it
 
 Pass dates and times into domain logic rather than reading the current time

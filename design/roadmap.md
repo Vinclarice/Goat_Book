@@ -81,6 +81,26 @@ re-add it here.
   it happened. **The practical consequence is that re-running the restore drill
   matters more than it did yesterday**, and it is the same two hours.
 
+- **The decision backlog — twelve answered August 26, 2026, one piece of work
+  left behind.** After the sweep cut the *work* threads, the *decision* pile was
+  the bigger one: seventeen, several standing since August 19. Twelve are now
+  answered and each is recorded where it lives, not here.
+
+  **Only one produced work rather than a sentence — planning-assistant D7.** The
+  weekly intention and `WeeklyReview.plan` are two free-text boxes about next
+  week a few hundred pixels apart, and nobody wrote the sentence distinguishing
+  them in six days of looking at both. **Collapse to the intention**, which is
+  the one with a life cycle — the Day page reads it and nothing reads the plan.
+  Retire the field from the review's form and read path, **keep the column** so
+  existing rows stay readable.
+  [`planning-assistant-v2-plan.md`](planning-assistant-v2-plan.md) owns the
+  detail. **Not started.**
+
+  **Four are still open and three of them are yours alone**: security D5, which
+  is an observation nobody has made yet; M1, gated on the Android keystore; the
+  planning assistant's D1, gated on eight weekly summaries and firing around
+  late October; and the two unadopted recommendations of August 21.
+
 - **The declare-or-refuse sweep — done August 26, 2026.** Roughly twenty threads
   were open across `design/`, which
   [`recommendations-2026-08-21.md`](recommendations-2026-08-21.md) §5 had called

@@ -2,6 +2,34 @@
 
 Vince · written August 12, 2026 · corrected against the code August 16, 2026
 
+## Read this first — the title is the stalest thing here
+
+**Headed rather than renamed, August 26, 2026**, answering
+[`clarice-v4-plan.md`](clarice-v4-plan.md)'s V3. **Commerce is refused** — not
+deferred — and *"whether anybody else uses Clarice"* was answered the same day
+as *Vince plus one invited person, never the public*. So the word *commercial*
+in the title above describes a question that is closed, and this header exists
+so that nobody reads the file believing otherwise.
+
+**It was not renamed because thirty code comments cite it by name and by part
+number.** A rename makes all of them point at nothing; a split moves text those
+comments cite into files they do not name. Heading it costs a paragraph and
+fixes the actual problem, which is a reader trusting a title.
+
+| Part | State |
+|---|---|
+| **1 — Broken right now** | **Closed and empty.** All ten defects, August 15, 2026 |
+| **4 — architecture verdicts** | **Live, and this file owns them** |
+| **6 — Sequence** | **Superseded**, phases 2–5, by `clarice-v3-plan.md` on August 20 |
+| **8 — What this blueprint refuses** | **Live, and this file owns them** |
+| **9 — Decisions only Vince can make** | **All five answered**, the last on August 22 |
+| everything else | the audit as it was written, and it is a record |
+
+**What is still worth reading here is Parts 4 and 8** — the architecture
+verdicts and the refusals. Everything else is either closed, superseded, or a
+dated snapshot of one twelve-part audit, which is a thing this corpus keeps
+rather than deletes.
+
 ## What this is
 
 The output of a twelve-part audit run on August 12, 2026 across the backend,

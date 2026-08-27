@@ -598,9 +598,22 @@ runs coexist. Cheap, and it should not wait for anything above it.
    **Worth leaving visible rather than deleting**: a decision can be answered by
    shipping and stay open on paper, which is the same drift as an unstruck
    increment and is harder to spot, because nothing about the code looks wrong.
-3. **D3. Does §6's ordering of long-retention backups behind staging stand?**
+3. ~~**D3. Does §6's ordering of long-retention backups behind staging stand?**
    Seven days is the real bound on undoing a bad migration, and the drill shows
-   that rehearsal does not need staging.
+   that rehearsal does not need staging.~~ **Answered August 26, 2026: no, the
+   ordering does not stand.** Long-retention backups are unblocked, and
+   `architecture-trajectory.md` §6 records it where the ordering lived.
+
+   **The ordering assumed rehearsal needs staging**, and the August 19 drill ran
+   end to end against a paid scratch cluster and passed — so the *rehearsed
+   restore* half of §6's line is already done and the *long-retention* half
+   never depended on the thing it was queued behind.
+
+   **What makes it matter rather than merely correct**: the managed seven-day
+   window is the entire bound on undoing a bad migration, and since V1 was
+   answered that window covers a second person's data. **Damage noticed on day
+   eight is not recoverable**, and she cannot notice it, restore it, or know it
+   happened.
 4. ~~**D4. HSTS preload — yes or no?** 1.6 raises the max-age and adds
    `includeSubDomains` without touching this, because preload is submission to
    a list baked into browser binaries and removal takes months. It commits

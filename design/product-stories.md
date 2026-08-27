@@ -122,6 +122,19 @@ it is the reason their triggers were rewritten as numbers on the same day.
 **This score lives here and nowhere else.** Other documents link to it; they do
 not quote it.
 
+**And it is never written as a fraction** — added August 26, 2026, answering
+`clarice-v4-plan.md`'s V4. That decision asked whether a refused story should
+leave the denominator, since *"a refused story counted in the denominator makes
+the score read worse than the product is, forever."* **The premise turned out to
+be false, and finding that out was the answer**: the four piles above lose
+nothing, and the score only reads as failure when somebody compresses it to
+*"14 of 19"*.
+
+**So nineteen stays nineteen**, three of them decided rather than missed, and
+what changes is the practice: **"N of 19" is not a thing this project writes.** A
+denominator needing to be corrected for refusals was a fraction that should not
+have existed.
+
 **Every verdict below cites a `file:line`.** A citation that does not resolve is
 how this document became misleading while every sentence in it still read as
 evidence.

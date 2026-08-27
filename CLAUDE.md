@@ -200,7 +200,26 @@ decorator, or below the previous function's last line.**
 `manage.py test`; the knowledge core arrived with 500-odd pytest-style tests and
 stays on `pytest`, because converting them would be a large mechanical rewrite
 of the thing in that app most worth leaving alone. Running one and reporting
-"tests pass" covers about half the application.
+"tests pass" covers about half the application. It is 1,132 tests now rather
+than 500-odd, which is most of a second application.
+
+**And `pytest` here prints no summary line under redirection** — progress to
+`[100%]`, then nothing. No *"N passed"*, no timing, no verdict. **This is the
+mirror of the `pnpm test` trap above and it is worse**: there the summary lies
+and the exit code is honest; here there is no summary at all, so a run that died
+quietly looks exactly like a run that passed. Do not count dots — the output
+carries prose from the tests themselves, and counting characters in it reported
+78 skips where there were 6.
+
+Read `$?`, and when a real count is wanted, ask for one:
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest --junitxml="$env:TEMP\mind.xml"
+```
+
+**The path has to be a Windows path.** `--junitxml=/tmp/...` exits 0 and writes
+the file nowhere Git Bash can find it, which reads as pytest having failed to
+produce it. Two runs were spent on that.
 
 **Tests run on Postgres now, not SQLite.** `mind.Mention.mention_unique` is
 `nulls_distinct=False`, "Postgres 15+ only" per its own comment, and SQLite omits

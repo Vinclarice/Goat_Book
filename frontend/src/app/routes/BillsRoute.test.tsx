@@ -290,6 +290,53 @@ describe("BillsRoute", () => {
     expect(screen.getByRole("button", { name: "Add bill" })).toBeInTheDocument();
   });
 
+  it("corrects a bill without leaving the page", async () => {
+    /* Increment 3. Changing an amount used to mean opening the task's detail
+       page, editing there, and coming back -- which is the same silo the add
+       form closed, in the other direction. */
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((input) => {
+        const request = input as Request;
+        if (request.method === "PATCH") return jsonResponse({});
+        return jsonResponse(billsData());
+      });
+
+    renderAt();
+
+    await userEvent.click(await screen.findByRole("button", { name: /Edit Landlord/ }));
+    /* Scoped to the row being edited: the add form above uses the same labels,
+       correctly -- "Amount" is what both boxes are -- so an unscoped query
+       finds two and the duplication is the page working, not a bug. */
+    const row = screen.getByRole("button", { name: "Save" }).closest("li")!;
+    const amount = within(row).getByLabelText("Amount");
+    await userEvent.clear(amount);
+    await userEvent.type(amount, "1250.00");
+    await userEvent.click(within(row).getByRole("button", { name: "Save" }));
+
+    const patched = fetchSpy.mock.calls
+      .map(([request]) => request as Request)
+      .filter((request) => request.method === "PATCH");
+    await waitFor(() => expect(patched).toHaveLength(1));
+  });
+
+  it("lets an edit be abandoned", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(billsData()),
+    );
+
+    renderAt();
+
+    await userEvent.click(await screen.findByRole("button", { name: /Edit Landlord/ }));
+    const row = screen.getByRole("button", { name: "Cancel" }).closest("li")!;
+    expect(within(row).getByLabelText("Who it goes to")).toBeInTheDocument();
+    await userEvent.click(within(row).getByRole("button", { name: "Cancel" }));
+
+    /* Back to a row. The add form's own payee box is still on the page, which
+       is why the assertion above is scoped to the row and this one is not. */
+    expect(screen.getByRole("button", { name: /Edit Landlord/ })).toBeInTheDocument();
+  });
+
   it("reports a failure rather than an empty month", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(() =>
       jsonResponse({}, false, 500),

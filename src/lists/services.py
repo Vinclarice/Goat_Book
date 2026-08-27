@@ -415,6 +415,63 @@ def create_bill(
     return item
 
 
+_KEEP = object()
+
+
+@transaction.atomic
+def update_bill(item, *, payee=_KEEP, amount=_KEEP, currency=_KEEP, due_date=_KEEP,
+                clear_amount=False):
+    """Correct a bill where it is shown, across both records it lives in.
+
+    **The four fields a bill actually has do not live in one place**: amount,
+    payee and currency are the sidecar's, and the due date is the task's. One
+    service rather than two calls from the page, so a caller cannot leave a bill
+    half-corrected when the second write fails -- and so the page does not have
+    to know which field is which, which is the whole point of
+    `bills-page-plan.md`.
+
+    **Absent is not empty.** A field left out keeps its stored value, the same
+    partial-write contract the day and the review already have. Clearing an
+    amount back to unpriced is therefore an explicit act: `clear_amount=True`,
+    because *"the water bill, whatever it comes to"* is a state somebody chooses
+    rather than a field they forgot.
+
+    **It does not rename the task**, and that is a decision rather than an
+    omission. The name came from the payee when the bill was made; changing the
+    payee later is usually a correction to who gets paid, and
+    `RecurringCommitment.text` is what a series with history is called.
+    Renaming stays where tasks are renamed.
+    """
+    item = Item.objects.select_for_update().get(pk=item.pk)
+    if item.status == Item.Status.ARCHIVED:
+        raise InvalidTaskTransition("Restore this task before editing it")
+    bill = Bill.objects.filter(item=item).first()
+    if bill is None:
+        raise TaskConflict("That task is not a bill.")
+
+    if payee is not _KEEP:
+        payee = (payee or "").strip()
+        if not payee:
+            raise TaskConflict("A bill needs a payee.")
+        bill.payee = payee
+    if currency is not _KEEP:
+        bill.currency = currency
+    if clear_amount:
+        bill.amount = None
+    elif amount is not _KEEP:
+        if amount is not None and amount < 0:
+            raise TaskConflict("A bill is something owed, so it cannot be negative.")
+        bill.amount = amount
+    bill.save(update_fields=["payee", "currency", "amount"])
+
+    if due_date is not _KEEP:
+        # Through the service, so the life log hears it the way every other
+        # due-date change is heard rather than a second, quieter path.
+        set_due_date(item, due_date)
+        item.refresh_from_db()
+    return item
+
+
 @transaction.atomic
 def clear_bill(item):
     """Stop this task being a bill. The task itself is untouched."""

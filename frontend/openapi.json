@@ -68,6 +68,51 @@
         ]
       }
     },
+    "/api/v1/bills/entry/{task_id}": {
+      "patch": {
+        "operationId": "lists_api_v1_edit_bill",
+        "summary": "Edit Bill",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "schema": {
+              "title": "Task Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MonthBillOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Correct a bill without leaving the page it is shown on.\n\n**`/bills/entry/{id}` rather than `/bills/{id}`**, because `/bills/{day}`\nalready takes a date in that position and two routes differing only by the\ntype of one segment is a collision waiting for the first numeric-looking\ndate. The read keeps the shorter path; the writes take the longer one.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EditBillIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      }
+    },
     "/api/v1/bills/{day}": {
       "get": {
         "operationId": "lists_api_v1_months_bills",
@@ -2427,6 +2472,63 @@
           "due_date"
         ],
         "title": "NewBillIn",
+        "type": "object"
+      },
+      "EditBillIn": {
+        "description": "Every field optional, and absent is not empty.\n\nThe same partial-write contract the day and the review already have: a field\nleft out keeps its stored value. **Clearing an amount is explicit** --\n`amount: null` with `clear_amount: true` -- because \"the water bill,\nwhatever it comes to\" is a state somebody chooses rather than a field they\nforgot to fill in.",
+        "properties": {
+          "payee": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payee"
+          },
+          "amount": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          },
+          "clear_amount": {
+            "default": false,
+            "title": "Clear Amount",
+            "type": "boolean"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          }
+        },
+        "title": "EditBillIn",
         "type": "object"
       },
       "MonthOfBillsOut": {

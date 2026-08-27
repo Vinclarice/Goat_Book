@@ -45,6 +45,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/bills/entry/{task_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Edit Bill
+         * @description Correct a bill without leaving the page it is shown on.
+         *
+         *     **`/bills/entry/{id}` rather than `/bills/{id}`**, because `/bills/{day}`
+         *     already takes a date in that position and two routes differing only by the
+         *     type of one segment is a collision waiting for the first numeric-looking
+         *     date. The read keeps the shorter path; the writes take the longer one.
+         */
+        patch: operations["lists_api_v1_edit_bill"];
+        trace?: never;
+    };
     "/api/v1/bills/{day}": {
         parameters: {
             query?: never;
@@ -1349,6 +1374,31 @@ export interface components {
              * @default true
              */
             repeats: boolean;
+        };
+        /**
+         * EditBillIn
+         * @description Every field optional, and absent is not empty.
+         *
+         *     The same partial-write contract the day and the review already have: a field
+         *     left out keeps its stored value. **Clearing an amount is explicit** --
+         *     `amount: null` with `clear_amount: true` -- because "the water bill,
+         *     whatever it comes to" is a state somebody chooses rather than a field they
+         *     forgot to fill in.
+         */
+        EditBillIn: {
+            /** Payee */
+            payee?: string | null;
+            /** Amount */
+            amount?: string | null;
+            /**
+             * Clear Amount
+             * @default false
+             */
+            clear_amount: boolean;
+            /** Currency */
+            currency?: string | null;
+            /** Due Date */
+            due_date?: string | null;
         };
         /** MonthOfBillsOut */
         MonthOfBillsOut: {
@@ -3241,6 +3291,32 @@ export interface operations {
         responses: {
             /** @description Created */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MonthBillOut"];
+                };
+            };
+        };
+    };
+    lists_api_v1_edit_bill: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EditBillIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -150,8 +150,125 @@ function AddBill({ month }: { month: string }) {
   );
 }
 
+type BillRow = {
+  task_id: number;
+  text: string;
+  due_date: string;
+  amount: string | null;
+  currency: string;
+  payee: string;
+  paid: boolean;
+};
+
+/** Correcting a bill without leaving the page it is shown on.
+ *
+ * The four fields do not live in one record -- amount, payee and currency are
+ * the sidecar's and the due date is the task's -- and the server's `update_bill`
+ * hides that, which is the point. This form does not know either.
+ */
+function EditBill({ bill, onDone }: { bill: BillRow; onDone: () => void }) {
+  const queryClient = useQueryClient();
+  const [payee, setPayee] = useState(bill.payee);
+  const [amount, setAmount] = useState(bill.amount ?? "");
+  const [currency, setCurrency] = useState(bill.currency);
+  const [dueDate, setDueDate] = useState(bill.due_date);
+  const [failed, setFailed] = useState<string | null>(null);
+
+  const save = useMutation({
+    mutationFn: async () => {
+      const { error, response } = await apiV1.PATCH(
+        "/api/v1/bills/entry/{task_id}",
+        {
+          params: { path: { task_id: bill.task_id } },
+          body: {
+            payee,
+            currency,
+            due_date: dueDate,
+            // Absent is not empty, so clearing an amount has to say so out
+            // loud: "whatever it comes to" is a state somebody chooses.
+            amount: amount.trim() === "" ? null : amount.trim(),
+            clear_amount: amount.trim() === "",
+          },
+        },
+      );
+      if (error || !response.ok) throw new RequestFailed(response.status);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["bills"] });
+      onDone();
+    },
+    onError: () => setFailed("That change could not be saved."),
+  });
+
+  return (
+    <li className="space-y-2 rounded-lg border border-border px-3 py-2">
+      <div className="flex flex-wrap gap-2">
+        <span className="min-w-32 flex-1 space-y-1">
+          <label htmlFor={`edit-payee-${bill.task_id}`} className="text-xs">
+            Who it goes to
+          </label>
+          <input
+            id={`edit-payee-${bill.task_id}`}
+            value={payee}
+            onChange={(event) => setPayee(event.target.value)}
+            className="w-full rounded-lg border border-border bg-input px-2 py-1"
+          />
+        </span>
+        <span className="w-28 space-y-1">
+          <label htmlFor={`edit-amount-${bill.task_id}`} className="text-xs">
+            Amount
+          </label>
+          <input
+            id={`edit-amount-${bill.task_id}`}
+            value={amount}
+            onChange={(event) => setAmount(event.target.value)}
+            inputMode="decimal"
+            className="w-full rounded-lg border border-border bg-input px-2 py-1"
+          />
+        </span>
+        <span className="w-20 space-y-1">
+          <label htmlFor={`edit-currency-${bill.task_id}`} className="text-xs">
+            Currency
+          </label>
+          <input
+            id={`edit-currency-${bill.task_id}`}
+            value={currency}
+            onChange={(event) => setCurrency(event.target.value.toUpperCase())}
+            maxLength={3}
+            className="w-full rounded-lg border border-border bg-input px-2 py-1"
+          />
+        </span>
+        <span className="w-36 space-y-1">
+          <label htmlFor={`edit-due-${bill.task_id}`} className="text-xs">
+            Due
+          </label>
+          <input
+            id={`edit-due-${bill.task_id}`}
+            type="date"
+            value={dueDate}
+            onChange={(event) => setDueDate(event.target.value)}
+            className="w-full rounded-lg border border-border bg-input px-2 py-1"
+          />
+        </span>
+      </div>
+      {failed && <p className="text-sm text-destructive">{failed}</p>}
+      <div className="flex flex-wrap items-center gap-2">
+        <Button size="sm" onClick={() => save.mutate()} disabled={save.isPending}>
+          Save
+        </Button>
+        <Button size="sm" variant="ghost" onClick={onDone}>
+          Cancel
+        </Button>
+      </div>
+    </li>
+  );
+}
+
 export function BillsRoute() {
   const { month } = useParams();
+  // Which row is open for editing, by task id. One at a time: two half-edited
+  // rows on screen is a way to lose one of them.
+  const [editing, setEditing] = useState<number | null>(null);
   const { data, error, isPending, refetch } = useQuery({
     queryKey: ["bills", month ?? "today"],
     queryFn: async () => {
@@ -206,7 +323,14 @@ export function BillsRoute() {
       ) : (
         <>
           <ul className="space-y-1">
-            {data.bills.map((bill) => (
+            {data.bills.map((bill) =>
+              editing === bill.task_id ? (
+                <EditBill
+                  key={bill.task_id}
+                  bill={bill}
+                  onDone={() => setEditing(null)}
+                />
+              ) : (
               <li
                 key={bill.task_id}
                 className="flex flex-wrap items-baseline justify-between gap-3 rounded-lg border border-border px-3 py-2"
@@ -245,9 +369,18 @@ export function BillsRoute() {
                       `${bill.amount} ${bill.currency}`
                     )}
                   </span>
+                  <button
+                    type="button"
+                    onClick={() => setEditing(bill.task_id)}
+                    className="touch-target text-sm text-muted-foreground hover:text-foreground"
+                    aria-label={`Edit ${bill.payee || bill.text}`}
+                  >
+                    Edit
+                  </button>
                 </span>
               </li>
-            ))}
+              ),
+            )}
           </ul>
 
           {/* One line per currency, never one number: adding 500 USD to 40 GBP

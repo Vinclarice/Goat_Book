@@ -341,6 +341,75 @@ def add_bill(request, payload: NewBillIn):
     }
 
 
+class EditBillIn(Schema):
+    """Every field optional, and absent is not empty.
+
+    The same partial-write contract the day and the review already have: a field
+    left out keeps its stored value. **Clearing an amount is explicit** --
+    `amount: null` with `clear_amount: true` -- because "the water bill,
+    whatever it comes to" is a state somebody chooses rather than a field they
+    forgot to fill in.
+    """
+
+    payee: str | None = None
+    amount: str | None = None
+    clear_amount: bool = False
+    currency: str | None = None
+    due_date: date | None = None
+
+
+def _bill_row_out(item):
+    """One bill, shaped like a row of the month it belongs to."""
+    bill = item.bill
+    return {
+        "task_id": item.id,
+        "text": item.text,
+        "due_date": item.due_date,
+        "amount": str(bill.amount) if bill.amount is not None else None,
+        "currency": bill.currency,
+        "payee": bill.payee,
+        "url": reverse("api_item_detail", args=[item.id]),
+        "paid": item.status == Item.Status.COMPLETED,
+    }
+
+
+@router.patch(
+    "/bills/entry/{task_id}", response=MonthBillOut, auth=SessionAuthIfLoggedIn()
+)
+def edit_bill(request, task_id: int, payload: EditBillIn):
+    """Correct a bill without leaving the page it is shown on.
+
+    **`/bills/entry/{id}` rather than `/bills/{id}`**, because `/bills/{day}`
+    already takes a date in that position and two routes differing only by the
+    type of one segment is a collision waiting for the first numeric-looking
+    date. The read keeps the shorter path; the writes take the longer one.
+    """
+    item = Item.objects.filter(pk=task_id, owner=request.user).first()
+    if item is None:
+        raise HttpError(404, "No such bill.")
+    fields = {}
+    if payload.payee is not None:
+        fields["payee"] = payload.payee
+    if payload.currency is not None:
+        fields["currency"] = payload.currency
+    if payload.due_date is not None:
+        fields["due_date"] = payload.due_date
+    if payload.clear_amount:
+        fields["clear_amount"] = True
+    elif payload.amount not in (None, ""):
+        try:
+            fields["amount"] = Decimal(payload.amount)
+        except InvalidOperation:
+            raise HttpError(409, "That amount is not a number.")
+    try:
+        item = services.update_bill(item, **fields)
+    except services.TaskConflict as error:
+        raise HttpError(409, str(error))
+    except services.InvalidTaskTransition as error:
+        raise HttpError(409, str(error))
+    return _bill_row_out(item)
+
+
 @router.get("/bills/{day}", response=MonthOfBillsOut, auth=SessionAuthIfLoggedIn())
 def months_bills(request, day: date):
     """What is due this month and what it comes to.

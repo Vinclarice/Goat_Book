@@ -83,7 +83,20 @@ where it is.** The word *task* does not appear on it.
    `bills_for` are each correct; the defect lived in the space between them —
    the second of that shape in one day, after the miss-review surface in
    `search-plan.md`.
-3. **Editing in place**, the same fields against an existing bill.
+3. ~~**Editing in place**, the same fields against an existing bill.~~ **Done
+   August 27, 2026.** `update_bill` corrects all four fields across both records
+   they live in — amount, payee and currency on the sidecar, the due date on the
+   task — so the page never has to know which is which. Absent keeps its value,
+   and **clearing an amount is explicit**, because *whatever it comes to* is a
+   state somebody chooses.
+
+   **It does not rename the task**, recorded as a decision rather than an
+   omission: the name came from the payee at creation, and
+   `RecurringCommitment.text` is what a series with history is called.
+
+   **The write routes are `/bills/entry/{id}`**, because `/bills/{day}` already
+   takes a date in that position and two routes differing only by the type of
+   one segment is a collision waiting for the first numeric-looking date.
 4. **Deleting**, with the recurring question asked once.
 
 **1 is worth doing whatever happens to the rest**, and it is the one that fixes

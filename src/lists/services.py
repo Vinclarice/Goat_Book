@@ -530,8 +530,7 @@ def update_bill(item, *, payee=_KEEP, amount=_KEEP, currency=_KEEP, due_date=_KE
 
 
 @transaction.atomic
-def create_account(owner, *, name, kind=None, currency="USD", owes=None,
-                   paid_by=None):
+def create_account(owner, *, name, kind=None, currency="USD", owes=None):
     """Open something that carries a balance.
 
     **`owes` defaults from the kind**, because a card and a loan are money you
@@ -554,7 +553,6 @@ def create_account(owner, *, name, kind=None, currency="USD", owes=None,
             kind=kind,
             currency=currency,
             owes=owes,
-            paid_by=paid_by,
         )
     except IntegrityError as error:
         raise TaskConflict(

@@ -423,10 +423,14 @@ class Account(models.Model):
     makes every read carry a sign convention nobody wrote down. This says which
     direction the number points, once, where it belongs.
 
-    **Optionally tied to a recurring bill.** "Amex" the account and "Pay Amex"
-    the bill are different records with different life cycles, and a person
-    thinks of them as one thing -- so the link exists and is nullable, because
-    an investment has no bill and a card someone pays by hand has none either.
+    **No link to the bill that pays it, and that is deliberate.** `paid_by` was
+    written on August 27, 2026 and removed the same day, having been set by
+    nothing and read by nothing through two screens that were each supposed to
+    give it a purpose. The seam rule this project applies everywhere else --
+    *built and dark gets a declared trigger or a deletion* -- was being applied
+    to the codebase and not to the new code, so this is it applied evenly. It
+    comes back the day a surface actually wants it, which is a cheap migration
+    and an honest one.
 
     **Charter compliance** (architecture-trajectory.md §4):
 
@@ -460,16 +464,6 @@ class Account(models.Model):
     #: Whether the number is money you owe or money you have. Named rather than
     #: signed, so no read has to remember a convention.
     owes = models.BooleanField(default=True)
-    #: The recurring bill this is paid by, when there is one. Null for an
-    #: investment, and for a card nobody pays on a schedule. SET_NULL rather
-    #: than CASCADE: deleting the bill should not delete the debt.
-    paid_by = models.ForeignKey(
-        "RecurringCommitment",
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name="accounts",
-    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

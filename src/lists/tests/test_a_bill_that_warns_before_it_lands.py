@@ -1,6 +1,6 @@
 """An annual subscription says so before it renews, not after it charges.
 
-`bills-page-plan.md` increment 7, and the thing the money module is actually
+`money-module-plan.md` increment 7, and the thing the money module is actually
 for -- Vince, August 27, 2026: *"in particular when I sign up for an annual
 subscription when it's about to expire."* Sign up in March, forget, get charged
 the following March is the failure; a month's warning is the fix.

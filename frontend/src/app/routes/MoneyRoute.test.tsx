@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router";
 
-import { BillsRoute } from "./BillsRoute";
+import { MoneyRoute } from "./MoneyRoute";
 
 function jsonResponse(data: object, ok = true, status = ok ? 200 : 500) {
   const body = JSON.stringify(data);
@@ -51,7 +51,7 @@ function billsData(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function renderAt(path = "/bills/2026-08-14") {
+function renderAt(path = "/money/2026-08-14") {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
@@ -59,14 +59,14 @@ function renderAt(path = "/bills/2026-08-14") {
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[path]}>
         <Routes>
-          <Route path="/bills/:month" element={<BillsRoute />} />
+          <Route path="/money/:month" element={<MoneyRoute />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
   );
 }
 
-describe("BillsRoute", () => {
+describe("MoneyRoute", () => {
   afterEach(() => vi.restoreAllMocks());
 
   it("says what is due and what it comes to", async () => {
@@ -88,7 +88,7 @@ describe("BillsRoute", () => {
     /* The defect this increment exists for. `bills_for` filtered to open
        tasks, borrowing the agenda's definition -- so rent paid on the 1st was
        gone from the page on the 2nd, and there was no way to confirm from here
-       that it had been paid at all. See bills-page-plan.md, defect 3. */
+       that it had been paid at all. See money-module-plan.md, defect 3. */
     vi.spyOn(globalThis, "fetch").mockImplementation(() =>
       jsonResponse(
         billsData({

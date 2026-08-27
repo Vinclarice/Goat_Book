@@ -1,6 +1,6 @@
 """Deleting a bill, and the difference between one month and the standing one.
 
-`bills-page-plan.md` increment 4, and Vince's decision of August 27, 2026: from
+`money-module-plan.md` increment 4, and Vince's decision of August 27, 2026: from
 the person's side there is no task, so Delete removes the whole thing -- and if
 it repeats, it asks once which thing is meant.
 

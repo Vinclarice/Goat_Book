@@ -30,7 +30,7 @@ from accounts.auth import SessionAuthIfLoggedIn, TokenAuth
 from accounts.models import SCOPE_AGENDA_READ
 from clarice.clocks import today_for
 from lists import agenda as agenda_reader
-from lists import bills as bills_reader
+from lists import money as money_reader
 from lists import projects as project_reader
 from lists import services
 from lists.forms import ListTitleForm
@@ -325,7 +325,7 @@ class NewBillIn(Schema):
     lead_days: int = 0
 
 
-@router.post("/bills", response={201: MonthBillOut}, auth=SessionAuthIfLoggedIn())
+@router.post("/money/bills", response={201: MonthBillOut}, auth=SessionAuthIfLoggedIn())
 def add_bill(request, payload: NewBillIn):
     """Create a bill where bills are.
 
@@ -420,15 +420,21 @@ def _bill_row_out(item):
 
 
 @router.patch(
-    "/bills/entry/{task_id}", response=MonthBillOut, auth=SessionAuthIfLoggedIn()
+    "/money/bills/entry/{task_id}", response=MonthBillOut, auth=SessionAuthIfLoggedIn()
 )
 def edit_bill(request, task_id: int, payload: EditBillIn):
     """Correct a bill without leaving the page it is shown on.
 
-    **`/bills/entry/{id}` rather than `/bills/{id}`**, because `/bills/{day}`
-    already takes a date in that position and two routes differing only by the
-    type of one segment is a collision waiting for the first numeric-looking
-    date. The read keeps the shorter path; the writes take the longer one.
+    **`entry/{id}` rather than `{id}`**, because `/money/bills/{day}` already
+    takes a date in that position and two routes differing only by the type of
+    one segment is a collision waiting for the first numeric-looking date. The
+    read keeps the shorter path; the writes take the longer one.
+
+    **Under `/money/` since August 27, 2026.** The resources are still bills --
+    a bill is one kind of money thing and income will be its sibling, not the
+    same record -- so what moved is the namespace, not the noun. `Bill` keeps
+    its name for exactly that reason: a model named after the module would have
+    to hold both.
     """
     item = Item.objects.filter(pk=task_id, owner=request.user).first()
     if item is None:
@@ -471,7 +477,7 @@ class PayBillIn(Schema):
 
 
 @router.post(
-    "/bills/entry/{task_id}/pay", response=MonthBillOut, auth=SessionAuthIfLoggedIn()
+    "/money/bills/entry/{task_id}/pay", response=MonthBillOut, auth=SessionAuthIfLoggedIn()
 )
 def pay_bill(request, task_id: int, payload: PayBillIn):
     """Pay a bill from the page it is shown on.
@@ -498,7 +504,7 @@ def pay_bill(request, task_id: int, payload: PayBillIn):
 
 
 @router.delete(
-    "/bills/entry/{task_id}", response={204: None}, auth=SessionAuthIfLoggedIn()
+    "/money/bills/entry/{task_id}", response={204: None}, auth=SessionAuthIfLoggedIn()
 )
 def remove_bill(request, task_id: int, whole_series: bool = False):
     """Remove a bill, and say which one is meant when it repeats.
@@ -521,7 +527,7 @@ def remove_bill(request, task_id: int, whole_series: bool = False):
     return 204, None
 
 
-@router.get("/bills/{day}", response=MonthOfBillsOut, auth=SessionAuthIfLoggedIn())
+@router.get("/money/bills/{day}", response=MonthOfBillsOut, auth=SessionAuthIfLoggedIn())
 def months_bills(request, day: date):
     """What is due this month and what it comes to.
 
@@ -529,7 +535,7 @@ def months_bills(request, day: date):
     and widening the token surface for one it cannot show would be the
     un-switched-on seam this project keeps finding.
     """
-    found = bills_reader.bills_for(request.user, day)
+    found = money_reader.bills_for(request.user, day)
     first = day.replace(day=1)
     last = first.replace(day=monthrange(first.year, first.month)[1])
     return {

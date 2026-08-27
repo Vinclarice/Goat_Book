@@ -48,7 +48,11 @@ export function ViewNav() {
             exactly one other page is not the same as a surface, and this nav
             is what says which surfaces exist. */}
         <Entry to="/calendar">Calendar</Entry>
-        <Entry to="/bills">Bills</Entry>
+        {/* **Money, not Bills, since August 27, 2026.** The surface holds
+            bills now and income shortly, and a nav entry saying Bills would
+            not survive a salary line. Renamed at the cheap moment rather than
+            after something pointed at it. */}
+        <Entry to="/money">Money</Entry>
         <Entry to="/archive">
           Archive
           {data && data.archived_count > 0 && (

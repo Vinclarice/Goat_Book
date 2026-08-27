@@ -1,6 +1,6 @@
 """A bill can be created where bills are, without anybody saying "task".
 
-`bills-page-plan.md` increment 2. Until now the only way to make one was to
+`money-module-plan.md` increment 2. Until now the only way to make one was to
 create a *task* somewhere else, open its detail page, and fill in amount and
 payee -- so the page named after the concept could not produce one, and the
 empty state was a dead end with two links, both to other empty months.

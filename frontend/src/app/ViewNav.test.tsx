@@ -65,12 +65,16 @@ describe("ViewNav", () => {
     // behind a single link each on the Day page and were not findable at
     // all; this test is what should have been consulted about whether they
     // were surfaces, and adding one here is what makes that true.
+    //
+    // **Bills became Money on August 27, 2026**, when the surface widened
+    // past bills -- income next. The entry is renamed here rather than added,
+    // because it is the same surface under a word that survives a salary line.
     for (const name of [
       "Today",
       "Agenda",
       "Review",
       "Calendar",
-      "Bills",
+      "Money",
       /Archive/,
     ]) {
       expect(

@@ -21,7 +21,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/bills": {
+    "/api/v1/money/bills": {
         parameters: {
             query?: never;
             header?: never;
@@ -45,7 +45,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/bills/entry/{task_id}": {
+    "/api/v1/money/bills/entry/{task_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -74,15 +74,21 @@ export interface paths {
          * Edit Bill
          * @description Correct a bill without leaving the page it is shown on.
          *
-         *     **`/bills/entry/{id}` rather than `/bills/{id}`**, because `/bills/{day}`
-         *     already takes a date in that position and two routes differing only by the
-         *     type of one segment is a collision waiting for the first numeric-looking
-         *     date. The read keeps the shorter path; the writes take the longer one.
+         *     **`entry/{id}` rather than `{id}`**, because `/money/bills/{day}` already
+         *     takes a date in that position and two routes differing only by the type of
+         *     one segment is a collision waiting for the first numeric-looking date. The
+         *     read keeps the shorter path; the writes take the longer one.
+         *
+         *     **Under `/money/` since August 27, 2026.** The resources are still bills --
+         *     a bill is one kind of money thing and income will be its sibling, not the
+         *     same record -- so what moved is the namespace, not the noun. `Bill` keeps
+         *     its name for exactly that reason: a model named after the module would have
+         *     to hold both.
          */
         patch: operations["lists_api_v1_edit_bill"];
         trace?: never;
     };
-    "/api/v1/bills/entry/{task_id}/pay": {
+    "/api/v1/money/bills/entry/{task_id}/pay": {
         parameters: {
             query?: never;
             header?: never;
@@ -106,7 +112,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/bills/{day}": {
+    "/api/v1/money/bills/{day}": {
         parameters: {
             query?: never;
             header?: never;

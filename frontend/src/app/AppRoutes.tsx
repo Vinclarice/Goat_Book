@@ -6,7 +6,7 @@ import { AppLayout } from "./AppLayout";
 import { AgendaRoute } from "./routes/AgendaRoute";
 import { ArchiveRoute } from "./routes/ArchiveRoute";
 import { CalendarRoute } from "./routes/CalendarRoute";
-import { BillsRoute } from "./routes/BillsRoute";
+import { MoneyRoute } from "./routes/MoneyRoute";
 import { DayRoute } from "./routes/DayRoute";
 import { DevUiGallery } from "./routes/DevUiGallery";
 import { AreaRoute } from "./routes/AreaRoute";
@@ -69,6 +69,16 @@ function LegacyListRedirect() {
  * runs at import time, which made the table itself untestable -- and the
  * table is exactly where B2.1's blank-page defect lived.
  */
+/** `/bills/2026-08` keeps working and keeps its month.
+ *
+ * A redirect that dropped the month would send somebody looking at August to
+ * today, which is worse than a dead link because it looks like it worked.
+ */
+function RedirectToMonth() {
+  const { month } = useParams();
+  return <Navigate to={`/money/${month}`} replace />;
+}
+
 export function AppRoutes() {
   return (
     <Routes>
@@ -92,8 +102,17 @@ export function AppRoutes() {
         <Route path="/calendar" element={<CalendarRoute />} />
         <Route path="/calendar/:month" element={<CalendarRoute />} />
         {/* A bill is a task with a sidecar; this is a read over them. */}
-        <Route path="/bills" element={<BillsRoute />} />
-        <Route path="/bills/:month" element={<BillsRoute />} />
+        <Route path="/money" element={<MoneyRoute />} />
+        <Route path="/money/:month" element={<MoneyRoute />} />
+        {/* The old address, kept working. One person and a bookmark is enough
+            reason -- `/capture/` is the precedent for how expensive a moved
+            prefix is once anything points at it, and a redirect costs two
+            lines against finding out later. */}
+        <Route path="/bills" element={<Navigate to="/money" replace />} />
+        <Route
+          path="/bills/:month"
+          element={<RedirectToMonth />}
+        />
         {/* Same two-path shape as the day, for the same reason: the
             undated one lets the server say which week it is, since a week
             boundary belongs to the account's time zone. The dated one is

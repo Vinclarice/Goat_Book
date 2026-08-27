@@ -1,4 +1,18 @@
-"""What is due this month, and what it comes to.
+"""The money module's reads -- what is due, what went out, what it came to.
+
+**Was `bills.py` until August 27, 2026**, renamed when Vince widened the surface
+from Bills to Money: *"if I need to check on financial information, I know
+exactly where to go."* Bills did not become Money -- **bills became part of
+it**, and income is the sibling this file is now named to hold.
+
+**`Bill` keeps its name**, deliberately. A bill is one kind of money thing and
+income is another; a model named after the module would have to be both, which
+is the collapse `architecture-trajectory.md` §4 exists to catch. The rename is
+the module and the namespace, not the noun.
+
+Original docstring follows.
+
+What is due this month, and what it comes to.
 
 A read, not a model. A bill is a task with a `Bill` sidecar -- see that model
 for why §4 said no to a primitive -- so everything here is a question about
@@ -75,7 +89,7 @@ class MonthOfBills:
     #: What is **still owed** this month, per currency. Named for the question
     #: it answers, which the field it replaced was not -- `totals` held exactly
     #: this and was rendered under the word *total*, so a month that cost
-    #: 1264.99 reported 64.99. See `bills-page-plan.md`, defect 4.
+    #: 1264.99 reported 64.99. See `money-module-plan.md`, defect 4.
     due_totals: dict
     #: What has **already gone out** this month, per currency. Two figures
     #: rather than one, because a single number has to choose which of *what do

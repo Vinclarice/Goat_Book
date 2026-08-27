@@ -9,6 +9,17 @@ import { RequestFailed, statusOf } from "../../api/failure";
 import { RouteFailure } from "./RouteFailure";
 
 /**
+ * Money — what is due, what went out, and what the month came to.
+ *
+ * **Was the Bills page until August 27, 2026.** Vince widened it: *"a module is
+ * essentially its own sort of landing page for relevant information... if I
+ * need to check on financial information, I know exactly where to go."* Bills
+ * did not become Money; bills became part of it, and income is next.
+ *
+ * The `Bill` model keeps its name for the same reason — a bill is one kind of
+ * money thing and income will be another, so a record named after the module
+ * would have to be both.
+ *
  * What is due this month, and what it comes to.
  *
  * A bill is a task with a sidecar — `architecture-trajectory.md` §4 said no
@@ -34,7 +45,7 @@ function dayLabel(iso: string) {
  *
  * The name is derived from the payee on the server -- `Landlord` becomes
  * *Pay Landlord* -- so there is no title box here and nobody has to know that
- * a bill is a task with a sidecar underneath. `bills-page-plan.md` has why.
+ * a bill is a task with a sidecar underneath. `money-module-plan.md` has why.
  */
 function AddBill({ month }: { month: string }) {
   const queryClient = useQueryClient();
@@ -48,7 +59,7 @@ function AddBill({ month }: { month: string }) {
 
   const add = useMutation({
     mutationFn: async () => {
-      const { error, response } = await apiV1.POST("/api/v1/bills", {
+      const { error, response } = await apiV1.POST("/api/v1/money/bills", {
         body: {
           payee,
           // Empty is not zero: "the water bill, whatever it comes to" is a
@@ -240,7 +251,7 @@ function EditBill({ bill, onDone }: { bill: BillRow; onDone: () => void }) {
   const save = useMutation({
     mutationFn: async () => {
       const { error, response } = await apiV1.PATCH(
-        "/api/v1/bills/entry/{task_id}",
+        "/api/v1/money/bills/entry/{task_id}",
         {
           params: { path: { task_id: bill.task_id } },
           body: {
@@ -341,7 +352,7 @@ function PayBill({ bill }: { bill: BillRow }) {
   const pay = useMutation({
     mutationFn: async () => {
       const { error, response } = await apiV1.POST(
-        "/api/v1/bills/entry/{task_id}/pay",
+        "/api/v1/money/bills/entry/{task_id}/pay",
         {
           params: { path: { task_id: bill.task_id } },
           body: { amount: amount.trim() === "" ? null : amount.trim() },
@@ -407,7 +418,7 @@ function DeleteBill({ bill }: { bill: BillRow }) {
   const remove = useMutation({
     mutationFn: async (wholeSeries: boolean) => {
       const { error, response } = await apiV1.DELETE(
-        "/api/v1/bills/entry/{task_id}",
+        "/api/v1/money/bills/entry/{task_id}",
         {
           params: {
             path: { task_id: bill.task_id },
@@ -466,7 +477,7 @@ function DeleteBill({ bill }: { bill: BillRow }) {
   );
 }
 
-export function BillsRoute() {
+export function MoneyRoute() {
   const { month } = useParams();
   // Which row is open for editing, by task id. One at a time: two half-edited
   // rows on screen is a way to lose one of them.
@@ -475,7 +486,7 @@ export function BillsRoute() {
     queryKey: ["bills", month ?? "today"],
     queryFn: async () => {
       const day = month ?? new Date().toISOString().slice(0, 10);
-      const { data, response } = await apiV1.GET("/api/v1/bills/{day}", {
+      const { data, response } = await apiV1.GET("/api/v1/money/bills/{day}", {
         params: { path: { day } },
       });
       if (!data) throw new RequestFailed(response.status);
@@ -495,7 +506,7 @@ export function BillsRoute() {
     <div className="max-w-2xl mx-auto space-y-4 px-4 py-8">
       <nav className="flex items-baseline justify-between gap-3">
         <Link
-          to={`/bills/${data.previous_month}`}
+          to={`/money/${data.previous_month}`}
           className="touch-target text-sm text-muted-foreground hover:text-foreground"
         >
           ← {monthLabel(data.previous_month)}
@@ -504,7 +515,7 @@ export function BillsRoute() {
           {monthLabel(data.month_start)}
         </h1>
         <Link
-          to={`/bills/${data.next_month}`}
+          to={`/money/${data.next_month}`}
           className="touch-target text-sm text-muted-foreground hover:text-foreground"
         >
           {monthLabel(data.next_month)} →
@@ -629,7 +640,7 @@ export function BillsRoute() {
 
               And two figures rather than one. A single "total" held what was
               outstanding, so a month that cost 1264.99 reported 64.99 -- see
-              bills-page-plan.md. What you owe and what the month cost are
+              money-module-plan.md. What you owe and what the month cost are
               different questions and the page now answers both out loud. */}
           <div className="space-y-1 border-t border-border pt-2">
             {due.map(([code, total]) => (

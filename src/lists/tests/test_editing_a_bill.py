@@ -1,6 +1,6 @@
 """A bill can be corrected where it is shown.
 
-`bills-page-plan.md` increment 3. Amount, payee, currency and due date are the
+`money-module-plan.md` increment 3. Amount, payee, currency and due date are the
 four things about a bill that change, and until now changing any of them meant
 leaving the page: open the task's detail, find the bill fields, edit, come back.
 

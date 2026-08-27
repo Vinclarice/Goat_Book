@@ -23,7 +23,7 @@ from decimal import Decimal
 from django.test import TestCase
 
 from accounts.models import User
-from lists import bills as bills_reader
+from lists import money as money_reader
 from lists import services
 from lists.models import List
 
@@ -54,7 +54,7 @@ class TheMonthsBillsTest(TestCase):
         return task
 
     def month(self, day=MID_AUGUST, owner=None):
-        return bills_reader.bills_for(owner or self.user, day)
+        return money_reader.bills_for(owner or self.user, day)
 
     def test_a_month_with_no_bills_says_so_rather_than_showing_zero(self):
         """Zero due and nothing due are different, and only one of them
@@ -108,7 +108,7 @@ class TheMonthsBillsTest(TestCase):
 
     def test_a_paid_bill_stays_in_the_month(self):
         """**Changed August 27, 2026** -- this asserted the opposite, and the
-        opposite was `bills-page-plan.md`'s defect 3.
+        opposite was `money-module-plan.md`'s defect 3.
 
         It read `test_a_paid_bill_is_not_still_due`, and the sentence is true:
         a paid bill is not still due. What was wrong is the conclusion drawn

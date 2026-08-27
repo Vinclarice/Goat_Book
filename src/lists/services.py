@@ -385,7 +385,7 @@ def create_bill(
     **The task and the sidecar in one transaction**, so the page named after
     the concept can produce one. Until August 27, 2026 the only route was to
     create a task elsewhere, open its detail page and fill in amount and payee
-    -- `bills-page-plan.md` has what that cost.
+    -- `money-module-plan.md` has what that cost.
 
     **The name comes from the payee** and is not asked for: `Landlord` becomes
     *Pay Landlord*. Vince's call, and the point is that adding a bill should
@@ -446,7 +446,7 @@ def update_bill(item, *, payee=_KEEP, amount=_KEEP, currency=_KEEP, due_date=_KE
     service rather than two calls from the page, so a caller cannot leave a bill
     half-corrected when the second write fails -- and so the page does not have
     to know which field is which, which is the whole point of
-    `bills-page-plan.md`.
+    `money-module-plan.md`.
 
     **Absent is not empty.** A field left out keeps its stored value, the same
     partial-write contract the day and the review already have. Clearing an

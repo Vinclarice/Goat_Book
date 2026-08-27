@@ -1,6 +1,6 @@
 """Paying a bill where it is shown, and recording what actually went out.
 
-`bills-page-plan.md` increment 5. Until now the page could add a bill and delete
+`money-module-plan.md` increment 5. Until now the page could add a bill and delete
 a bill and not pay one -- the action a person does twelve times more often than
 all the others together -- so marking rent paid meant leaving for the day page
 or the task detail. That is the silo this slice exists to close, left sitting in
@@ -25,7 +25,7 @@ from decimal import Decimal
 from django.test import TestCase
 
 from accounts.models import User
-from lists import bills as bills_reader
+from lists import money as money_reader
 from lists import services
 from lists.models import Bill, Item
 
@@ -87,7 +87,7 @@ class PayingABillTest(TestCase):
     def test_the_month_totals_what_went_out_not_what_was_expected(self):
         services.pay_bill(self.bill, amount=Decimal("80.00"))
 
-        found = bills_reader.bills_for(self.user, AUGUST)
+        found = money_reader.bills_for(self.user, AUGUST)
 
         self.assertEqual(found.paid_totals, {"USD": Decimal("80.00")})
 

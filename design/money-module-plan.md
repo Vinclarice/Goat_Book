@@ -1,6 +1,23 @@
-# Bills, as a place rather than a report — focused spec
+# Money — a place rather than a report — focused spec
 
 Vince · focused spec · written August 27, 2026 · **status is the strikes below**
+
+**Renamed from Bills to Money on August 27, 2026**, the same day it was written,
+once Vince described what the surface is: *"a module is essentially its own sort
+of landing page for relevant information... if I need to check on financial
+information, I know exactly where to go."* Then: *"I think I will want to include
+income and investments."*
+
+**Bills did not become Money — bills became part of it.** The nav entry, the
+route, the read module and the API namespace all moved; **`Bill` kept its name**,
+because a bill is one kind of money thing and income will be another, and a
+record named after the module would have to be both. That is
+`architecture-trajectory.md` §4's collapse, avoided by not renaming the noun.
+
+**The old address still works and keeps its month.** `/bills/2026-08` lands on
+`/money/2026-08` rather than on today: a redirect that dropped the month would
+be worse than a dead link, because it looks like it worked. `/capture/` is the
+precedent for what a moved prefix costs once anything points at it.
 
 ## What this is
 

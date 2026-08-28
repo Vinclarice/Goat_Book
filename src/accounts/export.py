@@ -28,6 +28,7 @@ from daily.models import DailyEntry, DailyFocus
 from lists.models import (
     Account,
     BalanceReading,
+    MoneyCategory,
     MoneyLine,
     ChecklistStep,
     Item,
@@ -96,6 +97,7 @@ EXPORT_KEYS = {
     # this. The test above is what caught it.
     MoneyLine: "bills",
     Account: "accounts_with_balances",
+    MoneyCategory: "money_categories",
     BalanceReading: "balances",
     Tag: "tags",
     RecurringCommitment: "commitments",
@@ -246,6 +248,9 @@ def _payload(user, *, now):
             # and two things called account in one payload is how somebody
             # reading their own export learns the wrong thing about it.
             "accounts_with_balances": _rows(Account.objects.filter(owner=user)),
+            # A person's own vocabulary for their money, which is theirs to
+            # take with them like anything else they typed.
+            "money_categories": _rows(MoneyCategory.objects.filter(owner=user)),
             # Reached through the account rather than by an owner of their own:
             # a reading belongs to an account and the account belongs to a
             # person, which is the same shape `bills` uses through its item.

@@ -237,6 +237,10 @@ type BillRow = {
   payee: string;
   paid: boolean;
   repeats: boolean;
+  /* Both, and for different readers: the name groups the list and needs no
+     lookup, the id keys the edit form's picker. */
+  category: string | null;
+  category_id: number | null;
   direction: string;
   recurrence: string;
   lead_days: number;
@@ -282,6 +286,22 @@ function daysUntil(iso: string) {
  */
 function EditBill({ bill, onDone }: { bill: BillRow; onDone: () => void }) {
   const queryClient = useQueryClient();
+  /* Filing happens here rather than at creation: adding a bill in a hurry
+     should not demand a category, and this is where somebody is already
+     thinking about the bill in front of them. */
+  const { data: categories } = useQuery({
+    queryKey: ["money-categories"],
+    queryFn: async () => {
+      const { data, response } = await apiV1.GET("/api/v1/money/categories");
+      if (!data) throw new RequestFailed(response.status);
+      return data;
+    },
+  });
+  // Seeded from the bill, or a save that only changed the amount would file it
+  // back under Uncategorised without anybody asking for that.
+  const [category, setCategory] = useState<string>(
+    bill.category_id === null ? "" : String(bill.category_id),
+  );
   const [payee, setPayee] = useState(bill.payee);
   const [amount, setAmount] = useState(bill.amount ?? "");
   const [currency, setCurrency] = useState(bill.currency);
@@ -302,6 +322,10 @@ function EditBill({ bill, onDone }: { bill: BillRow; onDone: () => void }) {
             // loud: "whatever it comes to" is a state somebody chooses.
             amount: amount.trim() === "" ? null : amount.trim(),
             clear_amount: amount.trim() === "",
+            // Empty means Uncategorised, which is a choice somebody makes
+            // rather than a field they left alone -- so it is said out loud.
+            category_id: category === "" ? null : Number(category),
+            clear_category: category === "",
           },
         },
       );
@@ -351,6 +375,24 @@ function EditBill({ bill, onDone }: { bill: BillRow; onDone: () => void }) {
             maxLength={3}
             className="w-full rounded-lg border border-border bg-input px-2 py-1"
           />
+        </span>
+        <span className="w-40 space-y-1">
+          <label htmlFor={`edit-category-${bill.task_id}`} className="text-xs">
+            Category
+          </label>
+          <select
+            id={`edit-category-${bill.task_id}`}
+            value={category}
+            onChange={(event) => setCategory(event.target.value)}
+            className="w-full rounded-lg border border-border bg-input px-2 py-1"
+          >
+            <option value="">Uncategorised</option>
+            {(categories ?? []).map((each) => (
+              <option key={each.id} value={String(each.id)}>
+                {each.name}
+              </option>
+            ))}
+          </select>
         </span>
         <span className="w-36 space-y-1">
           <label htmlFor={`edit-due-${bill.task_id}`} className="text-xs">
@@ -552,6 +594,28 @@ export function MoneyRoute() {
      for different reasons -- what do I owe, and what is coming -- and a single
      column with signs in it makes both harder to scan. */
   const outgoing = data.bills.filter((bill) => bill.direction !== "in");
+
+  /* **Grouped, because an undifferentiated list has no shape.** Vince, looking
+     at it: *"there's like no order to the bills."* Headings give the eye
+     somewhere to land, and they make "what do my subscriptions cost" a thing
+     you can see rather than add up.
+
+     Uncategorised sorts last rather than first. It is the pile you have not
+     dealt with, and putting it at the top would make the page open on the mess
+     every time. */
+  const grouped = outgoing.reduce<Record<string, typeof outgoing>>(
+    (into, bill) => {
+      const key = bill.category ?? "";
+      (into[key] ??= []).push(bill);
+      return into;
+    },
+    {},
+  );
+  const groups = Object.keys(grouped).sort((a, b) => {
+    if (a === "") return 1;
+    if (b === "") return -1;
+    return a.localeCompare(b);
+  });
   const incoming = data.bills.filter((bill) => bill.direction === "in");
 
   return (
@@ -588,7 +652,18 @@ export function MoneyRoute() {
       ) : (
         <>
           <ul className="space-y-1">
-            {outgoing.map((bill) =>
+            {groups.flatMap((group) => [
+              /* One heading per group, and none at all when a month has only
+                 uncategorised bills -- a lone "Uncategorised" heading over
+                 everything is a label, not structure. */
+              groups.length > 1 || group !== "" ? (
+                <li key={`head-${group}`} className="pt-2 first:pt-0">
+                  <h3 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                    {group === "" ? "Uncategorised" : group}
+                  </h3>
+                </li>
+              ) : null,
+              ...grouped[group].map((bill) =>
               editing === bill.task_id ? (
                 <EditBill
                   key={bill.task_id}
@@ -684,7 +759,8 @@ export function MoneyRoute() {
                 </span>
               </li>
               ),
-            )}
+              ),
+            ])}
           </ul>
 
           {/* Money in, kept apart from money out. They are read for different

@@ -222,7 +222,10 @@ done
 # update rather than an append: without it, saving August twice leaves two
 # Augusts and every total and projection reading from them is quietly doubled.
 # `unique_account_name_per_owner` is smaller and the same shape -- two accounts
-# called Amex is a total nobody can explain.
+# called Amex is a total nobody can explain. `unique_money_category_per_owner`
+# joined on the same day for the same reason: two categories called Utilities
+# split a group in the month view, and the split is invisible unless somebody
+# counts.
 for constraint in \
   unique_daily_entry_per_owner_date \
   unique_daily_focus_per_entry_task \

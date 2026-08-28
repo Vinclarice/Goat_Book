@@ -7,6 +7,7 @@ import { AgendaRoute } from "./routes/AgendaRoute";
 import { ArchiveRoute } from "./routes/ArchiveRoute";
 import { CalendarRoute } from "./routes/CalendarRoute";
 import { BalancesRoute } from "./routes/BalancesRoute";
+import { CategoriesRoute } from "./routes/CategoriesRoute";
 import { HistoryRoute } from "./routes/HistoryRoute";
 import { MoneyLandingRoute } from "./routes/MoneyLandingRoute";
 import { MoneyRoute } from "./routes/MoneyRoute";
@@ -113,6 +114,7 @@ export function AppRoutes() {
         {/* Before /money/:month, or "balances" is read as a date and the
             monthly pass becomes an unparseable month. */}
         <Route path="/money/history" element={<HistoryRoute />} />
+        <Route path="/money/categories" element={<CategoriesRoute />} />
         <Route path="/money/balances" element={<BalancesRoute />} />
         <Route path="/money/balances/:month" element={<BalancesRoute />} />
         <Route path="/money/month" element={<MoneyRoute />} />

@@ -229,6 +229,137 @@
         ]
       }
     },
+    "/api/v1/money/categories": {
+      "get": {
+        "operationId": "lists_api_v1_money_categories",
+        "summary": "Money Categories",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CategoryOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            }
+          }
+        },
+        "description": "This owner's categories, seeded on the first ask.",
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "lists_api_v1_add_money_category",
+        "summary": "Add Money Category",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryOut"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CategoryIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      }
+    },
+    "/api/v1/money/categories/{category_id}": {
+      "patch": {
+        "operationId": "lists_api_v1_rename_money_category",
+        "summary": "Rename Money Category",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "category_id",
+            "schema": {
+              "title": "Category Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryOut"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CategoryIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "lists_api_v1_remove_money_category",
+        "summary": "Remove Money Category",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "category_id",
+            "schema": {
+              "title": "Category Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "description": "Remove a label. **The bills keep going** -- `SET_NULL`, so they become\nuncategorised rather than leaving with it.",
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      }
+    },
     "/api/v1/money": {
       "get": {
         "operationId": "lists_api_v1_money_landing",
@@ -2705,6 +2836,28 @@
             "title": "Repeats",
             "type": "boolean"
           },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "category_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category Id"
+          },
           "direction": {
             "title": "Direction",
             "type": "string"
@@ -2743,6 +2896,8 @@
           "url",
           "paid",
           "repeats",
+          "category",
+          "category_id",
           "direction",
           "recurrence",
           "lead_days",
@@ -2883,6 +3038,22 @@
               }
             ],
             "title": "Recurrence"
+          },
+          "category_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category Id"
+          },
+          "clear_category": {
+            "default": false,
+            "title": "Clear Category",
+            "type": "boolean"
           }
         },
         "title": "EditBillIn",
@@ -2961,6 +3132,42 @@
           }
         },
         "title": "PayBillIn",
+        "type": "object"
+      },
+      "CategoryOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "line_count": {
+            "title": "Line Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "line_count"
+        ],
+        "title": "CategoryOut",
+        "type": "object"
+      },
+      "CategoryIn": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "CategoryIn",
         "type": "object"
       },
       "LandingLineOut": {

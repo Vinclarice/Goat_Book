@@ -525,6 +525,61 @@ class BalanceReading(models.Model):
         return f"{self.account.name} {self.on_date}: {self.amount}"
 
 
+class MoneyCategory(models.Model):
+    """What kind of thing a bill is — Housing, Utilities, and whatever else.
+
+    **A table rather than a `TextChoices`, and the reason is one clause of
+    Vince's.** He asked for a fixed list *"however add a setting that lets the
+    user manually edit the list"* — and a list somebody edits is created,
+    renamed and deleted on its own schedule, which is `architecture-trajectory.md`
+    §4's life-cycle test met rather than argued around. `FacetKind` is the
+    counter-example and stays values: nobody edits that.
+
+    **Seeded on first use, with ordinary rows.** A person opening the module
+    finds a usable list rather than an empty one and a form — and because the
+    seeds are rows like any other, renaming or deleting one needs no special
+    case. `services.SEED_CATEGORIES` holds the starting set.
+
+    **A label, not a container.** The bill points here and the reference is
+    `SET_NULL`: deleting *Housing* must not delete the rent. That is the
+    difference between filing something and putting it in a box.
+
+    **Charter compliance** (architecture-trajectory.md §4):
+
+    - Rule 1, owned at birth: `owner` is non-null in the first migration.
+    - Rule 2, public identifier: none. Nothing addresses a category offline.
+    - Rule 3, snapshot: nothing to copy — a category has one field that means
+      anything, and a bill showing a renamed category should show the new name.
+    - Rule 6, deletion: **hard delete, with the bills kept.** A category's
+      existence answers nothing about whether anything happened; the bills it
+      labelled are the history and they survive it.
+    - Rule 7, index the query: the constraint below covers "this owner's
+      categories, by name", which is the only read.
+    """
+
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="money_categories",
+    )
+    name = models.CharField(max_length=60)
+    #: Where it sits in the list, so a person can put the ones they look at
+    #: first, first. Ties break on name, which keeps the order total.
+    position = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ("position", "name")
+        constraints = [
+            models.UniqueConstraint(
+                fields=("owner", "name"),
+                name="unique_money_category_per_owner",
+            ),
+        ]
+
+    def __str__(self):
+        return self.name
+
+
 class Direction(models.TextChoices):
     """Which way the money goes.
 
@@ -570,6 +625,17 @@ class MoneyLine(models.Model):
 
     item = models.OneToOneField(
         "Item", related_name="money_line", on_delete=models.CASCADE
+    )
+    #: What kind of thing this is. Null is **Uncategorised**, which is a real
+    #: state rather than a missing one: a bill added in a hurry should not have
+    #: to answer a filing question, the same reason it has no Area. SET_NULL,
+    #: because deleting a category is losing a label and not losing the bill.
+    category = models.ForeignKey(
+        "MoneyCategory",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="lines",
     )
     #: Which way it goes. Out is the default because bills came first, and
     #: because most rows will always be money leaving: a person has one salary

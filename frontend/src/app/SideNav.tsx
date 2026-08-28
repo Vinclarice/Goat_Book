@@ -98,6 +98,9 @@ export function SideNav() {
           <NavLink to="/money/history" className={navLinkClass} end>
             <span className={styles.name}>History</span>
           </NavLink>
+          <NavLink to="/money/categories" className={navLinkClass} end>
+            <span className={styles.name}>Categories</span>
+          </NavLink>
           {months.map((each) => (
             <NavLink
               key={each.iso}

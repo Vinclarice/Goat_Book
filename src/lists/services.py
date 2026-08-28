@@ -9,6 +9,7 @@ from clarice import life_log
 
 from lists.models import (
     Account,
+    MoneyCategory,
     AccountKind,
     BalanceReading,
     CadenceMode,
@@ -470,7 +471,8 @@ _KEEP = object()
 
 @transaction.atomic
 def update_bill(item, *, payee=_KEEP, amount=_KEEP, currency=_KEEP, due_date=_KEEP,
-                lead_days=_KEEP, recurrence=_KEEP, clear_amount=False):
+                lead_days=_KEEP, recurrence=_KEEP, category=_KEEP,
+                clear_amount=False):
     """Correct a bill where it is shown, across both records it lives in.
 
     **The four fields a bill actually has do not live in one place**: amount,
@@ -506,13 +508,17 @@ def update_bill(item, *, payee=_KEEP, amount=_KEEP, currency=_KEEP, due_date=_KE
         bill.payee = payee
     if currency is not _KEEP:
         bill.currency = currency
+    if category is not _KEEP:
+        # None is a real value here -- it files the bill back under
+        # Uncategorised, which somebody may well want.
+        bill.category = category
     if clear_amount:
         bill.amount = None
     elif amount is not _KEEP:
         if amount is not None and amount < 0:
             raise TaskConflict("A bill is something owed, so it cannot be negative.")
         bill.amount = amount
-    bill.save(update_fields=["payee", "currency", "amount"])
+    bill.save(update_fields=["payee", "currency", "amount", "category"])
 
     if due_date is not _KEEP:
         # Through the service, so the life log hears it the way every other
@@ -527,6 +533,83 @@ def update_bill(item, *, payee=_KEEP, amount=_KEEP, currency=_KEEP, due_date=_KE
         set_recurrence(item, recurrence)
         item.refresh_from_db()
     return item
+
+
+#: What a fresh module starts with. Ordinary rows once written, so any of them
+#: can be renamed or deleted -- these are a starting point, not a schema.
+#:
+#: Chosen to cover the bills a person actually has rather than to be complete:
+#: an accountant's chart would be exhaustive and useless at eight entries.
+SEED_CATEGORIES = (
+    "Housing",
+    "Utilities",
+    "Subscriptions",
+    "Insurance",
+    "Debt",
+    "Transport",
+    "Health",
+)
+
+
+def categories_for(owner):
+    """This owner's categories, seeded on first ask.
+
+    **Seeding here rather than at signup** so that accounts predating the
+    feature get their list the first time they look, and nothing has to
+    backfill. `get_or_create` per name makes a second call a no-op rather than
+    a duplicate — and a person who has deleted *Transport* does not find it
+    back next time, because the seeding only runs when they have none at all.
+    """
+    existing = MoneyCategory.objects.filter(owner=owner)
+    if not existing.exists():
+        MoneyCategory.objects.bulk_create(
+            [
+                MoneyCategory(owner=owner, name=name, position=index)
+                for index, name in enumerate(SEED_CATEGORIES)
+            ]
+        )
+    return MoneyCategory.objects.filter(owner=owner)
+
+
+@transaction.atomic
+def add_category(owner, *, name):
+    """One more, at the end of the list."""
+    name = (name or "").strip()
+    if not name:
+        raise TaskConflict("A category needs a name.")
+    last = (
+        MoneyCategory.objects.filter(owner=owner)
+        .order_by("-position")
+        .values_list("position", flat=True)
+        .first()
+    )
+    try:
+        return MoneyCategory.objects.create(
+            owner=owner, name=name, position=(last or 0) + 1
+        )
+    except IntegrityError as error:
+        raise TaskConflict(f"There is already a category called {name}.") from error
+
+
+@transaction.atomic
+def rename_category(category, name):
+    name = (name or "").strip()
+    if not name:
+        raise TaskConflict("A category needs a name.")
+    category.name = name
+    try:
+        category.save(update_fields=["name"])
+    except IntegrityError as error:
+        raise TaskConflict(f"There is already a category called {name}.") from error
+    return category
+
+
+@transaction.atomic
+def delete_category(category):
+    """Remove a label. **The bills it labelled are untouched** -- the reference
+    is `SET_NULL`, so they become uncategorised rather than disappearing with
+    it. A category is a label and not a container."""
+    category.delete()
 
 
 @transaction.atomic

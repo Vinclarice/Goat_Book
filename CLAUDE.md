@@ -346,6 +346,14 @@ fixing**, the lever is the flush rather than the browser: make
 threads open until they drain. Both are more machinery than two occurrences
 justify.
 
+**Run the whole app list before pushing, not a subset.** `accounts` and
+`clarice` are where this codebase keeps its promises — the export guard, the
+restore-drill coverage, the dark-service registry, the release record — and none
+of them lives in the app you are editing. Two red builds on August 27, 2026 came
+from running `lists daily review accounts` and pushing: the guards caught four
+separate omissions, twice after they had been cited approvingly in the same
+session. **Remembering is not the control; running them is.**
+
 CI runs all of the above across five jobs — `django`, `mind`, `browser`,
 `frontend`, `android`. **Keep the Django app list above matched to
 `.github/workflows/ci.yml`.** It has been out of step twice, and both times the

@@ -135,6 +135,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/money/categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Money Categories
+         * @description This owner's categories, seeded on the first ask.
+         */
+        get: operations["lists_api_v1_money_categories"];
+        put?: never;
+        /** Add Money Category */
+        post: operations["lists_api_v1_add_money_category"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/money/categories/{category_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove Money Category
+         * @description Remove a label. **The bills keep going** -- `SET_NULL`, so they become
+         *     uncategorised rather than leaving with it.
+         */
+        delete: operations["lists_api_v1_remove_money_category"];
+        options?: never;
+        head?: never;
+        /** Rename Money Category */
+        patch: operations["lists_api_v1_rename_money_category"];
+        trace?: never;
+    };
     "/api/v1/money": {
         parameters: {
             query?: never;
@@ -1514,6 +1557,10 @@ export interface components {
             paid: boolean;
             /** Repeats */
             repeats: boolean;
+            /** Category */
+            category: string | null;
+            /** Category Id */
+            category_id: number | null;
             /** Direction */
             direction: string;
             /** Recurrence */
@@ -1592,6 +1639,13 @@ export interface components {
             lead_days?: number | null;
             /** Recurrence */
             recurrence?: string | null;
+            /** Category Id */
+            category_id?: number | null;
+            /**
+             * Clear Category
+             * @default false
+             */
+            clear_category: boolean;
         };
         /**
          * NewIncomeIn
@@ -1639,6 +1693,20 @@ export interface components {
         PayBillIn: {
             /** Amount */
             amount?: string | null;
+        };
+        /** CategoryOut */
+        CategoryOut: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Line Count */
+            line_count: number;
+        };
+        /** CategoryIn */
+        CategoryIn: {
+            /** Name */
+            name: string;
         };
         /**
          * LandingLineOut
@@ -3817,6 +3885,96 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MonthBillOut"];
+                };
+            };
+        };
+    };
+    lists_api_v1_money_categories: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CategoryOut"][];
+                };
+            };
+        };
+    };
+    lists_api_v1_add_money_category: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CategoryIn"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CategoryOut"];
+                };
+            };
+        };
+    };
+    lists_api_v1_remove_money_category: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                category_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    lists_api_v1_rename_money_category: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                category_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CategoryIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CategoryOut"];
                 };
             };
         };

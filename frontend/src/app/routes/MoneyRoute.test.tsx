@@ -38,7 +38,9 @@ function billsData(overrides: Record<string, unknown> = {}) {
         url: "/api/items/1/",
         paid: false,
         repeats: true,
-        direction: "out",
+      category: null,
+      category_id: null,
+      direction: "out",
         recurrence: "monthly",
         lead_days: 0,
         overdue: false,
@@ -52,6 +54,18 @@ function billsData(overrides: Record<string, unknown> = {}) {
     unpriced: 0,
     ...overrides,
   };
+}
+
+/** Answers both GETs this page makes.
+ *
+ * The edit form fetches categories for its picker, so a mock that returns the
+ * month for every GET hands an object to `.map` and the render throws --
+ * which surfaces as "cannot find the Save button" and reads like a missing
+ * control rather than a broken double.
+ */
+function moneyGet(request: Request, month: object = billsData()) {
+  if (request.url.includes("/money/categories")) return jsonResponse([]);
+  return jsonResponse(month);
 }
 
 function renderAt(path = "/money/month/2026-08-14") {
@@ -106,7 +120,9 @@ describe("MoneyRoute", () => {
               url: "/api/items/1/",
               paid: true,
               repeats: false,
-              direction: "out",
+      category: null,
+      category_id: null,
+      direction: "out",
       recurrence: "none",
               lead_days: 0,
               overdue: false,
@@ -148,6 +164,8 @@ describe("MoneyRoute", () => {
       url: `/api/items/${task_id}/`,
       paid,
       repeats: false,
+      category: null,
+      category_id: null,
       direction: "out",
       recurrence: "none",
       lead_days: 0,
@@ -326,7 +344,7 @@ describe("MoneyRoute", () => {
       .mockImplementation((input) => {
         const request = input as Request;
         if (request.method === "PATCH") return jsonResponse({});
-        return jsonResponse(billsData());
+        return moneyGet(request);
       });
 
     renderAt();
@@ -348,8 +366,8 @@ describe("MoneyRoute", () => {
   });
 
   it("lets an edit be abandoned", async () => {
-    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
-      jsonResponse(billsData()),
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) =>
+      moneyGet(input as Request),
     );
 
     renderAt();
@@ -415,7 +433,9 @@ describe("MoneyRoute", () => {
                 url: "/api/items/1/",
                 paid: false,
                 repeats: false,
-                direction: "out",
+      category: null,
+      category_id: null,
+      direction: "out",
       recurrence: "none",
                 lead_days: 0,
                 overdue: false,
@@ -484,7 +504,9 @@ describe("MoneyRoute", () => {
               url: "/api/items/1/",
               paid: true,
               repeats: false,
-              direction: "out",
+      category: null,
+      category_id: null,
+      direction: "out",
       recurrence: "none",
               lead_days: 0,
               overdue: false,
@@ -522,7 +544,9 @@ describe("MoneyRoute", () => {
               url: "/api/items/1/",
               paid: false,
               repeats: true,
-              direction: "out",
+      category: null,
+      category_id: null,
+      direction: "out",
               recurrence: "monthly",
               lead_days: 0,
               overdue: false,
@@ -538,6 +562,8 @@ describe("MoneyRoute", () => {
               url: "/api/items/2/",
               paid: false,
               repeats: true,
+              category: null,
+              category_id: null,
               direction: "in",
               recurrence: "monthly",
               lead_days: 0,
@@ -614,6 +640,66 @@ describe("MoneyRoute", () => {
     await userEvent.click(within(form).getByRole("button", { name: "Add bill" }));
 
     expect(await screen.findByText(/Amazon \(Prime\)/)).toBeInTheDocument();
+  });
+
+  it("groups the bills by category, with uncategorised last", async () => {
+    /* Vince, on seeing the month view: "there's like no order to the bills."
+       Headings give the eye somewhere to land -- and Uncategorised sorts last
+       because it is the pile you have not dealt with, and opening the page on
+       the mess every time is not an improvement. */
+    const bill = (
+      task_id: number,
+      payee: string,
+      category: string | null,
+      category_id: number | null,
+    ) => ({
+      task_id,
+      text: `Pay ${payee}`,
+      due_date: "2026-08-10",
+      amount: "10.00",
+      currency: "USD",
+      payee,
+      url: `/api/items/${task_id}/`,
+      paid: false,
+      repeats: true,
+      category,
+      category_id,
+      direction: "out",
+      recurrence: "monthly",
+      lead_days: 0,
+      overdue: false,
+      paid_amount: null,
+    });
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        billsData({
+          bills: [
+            bill(1, "Someone", null, null),
+            bill(2, "Landlord", "Housing", 1),
+            bill(3, "Netflix", "Subscriptions", 2),
+          ],
+        }),
+      ),
+    );
+
+    renderAt();
+
+    const headings = (await screen.findAllByRole("heading", { level: 3 })).map(
+      (each) => each.textContent,
+    );
+    expect(headings).toEqual(["Housing", "Subscriptions", "Uncategorised"]);
+  });
+
+  it("does not put a lone Uncategorised heading over everything", async () => {
+    /* A single heading saying Uncategorised is a label, not structure. */
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(billsData()),
+    );
+
+    renderAt();
+
+    await screen.findByText("Rent");
+    expect(screen.queryByText("Uncategorised")).not.toBeInTheDocument();
   });
 
   it("reports a failure rather than an empty month", async () => {

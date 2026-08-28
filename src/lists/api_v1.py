@@ -20,6 +20,7 @@ from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 
 from django.db import transaction
+from django.db.models import Count
 from typing import Literal, get_args
 
 from django.shortcuts import get_object_or_404
@@ -37,7 +38,7 @@ from lists import money as money_reader
 from lists import projects as project_reader
 from lists import services
 from lists.forms import ListTitleForm
-from lists.models import Account, CadenceMode, Item, List
+from lists.models import Account, CadenceMode, Item, List, MoneyCategory
 from lists.serializers import (
     archive_workspace_data_for,
     area_ref_for,
@@ -275,6 +276,14 @@ class MonthBillOut(Schema):
     #: deleting has one meaning or two: removing August's rent is not the same
     #: act as stopping rent.
     repeats: bool
+    #: What kind of thing it is, and null for uncategorised. **Both the name
+    #: and the id**, because they serve different readers: the heading groups on
+    #: the name and needs no lookup, and the edit form's picker is keyed on the
+    #: id. Sending only the name meant the editor opened on *Uncategorised* for
+    #: a filed bill and cleared it on save -- caught before it shipped, by the
+    #: type checker refusing a body that had lost a required field.
+    category: str | None
+    category_id: int | None
     #: Which way the money goes -- "out" for a bill, "in" for income. The page
     #: needs it for the verb: you *pay* a bill and you *receive* income, and a
     #: button saying Pay beside a salary would be nonsense.
@@ -392,6 +401,10 @@ def add_bill(request, payload: NewBillIn):
         "url": reverse("api_item_detail", args=[item.id]),
         "paid": False,
         "repeats": item.recurrence != Item.Recurrence.NONE,
+        "category": (
+            item.money_line.category.name if item.money_line.category_id else None
+        ),
+        "category_id": item.money_line.category_id,
         "direction": item.money_line.direction,
         "recurrence": item.recurrence,
         "lead_days": item.lead_days,
@@ -417,6 +430,10 @@ class EditBillIn(Schema):
     due_date: date | None = None
     lead_days: int | None = None
     recurrence: str | None = None
+    #: The category to file it under. Null is not "leave alone" here -- see
+    #: `clear_category`, which is how uncategorised is chosen deliberately.
+    category_id: int | None = None
+    clear_category: bool = False
 
 
 def _bill_row_out(item):
@@ -435,6 +452,10 @@ def _bill_row_out(item):
         # every paid rent as unpaid. Same rule as `BillRow.paid`.
         "paid": item.completed_at is not None,
         "repeats": item.recurrence != Item.Recurrence.NONE,
+        "category": (
+            item.money_line.category.name if item.money_line.category_id else None
+        ),
+        "category_id": item.money_line.category_id,
         "direction": item.money_line.direction,
         "recurrence": item.recurrence,
         "lead_days": item.lead_days,
@@ -480,6 +501,15 @@ def edit_bill(request, task_id: int, payload: EditBillIn):
         fields["lead_days"] = payload.lead_days
     if payload.recurrence is not None:
         fields["recurrence"] = payload.recurrence
+    if payload.clear_category:
+        fields["category"] = None
+    elif payload.category_id is not None:
+        chosen = MoneyCategory.objects.filter(
+            pk=payload.category_id, owner=request.user
+        ).first()
+        if chosen is None:
+            raise HttpError(404, "No such category.")
+        fields["category"] = chosen
     if payload.clear_amount:
         fields["clear_amount"] = True
     elif payload.amount not in (None, ""):
@@ -693,6 +723,82 @@ class MoneyLandingOut(Schema):
     owed_change: dict[str, str]
     held_change: dict[str, str]
     unread_accounts: int
+
+
+class CategoryOut(Schema):
+    id: int
+    name: str
+    #: How many money lines carry it. Shown when deleting, so *"3 bills will
+    #: become uncategorised"* is a fact rather than a surprise.
+    line_count: int
+
+
+class CategoryIn(Schema):
+    name: str
+
+
+@router.get(
+    "/money/categories", response=list[CategoryOut], auth=SessionAuthIfLoggedIn()
+)
+def money_categories(request):
+    """This owner's categories, seeded on the first ask."""
+    categories = services.categories_for(request.user).annotate(
+        used=Count("lines")
+    )
+    return [
+        {"id": each.id, "name": each.name, "line_count": each.used}
+        for each in categories
+    ]
+
+
+@router.post(
+    "/money/categories", response={201: CategoryOut}, auth=SessionAuthIfLoggedIn()
+)
+def add_money_category(request, payload: CategoryIn):
+    try:
+        category = services.add_category(request.user, name=payload.name)
+    except services.TaskConflict as error:
+        raise HttpError(409, str(error))
+    return 201, {"id": category.id, "name": category.name, "line_count": 0}
+
+
+@router.patch(
+    "/money/categories/{category_id}",
+    response=CategoryOut,
+    auth=SessionAuthIfLoggedIn(),
+)
+def rename_money_category(request, category_id: int, payload: CategoryIn):
+    category = MoneyCategory.objects.filter(
+        pk=category_id, owner=request.user
+    ).first()
+    if category is None:
+        raise HttpError(404, "No such category.")
+    try:
+        services.rename_category(category, payload.name)
+    except services.TaskConflict as error:
+        raise HttpError(409, str(error))
+    return {
+        "id": category.id,
+        "name": category.name,
+        "line_count": category.lines.count(),
+    }
+
+
+@router.delete(
+    "/money/categories/{category_id}",
+    response={204: None},
+    auth=SessionAuthIfLoggedIn(),
+)
+def remove_money_category(request, category_id: int):
+    """Remove a label. **The bills keep going** -- `SET_NULL`, so they become
+    uncategorised rather than leaving with it."""
+    category = MoneyCategory.objects.filter(
+        pk=category_id, owner=request.user
+    ).first()
+    if category is None:
+        raise HttpError(404, "No such category.")
+    services.delete_category(category)
+    return 204, None
 
 
 @router.get("/money", response=MoneyLandingOut, auth=SessionAuthIfLoggedIn())
@@ -930,6 +1036,10 @@ def months_bills(request, day: date):
                 "url": reverse("api_item_detail", args=[row.task.id]),
                 "paid": row.paid,
                 "repeats": row.task.recurrence != Item.Recurrence.NONE,
+                "category": (
+                    row.bill.category.name if row.bill.category_id else None
+                ),
+                "category_id": row.bill.category_id,
                 "direction": row.bill.direction,
                 "recurrence": row.task.recurrence,
                 "lead_days": row.task.lead_days,

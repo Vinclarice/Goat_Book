@@ -16,6 +16,51 @@ nineteen journeys. Worth saying rather than quietly filling in, because this is
 the one file the index calls unable to go stale — and it cannot, but it can be
 incomplete, which reads the same to somebody looking for what happened.
 
+## The Money module — August 27, 2026, codename held
+
+Thirty-three commits and eight migrations, verified in production at 23:20 local
+(UTC-04:00) — `DEPLOYED-2026-08-27/2320`, image `clarice:38d6a628279a`. The
+narrative, every increment struck with its date, is in
+[`money-module-plan.md`](money-module-plan.md) and is not restated here.
+
+**It began as a complaint about a page, not a request for a module.** *"Why does
+it exist? I can't actually do anything on that page (such as adding bills, which
+is perhaps the most important thing)."* Bills was a report on records it gave you
+no way to create, edit, pay or delete. What shipped is a landing page, income,
+categories, account balances and twelve months of history with projections.
+
+**The migration is the part worth keeping.** `makemigrations` answered the
+`Bill` → `MoneyLine` rename with a `CreateModel` and a `DeleteModel`, which is a
+correct-looking pair that drops the table and every row in it. `0048` is
+hand-written — `RenameModel`, then the reverse accessor, the new column, and
+`RemoveConstraint`/`AddConstraint` because Django has `RenameIndex` and no
+`RenameConstraint`. Checked by counting rows in and rows out before it was
+trusted. **The generator's output is a proposal about your data, and a rename is
+where it is most confidently wrong.**
+
+**Its one finding, four times over: the defect here is capability that exists and
+is not reachable.** The sidecar silently dropped when a recurring bill spawned
+its successor; the delete path would have taken the whole series; paid recurring
+bills were invisible because they archive rather than complete; and `lead_days`
+— the headline *warn me before the annual subscription renews* feature — was
+already built, with nothing anywhere that let a person set it. Not one of these
+was a broken component. Every one was two correct components nobody joined.
+
+**And the guards caught four omissions that were mine**, in one day: an
+undeclared dark service, three models missing from the export, three constraints
+missing from the restore drill, and two releases missing from this file. The
+lesson went into `CLAUDE.md` in the words it deserved — *remembering is not the
+control; running them is.*
+
+**No bird, and this one is held rather than refused.** It has a subject and it
+moves what [`product-stories.md`](product-stories.md) tracks, so unlike the
+August 26 batch below it is not excluded by
+[`architecture-trajectory.md`](architecture-trajectory.md) §6. Vince has looked
+at one of the six screens. **A codename is a claim that a body of work finished,
+and finished is a judgement about use rather than about tests** — so the letter
+stays open until he has used it. If it is still arguable when he has, *Release
+practice* says that settles it the other way.
+
 ## The declare-or-refuse sweep — August 26, 2026
 
 Not a release and not a deploy. **One pass over every open thread in `design/`,

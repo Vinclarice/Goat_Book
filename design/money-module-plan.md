@@ -2,6 +2,11 @@
 
 Vince · focused spec · written August 27, 2026 · **status is the strikes below**
 
+**Deployed August 27, 2026 at 23:20 local** — `DEPLOYED-2026-08-27/2320`.
+This is not a stub yet and the plan is not closed: Vince has used one of the
+six screens. [`roadmap-history.md`](roadmap-history.md) owns the deployment
+record and why the codename is held rather than refused.
+
 **Renamed from Bills to Money on August 27, 2026**, the same day it was written,
 once Vince described what the surface is: *"a module is essentially its own sort
 of landing page for relevant information... if I need to check on financial
@@ -9,10 +14,21 @@ information, I know exactly where to go."* Then: *"I think I will want to includ
 income and investments."*
 
 **Bills did not become Money — bills became part of it.** The nav entry, the
-route, the read module and the API namespace all moved; **`Bill` kept its name**,
-because a bill is one kind of money thing and income will be another, and a
-record named after the module would have to be both. That is
-`architecture-trajectory.md` §4's collapse, avoided by not renaming the noun.
+route, the read module and the API namespace all moved.
+
+~~**`Bill` keeps its name**, because a bill is one kind of money thing and income
+will be another, and a record named after the module would have to be both.~~
+**Wrong, and the same day — August 27, 2026.** Income arrived as increment 8 and
+went into the *same* record with a `direction`, so the row genuinely does have to
+be both, and `Bill` was the name that could not describe it. `MoneyLine` is what
+it is called now (`0048`, a hand-written `RenameModel`).
+
+**Keep the reasoning, which was right about the wrong thing.** The fear was
+`architecture-trajectory.md` §4's collapse — naming a record after its module
+until the module's whole vocabulary has to fit inside one noun. That risk was
+real; the mistake was thinking *not renaming* avoided it. What avoided it was the
+sidecar staying a sidecar: a bill is still an `Item`, and `MoneyLine` is what
+hangs off one. **The noun to protect was `Item`, not `Bill`.**
 
 **The old address still works and keeps its month.** `/bills/2026-08` lands on
 `/money/2026-08` rather than on today: a redirect that dropped the month would
@@ -377,7 +393,12 @@ made of facts you already know at the moment they happen.
 
 ## What this refuses
 
-- **A `Bill` model.** §4 settled it and nothing here needs it.
+- **A bill as its own model.** A bill is an `Item` with a `MoneyLine` hanging
+  off it, and that did not change when the sidecar was renamed. §4 settled it.
+  **Three models did pass §4 the same day** — `Account`, `BalanceReading` and
+  `MoneyCategory` — each on a life cycle of its own rather than a name of its
+  own: an account outlives every reading of it, a reading is immutable once the
+  month is over, and a category is a label a person edits and reorders.
 - **A second definition of "paid".** `Item.Status.COMPLETED` is it.
 - **Hiding bills from the rest of the product.** Decision 4.
 - **A payments integration, reminders, or anything that leaves the machine.**

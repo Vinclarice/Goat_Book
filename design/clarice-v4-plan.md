@@ -462,9 +462,10 @@ second opinion; the third was never anybody's but this file's.
 parts outlive its title. `design/README.md`'s call.~~ **Answered August 26,
 2026: headed.**
 
-**Thirty code comments cite that file by name and by part number**, so a rename
-makes every one of them point at nothing and a split multiplies the problem
-across the documents the parts move to. **The actual problem is a reader
+**Code across the tree cites that file by name and by part number** — ~~thirty
+comments~~, **fifty files at the August 28, 2026 recount** — so a rename makes
+every one of them point at nothing and a split multiplies the problem across the
+documents the parts move to. **The actual problem is a reader
 trusting the title**, and a header fixes exactly that for the cost of a
 paragraph — which is the same trade the stub rule already makes everywhere else
 in this tree.

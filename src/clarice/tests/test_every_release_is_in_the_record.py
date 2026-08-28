@@ -29,8 +29,8 @@ somebody's working marker -- `revisit_this_point_with_isolated_tests` is exactly
 that, and is correctly invisible to this test without needing to be named in an
 exception list that would then need maintaining.
 
-**Deploys without a codename are deliberately not checked.** Twenty-two of
-thirty-six deploys have no bird, which `roadmap.md` says is correct: a deploy
+**Deploys without a codename are deliberately not checked.** Most deploys have
+no bird, which `roadmap.md` says is correct: a deploy
 that is a follow-up, a correction or infrastructure is fully accounted for by
 its `DEPLOYED-` tag. Requiring a narrative for each would make the record a log,
 which is the thing the codename rule exists to prevent.

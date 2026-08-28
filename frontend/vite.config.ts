@@ -42,12 +42,19 @@ export default defineConfig({
           return "app-shell.js";
         },
         chunkFileNames: "chunks/[name]-[hash].js",
-        // CSS assets are named by entry, not by chunk. Route components are
-        // lazily split, so their CSS would otherwise take the *chunk's* name
-        // (e.g. "TaskWorkspace.css") and miss the fixed filename
-        // lists.templatetags.frontend_tags hardcodes. Only "tokens" (never
-        // shared, Django-owned) gets its own name; everything else collapses
-        // into one predictable app.css.
+        // CSS assets are named and hashed after their entry, so without this
+        // the shell's stylesheet emits as "app-shell-<hash>.css" and misses
+        // the fixed frontend/app.css that lists.templatetags.frontend_tags
+        // hardcodes. Only "tokens" (never shared, Django-owned) gets its own
+        // name; everything else collapses into one predictable app.css.
+        //
+        // This said until August 28, 2026 that route components are "lazily
+        // split", so their CSS would take the *chunk's* name. They are not:
+        // there is no React.lazy, no dynamic import and no Suspense anywhere
+        // in src/, and the build emits no chunks/ directory at all despite
+        // chunkFileNames above being configured for one. The rule is still
+        // needed for the entry-name reason above, and would cover lazy chunks
+        // too if they ever appear -- but they do not exist today.
         assetFileNames: (assetInfo) =>
           assetInfo.names?.some((name) => name.endsWith(".css"))
             ? assetInfo.names[0]?.startsWith("tokens")

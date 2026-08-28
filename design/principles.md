@@ -166,14 +166,20 @@ check, not evidence that a change works.
    spans files or has to be argued rather than stated.
 
    **A document is a standing cost, and this one is measured.** `design/` holds
-   around fifty files; 251 code comments cite them; an index document exists
-   whose whole job is arbitrating which document owns which fact; six commits
-   went to correcting stale statuses; and one August afternoon reduced 11,002
-   lines to roughly 4,000 without breaking a citation. The premise this rule
-   was written on — a later contributor inferring intent from generated code —
-   is not true here, and [`README.md`](README.md) records that those 251
-   comments already state in full the reasoning they cite a plan for. The
-   documents are provenance, not content.
+   around fifty files; code comments across the tree cite them in their
+   hundreds; an index document exists whose whole job is arbitrating which
+   document owns which fact; six commits went to correcting stale statuses; and
+   one August afternoon reduced 11,002 lines to roughly 4,000 without breaking a
+   citation. The premise this rule was written on — a later contributor
+   inferring intent from generated code — is not true here, and
+   [`README.md`](README.md) records that those comments already state in full
+   the reasoning they cite a plan for. The documents are provenance, not
+   content.
+
+   ~~251 code comments~~ — **struck August 28, 2026**, in both places this
+   paragraph said it. It had drifted to 257 files and 631 mentions, and it is a
+   number that only ever goes up. [`README.md`](README.md) owns the recount
+   command; this file states the cost, not its magnitude.
 
 ### Prefer small, verifiable changes
 
@@ -246,9 +252,12 @@ different life cycle, not when it has a different name.* The knowledge core's
 equivalent authority is `design-concept.md` in the Second Mind documents.
 
 **Linked and deliberately not moved here — August 26, 2026.** §4 belongs in this
-file by subject; it stays where it is because **around forty-five code comments
-cite it as `architecture-trajectory.md` §4**, and several models carry
-rule-by-rule compliance against those numbers. Moving the text would leave every
+file by subject; it stays where it is because **code across the tree cites it as
+`architecture-trajectory.md` §4** — ~~around forty-five comments~~, seventy-seven
+files at the August 28, 2026 recount, and the number is
+[`architecture-trajectory.md`](architecture-trajectory.md) §8's to keep, not
+this file's — and several models carry rule-by-rule compliance against those
+numbers. Moving the text would leave every
 one of them citing a section that is not there — and *the file resolving is not
 the same as the section resolving*. What the move was for was discoverability,
 and this paragraph buys that for nothing, which is the corpus's own rule about

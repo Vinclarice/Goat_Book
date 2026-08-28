@@ -25,20 +25,26 @@ Second Mind's design authority is its own `docs/`, which still live at
 
 ## The agenda
 
-`/dashboard/` is an agenda rather than a list of lists: every open task across
-every list, grouped by how soon it's due (overdue, today, this week, later, no
-due date). Lists and tags become filters in the sidebar; the archive has its own
-page at `/archive/`.
+The agenda is every open task across every area, grouped by how soon it's due
+(overdue, today, this week, later, no due date). Areas and tags become filters
+in the sidebar; the archive has its own page.
+
+Both live in the SPA, at `/app/agenda` and `/app/archive`. `/dashboard/` and
+`/archive/` are redirects into it: `/dashboard/` is `LOGIN_REDIRECT_URL`, and
+which surface it lands on is the account's `landing_surface` preference -- the
+Daily Page or the agenda -- so the login form, a bookmark and the Django
+shell's own "Today" link all agree without any of them knowing the rule.
 
 The bucketing rules live in one place, `src/lists/agenda.py`, and are mirrored by
-`frontend/src/agenda.ts` so the server-rendered page, the React enhancement and
-the daily digest email all agree on what "overdue" means. If you change the
-window in one, change it in the other -- `WEEK_HORIZON_DAYS` exists in both.
+`frontend/src/agenda.ts` so the API, the React agenda and the daily digest email
+all agree on what "overdue" means. If you change the window in one, change it in
+the other -- `WEEK_HORIZON_DAYS` exists in both.
 
-The page is server-rendered in full and works without JavaScript: completing,
-snoozing, quick-add and filtering are all plain form posts and `?scope=`/`?list=`
-/`?tag=` query parameters. `AgendaWorkspace` then replaces the region with the
-same markup plus inline updates and undo.
+**There is no longer a no-JavaScript agenda.** This section described one until
+August 28, 2026 -- server-rendered in full, with completing, snoozing, quick-add
+and filtering as plain form posts. `dashboard()` and `archive()` are now bare
+redirects and the templates are gone; `AgendaWorkspace` is mounted by
+`AgendaRoute` and fed by the API, not laid over server-rendered markup.
 
 ## Local Windows development
 

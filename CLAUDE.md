@@ -50,16 +50,42 @@ So, concretely, in the same commit as the code:
 
 ## Closing a piece of work
 
-Two steps:
+Three steps:
 
 1. **Move the narrative to `roadmap-history.md`, and reduce the plan to a stub** —
    four lines saying what it was, when it shipped, and where the narrative went.
-   Keep only the resulting baseline or remaining consequence in `roadmap.md`.
-2. **Close the roadmap item** — strike it, date it, name what replaced it.
+2. **Evict the roadmap item — do not just strike it.** It becomes **one line**
+   in *Open now*'s `### Closed` roll-up: what it was, when it closed, its
+   codename, and nothing else. The narrative is already in `roadmap-history.md`;
+   a struck paragraph here is a second copy of it.
+3. **Promote any surviving consequence to its own live entry.** If the closed
+   work leaves something open — a deferred increment, a defect, an unmet
+   condition — it becomes a *separate* entry in its own right, not a paragraph
+   inside a struck one.
+
+**Step 3 is the one that is actually load-bearing, and step 2 exists to force
+it.** A consequence buried inside a struck entry is invisible: that is precisely
+how the moorhen copy defect sat unstruck for seven days over a fix that had
+already shipped, and how *"removing user data from Sentry and Resend"* and
+*"three genuinely open decisions in Part 9"* sat in this file as live work for
+two and six days after both had closed.
+
+**Measured, August 28, 2026**: *Open now* was 578 lines conveying twelve live
+items, because ten closed ones had been struck-and-kept and had grown to 220
+lines between them — all ten already narrated in `roadmap-history.md`. Evicting
+them and promoting four buried consequences took the section to 403 lines and
+raised the live count to fourteen, two of which nobody knew were live.
 
 There is no status line to update and no index to re-check: a stub *is* its
-status. Stubs rather than deletions, because 251 code comments cite these plans
-by name and section — the file has to resolve, its 300 lines do not.
+status. Stubs rather than deletions, because code comments across `src/`,
+`frontend/`, `android/` and `infra/` cite these plans by name and section — the
+file has to resolve, its 300 lines do not. **How many is not written down here,
+because it only ever goes up and a number that only goes up is a number that is
+always slightly wrong.** To recount:
+
+```bash
+git grep -lE "[a-z0-9-]+-plan\.md|architecture-trajectory\.md|product-stories\.md|principles\.md|commercial-blueprint\.md|modules\.md" -- src frontend/src android infra | wc -l
+```
 
 ## The shape of the application
 
@@ -82,9 +108,14 @@ August 15 having never been called by anything. **A knowledge-core endpoint
 belongs on `/api/v1/` as a router in `mind/api_v1.py`, beside the capture one; do
 not start a second API.**
 
-**`/capture/` was freed and deliberately not taken.** Nine routes sit under
-`/mind/` and only one is capture, so the prefix would have named the smallest
-thing in the room, against a live PWA shortcut and every bookmark a move breaks.
+**`/capture/` was freed and deliberately not taken.** Capture is **one surface
+among many** under `/mind/` — notes, concepts, people, decisions, sources,
+review, search, ask, dump and the rest — so the prefix would have named the
+smallest thing in the room, against a live PWA shortcut and every bookmark a
+move breaks. ~~Nine routes sit under `/mind/`~~ — **that said nine until August
+28, 2026, when `mind/urls.py` carried thirty-three `path()` entries.** The
+argument only got stronger as the count drifted, which is why it is now stated
+as a shape rather than a number.
 It survives in one line of `clarice/urls.py` and everything under it is relative
 — settled rather than welded.
 
@@ -199,9 +230,14 @@ decorator, or below the previous function's last line.**
 **Two Python runners, and both are real.** The task core runs on
 `manage.py test`; the knowledge core arrived with 500-odd pytest-style tests and
 stays on `pytest`, because converting them would be a large mechanical rewrite
-of the thing in that app most worth leaving alone. Running one and reporting
-"tests pass" covers about half the application. It is 1,132 tests now rather
-than 500-odd, which is most of a second application.
+of the thing in that app most worth leaving alone. **Running one and reporting
+"tests pass" leaves most of a second application unrun** — `src/mind/` has grown
+well past what it arrived with, and the two suites are now the same order of
+magnitude as each other.
+
+**The current number is deliberately not written here**, because it moves every
+week and the recipe below produces it in one command. What arrived is a
+historical fact and stays; what is there now is a question, not a claim.
 
 **And `pytest` here prints no summary line under redirection** — progress to
 `[100%]`, then nothing. No *"N passed"*, no timing, no verdict. **This is the
@@ -509,7 +545,11 @@ the third only when the deploy is a release:**
   owns the test and is not restated here — the short version is that a release
   needs a subject you can say in a sentence *and* has to move something a
   document tracks, and that infrastructure is excluded outright by
-  `architecture-trajectory.md` §6. Fourteen of thirty-six deploys have one.
+  `architecture-trajectory.md` §6. **Well under half of all deploys have one**,
+  and the tags themselves are the count — `git tag` answers it, so no number
+  lives here. (~~Fourteen of thirty-six~~ said so until August 28, 2026, by
+  which point it was fifteen of thirty-seven; it was wrong within one deploy of
+  being written, in the file that tells you tagging is a step.)
   **When it is arguable, it is not a release.**
 
 Tagging drifted badly through August — `LIVE` sat five days and thirty commits

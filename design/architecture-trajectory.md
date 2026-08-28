@@ -53,7 +53,9 @@ renamed. Declined deliberately — an audit-proof gap beats invented history.
 behind it. Retrospective cleanup is bounded and nearly finished, and making it
 the organising principle of the next six months would be planning against the
 wrong threat. The live risk is forward: `lists/0001` is dated July 17, 2026,
-and in the month since, seven models have become twenty-five across two cores.
+and in the month since, seven models have become **thirty-six** across two cores
+(~~twenty-five~~, recounted August 28, 2026 — the growth rate this paragraph
+warns about was itself understated by eleven).
 A second generation of scar tissue is still preventable; the first is nearly
 paid off. That is what §4 is for.
 
@@ -530,9 +532,12 @@ What remains genuinely open:
   default.~~ **Answered August 26, 2026: it stays here, and `principles.md`
   links to it.**
 
-  **Eligibility was never the question and the citations are.** Around
-  forty-five comments across `src/` and `frontend/` cite `architecture-trajectory.md`
-  **§4** by that name and number, and several models — `WeeklyOutcome`,
+  **Eligibility was never the question and the citations are.** Comments across
+  `src/`, `frontend/`, `android/` and `infra/` cite `architecture-trajectory.md`
+  **§4** by that name and number — ~~around forty-five~~ **seventy-seven files
+  at the August 28, 2026 recount**, and no number is kept here now, because this
+  one only grows and the argument does not depend on its size — and several
+  models — `WeeklyOutcome`,
   `PlanningSession`, `Item`'s sidecars — carry rule-by-rule compliance against
   it. **Moving the text makes every one of those cite a section that is not
   there**, and the file resolving is not the same as the section resolving.

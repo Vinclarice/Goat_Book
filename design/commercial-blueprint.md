@@ -11,9 +11,10 @@ as *Vince plus one invited person, never the public*. So the word *commercial*
 in the title above describes a question that is closed, and this header exists
 so that nobody reads the file believing otherwise.
 
-**It was not renamed because thirty code comments cite it by name and by part
-number.** A rename makes all of them point at nothing; a split moves text those
-comments cite into files they do not name. Heading it costs a paragraph and
+**It was not renamed because code across the tree cites it by name and by part
+number** — ~~thirty comments~~, **fifty files at the August 28, 2026 recount**,
+so the case was stronger than it was argued. A rename makes all of them point at
+nothing; a split moves text those comments cite into files they do not name. Heading it costs a paragraph and
 fixes the actual problem, which is a reader trusting a title.
 
 | Part | State |

@@ -58,6 +58,125 @@ re-add it here.
 
 ## Open now
 
+- **The Money module shipped, and this file did not know it existed — August 27,
+  2026.** Fourteen increments across sixteen commits in one day, from
+  *"everything is still sort of in silos"*: Bills was a report on a thing you
+  could not make, edit or delete, and `/money` is now a module with a landing
+  page, income, categories, account balances and twelve months of history.
+  [`money-module-plan.md`](money-module-plan.md) owns the narrative, every
+  increment struck with its date, and is not restated here.
+
+  **The plan was immaculate and the drift was entirely here.** `grep -i money`
+  over this file returned nothing at all — the sole authority on *what is
+  active* carried no entry for the largest body of work in the window, while
+  [`README.md`](README.md) told readers the `product-stories.md` gap "is noted
+  in `roadmap.md`", where it was not. **The strike-in-the-commit rule was
+  followed inside the plan and skipped for the roadmap**, because the plan was
+  where the work felt like it lived. **The measurable consequence: the closing
+  ritual's step 2 had no item to strike**, so the module could not have been
+  closed cleanly when its last increment landed.
+
+  **What that gap hid, third instance.** The moorhen copy defect above sat open
+  for seven days over a fix that shipped that morning. `CLAUDE.md` carries this
+  same failure twice already — the defect list and the commercial substrate —
+  and both entries say the cost was a false reason quoted in a recommendation.
+
+- **The module pattern is the active work, claimed August 27, 2026.**
+  [`modules.md`](modules.md) is the charter for
+  **surfaces**, the smaller sibling of
+  [`architecture-trajectory.md`](architecture-trajectory.md) §4 — which governs
+  **models** and is never overridden by it. **Money was the first instance of a
+  shape this repository had no word for**, and got right by being described out
+  loud, built sixteen times and looked at three; the second module should not
+  pay for that again.
+
+  **Its central finding is that an app and a module are independent axes.**
+  Money has no Django app — it is `lists/money.py` and four models inside
+  `lists`. `routines` is a full app with `models`, `reads`, `services`,
+  `periods` and `api_v1`, and appears in the SPA's route table, `ViewNav` and
+  `SideNav` **zero times**; a routine can only be met inside somebody else's
+  page. One of each mismatch, and `startapp` gets you the code layout and no
+  place.
+
+  **Two decisions were taken and both are Vince's.** The shared rail **keeps**
+  each module's surfaces rather than each module owning a column — the escape
+  hatch in `SideNav.tsx` stands unfired, and what it costs is one docstring that
+  currently claims contents-only. And **a module is measured in its own file,
+  one line each**, against *is the domain's central question answered by looking
+  rather than by arithmetic* — so [`product-stories.md`](product-stories.md)
+  keeps its nineteen journeys and its denominator, which v4 refused to move for
+  S19 on the same reasoning. **That answers the gap `README.md` had been
+  pointing here for**: modules become a boundary of that score rather than a
+  blind spot in it, and nothing goes unmeasured.
+
+  **Three more decisions were taken on August 28, 2026**, and each is recorded
+  in that plan rather than here. **The knowledge core stays a distinct core**,
+  against the plan's own argument that it is simply the largest module — because
+  **a core is a mode rather than a vocabulary**, committing and doing against
+  capturing and connecting, which no amount of shared structure collapses. So
+  **modules live inside a core**, and which core a module belongs to has a real
+  answer. **A domain starts as an Area and earns a module when it needs nouns
+  `Item` cannot express** — §4's test one level up, and the only thing that
+  bounds how many modules there can be. And **a module differs from a project by
+  termination, not longevity**: `Project` carries three fields describing how it
+  ends and a module could not have one. And **a module links to work it does not
+  own through its own create path, or not at all** — `create_bill` writes the
+  `Item` and the `MoneyLine` in one transaction, so membership cannot be
+  forgotten, where `paid_by` was attached afterwards, called by nothing, and
+  deleted. Anything attached afterwards is a seam.
+
+  **It stopped being a plan on August 28, 2026** and is now a standing authority
+  — `module-pattern-plan.md` became [`modules.md`](modules.md), because a plan
+  becomes a stub when its work ships and a charter must not. §4 has never
+  stubbed; neither will this. **Each module keeps its own focused spec**, the way
+  [`money-module-plan.md`](money-module-plan.md) is one.
+  [`module-score.md`](module-score.md) opened the same day with Money's line.
+
+  **The finding worth carrying out of the plan is the input ratio** — *how much
+  typing per unit of answer*. This project has said it three times without
+  naming it: Money refused bank feeds as *"too difficult to really use"*, the
+  investments item asks *"whether balances would actually get typed in"*, and
+  `routines` has zero rows in a development database with five users and fifty
+  items. **A module survives when one entry keeps paying out for years, and dies
+  when it needs feeding.** It is what set `routines` aside as the second module
+  despite three documents arguing for it, and it ranks the six candidates that
+  replaced it — Home, Documents and travel, Vehicle, Learning, Health, People.
+
+  ~~**D2 is which of the six goes first.**~~ **Answered August 28, 2026:
+  Learning**, and [`learning-module-plan.md`](learning-module-plan.md) is the
+  focused spec. D1 — whether `ViewNav` shows a place differently from a lens —
+  is cheap, still open, and **does not gate this one**: Learning is a
+  knowledge-core module and `ViewNav` is the task core's.
+
+- **Learning is the active module, claimed August 28, 2026.** The first built
+  against the charter rather than to produce it, **and it corrected the charter
+  twice on first contact, both times downward.** `mind.Source` wants fields
+  rather than a sidecar — a sidecar spares a *general* record a special case,
+  and `Source` is already the special case — so the module adds **no model at
+  all**. And the `Source` → `Node` → `Facet` → `Item` → Area → `Project` chain
+  the charter called unavailable is **live end to end**, with three hops already
+  walked by `what_grew_from`, so *what work came out of this reading* is
+  derivable with no new column.
+
+  **The diagnosis is Bills' for the third time.** `/mind/sources/` is a list of
+  things you started with no way to say you finished one: `Source` has no state,
+  so *what am I in the middle of* is unanswerable, and `created_at` records when
+  you added a thing rather than when you read it, so *what did I read this year*
+  is too. Every part is built — `record_source`, `came_from`, `what_grew_from` —
+  and none is joined to a read.
+
+  **Its refusal is the part worth carrying.** **Progress through a thing —
+  *page 120 of 400* — is refused on the input ratio**, being the one field
+  everybody expects and the only one that must be fed forever. A status answers
+  *what am I in the middle of* without it. That is Money refusing bank
+  transactions, applied a second time by rule rather than by taste.
+
+  **And the plan carries its own doubt**: it is the smallest thing that passes
+  the charter, close enough to a surface repair that it says so in writing
+  rather than being talked up. **What that decides is only whether
+  [`module-score.md`](module-score.md) gains a second line**, and it is
+  answerable when the landing page is on screen rather than now.
+
 - **V1 is answered, and it closed three things and opened one — August 26,
   2026.** *Does anybody other than Vince ever use Clarice?* **One other person,
   and not the public**: his girlfriend has her own login, and Clarice is not a
@@ -274,215 +393,36 @@ re-add it here.
   `Source`, which *Recollection* delivers **later**. A release cannot accept on
   a noun a later one provides.
 
-- ~~**The temporal substrate is the active work.**~~ **Closed August 22, 2026,
-  shipped and verified in production as `nightjar`**
-  (`DEPLOYED-2026-08-22/0101`, image `clarice:ec2c4cb7e084`, all five `mind`
-  migrations applied and none pending). *Making memory a memory* — the time
-  axis, contextual retrieval, structured observations and intake, across five
-  tracks and thirty-one commits.
+- **Search's fifth increment is deferred on the corpus, not unbuilt.** Four of
+  five shipped in `lapwing`; the fifth waits on material a corpus of 41 nodes
+  has not produced. [`search-plan.md`](search-plan.md) owns it, and
+  `principles.md`'s rule bears on it — a trigger that cannot fire is a refusal,
+  and this is a candidate for that reading. **Promoted out of `lapwing`'s closed
+  entry on August 28, 2026**, where it was invisible.
 
-  The narrative, the thirteen decisions it answered and the seven things it
-  taught are in [`roadmap-history.md`](roadmap-history.md); the spec is a stub.
+- **The planning assistant's ninth increment may correctly never ship.** Ranking
+  by confirmation history, gated on a sample floor the same corpus has not
+  cleared.
+  [`planning-assistant-v2-plan.md`](planning-assistant-v2-plan.md) owns it.
+  Three smaller pieces were deferred by name in `abcfc51`: confirming a
+  recurring name in place, the planning-miss signal, and *schedule a decision*
+  as a third disposition. **Promoted August 28, 2026.**
 
-  **What it leaves, and neither is a shortfall.** ~~**Six decisions stay
-  open**~~ — **all six closed on August 22, 2026**, and four of them built
-  something: the person's clock (D16), the cyclic axis and `Mode.RESURFACING`
-  (D17), the log's answer to absence (D5), and the dormant review loop's
-  missing caller (D15). Two were largely already decided and nobody had
-  noticed. **Two were hiding live production defects.** The narratives are in
-  [`roadmap-history.md`](roadmap-history.md). ~~**D16 is the one with a clock running**, since
-  every observation Track C records is stamped UTC~~ — **answered August 22:
-  the clock is the person's**, and the stated symptom was wrong. Track C's days
-  were always local; the UTC date was in S14's note-to-day join, where it had
-  been silently returning an empty section for every evening note west of UTC.
-  Reasoning and the defect in
-  [`roadmap-history.md`](roadmap-history.md). And ~~**`product-stories.md` has not
-  been re-scored**~~ — **re-scored August 22, and the substrate moved nothing.**
-  Every remaining require was a specific noun the substrate sits beneath rather
-  than satisfies, and the re-score is what turned up that *Unify* had claimed
-  an acceptance it did not meet. **Four stories moved later that day** on work
-  aimed at those nouns; the score itself is in
-  [`product-stories.md`](product-stories.md) and is deliberately not repeated
-  here, which is a rule this line broke once already.
+- **`/terms/` and `/privacy/` are published and deliberately not
+  lawyer-reviewed.** The trigger named on August 19, 2026 was broader beta
+  testing — **which V1 has since refused**, so it may never fire, and this is a
+  third candidate for the refusal reading above. Still absent if it ever does:
+  the LLC's state of formation and business address, a governing-law clause, and
+  a considered answer on the minimum age (16 is asserted). **Promoted August 28,
+  2026.**
 
-- ~~**Release M — *Usable*, v3's first delivery release.**~~ **Closed August 20,
-  2026, shipped and verified in production as `moorhen`**
-  (`DEPLOYED-2026-08-20/2030`, image `clarice:b8591ee507f0`, all six migrations
-  applied and none pending). *The day you can actually use* — the day drafts
-  itself and never pins, a brief that reports change rather than state, the
-  closing ritual, a calendar, a bills month, priority and lead time.
+- **The draft says *nothing at all* when it has candidates but no capacity
+  figure.** The surviving half of the two copy defects `moorhen` left open; the
+  other closed on August 27 as Money's first increment. **Carried forward
+  unverified on August 28, 2026** — it was buried inside a struck entry, which
+  is exactly how its sibling sat unstruck here for seven days over a fix that
+  had already shipped.
 
-  The narrative, the four things it taught and the verification actually run
-  are in [`roadmap-history.md`](roadmap-history.md).
-
-  **What it leaves open**: two copy defects found by the browser pass that
-  should have run before the deploy and did not — the draft says *nothing at
-  all* when it has candidates but no capacity figure, and the bills month says
-  *"that total"* while showing one per currency. Both are the entry below.
-
-- ~~**Release L is open, and its bird is not chosen.**~~ **Closed August 20,
-  2026, shipped and verified in production as `lapwing`**
-  (`DEPLOYED-2026-08-20/1132`, image `clarice:612e23415830`, all three
-  migrations applied and none pending). *The week you can plan, and the material
-  you can find* — the planning assistant's second version and unified search,
-  across two deployments.
-
-  The narrative, the six things it taught and the verification actually run are
-  in [`roadmap-history.md`](roadmap-history.md).
-
-  **What it leaves open, both deliberately**: search's fifth increment, nine
-  fields deferred by name that want real use first, and the planning assistant's
-  ninth, a ranking gated on a sample floor a corpus of 41 nodes has not cleared.
-  Neither is a shortfall; `principles.md` now says a trigger that cannot fire is
-  a refusal, and the second is a candidate for that reading.
-
-- ~~**`/api/v1/login` is unthrottled.**~~ Fixed August 18, 2026 (`9eb9eea`),
-  with `/accounts/password/reset/` alongside it — an exact-match `limit_req`
-  block each, proved by running nginx against the rendered template rather than
-  by reading it. **Not live until the next deploy**, because an nginx template
-  changes nothing until the playbook runs. What replaces it is a test:
-  `clarice/tests/test_unauthenticated_endpoints_are_throttled.py` reads the
-  template and the API together, so the *next* `auth=None` endpoint cannot ship
-  unthrottled the way this one did.
-- ~~**No mail leaves production at all.**~~ Closed August 18, 2026 (`jackdaw`).
-  DigitalOcean blocks outbound 25, 465 and 587 on every Droplet, which is why
-  three Sentry reports read as a flaky relay and were a total outage. Sending
-  moved to Resend's HTTPS API. The proof kept deliberately: SMTP is **still**
-  blocked from that host and mail goes anyway, so the fix is not coincident with
-  anything DigitalOcean did.
-- ~~**The planning assistant.**~~ **Closed August 19, 2026**, shipped and
-  verified in production as `kestrel` (`DEPLOYED-2026-08-19/1339`). All six
-  increments: commitments read out of the journal, unresolved questions with
-  the notes that came back to them, a project that can say what it is for and a
-  brief that retrieves what bears on it, the weekly review's loose ends, and
-  next week drafted against observed capacity. Every proposal cites the passage
-  that caused it and nothing is created without a confirmation.
-
-  **`v1 shipped no generation at all`**, which is `design-concept.md`'s ML
-  policy holding rather than a corner cut — D1 deferred generated prose with two
-  firing conditions written down rather than a someday.
-
-  Two of `product-stories.md`'s target-model items moved as prerequisites rather
-  than as features: **S9's weekly intention** exists, and **S3 no longer
-  requires `Item.effort`** — capacity is derived from `DailyFocus` history, so
-  there are no estimates to go unentered. ~~Neither story's verdict moved~~ —
-  **re-scored against this release later the same day, and three verdicts did**;
-  that file owns the score and is not quoted here.
-
-  ~~**What the re-score found and this file has to carry: S9's write path does
-  not exist.**~~ **Built August 20, 2026** as v2's increment 1 — see the entry
-  below, which is where that work continued.
-
-  The narrative, the four decisions and the three silent-nothings that build
-  turned up are in [`roadmap-history.md`](roadmap-history.md); the v1 plan is a
-  stub.
-
-- ~~**The planning assistant's second version is the active work.**~~ **Shipped
-  and deployed; increments 1–8 went out August 19 and the release closed as
-  `lapwing` on August 20. Increment 9 is all that remains and may never fire.**
-  Designed and
-  being built to
-  [`planning-assistant-v2-plan.md`](planning-assistant-v2-plan.md): the weekly
-  planning *session*, on the review's forward half rather than a second
-  surface. **Eight of its nine increments are complete and live** — deployed
-  August 19, 2026 as the first half of release L, see the entry above — the
-  weekly intention made reachable (which closed the item
-  struck above), capacity at day grain where D2 always specified it, a project
-  that can say what done looks like and be parked, a check-in that opens with
-  what the system believes, outcomes chosen from evidence, blockers answered
-  where they are read, the week laid out by day and stress-tested, and scenario
-  planning.
-
-  **Nothing in it generates anything**, which is the finding that shaped it:
-  twelve of fourteen elements needed no prose at all, and the two that do are
-  the sites D1 already ranked. Scenario planning — the part that feels most like
-  an assistant — is `draft_week` with one argument.
-
-  **Increment 9 may never ship, and that is the correct outcome rather than a
-  failure**: ranking by confirmation history is gated on a sample floor a corpus
-  of 41 nodes has not cleared. Three smaller pieces were deferred and named in
-  `abcfc51`: confirming a recurring name in place, the planning-miss signal, and
-  "schedule a decision" as a third disposition.
-
-  **Two decisions dissolved on contact with the code** and are recorded there
-  rather than here: D5, whether the review may decide things, which it already
-  did through the owning core's services; and D6, where the ritual lives, which
-  does not bind while only questions are acted on because a question carries no
-  review window. D1, D2, D4 and D7 remain open; the score is
-  [`product-stories.md`](product-stories.md)'s and is not quoted here.
-
-- ~~**Terms of service and a privacy policy.**~~ **Written and published
-  August 19, 2026**, at `/privacy/` and `/terms/`, linked from a footer on
-  every signed-out page and from the signup form. Owned by Vinclarice, LLC;
-  hosting named as DigitalOcean's New York region. Every claim was checked
-  against the source and a dozen tests hold the ones with a mechanical
-  counterpart — the deletion window, the digest default, the four Sentry
-  exclusions, the absence of analytics — so the code cannot drift away from a
-  published promise silently. **The one claim no test can hold is the hosting
-  region**, and the template says so at the paragraph.
-  **Deliberately not lawyer-reviewed, and the trigger for changing that is
-  named: broader beta testing.** Vince's call, August 19 — proportionate while
-  the site is privately owned and invitation-only. What a professional read
-  would want, and what is therefore still absent: the LLC's state of formation
-  and business address, a governing-law clause, and a considered answer on the
-  minimum age (16 is asserted).
-- **Removing user data from Sentry and Resend when an account goes.** An
-  account-level action in each, outside this application. Deletion and export
-  inside Clarice shipped August 16.
-- **Three genuinely open decisions in `commercial-blueprint.md` Part 9** — is
-  this a business, which wedge, and mobile native versus responsive web. Two of
-  its five are stale rather than open: #3 is answered but its reasoning predates
-  the merger, and #5 was largely done by the August 15 documentation pass.
-- ~~**Unified search is active and usable, and undeployed.**~~ **Deployed and
-  verified August 20, 2026 as part of `lapwing`.** Four of five increments;
-  the fifth is the only thing left. Designed and built
-  to [`search-plan.md`](search-plan.md). **Three of its five increments are
-  done**, and the third is the one a person can use: `/mind/search/` now
-  answers in three sections — notes, tasks and days — from one box.
-
-  What landed August 20, 2026, ~~all on `main` and **none of it deployed**~~ —
-  **live since `DEPLOYED-2026-08-20/1132`**:
-  generated `tsvector` columns with a `GinIndex` on `Item` and `DailyEntry`
-  and two migrations; `lists/search.py` and `daily.reads.search_entries`;
-  `clarice/search.py`, holding the one definition of how typed text becomes a
-  query, because sectioned results have a quiet dependency on every section
-  having asked the same question; `GET /api/v1/search`, session-only; and the
-  page. 42 new tests.
-
-  **All four decisions are answered and the brief records them** — the endpoint
-  went in `mind/api_v1.py` beside capture, and the surface is the page that
-  already existed, which is what keeps search attached to the miss button.
-
-  **D4 said no to the command palette and found the real gap instead: nothing
-  in the task core linked to search at all.** Four navigation surfaces were
-  checked and only the knowledge core's own sub-nav had it, so reaching search
-  from the task core meant two hops through the other core's capture page — for
-  a feature built partly to search tasks. One link in the shared app bar,
-  in the utility group rather than the Cores nav, because search belongs to
-  neither core. The palette entry below carries the trigger to watch.
-
-  **D3 turned out to be the wrong question, and answering it caught a defect
-  this work had just created.** It asked whether `RetrievalMiss.resolved_node`
-  should widen to reach a task; it should not, because nothing has ever
-  populated that field — **the fourth un-switched-on seam found in a
-  fortnight.** What did need fixing is that the retirement gate's *"retrieval
-  misses fall"* counted every miss, which was exact only while this page
-  searched notes alone. A miss now records what each section returned and the
-  gate counts the ones where the note index returned nothing. **Fixed before
-  the deploy on purpose**: a miss cannot be re-interpreted afterwards, so every
-  one recorded in the gap would have been permanently ambiguous.
-
-  **Sectioned, never merged, and that is a refusal rather than a first
-  version.** `SearchRank` compares documents within one set and means nothing
-  across two, so one ordered list would present a number that does not exist as
-  relevance. Validating a weighting would need the retrieval evidence that does
-  not exist yet — which is what the miss button is for.
-
-  Two things were decided at the keyboard and are recorded at the code rather
-  than here: search returns every status, where the agenda hides finished work,
-  because the older a task is the more likely it is both done and the one being
-  looked for; and `Item` weights its text above its notes, which is safe within
-  one model in a way ranking across two is not.
 - **Whether the Android client keeps growing.** Slices 1 and 2 shipped (Today
   read-only, then Agenda with read and act); later slices are undecided. Part 9
   recommends freezing native for responsive web, on the evidence that
@@ -497,18 +437,27 @@ re-add it here.
   anchored-only, because Clarice has one cadence field and cannot say which
   mode a commitment is, while `design-concept.md` calls the distinction
   load-bearing. Deliberate, and recorded at the function.
-- ~~**Three navigations, three identities, and a login form for a home page.**~~
-  **Closed August 18, 2026**, shipped in two deploys and verified in
-  production. What replaced it: one server-rendered app bar on all three
-  surfaces, a per-core sub-nav, the rail demoted to contents, the ledger
-  palette and three self-hosted typefaces in both cores, and `/` as a landing
-  page rather than the login form. The narrative and its six lessons are in
-  [`roadmap-history.md`](roadmap-history.md); the plan is a stub.
-  **The codename was deliberately held** to ship with the planning-assistant
-  work, and was spent on `kestrel` on August 19. **What this did *not* close is S1**, which also wants self-service
-  signup with email verification — still an admin checkbox, and
-  `accounts/emails.py` still has no message telling the applicant it happened.
-  [`product-stories.md`](product-stories.md) owns that score.
+### Closed — one line each; the narrative is in `roadmap-history.md`
+
+**The strikes used to stay here in full, and that is what made this section
+unreadable**: 220 lines of finished work under a heading that says *Open now*,
+against 356 of live work. Every narrative below was already in
+[`roadmap-history.md`](roadmap-history.md), so the long versions were a second
+copy. [`README.md`](README.md) owns the eviction rule this applies.
+
+- ~~**The temporal substrate**~~ — closed August 22, 2026 as `nightjar`; all six of its remaining decisions closed the same day.
+- ~~**Release M — *Usable***~~ — closed August 20, 2026 as `moorhen`. One copy defect survives it, promoted above.
+- ~~**Release L**~~ — closed August 20, 2026 as `lapwing`. Its two deliberate deferrals are promoted above.
+- ~~**`/api/v1/login` is unthrottled**~~ — fixed August 18, 2026 (`9eb9eea`); `clarice/tests/test_unauthenticated_endpoints_are_throttled.py` is what replaced it.
+- ~~**No mail leaves production at all**~~ — closed August 18, 2026 (`jackdaw`). Outbound SMTP is still blocked on the Droplet and mail goes anyway, over Resend's HTTPS API.
+- ~~**The planning assistant**~~ — closed August 19, 2026 as `kestrel`, all six increments, and it shipped no generation at all.
+- ~~**The planning assistant's second version**~~ — increments 1–8 shipped August 19, 2026 within `lapwing`. The ninth is promoted above.
+- ~~**Terms of service and a privacy policy**~~ — published August 19, 2026. Their un-reviewed status is promoted above.
+- ~~**Unified search**~~ — four of five increments, deployed August 20, 2026 within `lapwing`. The fifth is promoted above.
+- ~~**Three navigations, three identities, and a login form for a home page**~~ — closed August 18, 2026. ~~What it left open was S1~~ — **S1 was refused on August 26, 2026 when V1 was answered**, so nothing survives it.
+- ~~**Removing user data from Sentry and Resend when an account goes**~~ — **closed August 26, 2026** as [`security-and-resilience-plan.md`](security-and-resilience-plan.md) §2.2. It sat here as live work for two days afterwards.
+- ~~**Three genuinely open decisions in `commercial-blueprint.md` Part 9**~~ — **Part 9 closed August 22, 2026, all five answered.** It sat here as live work for six days afterwards, and `commercial-blueprint.md`'s own header said so the whole time.
+
 
 ## Carried in from B / C / D — not schedulable work
 
@@ -787,10 +736,15 @@ had — `roadmap-history.md` said *"a release receives three tags after it is
 verified in production"*, which describes every deploy that has ever happened.
 
 **The practice was already selective and only the criterion was missing.**
-Fourteen of thirty-six deploys carry a bird. The other twenty-two are
-follow-ups, corrections and infrastructure, and nobody ever thought they were
-releases — but with nothing written down, the question came up fresh each time
-and was answered by whoever was tagging.
+Well under half of all deploys carry a bird; the rest are follow-ups,
+corrections and infrastructure, and nobody ever thought they were releases —
+but with nothing written down, the question came up fresh each time and was
+answered by whoever was tagging.
+
+~~Fourteen of thirty-six deploys carry a bird. The other twenty-two are...~~ —
+**struck August 28, 2026, having drifted to fifteen and thirty-seven.** `git
+tag` is the count and this file does not keep a second copy of it; the ratio is
+what the paragraph was ever about.
 
 A deploy is a release, and takes the next letter, when **both** hold:
 
@@ -848,8 +802,20 @@ focused spec before it joins an active track.
 
 **Move completed detail into [`roadmap-history.md`](roadmap-history.md) and
 keep only the resulting baseline or remaining consequence here.** That
-instruction has been in this file since August 1 and has been ignored twice —
-257 lines migrated out on August 13, and 272 more on August 16, by which point
-the file was contradicting itself about work it recorded as both open and
-closed. If a section here is describing the past at length, it is in the wrong
-file.
+instruction has been in this file since August 1 and has been ignored three
+times — 257 lines migrated out on August 13, 272 more on August 16, and 175 more
+on August 28, by which point *Open now* was 578 lines carrying twelve live items
+and two entries it wrongly called live. If a section here is describing the past
+at length, it is in the wrong file.
+
+**It was ignored three times because it was advice, and it is now a step.**
+[`README.md`](README.md) owns the rule — *a closed roadmap entry is evicted, not
+struck* — and `CLAUDE.md`'s closing ritual carries it as step 2, with promotion
+of any surviving consequence as step 3. **The two are one mechanism**: eviction
+alone would bury live work along with the narrative, and promotion is what stops
+that. Both go in the commit that closes the work, for the same reason the strike
+does.
+
+**What lives here now**: live entries first, then a `### Closed` roll-up of one
+line each. A closed entry that has grown a paragraph is a bug in the same way a
+tally in a header is.

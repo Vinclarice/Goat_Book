@@ -730,7 +730,7 @@ def create_income(owner, *, payer, amount=None, currency="USD", due_date=None,
 
 
 @transaction.atomic
-def pay_bill(item, *, amount=None):
+def pay_bill(item, *, amount=None, today=None):
     """Settle a money line, recording what actually moved.
 
     **Both directions, under the name the commoner one uses.** A `receive_income`
@@ -765,7 +765,11 @@ def pay_bill(item, *, amount=None):
     bill.save(update_fields=["paid_amount"])
     # After the amount, so a failure here leaves an unpaid bill with a stray
     # number rather than a paid one with none -- the recoverable direction.
-    complete_item(item)
+    #
+    # `today` is passed through rather than defaulted here: a bill's successor
+    # date is the one thing about paying that depends on which day it is, and
+    # every caller in production leaves it None for the real clock.
+    complete_item(item, today=today)
     return item
 
 
@@ -1141,7 +1145,7 @@ def _advance_due_date(due_date, recurrence, today=None, mode=CadenceMode.ANCHORE
     return None
 
 
-def _spawn_next_occurrence(completed_item, carry_forward_steps=()):
+def _spawn_next_occurrence(completed_item, carry_forward_steps=(), today=None):
     # Anchored here as well as on the paths that set a cadence, because rows
     # predating this key reach completion without one. Their earlier
     # occurrences can't be recovered -- that history is gone -- but adopting
@@ -1177,10 +1181,24 @@ def _spawn_next_occurrence(completed_item, carry_forward_steps=()):
         # here and it knows whose it is, whether or not it has a place.
         owner=commitment.owner,
         text=commitment.text,
+        # `today` rather than `timezone.localdate()` inline, so a caller can
+        # say which day it is. Passing None means the real clock, which is
+        # every production path -- `_advance_due_date` does the defaulting, so
+        # there is still exactly one place that reads the system date.
+        #
+        # It was inline until August 28, 2026, and that made the boundary
+        # untestable without mocking: a fortnightly item due the 14th whose
+        # successor falls on the 28th produced a *different* successor once the
+        # real date reached the 28th, because the schedule must clear today.
+        # `test_the_next_one_lands_two_weeks_later` hard-coded the 28th and so
+        # passed for fourteen days and then failed for good -- red on `main`,
+        # not a flake. See `principles.md`, *inject the clock; do not freeze
+        # it*: the sibling test two functions down had been doing this all
+        # along, via `landing_for(..., today=AUGUST)`.
         due_date=_advance_due_date(
             completed_item.due_date,
             commitment.cadence,
-            today=timezone.localdate(),
+            today=today,
             mode=commitment.cadence_mode,
         ),
         recurrence=commitment.cadence,
@@ -1277,7 +1295,7 @@ def _checklist_steps_to_carry_forward(item):
 # two saves and a spawn in autocommit, each committing alone; the log is what
 # made that worth fixing rather than merely noting.
 @transaction.atomic
-def complete_item(item):
+def complete_item(item, *, today=None):
     item = Item.objects.select_for_update(of=("self",)).select_related("list").get(pk=item.pk)
     if item.status == Item.Status.ARCHIVED:
         raise InvalidTaskTransition("Archived tasks must be restored first")
@@ -1303,7 +1321,7 @@ def complete_item(item):
         item.save()
         if is_recurring:
             item._spawned = _spawn_next_occurrence(
-                item, carry_forward_steps=carry_forward_steps,
+                item, carry_forward_steps=carry_forward_steps, today=today,
             )
         # The completion, and not the archive above it. A recurring task is
         # archived immediately to free its text for the next occurrence --

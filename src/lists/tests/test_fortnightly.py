@@ -52,7 +52,13 @@ class FortnightlyTest(TestCase):
             recurrence=Item.Recurrence.FORTNIGHTLY,
         )
 
-        services.pay_bill(salary)
+        # **Paid on the anchor date, not on whatever today happens to be.**
+        # The successor has to clear today -- `_advance_due_date` says so and
+        # that is deliberate -- so without an injected clock this assertion is
+        # only true while the real date is before the 28th. It was written on
+        # August 27, 2026, passed that day, and went red for good on the 28th.
+        # `principles.md`: inject the clock; do not freeze it.
+        services.pay_bill(salary, today=AUGUST)
 
         following = Item.objects.filter(
             owner=self.user, completed_at__isnull=True
@@ -84,7 +90,11 @@ class FortnightlyTest(TestCase):
             recurrence=Item.Recurrence.FORTNIGHTLY,
         )
 
-        services.pay_bill(salary)
+        # Injected for the same reason as above, though this one asserts the
+        # cadence rather than the date and would pass either way. A test that
+        # depends on the real clock without needing to is one that will fail on
+        # a date nobody predicted.
+        services.pay_bill(salary, today=AUGUST)
 
         following = Item.objects.filter(
             owner=self.user, completed_at__isnull=True

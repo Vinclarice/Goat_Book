@@ -437,6 +437,39 @@ re-add it here.
   anchored-only, because Clarice has one cadence field and cannot say which
   mode a commitment is, while `design-concept.md` calls the distinction
   load-bearing. Deliberate, and recorded at the function.
+- **A recurrence falling due exactly today is skipped, and the docstring says
+  it should not be — found August 28, 2026.** `_advance_due_date` in
+  `lists/services.py` advances until `candidate > today`, so an occurrence
+  landing *on* today never clears the test and the schedule jumps a whole
+  period. Its own docstring promises a successor *"which is never already in
+  the past"*, and today is not the past — which makes this an off-by-one
+  against a stated contract rather than a documented choice.
+
+  **What it costs is a period, silently.** Pay a bill, or mark a salary
+  received, on the exact day its successor falls due, and that occurrence does
+  not exist afterwards: the next one is a full period further out and nothing
+  records that one was dropped. In the Money module that is a missing paycheck
+  on the landing page whose entire job is *how do I stand financially*. It is
+  the **anchored** path only — floating counts from today by construction — and
+  it is every cadence, not just the fortnight that exposed it.
+
+  **Narrow, which is why it survived.** It needs the completion and the
+  successor date to coincide, so it fires on one day per period per commitment.
+  Nothing found it deliberately: `test_the_next_one_lands_two_weeks_later`
+  hard-coded a date the calendar eventually reached, and went red on `main`.
+
+  **Deliberately not fixed that day** (`998bbf2`). Main was red, and a repair
+  should not smuggle in a scheduling change touching every recurring task in
+  production. The clock was injected so the test could say which day it is, and
+  `> today` was left exactly as it was.
+
+  **The open question is which of the two `>` is.** Ergonomics — completing a
+  task should not immediately hand you another due the same day — or an
+  off-by-one. The docstring argues for `>=`; the feel of the product argues for
+  `>`. Whichever wins, **the code and the docstring should agree, and today
+  they do not**, so the cheapest correct outcome may be a docstring change
+  rather than a behaviour change.
+
 ### Closed — one line each; the narrative is in `roadmap-history.md`
 
 **The strikes used to stay here in full, and that is what made this section

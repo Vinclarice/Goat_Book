@@ -468,7 +468,10 @@ different project with a different premise. *Starting over* below refuses
 discarding **this** repository's testing culture, which the knowledge core
 carries over rather than discards.
 
-The list is unamended.
+~~The list is unamended.~~ **Amended once, August 28, 2026**, by the bundle
+entry at the end — the first addition since the list was written. Said here
+rather than quietly deleted, because *unamended* was itself a claim about the
+list and this file does not keep those silently.
 
 - **A universal Node or Block model.** It would trade strong invariants and
   clear queries for flexibility the task core has never asked for. Task,
@@ -496,6 +499,36 @@ The list is unamended.
   culture, the injected clock, the isolation tests and the documented
   architectural honesty are worth more than the migrations they cost to build
   around. A cleaner schema without that culture would be a worse product.
+- **Code-splitting the SPA bundle, and any framework change made to shrink
+  it** — added August 28, 2026, on measurement rather than argument. Vite warns
+  that `app-shell.js` exceeds 500 kB; it is 552 kB raw and **154,577 bytes on
+  the wire**, gzipped by WhiteNoise and served `immutable` under a hashed
+  filename, so a returning visitor downloads none of it. **62% is framework** —
+  `react-dom` alone is 180 kB raw — and none of that is splittable, because
+  react, the router and the query client are all needed before the first route
+  renders. The application's own code is 46 kB gzipped.
+
+  **A whole module costs about 7 kB gzipped**, measured by isolating Money's
+  five routes into their own chunk, and knowledge-core modules cost nothing at
+  all because `/mind/` ships no JavaScript. Building **every** module in
+  [`modules.md`](modules.md) lands near 183 kB gzipped, which crosses nothing.
+
+  **The trigger, so this is a refusal and not an evasion**: split when the
+  application's own code exceeds the vendor floor — 207 kB against 344 kB raw
+  today, roughly five more task-core modules, which is past everything the
+  roadmap contains. Waiting is free in the sense `principles.md` means by
+  reversible: `chunkFileNames` is already configured, Django hardcodes only the
+  entry filename, and `AppRoutes.tsx` is one flat table needing `lazy()` and a
+  single `Suspense` — so the cost of doing it later does not grow with the
+  number of routes.
+
+  **Not refused, and the better trade if bytes are ever wanted**: adding
+  `brotli` to `requirements.txt`. WhiteNoise would then serve `.br` beside
+  `.gz`, taking the wire size to roughly 130 kB for one line, no code change and
+  no test churn. Splitting buys a comparable saving and costs a `Suspense`
+  boundary against 456 frontend tests that assume routes render synchronously.
+  **Neither touches parse cost**, which is the only argument splitting has and
+  is a phone-feel question rather than a measured one.
 
 ## 8. Decisions this plan cannot make
 

@@ -1103,7 +1103,30 @@ def _nth_occurrence_after(base, recurrence, n):
 
 
 def _advance_due_date(due_date, recurrence, today=None, mode=CadenceMode.ANCHORED):
-    """The next occurrence's due date, which is never already in the past.
+    """The next occurrence's due date, which is always strictly after today.
+
+    **Strictly after, and the strictness is the decision** -- corrected here on
+    August 28, 2026. This line read *"never already in the past"* for a month,
+    which is a weaker claim than the code makes: today is not the past, so that
+    wording promised an occurrence falling exactly on today would be kept, and
+    `candidate > today` drops it. The code was right and the sentence was
+    wrong.
+
+    **Why dropping it is right: the completion is happening today.** Bins every
+    Monday, last done June 1, done again today -- today's slot has just been
+    satisfied by the act that triggered this call, so returning it would hand
+    somebody a task due the day they did it. `>=` was measured rather than
+    argued about: it breaks
+    `test_a_very_late_weekly_commitment_skips_every_missed_week`, which spawns
+    August 10 instead of August 17 on a Monday-anchored series. That test pins
+    this boundary on purpose, and
+    `test_a_series_never_spawns_overdue.test_the_slot_the_completion_lands_on_is_not_respawned`
+    now says so by name rather than by coincidence.
+
+    **What this does not decide** is whether *money* should skip a missed
+    period at all -- a bill you did not pay is still owed in a way a bin round
+    you missed is not. That is a product question about the doctrine below
+    rather than about this comparison, and `roadmap.md` carries it.
 
     It used to be one interval past the *previous due date*, full stop. A
     monthly commitment due July 4 and completed August 10 therefore produced a

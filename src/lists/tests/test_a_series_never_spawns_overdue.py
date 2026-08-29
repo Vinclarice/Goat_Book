@@ -99,3 +99,28 @@ class ASeriesNeverSpawnsOverdueTest(TestCase):
         spawned = self.complete(due=None, cadence=Item.Recurrence.DAILY)
 
         self.assertEqual(spawned.due_date, datetime.date(2026, 8, 11))
+
+    def test_the_slot_the_completion_lands_on_is_not_respawned(self):
+        """**A regression guard: the behaviour already existed**, said plainly
+        because a test passing on its first run is otherwise a smell. What is
+        new is that this boundary is pinned deliberately rather than by
+        coincidence.
+
+        A daily commitment due yesterday, completed today, advances to
+        *tomorrow*. Today's slot was satisfied by the completion that spawned
+        this, so returning it would hand somebody a task due the day they did
+        it -- bins done this morning, bins due this morning.
+
+        `test_a_very_late_weekly_commitment_skips_every_missed_week` above
+        depends on the same rule and does fail under `>=`, spawning August 10
+        rather than August 17. But its subject is skipping missed weeks and it
+        pins this only in passing, which is how `_advance_due_date` came to
+        promise *"never already in the past"* while implementing something
+        stricter. The docstring there now says which, and this says it in a
+        test.
+        """
+        spawned = self.complete(
+            due=datetime.date(2026, 8, 9), cadence=Item.Recurrence.DAILY
+        )
+
+        self.assertEqual(spawned.due_date, datetime.date(2026, 8, 11))

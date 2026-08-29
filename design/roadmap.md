@@ -437,38 +437,31 @@ re-add it here.
   anchored-only, because Clarice has one cadence field and cannot say which
   mode a commitment is, while `design-concept.md` calls the distinction
   load-bearing. Deliberate, and recorded at the function.
-- **A recurrence falling due exactly today is skipped, and the docstring says
-  it should not be — found August 28, 2026.** `_advance_due_date` in
-  `lists/services.py` advances until `candidate > today`, so an occurrence
-  landing *on* today never clears the test and the schedule jumps a whole
-  period. Its own docstring promises a successor *"which is never already in
-  the past"*, and today is not the past — which makes this an off-by-one
-  against a stated contract rather than a documented choice.
+- **Should money skip a missed period at all? — promoted August 28, 2026 from
+  the entry above.** *Missed periods are skipped, not replayed* is the task
+  core's doctrine and it is right for tasks: five missed bin rounds are five
+  things that did not happen, and inventing them is a fabricated history
+  `principles.md` refuses. **A bill is not like that.** A payment you did not
+  make is still owed, and the money is still owed whether or not a task exists
+  saying so — so the doctrine that correctly declines to invent bin rounds
+  quietly declines to remind you about a bill.
 
-  **What it costs is a period, silently.** Pay a bill, or mark a salary
-  received, on the exact day its successor falls due, and that occurrence does
-  not exist afterwards: the next one is a full period further out and nothing
-  records that one was dropped. In the Money module that is a missing paycheck
-  on the landing page whose entire job is *how do I stand financially*. It is
-  the **anchored** path only — floating counts from today by construction — and
-  it is every cadence, not just the fortnight that exposed it.
+  **Concretely**: a monthly bill due June 1, paid on August 10, schedules
+  September 1. The July and August payments are simply gone from the surface
+  whose whole job is *how do I stand financially*, and nothing records that two
+  were dropped. This is not the `>` boundary — that was answered above and was
+  the last missed period rather than a special one. It is the doctrine itself,
+  applied to a domain that arrived after it was written.
 
-  **Narrow, which is why it survived.** It needs the completion and the
-  successor date to coincide, so it fires on one day per period per commitment.
-  Nothing found it deliberately: `test_the_next_one_lands_two_weeks_later`
-  hard-coded a date the calendar eventually reached, and went red on `main`.
-
-  **Deliberately not fixed that day** (`998bbf2`). Main was red, and a repair
-  should not smuggle in a scheduling change touching every recurring task in
-  production. The clock was injected so the test could say which day it is, and
-  `> today` was left exactly as it was.
-
-  **The open question is which of the two `>` is.** Ergonomics — completing a
-  task should not immediately hand you another due the same day — or an
-  off-by-one. The docstring argues for `>=`; the feel of the product argues for
-  `>`. Whichever wins, **the code and the docstring should agree, and today
-  they do not**, so the cheapest correct outcome may be a docstring change
-  rather than a behaviour change.
+  **Not obviously a defect, which is why it is a question.** Replaying missed
+  bills could equally produce a page full of arrears nobody will action, and
+  `MoneyLine` already records what was actually paid, so the history is not
+  lost even when the task is. **What is missing is any signal that a period
+  went by unpaid** — and the honest first step is looking at whether that has
+  ever happened in production, rather than building for it.
+  [`money-module-plan.md`](money-module-plan.md) is where a repair would be
+  specced; [`modules.md`](modules.md)'s input-ratio rule bears on it, since
+  anything requiring the person to confirm a skipped period is feeding.
 
 ### Closed — one line each; the narrative is in `roadmap-history.md`
 
@@ -490,6 +483,7 @@ copy. [`README.md`](README.md) owns the eviction rule this applies.
 - ~~**Three navigations, three identities, and a login form for a home page**~~ — closed August 18, 2026. ~~What it left open was S1~~ — **S1 was refused on August 26, 2026 when V1 was answered**, so nothing survives it.
 - ~~**Removing user data from Sentry and Resend when an account goes**~~ — **closed August 26, 2026** as [`security-and-resilience-plan.md`](security-and-resilience-plan.md) §2.2. It sat here as live work for two days afterwards.
 - ~~**Three genuinely open decisions in `commercial-blueprint.md` Part 9**~~ — **Part 9 closed August 22, 2026, all five answered.** It sat here as live work for six days afterwards, and `commercial-blueprint.md`'s own header said so the whole time.
+- ~~**A recurrence falling due exactly today is skipped**~~ — answered August 28, 2026, the day it was raised: `>` is correct and the docstring was wrong. The reasoning lives in `_advance_due_date` and in `test_the_slot_the_completion_lands_on_is_not_respawned`, which is where code cites its own decisions; production behaviour never changed. The money question it turned up is promoted above.
 
 
 ## Carried in from B / C / D — not schedulable work

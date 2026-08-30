@@ -231,6 +231,27 @@ class ContactForm(forms.Form):
         return bool(self.cleaned_data.get("website"))
 
 
+class SignedInContactForm(ContactForm):
+    """The same message, from somebody the application already knows.
+
+    coherence-audit-2026-08-30.md F7. `roadmap.md` names the reason this is a
+    different form rather than a prefilled one: *asking someone with a session
+    to retype their name and email invites an address that isn't the one on
+    their account*. A prefilled field is still a field somebody can edit, and
+    a reply sent to an edited address goes to whoever typed it.
+
+    So the two known fields are removed rather than populated, and the view
+    fills them from `request.user`. The honeypot stays -- a session is good
+    evidence of a person and not proof of one -- and so does every validation
+    rule above, because they are the same rules.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        del self.fields["name"]
+        del self.fields["email"]
+
+
 class AccountSettingsForm(forms.ModelForm):
     class Meta:
         model = User

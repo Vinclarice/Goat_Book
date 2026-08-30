@@ -18,6 +18,7 @@ from django.core.cache import cache
 from django.test import TestCase
 from django.urls import reverse
 
+from accounts.models import User
 from accounts.views import _contact_sends_key
 
 
@@ -251,3 +252,97 @@ class ContactRateLimitTest(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(mail.outbox), settings.CONTACT_MAX_PER_HOUR + 1)
+
+
+class SignedInContactTest(TestCase):
+    """The same support path, for somebody who already has an account.
+
+    coherence-audit-2026-08-30.md F7. The Contact link lived only in the
+    logged-out branch of the app bar, so the person most likely to have
+    something worth reporting had the worst route to reporting it -- which
+    `roadmap.md` had been describing as *promotable, not deferred* since B4
+    shipped the error monitoring its trigger named.
+
+    Three separate things follow from having an identity, and each has a test
+    below: the link exists, the two fields already known are not asked for,
+    and the rate limit stops being keyed on an address.
+    """
+
+    def setUp(self):
+        cache.clear()
+        self.user = User.objects.create_user(
+            username="edith",
+            email="edith@example.com",
+            password="terrible-password-123",
+        )
+        self.client.force_login(self.user)
+
+    def submit(self, **overrides):
+        return self.client.post(
+            reverse("contact"),
+            data={"message": "The agenda lost my Tuesday.", **overrides},
+            follow=True,
+        )
+
+    def test_a_signed_in_person_is_offered_the_link(self):
+        # The mirror of test_an_anonymous_visitor_is_offered_the_link above,
+        # and the whole of F7: the bar rendered the link in the {% else %}
+        # branch only.
+        response = self.client.get(reverse("dashboard"), follow=True)
+
+        self.assertContains(response, reverse("contact"))
+
+    def test_it_does_not_ask_for_what_the_account_already_says(self):
+        response = self.client.get(reverse("contact"))
+
+        self.assertNotContains(response, 'name="name"')
+        self.assertNotContains(response, 'name="email"')
+
+    def test_the_message_carries_the_account_identity(self):
+        self.submit()
+
+        self.assertEqual(len(mail.outbox), 1)
+        # Reply-To is the account's address rather than one retyped into a
+        # form -- the reason roadmap.md gives for not simply prefilling it.
+        self.assertEqual(mail.outbox[0].reply_to, ["edith@example.com"])
+        self.assertIn("edith", mail.outbox[0].body)
+
+    def test_the_message_still_arrives(self):
+        self.submit()
+
+        self.assertEqual(mail.outbox[0].to, [settings.SUPPORT_EMAIL])
+        self.assertIn("The agenda lost my Tuesday.", mail.outbox[0].body)
+
+    def test_an_empty_message_sends_nothing(self):
+        self.submit(message="")
+
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_the_limit_follows_the_account_and_not_the_address(self):
+        # Per-IP is the wrong key once there is an identity: two people
+        # behind one office NAT share an address and do not share an account.
+        for _ in range(settings.CONTACT_MAX_PER_HOUR):
+            self.submit()
+        sent_before = len(mail.outbox)
+
+        # Same address, different account, and their allowance is untouched.
+        other = User.objects.create_user(
+            username="mireille",
+            email="mireille@example.com",
+            password="terrible-password-123",
+        )
+        self.client.force_login(other)
+        response = self.submit()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(mail.outbox), sent_before + 1)
+
+    def test_a_burst_from_one_account_is_still_cut_off(self):
+        for _ in range(settings.CONTACT_MAX_PER_HOUR):
+            self.submit()
+        sent_before = len(mail.outbox)
+
+        response = self.submit()
+
+        self.assertEqual(len(mail.outbox), sent_before)
+        self.assertContains(response, "too many", status_code=429)

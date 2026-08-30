@@ -80,6 +80,25 @@ task core holds, and they stay in the rail as contents.
           href="{% url 'search' %}"
         >Search</a>
         {% comment %}
+        coherence-audit-2026-08-30.md F7. Contact was rendered only in the
+        signed-out branch further down, so B3 gave strangers a support path and
+        left users without one -- the person most likely to have something
+        worth reporting had the worst route to reporting it. `roadmap.md` had
+        called this promotable rather than deferred since B4 shipped the error
+        monitoring its trigger named.
+
+        Here rather than only on the preferences page, because the moment
+        somebody needs this is the moment something in front of them has just
+        broken, and that is the wrong moment to go hunting through settings.
+
+        Beside Search rather than in the Cores nav, for the reason Search
+        gives: that nav means "this goes to a core", and this goes to neither.
+        {% endcomment %}
+        <a
+          class="touch-target font-sans text-sm text-muted-foreground hover:text-text inline-flex items-center"
+          href="{% url 'contact' %}"
+        >Contact</a>
+        {% comment %}
         One way in to one screen. This reverses `account_settings`, a two-line
         view that redirects to /app/preferences -- kept rather than linking the
         SPA route directly because one href has to work from a Django page, from

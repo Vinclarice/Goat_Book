@@ -26,7 +26,13 @@ from accounts.emails import (
     send_activation_email,
     send_support_message,
 )
-from accounts.forms import ContactForm, LoginForm, SignUpForm, TokenForm
+from accounts.forms import (
+    ContactForm,
+    LoginForm,
+    SignedInContactForm,
+    SignUpForm,
+    TokenForm,
+)
 from accounts.services import redeem_invitation
 from accounts.mfa import enrolment_qr, issue_recovery_codes
 from django_otp.plugins.otp_totp.models import TOTPDevice
@@ -547,12 +553,30 @@ def visitor_ip(request):
 
 logger = logging.getLogger(__name__)
 
-def _contact_sends_key(ip):
-    return f"contact-form-sends:{ip}"
+def _contact_sends_key(scope):
+    """The bucket one sender's allowance is counted in.
+
+    `scope` is an IP for a stranger and `user:<pk>` for somebody signed in --
+    coherence-audit-2026-08-30.md F7. Per-IP is the right key when an address
+    is all you know and the wrong one the moment you know better: two people
+    behind one office NAT share an address and do not share an account, so a
+    per-IP limit lets either of them spend the other's allowance.
+    """
+    return f"contact-form-sends:{scope}"
 
 
-def _record_contact_send(ip):
-    key = _contact_sends_key(ip)
+def _contact_scope(request):
+    """Who is being counted. An account when there is one, an address if not.
+
+    Prefixed rather than bare, so a pk can never collide with an address.
+    """
+    if request.user.is_authenticated:
+        return f"user:{request.user.pk}"
+    return visitor_ip(request)
+
+
+def _record_contact_send(scope):
+    key = _contact_sends_key(scope)
     # add() only writes when the key is absent, so the hour is measured
     # from the first send. cache.set() here instead would let a steady
     # drip keep pushing the expiry out and never reset the count.
@@ -574,11 +598,16 @@ def contact(request):
     address four times has not used up their allowance; a script posting
     valid messages has.
     """
-    form = ContactForm()
+    # coherence-audit-2026-08-30.md F7. Two forms, one page: a stranger is
+    # asked who they are, somebody signed in is not. See SignedInContactForm
+    # for why the known fields are removed rather than prefilled.
+    signed_in = request.user.is_authenticated
+    form_class = SignedInContactForm if signed_in else ContactForm
+    form = form_class()
 
     if request.method == "POST":
-        ip = visitor_ip(request)
-        if cache.get(_contact_sends_key(ip), 0) >= settings.CONTACT_MAX_PER_HOUR:
+        scope = _contact_scope(request)
+        if cache.get(_contact_sends_key(scope), 0) >= settings.CONTACT_MAX_PER_HOUR:
             return render(
                 request,
                 "accounts/contact.html",
@@ -586,16 +615,26 @@ def contact(request):
                 status=429,
             )
 
-        form = ContactForm(request.POST)
+        form = form_class(request.POST)
         if form.is_valid():
             # A caught bot gets the same page a person gets. Saying "you
             # tripped the honeypot" only tells whoever wrote it which field
             # to leave alone next time.
             if not form.looks_automated:
                 try:
+                    # The account is the authority on who this is when
+                    # there is one; the form is only asked when there is not.
                     send_support_message(
-                        name=form.cleaned_data["name"],
-                        email=form.cleaned_data["email"],
+                        name=(
+                            request.user.username
+                            if signed_in
+                            else form.cleaned_data["name"]
+                        ),
+                        email=(
+                            request.user.email
+                            if signed_in
+                            else form.cleaned_data["email"]
+                        ),
                         message=form.cleaned_data["message"],
                     )
                 except Exception:
@@ -626,7 +665,7 @@ def contact(request):
                         },
                         status=503,
                     )
-                _record_contact_send(ip)
+                _record_contact_send(scope)
 
             messages.success(
                 request,

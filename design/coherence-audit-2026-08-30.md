@@ -219,7 +219,10 @@ increment is provable on its own and the cheap ones come first.
 - ~~**0a. A front door for the second factor**~~ — F6. **Done August 30,
   2026.** Preferences links `/accounts/security/` beside password and
   tokens.
-- **0b. A support path for signed-in people** — F7. **Open.**
+- ~~**0b. A support path for signed-in people**~~ — F7. **Done August 30,
+  2026.** Contact is in both branches of the app bar; the form stops asking
+  somebody with a session who they are, and the rate limit is keyed on the
+  account rather than the address.
 - **1. `POST /api/v1/areas`, and retire `new_list`** — F1. **Open.**
 - **2. Task writes onto `/api/v1/` as a typed router; retire `api.ts`** — F2.
   **Open.** The expensive one. Also removes the bespoke token path

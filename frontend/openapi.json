@@ -782,6 +782,386 @@
             "SessionAuth": []
           }
         ]
+      },
+      "patch": {
+        "operationId": "lists_api_v1_update_task",
+        "summary": "Update Task",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "schema": {
+              "title": "Item Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskUpdateOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Change exactly one thing about a task.\n\n**`__fields_set__` rather than a truthiness check**, because null is a real\nvalue for several of these: `due_date: null` clears a date, `list: null`\nunfiles a task, `bill: null` unmarks one. Treating absent and null alike\nwould make three deliberate operations unreachable.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskPatchIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "TokenAuth": []
+          },
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "lists_api_v1_delete_task",
+        "summary": "Delete Task",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "schema": {
+              "title": "Item Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeletedOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Session only, and deliberately not in `_TASK_WRITE`.\n\nThe view this replaces authenticated a bearer token and *then* answered\n403. Leaving `TokenAuth` off the operation says the same thing one step\nearlier and in a place `test_api_auth_surface.py` can read.\n\n**`SessionAuthIfLoggedIn()` explicitly rather than the API-wide default**,\nwhich is plain `SessionAuth` and runs its CSRF check *before* looking for a\nsession -- so an unauthenticated caller gets `403 CSRF check Failed`\ninstead of a 401, which is both the wrong status and a misleading reason.\nMoney's endpoints already name it for this reason; the older ones on this\nrouter inherit the default and still answer 403.",
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      }
+    },
+    "/api/v1/areas/{area_id}/tasks": {
+      "post": {
+        "operationId": "lists_api_v1_create_task",
+        "summary": "Create Task",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "area_id",
+            "schema": {
+              "title": "Area Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "A new task in one of your own areas.\n\nScoped in the lookup rather than checked afterwards, like every other\nid-taking surface here: somebody else's area is *not found* rather than\n*forbidden*, because answering differently confirms the id exists.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewTaskIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "TokenAuth": []
+          },
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      }
+    },
+    "/api/v1/areas/{area_id}/tasks/reorder": {
+      "post": {
+        "operationId": "lists_api_v1_reorder_tasks",
+        "summary": "Reorder Tasks",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "area_id",
+            "schema": {
+              "title": "Area Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TaskOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            }
+          }
+        },
+        "description": "Session only, and explicitly session-authed, for the two reasons\n`delete_task` gives.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReorderIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      }
+    },
+    "/api/v1/tasks/{task_id}/checklist-steps": {
+      "post": {
+        "operationId": "lists_api_v1_create_checklist_step",
+        "summary": "Create Checklist Step",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "schema": {
+              "title": "Task Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChecklistStepOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Session only. A checklist is a desk-sized act and the phone has no\nsurface for one, so this is not in `_TASK_WRITE`.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewChecklistStepIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      }
+    },
+    "/api/v1/tasks/{task_id}/checklist-steps/reorder": {
+      "post": {
+        "operationId": "lists_api_v1_reorder_checklist_steps",
+        "summary": "Reorder Checklist Steps",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "schema": {
+              "title": "Task Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ChecklistStepOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReorderIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      }
+    },
+    "/api/v1/checklist-steps/{step_id}": {
+      "patch": {
+        "operationId": "lists_api_v1_update_checklist_step",
+        "summary": "Update Checklist Step",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "step_id",
+            "schema": {
+              "title": "Step Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChecklistStepOut"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChecklistStepPatchIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "lists_api_v1_delete_checklist_step",
+        "summary": "Delete Checklist Step",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "step_id",
+            "schema": {
+              "title": "Step Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeletedOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      }
+    },
+    "/api/v1/checklist-steps/{step_id}/promote": {
+      "post": {
+        "operationId": "lists_api_v1_promote_checklist_step",
+        "summary": "Promote Checklist Step",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "step_id",
+            "schema": {
+              "title": "Step Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Turns a step into a task of its own. The step no longer exists after.",
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
       }
     },
     "/api/v1/projects": {
@@ -4460,6 +4840,369 @@
           "reorder_checklist_steps_url"
         ],
         "title": "TaskDetailOut",
+        "type": "object"
+      },
+      "TaskUpdateOut": {
+        "description": "A task, and the successor that completing it may have produced.\n\n**A named result rather than the `{\"data\": ...}` envelope it replaces.**\nCompleting a recurring task really does create a second task in the same\nrequest, and the Agenda shows it without refetching -- so returning a bare\n`TaskOut` would be a silent regression no type could catch. Everything else\non this router returns its resource directly.",
+        "properties": {
+          "task": {
+            "$ref": "#/components/schemas/TaskOut"
+          },
+          "spawned": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TaskOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "spawned_checklist_steps": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ChecklistStepOut"
+            },
+            "title": "Spawned Checklist Steps",
+            "type": "array"
+          }
+        },
+        "required": [
+          "task"
+        ],
+        "title": "TaskUpdateOut",
+        "type": "object"
+      },
+      "BillIn": {
+        "properties": {
+          "amount": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          },
+          "currency": {
+            "default": "USD",
+            "title": "Currency",
+            "type": "string"
+          },
+          "payee": {
+            "default": "",
+            "title": "Payee",
+            "type": "string"
+          }
+        },
+        "title": "BillIn",
+        "type": "object"
+      },
+      "TaskPatchIn": {
+        "description": "Exactly one of these per request, which is the discipline the view this\nreplaces ran on and is kept deliberately.\n\nTwo fields in one body is ambiguous about ordering and about which failure\nrolls back which change; zero is a request that means nothing. Every field\nis optional *and* nullable here because several of them mean something when\nnull -- clearing a due date, unfiling a task, unmarking a bill -- so\n\"absent\" and \"sent as null\" have to stay distinguishable, which is what\n`__fields_set__` below reads.",
+        "properties": {
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "active",
+                  "completed",
+                  "archived"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tags"
+          },
+          "recurrence": {
+            "anyOf": [
+              {
+                "enum": [
+                  "none",
+                  "daily",
+                  "weekly",
+                  "fortnightly",
+                  "monthly",
+                  "quarterly",
+                  "annual"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recurrence"
+          },
+          "cadence_mode": {
+            "anyOf": [
+              {
+                "enum": [
+                  "anchored",
+                  "floating"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cadence Mode"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "area_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Area Id"
+          },
+          "priority": {
+            "anyOf": [
+              {
+                "enum": [
+                  "none",
+                  "high",
+                  "low"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Priority"
+          },
+          "bill": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BillIn"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lead_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lead Days"
+          }
+        },
+        "title": "TaskPatchIn",
+        "type": "object"
+      },
+      "DeletedOut": {
+        "description": "What a delete answers with.\n\nDeclared rather than left as a bare dict: an endpoint with no `response=`\ngenerates as `undefined` in the client contract, so the one field it\nreturns was invisible to the type checker -- which is the whole point of\nmoving these here.",
+        "properties": {
+          "deleted": {
+            "title": "Deleted",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "deleted"
+        ],
+        "title": "DeletedOut",
+        "type": "object"
+      },
+      "NewTaskIn": {
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tags"
+          },
+          "recurrence": {
+            "anyOf": [
+              {
+                "enum": [
+                  "none",
+                  "daily",
+                  "weekly",
+                  "fortnightly",
+                  "monthly",
+                  "quarterly",
+                  "annual"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recurrence"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "NewTaskIn",
+        "type": "object"
+      },
+      "ReorderIn": {
+        "properties": {
+          "ordered_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Ordered Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "ordered_ids"
+        ],
+        "title": "ReorderIn",
+        "type": "object"
+      },
+      "NewChecklistStepIn": {
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "carries_forward": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Carries Forward"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "NewChecklistStepIn",
+        "type": "object"
+      },
+      "ChecklistStepPatchIn": {
+        "description": "One field per request, as the task endpoint above does and for the same\nreasons.",
+        "properties": {
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text"
+          },
+          "is_done": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Done"
+          },
+          "carries_forward": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Carries Forward"
+          }
+        },
+        "title": "ChecklistStepPatchIn",
         "type": "object"
       },
       "ProjectAreaOut": {

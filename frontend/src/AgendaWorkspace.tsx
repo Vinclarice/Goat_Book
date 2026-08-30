@@ -403,7 +403,7 @@ export function AgendaWorkspace({ initialData }: Props) {
     setError("");
     try {
       const created = await createTask(
-        target.create_item_url,
+        target.id,
         text,
         draftDue || null,
       );

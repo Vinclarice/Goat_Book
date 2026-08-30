@@ -4,16 +4,15 @@ import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import { TaskWorkspace as BareTaskWorkspace } from "./TaskWorkspace";
-import { task } from "./test/fixtures";
+import {
+  apiResponse,
+  requestedPaths,
+  sentRequests,
+  task,
+  taskWrite,
+} from "./test/fixtures";
 import type { Task } from "./types";
 
-function jsonResponse(data: object, ok = true) {
-  return Promise.resolve({
-    ok,
-    status: ok ? 200 : 400,
-    json: () => Promise.resolve(data),
-  } as Response);
-}
 
 const NAV_SEED = {
   areas: [],
@@ -151,7 +150,7 @@ describe("TaskWorkspace", () => {
     // were the ones that did not.
     const user = userEvent.setup();
     vi.spyOn(globalThis, "fetch").mockReturnValue(
-      jsonResponse({ data: task({ status: "completed" }) }),
+      taskWrite(task({ status: "completed" })),
     );
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false } },
@@ -189,7 +188,7 @@ describe("TaskWorkspace", () => {
       completed_at: "2026-07-24T12:30:00-04:00",
     });
     vi.spyOn(globalThis, "fetch").mockReturnValue(
-      jsonResponse({ data: completed }),
+      taskWrite(completed),
     );
     render(
       <TaskWorkspace
@@ -211,10 +210,7 @@ describe("TaskWorkspace", () => {
     await waitFor(() =>
       expect(screen.getByRole("button", { name: "Reopen" })).toBeInTheDocument(),
     );
-    expect(fetch).toHaveBeenCalledWith(
-      "/api/items/1/",
-      expect.objectContaining({ method: "PATCH" }),
-    );
+    expect(requestedPaths(fetch as never)).toContain("/api/v1/tasks/1");
   });
 
   it("disables the affected task while a server change is pending", async () => {
@@ -245,12 +241,12 @@ describe("TaskWorkspace", () => {
     expect(screen.getByText("Write tests")).toBeInTheDocument();
 
     finishRequest(
-      await jsonResponse({
-        data: task({
+      await taskWrite(
+        task({
           status: "completed",
           completed_at: "2026-07-24T12:30:00-04:00",
         }),
-      }),
+      ),
     );
     await waitFor(() =>
       expect(screen.getByRole("button", { name: "Reopen" })).toBeInTheDocument(),
@@ -260,7 +256,7 @@ describe("TaskWorkspace", () => {
   it("keeps the previous task text when editing fails", async () => {
     const user = userEvent.setup();
     vi.spyOn(globalThis, "fetch").mockReturnValue(
-      jsonResponse({ errors: { text: ["Duplicate task."] } }, false),
+      apiResponse({ detail: "Duplicate task." }, false),
     );
     render(
       <TaskWorkspace
@@ -313,7 +309,7 @@ describe("TaskWorkspace", () => {
   it("sends a due date update when the due date field changes", async () => {
     const user = userEvent.setup();
     vi.spyOn(globalThis, "fetch").mockReturnValue(
-      jsonResponse({ data: task({ due_date: "2026-08-01" }) }),
+      taskWrite(task({ due_date: "2026-08-01" })),
     );
     render(
       <TaskWorkspace
@@ -333,14 +329,12 @@ describe("TaskWorkspace", () => {
     const dueDateInput = screen.getByLabelText("Change due date for Write tests");
     await user.type(dueDateInput, "2026-08-01");
 
-    await waitFor(() =>
-      expect(fetch).toHaveBeenCalledWith(
-        "/api/items/1/",
-        expect.objectContaining({
-          method: "PATCH",
-          body: JSON.stringify({ due_date: "2026-08-01" }),
-        }),
-      ),
+    await waitFor(async () =>
+      expect(await sentRequests(fetch as never)).toContainEqual({
+        path: "/api/v1/tasks/1",
+        method: "PATCH",
+        body: JSON.stringify({ due_date: "2026-08-01" }),
+      }),
     );
   });
 
@@ -348,7 +342,7 @@ describe("TaskWorkspace", () => {
     const first = task({ id: 1, text: "First" });
     const second = task({ id: 2, text: "Second" });
     vi.spyOn(globalThis, "fetch").mockReturnValue(
-      jsonResponse({ data: [second, first] }),
+      apiResponse([second, first]),
     );
     render(
       <TaskWorkspace
@@ -368,14 +362,12 @@ describe("TaskWorkspace", () => {
     fireEvent.dragStart(screen.getByText("First").closest("article")!);
     fireEvent.drop(screen.getByText("Second").closest("article")!);
 
-    await waitFor(() =>
-      expect(fetch).toHaveBeenCalledWith(
-        "/api/areas/1/items/reorder/",
-        expect.objectContaining({
-          method: "POST",
-          body: JSON.stringify({ ordered_ids: [2, 1] }),
-        }),
-      ),
+    await waitFor(async () =>
+      expect(await sentRequests(fetch as never)).toContainEqual({
+        path: "/api/v1/areas/1/tasks/reorder",
+        method: "POST",
+        body: JSON.stringify({ ordered_ids: [2, 1] }),
+      }),
     );
   });
 
@@ -505,11 +497,15 @@ describe("TaskWorkspace", () => {
       recurrence: "weekly",
       status: "active",
     });
+    // Dispatched on the Request's path rather than on a url string:
+    // openapi-fetch builds a Request and calls fetch(request), where the
+    // hand-rolled client called fetch(url, init).
     vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
-      if (input === "/api/items/1/") return jsonResponse({ data: plainCompleted });
-      if (input === "/api/items/2/")
-        return jsonResponse({ data: recurringArchived, spawned });
-      throw new Error(`unexpected fetch: ${input}`);
+      const path = new URL((input as Request).url).pathname;
+      if (path === "/api/v1/tasks/1") return taskWrite(plainCompleted);
+      if (path === "/api/v1/tasks/2")
+        return taskWrite(recurringArchived, { spawned });
+      throw new Error(`unexpected fetch: ${path}`);
     });
     render(
       <TaskWorkspace
@@ -555,9 +551,10 @@ describe("TaskWorkspace", () => {
       status: "archived",
     });
     vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
-      if (input === "/api/items/1/") return jsonResponse({ data: firstArchived });
-      if (input === "/api/items/2/") return jsonResponse({ data: secondArchived });
-      throw new Error(`unexpected fetch: ${input}`);
+      const path = new URL((input as Request).url).pathname;
+      if (path === "/api/v1/tasks/1") return taskWrite(firstArchived);
+      if (path === "/api/v1/tasks/2") return taskWrite(secondArchived);
+      throw new Error(`unexpected fetch: ${path}`);
     });
     render(
       <TaskWorkspace
@@ -588,7 +585,7 @@ describe("TaskWorkspace", () => {
   it("removes a single tag by clicking its × without touching the others", async () => {
     const user = userEvent.setup();
     vi.spyOn(globalThis, "fetch").mockReturnValue(
-      jsonResponse({ data: task({ tags: ["home"] }) }),
+      taskWrite(task({ tags: ["home"] })),
     );
     render(
       <TaskWorkspace
@@ -608,14 +605,12 @@ describe("TaskWorkspace", () => {
     const article = screen.getByText("Write tests").closest("article")!;
     await user.click(within(article).getByRole("button", { name: "Remove tag groceries" }));
 
-    await waitFor(() =>
-      expect(fetch).toHaveBeenCalledWith(
-        "/api/items/1/",
-        expect.objectContaining({
-          method: "PATCH",
-          body: JSON.stringify({ tags: ["home"] }),
-        }),
-      ),
+    await waitFor(async () =>
+      expect(await sentRequests(fetch as never)).toContainEqual({
+        path: "/api/v1/tasks/1",
+        method: "PATCH",
+        body: JSON.stringify({ tags: ["home"] }),
+      }),
     );
     await waitFor(() => expect(within(article).getByText("home")).toBeInTheDocument());
     expect(within(article).queryByText("groceries")).not.toBeInTheDocument();
@@ -624,7 +619,7 @@ describe("TaskWorkspace", () => {
   it("adds one or more tags via the + tag input without disturbing the existing set", async () => {
     const user = userEvent.setup();
     vi.spyOn(globalThis, "fetch").mockReturnValue(
-      jsonResponse({ data: task({ tags: ["home", "work", "urgent"] }) }),
+      taskWrite(task({ tags: ["home", "work", "urgent"] })),
     );
     render(
       <TaskWorkspace
@@ -646,14 +641,12 @@ describe("TaskWorkspace", () => {
     await user.type(addInput, "work, urgent");
     fireEvent.blur(addInput);
 
-    await waitFor(() =>
-      expect(fetch).toHaveBeenCalledWith(
-        "/api/items/1/",
-        expect.objectContaining({
-          method: "PATCH",
-          body: JSON.stringify({ tags: ["home", "work", "urgent"] }),
-        }),
-      ),
+    await waitFor(async () =>
+      expect(await sentRequests(fetch as never)).toContainEqual({
+        path: "/api/v1/tasks/1",
+        method: "PATCH",
+        body: JSON.stringify({ tags: ["home", "work", "urgent"] }),
+      }),
     );
     await waitFor(() => expect(within(article).getByText("work")).toBeInTheDocument());
     expect(within(article).getByPlaceholderText("+ tag")).toHaveValue("");
@@ -701,7 +694,7 @@ describe("TaskWorkspace", () => {
       status: "active",
     });
     vi.spyOn(globalThis, "fetch").mockReturnValue(
-      jsonResponse({ data: archived, spawned }),
+      taskWrite(archived, { spawned }),
     );
     render(
       <TaskWorkspace
@@ -728,7 +721,7 @@ describe("TaskWorkspace", () => {
   it("sends tags on task creation", async () => {
     const user = userEvent.setup();
     vi.spyOn(globalThis, "fetch").mockReturnValue(
-      jsonResponse({ data: task({ tags: ["groceries", "home"] }) }),
+      taskWrite(task({ tags: ["groceries", "home"] })),
     );
     render(
       <TaskWorkspace
@@ -749,19 +742,17 @@ describe("TaskWorkspace", () => {
     await user.type(screen.getByLabelText(/Tags/), "groceries, home");
     await user.click(screen.getByRole("button", { name: "Add item" }));
 
-    await waitFor(() =>
-      expect(fetch).toHaveBeenCalledWith(
-        "/api/areas/1/items/",
-        expect.objectContaining({
-          method: "POST",
-          body: JSON.stringify({
+    await waitFor(async () =>
+      expect(await sentRequests(fetch as never)).toContainEqual({
+        path: "/api/v1/areas/1/tasks",
+        method: "POST",
+        body: JSON.stringify({
             text: "Buy milk",
             due_date: null,
             tags: ["groceries", "home"],
             recurrence: "none",
           }),
-        }),
-      ),
+      }),
     );
   });
 });

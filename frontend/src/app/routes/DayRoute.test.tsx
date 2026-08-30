@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router";
 
 import { DayRoute } from "./DayRoute";
+import { sentRequests } from "../../test/fixtures";
 
 function jsonResponse(data: object, ok = true, status = ok ? 200 : 500) {
   const body = JSON.stringify(data);
@@ -811,8 +812,12 @@ describe("DayRoute", () => {
       .spyOn(globalThis, "fetch")
       .mockImplementation((input, init) => {
         const { url, method } = called(input, init);
-        if (method === "PATCH" && url.includes("/api/items/1/")) {
-          return jsonResponse({ data: { ...focusRow(), status: "completed" } });
+        if (method === "PATCH" && url.includes("/api/v1/tasks/1")) {
+          return jsonResponse({
+            task: { ...focusRow(), status: "completed" },
+            spawned: null,
+            spawned_checklist_steps: [],
+          });
         }
         return jsonResponse(dayData({ focus: [focusRow()] }));
       });
@@ -826,7 +831,7 @@ describe("DayRoute", () => {
       const patched = fetchSpy.mock.calls
         .map(([input, init]) => called(input, init))
         .find((call) => call.method === "PATCH");
-      expect(patched?.url).toContain("/api/items/1/");
+      expect(patched?.url).toContain("/api/v1/tasks/1");
     });
   });
 
@@ -838,21 +843,21 @@ describe("DayRoute", () => {
     //
     // Not carry-forward. daily-operating-system-vision.md forbids rewriting
     // due dates *automatically*; "one item, one decision" is exactly this.
-    const called = (input: unknown, init?: RequestInit) =>
-      typeof input === "string"
-        ? { url: input, method: init?.method, body: init?.body }
-        : {
-            url: (input as Request).url,
-            method: (input as Request).method,
-            body: undefined,
-          };
-
+    // `called()` stood here and returned `body: undefined` for a Request,
+    // which was fine while task writes came through the hand-rolled client as
+    // (url, init). They are Requests now, so the body has to be read
+    // asynchronously -- see sentRequests.
     const fetchSpy = vi
       .spyOn(globalThis, "fetch")
-      .mockImplementation((input, init) => {
-        const { url, method } = called(input, init);
-        if (method === "PATCH" && url.includes("/api/items/1/")) {
-          return jsonResponse({ data: focusRow({ due_date: "2026-08-04" }) });
+      .mockImplementation((input) => {
+        const request = input as Request;
+        const { url, method } = request;
+        if (method === "PATCH" && url.includes("/api/v1/tasks/1")) {
+          return jsonResponse({
+            task: focusRow({ due_date: "2026-08-04" }),
+            spawned: null,
+            spawned_checklist_steps: [],
+          });
         }
         return jsonResponse(dayData({ focus: [focusRow()] }));
       });
@@ -862,11 +867,11 @@ describe("DayRoute", () => {
       await screen.findByRole("button", { name: "Move Pay rent to tomorrow" }),
     );
 
-    await waitFor(() => {
-      const patched = fetchSpy.mock.calls
-        .map(([input, init]) => called(input, init))
-        .find((call) => call.method === "PATCH");
-      expect(patched?.url).toContain("/api/items/1/");
+    await waitFor(async () => {
+      const patched = (await sentRequests(fetchSpy)).find(
+        (call) => call.method === "PATCH",
+      );
+      expect(patched?.path).toContain("/api/v1/tasks/1");
       expect(JSON.parse(String(patched?.body))).toEqual({
         due_date: "2026-08-04",
       });

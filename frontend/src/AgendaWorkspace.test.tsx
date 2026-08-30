@@ -4,15 +4,17 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router";
 
 import { AgendaWorkspace } from "./AgendaWorkspace";
-import { agendaData, agendaArea, agendaProject, task, TODAY } from "./test/fixtures";
-
-function jsonResponse(data: object, ok = true) {
-  return Promise.resolve({
-    ok,
-    status: ok ? 200 : 400,
-    json: () => Promise.resolve(data),
-  } as Response);
-}
+import {
+  agendaData,
+  agendaArea,
+  agendaProject,
+  apiResponse,
+  requestedPaths,
+  sentRequests,
+  task,
+  taskWrite,
+  TODAY,
+} from "./test/fixtures";
 
 const home = { id: 2, title: "Home", url: "/areas/2/" };
 
@@ -252,7 +254,7 @@ describe("AgendaWorkspace", () => {
       status: "completed" as const,
     };
     vi.spyOn(globalThis, "fetch").mockImplementation(() =>
-      jsonResponse({ data: completed }),
+      taskWrite(completed),
     );
     renderAgenda();
 
@@ -272,8 +274,7 @@ describe("AgendaWorkspace", () => {
   it("adds the next occurrence when a recurring task is completed", async () => {
     const user = userEvent.setup();
     vi.spyOn(globalThis, "fetch").mockImplementation(() =>
-      jsonResponse({
-        data: { ...task({ id: 2 }), status: "archived" },
+      taskWrite({ ...task({ id: 2 }), status: "archived" }, {
         spawned: task({
           id: 99,
           text: "Ship the fix",
@@ -299,9 +300,7 @@ describe("AgendaWorkspace", () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")
       .mockImplementation(() =>
-        jsonResponse({
-          data: task({ id: 2, text: "Ship the fix", due_date: "2026-07-29" }),
-        }),
+        taskWrite(task({ id: 2, text: "Ship the fix", due_date: "2026-07-29" })),
       );
     renderAgenda();
 
@@ -311,8 +310,8 @@ describe("AgendaWorkspace", () => {
     await waitFor(() =>
       expect(screen.getByText(/Moved “Ship the fix” to tomorrow/)).toBeInTheDocument(),
     );
-    const [, options] = fetchMock.mock.calls[0];
-    expect(JSON.parse(String(options?.body))).toEqual({
+    const [sent] = await sentRequests(fetchMock);
+    expect(JSON.parse(sent.body)).toEqual({
       due_date: "2026-07-29",
     });
   });
@@ -322,13 +321,9 @@ describe("AgendaWorkspace", () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")
       .mockImplementation(() =>
-        jsonResponse({
-          data: task({
-            id: 5,
-            text: "Refactor services",
-            due_date: "2026-08-03",
-          }),
-        }),
+        taskWrite(
+          task({ id: 5, text: "Refactor services", due_date: "2026-08-03" }),
+        ),
       );
     renderAgenda();
 
@@ -341,8 +336,8 @@ describe("AgendaWorkspace", () => {
         screen.getByText(/Moved “Refactor services” to next week/),
       ).toBeInTheDocument(),
     );
-    const [, options] = fetchMock.mock.calls[0];
-    expect(JSON.parse(String(options?.body))).toEqual({
+    const [sent] = await sentRequests(fetchMock);
+    expect(JSON.parse(sent.body)).toEqual({
       due_date: "2026-08-03",
     });
   });
@@ -352,9 +347,7 @@ describe("AgendaWorkspace", () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")
       .mockImplementation(() =>
-        jsonResponse({
-          data: task({ id: 2, text: "Ship the fix", due_date: null }),
-        }),
+        taskWrite(task({ id: 2, text: "Ship the fix", due_date: null })),
       );
     renderAgenda();
 
@@ -366,8 +359,8 @@ describe("AgendaWorkspace", () => {
         screen.getByText(/Cleared the due date on “Ship the fix”/),
       ).toBeInTheDocument(),
     );
-    const [, options] = fetchMock.mock.calls[0];
-    expect(JSON.parse(String(options?.body))).toEqual({ due_date: null });
+    const [sent] = await sentRequests(fetchMock);
+    expect(JSON.parse(sent.body)).toEqual({ due_date: null });
   });
 
   it("leaves clear out of the menu when there is no date to clear", async () => {
@@ -395,10 +388,7 @@ describe("AgendaWorkspace", () => {
   it("adds a task to the selected list", async () => {
     const user = userEvent.setup();
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(() =>
-      jsonResponse(
-        { data: task({ id: 6, text: "Water the plants", area_id: home.id }) },
-        true,
-      ),
+      taskWrite(task({ id: 6, text: "Water the plants", area_id: home.id })),
     );
     renderAgenda();
 
@@ -409,16 +399,16 @@ describe("AgendaWorkspace", () => {
     await waitFor(() =>
       expect(screen.getByText(/Added “Water the plants” to Home/)).toBeInTheDocument(),
     );
-    expect(fetchMock.mock.calls[0][0]).toBe("/api/areas/1/items/");
+    // Area 2, which is the one the test selects. This asserted area 1 and
+    // passed, because agendaArea() gave every area area 1's create url --
+    // see that fixture. Addressing the endpoint by id is what exposed it.
+    expect(requestedPaths(fetchMock)).toContain("/api/v1/areas/2/tasks");
   });
 
   it("surfaces a server error instead of losing the task", async () => {
     const user = userEvent.setup();
     vi.spyOn(globalThis, "fetch").mockImplementation(() =>
-      jsonResponse(
-        { errors: { text: ["You've already got this in your list"] } },
-        false,
-      ),
+      apiResponse({ detail: "You've already got this in your list" }, false),
     );
     renderAgenda();
 
@@ -451,33 +441,16 @@ describe("AgendaWorkspace", () => {
   });
 
   it("creates a project and navigates to its own page", async () => {
-    // project-workspace-plan.md: unlike "New area", a Project is API-only,
-    // so creating one goes through a mutation and the SPA router rather
-    // than a plain form POST. apiV1 (openapi-fetch) needs a fuller Response
-    // shape than this file's own plain jsonResponse gives api.ts's calls.
-    function openapiResponse(data: object) {
-      const body = JSON.stringify(data);
-      return Promise.resolve({
-        ok: true,
-        status: 200,
-        headers: new Headers({
-          "content-type": "application/json",
-          "content-length": String(body.length),
-        }),
-        json: () => Promise.resolve(data),
-        text: () => Promise.resolve(body),
-        clone() {
-          return this;
-        },
-      } as unknown as Response);
-    }
+    // project-workspace-plan.md: a Project is API-only, so creating one goes
+    // through a mutation and the SPA router rather than a plain form POST.
+    // Its sibling card does the same since coherence-audit-2026-08-30.md F1.
     const user = userEvent.setup();
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const request = input as Request;
       if (request.method === "POST" && request.url.includes("/api/v1/projects")) {
-        return openapiResponse({ id: 9, title: "Website Relaunch" });
+        return apiResponse({ id: 9, title: "Website Relaunch" });
       }
-      return jsonResponse({});
+      return apiResponse({});
     });
     renderAgenda();
 
@@ -500,34 +473,18 @@ describe("AgendaWorkspace", () => {
     // POST that reloaded the page, sitting next to a typed mutation doing
     // the same job -- the clearest instance of the seam the audit is about.
     // No first task any more either: the sibling does not ask for one.
-    function openapiResponse(data: object) {
-      const body = JSON.stringify(data);
-      return Promise.resolve({
-        ok: true,
-        status: 200,
-        headers: new Headers({
-          "content-type": "application/json",
-          "content-length": String(body.length),
-        }),
-        json: () => Promise.resolve(data),
-        text: () => Promise.resolve(body),
-        clone() {
-          return this;
-        },
-      } as unknown as Response);
-    }
     const user = userEvent.setup();
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const request = input as Request;
       if (request.method === "POST" && request.url.includes("/api/v1/areas")) {
-        return openapiResponse({
+        return apiResponse({
           id: 12,
           title: "Home",
           create_item_url: "/api/areas/12/items/",
           reorder_url: "/api/areas/12/items/reorder/",
         });
       }
-      return jsonResponse({});
+      return apiResponse({});
     });
     renderAgenda();
 

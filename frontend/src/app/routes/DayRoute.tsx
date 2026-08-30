@@ -108,7 +108,7 @@ function FocusList({
               </span>
             )}
             {/* A deleted task leaves the record but nothing to address. */}
-            {item.url !== null && item.status !== "completed" && (
+            {item.task_id !== null && item.status !== "completed" && (
               <Button
                 type="button"
                 variant="ghost"
@@ -119,7 +119,7 @@ function FocusList({
                 Complete
               </Button>
             )}
-            {item.url !== null && item.status !== "completed" && (
+            {item.task_id !== null && item.status !== "completed" && (
               <Button
                 type="button"
                 variant="ghost"
@@ -865,9 +865,14 @@ export function DayRoute() {
   // can assemble. The draft survives a refetch by design; there is a test.
   const completeMutation = useMutation({
     mutationFn: async (item: Focus) => {
-      if (!item.url) throw new Error("Couldn't complete that.");
+      // **`task_id`, not `url`.** The client addresses a task by id since
+      // coherence-audit-2026-08-30.md F2, so a stand-in carrying only a url
+      // produced a request with `{item_id}` still in the path. Both fields are
+      // null in exactly the same case -- a pin whose task was deleted -- so
+      // this is the same guard said directly.
+      if (item.task_id === null) throw new Error("Couldn't complete that.");
       return updateTaskStatus(
-        { url: item.url } as Parameters<typeof updateTaskStatus>[0],
+        { id: item.task_id } as Parameters<typeof updateTaskStatus>[0],
         "completed",
       );
     },
@@ -894,9 +899,9 @@ export function DayRoute() {
       const tomorrow = snoozePresets(data?.today ?? "").find(
         (preset) => preset.key === "tomorrow",
       );
-      if (!item.url || !tomorrow) throw new Error("Couldn't move that.");
+      if (item.task_id === null || !tomorrow) throw new Error("Couldn't move that.");
       return updateTaskDueDate(
-        { url: item.url } as Parameters<typeof updateTaskDueDate>[0],
+        { id: item.task_id } as Parameters<typeof updateTaskDueDate>[0],
         tomorrow.dueDate,
       );
     },

@@ -112,7 +112,6 @@ export function TaskDetailRoute() {
   const [tagsDraft, setTagsDraft] = useState("");
   const [notesDraft, setNotesDraft] = useState("");
   const [checklistSteps, setChecklistSteps] = useState<ChecklistStep[]>([]);
-  const [createStepUrl, setCreateStepUrl] = useState("");
   const [stepDraft, setStepDraft] = useState("");
   const [stepCarriesForward, setStepCarriesForward] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -154,7 +153,6 @@ export function TaskDetailRoute() {
     setTagsDraft(data.task.tags.join(", "));
     setNotesDraft(data.task.notes);
     setChecklistSteps((data.checklist_steps ?? []) as ChecklistStep[]);
-    setCreateStepUrl(data.create_checklist_step_url ?? "");
   }, [data, id]);
 
   async function handleSaveText(event: FormEvent) {
@@ -239,18 +237,14 @@ export function TaskDetailRoute() {
 
   async function handleAddStep(event: FormEvent) {
     event.preventDefault();
-    if (!createStepUrl) return;
+    if (!Number.isFinite(id)) return;
     const text = stepDraft.trim();
     if (!text) return;
     setError(null);
     setNotice(null);
     setBusy(true);
     try {
-      const created = await createChecklistStep(
-        createStepUrl,
-        text,
-        stepCarriesForward,
-      );
+      const created = await createChecklistStep(id, text, stepCarriesForward);
       setChecklistSteps((current) => [...current, created]);
       setStepDraft("");
       // Back to the default: opting a step out is a per-step decision, not a

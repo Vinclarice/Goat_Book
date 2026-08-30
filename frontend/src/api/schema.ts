@@ -424,6 +424,151 @@ export interface paths {
         get: operations["lists_api_v1_task_detail"];
         put?: never;
         post?: never;
+        /**
+         * Delete Task
+         * @description Session only, and deliberately not in `_TASK_WRITE`.
+         *
+         *     The view this replaces authenticated a bearer token and *then* answered
+         *     403. Leaving `TokenAuth` off the operation says the same thing one step
+         *     earlier and in a place `test_api_auth_surface.py` can read.
+         *
+         *     **`SessionAuthIfLoggedIn()` explicitly rather than the API-wide default**,
+         *     which is plain `SessionAuth` and runs its CSRF check *before* looking for a
+         *     session -- so an unauthenticated caller gets `403 CSRF check Failed`
+         *     instead of a 401, which is both the wrong status and a misleading reason.
+         *     Money's endpoints already name it for this reason; the older ones on this
+         *     router inherit the default and still answer 403.
+         */
+        delete: operations["lists_api_v1_delete_task"];
+        options?: never;
+        head?: never;
+        /**
+         * Update Task
+         * @description Change exactly one thing about a task.
+         *
+         *     **`__fields_set__` rather than a truthiness check**, because null is a real
+         *     value for several of these: `due_date: null` clears a date, `list: null`
+         *     unfiles a task, `bill: null` unmarks one. Treating absent and null alike
+         *     would make three deliberate operations unreachable.
+         */
+        patch: operations["lists_api_v1_update_task"];
+        trace?: never;
+    };
+    "/api/v1/areas/{area_id}/tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Task
+         * @description A new task in one of your own areas.
+         *
+         *     Scoped in the lookup rather than checked afterwards, like every other
+         *     id-taking surface here: somebody else's area is *not found* rather than
+         *     *forbidden*, because answering differently confirms the id exists.
+         */
+        post: operations["lists_api_v1_create_task"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/areas/{area_id}/tasks/reorder": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reorder Tasks
+         * @description Session only, and explicitly session-authed, for the two reasons
+         *     `delete_task` gives.
+         */
+        post: operations["lists_api_v1_reorder_tasks"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tasks/{task_id}/checklist-steps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Checklist Step
+         * @description Session only. A checklist is a desk-sized act and the phone has no
+         *     surface for one, so this is not in `_TASK_WRITE`.
+         */
+        post: operations["lists_api_v1_create_checklist_step"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tasks/{task_id}/checklist-steps/reorder": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reorder Checklist Steps */
+        post: operations["lists_api_v1_reorder_checklist_steps"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/checklist-steps/{step_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Checklist Step */
+        delete: operations["lists_api_v1_delete_checklist_step"];
+        options?: never;
+        head?: never;
+        /** Update Checklist Step */
+        patch: operations["lists_api_v1_update_checklist_step"];
+        trace?: never;
+    };
+    "/api/v1/checklist-steps/{step_id}/promote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Promote Checklist Step
+         * @description Turns a step into a task of its own. The step no longer exists after.
+         */
+        post: operations["lists_api_v1_promote_checklist_step"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2232,6 +2377,124 @@ export interface components {
             create_checklist_step_url: string;
             /** Reorder Checklist Steps Url */
             reorder_checklist_steps_url: string;
+        };
+        /**
+         * TaskUpdateOut
+         * @description A task, and the successor that completing it may have produced.
+         *
+         *     **A named result rather than the `{"data": ...}` envelope it replaces.**
+         *     Completing a recurring task really does create a second task in the same
+         *     request, and the Agenda shows it without refetching -- so returning a bare
+         *     `TaskOut` would be a silent regression no type could catch. Everything else
+         *     on this router returns its resource directly.
+         */
+        TaskUpdateOut: {
+            task: components["schemas"]["TaskOut"];
+            spawned?: components["schemas"]["TaskOut"] | null;
+            /**
+             * Spawned Checklist Steps
+             * @default []
+             */
+            spawned_checklist_steps: components["schemas"]["ChecklistStepOut"][];
+        };
+        /** BillIn */
+        BillIn: {
+            /** Amount */
+            amount?: string | null;
+            /**
+             * Currency
+             * @default USD
+             */
+            currency: string;
+            /**
+             * Payee
+             * @default
+             */
+            payee: string;
+        };
+        /**
+         * TaskPatchIn
+         * @description Exactly one of these per request, which is the discipline the view this
+         *     replaces ran on and is kept deliberately.
+         *
+         *     Two fields in one body is ambiguous about ordering and about which failure
+         *     rolls back which change; zero is a request that means nothing. Every field
+         *     is optional *and* nullable here because several of them mean something when
+         *     null -- clearing a due date, unfiling a task, unmarking a bill -- so
+         *     "absent" and "sent as null" have to stay distinguishable, which is what
+         *     `__fields_set__` below reads.
+         */
+        TaskPatchIn: {
+            /** Text */
+            text?: string | null;
+            /** Status */
+            status?: ("active" | "completed" | "archived") | null;
+            /** Due Date */
+            due_date?: string | null;
+            /** Tags */
+            tags?: string[] | null;
+            /** Recurrence */
+            recurrence?: ("none" | "daily" | "weekly" | "fortnightly" | "monthly" | "quarterly" | "annual") | null;
+            /** Cadence Mode */
+            cadence_mode?: ("anchored" | "floating") | null;
+            /** Notes */
+            notes?: string | null;
+            /** Area Id */
+            area_id?: number | null;
+            /** Priority */
+            priority?: ("none" | "high" | "low") | null;
+            bill?: components["schemas"]["BillIn"] | null;
+            /** Lead Days */
+            lead_days?: number | null;
+        };
+        /**
+         * DeletedOut
+         * @description What a delete answers with.
+         *
+         *     Declared rather than left as a bare dict: an endpoint with no `response=`
+         *     generates as `undefined` in the client contract, so the one field it
+         *     returns was invisible to the type checker -- which is the whole point of
+         *     moving these here.
+         */
+        DeletedOut: {
+            /** Deleted */
+            deleted: number;
+        };
+        /** NewTaskIn */
+        NewTaskIn: {
+            /** Text */
+            text: string;
+            /** Due Date */
+            due_date?: string | null;
+            /** Tags */
+            tags?: string[] | null;
+            /** Recurrence */
+            recurrence?: ("none" | "daily" | "weekly" | "fortnightly" | "monthly" | "quarterly" | "annual") | null;
+        };
+        /** ReorderIn */
+        ReorderIn: {
+            /** Ordered Ids */
+            ordered_ids: number[];
+        };
+        /** NewChecklistStepIn */
+        NewChecklistStepIn: {
+            /** Text */
+            text: string;
+            /** Carries Forward */
+            carries_forward?: boolean | null;
+        };
+        /**
+         * ChecklistStepPatchIn
+         * @description One field per request, as the task endpoint above does and for the same
+         *     reasons.
+         */
+        ChecklistStepPatchIn: {
+            /** Text */
+            text?: string | null;
+            /** Is Done */
+            is_done?: boolean | null;
+            /** Carries Forward */
+            carries_forward?: boolean | null;
         };
         /** ProjectAreaOut */
         ProjectAreaOut: {
@@ -4314,6 +4577,228 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TaskDetailOut"];
+                };
+            };
+        };
+    };
+    lists_api_v1_delete_task: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeletedOut"];
+                };
+            };
+        };
+    };
+    lists_api_v1_update_task: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TaskPatchIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskUpdateOut"];
+                };
+            };
+        };
+    };
+    lists_api_v1_create_task: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                area_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewTaskIn"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskOut"];
+                };
+            };
+        };
+    };
+    lists_api_v1_reorder_tasks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                area_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReorderIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskOut"][];
+                };
+            };
+        };
+    };
+    lists_api_v1_create_checklist_step: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewChecklistStepIn"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChecklistStepOut"];
+                };
+            };
+        };
+    };
+    lists_api_v1_reorder_checklist_steps: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReorderIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChecklistStepOut"][];
+                };
+            };
+        };
+    };
+    lists_api_v1_delete_checklist_step: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                step_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeletedOut"];
+                };
+            };
+        };
+    };
+    lists_api_v1_update_checklist_step: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                step_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChecklistStepPatchIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChecklistStepOut"];
+                };
+            };
+        };
+    };
+    lists_api_v1_promote_checklist_step: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                step_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskOut"];
                 };
             };
         };

@@ -1,11 +1,17 @@
 """Ninja router registered onto clarice.api's /api/v1/ contract.
 
-Item mutations (create/complete/reorder/tags/due-date) stay on the
-hand-rolled lists.api endpoints -- they already work and are tested, so
-a route's migration PR only moves what doesn't already have a JSON
-path. Area rename/delete never had one (the Django views redirect on
-success, which doesn't suit a fetch-based caller), so those are genuinely
-new here rather than moved.
+**Item mutations live here as of August 30, 2026** --
+coherence-audit-2026-08-30.md F2. They stayed on the hand-rolled `lists.api`
+views for a long time on the reasoning that they already worked and were
+tested, which was true of each one and wrong in aggregate: it left the noun
+this application is named for as the only domain outside the generated
+contract, so `tsc --noEmit` could not see a task write at all while it checked
+every Money call.
+
+**`lists.api` still exists and is not dead code.** It is the compatibility
+surface for the shipped Android build, which reads `url` off each task in the
+agenda payload and calls it -- see that module's docstring for what is left of
+it and what retires it.
 
 **Vocabulary.** This boundary says Area; the ORM says `List`. Release D
 slice 5 moved the words and nothing else, per `architecture-trajectory.md`
@@ -31,18 +37,28 @@ from ninja.errors import HttpError
 
 from accounts import services as account_services
 from accounts.auth import SessionAuthIfLoggedIn, TokenAuth
-from accounts.models import SCOPE_AGENDA_READ
+from accounts.models import SCOPE_AGENDA_READ, SCOPE_AGENDA_WRITE
 from clarice.clocks import today_for
 from lists import agenda as agenda_reader
 from lists import money as money_reader
 from lists import projects as project_reader
 from lists import services
 from lists.forms import ListTitleForm
-from lists.models import Account, CadenceMode, Item, List, MoneyCategory
+from lists.models import (
+    Account,
+    CadenceMode,
+    ChecklistStep,
+    Item,
+    List,
+    MoneyCategory,
+    Priority,
+)
 from lists.serializers import (
     archive_workspace_data_for,
     area_ref_for,
     area_workspace_data_for,
+    serialize_checklist_step,
+    serialize_item,
     task_detail_data_for,
 )
 
@@ -69,6 +85,19 @@ assert set(get_args(TaskRecurrence)) == set(Item.Recurrence.values), (
 )
 #: No "medium": an unmarked task already means ordinary. See lists.models.Priority.
 TaskPriority = Literal["none", "high", "low"]
+assert set(get_args(TaskPriority)) == set(Priority.values), (
+    "TaskPriority has drifted from lists.models.Priority: "
+    f"{set(Priority.values) ^ set(get_args(TaskPriority))}"
+)
+#: Mirrored and asserted for the reason above. Added August 30, 2026 with the
+#: typed task writes: `cadence_mode` used to be a bare `str` checked by hand
+#: inside the endpoint, so the allowed values appeared nowhere in the schema and
+#: the SPA could not be type-checked against them.
+TaskCadenceMode = Literal["anchored", "floating"]
+assert set(get_args(TaskCadenceMode)) == set(CadenceMode.values), (
+    "TaskCadenceMode has drifted from lists.models.CadenceMode: "
+    f"{set(CadenceMode.values) ^ set(get_args(TaskCadenceMode))}"
+)
 BucketKey = Literal["overdue", "today", "week", "later", "someday"]
 AreaColorKey = Literal[
     "sky", "sage", "amber", "lilac", "coral", "azure", "blush", "straw"
@@ -1256,6 +1285,432 @@ def task_detail(request, item_id: int):
         status__in=(Item.Status.ACTIVE, Item.Status.COMPLETED),
     )
     return task_detail_data_for(item)
+
+
+class DeletedOut(Schema):
+    """What a delete answers with.
+
+    Declared rather than left as a bare dict: an endpoint with no `response=`
+    generates as `undefined` in the client contract, so the one field it
+    returns was invisible to the type checker -- which is the whole point of
+    moving these here.
+    """
+
+    deleted: int
+
+
+# What a connected phone may change on a task it can already reach.
+#
+# The narrow list is unchanged from the view this replaces; what changed is
+# where the narrowness lives. `DELETE` and reorder express it in their auth
+# lists by simply not accepting a token, so Ninja answers 401 before any
+# handler runs. This set cannot be expressed that way -- it is about the body,
+# not the route -- so it stays a check.
+_TOKEN_WRITABLE_TASK_FIELDS = {"status", "due_date"}
+
+_TASK_WRITE = [TokenAuth(SCOPE_AGENDA_WRITE), SessionAuthIfLoggedIn()]
+
+
+class NewTaskIn(Schema):
+    text: str
+    due_date: str | None = None
+    tags: list[str] | None = None
+    recurrence: TaskRecurrence | None = None
+
+
+class BillIn(Schema):
+    #: A string for the reason `BillOut.amount` is one: this column exists to
+    #: avoid binary rounding and a JSON number would put it straight back.
+    amount: str | None = None
+    currency: str = "USD"
+    payee: str = ""
+
+
+class TaskPatchIn(Schema):
+    """Exactly one of these per request, which is the discipline the view this
+    replaces ran on and is kept deliberately.
+
+    Two fields in one body is ambiguous about ordering and about which failure
+    rolls back which change; zero is a request that means nothing. Every field
+    is optional *and* nullable here because several of them mean something when
+    null -- clearing a due date, unfiling a task, unmarking a bill -- so
+    "absent" and "sent as null" have to stay distinguishable, which is what
+    `__fields_set__` below reads.
+    """
+
+    text: str | None = None
+    status: TaskStatus | None = None
+    due_date: str | None = None
+    tags: list[str] | None = None
+    recurrence: TaskRecurrence | None = None
+    cadence_mode: TaskCadenceMode | None = None
+    notes: str | None = None
+    #: **`area_id`, not `list`** -- the legacy endpoint's wire name for this was
+    #: the ORM's column, which is half of coherence-audit-2026-08-30.md F5. A
+    #: new endpoint with no existing clients is the free moment to fix it, and
+    #: it now matches `TaskOut.area_id`, which has said `area_id` all along.
+    #:
+    #: It is also not optional here: a field literally named `list` shadows the
+    #: builtin inside this class body, so pydantic cannot evaluate
+    #: `list[str] | None` on `tags` two lines up. The old view had the same key
+    #: and never had the problem, because it read a dict.
+    area_id: int | None = None
+    priority: TaskPriority | None = None
+    bill: BillIn | None = None
+    lead_days: int | None = None
+
+
+class TaskUpdateOut(Schema):
+    """A task, and the successor that completing it may have produced.
+
+    **A named result rather than the `{"data": ...}` envelope it replaces.**
+    Completing a recurring task really does create a second task in the same
+    request, and the Agenda shows it without refetching -- so returning a bare
+    `TaskOut` would be a silent regression no type could catch. Everything else
+    on this router returns its resource directly.
+    """
+
+    task: TaskOut
+    #: Null except when a completion advanced a recurring commitment.
+    spawned: TaskOut | None = None
+    #: The steps that same completion cloned onto the successor. Always a list
+    #: so a caller never branches on the field existing; empty when nothing
+    #: recurred.
+    spawned_checklist_steps: list[ChecklistStepOut] = []
+
+
+def _owned_task(request, item_id):
+    return get_object_or_404(
+        Item.objects.select_related("list"), id=item_id, owner=request.user
+    )
+
+
+def _fresh(item):
+    """Re-read through the join the serializer needs.
+
+    A service returns the instance it wrote, which may not carry `list` or the
+    tags; every one of these endpoints serialises, so the read is unconditional
+    rather than remembered per branch.
+    """
+    return Item.objects.select_related("list").prefetch_related("tags").get(pk=item.pk)
+
+
+def _task_due_date(value):
+    if value is None:
+        return None
+    try:
+        return date.fromisoformat(value)
+    except (TypeError, ValueError):
+        raise HttpError(400, "Use a valid date (YYYY-MM-DD).")
+
+
+@router.post("/areas/{area_id}/tasks", response={201: TaskOut}, auth=_TASK_WRITE)
+def create_task(request, area_id: int, payload: NewTaskIn):
+    """A new task in one of your own areas.
+
+    Scoped in the lookup rather than checked afterwards, like every other
+    id-taking surface here: somebody else's area is *not found* rather than
+    *forbidden*, because answering differently confirms the id exists.
+    """
+    our_list = List.objects.filter(id=area_id, owner=request.user).first()
+    if our_list is None:
+        raise HttpError(404, "Area not found.")
+    try:
+        item = services.create_item(
+            our_list,
+            payload.text,
+            due_date=_task_due_date(payload.due_date),
+            tags=payload.tags,
+            recurrence=payload.recurrence,
+        )
+    except services.TaskConflict as error:
+        raise HttpError(400, str(error))
+    return 201, serialize_item(_fresh(item))
+
+
+@router.patch("/tasks/{item_id}", response=TaskUpdateOut, auth=_TASK_WRITE)
+def update_task(request, item_id: int, payload: TaskPatchIn):
+    """Change exactly one thing about a task.
+
+    **`__fields_set__` rather than a truthiness check**, because null is a real
+    value for several of these: `due_date: null` clears a date, `list: null`
+    unfiles a task, `bill: null` unmarks one. Treating absent and null alike
+    would make three deliberate operations unreachable.
+    """
+    item = _owned_task(request, item_id)
+    changed = payload.__fields_set__ & set(TaskPatchIn.model_fields)
+    if len(changed) != 1:
+        raise HttpError(
+            400,
+            "Change exactly one of text, status, due_date, tags, recurrence, "
+            "cadence_mode, notes, area_id, priority, bill or lead_days per "
+            "request.",
+        )
+    if (
+        getattr(request, "token_authenticated", False)
+        and not changed <= _TOKEN_WRITABLE_TASK_FIELDS
+    ):
+        raise HttpError(403, "Not available to a connected phone yet.")
+
+    field = next(iter(changed))
+    spawned = None
+    try:
+        if field == "text":
+            item = services.edit_item(item, payload.text)
+        elif field == "due_date":
+            item = services.set_due_date(item, _task_due_date(payload.due_date))
+        elif field == "tags":
+            item = services.set_item_tags(item, payload.tags or [])
+        elif field == "recurrence":
+            item = services.set_recurrence(item, payload.recurrence)
+        elif field == "cadence_mode":
+            # No hand-rolled enum check: `TaskCadenceMode` is a Literal, so an
+            # unknown value never reaches here -- pydantic answers 422 and the
+            # allowed values are in the published schema. The view this
+            # replaces checked by hand and returned 400, which meant the
+            # generated client could not know what to send.
+            #
+            # The cadence itself is unchanged, only how it advances, and it is
+            # routed through set_recurrence so the archived-task guard and the
+            # write-through stay in one place.
+            item = services.set_recurrence(
+                item, item.recurrence, cadence_mode=payload.cadence_mode
+            )
+        elif field == "notes":
+            item = services.set_item_notes(item, payload.notes or "")
+        elif field == "area_id":
+            destination = None
+            if payload.area_id is not None:
+                destination = List.objects.filter(
+                    pk=payload.area_id, owner=request.user
+                ).first()
+                if destination is None:
+                    raise HttpError(404, "Area not found.")
+            item = services.move_item(item, destination)
+        elif field == "priority":
+            # A Literal too, for the reason cadence_mode gives above.
+            item = services.set_priority(item, payload.priority)
+        elif field == "lead_days":
+            if payload.lead_days < 0:
+                raise HttpError(400, "Send a whole number of days, 0 or more.")
+            item = services.set_lead_days(item, payload.lead_days)
+        elif field == "bill":
+            item = _set_bill(item, payload.bill)
+        else:
+            item, spawned = _set_status(item, payload.status)
+    except services.TaskConflict as error:
+        raise HttpError(409, str(error))
+    except services.InvalidTaskTransition as error:
+        raise HttpError(400, str(error))
+
+    result = {"task": serialize_item(_fresh(item)), "spawned_checklist_steps": []}
+    if spawned is not None:
+        spawned = _fresh(spawned)
+        result["spawned"] = serialize_item(spawned)
+        result["spawned_checklist_steps"] = [
+            serialize_checklist_step(step)
+            for step in spawned.checklist_steps.order_by("position", "id")
+        ]
+    return result
+
+
+def _set_bill(item, bill):
+    if bill is None:
+        return services.clear_bill(item)
+    amount = None
+    if bill.amount not in (None, ""):
+        try:
+            # str() first: a JSON float would bring binary rounding to a
+            # column that exists to avoid it.
+            amount = Decimal(str(bill.amount))
+        except (InvalidOperation, ValueError):
+            raise HttpError(400, "Use an amount like 12.34.")
+        if amount < 0:
+            raise HttpError(400, "A bill is something owed, so it cannot be negative.")
+    return services.set_bill(
+        item,
+        amount=amount,
+        currency=(bill.currency or "USD")[:3].upper(),
+        payee=(bill.payee or "")[:200],
+    )
+
+
+def _set_status(item, requested):
+    """The one branch that can return two tasks."""
+    if requested == Item.Status.ACTIVE:
+        return services.reopen_item(item), None
+    if requested == Item.Status.ARCHIVED:
+        return services.archive_item(item), None
+    if requested == Item.Status.COMPLETED:
+        if item.status == Item.Status.ARCHIVED:
+            return services.restore_item(item), None
+        item = services.complete_item(item)
+        return item, getattr(item, "_spawned", None)
+    raise HttpError(400, "Choose a valid task status.")
+
+
+@router.delete("/tasks/{item_id}", response=DeletedOut, auth=SessionAuthIfLoggedIn())
+def delete_task(request, item_id: int):
+    """Session only, and deliberately not in `_TASK_WRITE`.
+
+    The view this replaces authenticated a bearer token and *then* answered
+    403. Leaving `TokenAuth` off the operation says the same thing one step
+    earlier and in a place `test_api_auth_surface.py` can read.
+
+    **`SessionAuthIfLoggedIn()` explicitly rather than the API-wide default**,
+    which is plain `SessionAuth` and runs its CSRF check *before* looking for a
+    session -- so an unauthenticated caller gets `403 CSRF check Failed`
+    instead of a 401, which is both the wrong status and a misleading reason.
+    Money's endpoints already name it for this reason; the older ones on this
+    router inherit the default and still answer 403.
+    """
+    item = _owned_task(request, item_id)
+    try:
+        services.delete_archived_item(item)
+    except services.InvalidTaskTransition as error:
+        raise HttpError(400, str(error))
+    return {"deleted": item_id}
+
+
+class ReorderIn(Schema):
+    ordered_ids: list[int]
+
+
+@router.post(
+    "/areas/{area_id}/tasks/reorder",
+    response=list[TaskOut],
+    auth=SessionAuthIfLoggedIn(),
+)
+def reorder_tasks(request, area_id: int, payload: ReorderIn):
+    """Session only, and explicitly session-authed, for the two reasons
+    `delete_task` gives."""
+    our_list = _owned_area(request, area_id)
+    try:
+        services.reorder_items(our_list, payload.ordered_ids)
+    except services.TaskConflict as error:
+        raise HttpError(400, str(error))
+    items = (
+        our_list.item_set.exclude(status=Item.Status.ARCHIVED)
+        .select_related("list")
+        .prefetch_related("tags")
+        .order_by("position", "id")
+    )
+    return [serialize_item(each) for each in items]
+
+
+class NewChecklistStepIn(Schema):
+    text: str
+    #: Null means "the service decides", which is not the same as `false`.
+    carries_forward: bool | None = None
+
+
+class ChecklistStepPatchIn(Schema):
+    """One field per request, as the task endpoint above does and for the same
+    reasons."""
+
+    text: str | None = None
+    is_done: bool | None = None
+    carries_forward: bool | None = None
+
+
+def _owned_step(request, step_id):
+    return get_object_or_404(
+        ChecklistStep.objects.select_related("task"),
+        id=step_id,
+        task__owner=request.user,
+    )
+
+
+@router.post(
+    "/tasks/{task_id}/checklist-steps",
+    response={201: ChecklistStepOut},
+    auth=SessionAuthIfLoggedIn(),
+)
+def create_checklist_step(request, task_id: int, payload: NewChecklistStepIn):
+    """Session only. A checklist is a desk-sized act and the phone has no
+    surface for one, so this is not in `_TASK_WRITE`."""
+    task = _owned_task(request, task_id)
+    try:
+        step = services.add_checklist_step(
+            task, payload.text, carries_forward=payload.carries_forward
+        )
+    except services.TaskConflict as error:
+        raise HttpError(400, str(error))
+    except services.InvalidTaskTransition as error:
+        raise HttpError(400, str(error))
+    return 201, serialize_checklist_step(step)
+
+
+@router.post(
+    "/tasks/{task_id}/checklist-steps/reorder",
+    response=list[ChecklistStepOut],
+    auth=SessionAuthIfLoggedIn(),
+)
+def reorder_checklist_steps(request, task_id: int, payload: ReorderIn):
+    task = _owned_task(request, task_id)
+    try:
+        steps = services.reorder_checklist_steps(task, payload.ordered_ids)
+    except services.TaskConflict as error:
+        raise HttpError(409, str(error))
+    return [serialize_checklist_step(step) for step in steps]
+
+
+@router.patch(
+    "/checklist-steps/{step_id}",
+    response=ChecklistStepOut,
+    auth=SessionAuthIfLoggedIn(),
+)
+def update_checklist_step(request, step_id: int, payload: ChecklistStepPatchIn):
+    step = _owned_step(request, step_id)
+    changed = payload.__fields_set__ & set(ChecklistStepPatchIn.model_fields)
+    if len(changed) != 1:
+        raise HttpError(
+            400, "Change exactly one of text, is_done, or carries_forward per request."
+        )
+    field = next(iter(changed))
+    try:
+        if field == "text":
+            step = services.edit_checklist_step_text(step, payload.text)
+        elif field == "is_done":
+            step = services.set_checklist_step_done(step, payload.is_done)
+        else:
+            step = services.set_checklist_step_carries_forward(
+                step, payload.carries_forward
+            )
+    except services.TaskConflict as error:
+        raise HttpError(409, str(error))
+    except services.InvalidTaskTransition as error:
+        raise HttpError(400, str(error))
+    return serialize_checklist_step(step)
+
+
+@router.delete(
+    "/checklist-steps/{step_id}", response=DeletedOut, auth=SessionAuthIfLoggedIn()
+)
+def delete_checklist_step(request, step_id: int):
+    step = _owned_step(request, step_id)
+    try:
+        services.delete_checklist_step(step)
+    except services.InvalidTaskTransition as error:
+        raise HttpError(400, str(error))
+    return {"deleted": step_id}
+
+
+@router.post(
+    "/checklist-steps/{step_id}/promote",
+    response={201: TaskOut},
+    auth=SessionAuthIfLoggedIn(),
+)
+def promote_checklist_step(request, step_id: int):
+    """Turns a step into a task of its own. The step no longer exists after."""
+    step = _owned_step(request, step_id)
+    try:
+        task = services.promote_checklist_step(step)
+    except services.TaskConflict as error:
+        raise HttpError(409, str(error))
+    except services.InvalidTaskTransition as error:
+        raise HttpError(400, str(error))
+    return 201, serialize_item(_fresh(task))
 
 
 class ProjectOut(Schema):

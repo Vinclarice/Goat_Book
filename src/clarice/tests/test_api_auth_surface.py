@@ -62,8 +62,24 @@ def unauthenticated():
 # `api.py`'s note about routine logging "having no product trigger yet" had to
 # go: it has one, and this is it.
 TOKEN_AUTHENTICATED = {
-    # The Agenda, read-only. Writes to a task still go through the session.
+    # The Agenda, read-only.
     ("GET", "/api/v1/agenda"),
+    # Task writes -- **new to this list on August 30, 2026 and not a widening.**
+    # coherence-audit-2026-08-30.md F2 moved them onto this router from
+    # `lists.api`'s hand-rolled views, which have accepted `agenda:write`
+    # bearer tokens since android-full-client-plan.md slice 2. This file could
+    # not see them there, because it reads Ninja operations and they were not
+    # ones -- so the line above used to say "writes to a task still go through
+    # the session", and that had been false for as long as the phone could act
+    # on the Agenda.
+    #
+    # **What a token reaches is deliberately narrower than what it can create.**
+    # PATCH accepts one, and then refuses any field outside `status` and
+    # `due_date` -- a check rather than an auth entry, because it is about the
+    # body. Delete and reorder are absent from this list entirely, which is the
+    # refusal expressed where Ninja enforces it.
+    ("POST", "/api/v1/areas/{area_id}/tasks"),
+    ("PATCH", "/api/v1/tasks/{item_id}"),
     # Capture, the original reason a token exists at all.
     ("POST", "/api/v1/capture"),
     # The Day, read *and* write -- pinning a focus and writing the day's own

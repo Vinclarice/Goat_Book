@@ -4,15 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import { ArchiveManager as BareArchiveManager } from "./ArchiveManager";
-import { task } from "./test/fixtures";
-
-function jsonResponse(data: object) {
-  return Promise.resolve({
-    ok: true,
-    status: 200,
-    json: () => Promise.resolve(data),
-  } as Response);
-}
+import { apiResponse, sentRequests, task, taskWrite } from "./test/fixtures";
 
 const NAV_SEED = {
   areas: [],
@@ -46,7 +38,7 @@ describe("ArchiveManager", () => {
     // badge is rendered by a SideNav that never remounts.
     const user = userEvent.setup();
     vi.spyOn(globalThis, "fetch").mockReturnValue(
-      jsonResponse({ data: task({ status: "completed", archived_at: null }) }),
+      taskWrite(task({ status: "completed", archived_at: null })),
     );
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false } },
@@ -81,9 +73,7 @@ describe("ArchiveManager", () => {
   it("restores an archived task after server confirmation", async () => {
     const user = userEvent.setup();
     vi.spyOn(globalThis, "fetch").mockReturnValue(
-      jsonResponse({
-        data: task({ status: "completed", archived_at: null }),
-      }),
+      taskWrite(task({ status: "completed", archived_at: null })),
     );
     render(
       <ArchiveManager
@@ -201,7 +191,7 @@ describe("ArchiveManager", () => {
   it("requires confirmation before permanent deletion", async () => {
     const user = userEvent.setup();
     vi.spyOn(globalThis, "fetch").mockReturnValue(
-      jsonResponse({ data: { deleted: 1 } }),
+      apiResponse({ deleted: 1 }),
     );
     render(
       <ArchiveManager
@@ -225,9 +215,10 @@ describe("ArchiveManager", () => {
 
     await user.click(screen.getByRole("button", { name: "Delete permanently" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-    expect(fetch).toHaveBeenCalledWith(
-      "/api/items/1/",
-      expect.objectContaining({ method: "DELETE" }),
-    );
+    expect(await sentRequests(fetch as never)).toContainEqual({
+      path: "/api/v1/tasks/1",
+      method: "DELETE",
+      body: "",
+    });
   });
 });

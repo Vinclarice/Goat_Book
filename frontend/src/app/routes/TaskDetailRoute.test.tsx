@@ -1,10 +1,22 @@
-import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Link, MemoryRouter, Route, Routes } from "react-router";
 
 import { TaskDetailRoute } from "./TaskDetailRoute";
-import { checklistStep, task } from "../../test/fixtures";
+import {
+  checklistStep,
+  routeRequests,
+  task,
+  taskWrite,
+} from "../../test/fixtures";
 
 function jsonResponse(data: object, ok = true, status = ok ? 200 : 500) {
   const body = JSON.stringify(data);
@@ -43,14 +55,14 @@ function renderAt(taskId: string) {
   return {
     queryClient,
     ...render(
-    <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={[`/tasks/${taskId}`]}>
-        <Routes>
-          <Route path="/tasks/:taskId" element={<TaskDetailRoute />} />
-          <Route path="/areas/:areaId" element={<p>Area page</p>} />
-        </Routes>
-      </MemoryRouter>
-    </QueryClientProvider>,
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={[`/tasks/${taskId}`]}>
+          <Routes>
+            <Route path="/tasks/:taskId" element={<TaskDetailRoute />} />
+            <Route path="/areas/:areaId" element={<p>Area page</p>} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
     ),
   };
 }
@@ -63,7 +75,9 @@ describe("TaskDetailRoute", () => {
 
   it("renders the task's fields once the query resolves", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(() =>
-      jsonResponse(taskDetailData({ task: task({ text: "Write tests", tags: ["work"] }) })),
+      jsonResponse(
+        taskDetailData({ task: task({ text: "Write tests", tags: ["work"] }) }),
+      ),
     );
 
     renderAt("1");
@@ -82,20 +96,25 @@ describe("TaskDetailRoute", () => {
 
     // B2.1: a 500 is the retryable kind of failure, so the person is
     // offered a retry rather than told their work is gone.
-    expect(await screen.findByText(/Couldn't reach Clarice/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /try again/i })).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Couldn't reach Clarice/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /try again/i }),
+    ).toBeInTheDocument();
   });
 
   it("saves a text edit", async () => {
     const user = userEvent.setup();
-    vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
-      if (typeof input !== "string") return jsonResponse(taskDetailData());
-      const body = JSON.parse((init?.body as string) ?? "{}");
-      if ("text" in body) {
-        return jsonResponse({ data: task({ text: body.text }) });
-      }
-      return jsonResponse({ data: task() });
-    });
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      routeRequests(({ path, method, body }) => {
+        if (method === "GET") return jsonResponse(taskDetailData());
+        if ("text" in body) {
+          return taskWrite(task({ text: body.text as string }));
+        }
+        return taskWrite(task());
+      }),
+    );
 
     renderAt("1");
     await screen.findByDisplayValue("Write tests");
@@ -110,21 +129,22 @@ describe("TaskDetailRoute", () => {
   it("records what a bill comes to", async () => {
     const user = userEvent.setup();
     let sent: unknown = null;
-    vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
-      if (typeof input !== "string") {
-        if ((input as Request).url.includes("/api/v1/nav")) {
-          return jsonResponse({ areas: [], projects: [], archived_count: 0 });
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      routeRequests(({ path, method, body }) => {
+        if (method === "GET") {
+          if (path.includes("/api/v1/nav")) {
+            return jsonResponse({ areas: [], projects: [], archived_count: 0 });
+          }
+          return jsonResponse(taskDetailData());
         }
-        return jsonResponse(taskDetailData());
-      }
-      const body = JSON.parse((init?.body as string) ?? "{}");
-      if ("bill" in body) sent = body.bill;
-      return jsonResponse({
-        data: task({
-          bill: { amount: "500.00", currency: "USD", payee: "County" },
-        }),
-      });
-    });
+        if ("bill" in body) sent = body.bill;
+        return taskWrite(
+          task({
+            bill: { amount: "500.00", currency: "USD", payee: "County" },
+          }),
+        );
+      }),
+    );
 
     renderAt("1");
     await screen.findByDisplayValue("Write tests");
@@ -138,23 +158,24 @@ describe("TaskDetailRoute", () => {
   it("stops a task being a bill without touching the task", async () => {
     const user = userEvent.setup();
     let sent: unknown = "untouched";
-    vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
-      if (typeof input !== "string") {
-        if ((input as Request).url.includes("/api/v1/nav")) {
-          return jsonResponse({ areas: [], projects: [], archived_count: 0 });
-        }
-        return jsonResponse(
-          taskDetailData({
-            task: task({
-              bill: { amount: "500.00", currency: "USD", payee: "County" },
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      routeRequests(({ path, method, body }) => {
+        if (method === "GET") {
+          if (path.includes("/api/v1/nav")) {
+            return jsonResponse({ areas: [], projects: [], archived_count: 0 });
+          }
+          return jsonResponse(
+            taskDetailData({
+              task: task({
+                bill: { amount: "500.00", currency: "USD", payee: "County" },
+              }),
             }),
-          }),
-        );
-      }
-      const body = JSON.parse((init?.body as string) ?? "{}");
-      if ("bill" in body) sent = body.bill;
-      return jsonResponse({ data: task() });
-    });
+          );
+        }
+        if ("bill" in body) sent = body.bill;
+        return taskWrite(task());
+      }),
+    );
 
     renderAt("1");
 
@@ -166,17 +187,18 @@ describe("TaskDetailRoute", () => {
   it("marks a task as pressing", async () => {
     const user = userEvent.setup();
     let sent: unknown = null;
-    vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
-      if (typeof input !== "string") {
-        if ((input as Request).url.includes("/api/v1/nav")) {
-          return jsonResponse({ areas: [], projects: [], archived_count: 0 });
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      routeRequests(({ path, method, body }) => {
+        if (method === "GET") {
+          if (path.includes("/api/v1/nav")) {
+            return jsonResponse({ areas: [], projects: [], archived_count: 0 });
+          }
+          return jsonResponse(taskDetailData());
         }
-        return jsonResponse(taskDetailData());
-      }
-      const body = JSON.parse((init?.body as string) ?? "{}");
-      if ("priority" in body) sent = body.priority;
-      return jsonResponse({ data: task({ priority: "high" }) });
-    });
+        if ("priority" in body) sent = body.priority;
+        return taskWrite(task({ priority: "high" }));
+      }),
+    );
 
     renderAt("1");
     await screen.findByDisplayValue("Write tests");
@@ -191,12 +213,16 @@ describe("TaskDetailRoute", () => {
     // The design decision, held by a test rather than only by a docstring:
     // offering "medium" beside "no priority" invites the distinction every
     // to-do app collapses into, where everything is medium.
-    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
-      if (typeof input !== "string" && (input as Request).url.includes("/api/v1/nav")) {
-        return jsonResponse({ areas: [], projects: [], archived_count: 0 });
-      }
-      return jsonResponse(taskDetailData());
-    });
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      routeRequests(({ path, method, body }) => {
+        if (
+          path.includes("/api/v1/nav")
+        ) {
+          return jsonResponse({ areas: [], projects: [], archived_count: 0 });
+        }
+        return jsonResponse(taskDetailData());
+      }),
+    );
 
     renderAt("1");
 
@@ -209,26 +235,41 @@ describe("TaskDetailRoute", () => {
   it("moves a task into another of your areas", async () => {
     const user = userEvent.setup();
     let moved: unknown = null;
-    vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
-      if (typeof input !== "string") {
-        // Two apiV1 GETs on this page now: the task, and the nav that says
-        // which areas exist to move it into.
-        if ((input as Request).url.includes("/api/v1/nav")) {
-          return jsonResponse({
-            areas: [
-              { id: 1, title: "Programming", open_count: 0, overdue_count: 0, color_key: "slate" },
-              { id: 2, title: "Home", open_count: 0, overdue_count: 0, color_key: "slate" },
-            ],
-            projects: [],
-            archived_count: 0,
-          });
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      routeRequests(({ path, method, body }) => {
+        if (method === "GET") {
+          // Two apiV1 GETs on this page now: the task, and the nav that says
+          // which areas exist to move it into.
+          if (path.includes("/api/v1/nav")) {
+            return jsonResponse({
+              areas: [
+                {
+                  id: 1,
+                  title: "Programming",
+                  open_count: 0,
+                  overdue_count: 0,
+                  color_key: "slate",
+                },
+                {
+                  id: 2,
+                  title: "Home",
+                  open_count: 0,
+                  overdue_count: 0,
+                  color_key: "slate",
+                },
+              ],
+              projects: [],
+              archived_count: 0,
+            });
+          }
+          return jsonResponse(taskDetailData());
         }
-        return jsonResponse(taskDetailData());
-      }
-      const body = JSON.parse((init?.body as string) ?? "{}");
-      if ("list" in body) moved = body.list;
-      return jsonResponse({ data: task() });
-    });
+        // `area_id` on the wire since coherence-audit-2026-08-30.md F5 --
+        // the old endpoint sent the ORM's column name, `list`.
+        if ("area_id" in body) moved = body.area_id;
+        return taskWrite(task());
+      }),
+    );
 
     renderAt("1");
     await screen.findByDisplayValue("Write tests");
@@ -240,14 +281,15 @@ describe("TaskDetailRoute", () => {
 
   it("saves notes on blur and reports it", async () => {
     const user = userEvent.setup();
-    vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
-      if (typeof input !== "string") return jsonResponse(taskDetailData());
-      const body = JSON.parse((init?.body as string) ?? "{}");
-      if ("notes" in body) {
-        return jsonResponse({ data: task({ notes: body.notes.trim() }) });
-      }
-      return jsonResponse({ data: task() });
-    });
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      routeRequests(({ path, method, body }) => {
+        if (method === "GET") return jsonResponse(taskDetailData());
+        if ("notes" in body) {
+          return taskWrite(task({ notes: (body.notes as string).trim() }));
+        }
+        return taskWrite(task());
+      }),
+    );
 
     renderAt("1");
     await screen.findByDisplayValue("Write tests");
@@ -260,16 +302,19 @@ describe("TaskDetailRoute", () => {
 
   it("says notes were cleared when the textarea is emptied", async () => {
     const user = userEvent.setup();
-    vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
-      if (typeof input !== "string") {
-        return jsonResponse(taskDetailData({ task: task({ notes: "Old note" }) }));
-      }
-      const body = JSON.parse((init?.body as string) ?? "{}");
-      if ("notes" in body) {
-        return jsonResponse({ data: task({ notes: body.notes.trim() }) });
-      }
-      return jsonResponse({ data: task() });
-    });
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      routeRequests(({ path, method, body }) => {
+        if (method === "GET") {
+          return jsonResponse(
+            taskDetailData({ task: task({ notes: "Old note" }) }),
+          );
+        }
+        if ("notes" in body) {
+          return taskWrite(task({ notes: (body.notes as string).trim() }));
+        }
+        return taskWrite(task());
+      }),
+    );
 
     renderAt("1");
     await screen.findByDisplayValue("Old note");
@@ -285,7 +330,9 @@ describe("TaskDetailRoute", () => {
     const fetchSpy = vi
       .spyOn(globalThis, "fetch")
       .mockImplementation(() =>
-        jsonResponse(taskDetailData({ task: task({ notes: "Bring the receipt" }) })),
+        jsonResponse(
+          taskDetailData({ task: task({ notes: "Bring the receipt" }) }),
+        ),
       );
 
     renderAt("1");
@@ -320,22 +367,29 @@ describe("TaskDetailRoute", () => {
   it("adds a checklist step under the current task", async () => {
     const user = userEvent.setup();
     let posted: Record<string, unknown> | null = null;
-    vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
-      if (typeof input !== "string") return jsonResponse(taskDetailData());
-      if (init?.method === "POST") {
-        posted = JSON.parse((init?.body as string) ?? "{}");
-        return jsonResponse({ data: checklistStep({ id: 5, text: "Book flights" }) });
-      }
-      return jsonResponse({ data: task() });
-    });
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      routeRequests(({ path, method, body }) => {
+        if (method === "GET") return jsonResponse(taskDetailData());
+        if (method === "POST") {
+          posted = body;
+          return jsonResponse(checklistStep({ id: 5, text: "Book flights" }));
+        }
+        return taskWrite(task());
+      }),
+    );
 
     renderAt("1");
     await screen.findByDisplayValue("Write tests");
 
-    await user.type(screen.getByLabelText("New checklist step"), "Book flights");
+    await user.type(
+      screen.getByLabelText("New checklist step"),
+      "Book flights",
+    );
     await user.click(screen.getByRole("button", { name: "Add" }));
 
-    expect(await screen.findByText("Checklist step added.")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Checklist step added."),
+    ).toBeInTheDocument();
     expect(posted).toEqual({
       text: "Book flights",
       carries_forward: true,
@@ -345,7 +399,9 @@ describe("TaskDetailRoute", () => {
   it("keeps the carries-forward controls off a task that doesn't repeat", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(() =>
       jsonResponse(
-        taskDetailData({ checklist_steps: [checklistStep({ id: 2, text: "Book hotel" })] }),
+        taskDetailData({
+          checklist_steps: [checklistStep({ id: 2, text: "Book hotel" })],
+        }),
       ),
     );
 
@@ -364,29 +420,42 @@ describe("TaskDetailRoute", () => {
   it("adds a checklist step opted out of the next occurrence", async () => {
     const user = userEvent.setup();
     let posted: Record<string, unknown> | null = null;
-    vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
-      if (typeof input !== "string") {
-        return jsonResponse(taskDetailData({ task: task({ recurrence: "weekly" }) }));
-      }
-      if (init?.method === "POST") {
-        posted = JSON.parse((init?.body as string) ?? "{}");
-        return jsonResponse({
-          data: checklistStep({ id: 5, text: "Renew passport", carries_forward: false }),
-        });
-      }
-      return jsonResponse({ data: task() });
-    });
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      routeRequests(({ path, method, body }) => {
+        if (method === "GET") {
+          return jsonResponse(
+            taskDetailData({ task: task({ recurrence: "weekly" }) }),
+          );
+        }
+        if (method === "POST") {
+          posted = body;
+          return jsonResponse(
+            checklistStep({
+              id: 5,
+              text: "Renew passport",
+              carries_forward: false,
+            }),
+          );
+        }
+        return taskWrite(task());
+      }),
+    );
 
     renderAt("1");
     await screen.findByDisplayValue("Write tests");
 
-    await user.type(screen.getByLabelText("New checklist step"), "Renew passport");
+    await user.type(
+      screen.getByLabelText("New checklist step"),
+      "Renew passport",
+    );
     await user.click(
       screen.getByLabelText("Bring this back on the next occurrence"),
     );
     await user.click(screen.getByRole("button", { name: "Add" }));
 
-    expect(await screen.findByText("Checklist step added.")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Checklist step added."),
+    ).toBeInTheDocument();
     expect(posted).toEqual({
       text: "Renew passport",
       carries_forward: false,
@@ -421,23 +490,27 @@ describe("TaskDetailRoute", () => {
   it("toggles whether an existing checklist step comes back", async () => {
     const user = userEvent.setup();
     let patched: Record<string, unknown> | null = null;
-    vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
-      if (typeof input !== "string") {
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      routeRequests(({ path, method, body }) => {
+        if (method === "GET") {
+          return jsonResponse(
+            taskDetailData({
+              task: task({ recurrence: "weekly" }),
+              checklist_steps: [checklistStep({ id: 2, text: "Book hotel" })],
+            }),
+          );
+        }
+        patched = body;
         return jsonResponse(
-          taskDetailData({
-            task: task({ recurrence: "weekly" }),
-            checklist_steps: [checklistStep({ id: 2, text: "Book hotel" })],
-          }),
+          checklistStep({ id: 2, text: "Book hotel", carries_forward: false }),
         );
-      }
-      patched = JSON.parse((init?.body as string) ?? "{}");
-      return jsonResponse({
-        data: checklistStep({ id: 2, text: "Book hotel", carries_forward: false }),
-      });
-    });
+      }),
+    );
 
     renderAt("1");
-    const toggle = await screen.findByLabelText("Carry Book hotel forward next time");
+    const toggle = await screen.findByLabelText(
+      "Carry Book hotel forward next time",
+    );
     expect(toggle).toBeChecked();
 
     await user.click(toggle);
@@ -452,19 +525,21 @@ describe("TaskDetailRoute", () => {
 
   it("promotes a checklist step to a task of its own", async () => {
     const user = userEvent.setup();
-    vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
-      if (typeof input !== "string") {
-        return jsonResponse(
-          taskDetailData({
-            checklist_steps: [checklistStep({ id: 2, text: "Book hotel" })],
-          }),
-        );
-      }
-      if (init?.method === "POST") {
-        return jsonResponse({ data: task({ id: 9, text: "Book hotel" }) });
-      }
-      return jsonResponse({ data: task() });
-    });
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      routeRequests(({ path, method, body }) => {
+        if (method === "GET") {
+          return jsonResponse(
+            taskDetailData({
+              checklist_steps: [checklistStep({ id: 2, text: "Book hotel" })],
+            }),
+          );
+        }
+        if (method === "POST") {
+          return taskWrite(task({ id: 9, text: "Book hotel" }));
+        }
+        return taskWrite(task());
+      }),
+    );
 
     renderAt("1");
     await screen.findByText("Book hotel");
@@ -479,19 +554,21 @@ describe("TaskDetailRoute", () => {
 
   it("removes a checklist step", async () => {
     const user = userEvent.setup();
-    vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
-      if (typeof input !== "string") {
-        return jsonResponse(
-          taskDetailData({
-            checklist_steps: [checklistStep({ id: 2, text: "Book hotel" })],
-          }),
-        );
-      }
-      if (init?.method === "DELETE") {
-        return jsonResponse({ data: { deleted: 2 } });
-      }
-      return jsonResponse({ data: task() });
-    });
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      routeRequests(({ path, method, body }) => {
+        if (method === "GET") {
+          return jsonResponse(
+            taskDetailData({
+              checklist_steps: [checklistStep({ id: 2, text: "Book hotel" })],
+            }),
+          );
+        }
+        if (method === "DELETE") {
+          return jsonResponse({ deleted: 2 });
+        }
+        return taskWrite(task());
+      }),
+    );
 
     renderAt("1");
     await screen.findByText("Book hotel");
@@ -505,18 +582,20 @@ describe("TaskDetailRoute", () => {
 
   it("surfaces a conflict error from a duplicate rename", async () => {
     const user = userEvent.setup();
-    vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
-      if (typeof input !== "string") return jsonResponse(taskDetailData());
-      const body = JSON.parse((init?.body as string) ?? "{}");
-      if ("text" in body) {
-        return jsonResponse(
-          { errors: { conflict: ["That task already exists in this list."] } },
-          false,
-          409,
-        );
-      }
-      return jsonResponse({ data: task() });
-    });
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      routeRequests(({ path, method, body }) => {
+        if (method === "GET") return jsonResponse(taskDetailData());
+        if ("text" in body) {
+          // Ninja's shape now, not the hand-rolled field-keyed one.
+          return jsonResponse(
+            { detail: "That task already exists in this list." },
+            false,
+            409,
+          );
+        }
+        return taskWrite(task());
+      }),
+    );
 
     renderAt("1");
     await screen.findByDisplayValue("Write tests");
@@ -529,14 +608,15 @@ describe("TaskDetailRoute", () => {
   });
 
   it("updates the due date immediately on change", async () => {
-    vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
-      if (typeof input !== "string") return jsonResponse(taskDetailData());
-      const body = JSON.parse((init?.body as string) ?? "{}");
-      if ("due_date" in body) {
-        return jsonResponse({ data: task({ due_date: body.due_date }) });
-      }
-      return jsonResponse({ data: task() });
-    });
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      routeRequests(({ path, method, body }) => {
+        if (method === "GET") return jsonResponse(taskDetailData());
+        if ("due_date" in body) {
+          return taskWrite(task({ due_date: body.due_date as string | null }));
+        }
+        return taskWrite(task());
+      }),
+    );
 
     renderAt("1");
     await screen.findByDisplayValue("Write tests");
@@ -550,14 +630,15 @@ describe("TaskDetailRoute", () => {
 
   it("commits a tags change on blur", async () => {
     const user = userEvent.setup();
-    vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
-      if (typeof input !== "string") return jsonResponse(taskDetailData());
-      const body = JSON.parse((init?.body as string) ?? "{}");
-      if ("tags" in body) {
-        return jsonResponse({ data: task({ tags: body.tags }) });
-      }
-      return jsonResponse({ data: task() });
-    });
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      routeRequests(({ path, method, body }) => {
+        if (method === "GET") return jsonResponse(taskDetailData());
+        if ("tags" in body) {
+          return taskWrite(task({ tags: body.tags as string[] }));
+        }
+        return taskWrite(task());
+      }),
+    );
 
     renderAt("1");
     await screen.findByDisplayValue("Write tests");
@@ -572,14 +653,15 @@ describe("TaskDetailRoute", () => {
 
   it("moves the task to archive and navigates back to its list", async () => {
     const user = userEvent.setup();
-    vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
-      if (typeof input !== "string") return jsonResponse(taskDetailData());
-      const body = JSON.parse((init?.body as string) ?? "{}");
-      if (body.status === "archived") {
-        return jsonResponse({ data: task({ status: "archived" }) });
-      }
-      return jsonResponse({ data: task() });
-    });
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      routeRequests(({ path, method, body }) => {
+        if (method === "GET") return jsonResponse(taskDetailData());
+        if (body.status === "archived") {
+          return taskWrite(task({ status: "archived" }));
+        }
+        return taskWrite(task());
+      }),
+    );
 
     renderAt("1");
     await screen.findByDisplayValue("Write tests");
@@ -593,19 +675,21 @@ describe("TaskDetailRoute", () => {
 
   it("navigates away when completing a recurring task auto-archives it", async () => {
     const user = userEvent.setup();
-    vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
-      if (typeof input !== "string") {
-        return jsonResponse(taskDetailData({ task: task({ recurrence: "daily" }) }));
-      }
-      const body = JSON.parse((init?.body as string) ?? "{}");
-      if (body.status === "completed") {
-        return jsonResponse({
-          data: task({ status: "archived", recurrence: "daily" }),
-          spawned: task({ id: 2, recurrence: "daily" }),
-        });
-      }
-      return jsonResponse({ data: task() });
-    });
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      routeRequests(({ path, method, body }) => {
+        if (method === "GET") {
+          return jsonResponse(
+            taskDetailData({ task: task({ recurrence: "daily" }) }),
+          );
+        }
+        if (body.status === "completed") {
+          return taskWrite(task({ status: "archived", recurrence: "daily" }), {
+            spawned: task({ id: 2, recurrence: "daily" }),
+          });
+        }
+        return taskWrite(task());
+      }),
+    );
 
     renderAt("1");
     await screen.findByDisplayValue("Write tests");
@@ -623,15 +707,17 @@ describe("TaskDetailRoute", () => {
     // the :taskId param changes, so a boolean would leave the first task's
     // text sitting in the form over the second task's data.
     const user = userEvent.setup();
-    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
-      const url = typeof input === "string" ? input : (input as Request).url;
-      if (url.includes("/api/v1/tasks/2")) {
-        return jsonResponse(
-          taskDetailData({ task: task({ id: 2, text: "Renew passport" }) }),
-        );
-      }
-      return jsonResponse(taskDetailData());
-    });
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      routeRequests(({ path, method, body }) => {
+        const url = path;
+        if (url.includes("/api/v1/tasks/2")) {
+          return jsonResponse(
+            taskDetailData({ task: task({ id: 2, text: "Renew passport" }) }),
+          );
+        }
+        return jsonResponse(taskDetailData());
+      }),
+    );
 
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false } },
@@ -652,7 +738,9 @@ describe("TaskDetailRoute", () => {
 
     await user.click(screen.getByRole("link", { name: "Open the next task" }));
 
-    expect(await screen.findByDisplayValue("Renew passport")).toBeInTheDocument();
+    expect(
+      await screen.findByDisplayValue("Renew passport"),
+    ).toBeInTheDocument();
   });
 
   it("tells the side nav its counts have moved", async () => {
@@ -664,16 +752,19 @@ describe("TaskDetailRoute", () => {
     // fetch(url, init) with a string. Splitting on that is the idiom the
     // recurring-task test above already uses.
     const nav = { areas: [], projects: [], archived_count: 0 };
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
-      if (typeof input !== "string") {
-        if ((input as Request).url.includes("/api/v1/nav")) return jsonResponse(nav);
-        return jsonResponse(taskDetailData());
-      }
-      return jsonResponse({ data: task({ status: "completed" }) });
-    });
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(
+      routeRequests(({ path, method, body }) => {
+        if (method === "GET") {
+          if (path.includes("/api/v1/nav"))
+            return jsonResponse(nav);
+          return jsonResponse(taskDetailData());
+        }
+        return taskWrite(task({ status: "completed" }));
+      }),
+    );
     const navRequests = () =>
-      fetchSpy.mock.calls.filter(
-        ([input]) => typeof input !== "string" && (input as Request).url.includes("/api/v1/nav"),
+      fetchSpy.mock.calls.filter(([sent]) =>
+        (sent as Request).url.includes("/api/v1/nav"),
       ).length;
 
     renderAt("1");
@@ -745,10 +836,12 @@ describe("TaskDetailRoute", () => {
     // project-workspace-plan.md 2 dropped the task-level override -- a
     // task's project now comes from its Area, changed on the Area's own
     // page, not repeated here.
-    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
-      if (typeof input === "string") return jsonResponse({ data: task() });
-      return jsonResponse(taskDetailData());
-    });
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      routeRequests(({ path, method, body }) => {
+        if (method !== "GET") return taskWrite(task());
+        return jsonResponse(taskDetailData());
+      }),
+    );
 
     renderAt("1");
     await screen.findByDisplayValue("Write tests");

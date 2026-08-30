@@ -210,7 +210,7 @@ export function TaskWorkspace({ initialData }: Props) {
     setBusyId("new");
     try {
       const created = await createTask(
-        initialData.area.create_item_url,
+        initialData.area.id,
         newText,
         newDueDate || null,
         parseTagInput(newTags),
@@ -383,7 +383,7 @@ export function TaskWorkspace({ initialData }: Props) {
       // The server requires the complete set, including any task the current
       // filter or search is hiding -- not just what's on screen.
       await reorderTasks(
-        initialData.area.reorder_url,
+        initialData.area.id,
         nextItems.map((item) => item.id),
       );
       refreshNav();

@@ -89,20 +89,20 @@ class AgendaViewModel(
     }
 
     suspend fun completeTask(task: AgendaTaskEntry) = write { token ->
-        api.setTaskStatus(token, task.url, "completed")
+        api.setTaskStatus(token, task.id, "completed")
     }
 
     suspend fun reopenTask(task: AgendaTaskEntry) = write { token ->
-        api.setTaskStatus(token, task.url, "active")
+        api.setTaskStatus(token, task.id, "active")
     }
 
     suspend fun reschedule(task: AgendaTaskEntry, dueDate: String?) = write { token ->
-        api.rescheduleTask(token, task.url, dueDate)
+        api.rescheduleTask(token, task.id, dueDate)
     }
 
     suspend fun quickAdd(area: AgendaAreaEntry, text: String, dueDate: String?) {
         if (text.isBlank()) return
-        write { token -> api.createTask(token, area.createItemUrl, text, dueDate) }
+        write { token -> api.createTask(token, area.id, text, dueDate) }
     }
 
     /**

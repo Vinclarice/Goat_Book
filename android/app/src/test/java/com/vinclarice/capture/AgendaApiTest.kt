@@ -49,7 +49,6 @@ class AgendaApiTest {
         assertEquals(1, result.agenda.items.size)
         assertEquals("Pay tmobile bill", result.agenda.items[0].text)
         assertEquals(listOf("bills"), result.agenda.items[0].tags)
-        assertEquals("/api/items/7/", result.agenda.items[0].url)
         assertTrue(result.agenda.completedToday.isEmpty())
         assertEquals(1, result.agenda.areas.size)
         assertEquals("House hold", result.agenda.areas[0].title)
@@ -108,22 +107,30 @@ class AgendaApiTest {
         assertTrue(api().getAgenda("tok_abc") is AgendaUnreachable)
     }
 
+    /** A PATCH answers with TaskUpdateOut -- the task under "task", beside
+     *  the successor a completion may have produced. */
     private val taskBody = """
-        {"data": {"id": 7, "text": "Pay tmobile bill", "status": "completed",
-         "due_date": "2026-07-31", "tags": ["bills"], "area_id": 3, "project_id": null,
-         "url": "/api/items/7/"}}
+        {"task": {"id": 7, "text": "Pay tmobile bill", "status": "completed",
+         "due_date": "2026-07-31", "tags": ["bills"], "area_id": 3, "project_id": null},
+         "spawned": null, "spawned_checklist_steps": []}
+    """.trimIndent()
+
+    /** A create answers with the task itself, unwrapped. */
+    private val createdBody = """
+        {"id": 7, "text": "Pay tmobile bill", "status": "active",
+         "due_date": "2026-07-31", "tags": ["bills"], "area_id": 3, "project_id": null}
     """.trimIndent()
 
     @Test
     fun `completing a task sends the status field as a PATCH`() = runTest {
         server.server.enqueue(MockResponse(code = 200, body = taskBody))
 
-        val result = api().setTaskStatus("tok_abc", "/api/items/7/", "completed")
+        val result = api().setTaskStatus("tok_abc", 7, "completed")
 
         val sent = server.server.takeRequest()
         assertEquals("PATCH", sent.method)
         assertEquals("Bearer tok_abc", sent.headers["Authorization"])
-        assertTrue(sent.target.endsWith("/api/items/7/"))
+        assertTrue(sent.target.endsWith("/api/v1/tasks/7"))
         assertEquals("""{"status":"completed"}""", sent.body!!.utf8())
         assertEquals(7, (result as TaskWriteSucceeded).task.id)
     }
@@ -132,7 +139,7 @@ class AgendaApiTest {
     fun `rescheduling a task sends the due_date field`() = runTest {
         server.server.enqueue(MockResponse(code = 200, body = taskBody))
 
-        api().rescheduleTask("tok_abc", "/api/items/7/", "2026-08-15")
+        api().rescheduleTask("tok_abc", 7, "2026-08-15")
 
         val sent = server.server.takeRequest()
         assertEquals("""{"due_date":"2026-08-15"}""", sent.body!!.utf8())
@@ -142,7 +149,7 @@ class AgendaApiTest {
     fun `clearing a tasks due date sends a null`() = runTest {
         server.server.enqueue(MockResponse(code = 200, body = taskBody))
 
-        api().rescheduleTask("tok_abc", "/api/items/7/", null)
+        api().rescheduleTask("tok_abc", 7, null)
 
         val sent = server.server.takeRequest()
         assertEquals("""{"due_date":null}""", sent.body!!.utf8())
@@ -152,11 +159,11 @@ class AgendaApiTest {
     fun `creating a task posts to the areas own create_item_url`() = runTest {
         server.server.enqueue(MockResponse(code = 201, body = taskBody))
 
-        val result = api().createTask("tok_abc", "/api/areas/3/items/", "Call the vet", null)
+        val result = api().createTask("tok_abc", 3, "Call the vet", null)
 
         val sent = server.server.takeRequest()
         assertEquals("POST", sent.method)
-        assertTrue(sent.target.endsWith("/api/areas/3/items/"))
+        assertTrue(sent.target.endsWith("/api/v1/areas/3/tasks"))
         assertTrue(result is TaskWriteSucceeded)
     }
 
@@ -166,7 +173,7 @@ class AgendaApiTest {
 
         assertEquals(
             TaskWriteUnauthorised,
-            api().setTaskStatus("tok_abc", "/api/items/7/", "completed"),
+            api().setTaskStatus("tok_abc", 7, "completed"),
         )
     }
 
@@ -179,7 +186,7 @@ class AgendaApiTest {
 
         assertEquals(
             TaskWriteUnauthorised,
-            api().setTaskStatus("tok_abc", "/api/items/7/", "completed"),
+            api().setTaskStatus("tok_abc", 7, "completed"),
         )
     }
 
@@ -188,11 +195,11 @@ class AgendaApiTest {
         server.server.enqueue(
             MockResponse(
                 code = 400,
-                body = """{"errors": {"due_date": ["Use a valid date (YYYY-MM-DD)."]}}""",
+                body = """{"detail": "Use a valid date (YYYY-MM-DD)."}""",
             )
         )
 
-        val result = api().rescheduleTask("tok_abc", "/api/items/7/", "not-a-date")
+        val result = api().rescheduleTask("tok_abc", 7, "not-a-date")
 
         assertEquals(
             "Use a valid date (YYYY-MM-DD).",
@@ -203,11 +210,11 @@ class AgendaApiTest {
     @Test
     fun `a task that no longer exists is rejected`() = runTest {
         server.server.enqueue(
-            MockResponse(code = 404, body = """{"errors": {"item": ["Task not found."]}}""")
+            MockResponse(code = 404, body = """{"detail": "Task not found."}""")
         )
 
         assertTrue(
-            api().setTaskStatus("tok_abc", "/api/items/999/", "completed") is TaskWriteRejected
+            api().setTaskStatus("tok_abc", 999, "completed") is TaskWriteRejected
         )
     }
 
@@ -216,7 +223,7 @@ class AgendaApiTest {
         val offline = OkHttpAgendaApi(baseUrl = "http://127.0.0.1:1/")
 
         assertTrue(
-            offline.setTaskStatus("tok_abc", "/api/items/7/", "completed") is TaskWriteUnreachable
+            offline.setTaskStatus("tok_abc", 7, "completed") is TaskWriteUnreachable
         )
     }
 }

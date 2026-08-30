@@ -34,7 +34,6 @@ class DailyViewModelTest {
                     tags = emptyList(),
                     areaId = null,
                     projectId = null,
-                    url = "/api/items/42/",
                 ),
             ),
     ) : AgendaApi {
@@ -43,19 +42,19 @@ class DailyViewModelTest {
         override suspend fun getAgenda(token: String) =
             throw UnsupportedOperationException("the day never asks for the agenda")
 
-        override suspend fun setTaskStatus(token: String, taskUrl: String, status: String): TaskWriteResult {
-            lastCall = "status" to listOf(taskUrl, status)
+        override suspend fun setTaskStatus(token: String, taskId: Int, status: String): TaskWriteResult {
+            lastCall = "status" to listOf(taskId.toString(), status)
             return result
         }
 
-        override suspend fun rescheduleTask(token: String, taskUrl: String, dueDate: String?): TaskWriteResult {
-            lastCall = "reschedule" to listOf(taskUrl, dueDate)
+        override suspend fun rescheduleTask(token: String, taskId: Int, dueDate: String?): TaskWriteResult {
+            lastCall = "reschedule" to listOf(taskId.toString(), dueDate)
             return result
         }
 
         override suspend fun createTask(
             token: String,
-            createItemUrl: String,
+            areaId: Int,
             text: String,
             dueDate: String?,
         ): TaskWriteResult = throw UnsupportedOperationException("the day does not create tasks")
@@ -277,9 +276,9 @@ class DailyViewModelTest {
         val model = DailyViewModel(FakeDailyApi(DayLoaded(sampleDay)), FakeStore(), taskApi)
         model.load()
 
-        model.completeTask("/api/items/42/")
+        model.completeTask(42)
 
-        assertEquals("status" to listOf("/api/items/42/", "completed"), taskApi.lastCall)
+        assertEquals("status" to listOf("42", "completed"), taskApi.lastCall)
     }
 
     @Test
@@ -292,9 +291,9 @@ class DailyViewModelTest {
         val model = DailyViewModel(FakeDailyApi(DayLoaded(sampleDay)), FakeStore(), taskApi)
         model.load()
 
-        model.deferTaskToTomorrow("/api/items/42/")
+        model.deferTaskToTomorrow(42)
 
-        assertEquals("reschedule" to listOf("/api/items/42/", "2026-08-11"), taskApi.lastCall)
+        assertEquals("reschedule" to listOf("42", "2026-08-11"), taskApi.lastCall)
     }
 
     @Test

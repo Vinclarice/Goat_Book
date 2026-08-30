@@ -45,28 +45,37 @@ interface AgendaApi {
     /** [status] is the server's own vocabulary ("active"/"completed") --
      *  see Item.Status; there is no richer type here for the same reason
      *  DailyModels' own FocusEntry.status stays a plain string. */
-    suspend fun setTaskStatus(token: String, taskUrl: String, status: String): TaskWriteResult
+    suspend fun setTaskStatus(token: String, taskId: Int, status: String): TaskWriteResult
 
     /** [dueDate] null clears the due date -- a real, distinct request from
      *  "don't change it", which is why this takes an explicit nullable
      *  rather than being skipped when absent. */
-    suspend fun rescheduleTask(token: String, taskUrl: String, dueDate: String?): TaskWriteResult
+    suspend fun rescheduleTask(token: String, taskId: Int, dueDate: String?): TaskWriteResult
 
     suspend fun createTask(
         token: String,
-        createItemUrl: String,
+        areaId: Int,
         text: String,
         dueDate: String?,
     ): TaskWriteResult
 }
 
 /**
- * Talks to `GET /api/v1/agenda` (a Ninja route, `TokenAuth`-scoped like
- * `/day`) and `lists.api`'s hand-rolled `create_item`/`item_detail`
- * (`token_or_session_required`, see token-scopes-plan.md §7) -- two
- * different auth mechanisms on the Django side, one client interface here,
- * because from Android's own view they're the same thing: a Bearer token
- * and a URL.
+ * Talks to `/api/v1/` and nothing else, since August 30, 2026.
+ *
+ * **It used to take urls out of the agenda payload and post to them** --
+ * `url` on each task, `create_item_url` on each area -- which reached
+ * `lists.api`'s hand-rolled views, on a different auth mechanism from the
+ * agenda read beside them. coherence-audit-2026-08-30.md F2 moved every task
+ * write onto the typed Ninja router, so this addresses `/api/v1/tasks/{id}`
+ * and `/api/v1/areas/{id}/tasks` by id instead, and the two mechanisms became
+ * one.
+ *
+ * **The build in Vince's pocket still uses the old urls**, which is why the
+ * server keeps serving them and keeps sending both fields. This client is what
+ * makes retiring them possible; what it waits on is
+ * `android-release-signing-plan.md`'s keystore, without which no signed
+ * release can carry it.
  */
 class OkHttpAgendaApi(
     private val baseUrl: String,
@@ -95,21 +104,21 @@ class OkHttpAgendaApi(
 
     override suspend fun setTaskStatus(
         token: String,
-        taskUrl: String,
+        taskId: Int,
         status: String,
     ): TaskWriteResult =
-        patchTask(token, taskUrl, JSONObject().put("status", status))
+        patchTask(token, taskId, JSONObject().put("status", status))
 
     override suspend fun rescheduleTask(
         token: String,
-        taskUrl: String,
+        taskId: Int,
         dueDate: String?,
     ): TaskWriteResult =
-        patchTask(token, taskUrl, JSONObject().put("due_date", dueDate ?: JSONObject.NULL))
+        patchTask(token, taskId, JSONObject().put("due_date", dueDate ?: JSONObject.NULL))
 
     override suspend fun createTask(
         token: String,
-        createItemUrl: String,
+        areaId: Int,
         text: String,
         dueDate: String?,
     ): TaskWriteResult = withContext(Dispatchers.IO) {
@@ -117,7 +126,7 @@ class OkHttpAgendaApi(
             .put("text", text)
             .put("due_date", dueDate ?: JSONObject.NULL)
         val request = Request.Builder()
-            .url(absoluteUrl(createItemUrl))
+            .url(taskEndpoint("/api/v1/areas/" + areaId + "/tasks"))
             .header("Authorization", "Bearer $token")
             .post(body.toString().toRequestBody(JSON))
             .build()
@@ -126,11 +135,11 @@ class OkHttpAgendaApi(
 
     private suspend fun patchTask(
         token: String,
-        taskUrl: String,
+        taskId: Int,
         body: JSONObject,
     ): TaskWriteResult = withContext(Dispatchers.IO) {
         val request = Request.Builder()
-            .url(absoluteUrl(taskUrl))
+            .url(taskEndpoint("/api/v1/tasks/" + taskId))
             .header("Authorization", "Bearer $token")
             .patch(body.toString().toRequestBody(JSON))
             .build()
@@ -142,7 +151,11 @@ class OkHttpAgendaApi(
             when (response.code) {
                 200, 201 -> parseTaskWrite(response.body.string())
                 401, 403 -> TaskWriteUnauthorised
-                400, 404, 409 -> TaskWriteRejected(errorMessageFrom(response.body.string()))
+                // 422 joins them: the typed router validates enums at the
+                // boundary, so an unknown status or an unparseable date is a
+                // schema rejection now rather than a hand-written 400.
+                400, 404, 409, 422 ->
+                    TaskWriteRejected(errorMessageFrom(response.body.string()))
                 else -> TaskWriteUnreachable("Clarice answered ${response.code}.")
             }
         }
@@ -150,8 +163,13 @@ class OkHttpAgendaApi(
         TaskWriteUnreachable("Could not reach Clarice.")
     }
 
-    private fun absoluteUrl(path: String) =
-        if (path.startsWith("http")) path else baseUrl.trimEnd('/') + path
+    /** Absolute, because okhttp needs one and these paths are ours now.
+     *
+     * Was `absoluteUrl`, which accepted a whole url from the payload and only
+     * prefixed a relative one. Nothing hands this client a url any more, so
+     * the "already absolute" branch had no caller left.
+     */
+    private fun taskEndpoint(path: String) = baseUrl.trimEnd('/') + path
 
     private fun parseAgenda(body: String): AgendaResult = try {
         val json = JSONObject(body)
@@ -168,18 +186,27 @@ class OkHttpAgendaApi(
         AgendaUnreachable("Unexpected response from that address.")
     }
 
+    /** A created task comes back bare; an updated one comes back under
+     *  "task", beside the successor a completion may have produced. The
+     *  endpoint this replaces wrapped both in "data". */
     private fun parseTaskWrite(body: String): TaskWriteResult = try {
-        TaskWriteSucceeded(taskEntryFrom(JSONObject(body).getJSONObject("data")))
+        val json = JSONObject(body)
+        val task = if (json.has("task")) json.getJSONObject("task") else json
+        TaskWriteSucceeded(taskEntryFrom(task))
     } catch (malformed: JSONException) {
         TaskWriteUnreachable("Unexpected response from that address.")
     }
 
-    /** Ninja's `{"detail": "..."}` shape doesn't apply here -- lists.api's
-     *  hand-rolled views answer `{"errors": {"<field>": ["<message>"]}}`. */
+    /** Ninja's `{"detail": "..."}`.
+     *
+     * **This comment used to say that shape did not apply here**, because
+     * `lists.api` answered `{"errors": {"<field>": ["<message>"]}}`. It does
+     * now. A 422 carries a list rather than a string, which only happens when
+     * this client sends something its own contract forbids, so it falls
+     * through to the generic line rather than rendering pydantic at a person.
+     */
     private fun errorMessageFrom(body: String): String = try {
-        val errors = JSONObject(body).getJSONObject("errors")
-        val field = errors.keys().next()
-        errors.getJSONArray(field).getString(0)
+        JSONObject(body).getString("detail")
     } catch (malformed: JSONException) {
         "Clarice would not accept that."
     }
@@ -191,7 +218,8 @@ class OkHttpAgendaApi(
         tags = json.getJSONArray("tags").let { tags -> (0 until tags.length()).map(tags::getString) },
         areaId = json.optIntOrNull("area_id"),
         projectId = json.optIntOrNull("project_id"),
-        url = json.getString("url"),
+        // `url` is still in the payload and deliberately unread -- the server
+        // keeps sending it for the build that came before this one.
     )
 
     private fun areaEntryFrom(json: JSONObject) = AgendaAreaEntry(
@@ -200,7 +228,9 @@ class OkHttpAgendaApi(
         colorKey = json.getString("color_key"),
         openCount = json.getInt("open_count"),
         overdueCount = json.getInt("overdue_count"),
-        createItemUrl = json.getString("create_item_url"),
+        // `create_item_url` likewise: quick-add posts to
+        // /api/v1/areas/{id}/tasks now, and the field survives for the
+        // shipped build.
     )
 
     private fun projectEntryFrom(json: JSONObject) = AgendaProjectEntry(

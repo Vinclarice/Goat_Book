@@ -36,12 +36,11 @@ data class FocusEntry(
     val text: String,
     val status: String?,
     val dueDate: String?,
-    /** Where the task itself lives, so the day can act on it rather than
-     *  only show it. Null for a pin whose task was deleted -- the record of
-     *  having planned it outlives the task, and there is then nothing to
-     *  address. The server supplies it; assembling one here would be a
-     *  second definition of a route Android does not own. */
-    val url: String?,
+    // **`url` stood here until August 30, 2026** --
+    // coherence-audit-2026-08-30.md F2. It was how the day acted on a task,
+    // and `taskId` above says the same thing: both are null for a pin whose
+    // task was deleted, and the client builds `/api/v1/tasks/{id}` itself now.
+    // The server still sends the field, for the build that came before this.
 )
 
 data class ActionItemEntry(

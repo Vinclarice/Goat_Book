@@ -249,7 +249,7 @@ class OkHttpDailyApi(
         text = json.getString("text"),
         status = json.optStringOrNull("status"),
         dueDate = json.optStringOrNull("due_date"),
-        url = json.optStringOrNull("url"),
+        // `url` deliberately unread -- see FocusEntry.
     )
 
     private fun actionItemEntryFrom(json: JSONObject) = ActionItemEntry(

@@ -37,23 +37,23 @@ class AgendaViewModelTest {
             return readResult
         }
 
-        override suspend fun setTaskStatus(token: String, taskUrl: String, status: String): TaskWriteResult {
-            lastWrite = Triple("status", taskUrl, status)
+        override suspend fun setTaskStatus(token: String, taskId: Int, status: String): TaskWriteResult {
+            lastWrite = Triple("status", taskId.toString(), status)
             return writeResult
         }
 
-        override suspend fun rescheduleTask(token: String, taskUrl: String, dueDate: String?): TaskWriteResult {
-            lastWrite = Triple("due_date", taskUrl, dueDate)
+        override suspend fun rescheduleTask(token: String, taskId: Int, dueDate: String?): TaskWriteResult {
+            lastWrite = Triple("due_date", taskId.toString(), dueDate)
             return writeResult
         }
 
         override suspend fun createTask(
             token: String,
-            createItemUrl: String,
+            areaId: Int,
             text: String,
             dueDate: String?,
         ): TaskWriteResult {
-            lastWrite = Triple("create", createItemUrl, text)
+            lastWrite = Triple("create", areaId.toString(), text)
             return writeResult
         }
     }
@@ -64,7 +64,6 @@ class AgendaViewModelTest {
         colorKey = "sky",
         openCount = 1,
         overdueCount = 1,
-        createItemUrl = "/api/areas/3/items/",
     )
 
     private val task = AgendaTaskEntry(
@@ -74,7 +73,6 @@ class AgendaViewModelTest {
         tags = listOf("bills"),
         areaId = 3,
         projectId = null,
-        url = "/api/items/7/",
     )
 
     private val sampleAgenda = AgendaEntry(
@@ -176,7 +174,7 @@ class AgendaViewModelTest {
 
         model.completeTask(task)
 
-        assertEquals(Triple("status", "/api/items/7/", "completed"), api.lastWrite)
+        assertEquals(Triple("status", "7", "completed"), api.lastWrite)
         // load() ran once on open and once more as the reload after a
         // successful write.
         assertEquals(2, api.readCalls)
@@ -193,7 +191,7 @@ class AgendaViewModelTest {
 
         model.reopenTask(task)
 
-        assertEquals(Triple("status", "/api/items/7/", "active"), api.lastWrite)
+        assertEquals(Triple("status", "7", "active"), api.lastWrite)
     }
 
     @Test
@@ -206,7 +204,7 @@ class AgendaViewModelTest {
 
         model.reschedule(task, "2026-09-01")
 
-        assertEquals(Triple("due_date", "/api/items/7/", "2026-09-01"), api.lastWrite)
+        assertEquals(Triple("due_date", "7", "2026-09-01"), api.lastWrite)
     }
 
     @Test
@@ -219,7 +217,7 @@ class AgendaViewModelTest {
 
         model.reschedule(task, null)
 
-        assertEquals(Triple("due_date", "/api/items/7/", null), api.lastWrite)
+        assertEquals(Triple("due_date", "7", null), api.lastWrite)
     }
 
     @Test
@@ -232,7 +230,7 @@ class AgendaViewModelTest {
 
         model.quickAdd(area, "Call the vet", null)
 
-        assertEquals(Triple("create", "/api/areas/3/items/", "Call the vet"), api.lastWrite)
+        assertEquals(Triple("create", "3", "Call the vet"), api.lastWrite)
     }
 
     @Test

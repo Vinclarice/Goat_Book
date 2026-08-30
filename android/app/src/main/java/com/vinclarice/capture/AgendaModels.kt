@@ -32,7 +32,6 @@ data class AgendaTaskEntry(
     // since `Item.list` was widened on August 14. See AgendaApi.taskEntryFrom.
     val areaId: Int?,
     val projectId: Int?,
-    val url: String,
 )
 
 data class AgendaAreaEntry(
@@ -41,8 +40,6 @@ data class AgendaAreaEntry(
     val colorKey: String,
     val openCount: Int,
     val overdueCount: Int,
-    /** Where quick-add posts a new task into this area. */
-    val createItemUrl: String,
 )
 
 data class AgendaProjectEntry(

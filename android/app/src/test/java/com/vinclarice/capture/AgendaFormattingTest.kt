@@ -68,7 +68,6 @@ class AgendaFormattingTest {
         tags = tags,
         areaId = areaId,
         projectId = null,
-        url = "/api/items/$id/",
     )
 
     @Test

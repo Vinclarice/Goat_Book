@@ -128,8 +128,8 @@ class DailyViewModel(
         write { token -> api.unpinFocus(token, day.date, taskId) }
     }
 
-    suspend fun completeTask(url: String) = writeTask { token ->
-        tasks.setTaskStatus(token, url, "completed")
+    suspend fun completeTask(taskId: Int) = writeTask { token ->
+        tasks.setTaskStatus(token, taskId, "completed")
     }
 
     /**
@@ -144,9 +144,9 @@ class DailyViewModel(
      * Agenda screen already snoozes with, rather than a fourth hand-written
      * copy of it.
      */
-    suspend fun deferTaskToTomorrow(url: String) {
+    suspend fun deferTaskToTomorrow(taskId: Int) {
         val day = _state.value.day ?: return
-        writeTask { token -> tasks.rescheduleTask(token, url, tomorrow(day.date)) }
+        writeTask { token -> tasks.rescheduleTask(token, taskId, tomorrow(day.date)) }
     }
 
     /**

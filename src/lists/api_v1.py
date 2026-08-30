@@ -157,7 +157,6 @@ class AgendaOut(Schema):
     username: str
     archive_url: str
     archived_count: int
-    new_area_url: str
     settings_url: str
     daily_digest: bool
     buckets: list[AgendaBucketOut]
@@ -1168,6 +1167,62 @@ def area_detail(request, area_id: int):
         ).count(),
         "archive_url": reverse("archive"),
     }
+
+
+class NewAreaIn(Schema):
+    title: str = ""
+    # Optional, and `None` is not the same as `""`. Omitting it means "an
+    # empty area"; sending it empty means somebody submitted a blank task,
+    # which is what the retired form's `required` used to catch.
+    first_task: str | None = None
+
+
+@router.post("/areas", response=AreaRefOut)
+def create_area(request, payload: NewAreaIn):
+    """A new Area, with or without its first task.
+
+    coherence-audit-2026-08-30.md F1. **What this replaces is a page reload.**
+    `lists.views.new_list` was a Django form view that both the Agenda's
+    "+ New area" card and FirstRun posted to, so the one container the task
+    core is built out of was the only thing you could not make without leaving
+    the SPA -- while `POST /projects`, the sibling control beside it on the
+    same card, had been typed since project-workspace-plan.md.
+    `services.create_area` already existed and already took `project=None`;
+    the split was entirely in the surface.
+
+    **Two shapes, one endpoint**, because the two callers genuinely differ and
+    neither is a special case of the other. The Agenda wants a named container
+    and nothing in it. FirstRun wants both at once, on purpose -- naming a
+    container is not a thing anybody wants to do, so it asks for the task and
+    lets the area take its name.
+
+    **Validation is borrowed, not restated**, exactly as `rename_area` borrows
+    it: `ListTitleForm` is the one definition of what an Area may be called,
+    and `normalize_task_text` inside `create_list_with_item` is the one
+    definition of a task's text. An endpoint re-implementing either is an
+    endpoint that can drift from the other entry point to the same rule.
+
+    Ownership comes from the session and the payload has no owner field. This
+    endpoint takes no ID, so there is nothing to check against -- see
+    test_the_new_area_belongs_to_the_caller_and_not_a_named_owner.
+    """
+    if payload.first_task is None:
+        # Nothing can name it but the title, so the title has to be real.
+        # create_area would fall back to "Untitled list", which is right for
+        # an area grown inside a project and useless as the only thing on a
+        # card somebody just filled in.
+        form = ListTitleForm(data={"title": payload.title})
+        if not form.is_valid():
+            raise HttpError(400, form.errors["title"][0])
+        area = services.create_area(request.user, form.cleaned_data["title"])
+    else:
+        try:
+            area = services.create_list_with_item(
+                request.user, payload.title, payload.first_task
+            )
+        except services.TaskConflict as error:
+            raise HttpError(409, str(error))
+    return area_ref_for(area)
 
 
 @router.patch("/areas/{area_id}", response=AreaRefOut)

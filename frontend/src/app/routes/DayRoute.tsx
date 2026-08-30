@@ -1066,7 +1066,7 @@ export function DayRoute() {
           Tuesday. See FirstRun and product-stories.md S1: three empty states
           that cannot be acted on are the "six concepts" that story refuses. */}
       {firstRun ? (
-        <FirstRun newAreaUrl={data.new_area_url} />
+        <FirstRun />
       ) : (
         <>
       <section className="space-y-2">

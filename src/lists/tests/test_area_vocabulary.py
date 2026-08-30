@@ -40,8 +40,22 @@ class AreaVocabularyTest(TestCase):
 
         self.assertEqual(payload["areas"][0]["title"], "Programming")
         self.assertNotIn("lists", payload)
-        self.assertIn("new_area_url", payload)
+        # `new_area_url` was asserted here until August 30, 2026 and the field
+        # no longer exists -- coherence-audit-2026-08-30.md F1 replaced the
+        # Django form it pointed at with POST /api/v1/areas. The vocabulary
+        # point it was making is now made by the route itself, below.
+        self.assertNotIn("new_area_url", payload)
         self.assertNotIn("new_list_url", payload)
+
+    def test_creating_one_is_posted_to_areas_and_not_to_lists(self):
+        created = self.client.post(
+            "/api/v1/areas",
+            data='{"title": "Home"}',
+            content_type="application/json",
+        )
+
+        self.assertEqual(created.status_code, 200)
+        self.assertEqual(created.json()["title"], "Home")
 
     def test_the_nav_calls_them_areas(self):
         payload = self.client.get("/api/v1/nav").json()

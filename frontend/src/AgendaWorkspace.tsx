@@ -22,7 +22,6 @@ import {
 } from "./agenda";
 import {
   createTask,
-  getCookie,
   updateTaskDueDate,
   updateTaskStatus,
 } from "./api";
@@ -179,9 +178,33 @@ export function AgendaWorkspace({ initialData }: Props) {
   const queryClient = useQueryClient();
   const [draftProject, setDraftProject] = useState("");
   const [projectError, setProjectError] = useState("");
-  // project-workspace-plan.md: a Project is API-only (no Django-rendered
-  // form to post to, unlike "New area" beside it), so this goes through a
-  // mutation and the SPA router rather than a plain POST + reload.
+  // Named for the new area rather than `draftArea`, which is already taken
+  // above and means something else entirely: which existing area the quick
+  // add files its task into.
+  const [draftAreaName, setDraftAreaName] = useState("");
+  const [areaError, setAreaError] = useState("");
+  // coherence-audit-2026-08-30.md F1. Both cards are mutations now. This one
+  // was a plain Django form POST to `new_list` -- a full page reload, out of
+  // the SPA and back, for the sibling of the control directly below it.
+  const createArea = useMutation({
+    mutationFn: async (title: string) => {
+      const { data, error } = await apiV1.POST("/api/v1/areas", {
+        body: { title },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (area) => {
+      queryClient.invalidateQueries({ queryKey: ["nav"] });
+      navigate(`/areas/${area.id}`);
+    },
+    onError: (error: { detail?: string }) => {
+      setAreaError(error?.detail ?? "That didn't work. Try again.");
+    },
+  });
+  // project-workspace-plan.md: a Project is API-only, so this goes through a
+  // mutation and the SPA router rather than a plain POST + reload. Its
+  // sibling above now does the same -- see F1.
   const createProject = useMutation({
     mutationFn: async (title: string) => {
       const { data, error } = await apiV1.POST("/api/v1/projects", {
@@ -196,6 +219,14 @@ export function AgendaWorkspace({ initialData }: Props) {
     },
     onError: () => setProjectError("Couldn't create that project."),
   });
+
+  function handleCreateArea(event: FormEvent) {
+    event.preventDefault();
+    const title = draftAreaName.trim();
+    if (!title) return;
+    setAreaError("");
+    createArea.mutate(title);
+  }
 
   function handleCreateProject(event: FormEvent) {
     event.preventDefault();
@@ -896,39 +927,37 @@ export function AgendaWorkspace({ initialData }: Props) {
               <summary className="flex min-h-11 cursor-pointer items-center text-sm font-semibold text-primary">
                 + New area
               </summary>
-              {/* A plain Django POST: creating an area navigates to the new
-                  area anyway, so there's nothing for the SPA layer to do. */}
-              <form
-                className="mt-2 grid gap-2"
-                method="post"
-                action={initialData.new_area_url}
-              >
-                <input
-                  type="hidden"
-                  name="csrfmiddlewaretoken"
-                  value={getCookie("csrftoken")}
-                />
+              {/* coherence-audit-2026-08-30.md F1. Was a plain Django POST
+                  to `new_list`, which reloaded the page, next to a card doing
+                  the same job through a typed mutation.
+
+                  The first-task field went with it. It was never a domain
+                  rule -- `services.create_area` has taken a bare title since
+                  August 10, 2026 -- and asking for one here while the
+                  Project card below asks for nothing was the asymmetry
+                  rather than a considered difference. FirstRun still asks,
+                  and there it is the point of the screen. */}
+              <form className="mt-2 grid gap-2" onSubmit={handleCreateArea}>
                 <label className="sr-only" htmlFor="agenda-new-title">
                   Area name
                 </label>
                 <input
                   id="agenda-new-title"
                   className="min-h-11 rounded-lg border border-border bg-input px-2.5 text-sm text-foreground outline-none"
-                  name="title"
+                  value={draftAreaName}
+                  onChange={(event) => setDraftAreaName(event.target.value)}
                   placeholder="Area name"
                   maxLength={100}
                 />
-                <label className="sr-only" htmlFor="agenda-new-text">
-                  First task
-                </label>
-                <input
-                  id="agenda-new-text"
-                  className="min-h-11 rounded-lg border border-border bg-input px-2.5 text-sm text-foreground outline-none"
-                  name="text"
-                  placeholder="First task"
-                  required
-                />
-                <Button type="submit" size="sm" className="h-11">
+                {areaError && (
+                  <p className="text-sm text-destructive">{areaError}</p>
+                )}
+                <Button
+                  type="submit"
+                  size="sm"
+                  className="h-11"
+                  disabled={createArea.isPending}
+                >
                   Create area
                 </Button>
               </form>

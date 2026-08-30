@@ -6,7 +6,6 @@ from lists.forms import (
     EMPTY_ITEM_ERROR,
     ItemForm,
     ListTitleForm,
-    NewListForm,
 )
 from lists.models import Item, List
 
@@ -35,40 +34,11 @@ class ItemFormTest(TestCase):
         self.assertEqual(new_item.list, mylist)
 
 
-class NewListFormTest(TestCase):
-    def test_saves_named_list_and_first_item_for_owner(self):
-        from accounts.models import User
-
-        owner = User.objects.create_user(
-            "alice",
-            "alice@example.com",
-            "a secure password",
-        )
-        form = NewListForm(
-            data={"title": "Programming", "text": "Learn Django"},
-        )
-
-        self.assertTrue(form.is_valid())
-        new_list = form.save(owner=owner)
-
-        self.assertEqual(new_list.title, "Programming")
-        self.assertEqual(new_list.owner, owner)
-        self.assertEqual(new_list.item_set.get().text, "Learn Django")
-
-    def test_uses_first_item_as_name_when_title_is_omitted(self):
-        from accounts.models import User
-
-        owner = User.objects.create_user(
-            "alice",
-            "alice@example.com",
-            "a secure password",
-        )
-        form = NewListForm(data={"title": "", "text": "Plan the weekend"})
-
-        self.assertTrue(form.is_valid())
-        new_list = form.save(owner=owner)
-
-        self.assertEqual(new_list.title, "Plan the weekend")
+# `class NewListFormTest` stood here until August 30, 2026, and NewListForm
+# is gone with the view that was its only caller --
+# coherence-audit-2026-08-30.md F1. Both cases it made are remade against
+# the endpoint that replaced it, in
+# lists.tests.test_api_v1.CreateAreaEndpointTest.
 
 
 class ListTitleFormTest(TestCase):

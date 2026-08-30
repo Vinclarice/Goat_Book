@@ -331,7 +331,6 @@ def workspace_data_for(
         "username": user.username,
         "archive_url": reverse("archive"),
         "archived_count": archived_count,
-        "new_area_url": reverse("new_list"),
         "settings_url": reverse("account_settings"),
         "daily_digest": user.daily_digest,
         "buckets": [

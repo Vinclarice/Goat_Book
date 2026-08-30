@@ -82,7 +82,6 @@ export function agendaData(
     username: "vince",
     archive_url: "/archive/",
     archived_count: 0,
-    new_area_url: "/areas/new",
     settings_url: "/accounts/settings/",
     daily_digest: true,
     buckets: [

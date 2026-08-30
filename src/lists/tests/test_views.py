@@ -1,9 +1,7 @@
 from django.test import TestCase
 from django.urls import reverse
-from django.utils import html
 
 from accounts.models import User
-from lists.forms import EMPTY_ITEM_ERROR
 from lists.models import Item, List
 
 
@@ -88,55 +86,12 @@ class DashboardTest(TestCase):
         )
 
 
-class NewListTest(TestCase):
-    def setUp(self):
-        self.user = User.objects.create_user(
-            "alice",
-            "alice@example.com",
-            "a secure password",
-        )
-        self.client.force_login(self.user)
-
-    def test_requires_login(self):
-        self.client.logout()
-
-        response = self.client.post("/areas/new", data={"text": "Private item"})
-
-        self.assertRedirects(response, "/accounts/login/?next=/areas/new")
-        self.assertEqual(Item.objects.count(), 0)
-
-    def test_saves_item_and_owner_then_redirects(self):
-        response = self.client.post(
-            "/areas/new",
-            data={"title": "Programming", "text": "A new list item"},
-        )
-
-        new_list = List.objects.get()
-        new_item = Item.objects.get()
-        self.assertEqual(new_list.owner, self.user)
-        self.assertEqual(new_list.title, "Programming")
-        self.assertEqual(new_item.text, "A new list item")
-        self.assertEqual(new_item.list, new_list)
-        self.assertRedirects(
-            response, f"/areas/{new_list.id}/", target_status_code=302,
-        )
-
-    def test_uses_first_item_as_name_when_name_is_omitted(self):
-        self.client.post(
-            "/areas/new",
-            data={"title": "", "text": "Plan the weekend"},
-        )
-
-        self.assertEqual(List.objects.get().title, "Plan the weekend")
-
-    def test_invalid_input_renders_the_new_list_form_without_saving(self):
-        response = self.client.post("/areas/new", data={"text": ""})
-
-        self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, "new_list_form.html")
-        self.assertContains(response, html.escape(EMPTY_ITEM_ERROR))
-        self.assertEqual(Item.objects.count(), 0)
-        self.assertEqual(List.objects.count(), 0)
+# `class NewListTest` stood here until August 30, 2026 and is gone with the
+# view it tested -- coherence-audit-2026-08-30.md F1 retired `new_list` for
+# `POST /api/v1/areas`. **The coverage moved rather than went**: every case
+# it made is remade in lists.tests.test_api_v1.CreateAreaEndpointTest --
+# named area with a first task, the title falling back to the task's text,
+# an empty task saving nothing, and anonymous requests refused.
 
 
 class ListViewTest(TestCase):

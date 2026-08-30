@@ -462,3 +462,112 @@ class NavEndpointTest(TestCase):
         self.assertTrue(body["settings_url"].startswith("/accounts/"))
         self.assertNotIn("inbox_url", body)
         self.assertNotIn("ideas_url", body)
+
+
+class CreateAreaEndpointTest(TestCase):
+    """`POST /api/v1/areas` — coherence-audit-2026-08-30.md F1.
+
+    An Area was the one thing in the task core you could only make by posting
+    a Django form and reloading the page, while a Project — its sibling on the
+    same Agenda card — had had a typed endpoint since project-workspace-plan.md.
+    The domain layer was never the problem: `services.create_area` already
+    existed and already took `project=None`.
+
+    **Two shapes, because there were two callers.** The Agenda's card wants a
+    named container and nothing else, matching "New project" beside it.
+    FirstRun wants an area *and* its first task in one go, deliberately — see
+    its own comment on why naming a container is not a thing anyone wants to
+    do — and that is what `create_list_with_item` has always done.
+    """
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            "alice",
+            "alice@example.com",
+            "a secure password",
+        )
+
+    def post(self, **payload):
+        return self.client.post(
+            "/api/v1/areas",
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+
+    def test_rejects_anonymous_requests(self):
+        response = self.post(title="Programming")
+
+        self.assertEqual(response.status_code, 401)
+        self.assertFalse(List.objects.exists())
+
+    def test_creates_an_empty_area_from_a_title_alone(self):
+        # The Agenda card's shape, and the symmetry with POST /projects that
+        # F1 is about: no first task required.
+        self.client.force_login(self.user)
+
+        response = self.post(title="Programming")
+
+        self.assertEqual(response.status_code, 200)
+        area = List.objects.get()
+        self.assertEqual(area.title, "Programming")
+        self.assertEqual(area.owner, self.user)
+        self.assertFalse(area.item_set.exists())
+        self.assertEqual(response.json()["id"], area.id)
+        self.assertEqual(response.json()["title"], "Programming")
+
+    def test_creates_the_area_and_its_first_task_together(self):
+        # FirstRun's shape. One request, and the two records arrive together
+        # or not at all -- create_list_with_item is @transaction.atomic.
+        self.client.force_login(self.user)
+
+        response = self.post(title="Home", first_task="Call the dentist")
+
+        self.assertEqual(response.status_code, 200)
+        area = List.objects.get()
+        self.assertEqual(area.title, "Home")
+        self.assertEqual(area.item_set.get().text, "Call the dentist")
+
+    def test_an_unnamed_area_takes_the_name_of_its_first_task(self):
+        # FirstRun says this in published copy -- "Leave this empty and the
+        # area takes the name of the task" -- so it is a promise, not a
+        # fallback.
+        self.client.force_login(self.user)
+
+        self.post(title="", first_task="Call the dentist")
+
+        self.assertEqual(List.objects.get().title, "Call the dentist")
+
+    def test_refuses_an_unnamed_area_with_nothing_in_it(self):
+        # Nothing can name it and nothing is in it. The sibling refuses the
+        # same thing: create_project raises on a blank title.
+        self.client.force_login(self.user)
+
+        response = self.post(title="   ")
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(List.objects.exists())
+
+    def test_refuses_a_first_task_that_is_blank(self):
+        # Distinct from omitting it. Sending the field empty is somebody
+        # submitting an empty task, which is what the old form's `required`
+        # caught -- and the area must not be created either.
+        self.client.force_login(self.user)
+
+        response = self.post(title="Home", first_task="   ")
+
+        self.assertEqual(response.status_code, 409)
+        self.assertFalse(List.objects.exists())
+
+    def test_the_new_area_belongs_to_the_caller_and_not_a_named_owner(self):
+        # There is no owner field on the payload and there must never be one:
+        # the endpoint takes no ID, so ownership comes from the session alone.
+        other = User.objects.create_user(
+            "bob",
+            "bob@example.com",
+            "another secure password",
+        )
+        self.client.force_login(self.user)
+
+        self.post(title="Programming", owner=other.id)
+
+        self.assertEqual(List.objects.get().owner, self.user)

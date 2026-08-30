@@ -188,7 +188,6 @@ export interface AgendaWorkspaceData {
   username: string;
   archive_url: string;
   archived_count: number;
-  new_area_url: string;
   settings_url: string;
   daily_digest: boolean;
   buckets: AgendaBucket[];

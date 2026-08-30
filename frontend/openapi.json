@@ -715,6 +715,41 @@
         ]
       }
     },
+    "/api/v1/areas": {
+      "post": {
+        "operationId": "lists_api_v1_create_area",
+        "summary": "Create Area",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AreaRefOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "A new Area, with or without its first task.\n\ncoherence-audit-2026-08-30.md F1. **What this replaces is a page reload.**\n`lists.views.new_list` was a Django form view that both the Agenda's\n\"+ New area\" card and FirstRun posted to, so the one container the task\ncore is built out of was the only thing you could not make without leaving\nthe SPA -- while `POST /projects`, the sibling control beside it on the\nsame card, had been typed since project-workspace-plan.md.\n`services.create_area` already existed and already took `project=None`;\nthe split was entirely in the surface.\n\n**Two shapes, one endpoint**, because the two callers genuinely differ and\nneither is a special case of the other. The Agenda wants a named container\nand nothing in it. FirstRun wants both at once, on purpose -- naming a\ncontainer is not a thing anybody wants to do, so it asks for the task and\nlets the area take its name.\n\n**Validation is borrowed, not restated**, exactly as `rename_area` borrows\nit: `ListTitleForm` is the one definition of what an Area may be called,\nand `normalize_task_text` inside `create_list_with_item` is the one\ndefinition of a task's text. An endpoint re-implementing either is an\nendpoint that can drift from the other entry point to the same rule.\n\nOwnership comes from the session and the payload has no owner field. This\nendpoint takes no ID, so there is nothing to check against -- see\ntest_the_new_area_belongs_to_the_caller_and_not_a_named_owner.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewAreaIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/tasks/{item_id}": {
       "get": {
         "operationId": "lists_api_v1_task_detail",
@@ -3899,10 +3934,6 @@
             "title": "Archived Count",
             "type": "integer"
           },
-          "new_area_url": {
-            "title": "New Area Url",
-            "type": "string"
-          },
           "settings_url": {
             "title": "Settings Url",
             "type": "string"
@@ -3952,7 +3983,6 @@
           "username",
           "archive_url",
           "archived_count",
-          "new_area_url",
           "settings_url",
           "daily_digest",
           "buckets",
@@ -4264,6 +4294,28 @@
           "title"
         ],
         "title": "AreaRenameIn",
+        "type": "object"
+      },
+      "NewAreaIn": {
+        "properties": {
+          "title": {
+            "default": "",
+            "title": "Title",
+            "type": "string"
+          },
+          "first_task": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Task"
+          }
+        },
+        "title": "NewAreaIn",
         "type": "object"
       },
       "CadenceMode": {
@@ -6031,10 +6083,6 @@
             "title": "Shows Action Items",
             "type": "boolean"
           },
-          "new_area_url": {
-            "title": "New Area Url",
-            "type": "string"
-          },
           "focus": {
             "items": {
               "$ref": "#/components/schemas/FocusOut"
@@ -6111,7 +6159,6 @@
           "areas",
           "projects",
           "shows_action_items",
-          "new_area_url",
           "focus",
           "draft",
           "brief",

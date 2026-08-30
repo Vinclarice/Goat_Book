@@ -4,9 +4,6 @@ from django.http import Http404
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views.decorators.csrf import ensure_csrf_cookie
-from django.views.decorators.http import require_POST
-
-from lists.forms import NewListForm
 
 
 def _spa_path(subpath):
@@ -61,23 +58,6 @@ def spa_shell(request, subpath=""):
     if subpath.startswith("dev/") and not settings.DEBUG:
         raise Http404
     return render(request, "app_shell.html")
-
-
-@login_required
-@require_POST
-def new_list(request):
-    """Still a real Django view, not a Ninja endpoint: creating an area was
-    never migrated onto the SPA/API -- AgendaWorkspace's "+ New area" form
-    is a plain HTML POST straight here (see AgendaWorkspace.tsx), since
-    the resulting navigation to the new area's page is exactly what a
-    fetch-based flow would have to fake anyway.
-    """
-    form = NewListForm(data=request.POST)
-    if form.is_valid():
-        new_list = form.save(owner=request.user)
-        return redirect(new_list)
-
-    return render(request, "new_list_form.html", {"form": form})
 
 
 @login_required

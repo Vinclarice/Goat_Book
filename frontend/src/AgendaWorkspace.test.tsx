@@ -495,6 +495,56 @@ describe("AgendaWorkspace", () => {
     });
   });
 
+  it("creates an area through the API, like the project card beside it", async () => {
+    // coherence-audit-2026-08-30.md F1. This card was a plain Django form
+    // POST that reloaded the page, sitting next to a typed mutation doing
+    // the same job -- the clearest instance of the seam the audit is about.
+    // No first task any more either: the sibling does not ask for one.
+    function openapiResponse(data: object) {
+      const body = JSON.stringify(data);
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        headers: new Headers({
+          "content-type": "application/json",
+          "content-length": String(body.length),
+        }),
+        json: () => Promise.resolve(data),
+        text: () => Promise.resolve(body),
+        clone() {
+          return this;
+        },
+      } as unknown as Response);
+    }
+    const user = userEvent.setup();
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const request = input as Request;
+      if (request.method === "POST" && request.url.includes("/api/v1/areas")) {
+        return openapiResponse({
+          id: 12,
+          title: "Home",
+          create_item_url: "/api/areas/12/items/",
+          reorder_url: "/api/areas/12/items/reorder/",
+        });
+      }
+      return jsonResponse({});
+    });
+    renderAgenda();
+
+    await user.click(screen.getByText("+ New area"));
+    await user.type(screen.getByLabelText("Area name"), "Home");
+    await user.click(screen.getByRole("button", { name: "Create area" }));
+
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.some(([request]) => {
+          const req = request as Request;
+          return req.method === "POST" && req.url.includes("/api/v1/areas");
+        }),
+      ).toBe(true);
+    });
+  });
+
   it("does not offer routes that no longer exist", async () => {
     // Heron 4b deleted the Inbox and the Ideas shelf and freed /capture/,
     // which clarice/urls.py deliberately did not take -- so both hrefs here

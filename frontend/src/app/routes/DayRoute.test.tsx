@@ -38,7 +38,6 @@ function dayData(overrides: Record<string, unknown> = {}) {
     // now its own thing: see the first-run tests.
     areas: [dayArea()],
     projects: [],
-    new_area_url: "/areas/new",
     shows_action_items: true,
     focus: [],
     draft: { typical: null, proposed: [], available: 0 },
@@ -416,8 +415,14 @@ describe("DayRoute", () => {
 
   it("offers one action, and it makes a real task", async () => {
     // Not "name your first area": a container is not a thing anyone wants to
-    // make. new_list takes the task and the area together, so the one form
-    // leaves somebody with something they actually wrote down.
+    // make. The one form takes the task and the area together, so it leaves
+    // somebody with something they actually wrote down.
+    //
+    // **The contract changed here, deliberately** --
+    // coherence-audit-2026-08-30.md F1. This asserted
+    // `action="/areas/new"`, a plain Django form POST that reloaded the page
+    // out of the SPA. It is `POST /api/v1/areas` now, so what is asserted is
+    // the request rather than the markup.
     vi.spyOn(globalThis, "fetch").mockImplementation(() =>
       jsonResponse(dayData({ areas: [] })),
     );
@@ -426,8 +431,48 @@ describe("DayRoute", () => {
 
     const field = await screen.findByLabelText(/first thing on your plate/i);
     expect(field).toBeRequired();
-    expect(field.closest("form")).toHaveAttribute("action", "/areas/new");
+    expect(field.closest("form")).not.toHaveAttribute("action");
     expect(screen.getByLabelText(/area it belongs to/i)).not.toBeRequired();
+  });
+
+  it("sends the first area and its first task to the typed endpoint", async () => {
+    // coherence-audit-2026-08-30.md F1. Both fields in one request, which is
+    // what keeps FirstRun's promise that leaving the area name empty lets it
+    // take the name of the task -- the server decides that, in
+    // create_list_with_item, and always has.
+    const user = userEvent.setup();
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const request = input as Request;
+      if (request.method === "POST" && request.url.includes("/api/v1/areas")) {
+        // This file's jsonResponse already carries the headers, text() and
+        // clone() that openapi-fetch needs, unlike AgendaWorkspace's.
+        return jsonResponse({
+          id: 4,
+          title: "Home",
+          create_item_url: "/api/areas/4/items/",
+          reorder_url: "/api/areas/4/items/reorder/",
+        });
+      }
+      return jsonResponse(dayData({ areas: [] }));
+    });
+
+    renderAt("/day/2026-08-03");
+
+    await user.type(
+      await screen.findByLabelText(/first thing on your plate/i),
+      "Call the dentist",
+    );
+    await user.type(screen.getByLabelText(/area it belongs to/i), "Home");
+    await user.click(screen.getByRole("button", { name: "Add it" }));
+
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.some(([request]) => {
+          const req = request as Request;
+          return req.method === "POST" && req.url.includes("/api/v1/areas");
+        }),
+      ).toBe(true);
+    });
   });
 
   it("leaves an established account's quiet day alone", async () => {

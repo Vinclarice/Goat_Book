@@ -223,7 +223,13 @@ increment is provable on its own and the cheap ones come first.
   2026.** Contact is in both branches of the app bar; the form stops asking
   somebody with a session who they are, and the rate limit is keyed on the
   account rather than the address.
-- **1. `POST /api/v1/areas`, and retire `new_list`** — F1. **Open.**
+- ~~**1. `POST /api/v1/areas`, and retire `new_list`**~~ — F1. **Done
+  August 30, 2026.** Both cards are mutations, the first-task field is gone
+  from the Agenda's, and `new_list` with its view, url, form and template is
+  deleted. **The estimate it was sequenced to produce**: two callers, one
+  endpoint, four test files, and the type check caught a name collision the
+  moment the client was regenerated — which is increment 2's whole argument,
+  in miniature.
 - **2. Task writes onto `/api/v1/` as a typed router; retire `api.ts`** — F2.
   **Open.** The expensive one. Also removes the bespoke token path
   `android-full-client-plan.md`'s later slices need.

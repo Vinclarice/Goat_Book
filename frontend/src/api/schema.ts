@@ -368,6 +368,51 @@ export interface paths {
         patch: operations["lists_api_v1_rename_area"];
         trace?: never;
     };
+    "/api/v1/areas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Area
+         * @description A new Area, with or without its first task.
+         *
+         *     coherence-audit-2026-08-30.md F1. **What this replaces is a page reload.**
+         *     `lists.views.new_list` was a Django form view that both the Agenda's
+         *     "+ New area" card and FirstRun posted to, so the one container the task
+         *     core is built out of was the only thing you could not make without leaving
+         *     the SPA -- while `POST /projects`, the sibling control beside it on the
+         *     same card, had been typed since project-workspace-plan.md.
+         *     `services.create_area` already existed and already took `project=None`;
+         *     the split was entirely in the surface.
+         *
+         *     **Two shapes, one endpoint**, because the two callers genuinely differ and
+         *     neither is a special case of the other. The Agenda wants a named container
+         *     and nothing in it. FirstRun wants both at once, on purpose -- naming a
+         *     container is not a thing anybody wants to do, so it asks for the task and
+         *     lets the area take its name.
+         *
+         *     **Validation is borrowed, not restated**, exactly as `rename_area` borrows
+         *     it: `ListTitleForm` is the one definition of what an Area may be called,
+         *     and `normalize_task_text` inside `create_list_with_item` is the one
+         *     definition of a task's text. An endpoint re-implementing either is an
+         *     endpoint that can drift from the other entry point to the same rule.
+         *
+         *     Ownership comes from the session and the payload has no owner field. This
+         *     endpoint takes no ID, so there is nothing to check against -- see
+         *     test_the_new_area_belongs_to_the_caller_and_not_a_named_owner.
+         */
+        post: operations["lists_api_v1_create_area"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tasks/{item_id}": {
         parameters: {
             query?: never;
@@ -2005,8 +2050,6 @@ export interface components {
             archive_url: string;
             /** Archived Count */
             archived_count: number;
-            /** New Area Url */
-            new_area_url: string;
             /** Settings Url */
             settings_url: string;
             /** Daily Digest */
@@ -2121,6 +2164,16 @@ export interface components {
         AreaRenameIn: {
             /** Title */
             title: string;
+        };
+        /** NewAreaIn */
+        NewAreaIn: {
+            /**
+             * Title
+             * @default
+             */
+            title: string;
+            /** First Task */
+            first_task?: string | null;
         };
         /**
          * CadenceMode
@@ -2869,8 +2922,6 @@ export interface components {
             projects: components["schemas"]["AgendaProjectSummaryOut"][];
             /** Shows Action Items */
             shows_action_items: boolean;
-            /** New Area Url */
-            new_area_url: string;
             /** Focus */
             focus: components["schemas"]["FocusOut"][];
             draft: components["schemas"]["DayDraftOut"];
@@ -4207,6 +4258,30 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["AreaRenameIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AreaRefOut"];
+                };
+            };
+        };
+    };
+    lists_api_v1_create_area: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewAreaIn"];
             };
         };
         responses: {

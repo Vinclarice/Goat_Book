@@ -124,17 +124,34 @@ had been a stub for four days while this table called it unstarted, which is
 the exact failure the rule at the top of this file describes, committed by the
 file that states it.
 
-## The rest of `design/` — two records, the stubs, and the mockups
+## The rest of `design/` — the records, the stubs, and the mockups
 
-**Two records:** [`code-review-2026-08-16.md`](code-review-2026-08-16.md), one
-risk-based review at `305d1e7` with the suite counts actually run; and
+**The records** — ~~two~~ **counted in neither the heading nor here, August 30,
+2026.** Both said *two* until a third arrived, and a count of the documents in
+a directory is exactly the derived fact the rule at the top of this file
+forbids. `ls design/*-review-*.md design/*-audit-*.md` is the count.
+
+[`code-review-2026-08-16.md`](code-review-2026-08-16.md), one
+risk-based review at `305d1e7` with the suite counts actually run;
 [`code-review-2026-08-21.md`](code-review-2026-08-21.md), the double review of
 Track A increments 1–4, ~~with its repair list still open~~ — **its repair list
 closed on August 21, 2026 and it is now the pure record it said it would
 become**: all seven steps struck, R1–R10 closed except R7, which is deferred
-with its reason in the module. Explicitly about the
+with its reason in the module; and
+[`coherence-audit-2026-08-30.md`](coherence-audit-2026-08-30.md), the task
+core's surfaces read for seams rather than for risk — **the first of these
+asked for by a feeling rather than by a risk model**, and it carries its own
+repair list open in the shape the August 21 one used. Explicitly about the
 past, so they cannot go stale; their findings are **not** production defects
 until someone promotes them to `commercial-blueprint.md` Part 1.
+
+**Its most useful finding is about this score rather than that code**:
+[`product-stories.md`](product-stories.md) reads the task core at *works* for
+every journey it covers and is blind to all nine seams, because a journey that
+completes by two different mechanisms still completes. **That is a boundary of
+that score, not a fault in it** — the same shape [`modules.md`](modules.md)
+found and answered with [`module-score.md`](module-score.md), arrived at from
+the opposite direction.
 
 **One advisory:** [`recommendations-2026-08-21.md`](recommendations-2026-08-21.md)
 — five project-wide recommendations with named owners, written the same day.

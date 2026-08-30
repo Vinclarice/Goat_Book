@@ -2302,8 +2302,6 @@ export interface components {
             title: string;
             /** Create Item Url */
             create_item_url: string;
-            /** Reorder Url */
-            reorder_url: string;
         };
         /** AreaRenameIn */
         AreaRenameIn: {
@@ -2352,10 +2350,6 @@ export interface components {
             carries_forward: boolean;
             /** Task Id */
             task_id: number;
-            /** Url */
-            url: string;
-            /** Promote Url */
-            promote_url: string;
         };
         /** TaskAreaSummaryOut */
         TaskAreaSummaryOut: {
@@ -2373,10 +2367,6 @@ export interface components {
             area: components["schemas"]["TaskAreaSummaryOut"] | null;
             /** Checklist Steps */
             checklist_steps: components["schemas"]["ChecklistStepOut"][];
-            /** Create Checklist Step Url */
-            create_checklist_step_url: string;
-            /** Reorder Checklist Steps Url */
-            reorder_checklist_steps_url: string;
         };
         /**
          * TaskUpdateOut

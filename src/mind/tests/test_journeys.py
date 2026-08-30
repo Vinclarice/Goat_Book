@@ -106,7 +106,7 @@ def test_a_dated_thought_becomes_a_task_you_can_find_open_and_finish(signed_in, 
 
     # 5. It can be finished, which is the point of it being a task at all.
     done = signed_in.patch(
-        f"/api/items/{task.id}/",
+        f"/api/v1/tasks/{task.id}",
         data={"status": "completed"},
         content_type="application/json",
     )
@@ -131,7 +131,7 @@ def test_a_repeating_commitment_survives_its_own_first_completion(signed_in, own
     assert first.recurrence == Item.Recurrence.MONTHLY
 
     signed_in.patch(
-        f"/api/items/{first.id}/",
+        f"/api/v1/tasks/{first.id}",
         data={"status": "completed"},
         content_type="application/json",
     )
@@ -153,7 +153,7 @@ def test_a_commitment_can_be_switched_to_counting_from_completion(signed_in, own
     task = Item.objects.get()
 
     response = signed_in.patch(
-        f"/api/items/{task.id}/",
+        f"/api/v1/tasks/{task.id}",
         data={"cadence_mode": CadenceMode.FLOATING},
         content_type="application/json",
     )
@@ -171,14 +171,14 @@ def test_a_checklist_step_on_an_unfiled_task_becomes_its_own_task(signed_in, own
     task = Item.objects.get()
 
     created = signed_in.post(
-        f"/api/tasks/{task.id}/checklist-steps/",
+        f"/api/v1/tasks/{task.id}/checklist-steps",
         data={"text": "Book the ferry"},
         content_type="application/json",
     )
     assert created.status_code == 201
-    step_id = created.json()["data"]["id"]
+    step_id = created.json()["id"]
 
-    promoted = signed_in.post(f"/api/checklist-steps/{step_id}/promote/")
+    promoted = signed_in.post(f"/api/v1/checklist-steps/{step_id}/promote")
 
     assert promoted.status_code in (200, 201)
     assert Item.objects.filter(owner=owner, text="Book the ferry").exists()

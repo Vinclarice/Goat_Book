@@ -451,7 +451,6 @@ describe("DayRoute", () => {
           id: 4,
           title: "Home",
           create_item_url: "/api/areas/4/items/",
-          reorder_url: "/api/areas/4/items/reorder/",
         });
       }
       return jsonResponse(dayData({ areas: [] }));

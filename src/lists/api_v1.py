@@ -112,8 +112,6 @@ class ChecklistStepOut(Schema):
     completed_at: str | None
     carries_forward: bool
     task_id: int
-    url: str
-    promote_url: str
 
 
 class BillOut(Schema):
@@ -198,8 +196,12 @@ class AgendaOut(Schema):
 class AreaRefOut(Schema):
     id: int
     title: str
+    #: **Kept for the shipped Android build and nothing else.** It reads this
+    #: with `getString` and posts to it; the SPA addresses
+    #: `/api/v1/areas/{area_id}/tasks` by id. `reorder_url` stood beside it
+    #: until August 30, 2026 and went with the view it pointed at, because
+    #: nothing outside this repository had ever read that one.
     create_item_url: str
-    reorder_url: str
 
 
 class AreaDetailOut(Schema):
@@ -239,8 +241,6 @@ class TaskDetailOut(Schema):
     # into a 500 no matter how carefully the dict was built.
     area: TaskAreaSummaryOut | None
     checklist_steps: list[ChecklistStepOut]
-    create_checklist_step_url: str
-    reorder_checklist_steps_url: str
 
 
 class NavAreaOut(Schema):

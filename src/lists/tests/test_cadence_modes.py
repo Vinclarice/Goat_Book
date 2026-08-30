@@ -197,7 +197,7 @@ class CadenceModeOverHttpTest(TestCase):
 
     def test_the_mode_can_be_changed_through_the_api(self):
         response = self.client.patch(
-            f"/api/items/{self.task.id}/",
+            f"/api/v1/tasks/{self.task.id}",
             data={"cadence_mode": CadenceMode.FLOATING},
             content_type="application/json",
         )
@@ -207,12 +207,14 @@ class CadenceModeOverHttpTest(TestCase):
         self.assertEqual(self.task.commitment.cadence_mode, CadenceMode.FLOATING)
 
     def test_an_invalid_mode_is_rejected_rather_than_stored(self):
+        """422 rather than 400 since coherence-audit-2026-08-30.md F2 made
+        `cadence_mode` a Literal -- see test_priority for the same move."""
         response = self.client.patch(
-            f"/api/items/{self.task.id}/",
+            f"/api/v1/tasks/{self.task.id}",
             data={"cadence_mode": "whenever"},
             content_type="application/json",
         )
 
-        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.status_code, 422)
         self.task.refresh_from_db()
         self.assertEqual(self.task.commitment.cadence_mode, CadenceMode.ANCHORED)

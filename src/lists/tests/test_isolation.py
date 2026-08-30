@@ -154,12 +154,12 @@ class LegacyApiIsolationTest(TestCase):
         response = self.request(
             self.intruder_client,
             "post",
-            f"/api/areas/{self.owner_list.id}/items/",
+            f"/api/v1/areas/{self.owner_list.id}/tasks",
             {"text": "Planted"},
         )
 
         self.assertEqual(response.status_code, 404)
-        self.assertEqual(response.json()["errors"]["item"], ["Task not found."])
+        self.assertIn("Area not found", response.json()["detail"])
         self.assertEqual(
             list(self.owner_list.item_set.values_list("text", flat=True)),
             ["Write tests", "Ship the migration"],
@@ -170,34 +170,39 @@ class LegacyApiIsolationTest(TestCase):
         response = self.request(
             self.intruder_client,
             "post",
-            f"/api/areas/{self.intruder_list.id}/items/",
+            f"/api/v1/areas/{self.intruder_list.id}/tasks",
             {"text": "Planted"},
         )
 
         self.assertEqual(response.status_code, 201)
-        self.assertEqual(response.json()["data"]["text"], "Planted")
+        self.assertEqual(response.json()["text"], "Planted")
 
     def test_404s_a_reorder_of_someone_else_s_list(self):
         response = self.request(
             self.intruder_client,
             "post",
-            f"/api/areas/{self.owner_list.id}/items/reorder/",
+            f"/api/v1/areas/{self.owner_list.id}/tasks/reorder",
             {"ordered_ids": [self.owner_second_item.id, self.owner_item.id]},
         )
 
         self.assertEqual(response.status_code, 404)
-        self.assertEqual(response.json()["errors"]["list"], ["List not found."])
+        self.assertIn("Not Found", response.json()["detail"])
         self.owner_item.refresh_from_db()
         self.owner_second_item.refresh_from_db()
         self.assertEqual(self.owner_item.position, 0)
         self.assertEqual(self.owner_second_item.position, 1)
 
-    def test_409s_a_reorder_carrying_another_user_s_item_id(self):
-        """An id in the body, not the path -- the shape a future bug takes."""
+    def test_400s_a_reorder_carrying_another_user_s_item_id(self):
+        """An id in the body, not the path -- the shape a future bug takes.
+
+        **400 rather than the old 409**: a set of ids that is not this area's
+        is a malformed request, and the typed endpoint says so. What matters
+        here is unchanged -- it is refused, and neither owner's order moves.
+        """
         response = self.request(
             self.owner_client,
             "post",
-            f"/api/areas/{self.owner_list.id}/items/reorder/",
+            f"/api/v1/areas/{self.owner_list.id}/tasks/reorder",
             {
                 "ordered_ids": [
                     self.owner_second_item.id,
@@ -207,12 +212,12 @@ class LegacyApiIsolationTest(TestCase):
             },
         )
 
-        # 409 rather than 404: the path id is the caller's own list, so the
+        # 400 rather than 404: the path id is the caller's own list, so the
         # smuggled id is caught by services.reorder_items' set-equality check
         # instead of the ownership filter. Rejected either way, and the whole
         # reorder is atomic, so neither list moves.
-        self.assertEqual(response.status_code, 409)
-        self.assertIn("ordered_ids", response.json()["errors"])
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("detail", response.json())
         self.owner_item.refresh_from_db()
         self.owner_second_item.refresh_from_db()
         self.intruder_item.refresh_from_db()
@@ -221,11 +226,11 @@ class LegacyApiIsolationTest(TestCase):
         self.assertEqual(self.intruder_item.position, 0)
 
     def test_the_same_reorder_succeeds_with_only_the_owner_s_own_ids(self):
-        """Control: the 409 above is about the foreign id, not the payload."""
+        """Control: the 400 above is about the foreign id, not the payload."""
         response = self.request(
             self.owner_client,
             "post",
-            f"/api/areas/{self.owner_list.id}/items/reorder/",
+            f"/api/v1/areas/{self.owner_list.id}/tasks/reorder",
             {"ordered_ids": [self.owner_second_item.id, self.owner_item.id]},
         )
 
@@ -239,12 +244,12 @@ class LegacyApiIsolationTest(TestCase):
         response = self.request(
             self.intruder_client,
             "patch",
-            f"/api/items/{self.owner_item.id}/",
+            f"/api/v1/tasks/{self.owner_item.id}",
             {"text": "Hijacked"},
         )
 
         self.assertEqual(response.status_code, 404)
-        self.assertEqual(response.json()["errors"]["item"], ["Task not found."])
+        self.assertIn("Not Found", response.json()["detail"])
         self.owner_item.refresh_from_db()
         self.assertEqual(self.owner_item.text, "Write tests")
 
@@ -253,7 +258,7 @@ class LegacyApiIsolationTest(TestCase):
         response = self.request(
             self.intruder_client,
             "patch",
-            f"/api/items/{self.intruder_item.id}/",
+            f"/api/v1/tasks/{self.intruder_item.id}",
             {"text": "Hijacked"},
         )
 
@@ -267,11 +272,11 @@ class LegacyApiIsolationTest(TestCase):
         response = self.request(
             self.intruder_client,
             "delete",
-            f"/api/items/{self.owner_item.id}/",
+            f"/api/v1/tasks/{self.owner_item.id}",
         )
 
         self.assertEqual(response.status_code, 404)
-        self.assertEqual(response.json()["errors"]["item"], ["Task not found."])
+        self.assertIn("Not Found", response.json()["detail"])
         self.assertTrue(Item.objects.filter(id=self.owner_item.id).exists())
 
     def test_the_same_delete_succeeds_on_the_intruder_s_own_item(self):
@@ -279,7 +284,7 @@ class LegacyApiIsolationTest(TestCase):
         response = self.request(
             self.intruder_client,
             "delete",
-            f"/api/items/{self.intruder_archived_item.id}/",
+            f"/api/v1/tasks/{self.intruder_archived_item.id}",
         )
 
         self.assertEqual(response.status_code, 200)

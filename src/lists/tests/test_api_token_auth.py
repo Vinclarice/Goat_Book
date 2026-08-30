@@ -138,49 +138,35 @@ class ItemDetailTokenAuthTest(TestCase):
         self.item.refresh_from_db()
         self.assertNotEqual(self.item.status, Item.Status.COMPLETED)
 
-    def test_a_token_cannot_edit_a_tasks_text(self):
-        # The scope-creep guard: agenda:write only ever covers status and
-        # due_date, never the other fields this same endpoint accepts.
+    def test_nothing_but_status_and_due_date_is_accepted_at_all(self):
+        """Four separate tests stood here asserting 403 for text, tags, notes
+        and recurrence, and one for DELETE.
+
+        coherence-audit-2026-08-30.md F2 trimmed this endpoint to the two
+        fields a phone sends and removed DELETE, so the refusal is now a 400 --
+        those fields are not part of this endpoint rather than being withheld
+        from this caller, which is a more honest status and a smaller surface.
+        What a phone may do on the typed router is
+        `lists.tests.test_task_writes_api_v1.TaskWriteTokenAuthTest`.
+        """
         _, raw = PersonalAccessToken.generate(
             self.user, scopes=[SCOPE_AGENDA_WRITE]
         )
 
-        response = self.patch(
-            self.item.id, {"text": "Rewritten by a phone"}, token=raw
-        )
+        for field, value in [
+            ("text", "Rewritten by a phone"),
+            ("tags", ["urgent"]),
+            ("notes", "secret plan"),
+            ("recurrence", "daily"),
+        ]:
+            with self.subTest(field=field):
+                response = self.patch(self.item.id, {field: value}, token=raw)
+                self.assertEqual(response.status_code, 400)
 
-        self.assertEqual(response.status_code, 403)
         self.item.refresh_from_db()
         self.assertEqual(self.item.text, "Write tests")
 
-    def test_a_token_cannot_edit_a_tasks_tags(self):
-        _, raw = PersonalAccessToken.generate(
-            self.user, scopes=[SCOPE_AGENDA_WRITE]
-        )
-
-        response = self.patch(self.item.id, {"tags": ["urgent"]}, token=raw)
-
-        self.assertEqual(response.status_code, 403)
-
-    def test_a_token_cannot_edit_a_tasks_notes(self):
-        _, raw = PersonalAccessToken.generate(
-            self.user, scopes=[SCOPE_AGENDA_WRITE]
-        )
-
-        response = self.patch(self.item.id, {"notes": "secret plan"}, token=raw)
-
-        self.assertEqual(response.status_code, 403)
-
-    def test_a_token_cannot_edit_a_tasks_recurrence(self):
-        _, raw = PersonalAccessToken.generate(
-            self.user, scopes=[SCOPE_AGENDA_WRITE]
-        )
-
-        response = self.patch(self.item.id, {"recurrence": "daily"}, token=raw)
-
-        self.assertEqual(response.status_code, 403)
-
-    def test_a_token_cannot_delete_a_task_even_with_agenda_write(self):
+    def test_there_is_no_delete_on_this_endpoint_any_more(self):
         _, raw = PersonalAccessToken.generate(
             self.user, scopes=[SCOPE_AGENDA_WRITE]
         )
@@ -190,7 +176,8 @@ class ItemDetailTokenAuthTest(TestCase):
             HTTP_AUTHORIZATION=f"Bearer {raw}",
         )
 
-        self.assertEqual(response.status_code, 403)
+        # 405, not the old 403: the method is gone rather than refused.
+        self.assertEqual(response.status_code, 405)
         self.assertTrue(Item.objects.filter(pk=self.item.pk).exists())
 
     def test_a_token_cannot_touch_someone_elses_task(self):
@@ -203,22 +190,136 @@ class ItemDetailTokenAuthTest(TestCase):
 
         self.assertEqual(response.status_code, 404)
 
-    def test_a_logged_in_browser_can_still_edit_text_and_delete(self):
-        # The guard is token-only -- the browser's own capabilities are
-        # completely unaffected.
+    def test_a_logged_in_browser_still_needs_its_csrf_token(self):
         self.client.force_login(self.user)
-        csrf_token = self.client.get(
-            "/accounts/password/change/"
-        ).cookies["csrftoken"].value
 
-        edit = self.client.patch(
-            f"/api/items/{self.item.id}/",
-            data=json.dumps({"text": "Edited from the browser"}),
+        response = self.client.post(
+            f"/api/areas/{self.list_.id}/items/",
+            data=json.dumps({"text": "Forged"}),
             content_type="application/json",
-            HTTP_X_CSRFTOKEN=csrf_token,
         )
 
-        self.assertEqual(edit.status_code, 200)
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(Item.objects.exists())
+
+
+class ItemDetailTokenAuthTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            "alice", "alice@example.com", PASSWORD
+        )
+        self.list_ = List.objects.create(owner=self.user, title="Programming")
+        self.item = Item.objects.create(list=self.list_, text="Write tests")
+        self.client = Client(enforce_csrf_checks=True)
+
+    def patch(self, item_id, payload, token=None):
+        extra = {}
+        if token is not None:
+            extra["HTTP_AUTHORIZATION"] = f"Bearer {token}"
+        return self.client.patch(
+            f"/api/items/{item_id}/",
+            data=json.dumps(payload),
+            content_type="application/json",
+            **extra,
+        )
+
+    def test_a_token_completes_a_task_with_no_csrf_token_sent(self):
+        _, raw = PersonalAccessToken.generate(
+            self.user, scopes=[SCOPE_AGENDA_WRITE]
+        )
+
+        response = self.patch(
+            self.item.id, {"status": Item.Status.COMPLETED}, token=raw
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.status, Item.Status.COMPLETED)
+
+    def test_a_token_reschedules_a_tasks_due_date(self):
+        _, raw = PersonalAccessToken.generate(
+            self.user, scopes=[SCOPE_AGENDA_WRITE]
+        )
+
+        response = self.patch(
+            self.item.id, {"due_date": "2026-09-01"}, token=raw
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.item.refresh_from_db()
+        self.assertEqual(str(self.item.due_date), "2026-09-01")
+
+    def test_a_token_without_agenda_write_is_refused(self):
+        _, raw = PersonalAccessToken.generate(
+            self.user, scopes=["capture:write"]
+        )
+
+        response = self.patch(
+            self.item.id, {"status": Item.Status.COMPLETED}, token=raw
+        )
+
+        self.assertEqual(response.status_code, 401)
+        self.item.refresh_from_db()
+        self.assertNotEqual(self.item.status, Item.Status.COMPLETED)
+
+    def test_nothing_but_status_and_due_date_is_accepted_at_all(self):
+        """Four separate tests stood here asserting 403 for text, tags, notes
+        and recurrence, and one for DELETE.
+
+        coherence-audit-2026-08-30.md F2 trimmed this endpoint to the two
+        fields a phone sends and removed DELETE, so the refusal is now a 400 --
+        those fields are not part of this endpoint rather than being withheld
+        from this caller, which is a more honest status and a smaller surface.
+        What a phone may do on the typed router is
+        `lists.tests.test_task_writes_api_v1.TaskWriteTokenAuthTest`.
+        """
+        _, raw = PersonalAccessToken.generate(
+            self.user, scopes=[SCOPE_AGENDA_WRITE]
+        )
+
+        for field, value in [
+            ("text", "Rewritten by a phone"),
+            ("tags", ["urgent"]),
+            ("notes", "secret plan"),
+            ("recurrence", "daily"),
+        ]:
+            with self.subTest(field=field):
+                response = self.patch(self.item.id, {field: value}, token=raw)
+                self.assertEqual(response.status_code, 400)
+
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.text, "Write tests")
+
+    def test_there_is_no_delete_on_this_endpoint_any_more(self):
+        _, raw = PersonalAccessToken.generate(
+            self.user, scopes=[SCOPE_AGENDA_WRITE]
+        )
+
+        response = self.client.delete(
+            f"/api/items/{self.item.id}/",
+            HTTP_AUTHORIZATION=f"Bearer {raw}",
+        )
+
+        # 405, not the old 403: the method is gone rather than refused.
+        self.assertEqual(response.status_code, 405)
+        self.assertTrue(Item.objects.filter(pk=self.item.pk).exists())
+
+    def test_a_token_cannot_touch_someone_elses_task(self):
+        other = User.objects.create_user("bob", "bob@example.com", PASSWORD)
+        _, raw = PersonalAccessToken.generate(other, scopes=[SCOPE_AGENDA_WRITE])
+
+        response = self.patch(
+            self.item.id, {"status": Item.Status.COMPLETED}, token=raw
+        )
+
+        self.assertEqual(response.status_code, 404)
+
+    # `test_a_logged_in_browser_can_still_edit_text_and_delete` stood here.
+    # It asserted that trimming a *token's* reach left the browser's alone --
+    # true when written, and moot now: coherence-audit-2026-08-30.md F2 moved
+    # the browser off this endpoint entirely, so there is no browser
+    # capability here left to be unaffected. What replaced it is
+    # lists.tests.test_task_writes_api_v1.
 
     def test_a_logged_in_browser_still_needs_its_csrf_token(self):
         self.client.force_login(self.user)

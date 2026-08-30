@@ -52,7 +52,7 @@ class BillTest(TestCase):
 
     def patch(self, payload, task=None):
         return self.client.patch(
-            f"/api/items/{(task or self.task).id}/",
+            f"/api/v1/tasks/{(task or self.task).id}",
             data=json.dumps(payload),
             content_type="application/json",
             HTTP_X_CSRFTOKEN=self.csrf,
@@ -101,7 +101,7 @@ class BillTest(TestCase):
     def test_it_is_serialised_back_so_a_client_can_show_it(self):
         body = self.patch(
             {"bill": {"amount": "500.00", "payee": "County"}}
-        ).json()["data"]
+        ).json()["task"]
 
         self.assertEqual(body["bill"]["amount"], "500.00")
         self.assertEqual(body["bill"]["payee"], "County")
@@ -110,7 +110,7 @@ class BillTest(TestCase):
         """Null rather than an empty bill: "not a bill" and "a bill with
         nothing filled in" are different facts, and the second is reachable
         on purpose."""
-        body = self.patch({"text": "Property tax"}).json()["data"]
+        body = self.patch({"text": "Property tax"}).json()["task"]
 
         self.assertIsNone(body["bill"])
 
@@ -118,7 +118,9 @@ class BillTest(TestCase):
         response = self.patch({"bill": {"amount": "about five hundred"}})
 
         self.assertEqual(response.status_code, 400)
-        self.assertIn("bill", response.json()["errors"])
+        # Ninja's single `detail` string, not the hand-rolled field map --
+        # coherence-audit-2026-08-30.md F2.
+        self.assertIn("amount", response.json()["detail"])
         self.assertFalse(MoneyLine.objects.filter(item=self.task).exists())
 
     def test_a_negative_amount_is_refused(self):

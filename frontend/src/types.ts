@@ -96,9 +96,6 @@ export interface ChecklistStep {
   // is spawned. Only meaningful when the task actually recurs.
   carries_forward: boolean;
   task_id: number;
-  // update and delete hit the same endpoint, same shape as Task.url.
-  url: string;
-  promote_url: string;
 }
 
 // project-workspace-plan.md: a standalone workspace that can hold one or
@@ -134,7 +131,6 @@ export interface TaskWorkspaceData {
     id: number;
     title: string;
     create_item_url: string;
-    reorder_url: string;
   };
   items: Task[];
   // Singular and optional -- project-workspace-plan.md 2 inverted this: an

@@ -29,7 +29,6 @@ function listDetailData(overrides: Record<string, unknown> = {}) {
       id: 7,
       title: "Programming",
       create_item_url: "/api/areas/7/items/",
-      reorder_url: "/api/areas/7/items/reorder/",
     },
     items: [task({ text: "Write tests" })],
     project: null,

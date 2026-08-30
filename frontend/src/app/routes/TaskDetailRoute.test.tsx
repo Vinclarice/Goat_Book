@@ -40,7 +40,6 @@ function taskDetailData(overrides: Record<string, unknown> = {}) {
     task: task(),
     area: { id: 1, title: "Programming" },
     checklist_steps: [],
-    create_checklist_step_url: "/api/tasks/1/checklist-steps/",
     ...overrides,
   };
 }

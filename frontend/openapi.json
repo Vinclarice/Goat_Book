@@ -4648,17 +4648,12 @@
           "create_item_url": {
             "title": "Create Item Url",
             "type": "string"
-          },
-          "reorder_url": {
-            "title": "Reorder Url",
-            "type": "string"
           }
         },
         "required": [
           "id",
           "title",
-          "create_item_url",
-          "reorder_url"
+          "create_item_url"
         ],
         "title": "AreaRefOut",
         "type": "object"
@@ -4743,14 +4738,6 @@
           "task_id": {
             "title": "Task Id",
             "type": "integer"
-          },
-          "url": {
-            "title": "Url",
-            "type": "string"
-          },
-          "promote_url": {
-            "title": "Promote Url",
-            "type": "string"
           }
         },
         "required": [
@@ -4760,9 +4747,7 @@
           "is_done",
           "completed_at",
           "carries_forward",
-          "task_id",
-          "url",
-          "promote_url"
+          "task_id"
         ],
         "title": "ChecklistStepOut",
         "type": "object"
@@ -4821,23 +4806,13 @@
             },
             "title": "Checklist Steps",
             "type": "array"
-          },
-          "create_checklist_step_url": {
-            "title": "Create Checklist Step Url",
-            "type": "string"
-          },
-          "reorder_checklist_steps_url": {
-            "title": "Reorder Checklist Steps Url",
-            "type": "string"
           }
         },
         "required": [
           "task",
           "cadence_mode",
           "area",
-          "checklist_steps",
-          "create_checklist_step_url",
-          "reorder_checklist_steps_url"
+          "checklist_steps"
         ],
         "title": "TaskDetailOut",
         "type": "object"

@@ -481,7 +481,6 @@ describe("AgendaWorkspace", () => {
           id: 12,
           title: "Home",
           create_item_url: "/api/areas/12/items/",
-          reorder_url: "/api/areas/12/items/reorder/",
         });
       }
       return apiResponse({});

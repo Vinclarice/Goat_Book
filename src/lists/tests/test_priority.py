@@ -51,7 +51,7 @@ class PriorityTest(TestCase):
 
     def patch(self, item, payload):
         return self.client.patch(
-            f"/api/items/{item.id}/",
+            f"/api/v1/tasks/{item.id}",
             data=json.dumps(payload),
             content_type="application/json",
             HTTP_X_CSRFTOKEN=self.csrf,
@@ -71,13 +71,18 @@ class PriorityTest(TestCase):
     def test_it_is_serialised_back_so_a_client_can_show_it(self):
         response = self.patch(self.item, {"priority": Priority.LOW})
 
-        self.assertEqual(response.json()["data"]["priority"], Priority.LOW)
+        self.assertEqual(response.json()["task"]["priority"], Priority.LOW)
 
     def test_an_unknown_priority_is_refused_rather_than_stored(self):
+        """422 rather than 400 since coherence-audit-2026-08-30.md F2 made
+        `priority` a Literal: pydantic refuses it at the boundary, and the
+        allowed values are in the published schema."""
         response = self.patch(self.item, {"priority": "urgent-ish"})
 
-        self.assertEqual(response.status_code, 400)
-        self.assertIn("priority", response.json()["errors"])
+        self.assertEqual(response.status_code, 422)
+        # 422 from the Literal now, whose body is pydantic's structure
+        # rather than a message -- see test_task_writes_api_v1.
+        self.assertIn("detail", response.json())
         self.item.refresh_from_db()
         self.assertEqual(self.item.priority, Priority.NONE)
 

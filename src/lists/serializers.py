@@ -14,9 +14,11 @@ def serialize_checklist_step(step):
         ),
         "carries_forward": step.carries_forward,
         "task_id": step.task_id,
-        # update and delete hit the same endpoint, same shape as Task's url.
-        "url": reverse("api_checklist_step_detail", args=(step.id,)),
-        "promote_url": reverse("api_checklist_step_promote", args=(step.id,)),
+        # **`url` and `promote_url` were here until August 30, 2026** --
+        # coherence-audit-2026-08-30.md F2. The client addresses a step by id
+        # now, and unlike a task's `url`, nothing outside this repository ever
+        # read these: the phone has no checklist surface. So they go with the
+        # views they pointed at, rather than being repointed.
     }
 
 
@@ -113,7 +115,6 @@ def area_ref_for(our_list):
         # the unfinished Item -> "task" rename, not to this one. Renaming it
         # here would make one commit answer for two vocabularies.
         "create_item_url": reverse("api_create_item", args=(our_list.id,)),
-        "reorder_url": reverse("api_reorder_items", args=(our_list.id,)),
     }
 
 
@@ -166,12 +167,12 @@ def task_detail_data_for(item):
             serialize_checklist_step(step)
             for step in item.checklist_steps.order_by("position", "id")
         ],
-        "create_checklist_step_url": reverse(
-            "api_create_checklist_step", args=(item.id,)
-        ),
-        "reorder_checklist_steps_url": reverse(
-            "api_reorder_checklist_steps", args=(item.id,)
-        ),
+        # **Two urls stood here until August 30, 2026** --
+        # coherence-audit-2026-08-30.md F2. The client addresses
+        # `/api/v1/tasks/{id}/checklist-steps` by the task's own id now, which
+        # this payload has always carried, so these were a second spelling of
+        # a route the caller could already build. Nothing outside this
+        # repository read them.
     }
 
 

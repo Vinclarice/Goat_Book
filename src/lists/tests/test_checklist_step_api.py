@@ -1,3 +1,14 @@
+"""Checklist steps on `/api/v1/`, ported August 30, 2026.
+
+coherence-audit-2026-08-30.md F2. Every case here is the one it made against
+`lists.api`'s hand-rolled views; what moved is the address, the envelope and
+the error shape. The views themselves are deleted in the same commit, so this
+file is the coverage rather than a second copy of it.
+
+**Session only, and deliberately.** A checklist is a desk-sized act and the
+phone has no surface for one, so none of these operations accepts a bearer
+token -- expressed in each operation's auth list rather than checked inside it.
+"""
 import json
 
 from django.test import Client, TestCase
@@ -33,20 +44,20 @@ class ChecklistStepApiTest(TestCase):
     def create_step(self, text="Refill medication", **extra):
         response = self.request(
             "post",
-            f"/api/tasks/{self.task.id}/checklist-steps/",
+            f"/api/v1/tasks/{self.task.id}/checklist-steps",
             {"text": text, **extra},
         )
-        return response.json()["data"]
+        return response.json()
 
     def test_create_a_checklist_step(self):
         response = self.request(
             "post",
-            f"/api/tasks/{self.task.id}/checklist-steps/",
+            f"/api/v1/tasks/{self.task.id}/checklist-steps",
             {"text": "Refill medication"},
         )
 
         self.assertEqual(response.status_code, 201)
-        data = response.json()["data"]
+        data = response.json()
         self.assertEqual(data["text"], "Refill medication")
         self.assertFalse(data["is_done"])
         self.assertTrue(data["carries_forward"])
@@ -62,7 +73,7 @@ class ChecklistStepApiTest(TestCase):
 
         response = self.request(
             "post",
-            f"/api/tasks/{self.task.id}/checklist-steps/",
+            f"/api/v1/tasks/{self.task.id}/checklist-steps",
             {"text": "Refill medication"},
         )
 
@@ -75,7 +86,7 @@ class ChecklistStepApiTest(TestCase):
 
         response = self.request(
             "post",
-            f"/api/tasks/{theirs.id}/checklist-steps/",
+            f"/api/v1/tasks/{theirs.id}/checklist-steps",
             {"text": "Sneaky step"},
         )
 
@@ -85,37 +96,37 @@ class ChecklistStepApiTest(TestCase):
     def test_toggle_done_and_back(self):
         step = self.create_step()
 
-        done_response = self.request("patch", step["url"], {"is_done": True})
-        self.assertTrue(done_response.json()["data"]["is_done"])
-        self.assertIsNotNone(done_response.json()["data"]["completed_at"])
+        done_response = self.request("patch", f"/api/v1/checklist-steps/{step['id']}", {"is_done": True})
+        self.assertTrue(done_response.json()["is_done"])
+        self.assertIsNotNone(done_response.json()["completed_at"])
 
-        undone_response = self.request("patch", step["url"], {"is_done": False})
-        self.assertFalse(undone_response.json()["data"]["is_done"])
-        self.assertIsNone(undone_response.json()["data"]["completed_at"])
+        undone_response = self.request("patch", f"/api/v1/checklist-steps/{step['id']}", {"is_done": False})
+        self.assertFalse(undone_response.json()["is_done"])
+        self.assertIsNone(undone_response.json()["completed_at"])
 
     def test_toggle_carries_forward(self):
         step = self.create_step()
 
         response = self.request(
-            "patch", step["url"], {"carries_forward": False},
+            "patch", f"/api/v1/checklist-steps/{step['id']}", {"carries_forward": False},
         )
 
-        self.assertFalse(response.json()["data"]["carries_forward"])
+        self.assertFalse(response.json()["carries_forward"])
 
     def test_rename_a_step(self):
         step = self.create_step("Refil medicaton")
 
         response = self.request(
-            "patch", step["url"], {"text": "Refill medication"},
+            "patch", f"/api/v1/checklist-steps/{step['id']}", {"text": "Refill medication"},
         )
 
-        self.assertEqual(response.json()["data"]["text"], "Refill medication")
+        self.assertEqual(response.json()["text"], "Refill medication")
 
     def test_one_field_per_request_is_enforced(self):
         step = self.create_step()
 
         response = self.request(
-            "patch", step["url"], {"is_done": True, "carries_forward": False},
+            "patch", f"/api/v1/checklist-steps/{step['id']}", {"is_done": True, "carries_forward": False},
         )
 
         self.assertEqual(response.status_code, 400)
@@ -123,7 +134,7 @@ class ChecklistStepApiTest(TestCase):
     def test_delete_a_step(self):
         step = self.create_step()
 
-        response = self.request("delete", step["url"])
+        response = self.request("delete", f"/api/v1/checklist-steps/{step['id']}")
 
         self.assertEqual(response.status_code, 200)
         self.assertFalse(ChecklistStep.objects.filter(id=step["id"]).exists())
@@ -135,7 +146,7 @@ class ChecklistStepApiTest(TestCase):
             owner=self.other_user, task=theirs_task, text="Not yours either",
         )
 
-        response = self.request("patch", f"/api/checklist-steps/{theirs.id}/", {"is_done": True})
+        response = self.request("patch", f"/api/v1/checklist-steps/{theirs.id}", {"is_done": True})
 
         self.assertEqual(response.status_code, 404)
         theirs.refresh_from_db()
@@ -147,12 +158,12 @@ class ChecklistStepApiTest(TestCase):
 
         response = self.request(
             "post",
-            f"/api/tasks/{self.task.id}/checklist-steps/reorder/",
+            f"/api/v1/tasks/{self.task.id}/checklist-steps/reorder",
             {"ordered_ids": [second["id"], first["id"]]},
         )
 
         self.assertEqual(response.status_code, 200)
-        ordered = response.json()["data"]
+        ordered = response.json()
         self.assertEqual([step["id"] for step in ordered], [second["id"], first["id"]])
 
     def test_reorder_rejects_a_mismatched_id_set(self):
@@ -160,7 +171,7 @@ class ChecklistStepApiTest(TestCase):
 
         response = self.request(
             "post",
-            f"/api/tasks/{self.task.id}/checklist-steps/reorder/",
+            f"/api/v1/tasks/{self.task.id}/checklist-steps/reorder",
             {"ordered_ids": [step["id"], 999999]},
         )
 
@@ -169,10 +180,10 @@ class ChecklistStepApiTest(TestCase):
     def test_promote_a_step(self):
         step = self.create_step("Book the kennel")
 
-        response = self.request("post", step["promote_url"])
+        response = self.request("post", f"/api/v1/checklist-steps/{step['id']}/promote")
 
         self.assertEqual(response.status_code, 201)
-        data = response.json()["data"]
+        data = response.json()
         self.assertEqual(data["text"], "Book the kennel")
         self.assertFalse(ChecklistStep.objects.filter(id=step["id"]).exists())
 
@@ -180,7 +191,7 @@ class ChecklistStepApiTest(TestCase):
         Item.objects.create(list=self.list_, text="Book the kennel")
         step = self.create_step("Book the kennel")
 
-        response = self.request("post", step["promote_url"])
+        response = self.request("post", f"/api/v1/checklist-steps/{step['id']}/promote")
 
         self.assertEqual(response.status_code, 409)
         self.assertTrue(ChecklistStep.objects.filter(id=step["id"]).exists())
@@ -191,14 +202,14 @@ class ChecklistStepApiTest(TestCase):
         )
         step_response = self.request(
             "post",
-            f"/api/tasks/{recurring.id}/checklist-steps/",
+            f"/api/v1/tasks/{recurring.id}/checklist-steps",
             {"text": "Check inbox zero"},
         )
         self.assertEqual(step_response.status_code, 201)
 
         response = self.request(
             "patch",
-            f"/api/items/{recurring.id}/",
+            f"/api/v1/tasks/{recurring.id}",
             {"status": "completed"},
         )
 
@@ -215,8 +226,13 @@ class ChecklistStepApiTest(TestCase):
     def test_completing_a_non_recurring_task_reports_no_spawned_checklist_steps(self):
         response = self.request(
             "patch",
-            f"/api/items/{self.task.id}/",
+            f"/api/v1/tasks/{self.task.id}",
             {"status": "completed"},
         )
 
-        self.assertNotIn("spawned_checklist_steps", response.json())
+        # **Present and empty, where the old endpoint omitted the key.**
+        # TaskUpdateOut always carries it so a caller reads an array rather
+        # than branching on the field existing -- see its docstring.
+        payload = response.json()
+        self.assertEqual(payload["spawned_checklist_steps"], [])
+        self.assertIsNone(payload["spawned"])

@@ -39,8 +39,6 @@ export function checklistStep(overrides: Partial<ChecklistStep> = {}): Checklist
     completed_at: null,
     carries_forward: true,
     task_id: 1,
-    url: "/api/checklist-steps/1/",
-    promote_url: "/api/checklist-steps/1/promote/",
     ...overrides,
   };
 }

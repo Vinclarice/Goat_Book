@@ -307,7 +307,7 @@ class TaskProjectDisplayApiTest(TestCase):
     """A task's project is derived through its Area now, read-only.
 
     project-workspace-plan.md 2 drops the task-level override
-    (PATCH /api/items/{id}/ no longer accepts project_id) -- a task belongs
+    (PATCH /api/v1/tasks/{id} no longer accepts project_id) -- a task belongs
     to a project only by belonging to an Area that's inside it.
     """
 
@@ -334,7 +334,7 @@ class TaskProjectDisplayApiTest(TestCase):
 
     def test_project_id_is_no_longer_a_writable_task_field(self):
         response = self.client.patch(
-            f"/api/items/{self.task.id}/",
+            f"/api/v1/tasks/{self.task.id}",
             data=json.dumps({"project_id": self.project.id}),
             content_type="application/json",
         )

@@ -487,13 +487,27 @@ re-add it here.
   one endpoint, four test files, and the regenerated client immediately caught
   a name collision the old form could not have.
 
-  **What is left is one expensive increment and two cheap ones behind it.**
-  Task writes onto `/api/v1/` as a typed router, retiring the hand-written
-  client — then one task editor reachable from every surface, and the
-  `Item` → task rename that [`api_urls.py`](../src/lists/api_urls.py) has been
-  waiting to make. **The audit is explicit that the second is not scheduled**,
-  only ordered; it is the largest thing on this list and nobody has agreed to
-  it yet.
+  **Increment 2 landed the same day and cost more than three commits' worth
+  of thinking**, because it turned up a constraint the audit had missed. Task
+  writes are on the typed router; `lists/api.py` went from 543 lines to 208;
+  the Kotlin moved with them. What it found is that **the shipped Android
+  build is a second client of the path F2 proposed retiring**, reading `url`
+  off every task with `getString` — so deleting it breaks the phone's agenda
+  screen, not merely its writes, and no signed release can replace that build
+  while `android-release-signing-plan.md`'s keystore does not exist.
+
+  **So it became expand–migrate–contract, and the contract step is now the
+  only open consequence.** What survives is a *declared* compatibility surface
+  — two views, two fields, no `DELETE`, a docstring naming its trigger —
+  rather than an undeclared second architecture. **`android/` is already
+  written against `/api/v1/`; the thing that is missing is the ability to build
+  it.** That makes the keystore a live dependency of this repair rather than an
+  Android-only errand, which is new information and belongs here.
+
+  **What is left besides that**: one task editor reachable from every surface,
+  and the `Item` → task rename, which is half done — the new endpoints say
+  `tasks` and `area_id`, and the two frozen legacy paths cannot be renamed
+  because a shipped binary calls them by name.
 
 ### Closed — one line each; the narrative is in `roadmap-history.md`
 

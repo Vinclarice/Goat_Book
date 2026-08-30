@@ -95,6 +95,11 @@ performs live on the hand-rolled lists.api views*.
 describes for keeping the SPA honest against the schema — **covers Money
 completely and the core noun not at all.**
 
+**What this finding did not say, and should have**: the SPA is not the only
+client of that hand-rolled path. `android/` reads urls out of the agenda
+payload and posts to them, which is why repairing this became
+expand–migrate–contract rather than a replacement. See increment 2 below.
+
 ### F3. What you can do to a task depends on which page you met it on
 
 | Surface | Task mutations available |
@@ -230,19 +235,57 @@ increment is provable on its own and the cheap ones come first.
   endpoint, four test files, and the type check caught a name collision the
   moment the client was regenerated — which is increment 2's whole argument,
   in miniature.
-- **2. Task writes onto `/api/v1/` as a typed router; retire `api.ts`** — F2.
-  **Open.** The expensive one. Also removes the bespoke token path
-  `android-full-client-plan.md`'s later slices need.
+- ~~**2. Task writes onto `/api/v1/` as a typed router; retire `api.ts`**~~ —
+  F2. **Done August 30, 2026**, in three commits: the typed router and the
+  client, `lists/api.py` cut from 543 lines to 208, and the Kotlin moved over.
+  `api.ts` is a wrapper layer over `apiV1` rather than a second client; its
+  hand-rolled `fetch`, envelope, `ApiError` and CSRF header are gone.
+
+  **This increment found the thing the audit had missed, and it changed the
+  shape of the work.** F2 said *retire the hand-rolled path*, and that could
+  not be done: the shipped Android build reads `url` off every task in the
+  agenda payload with `getString`, so removing it breaks the agenda *screen*
+  rather than only its writes — and no signed release can replace that build,
+  because `android-release-signing-plan.md`'s keystore does not exist. **The
+  audit was written by reading the task core and never looked at `android/`**,
+  which is exactly the seam-crossing this document exists to notice, committed
+  by the document itself. `CLAUDE.md` already carries the general form — *a
+  seam that is not switched on is not a seam; check the build configuration* —
+  and this is its mirror: **a caller you did not look for is still a caller.**
+
+  So it became expand–migrate–contract, which is what `principles.md` asks
+  for. What is left of `lists/api.py` is a **declared** compatibility surface
+  with a named trigger, rather than an undeclared second architecture: two
+  views, two fields, no `DELETE`, and a docstring saying what retires it.
+
+  **Its retirement is now gated on one thing that is not code** — a signed
+  Android release. When that lands, `lists/api.py`, `lists/api_urls.py`, the
+  `/api/` mount and `TaskOut.url` go together.
 - **3. One task editor, reachable client-side from every surface; delete lives
   with the task** — F3, F4. **Open.** Cheap once 2 lands, and type-checked, so
   the drift cannot return.
-- **4. Finish the `Item` → task rename in the URL layer** — F5. **Open**, and
-  gated on 2 by [`api_urls.py:6`](../src/lists/api_urls.py)'s own reasoning.
+- **4. Finish the `Item` → task rename in the URL layer** — F5. **Half done
+  August 30, 2026 and the other half is refused.** The new endpoints say
+  `tasks` and `area_id` throughout, so the rename landed where it could be
+  free. The two surviving legacy paths keep `items` and cannot be renamed:
+  they are frozen by a shipped binary, and renaming them is precisely what
+  would break it. ~~Gated on 2 by `api_urls.py`'s own reasoning.~~ That
+  reasoning — *finishing the second rename here would put two renames in one
+  commit* — expired when increment 2 removed everything else from the file.
 
 **Increment 1 was deliberately sequenced before 2** as the smallest complete
 instance of the same pattern — one endpoint, two call sites, one retirement —
 so that the cost of 2 is estimated from a landed example rather than from this
 document.
+
+**What the estimate was worth, measured.** Increment 1 predicted the *shape*
+correctly — one endpoint, its callers, a retirement — and every part of that
+held. What it could not predict was the constraint, because increment 1's
+endpoint had no clients and increment 2's had one nobody had counted. **The
+lesson is not that estimating failed; it is that the estimate and the audit
+were drawn from the same blind spot**, so agreeing with each other proved
+nothing. A second client is the kind of fact that has to be looked for
+directly.
 
 ---
 

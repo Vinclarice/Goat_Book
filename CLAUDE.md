@@ -423,21 +423,44 @@ eye.
 
 **Writing a file from Python here produces CRLF, and git will hide it.**
 `pathlib.write_text` and `open(...,'w')` default to `newline=None`, which
-translates `
-` to `os.linesep` on Windows. `.gitattributes` normalises the blob
+translates `\n` to `os.linesep` on Windows. `.gitattributes` normalises the blob
 on commit, so `git status` stays clean and review sees nothing — while the
 working copy is corrupt. For `.py` and `.ts` that is harmless; for anything a
 shell parses it is fatal, and the documented restore drill runs from WSL against
 *this* checkout. It cost `check-restore-integrity.sh` exactly that way: written,
 run against a live database, then edited and silently broken.
 
-Pass `newline="
-"` when writing, and if a script starts failing with
+Pass `newline="\n"` when writing, and if a script starts failing with
 ``syntax error near unexpected token `$'{\r'``, the fix is
 `rm <file> && git checkout -- <file>` — a plain checkout will not do it, because
 git sees no difference to restore. `clarice/tests/test_executable_line_endings.py`
 fails locally when this happens; CI cannot catch it, since a fresh Linux checkout
 is always LF.
+
+**And the same call has a second default that bites harder — encoding.**
+`write_text` and `open(...,'w')` also default to the *locale* encoding, which
+is cp1252 here, not UTF-8. Write one em dash into a `.py` and the file stops
+importing: `SyntaxError: Non-UTF-8 code starting with '\x97'`. Loud and
+instant, unlike the newline case — **the danger is the repair, not the
+break.**
+
+Decoding the whole file as cp1252 and re-encoding it looks like the obvious
+fix and is a second corruption: every pre-existing non-ASCII character is
+already valid UTF-8, so it round-trips into mojibake — `§` became `Â§` in
+`lists/api_v1.py`, and the diff showed **twelve deletions in lines nobody had
+touched**. That is the tell. A one-line addition whose diffstat reports
+deletions elsewhere has re-encoded the file, and the fix is
+`git checkout -- <file>` and a clean re-apply — which works here, unlike the
+newline case above, precisely because git *can* see this difference.
+
+So pass both, always: `write_text(s, encoding="utf-8", newline="\n")`, and
+`read_text(encoding="utf-8")` to match. `iconv -f utf-8 -t utf-8 <file>`
+answers whether a file is clean, and `git diff --stat` is the check that the
+edit was the size you meant.
+
+**Neither default is Windows being odd — both are Python reading the
+environment**, which is why they arrive together and why the same call site
+gets both wrong at once.
 
 **The same shape a second time: a new `.sh` here is not executable, and
 everything says it is.** `core.fileMode` is `false` on this checkout, so git has

@@ -463,6 +463,38 @@ re-add it here.
   specced; [`modules.md`](modules.md)'s input-ratio rule bears on it, since
   anything requiring the person to confirm a skipped period is feeding.
 
+- **The task core's coherence is the active repair, claimed August 30, 2026.**
+  From Vince, in these words: *"the superlists core was developed more in bits
+  and pieces so its not really coherent"*.
+  [`coherence-audit-2026-08-30.md`](coherence-audit-2026-08-30.md) is the
+  record — nine seams, each a `file:line` — and owns the repair list rather
+  than this file.
+
+  **The finding worth carrying out of it is about the score, not the code.**
+  [`product-stories.md`](product-stories.md) reads the task core at *works* for
+  every journey it covers, and is blind to all nine, because **a journey that
+  completes by two different mechanisms still completes.** That is a boundary
+  of that score rather than a fault in it — the same shape
+  [`modules.md`](modules.md) found and answered with
+  [`module-score.md`](module-score.md), reached from the opposite direction and
+  needing no new instrument, because a seam is nameable one at a time.
+
+  **Three of six increments landed the day it was written.** The second factor
+  got a front door four months after shipping; a signed-in person got the
+  support path strangers have had since B3; and an Area is created the way a
+  Project is, with `new_list`, its form and its template deleted. **The last is
+  the one that was sequenced to produce an estimate**, and it did: two callers,
+  one endpoint, four test files, and the regenerated client immediately caught
+  a name collision the old form could not have.
+
+  **What is left is one expensive increment and two cheap ones behind it.**
+  Task writes onto `/api/v1/` as a typed router, retiring the hand-written
+  client — then one task editor reachable from every surface, and the
+  `Item` → task rename that [`api_urls.py`](../src/lists/api_urls.py) has been
+  waiting to make. **The audit is explicit that the second is not scheduled**,
+  only ordered; it is the largest thing on this list and nobody has agreed to
+  it yet.
+
 ### Closed — one line each; the narrative is in `roadmap-history.md`
 
 **The strikes used to stay here in full, and that is what made this section
@@ -577,20 +609,20 @@ sharing work.
 Password recovery, adversarial per-user isolation tests, transactional email
 via Resend and edge rate limiting for signup are all done.
 
-### Support for people who are signed in
+### ~~Support for people who are signed in~~ — shipped August 30, 2026
 
-B3 gave strangers a contact path and left users without one: the link is in the
-Django shell's nav, and users live in the SPA. The person most likely to have
-something worth reporting has the worst route to reporting it. Not merely a
-missing link — asking someone with a session to retype their name and email
-invites an address that isn't the one on their account, and per-IP rate
-limiting is the wrong key once there is an identity to use. The argument for
-adapting `/contact/` rather than forking it is in
-[`bittern-plan.md`](bittern-plan.md).
+**All three parts of it**, and the entry is kept struck rather than deleted
+because its middle paragraph was the design: the link, the form no longer
+asking somebody with a session who they are, and the rate limit keyed on the
+account rather than the address. Adapted rather than forked, as
+[`bittern-plan.md`](bittern-plan.md) argued.
 
-**Its promoter has already fired and nobody noticed.** The stated condition was
-B4, production error monitoring, so that a signed-in report could carry its own
-context. B4 shipped. This is promotable, not deferred.
+**What it cost by sitting here**: the promoter fired when B4 shipped and
+nobody noticed, so this read as *promotable, not deferred* for weeks and moved
+only when [`coherence-audit-2026-08-30.md`](coherence-audit-2026-08-30.md)
+found it again from the other direction, as F7. **An entry that says it is
+ready to start is not a trigger** — nothing was watching this one, and that is
+the transferable part.
 
 ### Public updates page
 

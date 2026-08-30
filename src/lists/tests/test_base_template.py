@@ -12,8 +12,10 @@ from accounts.models import User
 
 class NewBaseTemplateTest(TestCase):
     """Every surviving Django page (login, signup, signup_pending,
-    lockout, change_password, 403, new_list_form) extends base.html as
-    of Step 5 -- base_legacy.html and Bootstrap are gone. This still
+    lockout, change_password, 403) extends base.html as of Step 5 --
+    base_legacy.html and Bootstrap are gone. `new_list_form` was in that
+    list until August 30, 2026, when coherence-audit-2026-08-30.md F1
+    retired it along with the view it was the error page for. This still
     renders base.html directly rather than through any one of those
     pages, so it exercises the template itself independent of what any
     particular page puts in {% block content %}.

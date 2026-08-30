@@ -107,6 +107,20 @@ describe("PreferencesRoute", () => {
     );
   });
 
+  // coherence-audit-2026-08-30.md F6. The enrolment page was linked from
+  // exactly one place in the tree -- the challenge screen you only reach if
+  // you already have a device -- so the only people who could find it were
+  // the ones who did not need it. This is the front door.
+  it("offers the second factor beside the other account links", async () => {
+    mockApi();
+
+    renderRoute();
+
+    expect(
+      await screen.findByRole("link", { name: "Two-factor authentication" }),
+    ).toHaveAttribute("href", "/accounts/security/");
+  });
+
   it("shows an error state when the request fails", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(() =>
       jsonResponse({ detail: "nope" }, false),

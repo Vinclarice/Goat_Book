@@ -216,7 +216,9 @@ An audit that only finds fault is one nobody can calibrate against.
 **One write path** subsumes F1, F2, F5 and most of F3–F4. Ordered so each
 increment is provable on its own and the cheap ones come first.
 
-- **0a. A front door for the second factor** — F6. **Open.**
+- ~~**0a. A front door for the second factor**~~ — F6. **Done August 30,
+  2026.** Preferences links `/accounts/security/` beside password and
+  tokens.
 - **0b. A support path for signed-in people** — F7. **Open.**
 - **1. `POST /api/v1/areas`, and retire `new_list`** — F1. **Open.**
 - **2. Task writes onto `/api/v1/` as a typed router; retire `api.ts`** — F2.

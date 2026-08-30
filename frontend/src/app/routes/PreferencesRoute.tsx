@@ -317,6 +317,21 @@ export function PreferencesRoute() {
         >
           Access tokens
         </a>
+        {/* coherence-audit-2026-08-30.md F6. `/accounts/security/` shipped
+            with `petrel` and was linked from one place in the whole tree:
+            accounts/verify.html, the challenge screen. That screen is only
+            reached by somebody who *already has* a device, so the enrolment
+            page was reachable by everyone except the people it is for.
+
+            Here rather than in the app bar, beside the two account links it
+            belongs with -- the bar says which core you are in, which this is
+            not. */}
+        <a
+          href="/accounts/security/"
+          className="text-sm text-muted-foreground hover:text-foreground"
+        >
+          Two-factor authentication
+        </a>
       </div>
 
       <LeavingSection />

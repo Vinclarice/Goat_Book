@@ -428,7 +428,19 @@ re-add it here.
   recommends freezing native for responsive web, on the evidence that
   `android-full-client-plan.md`'s core assumption — mostly an Android build-out,
   not a backend rebuild — was falsified twice, and that iOS is absent entirely.
-  Nothing is scheduled. That plan's stub points here for this question.
+  ~~Nothing is scheduled.~~ That plan's stub points here for this question.
+
+  **Answered in direction on August 31, 2026, and not in scope**: Vince intends
+  **a complete overhaul of the Android app**, in its own session. That settles
+  *keeps growing* against Part 9's freeze recommendation, and leaves everything
+  else open — no date, no scope, no plan document yet. **Recorded as an
+  intention rather than promoted to work**, which is the distinction this
+  section exists to keep: an intention with no trigger is not a schedule.
+
+  **Its one dependency outside itself is the entry below**, and the ordering is
+  worth having written down before either starts: the overhaul is when a signed
+  release would first exist, so the compatibility surface retires *with* it
+  rather than before it.
 - **Floating cadence is unbuilt.** ~~One defect to fix on the way in rather
   than port~~ — `_advance_due_date` spawning a successor already overdue —
   was fixed August 15, 2026 (`70bc6c8`), *after* the merger it was supposed to
@@ -481,6 +493,28 @@ re-add it here.
   **The trigger is a signed release actually on the phone**, not a keystore
   existing — the shipped binary is what pins these, and it stays pinned until
   it is replaced.
+
+  ~~Which reads as a two-minute `keytool` run away.~~ **It is not, as of August
+  31, 2026.** Vince is holding the keystore for the Android overhaul above, so
+  this waits on that rather than on a manual step somebody could take this
+  afternoon. **Nothing about the dependency changed — only how far away it
+  is**, and that distinction is exactly what this entry would have got wrong by
+  staying silent: a blocker described as trivial is one everybody assumes has
+  been done.
+
+  **Verified ready on August 31, 2026**, so the overhaul does not rediscover
+  it: `assembleRelease` still builds after AGP 9 and the F2 changes, producing
+  `app-release-unsigned.apk`; the signing config in `app/build.gradle.kts` still
+  activates only when all four `local.properties` keys are present; `keytool`
+  and `apksigner` (build-tools 36.1.0) are both on this machine.
+  [`android-release-signing-plan.md`](android-release-signing-plan.md) §2 is why
+  the key is Vince's and not an agent's, and it is a permanence argument rather
+  than a policy one.
+
+  **One thing the overhaul should know before installing anything**: a release
+  APK is signed with a different key than the debug build now on the phone, so
+  Android refuses to install over it. Uninstalling first clears the encrypted
+  capture queue, which should be drained before the swap.
 
 - **`product-stories.md` cannot see a seam, and that is a boundary rather than
   a fault — promoted August 31, 2026** out of the coherence repair, which is

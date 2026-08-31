@@ -479,8 +479,17 @@ made of facts you already know at the moment they happen.
 
 ## What this refuses
 
-- **A bill as its own model.** A bill is an `Item` with a `MoneyLine` hanging
-  off it, and that did not change when the sidecar was renamed. §4 settled it.
+- ~~**A bill as its own model.** A bill is an `Item` with a `MoneyLine` hanging
+  off it, and that did not change when the sidecar was renamed. §4 settled it.~~
+  **Overturned August 31, 2026** —
+  [`bill-as-a-model-plan.md`](bill-as-a-model-plan.md) owns it.
+
+  **Not because §4 was overridden, but because its test is now met.** §4 asks
+  for a different *life cycle*, and the one that qualifies was written down in
+  `roadmap.md` on August 28 — a day after this refusal — and nobody put the two
+  side by side: a missed period is **gone** for a task and **still owed** for a
+  bill, which is the same event demanding opposite outcomes. The refusal was
+  right about names and was made before the evidence existed.
   **Three models did pass §4 the same day** — `Account`, `BalanceReading` and
   `MoneyCategory` — each on a life cycle of its own rather than a name of its
   own: an account outlives every reading of it, a reading is immutable once the

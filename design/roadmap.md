@@ -463,6 +463,25 @@ re-add it here.
   anchored-only, because Clarice has one cadence field and cannot say which
   mode a commitment is, while `design-concept.md` calls the distinction
   load-bearing. Deliberate, and recorded at the function.
+- **A bill earns its own model, claimed August 31, 2026.** From Vince, after
+  using the repaired module: *"there's a disconnect. Like it should be tied to
+  the payments. So I really think we need to separate bills from a task."*
+  [`bill-as-a-model-plan.md`](bill-as-a-model-plan.md) is the spec and owns the
+  detail.
+
+  **It overturns one written refusal and overrides no charter.**
+  `money-module-plan.md` refused a bill as its own model on August 27 citing
+  §4; §4 never named bills, and **its test is now met rather than waived** —
+  the qualifying life-cycle difference is the entry directly below this one,
+  written on August 28 and never connected to the model question until today.
+
+  **Two things make it worth doing now rather than arguing about.** Production
+  holds **one** `MoneyLine`, so the data migration is the cheapest it will ever
+  be. And the plan's own reversal conditions are concrete: if reading two
+  models in the agenda costs decision 4 — *bills stay ordinary tasks
+  elsewhere* — then a product decision was spent to buy a modelling one, and
+  the plan says stop.
+
 - **Should money skip a missed period at all? — promoted August 28, 2026 from
   the entry above.** *Missed periods are skipped, not replayed* is the task
   core's doctrine and it is right for tasks: five missed bin rounds are five

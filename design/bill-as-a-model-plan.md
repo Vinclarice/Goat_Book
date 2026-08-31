@@ -1,0 +1,154 @@
+# A bill earns its own model — focused spec
+
+Vince · claimed August 31, 2026 · **overturns one written refusal, and does not
+override §4**
+
+## 1. What is wrong
+
+Vince, after using the repaired Money module and adding the *Dell Community*
+account:
+
+> *"I've added Dell Commenity and its showing up but now there's a disconnect.
+> Like it should be tied to the payments. So I really think we need to separate
+> bills from a task."*
+
+Two things are tangled in that sentence and they are separable. **The
+disconnect** is that an account and the bill that pays it are unrelated
+records; that is `Account.paid_by`, written and deleted on August 27 with a
+commit message saying *"it comes back the day a surface actually wants it"*.
+**The diagnosis** is that a bill should not be a task, which is a model
+question and the subject of this file.
+
+## 2. What this overturns, and what it does not
+
+**Overturned:** [`money-module-plan.md`](money-module-plan.md)'s *What this
+refuses* — **"A bill as its own model. A bill is an `Item` with a `MoneyLine`
+hanging off it... §4 settled it."**
+
+**Not overturned:** [`architecture-trajectory.md`](architecture-trajectory.md)
+§4. It never named bills, and its test is not being waived — **it is now
+satisfied, and it was not when the refusal was written.**
+
+> **A concept earns its own model when it has a different life cycle, not when
+> it has a different name.**
+
+**The life-cycle difference was written down on August 28, 2026 and nobody
+connected it to the model question.** `roadmap.md`'s open item *Should money
+skip a missed period at all?*:
+
+> *Missed periods are skipped, not replayed* is the task core's doctrine and it
+> is right for tasks: five missed bin rounds are five things that did not
+> happen... **A bill is not like that.** A payment you did not make is still
+> owed... so the doctrine that correctly declines to invent bin rounds quietly
+> declines to remind you about a bill.
+
+**That is the test, met exactly.** The same event — a period elapsing
+unfinished — must produce **opposite** outcomes: a task's occurrence is gone
+and inventing it would be fabricated history; a bill's occurrence is a debt
+that persists whether or not any record says so. Two behaviours that cannot
+both live in one `status` field on one model is precisely what §4 asks for.
+
+**So the refusal was not wrong when it was made.** It was made on August 27,
+the missed-period asymmetry was written on August 28, and the two were never
+put side by side. Recorded that way rather than as a reversal, because the
+reasoning that produced the refusal is still sound about *names*.
+
+## 3. Why now, and not later
+
+**Production holds one `MoneyLine`, one `Account`, one `BalanceReading`**,
+measured August 31, 2026. The data migration is a handful of rows today and a
+year of somebody's financial history later. **This is the cheapest this change
+will ever be**, and the cost curve is the argument for doing it now rather than
+the enthusiasm for doing it at all.
+
+## 4. What a `Bill` is
+
+A root record, owned at birth (§4 rule 1), carrying what `MoneyLine` carries
+plus what it currently borrows from `Item`:
+
+| From `MoneyLine` | From `Item` | New |
+|---|---|---|
+| `payee`, `amount`, `paid_amount`, `currency`, `direction`, `category` | `due_date`, `lead_days`, `notes`, recurrence and its commitment | `account` — the link §1 asked for |
+
+**`paid_at` replaces `status`.** A bill is outstanding or it is settled, and the
+date it settled is the fact worth keeping; `Item.Status`'s three values plus
+archive are a task's life cycle and this is the point of not sharing one.
+
+**What it stops inheriting, deliberately**: tags, priority, area, checklist,
+project — every one of which was hidden from the bill page on August 31 for the
+same reason. The page that already hides them is evidence the model does not
+want them.
+
+**What it must not lose**: `MoneyLine`'s two-amount discipline (expected and
+actual, kept separately so *"the electricity bill has been creeping up"* stays
+answerable), and its docstring's own §4 note about why `paid_amount` is not a
+`Payment` table. That reasoning survives the move.
+
+## 5. Decision 4 is preserved, and it is the expensive part
+
+[`money-module-plan.md`](money-module-plan.md)'s decision 4, Vince's, August 27:
+
+> **Bills stay ordinary tasks elsewhere** — day, agenda, lists. Paying is a
+> real thing to do on a day, and the day is where it gets noticed.
+
+**Splitting the model does not invalidate that reasoning; it makes it
+expensive.** A bill that is not an `Item` does not appear in a read that
+queries `Item`, so the agenda, the day page and search each have to read two
+kinds of record and merge them.
+
+**Preserved rather than dropped, as the default**, because discarding a stated
+product decision as a side effect of a model change is how a decision dies
+without anybody choosing to kill it. **If it should go, it goes deliberately
+and in writing** — and that is a real option, since a Money module that
+answers *what needs paying* arguably makes the agenda's copy redundant.
+
+**This is the largest single cost in the plan and the one to price first.**
+
+## 6. Increments, in order
+
+Each is shippable and leaves the product working.
+
+1. **`Bill` exists, and nothing reads it.** Model, migration, owner at birth,
+   admin. `MoneyLine` untouched. Declared dark with this file as the trigger,
+   which is the one form `principles.md` permits.
+2. **A data migration copies every `MoneyLine` + its `Item` into a `Bill`**, and
+   is reversible. One row in production; several in development.
+3. **The Money surfaces read `Bill`.** `/money`, the month, balances, history,
+   categories. `MoneyLine` still exists and is still written, so this is
+   provable by the two agreeing.
+4. **The Money surfaces write `Bill`.** `create_bill` stops making an `Item`.
+   **The point of no return**, and the first increment that changes what a
+   person's data looks like.
+5. **Decision 4's cost, paid.** Agenda, day and search read both. This is where
+   the split is felt outside Money, and where it is abandoned if it is going to
+   be.
+6. **Missed periods are replayed for bills** — the life-cycle difference in §2,
+   which is the whole justification, made real. Until this ships, the split has
+   been argued and not demonstrated.
+7. **`Account.paid_by` returns, as `Bill.account`.** The disconnect Vince
+   actually reported. It comes last only because the model it points at should
+   exist first; **if the split stalls, this is the increment to do anyway**, on
+   `Item`, exactly as the deletion commit anticipated.
+8. **`MoneyLine` is deleted.** Not before every read and write has moved and a
+   backup has been taken.
+
+## 7. What would reverse this
+
+**Increment 5.** If reading two models in the agenda proves ugly enough that
+Decision 4 gets dropped to avoid it, then the split has cost a product decision
+to buy a modelling one, and that is a bad trade made visible. Stop at 4, keep
+`MoneyLine`, and take increment 7 on `Item`.
+
+**Or increment 6 turning out to be unwanted.** If replaying missed bills
+produces *"a page full of arrears nobody will action"* — `roadmap.md`'s own
+words — then the life-cycle difference that justified the model was
+theoretical, and this file should say so rather than quietly keeping the model.
+
+## 8. Where the facts live
+
+What is active is [`roadmap.md`](roadmap.md). The charter this satisfies is
+[`architecture-trajectory.md`](architecture-trajectory.md) §4. What the module
+is and what it refuses is [`money-module-plan.md`](money-module-plan.md), which
+loses one refusal to this file and keeps the rest. How the module scores is
+[`module-score.md`](module-score.md), which reads **not yet** and is not
+touched by this until a person has used it.

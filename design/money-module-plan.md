@@ -448,12 +448,13 @@ It was caught by opening the page, which is the argument for opening the page.
 last case is the guard for the class rather than the instance: every field
 `MoneyLandingOut` declares must actually appear in the response.
 
-**What this says about the module score.**
-[`module-score.md`](module-score.md) reads **works**, with a caveat that the
-verdict was taken mid-construction and *"should be re-read once the module
-closes"*. It has not closed, and this is the second reason to re-read it: the
-verdict was about the landing page answering *how do I stand* **for somebody
-who already had data**, and nobody had checked the path that produces any.
+**What this says about the module score.** ~~It reads **works**, with a caveat
+that the verdict was taken mid-construction.~~ **Corrected the same day**:
+[`module-score.md`](module-score.md) reads **not yet**, on Vince's own sentence
+— *"obviously Money didn't work"*. That file owns the verdict and what it
+learned from being wrong, and it is not restated here. The short version is
+that the question was answered by looking **for somebody who already had
+data**, and nothing in the module could make somebody into that person.
 
 ## What is still open
 

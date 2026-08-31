@@ -120,6 +120,24 @@ export function TaskDetailRoute() {
   const [busy, setBusy] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
+  /** What this page calls the thing it is showing.
+   *
+   * **`money-module-plan.md`'s premise is that a bill is made and managed
+   * without anybody saying "task"**, and this page said it in the heading, in
+   * the field label, and in every notice a person reads immediately after
+   * acting. The heading was fixed on August 31, 2026 and the rest still leaked
+   * — *"Task updated."* after renaming a bill.
+   *
+   * One noun, declared once, rather than a ternary at each of fifteen strings:
+   * `principles.md`'s *one rule, one authoritative definition*, applied to
+   * vocabulary. The sidecar's presence is the whole test — `bill` is null on a
+   * task nobody has priced, and an object, possibly with a null amount, on one
+   * somebody marked.
+   */
+  const isBill = task?.bill != null;
+  const noun = isBill ? "Bill" : "Task";
+  const lowerNoun = noun.toLowerCase();
+
   const { data, isPending, isError, error: loadError, refetch } = useQuery({
     queryKey: ["task", id],
     queryFn: async () => {
@@ -166,10 +184,10 @@ export function TaskDetailRoute() {
     try {
       const updated = await updateTaskText(task, text);
       setTask(updated);
-      setNotice("Task updated.");
+      setNotice(`${noun} updated.`);
       refreshNav();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unable to save task.");
+      setError(caught instanceof Error ? caught.message : `Unable to save ${lowerNoun}.`);
     } finally {
       setBusy(false);
     }
@@ -428,7 +446,7 @@ export function TaskDetailRoute() {
       // refetched rather than two entries patched.
       refreshNav();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unable to move the task.");
+      setError(caught instanceof Error ? caught.message : `Unable to move the ${lowerNoun}.`);
     } finally {
       setBusy(false);
     }
@@ -469,10 +487,12 @@ export function TaskDetailRoute() {
         return;
       }
       setTask(updated);
-      setNotice(updated.status === "active" ? "Task reopened." : "Task completed.");
+      setNotice(
+        updated.status === "active" ? `${noun} reopened.` : `${noun} completed.`,
+      );
       refreshNav();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unable to update task.");
+      setError(caught instanceof Error ? caught.message : `Unable to update ${lowerNoun}.`);
     } finally {
       setBusy(false);
     }
@@ -488,7 +508,7 @@ export function TaskDetailRoute() {
       navigate(areaRef ? `/areas/${areaRef.id}` : "/agenda");
       refreshNav();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unable to archive task.");
+      setError(caught instanceof Error ? caught.message : `Unable to archive ${lowerNoun}.`);
       setBusy(false);
     }
   }
@@ -507,10 +527,10 @@ export function TaskDetailRoute() {
     try {
       const { task: updated } = await updateTaskStatus(task, "completed");
       setTask(updated);
-      setNotice("Task restored.");
+      setNotice(`${noun} restored.`);
       refreshNav();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unable to restore task.");
+      setError(caught instanceof Error ? caught.message : `Unable to restore ${lowerNoun}.`);
     } finally {
       setBusy(false);
     }
@@ -525,7 +545,7 @@ export function TaskDetailRoute() {
       refreshNav();
       navigate("/archive");
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unable to delete task.");
+      setError(caught instanceof Error ? caught.message : `Unable to delete ${lowerNoun}.`);
       setConfirmingDelete(false);
       setBusy(false);
     }
@@ -545,10 +565,6 @@ export function TaskDetailRoute() {
   if (!task) return <p className="p-6">Loading…</p>;
 
   const archived = task.status === "archived";
-  // The sidecar's presence is the whole test: `bill` is null on a task
-  // nobody has priced, and an object -- possibly with a null amount -- on
-  // one somebody marked. See serialize_item.
-  const isBill = task.bill !== null;
 
   // Whether "does this subtask come back next time?" is a question worth
   // asking at all. The flag exists on every subtask regardless; this only
@@ -621,7 +637,7 @@ export function TaskDetailRoute() {
            second rule. */
         <div
           role="dialog"
-          aria-label="Delete this task permanently"
+          aria-label={`Delete this ${lowerNoun} permanently`}
           className="rounded-lg border border-destructive/40 bg-destructive/10 p-4 space-y-3"
         >
           <p className="text-sm text-destructive">
@@ -651,7 +667,7 @@ export function TaskDetailRoute() {
 
       <form onSubmit={handleSaveText} className="space-y-2">
         <label htmlFor="task-text" className="text-sm font-bold">
-          Task
+          {noun}
         </label>
         <div className="flex gap-2">
           <input

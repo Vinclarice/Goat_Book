@@ -81,6 +81,20 @@ re-add it here.
   same failure twice already — the defect list and the commercial substrate —
   and both entries say the cost was a false reason quoted in a recommendation.
 
+  **First real use, August 31, 2026, and it did not work.** Vince opened
+  `/money` four days after it shipped and hit four defects in one walkthrough
+  — a landing page offering nothing to act on, and three dead ends around
+  balances because `POST /money/accounts` had no caller anywhere in the SPA.
+  All four are repaired; [`money-module-plan.md`](money-module-plan.md) owns
+  the detail.
+
+  **The score moved with it.** [`module-score.md`](module-score.md) read
+  **works** and now reads **not yet**, on Vince's own sentence. That file owns
+  the verdict *and* what it learned from being wrong, which is the part worth
+  carrying to the next module: **a module is scored by using it, not by looking
+  at it**, and the first verdict was taken three days after shipping by the
+  person who built it, against a screen that already had data.
+
 - **The module pattern is the active work, claimed August 27, 2026.**
   [`modules.md`](modules.md) is the charter for
   **surfaces**, the smaller sibling of

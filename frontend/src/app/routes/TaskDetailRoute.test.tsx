@@ -265,6 +265,50 @@ describe("TaskDetailRoute", () => {
       .parentElement!;
     expect(within(header).getByText("Bill")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Task detail" })).toBeNull();
+    // The field label leaked "Task" after the heading was fixed, which is the
+    // same abstraction breaking one line lower down. One noun, used
+    // everywhere this page names the thing.
+    expect(screen.getByLabelText("Bill")).toHaveValue("Pay Dell Community");
+    expect(screen.queryByLabelText("Task")).toBeNull();
+  });
+
+  it("says so in its notices too, not only in its headings", async () => {
+    // "Task updated." after renaming a bill is the leak again, in the one
+    // place a person is looking when they have just acted.
+    const user = userEvent.setup();
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      routeRequests(({ path, method, body }) => {
+        if (path.includes("/api/v1/nav")) {
+          return jsonResponse({ areas: [], projects: [], archived_count: 0 });
+        }
+        if (method === "PATCH") {
+          return taskWrite(
+            task({
+              text: body.text as string,
+              area_id: null,
+              bill: { amount: "120.00", currency: "USD", payee: "Dell Community" },
+            }),
+          );
+        }
+        return jsonResponse(
+          taskDetailData({
+            task: task({
+              text: "Pay Dell Community",
+              area_id: null,
+              bill: { amount: "120.00", currency: "USD", payee: "Dell Community" },
+            }),
+            area: null,
+          }),
+        );
+      }),
+    );
+
+    renderAt("1");
+    await user.clear(await screen.findByLabelText("Bill"));
+    await user.type(screen.getByLabelText("Bill"), "Pay Dell Financial");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(await screen.findByText("Bill updated.")).toBeInTheDocument();
   });
 
   it("still says task detail, and no area, for an ordinary unfiled task", async () => {

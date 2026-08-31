@@ -545,6 +545,10 @@ export function TaskDetailRoute() {
   if (!task) return <p className="p-6">Loading…</p>;
 
   const archived = task.status === "archived";
+  // The sidecar's presence is the whole test: `bill` is null on a task
+  // nobody has priced, and an object -- possibly with a null amount -- on
+  // one somebody marked. See serialize_item.
+  const isBill = task.bill !== null;
 
   // Whether "does this subtask come back next time?" is a question worth
   // asking at all. The flag exists on every subtask regardless; this only
@@ -553,18 +557,30 @@ export function TaskDetailRoute() {
 
   return (
     <div className="max-w-lg mx-auto px-4 py-8 space-y-6">
+      {/* **A bill knows it is one.** money-module-plan.md's premise is *a
+          bill, made where bills are, without anybody saying "task"*, and this
+          page said it twice to somebody arriving from /money: a heading
+          reading "Task detail" and an eyebrow reading "No area" -- true, since
+          create_bill makes a standing task deliberately, and both read as
+          defects on a surface that never mentions areas or tasks.
+
+          The row has linked here since the Bills work. What changed on August
+          30, 2026 is that it stopped hanging on "Loading…" for ever, which is
+          how a leak this old became visible. */}
       <Link
-        to={areaRef ? `/areas/${areaRef.id}` : "/agenda"}
+        to={isBill ? "/money" : areaRef ? `/areas/${areaRef.id}` : "/agenda"}
         className="text-sm text-muted-foreground hover:text-foreground"
       >
-        ← Back to {areaRef ? areaRef.title : "the agenda"}
+        ← Back to {isBill ? "Money" : areaRef ? areaRef.title : "the agenda"}
       </Link>
 
       <div>
         <p className="text-xs font-bold uppercase tracking-wide text-accent">
-          {areaRef ? areaRef.title : "No area"}
+          {isBill ? "Bill" : areaRef ? areaRef.title : "No area"}
         </p>
-        <h1 className="text-2xl font-bold">Task detail</h1>
+        <h1 className="text-2xl font-bold">
+          {isBill ? "Bill detail" : "Task detail"}
+        </h1>
       </div>
 
       {archived && (

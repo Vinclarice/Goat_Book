@@ -143,8 +143,14 @@ export function HistoryRoute() {
 
       {data.rows.length === 0 ? (
         <p className="text-sm text-muted-foreground">
+          {/* **This pointed at /money/month until August 31, 2026**, which
+              could not add an account either -- and neither could the page it
+              called "Money". Two dead ends and a link between them, because
+              POST /money/accounts had no caller at all. It goes to the screen
+              that can now: balances, where somebody wanting an account is
+              already trying to record one. */}
           No accounts yet.{" "}
-          <Link to="/money/month" className="underline">
+          <Link to="/money/balances" className="underline">
             Add one
           </Link>{" "}
           to start a history.

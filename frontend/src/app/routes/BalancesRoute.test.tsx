@@ -190,4 +190,69 @@ describe("BalancesRoute", () => {
       screen.queryByRole("button", { name: "Save balances" }),
     ).not.toBeInTheDocument();
   });
+
+  it("lets you make the first account here, rather than naming a page that cannot", async () => {
+    /* **The defect this page shipped with.** `POST /api/v1/money/accounts`
+       existed, was tested, and had no caller anywhere in the SPA -- so this
+       screen and the history screen both told somebody to add an account and
+       neither could, and the link one of them offered went to a third page
+       that could not either. `principles.md`: a slice is not closed while
+       nothing calls it.
+
+       Here rather than on the landing page because this is where somebody is
+       already trying to record a balance, which is the only reason to want an
+       account in the first place. */
+    const user = userEvent.setup();
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const request = input as Request;
+      if (request.method === "POST") {
+        return jsonResponse(
+          {
+            id: 9,
+            name: "Dell Community",
+            kind: "card",
+            currency: "USD",
+            owes: true,
+            balance: null,
+            previous: null,
+          },
+          true,
+          201,
+        );
+      }
+      return jsonResponse(accountsData({ accounts: [] }));
+    });
+
+    renderAt();
+
+    await user.type(
+      await screen.findByLabelText("Account name"),
+      "Dell Community",
+    );
+    await user.click(screen.getByRole("button", { name: "Add account" }));
+
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.some(([sent]) => {
+          const request = sent as Request;
+          return (
+            request.method === "POST" &&
+            new URL(request.url).pathname === "/api/v1/money/accounts"
+          );
+        }),
+      ).toBe(true);
+    });
+  });
+
+  it("offers the same form when accounts already exist", async () => {
+    // A second account is the same act as the first. Hiding the form once one
+    // exists would make "add another" the thing with no door.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(accountsData()),
+    );
+
+    renderAt();
+
+    expect(await screen.findByLabelText("Account name")).toBeInTheDocument();
+  });
 });

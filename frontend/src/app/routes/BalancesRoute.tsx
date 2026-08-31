@@ -27,6 +27,119 @@ function monthLabel(iso: string) {
   });
 }
 
+/** Making the first account, where somebody is already trying to record a
+ * balance.
+ *
+ * **`POST /api/v1/money/accounts` had no caller anywhere in the SPA until
+ * August 31, 2026.** It existed, it was tested, and both this screen and the
+ * history screen told somebody to "add an account" without either being able
+ * to -- one of them linking to a third page that could not either. So
+ * `Account` and `BalanceReading` passed `architecture-trajectory.md` §4, got an
+ * endpoint, and never got a door, which is `principles.md`'s *a slice is not
+ * closed while nothing calls it* in its plainest form.
+ *
+ * **It also invalidated the evidence against Balances.** `money-module-plan.md`
+ * asks "whether balances would actually get typed in", and production had zero
+ * accounts after four days -- which read as the input ratio answering the
+ * question, and was a missing button.
+ *
+ * **Name and kind only.** Currency defaults to USD and `owes` is null, which
+ * lets the kind decide -- a card and a loan owe, savings and investments hold.
+ * The endpoint has always taken two fields for that reason; asking for four
+ * here would be a form arguing with its own schema.
+ */
+function AddAccount() {
+  const queryClient = useQueryClient();
+  const [name, setName] = useState("");
+  const [kind, setKind] = useState("card");
+  // Sent rather than left to the server default, because the schema marks
+  // it required and both bill forms on /money already carry one. A picker
+  // here is the same question they answered and is not reopened.
+  const [currency, setCurrency] = useState("USD");
+  const [failed, setFailed] = useState<string | null>(null);
+
+  const create = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await apiV1.POST("/api/v1/money/accounts", {
+        body: { name, kind, currency },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      setName("");
+      setFailed(null);
+      // The list this page renders, and the landing page's own balances
+      // section, both move the moment an account exists. Keyed exactly as
+      // their own queries are -- ["accounts", day] and ["money-landing"] --
+      // because an invalidation that names a key nothing uses is silent.
+      queryClient.invalidateQueries({ queryKey: ["accounts"] });
+      queryClient.invalidateQueries({ queryKey: ["money-landing"] });
+    },
+    onError: (error: { detail?: string }) => {
+      setFailed(error?.detail ?? "Couldn't add that account.");
+    },
+  });
+
+  return (
+    <form
+      className="space-y-2 rounded-lg border border-border px-3 py-3"
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (!name.trim()) return;
+        create.mutate();
+      }}
+    >
+      <div className="flex flex-wrap items-end gap-2">
+        <span className="space-y-1">
+          <label htmlFor="new-account-name" className="block text-xs font-bold">
+            Account name
+          </label>
+          <input
+            id="new-account-name"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder="Dell Community"
+            className="min-h-11 rounded-lg border border-border bg-input px-2.5 text-sm"
+          />
+        </span>
+        <span className="space-y-1">
+          <label htmlFor="new-account-kind" className="block text-xs font-bold">
+            Kind
+          </label>
+          <select
+            id="new-account-kind"
+            value={kind}
+            onChange={(event) => setKind(event.target.value)}
+            className="min-h-11 rounded-lg border border-border bg-input px-2.5 text-sm"
+          >
+            <option value="card">Credit card</option>
+            <option value="loan">Loan</option>
+            <option value="savings">Savings</option>
+            <option value="investment">Investment</option>
+          </select>
+        </span>
+        <span className="space-y-1">
+          <label htmlFor="new-account-currency" className="block text-xs font-bold">
+            Currency
+          </label>
+          <input
+            id="new-account-currency"
+            value={currency}
+            onChange={(event) => setCurrency(event.target.value.toUpperCase())}
+            maxLength={3}
+            className="min-h-11 w-20 rounded-lg border border-border bg-input px-2.5 text-sm"
+          />
+        </span>
+        <Button type="submit" size="sm" className="h-11" disabled={create.isPending}>
+          Add account
+        </Button>
+      </div>
+      {failed && <p className="text-sm text-destructive">{failed}</p>}
+    </form>
+  );
+}
+
 export function BalancesRoute() {
   const { month } = useParams();
   const queryClient = useQueryClient();
@@ -106,11 +219,15 @@ export function BalancesRoute() {
         Balances — {monthLabel(data.month_start)}
       </h1>
 
-      {data.accounts.length === 0 ? (
+      {data.accounts.length === 0 && (
         <p className="text-sm text-muted-foreground">
-          No accounts yet. Add one on Money to start tracking a balance.
+          No accounts yet. Add the first one below.
         </p>
-      ) : (
+      )}
+
+      <AddAccount />
+
+      {data.accounts.length === 0 ? null : (
         <form onSubmit={submit} className="space-y-4">
           <ul className="space-y-1">
             {data.accounts.map((account) => (

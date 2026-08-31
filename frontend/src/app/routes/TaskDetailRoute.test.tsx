@@ -222,6 +222,72 @@ describe("TaskDetailRoute", () => {
     expect(screen.getByRole("button", { name: "Reopen" })).toBeInTheDocument();
   });
 
+  it("knows a bill is a bill, and sends you back to Money", async () => {
+    /* **What Vince hit on August 31, 2026**, minutes after the coherence
+       deploy: he added a bill on /money, clicked it, and landed on a page
+       headed "Task detail" saying "No area" with a link back to the agenda.
+
+       `money-module-plan.md`'s premise is *a bill, made where bills are,
+       without anybody saying "task"* -- and this page said it twice. The row
+       has linked here since the Bills work; what changed is that it used to
+       hang on "Loading…" for ever, because a bill is a standing task with no
+       Area and this page's guard required one. Fixing that yesterday turned an
+       invisible defect into a visible one. */
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      routeRequests(({ path }) => {
+        if (path.includes("/api/v1/nav")) {
+          return jsonResponse({ areas: [], projects: [], archived_count: 0 });
+        }
+        return jsonResponse(
+          taskDetailData({
+            task: task({
+              text: "Pay Dell Community",
+              area_id: null,
+              bill: { amount: "120.00", currency: "USD", payee: "Dell Community" },
+            }),
+            area: null,
+          }),
+        );
+      }),
+    );
+
+    renderAt("1");
+
+    expect(await screen.findByDisplayValue("Pay Dell Community")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Back to Money/ })).toHaveAttribute(
+      "href",
+      "/money",
+    );
+    // Scoped to the header: the area picker below carries its own "No area"
+    // option, which is correct there and would make a document-wide query
+    // assert the opposite of what this test is about.
+    const header = screen.getByRole("heading", { name: "Bill detail" })
+      .parentElement!;
+    expect(within(header).getByText("Bill")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Task detail" })).toBeNull();
+  });
+
+  it("still says task detail, and no area, for an ordinary unfiled task", async () => {
+    // The bill branch must not swallow the honest case: a task with no area
+    // that is not a bill is exactly what it says it is.
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      routeRequests(({ path }) => {
+        if (path.includes("/api/v1/nav")) {
+          return jsonResponse({ areas: [], projects: [], archived_count: 0 });
+        }
+        return jsonResponse(
+          taskDetailData({ task: task({ area_id: null }), area: null }),
+        );
+      }),
+    );
+
+    renderAt("1");
+
+    const header = (await screen.findByRole("heading", { name: "Task detail" }))
+      .parentElement!;
+    expect(within(header).getByText("No area")).toBeInTheDocument();
+  });
+
   it("saves a text edit", async () => {
     const user = userEvent.setup();
     vi.spyOn(globalThis, "fetch").mockImplementation(

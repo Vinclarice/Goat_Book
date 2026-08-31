@@ -383,6 +383,56 @@ for looking at a thing before building more of it.
     has no shape. Headings give the eye somewhere to land, and it makes *what do
     my subscriptions cost* answerable by looking rather than by adding up.
 
+## What first real use found — August 31, 2026
+
+**Four days after shipping, Vince opened `/money` and tried to use it.** The
+walkthrough is the finding, so it is kept in his order rather than sorted by
+severity: no useful landing page → *This month* → add a bill (fine) → *Update
+balances* → **"No accounts yet. Add one on Money"** → *History* → **"No
+accounts yet. Add one"** → the link → the August overview, which also cannot →
+click the bill → **"Task detail / No area"**.
+
+**The load-bearing one: `POST /api/v1/money/accounts` had no caller anywhere in
+the SPA.** `Account` and `BalanceReading` passed §4, got an endpoint, got tests,
+and never got a door. Two screens told somebody to add an account, neither
+could, and the link between them pointed at a third that could not either.
+`principles.md`'s *a slice is not closed while nothing calls it*, in the module
+that had most recently been scored **works**.
+
+**It also invalidated an inference drawn an hour earlier.** Production had zero
+`Account` rows after four days, and that was read here as evidence for this
+file's own open question — *whether balances would actually get typed in*. It
+was not evidence about the input ratio. It was a missing button, and **the
+question is still unanswered rather than answered badly**. Recorded because the
+wrong reading was the more comfortable one: it agreed with a doubt this plan
+already held.
+
+- ~~**No way to create an account.**~~ **Fixed August 31, 2026.** An add form on
+  `/money/balances`, where somebody wanting an account is already trying to
+  record a balance. Name, kind and currency; `owes` stays null and lets the kind
+  decide, which is what the endpoint has always taken two fields for.
+- ~~**Both empty states named a page that could not help.**~~ **Fixed the same
+  day.** Balances offers the form in place; History links to Balances.
+- ~~**A bill opened as "Task detail / No area".**~~ **Fixed the same day.** The
+  page says *Bill* and goes back to Money when the sidecar is present. The row
+  has linked there since the Bills work; what changed on August 30 is that it
+  stopped hanging on `Loading…` for ever, because a bill is a standing task with
+  no Area and that page's guard required one —
+  [`coherence-audit-2026-08-30.md`](coherence-audit-2026-08-30.md) F3. **Fixing
+  an invisible defect is what made this one visible.**
+- **The landing page has no first-run state and no way in.** With nothing
+  recorded it renders a heading, three links, and *"Nothing is overdue, due
+  soon, or about to renew"* — which is a tautology to somebody with no bills,
+  and the front door offers no way to create one. **Open**, and the only one of
+  the four with real design latitude.
+
+**What this says about the module score.**
+[`module-score.md`](module-score.md) reads **works**, with a caveat that the
+verdict was taken mid-construction and *"should be re-read once the module
+closes"*. It has not closed, and this is the second reason to re-read it: the
+verdict was about the landing page answering *how do I stand* **for somebody
+who already had data**, and nobody had checked the path that produces any.
+
 ## What is still open
 
 **Investments.** The question is not whether to build it but whether balances

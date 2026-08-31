@@ -251,3 +251,69 @@ class TellingEmptyApartTest(TestCase):
 
         self.assertEqual(reading.line_count, 0)
         self.assertEqual(reading.account_count, 0)
+
+
+class TheLandingEndpointTest(TestCase):
+    """`GET /api/v1/money` over HTTP, which nothing covered until August 31,
+    2026.
+
+    **Every test above drives `money_reader.landing_for` directly**, and the
+    endpoint hand-builds its own response dict from what that returns. So the
+    two could disagree and the suite would not notice — which is exactly what
+    happened the day `line_count` and `account_count` were added: 2009 Django
+    tests passed while `/api/v1/money` answered 500 for every request, because
+    `MoneyLandingOut` required two fields the dict did not carry.
+
+    It was caught by opening the page, which is the argument for opening the
+    page. This class is the argument for not needing to next time: a reader
+    test proves the arithmetic, and only a request proves the contract.
+    """
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            "alice", "alice@example.com", "a secure password"
+        )
+        self.client.force_login(self.user)
+
+    def test_it_answers_for_an_account_with_nothing_in_it(self):
+        response = self.client.get("/api/v1/money")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["line_count"], 0)
+        self.assertEqual(payload["account_count"], 0)
+
+    def test_it_answers_with_bills_and_accounts_recorded(self):
+        services.create_bill(
+            self.user,
+            payee="Landlord",
+            amount=Decimal("1200.00"),
+            due_date=datetime.date(2026, 8, 20),
+        )
+        services.create_account(self.user, name="Amex", kind=AccountKind.CARD)
+
+        response = self.client.get("/api/v1/money")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["line_count"], 1)
+        self.assertEqual(payload["account_count"], 1)
+
+    def test_every_declared_field_is_actually_sent(self):
+        """The guard for the class of defect above, rather than for its
+        instance: the response schema and the hand-built dict are two lists of
+        keys that have to agree, and nothing made them."""
+        from lists.api_v1 import MoneyLandingOut
+
+        payload = self.client.get("/api/v1/money").json()
+
+        self.assertEqual(
+            set(MoneyLandingOut.model_fields) - set(payload),
+            set(),
+            "MoneyLandingOut declares a field the endpoint does not send.",
+        )
+
+    def test_it_refuses_a_stranger(self):
+        self.client.logout()
+
+        self.assertEqual(self.client.get("/api/v1/money").status_code, 401)

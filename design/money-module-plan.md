@@ -435,6 +435,19 @@ already held.
   account, and three screens mentioning balances without saying how to have
   one. That state now says so and links to the form.
 
+**And the landing repair broke the endpoint, past a green suite.** Adding
+`line_count` and `account_count` to `MoneyLandingOut` was not enough: the
+endpoint hand-builds its response dict rather than dumping the dataclass, so
+the two disagreed and `/api/v1/money` answered **500 for every request** while
+2009 Django tests passed. **Every test on this page drove `money_reader.
+landing_for` directly and none made a request** — a reader test proves the
+arithmetic, and only a request proves the contract.
+
+It was caught by opening the page, which is the argument for opening the page.
+`TheLandingEndpointTest` is the argument for not needing to next time, and its
+last case is the guard for the class rather than the instance: every field
+`MoneyLandingOut` declares must actually appear in the response.
+
 **What this says about the module score.**
 [`module-score.md`](module-score.md) reads **works**, with a caveat that the
 verdict was taken mid-construction and *"should be re-read once the module

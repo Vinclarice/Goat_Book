@@ -871,6 +871,14 @@ def money_landing(request):
         "owed_change": money(found.owed_change),
         "held_change": money(found.held_change),
         "unread_accounts": found.unread_accounts,
+        # **Adding a field to MoneyLandingOut is not enough**, because this
+        # dict is hand-built rather than dumped from the dataclass -- and the
+        # two disagreeing is a 500, not a missing key. It happened on August
+        # 31, 2026 with these exact two fields, past 2009 green Django tests,
+        # because every test drove `landing_for` and none made a request.
+        # `TheLandingEndpointTest` now does.
+        "line_count": found.line_count,
+        "account_count": found.account_count,
     }
 
 

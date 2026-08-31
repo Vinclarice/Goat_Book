@@ -1,6 +1,12 @@
 # Coherence audit — August 30, 2026: the task core
 
-**A record, and a repair list.** It follows
+**A record.** ~~And a repair list.~~ **All six repairs closed on August 31,
+2026**, so this is now the pure record it said it would become — the same
+shape [`code-review-2026-08-21.md`](code-review-2026-08-21.md) reached. Nothing
+below is work; the one thing still outstanding is a *dependency*, named at the
+end of the repair list, and it belongs to `roadmap.md`.
+
+It follows
 [`code-review-2026-08-16.md`](code-review-2026-08-16.md) and
 [`code-review-2026-08-21.md`](code-review-2026-08-21.md) in describing one pass
 at one state of the tree, so it cannot go stale; unlike them it was asked for by
@@ -159,6 +165,14 @@ vocabularies in one path is untidy"* — and defers it to avoid two renames in
 one commit. **The deferral is honest and the trigger is nameable**: it clears
 the moment task writes move onto `/api/v1/`, because that is the rename.
 
+**What repairing it showed, August 31, 2026.** The `List` → Area half was
+already done on the wire and only the `Item` half was outstanding — and of
+that, everything reachable was one path parameter. **The rest is not untidiness
+but a shipped binary**, so F5's real content was never "rename things"; it was
+"nothing checks". It ends as
+[`test_task_vocabulary.py`](../src/lists/tests/test_task_vocabulary.py), beside
+the Area guard that had been doing this job unaccompanied since Release D.
+
 ### F6. The second-factor enrolment page has no front door
 
 `/accounts/security/` — shipped as `petrel`, all four increments of
@@ -294,14 +308,41 @@ increment is provable on its own and the cheap ones come first.
   which tasks each surface could *show* — and both gaps found here were of the
   second kind. **An affordance matrix is a table of verbs, and it cannot see a
   missing row.**
-- **4. Finish the `Item` → task rename in the URL layer** — F5. **Half done
-  August 30, 2026 and the other half is refused.** The new endpoints say
-  `tasks` and `area_id` throughout, so the rename landed where it could be
-  free. The two surviving legacy paths keep `items` and cannot be renamed:
-  they are frozen by a shipped binary, and renaming them is precisely what
-  would break it. ~~Gated on 2 by `api_urls.py`'s own reasoning.~~ That
-  reasoning — *finishing the second rename here would put two renames in one
-  commit* — expired when increment 2 removed everything else from the file.
+- ~~**4. Finish the `Item` → task rename in the URL layer**~~ — F5. **Closed
+  August 31, 2026, and what closes it is a guard rather than a rename.**
+
+  ~~Gated on 2 by `api_urls.py`'s own reasoning.~~ That reasoning — *finishing
+  the second rename here would put two renames in one commit* — expired when
+  increment 2 emptied the file.
+
+  **What was left turned out to be one line and four exemptions.** The new
+  endpoints already said `tasks` and `area_id`. The schema audit found exactly
+  one unfrozen offender, `/api/v1/tasks/{item_id}`, sitting two routes from
+  `/api/v1/tasks/{task_id}/checklist-steps` — *"two vocabularies in one path"*
+  again, in the file that replaced the one that coined the phrase. A path
+  parameter's name never appears in a URL, which is what made it free to fix
+  and what made it invisible for as long as it lasted.
+
+  **The other four are deferred with a named trigger, not refused.**
+  `AgendaOut.items` and `DayOut.action_items` are read by the shipped Android
+  build; `AreaDetailOut.items` and `ArchiveOut.items` are held *with* them on
+  purpose, because renaming the two Android does not read would split the
+  vocabulary rather than close it — the failure this finding describes, not a
+  step toward fixing it. All four move on the keystore, in one commit or none.
+
+  **So F5 ends as a test rather than as a state**, which is the more durable
+  answer: [`test_task_vocabulary.py`](../src/lists/tests/test_task_vocabulary.py)
+  is the sibling of the Area guard that has existed all along, and a third case
+  in it asserts the exemptions still name fields the API actually serves — an
+  exemption for a field nobody sends is a comment pretending to be a rule.
+
+**All six are closed as of August 31, 2026**, in two days. What is left of
+the audit is not a repair but a dependency: `lists/api.py`, `lists/api_urls.py`,
+the `/api/` mount, `TaskOut.url`, `AreaRefOut.create_item_url` and F5's four
+exempt payload keys all retire together on one signed Android release. **That
+is a single trigger on a single list**, which is a better place to have ended
+than six open items — and it exists at all because increment 2 went looking for
+callers instead of assuming.
 
 **Increment 1 was deliberately sequenced before 2** as the smallest complete
 instance of the same pattern — one endpoint, two call sites, one retirement —
@@ -325,7 +366,7 @@ This file owns **nothing**. It is a dated observation, like the two code
 reviews. If a finding here becomes work, it becomes work in
 [`roadmap.md`](roadmap.md); if it becomes a defect, it becomes one in
 [`commercial-blueprint.md`](commercial-blueprint.md) Part 1; if it changes what
-a surface must satisfy, that is [`modules.md`](modules.md)'s. **The repair list
-above is the exception and is deliberately kept here**, in the shape
-`code-review-2026-08-21.md` used: struck as each lands, so the file becomes a
-pure record when the last one does.
+a surface must satisfy, that is [`modules.md`](modules.md)'s. ~~**The repair list above is the exception and is deliberately kept here**, in
+the shape `code-review-2026-08-21.md` used: struck as each lands, so the file
+becomes a pure record when the last one does.~~ **It did, on August 31, 2026.**
+The exception has expired and this file owns nothing again.

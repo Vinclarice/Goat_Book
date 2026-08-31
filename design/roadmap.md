@@ -463,58 +463,40 @@ re-add it here.
   specced; [`modules.md`](modules.md)'s input-ratio rule bears on it, since
   anything requiring the person to confirm a skipped period is feeding.
 
-- **The task core's coherence is the active repair, claimed August 30, 2026.**
-  From Vince, in these words: *"the superlists core was developed more in bits
-  and pieces so its not really coherent"*.
-  [`coherence-audit-2026-08-30.md`](coherence-audit-2026-08-30.md) is the
-  record — nine seams, each a `file:line` — and owns the repair list rather
-  than this file.
+- **The keystore is now a dependency of the task core, not only of Android —
+  promoted August 31, 2026.** [`android-release-signing-plan.md`](android-release-signing-plan.md)
+  has said the keystore is Vince's to generate by hand since it was written,
+  and until this week nothing but Android waited on it. It now gates a **single
+  deletion in one commit**: `lists/api.py`, `lists/api_urls.py`, the `/api/`
+  mount in `clarice/urls.py`, `TaskOut.url`, `AreaRefOut.create_item_url` and
+  the four payload keys
+  [`test_task_vocabulary.py`](../src/lists/tests/test_task_vocabulary.py)
+  exempts.
 
-  **The finding worth carrying out of it is about the score, not the code.**
-  [`product-stories.md`](product-stories.md) reads the task core at *works* for
-  every journey it covers, and is blind to all nine, because **a journey that
-  completes by two different mechanisms still completes.** That is a boundary
-  of that score rather than a fault in it — the same shape
-  [`modules.md`](modules.md) found and answered with
-  [`module-score.md`](module-score.md), reached from the opposite direction and
-  needing no new instrument, because a seam is nameable one at a time.
+  **Nothing is broken while it waits**, which is what makes this a dependency
+  rather than a defect: the compatibility surface is declared, tested, and
+  documented at the file that serves it. `android/` is already written against
+  `/api/v1/`; what is missing is the ability to sign a build carrying it.
 
-  **Three of six increments landed the day it was written.** The second factor
-  got a front door four months after shipping; a signed-in person got the
-  support path strangers have had since B3; and an Area is created the way a
-  Project is, with `new_list`, its form and its template deleted. **The last is
-  the one that was sequenced to produce an estimate**, and it did: two callers,
-  one endpoint, four test files, and the regenerated client immediately caught
-  a name collision the old form could not have.
+  **The trigger is a signed release actually on the phone**, not a keystore
+  existing — the shipped binary is what pins these, and it stays pinned until
+  it is replaced.
 
-  **Increment 2 landed the same day and cost more than three commits' worth
-  of thinking**, because it turned up a constraint the audit had missed. Task
-  writes are on the typed router; `lists/api.py` went from 543 lines to 208;
-  the Kotlin moved with them. What it found is that **the shipped Android
-  build is a second client of the path F2 proposed retiring**, reading `url`
-  off every task with `getString` — so deleting it breaks the phone's agenda
-  screen, not merely its writes, and no signed release can replace that build
-  while `android-release-signing-plan.md`'s keystore does not exist.
+- **`product-stories.md` cannot see a seam, and that is a boundary rather than
+  a fault — promoted August 31, 2026** out of the coherence repair, which is
+  closed. That score read the task core at *works* for every journey it covers
+  while nine seams sat inside those journeys, because **a journey that
+  completes by two different mechanisms still completes.**
 
-  **So it became expand–migrate–contract, and the contract step is now the
-  only open consequence.** What survives is a *declared* compatibility surface
-  — two views, two fields, no `DELETE`, a docstring naming its trigger —
-  rather than an undeclared second architecture. **`android/` is already
-  written against `/api/v1/`; the thing that is missing is the ability to build
-  it.** That makes the keystore a live dependency of this repair rather than an
-  Android-only errand, which is new information and belongs here.
-
-  **Increment 3 landed too**, so five of the audit's six repairs are done in
-  two days. Every surface opens a task client-side, an archived task has a
-  page for the first time, and delete lives with the task behind a
-  confirmation. **It found a production defect on the way** — an unfiled task's
-  detail page had rendered `Loading…` for ever since `Item.list` went nullable
-  on August 14, 2026, on the one page whose job is showing a task.
-
-  **What is left is one item and one dependency.** The `Item` → task rename is
-  half done: the new endpoints say `tasks` and `area_id`, and the two frozen
-  legacy paths cannot be renamed because a shipped binary calls them by name —
-  so the rest of it retires with them, on the keystore.
+  **This is the second time a boundary of that score has been found from the
+  outside**, and the first was answered with an instrument:
+  [`modules.md`](modules.md) sent module quality to
+  [`module-score.md`](module-score.md) rather than growing a journey per
+  module. **This one deliberately gets no instrument**, and the reason is worth
+  keeping: a seam is nameable one at a time and an audit finds it, where a
+  module is a standing thing that needs a standing score. Recorded so nobody
+  builds a seam-score, and so the next person who notices the blindness finds
+  the answer rather than the question.
 
 ### Closed — one line each; the narrative is in `roadmap-history.md`
 
@@ -536,6 +518,7 @@ copy. [`README.md`](README.md) owns the eviction rule this applies.
 - ~~**Three navigations, three identities, and a login form for a home page**~~ — closed August 18, 2026. ~~What it left open was S1~~ — **S1 was refused on August 26, 2026 when V1 was answered**, so nothing survives it.
 - ~~**Removing user data from Sentry and Resend when an account goes**~~ — **closed August 26, 2026** as [`security-and-resilience-plan.md`](security-and-resilience-plan.md) §2.2. It sat here as live work for two days afterwards.
 - ~~**Three genuinely open decisions in `commercial-blueprint.md` Part 9**~~ — **Part 9 closed August 22, 2026, all five answered.** It sat here as live work for six days afterwards, and `commercial-blueprint.md`'s own header said so the whole time.
+- ~~**The task core's coherence**~~ — closed August 31, 2026, all six repairs, from *"developed more in bits and pieces"*; the record is [`coherence-audit-2026-08-30.md`](coherence-audit-2026-08-30.md) and its two survivors are promoted above.
 - ~~**A recurrence falling due exactly today is skipped**~~ — answered August 28, 2026, the day it was raised: `>` is correct and the docstring was wrong. The reasoning lives in `_advance_due_date` and in `test_the_slot_the_completion_lands_on_is_not_respawned`, which is where code cites its own decisions; production behaviour never changed. The money question it turned up is promoted above.
 
 

@@ -140,8 +140,10 @@ become**: all seven steps struck, R1–R10 closed except R7, which is deferred
 with its reason in the module; and
 [`coherence-audit-2026-08-30.md`](coherence-audit-2026-08-30.md), the task
 core's surfaces read for seams rather than for risk — **the first of these
-asked for by a feeling rather than by a risk model**, and it carries its own
-repair list open in the shape the August 21 one used. Explicitly about the
+asked for by a feeling rather than by a risk model**. ~~It carries its own
+repair list open in the shape the August 21 one used.~~ **All six closed on
+August 31, 2026**, so it is a pure record too; what survives it is one
+dependency, which `roadmap.md` owns. Explicitly about the
 past, so they cannot go stale; their findings are **not** production defects
 until someone promotes them to `commercial-blueprint.md` Part 1.
 

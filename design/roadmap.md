@@ -504,10 +504,17 @@ re-add it here.
   it.** That makes the keystore a live dependency of this repair rather than an
   Android-only errand, which is new information and belongs here.
 
-  **What is left besides that**: one task editor reachable from every surface,
-  and the `Item` → task rename, which is half done — the new endpoints say
-  `tasks` and `area_id`, and the two frozen legacy paths cannot be renamed
-  because a shipped binary calls them by name.
+  **Increment 3 landed too**, so five of the audit's six repairs are done in
+  two days. Every surface opens a task client-side, an archived task has a
+  page for the first time, and delete lives with the task behind a
+  confirmation. **It found a production defect on the way** — an unfiled task's
+  detail page had rendered `Loading…` for ever since `Item.list` went nullable
+  on August 14, 2026, on the one page whose job is showing a task.
+
+  **What is left is one item and one dependency.** The `Item` → task rename is
+  half done: the new endpoints say `tasks` and `area_id`, and the two frozen
+  legacy paths cannot be renamed because a shipped binary calls them by name —
+  so the rest of it retires with them, on the keystore.
 
 ### Closed — one line each; the narrative is in `roadmap-history.md`
 

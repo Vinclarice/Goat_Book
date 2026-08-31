@@ -119,6 +119,17 @@ lead days, bill and cadence mode are detail-only.
 and then finding it again, and the page that can change eleven of its fields
 cannot remove it.
 
+**Why, found while repairing it**: not a missing button. `GET /tasks/{id}`
+excluded archived tasks and `delete_archived_item` refuses anything that is
+not archived, so **the only tasks the page could show were the only tasks that
+cannot be deleted.** Two correct rules, one hole between them.
+
+**And this table is the wrong instrument for the other thing that was wrong.**
+It counts what each surface can *do* to a task; it cannot see that the detail
+page could not *show* an unfiled one, which had been true since `Item.list`
+went nullable on August 14, 2026 and rendered `Loading…` for ever. A matrix of
+verbs has no row for a task that never arrives.
+
 ### F4. The page holding almost every capability is reachable from two of five surfaces
 
 The Day links to it with a plain `<a href>`
@@ -261,9 +272,28 @@ increment is provable on its own and the cheap ones come first.
   **Its retirement is now gated on one thing that is not code** — a signed
   Android release. When that lands, `lists/api.py`, `lists/api_urls.py`, the
   `/api/` mount and `TaskOut.url` go together.
-- **3. One task editor, reachable client-side from every surface; delete lives
-  with the task** — F3, F4. **Open.** Cheap once 2 lands, and type-checked, so
-  the drift cannot return.
+- ~~**3. One task editor, reachable client-side from every surface; delete
+  lives with the task**~~ — F3, F4. **Done August 30, 2026.** All four
+  surfaces link client-side; `edit_url` and `lists.views.edit_item` are
+  deleted; an archived task has a page for the first time, carrying Restore
+  and Delete permanently behind a confirmation.
+
+  **The delete half turned out to be a different repair than F3 described.**
+  F3 said *the page that can change eleven of a task's fields cannot remove
+  it*, which read as a missing button. The actual cause was one line up:
+  `GET /tasks/{id}` excluded archived tasks, and `delete_archived_item`
+  refuses anything that is not archived — so the page could not offer delete
+  because **the only tasks it could show were the only tasks that cannot be
+  deleted.** The two rules were individually right and jointly made a hole.
+  Nothing about the domain changed to close it.
+
+  **It also turned up a production defect this audit had walked straight
+  past.** `Item.list` became nullable on August 14, 2026 and this page's render
+  guard still required an area, so an unfiled task rendered `Loading…` for
+  ever. F3 counted what each surface could *do* to a task and never asked
+  which tasks each surface could *show* — and both gaps found here were of the
+  second kind. **An affordance matrix is a table of verbs, and it cannot see a
+  missing row.**
 - **4. Finish the `Item` → task rename in the URL layer** — F5. **Half done
   August 30, 2026 and the other half is refused.** The new endpoints say
   `tasks` and `area_id` throughout, so the rename landed where it could be

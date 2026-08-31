@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { Link } from "react-router";
 
 import { Button } from "@/components/ui/button";
 
@@ -181,8 +182,14 @@ export function ArchiveManager({ initialData }: Props) {
                 ✓
               </span>
               <div className="min-w-0 flex-1">
+                {/* coherence-audit-2026-08-30.md F4, and the sharpest
+                    case of it: this page could permanently delete a task and
+                    offered no way to look at one first. The task page shows
+                    an archived task since F3. */}
                 <strong className="block text-sm font-semibold text-foreground">
-                  {item.text}
+                  <Link to={`/tasks/${item.id}`} className="hover:underline">
+                    {item.text}
+                  </Link>
                 </strong>
                 <small className="mt-1 block text-xs text-muted-foreground">
                   {itemArea && (

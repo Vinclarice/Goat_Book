@@ -2,6 +2,10 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+// A router, because each row links to the task page since
+// coherence-audit-2026-08-30.md F4. Memory rather than browser: these
+// tests are about the component, not about where a click lands.
+import { MemoryRouter } from "react-router";
 
 import { ArchiveManager as BareArchiveManager } from "./ArchiveManager";
 import { apiResponse, sentRequests, task, taskWrite } from "./test/fixtures";
@@ -22,7 +26,9 @@ function ArchiveManager(props: React.ComponentProps<typeof BareArchiveManager>) 
   });
   return (
     <QueryClientProvider client={queryClient}>
-      <BareArchiveManager {...props} />
+      <MemoryRouter>
+        <BareArchiveManager {...props} />
+      </MemoryRouter>
     </QueryClientProvider>
   );
 }
@@ -47,19 +53,21 @@ describe("ArchiveManager", () => {
 
     render(
       <QueryClientProvider client={queryClient}>
-        <BareArchiveManager
-          initialData={{
-            items: [
-              task({
-                status: "archived",
-                completed_at: "2026-07-24T12:20:00-04:00",
-                archived_at: "2026-07-24T12:30:00-04:00",
-              }),
-            ],
-            areas: [{ id: 1, title: "Programming", url: "/areas/1/" }],
-            projects: [],
-          }}
-        />
+        <MemoryRouter>
+          <BareArchiveManager
+            initialData={{
+              items: [
+                task({
+                  status: "archived",
+                  completed_at: "2026-07-24T12:20:00-04:00",
+                  archived_at: "2026-07-24T12:30:00-04:00",
+                }),
+              ],
+              areas: [{ id: 1, title: "Programming", url: "/areas/1/" }],
+              projects: [],
+            }}
+          />
+        </MemoryRouter>
       </QueryClientProvider>,
     );
 
@@ -186,6 +194,33 @@ describe("ArchiveManager", () => {
     expect(
       within(withoutProject).queryByText("Kitchen remodel"),
     ).not.toBeInTheDocument();
+  });
+
+  it("opens an archived task's own page from its row", async () => {
+    // coherence-audit-2026-08-30.md F4, and its sharpest case: this page
+    // could permanently delete a task and offered no way to look at one
+    // first. The task page shows an archived task since F3.
+    render(
+      <ArchiveManager
+        initialData={{
+          items: [
+            task({
+              id: 42,
+              status: "archived",
+              completed_at: "2026-07-24T12:20:00-04:00",
+              archived_at: "2026-07-24T12:30:00-04:00",
+            }),
+          ],
+          areas: [{ id: 1, title: "Programming", url: "/areas/1/" }],
+          projects: [],
+        }}
+      />,
+    );
+
+    expect(screen.getByRole("link", { name: "Write tests" })).toHaveAttribute(
+      "href",
+      "/tasks/42",
+    );
   });
 
   it("requires confirmation before permanent deletion", async () => {

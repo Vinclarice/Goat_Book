@@ -14,6 +14,7 @@ import { TaskDetailRoute } from "./TaskDetailRoute";
 import {
   checklistStep,
   routeRequests,
+  sentRequests,
   task,
   taskWrite,
 } from "../../test/fixtures";
@@ -101,6 +102,124 @@ describe("TaskDetailRoute", () => {
     expect(
       screen.getByRole("button", { name: /try again/i }),
     ).toBeInTheDocument();
+  });
+
+  it("shows a task that belongs to no area", async () => {
+    // coherence-audit-2026-08-30.md F3. `Item.list` was made nullable on
+    // August 14, 2026 and this page's render guard still required an area, so
+    // an unfiled task rendered "Loading…" for ever -- the one class of task
+    // the task page could not show, on the page whose whole job is showing
+    // one. The API has always answered `area: null` for it, deliberately.
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      routeRequests(({ path }) => {
+        if (path.includes("/api/v1/nav")) {
+          return jsonResponse({ areas: [], projects: [], archived_count: 0 });
+        }
+        return jsonResponse(taskDetailData({ area: null }));
+      }),
+    );
+
+    renderAt("1");
+
+    expect(await screen.findByDisplayValue("Write tests")).toBeInTheDocument();
+    expect(screen.queryByText("Loading…")).toBeNull();
+  });
+
+  // The three below were written *after* the code they cover, unlike the
+  // unfiled-task test above and the server tests in
+  // lists/tests/test_task_writes_api_v1.py, which were written first and
+  // watched fail. Said out loud because principles.md asks for it: they are
+  // regression guards over behaviour that was built by looking at the screen,
+  // not a red-green cycle reported as one.
+  it("offers an archived task its two verbs and refuses the rest", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      routeRequests(({ path }) => {
+        if (path.includes("/api/v1/nav")) {
+          return jsonResponse({ areas: [], projects: [], archived_count: 1 });
+        }
+        return jsonResponse(
+          taskDetailData({ task: task({ status: "archived" }) }),
+        );
+      }),
+    );
+
+    renderAt("1");
+
+    expect(await screen.findByText(/This task is archived/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Restore" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Delete permanently" }),
+    ).toBeInTheDocument();
+    // The live verbs belong to a live task; the banner carries this one's.
+    expect(screen.queryByRole("button", { name: "Mark complete" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Move to archive" })).toBeNull();
+  });
+
+  it("asks before deleting permanently, because there is no undo", async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(
+      routeRequests(({ path, method }) => {
+        if (path.includes("/api/v1/nav")) {
+          return jsonResponse({ areas: [], projects: [], archived_count: 1 });
+        }
+        if (method === "DELETE") return jsonResponse({ deleted: 1 });
+        return jsonResponse(
+          taskDetailData({ task: task({ status: "archived" }) }),
+        );
+      }),
+    );
+
+    renderAt("1");
+    await user.click(
+      await screen.findByRole("button", { name: "Delete permanently" }),
+    );
+
+    expect(screen.getByRole("dialog")).toHaveTextContent("cannot be undone");
+    expect(
+      (await sentRequests(fetchMock)).some((sent) => sent.method === "DELETE"),
+    ).toBe(false);
+
+    await user.click(
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: "Delete permanently",
+      }),
+    );
+
+    await waitFor(async () =>
+      expect(
+        (await sentRequests(fetchMock)).some(
+          (sent) => sent.method === "DELETE" && sent.path === "/api/v1/tasks/1",
+        ),
+      ).toBe(true),
+    );
+  });
+
+  it("restores an archived task in place rather than navigating away", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      routeRequests(({ path, method }) => {
+        if (path.includes("/api/v1/nav")) {
+          return jsonResponse({ areas: [], projects: [], archived_count: 1 });
+        }
+        if (method === "PATCH") {
+          return jsonResponse({
+            task: task({ status: "completed" }),
+            spawned: null,
+            spawned_checklist_steps: [],
+          });
+        }
+        return jsonResponse(
+          taskDetailData({ task: task({ status: "archived" }) }),
+        );
+      }),
+    );
+
+    renderAt("1");
+    await user.click(await screen.findByRole("button", { name: "Restore" }));
+
+    expect(await screen.findByText("Task restored.")).toBeInTheDocument();
+    expect(screen.queryByText(/This task is archived/)).toBeNull();
+    expect(screen.getByRole("button", { name: "Reopen" })).toBeInTheDocument();
   });
 
   it("saves a text edit", async () => {

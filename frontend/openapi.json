@@ -777,6 +777,7 @@
             }
           }
         },
+        "description": "Any task this person owns, in any state.\n\n~~Matches edit_item's queryset exactly: archived tasks are managed from\nthe Archive route (restore/delete), not edited here.~~ **Widened August 30,\n2026** \u2014 coherence-audit-2026-08-30.md F3. Excluding archived tasks meant\nthe one surface that can show a task's notes, checklist and schedule\nrefused to show an archived one at all: the Archive could list it and\ndelete it, and nothing in the application could read it.\n\n**This does not let anybody edit one.** Every write service refuses an\narchived task with *\"Restore this task before editing it\"*, and\n`delete_archived_item` refuses anything that is not archived. The two-step\nis the protection and it is untouched; what changed is that both steps are\nnow reachable from the task itself.",
         "security": [
           {
             "SessionAuth": []
@@ -4564,10 +4565,6 @@
           "url": {
             "title": "Url",
             "type": "string"
-          },
-          "edit_url": {
-            "title": "Edit Url",
-            "type": "string"
           }
         },
         "required": [
@@ -4588,8 +4585,7 @@
           "notes",
           "area_id",
           "project_id",
-          "url",
-          "edit_url"
+          "url"
         ],
         "title": "TaskOut",
         "type": "object"
@@ -6578,10 +6574,6 @@
             "title": "Url",
             "type": "string"
           },
-          "edit_url": {
-            "title": "Edit Url",
-            "type": "string"
-          },
           "age_in_days": {
             "title": "Age In Days",
             "type": "integer"
@@ -6606,7 +6598,6 @@
           "area_id",
           "project_id",
           "url",
-          "edit_url",
           "age_in_days"
         ],
         "title": "DayActionItemOut",

@@ -63,8 +63,3 @@ def spa_shell(request, subpath=""):
 @login_required
 def view_list(request, list_id):
     return redirect(_spa_path(f"areas/{list_id}"))
-
-
-@login_required
-def edit_item(request, item_id):
-    return redirect(_spa_path(f"tasks/{item_id}"))

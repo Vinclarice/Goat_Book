@@ -129,30 +129,8 @@ class ListViewTest(TestCase):
         )
 
 
-class TaskDetailRedirectTest(TestCase):
-    def setUp(self):
-        self.user = User.objects.create_user(
-            "alice",
-            "alice@example.com",
-            "a secure password",
-        )
-        self.client.force_login(self.user)
-        self.list_ = List.objects.create(owner=self.user, title="Programming")
-        self.item = Item.objects.create(list=self.list_, text="Write tests")
-
-    def test_requires_login(self):
-        self.client.logout()
-
-        response = self.client.get(f"/areas/items/{self.item.id}/edit")
-
-        self.assertRedirects(
-            response,
-            f"/accounts/login/?next=/areas/items/{self.item.id}/edit",
-        )
-
-    def test_redirects_to_the_spa_task_route(self):
-        response = self.client.get(f"/areas/items/{self.item.id}/edit")
-
-        self.assertRedirects(
-            response, f"/app/tasks/{self.item.id}", fetch_redirect_response=False,
-        )
+# `class TaskDetailRedirectTest` stood here until August 30, 2026 and is gone
+# with `lists.views.edit_item` -- coherence-audit-2026-08-30.md F4. That view's
+# entire body was a redirect into the SPA, and the Agenda's "Edit" link was its
+# only caller, so opening a task cost two round trips to reach a route the
+# client router already had. The Agenda uses a <Link> now.

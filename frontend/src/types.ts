@@ -79,7 +79,6 @@ export interface Task {
   // Covers both update (PATCH) and delete (DELETE); it's the same
   // endpoint either way.
   url: string;
-  edit_url: string;
 }
 
 // release-d-plan.md 2: what a subtask actually is. No due date, no tags,

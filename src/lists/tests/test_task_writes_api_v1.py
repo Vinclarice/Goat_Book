@@ -30,6 +30,7 @@ import json
 from django.test import Client, TestCase
 
 from accounts.models import SCOPE_AGENDA_WRITE, PersonalAccessToken, User
+from lists import services
 from lists.models import CadenceMode, Item, List, Priority
 
 
@@ -397,3 +398,94 @@ class TaskWriteTokenAuthTest(TestCase):
         )
 
         self.assertEqual(response.status_code, 401)
+
+
+class ArchivedTaskDetailTest(TestCase):
+    """An archived task has a page — coherence-audit-2026-08-30.md F3.
+
+    **It had none until August 30, 2026**, and that was the sharp end of F3:
+    `GET /tasks/{id}` matched `edit_item`'s queryset, which excluded archived
+    tasks, so the only surface that could show a task's notes, checklist and
+    schedule refused to show an archived one at all. The Archive listed it and
+    could delete it; nothing could read it.
+
+    **Delete stays a two-step and the domain is unchanged.** `services` refuses
+    every edit on an archived task with *"Restore this task before editing
+    it"*, and `delete_archived_item` refuses anything not archived. What moved
+    is where the two steps can be taken from, not what they are.
+    """
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            "alice", "alice@example.com", "a secure password"
+        )
+        self.area = List.objects.create(owner=self.user, title="Programming")
+        self.task = Item.objects.create(list=self.area, text="Write tests")
+        self.client.force_login(self.user)
+        self.client.patch(
+            f"/api/v1/tasks/{self.task.id}",
+            data=json.dumps({"status": Item.Status.ARCHIVED}),
+            content_type="application/json",
+        )
+
+    def test_an_archived_task_has_a_detail_page(self):
+        response = self.client.get(f"/api/v1/tasks/{self.task.id}")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["task"]["text"], "Write tests")
+        self.assertEqual(payload["task"]["status"], Item.Status.ARCHIVED)
+
+    def test_it_carries_everything_an_active_task_does(self):
+        payload = self.client.get(f"/api/v1/tasks/{self.task.id}").json()
+
+        # The point of showing it at all: the record is readable.
+        self.assertIn("checklist_steps", payload)
+        self.assertIn("notes", payload["task"])
+        self.assertEqual(payload["area"]["title"], "Programming")
+
+    def test_editing_it_is_still_refused_by_the_domain(self):
+        response = self.client.patch(
+            f"/api/v1/tasks/{self.task.id}",
+            data=json.dumps({"text": "Renamed while archived"}),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("Restore this task", response.json()["detail"])
+
+    def test_it_can_be_restored_and_then_deleted_from_its_own_page(self):
+        restored = self.client.patch(
+            f"/api/v1/tasks/{self.task.id}",
+            data=json.dumps({"status": Item.Status.COMPLETED}),
+            content_type="application/json",
+        )
+        self.assertEqual(restored.status_code, 200)
+
+        # And an unarchived task still cannot be deleted -- the two-step is
+        # the protection, and it is unchanged.
+        refused = self.client.delete(f"/api/v1/tasks/{self.task.id}")
+        self.assertEqual(refused.status_code, 400)
+        self.assertTrue(Item.objects.filter(pk=self.task.id).exists())
+
+    def test_deleting_it_while_archived_succeeds(self):
+        response = self.client.delete(f"/api/v1/tasks/{self.task.id}")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Item.objects.filter(pk=self.task.id).exists())
+
+    def test_somebody_elses_archived_task_is_still_not_found(self):
+        other = User.objects.create_user(
+            "bob", "bob@example.com", "another secure password"
+        )
+        # Archived through the service, not by setting the column: the
+        # `valid_item_status_timestamps` constraint refuses a status without
+        # the timestamps that explain it, and it is right to.
+        theirs = Item.objects.create(
+            list=List.objects.create(owner=other, title="Bob's"), text="Private"
+        )
+        services.archive_item(theirs)
+
+        self.assertEqual(
+            self.client.get(f"/api/v1/tasks/{theirs.id}").status_code, 404
+        )

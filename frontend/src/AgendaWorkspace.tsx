@@ -1,5 +1,5 @@
 import { FormEvent, useMemo, useState } from "react";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
@@ -576,12 +576,20 @@ export function AgendaWorkspace({ initialData }: Props) {
               disabled={busyId === task.id}
               onSelect={(preset) => snooze(task, preset)}
             />
-            <a
+            {/* **Two round trips until August 30, 2026** --
+                coherence-audit-2026-08-30.md F4. `edit_url` pointed at a
+                Django view whose whole body was a redirect into this same
+                SPA, so opening a task left the app and came back. It is a
+                client-side Link now, and `edit_url` is gone from the payload.
+
+                "Open" rather than "Edit", because the page it reaches shows
+                an archived task as a record it will not let you edit. */}
+            <Link
               className="inline-flex min-h-11 items-center rounded-md border border-border px-3 text-xs whitespace-nowrap text-muted-foreground hover:border-foreground/30 hover:text-foreground"
-              href={task.edit_url}
+              to={`/tasks/${task.id}`}
             >
-              Edit
-            </a>
+              Open
+            </Link>
           </div>
         )}
       </article>

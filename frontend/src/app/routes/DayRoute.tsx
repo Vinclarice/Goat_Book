@@ -213,9 +213,12 @@ function ActionItems({
                 first widening the gaps. */}
             <span className="min-w-0 space-y-1">
               <span className="block">
-                <a href={`/app/tasks/${item.id}`} className="hover:underline">
+                {/* A <Link>, not an <a href>: this reloaded the whole
+                    shell to reach a route the client router already had --
+                    coherence-audit-2026-08-30.md F4. */}
+                <Link to={`/tasks/${item.id}`} className="hover:underline">
                   {item.text}
-                </a>
+                </Link>
                 {/* A pinned task stays in the agenda below -- the focus list is
                     above it, not carved out of it -- so the row says which it
                     is rather than leaving two identical-looking entries. */}

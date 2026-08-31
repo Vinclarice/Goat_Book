@@ -2,6 +2,10 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import userEvent from "@testing-library/user-event";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+// A router, because each row links to the task page since
+// coherence-audit-2026-08-30.md F4. Memory rather than browser: these
+// tests are about the component, not about where a click lands.
+import { MemoryRouter } from "react-router";
 
 import { TaskWorkspace as BareTaskWorkspace } from "./TaskWorkspace";
 import {
@@ -31,7 +35,9 @@ function TaskWorkspace(props: React.ComponentProps<typeof BareTaskWorkspace>) {
   });
   return (
     <QueryClientProvider client={queryClient}>
-      <BareTaskWorkspace {...props} />
+      <MemoryRouter>
+        <BareTaskWorkspace {...props} />
+      </MemoryRouter>
     </QueryClientProvider>
   );
 }
@@ -40,6 +46,27 @@ describe("TaskWorkspace", () => {
   beforeEach(() => {
     document.cookie = "csrftoken=test-token";
     vi.restoreAllMocks();
+  });
+
+  it("opens a task's own page from its row", async () => {
+    // coherence-audit-2026-08-30.md F4. This page could change seven of a
+    // task's fields and had no route at all to the page holding the other
+    // four -- so priority, notes, lead days and the bill were unreachable
+    // from the surface somebody actually works in.
+    render(
+      <TaskWorkspace
+        initialData={{
+          area: { id: 1, title: "Programming", create_item_url: "/api/areas/1/items/" },
+          project: null,
+          items: [task({ id: 42, text: "Write tests" })],
+        }}
+      />,
+    );
+
+    expect(screen.getByRole("link", { name: "Write tests" })).toHaveAttribute(
+      "href",
+      "/tasks/42",
+    );
   });
 
   it("filters tasks and displays live counts", async () => {
@@ -155,17 +182,19 @@ describe("TaskWorkspace", () => {
 
     render(
       <QueryClientProvider client={queryClient}>
-        <BareTaskWorkspace
-          initialData={{
-            area: {
-              id: 1,
-              title: "Programming",
-              create_item_url: "/api/areas/1/items/",
-            },
-            project: null,
-            items: [task()],
-          }}
-        />
+        <MemoryRouter>
+          <BareTaskWorkspace
+            initialData={{
+              area: {
+                id: 1,
+                title: "Programming",
+                create_item_url: "/api/areas/1/items/",
+              },
+              project: null,
+              items: [task()],
+            }}
+          />
+        </MemoryRouter>
       </QueryClientProvider>,
     );
 

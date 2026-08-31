@@ -19,10 +19,5 @@ from lists import views
 
 
 urlpatterns = [
-    path(
-        "items/<int:item_id>/edit",
-        views.edit_item,
-        name="edit_item",
-    ),
     path("<int:list_id>/", views.view_list, name="view_list"),
 ]

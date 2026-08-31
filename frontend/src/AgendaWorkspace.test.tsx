@@ -434,6 +434,17 @@ describe("AgendaWorkspace", () => {
     expect(screen.getByText("You're all caught up.")).toBeInTheDocument();
   });
 
+  it("opens a task's own page without leaving the app", async () => {
+    // coherence-audit-2026-08-30.md F4. This was an <a href> to `edit_url`,
+    // a Django view whose entire body was a redirect back into this SPA --
+    // two round trips to reach a route the client router already had.
+    renderAgenda();
+
+    const card = screen.getByText("Ship the fix").closest<HTMLElement>("article")!;
+    const open = within(card).getByRole("link", { name: "Open" });
+    expect(open).toHaveAttribute("href", "/tasks/2");
+  });
+
   it("links to the archive with its count", () => {
     renderAgenda({ archived_count: 23 });
 

@@ -8,6 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import {
   createChecklistStep,
   deleteChecklistStep,
+  deleteTask,
   promoteChecklistStep,
   updateChecklistStepCarriesForward,
   updateChecklistStepDone,
@@ -117,6 +118,7 @@ export function TaskDetailRoute() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const { data, isPending, isError, error: loadError, refetch } = useQuery({
     queryKey: ["task", id],
@@ -491,13 +493,58 @@ export function TaskDetailRoute() {
     }
   }
 
+  /** Back out of the archive, so the two-step delete stays a two-step.
+   *
+   * Completed rather than active, matching the Archive's own restore: what
+   * was archived was a finished thing more often than not, and
+   * `services.restore_item` is the same call either surface makes.
+   */
+  async function handleRestore() {
+    if (!task) return;
+    setError(null);
+    setNotice(null);
+    setBusy(true);
+    try {
+      const { task: updated } = await updateTaskStatus(task, "completed");
+      setTask(updated);
+      setNotice("Task restored.");
+      refreshNav();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to restore task.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!task) return;
+    setError(null);
+    setBusy(true);
+    try {
+      await deleteTask(task);
+      refreshNav();
+      navigate("/archive");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to delete task.");
+      setConfirmingDelete(false);
+      setBusy(false);
+    }
+  }
+
   if (isPending) return <p className="p-6">Loading…</p>;
   if (isError || !data) return <RouteFailure status={statusOf(loadError)} onRetry={() => refetch()} />;
   // One render sits between the data arriving and the effect above seeding
   // from it. That gap is a load, not a failure -- guarding it with
   // RouteFailure, as this line used to, would flash an error page over a
   // request that had just succeeded.
-  if (!task || !areaRef) return <p className="p-6">Loading…</p>;
+  // **`areaRef` is deliberately not part of this guard** --
+  // coherence-audit-2026-08-30.md F3. It was, and `Item.list` has been
+  // nullable since August 14, 2026, so an unfiled task rendered this line for
+  // ever: the one class of task the task page could not show. `area` is null
+  // in the payload on purpose, and every use of it below is now optional.
+  if (!task) return <p className="p-6">Loading…</p>;
+
+  const archived = task.status === "archived";
 
   // Whether "does this subtask come back next time?" is a question worth
   // asking at all. The flag exists on every subtask regardless; this only
@@ -507,18 +554,84 @@ export function TaskDetailRoute() {
   return (
     <div className="max-w-lg mx-auto px-4 py-8 space-y-6">
       <Link
-        to={`/areas/${areaRef.id}`}
+        to={areaRef ? `/areas/${areaRef.id}` : "/agenda"}
         className="text-sm text-muted-foreground hover:text-foreground"
       >
-        ← Back to {areaRef.title}
+        ← Back to {areaRef ? areaRef.title : "the agenda"}
       </Link>
 
       <div>
         <p className="text-xs font-bold uppercase tracking-wide text-accent">
-          {areaRef.title}
+          {areaRef ? areaRef.title : "No area"}
         </p>
         <h1 className="text-2xl font-bold">Task detail</h1>
       </div>
+
+      {archived && (
+        /* coherence-audit-2026-08-30.md F3. An archived task had no page at
+           all until August 30, 2026 -- the Archive could list it and delete
+           it, and nothing could read it. It is readable here now, and not
+           editable, which is the domain's own rule rather than a decision
+           this page takes: every write service refuses an archived task with
+           this exact sentence. */
+        <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+          <p className="text-sm font-bold">This task is archived.</p>
+          <p className="text-sm text-muted-foreground">
+            Restore it before editing it. Everything below is a record of how
+            it was when you archived it.
+          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button type="button" onClick={handleRestore} disabled={busy}>
+              Restore
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setConfirmingDelete(true)}
+              disabled={busy}
+              className="text-destructive"
+            >
+              Delete permanently
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {confirmingDelete && (
+        /* A confirmation rather than an undo, because there is no undo --
+           principles.md is explicit that where none exists the act is not
+           reversible however it looks. The Archive's own delete asks the same
+           question; this is the second place it can be asked from, not a
+           second rule. */
+        <div
+          role="dialog"
+          aria-label="Delete this task permanently"
+          className="rounded-lg border border-destructive/40 bg-destructive/10 p-4 space-y-3"
+        >
+          <p className="text-sm text-destructive">
+            This cannot be undone. The task, its checklist and its record go
+            with it.
+          </p>
+          <div className="flex items-center gap-3">
+            <Button
+              type="button"
+              onClick={handleDelete}
+              disabled={busy}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/80"
+            >
+              Delete permanently
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setConfirmingDelete(false)}
+              disabled={busy}
+            >
+              Keep it
+            </Button>
+          </div>
+        </div>
+      )}
 
       <form onSubmit={handleSaveText} className="space-y-2">
         <label htmlFor="task-text" className="text-sm font-bold">
@@ -888,14 +1001,21 @@ export function TaskDetailRoute() {
       {error && <p className="text-sm text-destructive">{error}</p>}
       {notice && !error && <p className="text-sm text-muted-foreground">{notice}</p>}
 
-      <div className="flex items-center gap-3">
-        <Button type="button" onClick={handleComplete} disabled={busy}>
-          {task.status === "completed" ? "Reopen" : "Mark complete"}
-        </Button>
-        <Button type="button" variant="outline" onClick={handleArchive} disabled={busy}>
-          Move to archive
-        </Button>
-      </div>
+      {!archived && (
+        <div className="flex items-center gap-3">
+          <Button type="button" onClick={handleComplete} disabled={busy}>
+            {task.status === "completed" ? "Reopen" : "Mark complete"}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleArchive}
+            disabled={busy}
+          >
+            Move to archive
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

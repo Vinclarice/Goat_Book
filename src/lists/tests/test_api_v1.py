@@ -364,13 +364,23 @@ class TaskDetailEndpointTest(TestCase):
 
         self.assertEqual(response.status_code, 404)
 
-    def test_404s_an_archived_task(self):
-        """Archived tasks are managed from the Archive route instead."""
+    def test_serves_an_archived_task_rather_than_404ing_it(self):
+        """~~Archived tasks are managed from the Archive route instead.~~
+
+        **Reversed August 30, 2026** — coherence-audit-2026-08-30.md F3. That
+        reasoning left the one surface able to show a task's notes, checklist
+        and schedule refusing to show an archived one, so the Archive could
+        list and delete a record nothing could read. Editing it is still
+        refused, by the services rather than by this queryset; what a page can
+        do with it is
+        `lists.tests.test_task_writes_api_v1.ArchivedTaskDetailTest`.
+        """
         self.client.force_login(self.user)
 
         response = self.client.get(f"/api/v1/tasks/{self.archived_item.id}")
 
-        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["task"]["status"], "archived")
 
 
 class NavEndpointTest(TestCase):

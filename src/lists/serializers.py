@@ -85,8 +85,16 @@ def serialize_item(item):
         "project_id": item.list.project_id if item.list_id else None,
         # update and delete hit the same endpoint, just with different
         # HTTP methods, so one url covers both.
+        #
+        # **`url` is here for the shipped Android build alone** -- it reads it
+        # with getString and posts to it. Nothing in this repository does any
+        # more; see lists/api.py for what retires it.
         "url": reverse("api_item_detail", args=(item.id,)),
-        "edit_url": reverse("edit_item", args=(item.id,)),
+        # **`edit_url` stood here until August 30, 2026** --
+        # coherence-audit-2026-08-30.md F4. It pointed at a Django view whose
+        # entire body was a redirect into the SPA, so the Agenda's "Edit" took
+        # two round trips to reach a route the client router already had. The
+        # Agenda uses a Link now and nothing else ever read the field.
     }
 
 

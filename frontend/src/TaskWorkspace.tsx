@@ -1,5 +1,6 @@
 import { FormEvent, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { Link } from "react-router";
 
 import { Button } from "@/components/ui/button";
 
@@ -709,15 +710,21 @@ export function TaskWorkspace({ initialData }: Props) {
                 </form>
               ) : (
                 <>
-                  <span
-                    className={`task-text block text-sm leading-snug break-words ${
+                  {/* coherence-audit-2026-08-30.md F4. This page could
+                      change seven of a task's fields and had no way to reach
+                      the page that changes the other four -- so priority,
+                      notes, lead days and the bill were unreachable from the
+                      surface somebody actually works in. */}
+                  <Link
+                    to={`/tasks/${item.id}`}
+                    className={`task-text block text-sm leading-snug break-words hover:underline ${
                       item.status === "completed"
                         ? "text-muted-foreground line-through decoration-accent"
                         : "text-foreground"
                     }`}
                   >
                     {item.text}
-                  </span>
+                  </Link>
                   <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
                     {/* ui-second-pass-plan.md F2a: the one screen that shows
                         a project heading at all still didn't tie it to the

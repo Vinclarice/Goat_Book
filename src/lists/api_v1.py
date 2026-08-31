@@ -152,7 +152,6 @@ class TaskOut(Schema):
     area_id: int | None
     project_id: int | None
     url: str
-    edit_url: str
 
 
 class AgendaBucketOut(Schema):
@@ -1276,13 +1275,25 @@ def delete_area(request, area_id: int):
 
 @router.get("/tasks/{item_id}", response=TaskDetailOut)
 def task_detail(request, item_id: int):
-    # Matches edit_item's queryset exactly: archived tasks are managed
-    # from the Archive route (restore/delete), not edited here.
+    """Any task this person owns, in any state.
+
+    ~~Matches edit_item's queryset exactly: archived tasks are managed from
+    the Archive route (restore/delete), not edited here.~~ **Widened August 30,
+    2026** — coherence-audit-2026-08-30.md F3. Excluding archived tasks meant
+    the one surface that can show a task's notes, checklist and schedule
+    refused to show an archived one at all: the Archive could list it and
+    delete it, and nothing in the application could read it.
+
+    **This does not let anybody edit one.** Every write service refuses an
+    archived task with *"Restore this task before editing it"*, and
+    `delete_archived_item` refuses anything that is not archived. The two-step
+    is the protection and it is untouched; what changed is that both steps are
+    now reachable from the task itself.
+    """
     item = get_object_or_404(
         Item.objects.select_related("list", "commitment").prefetch_related("tags"),
         id=item_id,
         owner=request.user,
-        status__in=(Item.Status.ACTIVE, Item.Status.COMPLETED),
     )
     return task_detail_data_for(item)
 

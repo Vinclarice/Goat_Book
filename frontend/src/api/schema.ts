@@ -420,7 +420,23 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Task Detail */
+        /**
+         * Task Detail
+         * @description Any task this person owns, in any state.
+         *
+         *     ~~Matches edit_item's queryset exactly: archived tasks are managed from
+         *     the Archive route (restore/delete), not edited here.~~ **Widened August 30,
+         *     2026** — coherence-audit-2026-08-30.md F3. Excluding archived tasks meant
+         *     the one surface that can show a task's notes, checklist and schedule
+         *     refused to show an archived one at all: the Archive could list it and
+         *     delete it, and nothing in the application could read it.
+         *
+         *     **This does not let anybody edit one.** Every write service refuses an
+         *     archived task with *"Restore this task before editing it"*, and
+         *     `delete_archived_item` refuses anything that is not archived. The two-step
+         *     is the protection and it is untouched; what changed is that both steps are
+         *     now reachable from the task itself.
+         */
         get: operations["lists_api_v1_task_detail"];
         put?: never;
         post?: never;
@@ -2280,8 +2296,6 @@ export interface components {
             project_id: number | null;
             /** Url */
             url: string;
-            /** Edit Url */
-            edit_url: string;
         };
         /** AreaDetailOut */
         AreaDetailOut: {
@@ -3078,8 +3092,6 @@ export interface components {
             project_id: number | null;
             /** Url */
             url: string;
-            /** Edit Url */
-            edit_url: string;
             /** Age In Days */
             age_in_days: number;
         };

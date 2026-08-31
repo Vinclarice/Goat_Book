@@ -566,6 +566,25 @@ export function TaskDetailRoute() {
 
   const archived = task.status === "archived";
 
+  /* **Task-shaped controls a bill has no use for** — Vince, August 31, 2026:
+     *"they aren't needed for bills."* A bill is unfiled by design
+     (`create_bill` makes a standing task), it is not ranked against other
+     work, and it has no steps.
+
+     **Hidden only when there is nothing to lose**, which is the whole care
+     here: any task can be marked a bill from this page, including one already
+     carrying a priority, an area or a checklist. Hiding those unconditionally
+     would make real records invisible while they went on existing — and a
+     recurring one would go on cloning its steps onto every occurrence, from a
+     page that showed no steps. `principles.md`: durable records stay
+     recoverable.
+
+     So the control disappears for a clean bill and stays for a task that
+     became one, which is the only case where it was ever carrying anything. */
+  const showPriority = !isBill || task.priority !== "none";
+  const showArea = !isBill || areaRef !== null;
+  const showChecklist = !isBill || checklistSteps.length > 0;
+
   // Whether "does this subtask come back next time?" is a question worth
   // asking at all. The flag exists on every subtask regardless; this only
   // decides whether the controls for it are worth the screen space.
@@ -804,6 +823,7 @@ export function TaskDetailRoute() {
         )}
       </div>
 
+      {showPriority && (
       <div className="space-y-1">
         <label htmlFor="task-priority" className="text-sm font-bold">
           Priority
@@ -823,6 +843,9 @@ export function TaskDetailRoute() {
         </select>
       </div>
 
+      )}
+
+      {showArea && (
       <div className="space-y-1">
         <label htmlFor="task-area" className="text-sm font-bold">
           Area
@@ -846,6 +869,7 @@ export function TaskDetailRoute() {
           ))}
         </select>
       </div>
+      )}
 
       <div className="space-y-1">
         <label htmlFor="task-recurrence" className="text-sm font-bold">
@@ -899,6 +923,7 @@ export function TaskDetailRoute() {
           task's project comes from its Area now, so it's shown (and
           changed) on the Area's own page instead, not repeated here. */}
 
+      {showChecklist && (
       <div className="space-y-2">
         <h2 className="text-sm font-bold">
           Checklist{" "}
@@ -1013,6 +1038,7 @@ export function TaskDetailRoute() {
           )}
         </form>
       </div>
+      )}
 
       <div className="space-y-1">
         <label htmlFor="task-notes" className="text-sm font-bold">

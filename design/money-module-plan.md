@@ -448,6 +448,19 @@ It was caught by opening the page, which is the argument for opening the page.
 last case is the guard for the class rather than the instance: every field
 `MoneyLandingOut` declares must actually appear in the response.
 
+**And the bill page lost three task-shaped controls** — Vince, the same day:
+*"they aren't needed for bills."* Priority, Area and Checklist are task
+concepts, and a bill is unfiled by design, is not ranked against other work,
+and has no steps.
+
+**Hidden only when there is nothing to lose**, which is the care that made it
+safe: any task can be marked a bill from that page, including one already
+carrying a priority, an area or a checklist. Hiding those unconditionally
+would make real records invisible while they went on existing — and a
+recurring one would go on cloning its steps onto every occurrence from a page
+showing none. So the control disappears for a clean bill and stays for a task
+that became one, which is the only case where it was carrying anything.
+
 **What this says about the module score.** ~~It reads **works**, with a caveat
 that the verdict was taken mid-construction.~~ **Corrected the same day**:
 [`module-score.md`](module-score.md) reads **not yet**, on Vince's own sentence

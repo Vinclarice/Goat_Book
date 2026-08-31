@@ -311,6 +311,98 @@ describe("TaskDetailRoute", () => {
     expect(await screen.findByText("Bill updated.")).toBeInTheDocument();
   });
 
+  it("drops the task-shaped controls a bill has no use for", async () => {
+    /* Vince, August 31, 2026: *"let's go ahead and remove those, they aren't
+       needed for bills."* Priority, Area and Checklist are task concepts on a
+       page that now calls itself a Bill -- a bill is unfiled by design
+       (`create_bill` makes a standing task), it is not ranked against other
+       work, and it has no steps. */
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      routeRequests(({ path }) => {
+        if (path.includes("/api/v1/nav")) {
+          return jsonResponse({ areas: [], projects: [], archived_count: 0 });
+        }
+        return jsonResponse(
+          taskDetailData({
+            task: task({
+              area_id: null,
+              priority: "none",
+              bill: { amount: "120.00", currency: "USD", payee: "Dell Community" },
+            }),
+            area: null,
+            checklist_steps: [],
+          }),
+        );
+      }),
+    );
+
+    renderAt("1");
+
+    expect(await screen.findByRole("heading", { name: "Bill detail" })).toBeInTheDocument();
+    expect(screen.queryByLabelText("Priority")).toBeNull();
+    expect(screen.queryByLabelText("Area")).toBeNull();
+    expect(screen.queryByText(/No checklist steps yet/)).toBeNull();
+    // What a bill *is* about stays.
+    expect(screen.getByLabelText("Amount")).toBeInTheDocument();
+    expect(screen.getByLabelText("Due date")).toBeInTheDocument();
+  });
+
+  it("keeps them when a bill already has one, rather than hiding what exists", async () => {
+    /* **The guard that makes hiding safe.** Any task can be marked a bill from
+       this page, including one that already carries a priority, an area or a
+       checklist -- so hiding unconditionally would make real records
+       invisible while they went on existing, and a recurring one would go on
+       cloning its steps onto every occurrence. Hidden only when there is
+       nothing to lose. */
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      routeRequests(({ path }) => {
+        if (path.includes("/api/v1/nav")) {
+          return jsonResponse({
+            areas: [{ id: 3, title: "Home", open_count: 0, overdue_count: 0, color_key: "sky" }],
+            projects: [],
+            archived_count: 0,
+          });
+        }
+        return jsonResponse(
+          taskDetailData({
+            task: task({
+              area_id: 3,
+              priority: "high",
+              bill: { amount: "120.00", currency: "USD", payee: "Dell Community" },
+            }),
+            area: { id: 3, title: "Home" },
+            checklist_steps: [checklistStep({ id: 2, text: "Check the meter" })],
+          }),
+        );
+      }),
+    );
+
+    renderAt("1");
+
+    expect(await screen.findByRole("heading", { name: "Bill detail" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Priority")).toBeInTheDocument();
+    expect(screen.getByLabelText("Area")).toBeInTheDocument();
+    expect(screen.getByText("Check the meter")).toBeInTheDocument();
+  });
+
+  it("leaves an ordinary task with all three", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      routeRequests(({ path }) => {
+        if (path.includes("/api/v1/nav")) {
+          return jsonResponse({ areas: [], projects: [], archived_count: 0 });
+        }
+        return jsonResponse(taskDetailData({ task: task({ priority: "none" }) }));
+      }),
+    );
+
+    renderAt("1");
+
+    expect(await screen.findByRole("heading", { name: "Task detail" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Priority")).toBeInTheDocument();
+    expect(screen.getByLabelText("Area")).toBeInTheDocument();
+    expect(screen.getByText(/No checklist steps yet/)).toBeInTheDocument();
+  });
+
   it("still says task detail, and no area, for an ordinary unfiled task", async () => {
     // The bill branch must not swallow the honest case: a task with no area
     // that is not a bill is exactly what it says it is.

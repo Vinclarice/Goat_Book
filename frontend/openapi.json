@@ -750,16 +750,16 @@
         ]
       }
     },
-    "/api/v1/tasks/{item_id}": {
+    "/api/v1/tasks/{task_id}": {
       "get": {
         "operationId": "lists_api_v1_task_detail",
         "summary": "Task Detail",
         "parameters": [
           {
             "in": "path",
-            "name": "item_id",
+            "name": "task_id",
             "schema": {
-              "title": "Item Id",
+              "title": "Task Id",
               "type": "integer"
             },
             "required": true
@@ -790,9 +790,9 @@
         "parameters": [
           {
             "in": "path",
-            "name": "item_id",
+            "name": "task_id",
             "schema": {
-              "title": "Item Id",
+              "title": "Task Id",
               "type": "integer"
             },
             "required": true
@@ -836,9 +836,9 @@
         "parameters": [
           {
             "in": "path",
-            "name": "item_id",
+            "name": "task_id",
             "schema": {
-              "title": "Item Id",
+              "title": "Task Id",
               "type": "integer"
             },
             "required": true

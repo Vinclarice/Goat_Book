@@ -79,7 +79,7 @@ TOKEN_AUTHENTICATED = {
     # body. Delete and reorder are absent from this list entirely, which is the
     # refusal expressed where Ninja enforces it.
     ("POST", "/api/v1/areas/{area_id}/tasks"),
-    ("PATCH", "/api/v1/tasks/{item_id}"),
+    ("PATCH", "/api/v1/tasks/{task_id}"),
     # Capture, the original reason a token exists at all.
     ("POST", "/api/v1/capture"),
     # The Day, read *and* write -- pinning a focus and writing the day's own

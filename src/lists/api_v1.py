@@ -1273,8 +1273,8 @@ def delete_area(request, area_id: int):
     return {"deleted": area_id}
 
 
-@router.get("/tasks/{item_id}", response=TaskDetailOut)
-def task_detail(request, item_id: int):
+@router.get("/tasks/{task_id}", response=TaskDetailOut)
+def task_detail(request, task_id: int):
     """Any task this person owns, in any state.
 
     ~~Matches edit_item's queryset exactly: archived tasks are managed from
@@ -1292,7 +1292,7 @@ def task_detail(request, item_id: int):
     """
     item = get_object_or_404(
         Item.objects.select_related("list", "commitment").prefetch_related("tags"),
-        id=item_id,
+        id=task_id,
         owner=request.user,
     )
     return task_detail_data_for(item)
@@ -1390,9 +1390,9 @@ class TaskUpdateOut(Schema):
     spawned_checklist_steps: list[ChecklistStepOut] = []
 
 
-def _owned_task(request, item_id):
+def _owned_task(request, task_id):
     return get_object_or_404(
-        Item.objects.select_related("list"), id=item_id, owner=request.user
+        Item.objects.select_related("list"), id=task_id, owner=request.user
     )
 
 
@@ -1439,8 +1439,8 @@ def create_task(request, area_id: int, payload: NewTaskIn):
     return 201, serialize_item(_fresh(item))
 
 
-@router.patch("/tasks/{item_id}", response=TaskUpdateOut, auth=_TASK_WRITE)
-def update_task(request, item_id: int, payload: TaskPatchIn):
+@router.patch("/tasks/{task_id}", response=TaskUpdateOut, auth=_TASK_WRITE)
+def update_task(request, task_id: int, payload: TaskPatchIn):
     """Change exactly one thing about a task.
 
     **`__fields_set__` rather than a truthiness check**, because null is a real
@@ -1448,7 +1448,7 @@ def update_task(request, item_id: int, payload: TaskPatchIn):
     unfiles a task, `bill: null` unmarks one. Treating absent and null alike
     would make three deliberate operations unreachable.
     """
-    item = _owned_task(request, item_id)
+    item = _owned_task(request, task_id)
     changed = payload.__fields_set__ & set(TaskPatchIn.model_fields)
     if len(changed) != 1:
         raise HttpError(
@@ -1560,8 +1560,8 @@ def _set_status(item, requested):
     raise HttpError(400, "Choose a valid task status.")
 
 
-@router.delete("/tasks/{item_id}", response=DeletedOut, auth=SessionAuthIfLoggedIn())
-def delete_task(request, item_id: int):
+@router.delete("/tasks/{task_id}", response=DeletedOut, auth=SessionAuthIfLoggedIn())
+def delete_task(request, task_id: int):
     """Session only, and deliberately not in `_TASK_WRITE`.
 
     The view this replaces authenticated a bearer token and *then* answered
@@ -1575,12 +1575,12 @@ def delete_task(request, item_id: int):
     Money's endpoints already name it for this reason; the older ones on this
     router inherit the default and still answer 403.
     """
-    item = _owned_task(request, item_id)
+    item = _owned_task(request, task_id)
     try:
         services.delete_archived_item(item)
     except services.InvalidTaskTransition as error:
         raise HttpError(400, str(error))
-    return {"deleted": item_id}
+    return {"deleted": task_id}
 
 
 class ReorderIn(Schema):

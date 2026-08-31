@@ -413,7 +413,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/tasks/{item_id}": {
+    "/api/v1/tasks/{task_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -4566,7 +4566,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                item_id: number;
+                task_id: number;
             };
             cookie?: never;
         };
@@ -4588,7 +4588,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                item_id: number;
+                task_id: number;
             };
             cookie?: never;
         };
@@ -4610,7 +4610,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                item_id: number;
+                task_id: number;
             };
             cookie?: never;
         };

@@ -62,12 +62,12 @@ function fail(error: unknown): never {
  * cannot express that, and does not try.
  */
 type TaskPatch = NonNullable<
-  paths["/api/v1/tasks/{item_id}"]["patch"]["requestBody"]
+  paths["/api/v1/tasks/{task_id}"]["patch"]["requestBody"]
 >["content"]["application/json"];
 
 async function patchTask(task: Task, body: TaskPatch): Promise<Task> {
-  const { data, error } = await apiV1.PATCH("/api/v1/tasks/{item_id}", {
-    params: { path: { item_id: task.id } },
+  const { data, error } = await apiV1.PATCH("/api/v1/tasks/{task_id}", {
+    params: { path: { task_id: task.id } },
     body,
   });
   if (error) fail(error);
@@ -196,8 +196,8 @@ export async function updateTaskStatus(
   task: Task,
   status: TaskStatus,
 ): Promise<StatusUpdateResult> {
-  const { data, error } = await apiV1.PATCH("/api/v1/tasks/{item_id}", {
-    params: { path: { item_id: task.id } },
+  const { data, error } = await apiV1.PATCH("/api/v1/tasks/{task_id}", {
+    params: { path: { task_id: task.id } },
     body: { status },
   });
   if (error) fail(error);
@@ -209,8 +209,8 @@ export async function updateTaskStatus(
 }
 
 export async function deleteTask(task: Task): Promise<number> {
-  const { data, error } = await apiV1.DELETE("/api/v1/tasks/{item_id}", {
-    params: { path: { item_id: task.id } },
+  const { data, error } = await apiV1.DELETE("/api/v1/tasks/{task_id}", {
+    params: { path: { task_id: task.id } },
   });
   if (error) fail(error);
   return data!.deleted;

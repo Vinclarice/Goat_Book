@@ -123,8 +123,8 @@ export function TaskDetailRoute() {
   const { data, isPending, isError, error: loadError, refetch } = useQuery({
     queryKey: ["task", id],
     queryFn: async () => {
-      const { data, response } = await apiV1.GET("/api/v1/tasks/{item_id}", {
-        params: { path: { item_id: id } },
+      const { data, response } = await apiV1.GET("/api/v1/tasks/{task_id}", {
+        params: { path: { task_id: id } },
       });
       if (!response.ok || !data) throw new RequestFailed(response.status);
       return data;

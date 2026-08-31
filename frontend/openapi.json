@@ -3704,6 +3704,14 @@
           "unread_accounts": {
             "title": "Unread Accounts",
             "type": "integer"
+          },
+          "line_count": {
+            "title": "Line Count",
+            "type": "integer"
+          },
+          "account_count": {
+            "title": "Account Count",
+            "type": "integer"
           }
         },
         "required": [
@@ -3716,7 +3724,9 @@
           "held_totals",
           "owed_change",
           "held_change",
-          "unread_accounts"
+          "unread_accounts",
+          "line_count",
+          "account_count"
         ],
         "title": "MoneyLandingOut",
         "type": "object"

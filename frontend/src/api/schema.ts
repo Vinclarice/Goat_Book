@@ -1973,6 +1973,10 @@ export interface components {
             };
             /** Unread Accounts */
             unread_accounts: number;
+            /** Line Count */
+            line_count: number;
+            /** Account Count */
+            account_count: number;
         };
         /** BalanceHistoryOut */
         BalanceHistoryOut: {

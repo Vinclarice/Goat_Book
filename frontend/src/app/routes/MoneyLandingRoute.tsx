@@ -135,6 +135,16 @@ export function MoneyLandingRoute() {
     data.overdue.length === 0 &&
     data.due_soon.length === 0 &&
     data.renewing_soon.length === 0;
+  /* **"Nothing needs you" and "you have not started" are different answers**,
+     and this page gave the first to both until August 31, 2026 -- telling
+     somebody with no bills at all that nothing was overdue, which is a
+     tautology rather than information, on the module's front door, with no way
+     to create anything from it. Vince walked into exactly that four days after
+     the module shipped.
+
+     Two counts rather than one flag, because the useful prompt differs: with
+     bills and no accounts you are missing balances, not a start. */
+  const nothingRecorded = data.line_count === 0 && data.account_count === 0;
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 px-4 py-8">
@@ -162,13 +172,62 @@ export function MoneyLandingRoute() {
         </span>
       </div>
 
-      {nothingPressing && (
-        /* Said out loud rather than left as three absent sections: an empty
-           page reads as broken, and "nothing needs you" is the answer somebody
-           came here hoping for. */
-        <p className="text-sm text-muted-foreground">
-          Nothing is overdue, due soon, or about to renew.
-        </p>
+      {nothingRecorded ? (
+        <section className="space-y-3 rounded-lg border border-border px-4 py-4">
+          <h2 className="text-sm font-bold">Nothing recorded yet.</h2>
+          <p className="max-w-prose text-sm text-muted-foreground">
+            Money answers two questions: what needs paying, and how you stand.
+            The first needs a bill; the second needs an account to carry a
+            balance. Either is a fine place to start.
+          </p>
+          <div className="flex flex-wrap gap-3">
+            <Link
+              to={`/money/month/${data.today}`}
+              className="touch-target inline-flex min-h-11 items-center rounded-lg border border-border px-3 text-sm font-semibold hover:border-foreground/30"
+            >
+              Add a bill
+            </Link>
+            <Link
+              to="/money/balances"
+              className="touch-target inline-flex min-h-11 items-center rounded-lg border border-border px-3 text-sm font-semibold hover:border-foreground/30"
+            >
+              Add an account
+            </Link>
+          </div>
+        </section>
+      ) : (
+        <>
+          {nothingPressing && (
+            /* Said out loud rather than left as three absent sections: an
+               empty page reads as broken, and "nothing needs you" is the
+               answer somebody came here hoping for -- but only once there is
+               something to be quiet about. */
+            <p className="text-sm text-muted-foreground">
+              Nothing is overdue, due soon, or about to renew.
+            </p>
+          )}
+          {data.account_count === 0 && (
+            /* The half-started state, and the one Vince was actually in: a
+               bill recorded, no account, and three screens that mention
+               balances without saying how to have one. */
+            <p className="text-sm text-muted-foreground">
+              No balances yet.{" "}
+              <Link to="/money/balances" className="underline">
+                Add an account
+              </Link>{" "}
+              to track what you owe and hold.
+            </p>
+          )}
+          {data.line_count === 0 && (
+            <p className="text-sm text-muted-foreground">
+              No bills or income yet.{" "}
+              <Link to={`/money/month/${data.today}`} className="underline">
+                Add one
+              </Link>{" "}
+              to see what needs paying.
+            </p>
+          )}
+        </>
       )}
 
       <Section title="Overdue" lines={data.overdue} tone="late" />

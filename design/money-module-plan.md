@@ -420,11 +420,20 @@ already held.
   no Area and that page's guard required one —
   [`coherence-audit-2026-08-30.md`](coherence-audit-2026-08-30.md) F3. **Fixing
   an invisible defect is what made this one visible.**
-- **The landing page has no first-run state and no way in.** With nothing
-  recorded it renders a heading, three links, and *"Nothing is overdue, due
-  soon, or about to renew"* — which is a tautology to somebody with no bills,
-  and the front door offers no way to create one. **Open**, and the only one of
-  the four with real design latitude.
+- ~~**The landing page has no first-run state and no way in.**~~ **Fixed
+  August 31, 2026.** It rendered a heading, three links, and *"Nothing is
+  overdue, due soon, or about to renew"* — a tautology to somebody with no
+  bills, on a front door that could not create one.
+
+  **The read could not tell the two empties apart**, which is why the page
+  could not either: every list and total is empty both for somebody with
+  nothing recorded and for somebody whose month is simply quiet, and those want
+  opposite pages. `MoneyLanding` carries `line_count` and `account_count` now.
+
+  **Two counts rather than one flag**, because the useful prompt differs and
+  the half-started state is the one that actually happened: a bill recorded, no
+  account, and three screens mentioning balances without saying how to have
+  one. That state now says so and links to the form.
 
 **What this says about the module score.**
 [`module-score.md`](module-score.md) reads **works**, with a caveat that the

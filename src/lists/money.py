@@ -238,6 +238,17 @@ class MoneyLanding:
     #: Accounts with no reading in the current month. Counted rather than listed
     #: so the page can nudge without becoming a second balances screen.
     unread_accounts: int
+    #: **Have you ever put anything here**, which every field above is silent
+    #: about: they all read empty for somebody with nothing recorded *and* for
+    #: somebody whose month is simply quiet, and those want opposite pages.
+    #: Until August 31, 2026 the landing page could not tell them apart and
+    #: told a person with no bills that nothing was overdue.
+    #:
+    #: **Two counts rather than one flag**, because the useful prompt differs:
+    #: somebody with bills and no accounts is missing balances, not a start.
+    #: Every money line ever, in any month and either direction.
+    line_count: int
+    account_count: int
 
 
 def landing_for(owner, *, today):
@@ -299,6 +310,10 @@ def landing_for(owner, *, today):
         owed_change=dict(owed_change),
         held_change=dict(held_change),
         unread_accounts=unread,
+        # Counted rather than derived from `rows` above: that list is this
+        # month's reading, and "have you ever" is a question about all of them.
+        line_count=MoneyLine.objects.filter(item__owner=owner).count(),
+        account_count=Account.objects.filter(owner=owner).count(),
     )
 
 

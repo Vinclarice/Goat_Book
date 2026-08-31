@@ -46,6 +46,13 @@ function landing(overrides: Record<string, unknown> = {}) {
     owed_change: {},
     held_change: {},
     unread_accounts: 0,
+    /* **Non-zero by default, and that is the point of them.** These say
+       *something has been recorded*, which every other field here is silent
+       about -- they all read empty for a person with nothing and for a person
+       whose month is quiet. Defaulting them to zero would make every test
+       below assert the first-run page by accident. */
+    line_count: 3,
+    account_count: 1,
     ...overrides,
   };
 }
@@ -70,7 +77,10 @@ describe("MoneyLandingRoute", () => {
 
   it("says nothing needs you rather than showing an empty page", async () => {
     /* Three absent sections read as broken. "Nothing needs you" is the answer
-       somebody came here hoping for, so it is said out loud. */
+       somebody came here hoping for, so it is said out loud -- **to somebody
+       who has recorded something**, which is what the fixture's counts mean.
+       Said to a person with no bills at all it is a tautology, which is the
+       defect the three tests below cover. */
     vi.spyOn(globalThis, "fetch").mockImplementation(() =>
       jsonResponse(landing()),
     );
@@ -80,6 +90,62 @@ describe("MoneyLandingRoute", () => {
     expect(
       await screen.findByText(/Nothing is overdue, due soon, or about to renew/),
     ).toBeInTheDocument();
+  });
+
+  it("offers a way in when nothing has been recorded at all", async () => {
+    /* **What Vince arrived at on August 31, 2026**: a heading, three links,
+       and "Nothing is overdue, due soon, or about to renew" -- with no way to
+       create anything from the module's own front door. The Day page learned
+       this in FirstRun: three empty states none of which can be acted on are
+       six concepts by another route. */
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(landing({ line_count: 0, account_count: 0 })),
+    );
+
+    renderLanding();
+
+    expect(await screen.findByText(/Nothing recorded yet/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Add a bill" })).toHaveAttribute(
+      "href",
+      "/money/month/2026-08-25",
+    );
+    expect(screen.getByRole("link", { name: "Add an account" })).toHaveAttribute(
+      "href",
+      "/money/balances",
+    );
+    // The tautology does not also appear: it is the wrong answer here, not an
+    // additional one.
+    expect(screen.queryByText(/Nothing is overdue/)).toBeNull();
+  });
+
+  it("points at balances for somebody with bills but no account", async () => {
+    /* The half-started state, and the one Vince was actually in after adding
+       his first bill. Three screens mention balances; none of them said how to
+       have one. */
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(landing({ line_count: 1, account_count: 0 })),
+    );
+
+    renderLanding();
+
+    expect(await screen.findByText(/No balances yet/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Add an account" })).toHaveAttribute(
+      "href",
+      "/money/balances",
+    );
+    // Not the first-run block: this person has started.
+    expect(screen.queryByText(/Nothing recorded yet/)).toBeNull();
+  });
+
+  it("points at bills for somebody with an account and nothing owed", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(landing({ line_count: 0, account_count: 2 })),
+    );
+
+    renderLanding();
+
+    expect(await screen.findByText(/No bills or income yet/)).toBeInTheDocument();
+    expect(screen.queryByText(/Nothing recorded yet/)).toBeNull();
   });
 
   it("words a delay rather than showing a signed number", async () => {

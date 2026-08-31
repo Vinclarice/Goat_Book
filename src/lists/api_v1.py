@@ -750,6 +750,11 @@ class MoneyLandingOut(Schema):
     owed_change: dict[str, str]
     held_change: dict[str, str]
     unread_accounts: int
+    #: **Have you ever put anything here.** Every field above reads empty both
+    #: for somebody with nothing recorded and for somebody whose month is
+    #: simply quiet, and those want opposite pages -- see `money.MoneyLanding`.
+    line_count: int
+    account_count: int
 
 
 class CategoryOut(Schema):

@@ -162,3 +162,92 @@ class TheMoneyLandingTest(TestCase):
         )
 
         self.assertEqual(self.landing().due_soon, [])
+
+
+class TellingEmptyApartTest(TestCase):
+    """*Nothing needs you* and *you have not started* are different answers.
+
+    **What this page could not tell apart until August 31, 2026.** Every list
+    and total it returns is empty in both cases, so it said *"Nothing is
+    overdue, due soon, or about to renew"* to somebody with no bills at all --
+    a tautology rather than information, on the module's own front door, with
+    no way to create anything from it.
+
+    Vince hit exactly that four days after the module shipped. Two counts are
+    enough to separate the states, and they are counts rather than one boolean
+    because the useful prompt differs: somebody with bills and no accounts is
+    missing balances, not a start.
+    """
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            "alice", "alice@example.com", "a secure password"
+        )
+
+    def landing(self):
+        return money_reader.landing_for(self.user, today=TODAY)
+
+    def test_a_new_account_has_nothing_of_either_kind(self):
+        reading = self.landing()
+
+        self.assertEqual(reading.line_count, 0)
+        self.assertEqual(reading.account_count, 0)
+
+    def test_a_bill_counts_as_a_line(self):
+        services.create_bill(
+            self.user, payee="Landlord", amount=Decimal("100.00"), due_date=TODAY
+        )
+
+        reading = self.landing()
+
+        self.assertEqual(reading.line_count, 1)
+        self.assertEqual(reading.account_count, 0)
+
+    def test_income_counts_too(self):
+        """`line_count` is money lines, not bills. Somebody who has only
+        recorded income has started."""
+        services.create_income(
+            self.user, payer="Work", amount=Decimal("2000.00"), due_date=TODAY
+        )
+
+        self.assertEqual(self.landing().line_count, 1)
+
+    def test_an_account_counts_separately(self):
+        services.create_account(self.user, name="Amex", kind=AccountKind.CARD)
+
+        reading = self.landing()
+
+        self.assertEqual(reading.account_count, 1)
+        self.assertEqual(reading.line_count, 0)
+
+    def test_a_paid_bill_still_counts_as_having_started(self):
+        """The counts answer *have you ever put anything here*, not *is
+        anything outstanding* -- which the lists above already answer, and
+        which is the distinction this whole class exists for.
+
+        **Two, not one**, and this assertion was wrong when first written:
+        paying a monthly bill advances the commitment, so the successor is a
+        real second line. Counting it is correct rather than an artefact --
+        somebody who has paid one rent and owes the next has emphatically
+        started.
+        """
+        bill = services.create_bill(
+            self.user, payee="Landlord", amount=Decimal("100.00"), due_date=TODAY
+        )
+        services.complete_item(bill)
+
+        self.assertEqual(self.landing().line_count, 2)
+
+    def test_counts_are_this_owner_s_alone(self):
+        other = User.objects.create_user(
+            "bob", "bob@example.com", "another secure password"
+        )
+        services.create_bill(
+            other, payee="Theirs", amount=Decimal("50.00"), due_date=TODAY
+        )
+        services.create_account(other, name="Theirs", kind=AccountKind.CARD)
+
+        reading = self.landing()
+
+        self.assertEqual(reading.line_count, 0)
+        self.assertEqual(reading.account_count, 0)

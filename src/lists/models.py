@@ -689,6 +689,229 @@ class MoneyLine(models.Model):
         return f"bill for {self.item_id}"
 
 
+class BillSeries(models.Model):
+    """The durable identity of a repeating bill, across its occurrences.
+
+    **Increment 1 of `bill-as-a-model-plan.md`, and deliberately dark**: nothing
+    reads or writes this yet. `principles.md` permits exactly one form of that —
+    a deferral with a declared trigger — and the trigger is that plan's
+    increment 3, which moves the Money surfaces onto these tables. If the plan
+    is abandoned at its own section 7, these two tables are dropped rather than
+    left standing.
+
+    **Why a template at all**, when `MoneyLine` needed none:
+    `architecture-trajectory.md` §4 rule 8 — anything that happens more than
+    once splits into a durable template holding the rule and dated occurrence
+    rows holding what actually happened. Its cost note is the argument for
+    doing it in the first migration rather than the fourth: *one foreign key
+    now*, against *the history exists but cannot be assembled, and no migration
+    can invent links after the fact*.
+
+    **Not `RecurringCommitment`.** That is the task core's template and holds
+    task-shaped fields — text, list, priority, tags. Pointing a bill at it would
+    re-couple the two vocabularies this plan exists to separate, and it carries
+    no payee, amount, currency or account.
+    """
+
+    #: §4 rule 1, owned at birth. Cascade because a series is nothing without
+    #: the person; the account it points at is not, hence SET_NULL below.
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="bill_series",
+    )
+    payee = models.CharField(max_length=200)
+    #: What it is **expected** to come to, and null for *"the water bill,
+    #: whatever it comes to"* — the same reason `MoneyLine.amount` is nullable.
+    #: Each occurrence snapshots this rather than reading through, per rule 3.
+    amount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    currency = models.CharField(max_length=3, default="USD")
+    direction = models.CharField(
+        max_length=3, choices=Direction.choices, default=Direction.OUT
+    )
+    #: Null is **Uncategorised**, a real state rather than a missing one.
+    #: SET_NULL because deleting a category loses a label, not the series.
+    category = models.ForeignKey(
+        "MoneyCategory",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="bill_series",
+    )
+    #: **The link this whole plan started from** — Vince, August 31, 2026:
+    #: *"it should be tied to the payments."* This is `Account.paid_by`
+    #: returning, pointed the other way and living on the template rather than
+    #: the occurrence, because it is the *standing* bill that pays a card.
+    #:
+    #: **Still dark in increment 1**; increment 7 is the surface that reads it.
+    #: SET_NULL: closing an account does not erase what was paid to it.
+    account = models.ForeignKey(
+        "Account",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="bill_series",
+    )
+    cadence = models.CharField(
+        max_length=20,
+        choices=Item.Recurrence.choices,
+        default=Item.Recurrence.MONTHLY,
+    )
+    #: Anchored or floating, mirroring `RecurringCommitment.cadence_mode`.
+    #: A bill is the canonical anchored case -- rent keeps its date however
+    #: late it is paid -- and the default says so.
+    cadence_mode = models.CharField(
+        max_length=20, choices=CadenceMode.choices, default=CadenceMode.ANCHORED
+    )
+    #: How many days before the due date this should be mentioned. Zero is off.
+    lead_days = models.PositiveSmallIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    #: When the series stopped, rather than deleting it -- the occurrences it
+    #: already produced are a record of money that moved, and
+    #: `RecurringCommitment.ended_at` makes the same call for the same reason.
+    ended_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name_plural = "bill series"
+        indexes = [
+            # §4 rule 7. The only query this table will run: this person's
+            # standing bills, newest first, for the module's own list.
+            models.Index(fields=["owner", "-created_at"], name="bill_series_owner"),
+        ]
+
+    def __str__(self):
+        return f"{self.payee} ({self.get_cadence_display()})"
+
+
+class Bill(models.Model):
+    """One dated bill — what was expected, and what actually moved.
+
+    **The occurrence half of §4 rule 8**, in the shape that rule names: owner, a
+    foreign key to the template, the date covered, a snapshot of what was
+    expected, an outcome, and when that outcome was decided.
+
+    **Why this is a model and not an `Item` with a sidecar.** §4's test is a
+    different life cycle, and `bill-as-a-model-plan.md` §2 has the one that
+    qualifies: **a missed period is gone for a task and still owed for a bill.**
+    The same event demands opposite outcomes, which is not something one
+    `status` field on one model can hold. `money-module-plan.md` refused this
+    on August 27 and the evidence was written on August 28; the refusal was
+    right about names and was made a day early.
+
+    **Dark in increment 1.** Nothing reads or writes it; the trigger is
+    increment 3 of that plan.
+
+    **Deletion, §4 rule 6.** Hard, and cascading from the owner. There is no
+    soft-delete because there is no undo surface to want one, and no tombstone
+    because rule 2 does not apply — see below. A series being deleted does
+    *not* take its occurrences: `SET_NULL` keeps the record of money that
+    actually moved, which is the same argument `MoneyLine.paid_amount` makes
+    for being a second column rather than an overwrite.
+
+    **§4 rule 2 does not apply.** A public identifier is for records a client
+    may create offline, and no client creates a bill offline: `android/` has no
+    money surface at all, and the phone's only durable queue is capture. If one
+    ever gains one, this needs a `public_id` and a tombstone before it ships,
+    not after.
+    """
+
+    #: §4 rule 1. Denormalised from the series rather than read through it,
+    #: exactly as `Item.owner` is, because every query here is *this person's*
+    #: and a one-off bill has no series to read through.
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="bills"
+    )
+    #: Null for a one-off -- *"the plumber, once"* -- which is the same shape
+    #: `Item.commitment` uses for a task that does not repeat.
+    series = models.ForeignKey(
+        BillSeries,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="occurrences",
+    )
+    #: The period this occurrence covers, and the date every read sorts by.
+    due_date = models.DateField()
+
+    # -- Snapshots of what was expected, §4 rule 3 -----------------------
+    #
+    # Copied at creation rather than read through `series`, so renaming a payee
+    # or changing an amount in March does not silently rewrite what January
+    # said. A one-off has no series to read through in any case.
+    payee = models.CharField(max_length=200)
+    amount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    currency = models.CharField(max_length=3, default="USD")
+    direction = models.CharField(
+        max_length=3, choices=Direction.choices, default=Direction.OUT
+    )
+
+    category = models.ForeignKey(
+        "MoneyCategory",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="bills",
+    )
+    account = models.ForeignKey(
+        "Account",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="bills",
+    )
+
+    # -- The outcome, and when it was decided ----------------------------
+    #
+    #: What **actually moved**. A second number rather than an overwrite of
+    #: `amount`, because they stop being equal the moment somebody pays extra,
+    #: and because *"the electricity bill has been creeping up"* is
+    #: unanswerable from a field with no history. Inherited wholesale from
+    #: `MoneyLine.paid_amount`, whose reasoning survives the move.
+    paid_amount = models.DecimalField(
+        max_digits=12, decimal_places=2, null=True, blank=True
+    )
+    #: When it settled. **This replaces `Item.Status`**, and the replacement is
+    #: the point: a bill is outstanding or settled, where a task is active,
+    #: completed or archived. Null means still owed -- including for a period
+    #: long past, which is the asymmetry this model exists for.
+    paid_at = models.DateTimeField(null=True, blank=True)
+
+    notes = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            # §4 rule 7, and these are the reads `lists/money.py` already runs
+            # against `MoneyLine` + `Item`, named before they are moved.
+            #
+            # The month, overdue-across-every-month, and due-soon-across-a-
+            # boundary all sort this person's bills by date.
+            models.Index(fields=["owner", "due_date"], name="bill_owner_due"),
+            # "What is still owed" -- the landing page's first question, and
+            # the one the missed-period work in increment 6 will lean on.
+            models.Index(fields=["owner", "paid_at"], name="bill_owner_paid_at"),
+            # One series' history, which is what makes a trend readable at all.
+            models.Index(fields=["series", "due_date"], name="bill_series_due"),
+        ]
+        constraints = [
+            # A settled bill records what moved; an outstanding one records
+            # neither. Half-settled is not a state anything here means, and
+            # `Item`'s own valid_item_status_timestamps makes the same kind of
+            # promise about its statuses.
+            models.CheckConstraint(
+                condition=(
+                    models.Q(paid_at__isnull=True, paid_amount__isnull=True)
+                    | models.Q(paid_at__isnull=False, paid_amount__isnull=False)
+                ),
+                name="bill_paid_at_and_amount_agree",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.payee} due {self.due_date}"
+
+
 class ChecklistStep(models.Model):
     """A step inside a task's checklist -- release-d-plan.md 2.
 

@@ -196,7 +196,15 @@ done
 # became `MoneyLine` -- and this line was the drill's half of that rename, found
 # by the test that fails when a constraint is in neither the script nor the
 # not-drilled list.
-for constraint in event_type_valid event_origin_valid money_line_amount_not_negative
+#
+# `bill_paid_at_and_amount_agree` is drilled rather than exempted even though
+# nothing writes `Bill` yet -- increment 1 of design/bill-as-a-model-plan.md.
+# The exemption list is for constraints whose loss produces a row the next read
+# shows as nonsense; losing this one produces a bill that says it settled and
+# says nothing about for how much, so the month's *already paid* total is
+# quietly short. A wrong money figure that looks like a right one is the case
+# that list explicitly is not for.
+for constraint in event_type_valid event_origin_valid money_line_amount_not_negative                   bill_paid_at_and_amount_agree
 do
   got=$(query "SELECT count(*) FROM pg_constraint
                WHERE conname = '$constraint' AND contype = 'c' AND convalidated")

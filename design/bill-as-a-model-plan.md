@@ -108,9 +108,30 @@ answers *what needs paying* arguably makes the agenda's copy redundant.
 
 Each is shippable and leaves the product working.
 
-1. **`Bill` exists, and nothing reads it.** Model, migration, owner at birth,
+1. ~~**`Bill` exists, and nothing reads it.** Model, migration, owner at birth,
    admin. `MoneyLine` untouched. Declared dark with this file as the trigger,
-   which is the one form `principles.md` permits.
+   which is the one form `principles.md` permits.~~ **Done August 31, 2026 —
+   and it is two tables, not one.** §4 rule 8 requires a template plus dated
+   occurrences for anything that repeats, and its own cost note is the argument
+   for paying that in the first migration rather than the fourth: *one foreign
+   key now*, against *no migration can invent links after the fact*. So
+   `BillSeries` holds the rule and `Bill` holds what happened, in the shape
+   rule 8 names — owner, a key to the template, the date covered, a snapshot of
+   what was expected, an outcome, and when it was decided.
+
+   **Not `RecurringCommitment` as the template**, which holds text, list,
+   priority and tags: pointing a bill at it would re-couple the two
+   vocabularies this plan separates.
+
+   **Two guards fired and both were right**, which is the reason `CLAUDE.md`
+   says to run `accounts` and `clarice` rather than the app you are editing.
+   The export guard refused a new owned model that no export names — so a
+   person's whole financial history would have gone missing from their archive
+   the day increment 4 started writing it. And the restore-drill guard refused
+   a new constraint that was in neither the drill nor the deliberately-not-
+   drilled list; `bill_paid_at_and_amount_agree` is **drilled**, because losing
+   it produces a bill claiming it settled with no figure, which makes a
+   month's *already paid* total quietly short rather than visibly broken.
 2. **A data migration copies every `MoneyLine` + its `Item` into a `Bill`**, and
    is reversible. One row in production; several in development.
 3. **The Money surfaces read `Bill`.** `/money`, the month, balances, history,

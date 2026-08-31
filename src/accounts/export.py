@@ -29,6 +29,8 @@ from lists.models import (
     Account,
     BalanceReading,
     MoneyCategory,
+    Bill,
+    BillSeries,
     MoneyLine,
     ChecklistStep,
     Item,
@@ -96,6 +98,13 @@ EXPORT_KEYS = {
     # its own, which is exactly the shape that goes missing from a list like
     # this. The test above is what caught it.
     MoneyLine: "bills",
+    # **Dark tables, exported anyway** -- increment 1 of
+    # bill-as-a-model-plan.md. Nothing writes them yet, so both keys are empty
+    # lists today; naming them now is what stops the export silently missing a
+    # person's whole financial history the day increment 4 starts writing them,
+    # which is precisely the class of gap the test above exists to catch.
+    BillSeries: "bill_series",
+    Bill: "bill_occurrences",
     Account: "accounts_with_balances",
     MoneyCategory: "money_categories",
     BalanceReading: "balances",
@@ -243,6 +252,10 @@ def _payload(user, *, now):
             "items": _rows(Item.objects.filter(owner=user), many_to_many=("tags",)),
             "checklist_steps": _rows(ChecklistStep.objects.filter(owner=user)),
             "bills": _rows(MoneyLine.objects.filter(item__owner=user)),
+            # Owned directly, unlike `bills` above, which is the point of the
+            # split: a bill stops being reached through a task.
+            "bill_series": _rows(BillSeries.objects.filter(owner=user)),
+            "bill_occurrences": _rows(Bill.objects.filter(owner=user)),
             # **Named `accounts_with_balances`, not `accounts`.** The archive
             # already has an `account` key for the person's own login details,
             # and two things called account in one payload is how somebody

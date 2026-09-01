@@ -155,12 +155,55 @@ Each is shippable and leaves the product working.
    date (`set_bill` can mark an undated task), and a figure with no completion
    (pay, then reopen). Skipping either would be silent data loss, so it raises
    at `migrate` with the row ids named.
-3. **The Money surfaces read `Bill`.** `/money`, the month, balances, history,
-   categories. `MoneyLine` still exists and is still written, so this is
-   provable by the two agreeing.
-4. **The Money surfaces write `Bill`.** `create_bill` stops making an `Item`.
-   **The point of no return**, and the first increment that changes what a
-   person's data looks like.
+3. **The Money surfaces read `Bill`.** ~~`/money`, the month, balances,
+   history, categories. `MoneyLine` still exists and is still written, so this
+   is provable by the two agreeing.~~ **Half done August 31, 2026, and the
+   other half moved into increment 4 on purpose.**
+
+   **What landed**: `money.month_from_bills` reads `Bill` where `bills_for`
+   reads `MoneyLine` + `Item`, and `test_bill_reads_agree.py` runs both over
+   the same converted data and requires the same answers — totals, buckets,
+   currencies, ordering, settlement. Declared dark with increment 4 as its
+   trigger, and the dark-services guard caught it within minutes of it being
+   written.
+
+   **What moved, and why the plan was wrong here.** *"`MoneyLine` still exists
+   and is still written"* skipped a step: reading `Bill` while `MoneyLine`
+   stays authoritative requires every money mutation to be mirrored into
+   `Bill`. And a `Bill` mirrors fields owned by **two** models, so the mirror
+   is roughly **fifteen** call sites — `set_bill`, `pay_bill`, `clear_bill`,
+   `delete_bill`, the direction update, the spawn, plus `set_due_date`,
+   `complete_item`, `reopen_item`, `restore_item`, `set_item_notes`,
+   `set_recurrence`, `set_lead_days` and the two creates — against the eight
+   `_write_through_to_commitment` needs. **Every missed one is silent
+   divergence**, which is precisely the failure this repository keeps finding.
+   A mirror that is a worse bug surface than the thing it de-risks is not worth
+   building, so the reads switch on with the writes in increment 4.
+
+   **Balances, history and categories were never in scope** and this is the
+   increment that found out: they read `Account`, `BalanceReading` and
+   `MoneyCategory`, none of which the split touches. Only two reads ever
+   touched `MoneyLine`.
+
+   **Three things the new read does not have to do**, which is the split paying
+   for itself rather than an argument for it. There is no `BillRow` wrapper,
+   because the row *is* the record. There is no status reconciliation:
+   `BillRow.paid` needs a paragraph explaining that a paid *recurring* task is
+   `ARCHIVED` rather than `COMPLETED`, so settlement must be read from
+   `completed_at` and never from the status — `paid_at` has no such trap. And
+   there is no archive filter, because a bill has no *put away* state.
+
+   **That last one is a decision and is recorded here rather than absorbed**: a
+   bill you neither pay nor delete is now simply owed. Nothing was affected —
+   development and production both held zero archived bills when the conversion
+   ran — but the concept is gone rather than carried.
+4. **The Money surfaces read *and* write `Bill`.** `create_bill` stops making
+   an `Item`, and the reads built in increment 3 switch on in the same step —
+   see that increment for why they could not move separately. **The point of no
+   return**, and the first increment that changes what a person's data looks
+   like. `test_bill_reads_agree.py` and `month_from_bills`'s `DARK` declaration
+   are both deleted by this increment; a comparison test kept past its subject
+   is how a suite grows things nobody can remove.
 5. **Decision 4's cost, paid.** Agenda, day and search read both. This is where
    the split is felt outside Money, and where it is abandoned if it is going to
    be.

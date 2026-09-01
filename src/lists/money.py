@@ -32,7 +32,7 @@ from decimal import Decimal
 
 from django.db.models import Q
 
-from lists.models import Account, Direction, Item, MoneyLine
+from lists.models import Account, Bill, Direction, Item, MoneyLine
 
 
 @dataclass(frozen=True)
@@ -173,6 +173,89 @@ def bills_for(owner, day):
             (received if incoming else paid)[row.bill.currency] += settled
         else:
             (expected_in if incoming else due)[row.bill.currency] += row.bill.amount
+    return MonthOfBills(
+        bills=rows,
+        due_totals=dict(due),
+        paid_totals=dict(paid),
+        expected_in_totals=dict(expected_in),
+        received_totals=dict(received),
+        unpriced=unpriced,
+    )
+
+
+# DARK: no production caller. Trigger: increment 4 of
+# design/bill-as-a-model-plan.md, which moves the money writes onto `Bill` and
+# switches the surfaces to this read in the same step. Reads and writes move
+# together deliberately -- see this function's docstring for why the mirror
+# that would let them move separately is not worth building.
+def month_from_bills(owner, day):
+    """`bills_for`, read from `Bill` instead of `MoneyLine` + `Item`.
+
+    **Increment 3 of `bill-as-a-model-plan.md`, and dark**: nothing calls this
+    yet. The trigger is increment 4, which moves the writes and switches the
+    surfaces to it in one step. `test_bill_reads_agree.py` is what makes the
+    switch safe -- it runs both reads over the same data and requires the same
+    answers.
+
+    **Why the surfaces are not switched here**, against what that plan's
+    increment 3 first said. Reading `Bill` while `MoneyLine` remains
+    authoritative needs every money mutation mirrored into `Bill` -- and a
+    `Bill` mirrors fields owned by *two* models, so the mirror is about fifteen
+    call sites rather than the eight `_write_through_to_commitment` needs. Each
+    missed one is silent divergence, which is exactly the failure this codebase
+    keeps finding. A mirror that is a worse bug surface than the thing it
+    de-risks is not worth building, so reads and writes move together.
+
+    **Three things the old read had to do that this one does not**, and they
+    are the split paying for itself rather than an argument for it:
+
+    - **No `BillRow`.** That wrapper exists only to hold a task and its sidecar
+      together; here the row *is* the record.
+    - **No status reconciliation.** `BillRow.paid` needs a paragraph explaining
+      that a paid *recurring* task is `ARCHIVED` rather than `COMPLETED`, so
+      settlement must be read from `completed_at` and never from the status.
+      `paid_at` has no such ambiguity and needs no paragraph.
+    - **No archive filter.** The old read excludes tasks archived without being
+      completed, because *put away* is a task state. A bill has no such state.
+
+    **That last one is a decision rather than a simplification**, and it is
+    recorded in the plan: a bill you neither pay nor delete is now simply owed.
+    Nothing was affected -- development and production both held zero archived
+    bills when the conversion ran -- but the concept is gone rather than
+    carried, and that is deliberate.
+    """
+    first = day.replace(day=1)
+    last = first.replace(day=monthrange(first.year, first.month)[1])
+
+    rows = list(
+        Bill.objects.filter(
+            owner=owner, due_date__gte=first, due_date__lte=last
+        ).order_by("due_date", "id")
+    )
+
+    due = defaultdict(Decimal)
+    paid = defaultdict(Decimal)
+    expected_in = defaultdict(Decimal)
+    received = defaultdict(Decimal)
+    unpriced = 0
+    for row in rows:
+        if row.amount is None:
+            # Counted whether or not it is settled: "the water bill, whatever
+            # it came to" is as unpriced after paying it as before.
+            unpriced += 1
+            continue
+        # Four buckets, not two. Direction decides which pair, settlement
+        # decides which of the pair -- a salary in the *still to pay* column
+        # would make every month look catastrophic.
+        incoming = row.direction == Direction.IN
+        if row.paid_at is not None:
+            # What actually moved, falling back to what was expected for rows
+            # settled without a figure -- which is a real state here, see
+            # `Bill.paid_at`.
+            settled = row.paid_amount if row.paid_amount is not None else row.amount
+            (received if incoming else paid)[row.currency] += settled
+        else:
+            (expected_in if incoming else due)[row.currency] += row.amount
     return MonthOfBills(
         bills=rows,
         due_totals=dict(due),

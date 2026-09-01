@@ -82,6 +82,12 @@ ELSEWHERE = {
     # carries the trigger. Found by this test, on work added hours after it was
     # cited approvingly -- which is the argument for a guard over a habit.
     "lists/services.py": ("close_account",),
+    # `month_from_bills` joined on August 31, 2026: increment 3 of
+    # bill-as-a-model-plan.md is a read against the new `Bill` model, proven
+    # against the old one by `lists/tests/test_bill_reads_agree.py` and called
+    # by nothing until increment 4 moves the writes. Caught by this test within
+    # minutes of being written, which is the third time it has paid for itself.
+    "lists/money.py": ("month_from_bills",),
     "routines/reads.py": ("occurrence_for",),
     "accounts/export.py": ("owned_models", "export_key"),
 }

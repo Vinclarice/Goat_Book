@@ -142,16 +142,32 @@ class BillTest(TestCase):
         self.assertEqual(bill.amount, Decimal("64.99"))
         self.assertEqual(bill.paid_amount, Decimal("71.40"))
 
-    def test_a_bill_cannot_be_half_settled(self):
-        """A date with no figure, or a figure with no date, is not a state
-        anything here means."""
-        with self.assertRaises(IntegrityError):
-            with transaction.atomic():
-                self.bill(paid_at=timezone.now())
-
+    def test_a_figure_without_a_settlement_is_refused(self):
+        """A number recorded against a bill nobody has settled is a claim about
+        money that did not move."""
         with self.assertRaises(IntegrityError):
             with transaction.atomic():
                 self.bill(paid_amount=Decimal("10.00"))
+
+    def test_a_settlement_without_a_figure_is_allowed_and_means_something(self):
+        """~~A date with no figure is not a state anything here means.~~
+
+        **It is, and increment 2 found it in the data before the migration
+        ran.** `services.pay_bill` defaults the figure to what was expected, so
+        an *unpriced* bill -- *"the water bill, whatever it comes to"* -- paid
+        without an explicit number settles with `paid_amount` still null. One
+        of five development `MoneyLine` rows was in exactly that state.
+
+        The honest reading is *paid, amount unrecorded*, and the alternatives
+        were fabricating a zero or throwing away the fact that it was paid.
+        `principles.md` refuses the first and the second loses history, so the
+        constraint was wrong rather than the data.
+        """
+        bill = self.bill(amount=None, paid_at=timezone.now())
+
+        bill.refresh_from_db()
+        self.assertIsNotNone(bill.paid_at)
+        self.assertIsNone(bill.paid_amount)
 
     def test_an_unpriced_bill_is_a_real_bill(self):
         """*"The water bill, whatever it comes to."* The row is what marks it,

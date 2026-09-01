@@ -132,8 +132,29 @@ Each is shippable and leaves the product working.
    drilled list; `bill_paid_at_and_amount_agree` is **drilled**, because losing
    it produces a bill claiming it settled with no figure, which makes a
    month's *already paid* total quietly short rather than visibly broken.
-2. **A data migration copies every `MoneyLine` + its `Item` into a `Bill`**, and
-   is reversible. One row in production; several in development.
+2. ~~**A data migration copies every `MoneyLine` + its `Item` into a `Bill`**,
+   and is reversible. One row in production; several in development.~~ **Done
+   August 31, 2026** as `0055_copy_money_lines_into_bills`, verified forward,
+   backward and forward again against the development database: five money
+   lines became five bills and one series, and the five source rows were never
+   written.
+
+   **It found that increment 1's constraint was wrong, from the data rather
+   than by argument.** `bill_paid_at_and_amount_agree` demanded that `paid_at`
+   and `paid_amount` both be set or both be null — and `services.pay_bill`
+   defaults the figure to what was expected, so an *unpriced* bill paid without
+   an explicit number settles with `paid_amount` still null. **One of five
+   development rows was in exactly that state**, and the migration would have
+   refused it. *Paid, amount unrecorded* is a real answer; fabricating a zero
+   is inventing and dropping `paid_at` loses the fact of payment. Relaxed in
+   `0054` to *a figure requires a settlement, a settlement does not require a
+   figure*.
+
+   **It refuses two states rather than guessing**, both reachable and neither
+   present in development or production when it was written: a bill with no due
+   date (`set_bill` can mark an undated task), and a figure with no completion
+   (pay, then reopen). Skipping either would be silent data loss, so it raises
+   at `migrate` with the row ids named.
 3. **The Money surfaces read `Bill`.** `/money`, the month, balances, history,
    categories. `MoneyLine` still exists and is still written, so this is
    provable by the two agreeing.

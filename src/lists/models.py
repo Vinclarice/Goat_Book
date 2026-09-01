@@ -870,6 +870,9 @@ class Bill(models.Model):
     paid_amount = models.DecimalField(
         max_digits=12, decimal_places=2, null=True, blank=True
     )
+    #: When it settled, and **null with a figure beside it is refused while
+    #: null without one is not** -- see the constraint below.
+    #:
     #: When it settled. **This replaces `Item.Status`**, and the replacement is
     #: the point: a bill is outstanding or settled, where a task is active,
     #: completed or archived. Null means still owed -- including for a period
@@ -895,14 +898,24 @@ class Bill(models.Model):
             models.Index(fields=["series", "due_date"], name="bill_series_due"),
         ]
         constraints = [
-            # A settled bill records what moved; an outstanding one records
-            # neither. Half-settled is not a state anything here means, and
-            # `Item`'s own valid_item_status_timestamps makes the same kind of
-            # promise about its statuses.
+            # **A figure requires a settlement; a settlement does not require a
+            # figure.** This was symmetric for a day and was wrong in one
+            # direction, and increment 2 found out from the data rather than by
+            # argument: `services.pay_bill` defaults the amount to what was
+            # expected, so an *unpriced* bill -- "the water bill, whatever it
+            # comes to" -- paid without an explicit number settles with
+            # `paid_amount` still null. One of five development rows was in
+            # exactly that state and the migration would have refused it.
+            #
+            # *Paid, amount unrecorded* is a real answer. Fabricating a zero is
+            # what `principles.md` calls inventing, and dropping `paid_at` to
+            # satisfy the constraint would throw away the fact that it was paid.
+            # The other direction stays refused: a number against a bill nobody
+            # settled is a claim about money that did not move.
             models.CheckConstraint(
                 condition=(
-                    models.Q(paid_at__isnull=True, paid_amount__isnull=True)
-                    | models.Q(paid_at__isnull=False, paid_amount__isnull=False)
+                    models.Q(paid_amount__isnull=True)
+                    | models.Q(paid_at__isnull=False)
                 ),
                 name="bill_paid_at_and_amount_agree",
             ),

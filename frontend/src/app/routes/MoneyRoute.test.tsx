@@ -698,3 +698,91 @@ describe("MoneyRoute", () => {
     ).toBeInTheDocument();
   });
 });
+
+describe("MoneyRoute, saying what a bill pays down", () => {
+  /* Increment 7 of bill-as-a-model-plan.md. `Account.paid_by` was written on
+     August 27, 2026 and deleted the same day by `d50d6eb` because it was "set
+     by nothing and read by nothing" -- so the write half is tested here and
+     the read half in BalancesRoute.test.tsx, and neither ships alone. */
+  function withAccounts(accounts: unknown[], bills: unknown[] = []) {
+    return vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const request = input as Request;
+      const path = new URL(request.url).pathname;
+      if (request.method === "POST") return jsonResponse({}, true, 201);
+      if (request.method === "PATCH") return jsonResponse({});
+      if (path.includes("/money/accounts")) {
+        return jsonResponse({
+          month_start: "2026-08-01",
+          accounts,
+          owed_totals: {},
+          held_totals: {},
+        });
+      }
+      if (path.includes("/money/categories")) return jsonResponse([]);
+      return jsonResponse(billsData({ bills }));
+    });
+  }
+
+  const card = {
+    id: 3,
+    name: "Dell Community",
+    kind: "card",
+    currency: "USD",
+    owes: true,
+    balance: null,
+    previous: null,
+    next_payment: null,
+  };
+
+  it("sends the account a new bill pays down", async () => {
+    const fetchSpy = withAccounts([card]);
+
+    renderAt();
+
+    const form = (await screen.findByRole("button", { name: "Add bill" })).closest(
+      "form",
+    )!;
+    await userEvent.type(within(form).getByLabelText("Who it goes to"), "Dell");
+    await userEvent.selectOptions(
+      within(form).getByLabelText("Pays down"),
+      "3",
+    );
+    await userEvent.click(within(form).getByRole("button", { name: "Add bill" }));
+
+    await waitFor(async () => {
+      const posted = fetchSpy.mock.calls
+        .map(([request]) => request as Request)
+        .filter((request) => request.method === "POST");
+      expect(posted).toHaveLength(1);
+      expect(await posted[0].clone().json()).toMatchObject({ account_id: 3 });
+    });
+  });
+
+  it("asks nothing when there are no accounts to file against", async () => {
+    /* A picker with one option reading "nothing" is a question nobody can
+       answer usefully, on a form whose whole design is to ask about money and
+       dates and nothing else. */
+    withAccounts([]);
+
+    renderAt();
+
+    const form = (await screen.findByRole("button", { name: "Add bill" })).closest(
+      "form",
+    )!;
+    expect(within(form).queryByLabelText("Pays down")).toBeNull();
+  });
+
+  it("says paid into for money coming in", async () => {
+    // An investment is fed, not paid down.
+    withAccounts([card]);
+
+    renderAt();
+
+    // Awaited rather than asserted straight away: the picker appears when the
+    // accounts arrive, and the "Add income" button is there before they do.
+    const picker = await screen.findByLabelText("Paid into");
+    expect(picker.closest("form")).toContainElement(
+      screen.getByRole("button", { name: "Add income" }),
+    );
+  });
+});

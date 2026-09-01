@@ -369,10 +369,50 @@ Each is shippable and leaves the product working.
    unpaid rows. That is true, and a module that hid it would be lying about
    money — but it is the thing to watch first if the page becomes unusable, and
    §7 already says so.
-7. **`Account.paid_by` returns, as `Bill.account`.** The disconnect Vince
-   actually reported. It comes last only because the model it points at should
-   exist first; **if the split stalls, this is the increment to do anyway**, on
-   `Item`, exactly as the deletion commit anticipated.
+7. ~~**`Account.paid_by` returns, as `Bill.account`.**~~ **Done September 1,
+   2026** — the disconnect Vince actually reported, closed.
+
+   **Both halves in one commit, which is the whole point.** `d50d6eb` deleted
+   the first version because it was *"set by nothing and read by nothing"*
+   through two screens that were each supposed to give it a purpose, and its
+   terms of return were explicit: *"it comes back the day a surface actually
+   wants it."* So the picker on the add and edit forms and the balances
+   screen's `next_payment` ship together; either alone would be the same
+   mistake with a longer runway.
+
+   **What the link means, decided rather than left open.** `Bill.account` is
+   *the account this bill moves money against* — an outgoing bill against a
+   card reduces what is owed, an incoming one against an investment increases
+   what is held. **Not "paid from"**, which was the other available reading:
+   which current account the money physically left is a second fact this
+   product does not record, and one field that could mean either would make
+   every reader guess. The original field's own docstring picked the same side.
+
+   **On the series and on the occurrence**, because they are different facts:
+   the series is what pays the card as a standing arrangement, the occurrence
+   is what pays it in September. §4 rule 3, so refiling one month leaves the
+   arrangement alone — and `spawn_next` and `catch_up` both carry it forward
+   from the rule.
+
+   **One thing measured rather than assumed.** The balances screen lists every
+   account somebody has, so the payment lookup is one query for all of them
+   rather than one each; the test asserts the cost is *unchanged* between one
+   account and seven, which says the property directly and cannot drift when
+   something unrelated adds a query.
+
+   **And one defect this increment nearly repeated.** `POST /money/income`
+   takes its own schema, so wiring `account_id` into `POST /money/bills` and
+   not into its twin would have produced exactly what the flip found: a form
+   that sends a field, an endpoint that returns 201, and a link that was never
+   made. Caught by writing the income test rather than by review, and the
+   symmetry is now asserted end to end.
+
+   **Whether that shape deserves a guard was measured, not guessed**: a scan of
+   all 129 Ninja input schemas found **zero** fields an endpoint never
+   mentions, so a source-level test of *every declared field reaches a service*
+   would start green and cost little. Not built here — it is a codebase-wide
+   guard rather than part of this increment — but the measurement is recorded
+   so the decision is one line of work away.
 8. **`MoneyLine` is deleted.** Not before every read and write has moved and a
    backup has been taken. **Both conditions are now met** — the table is empty
    and nothing writes it — so this is a schema removal and a tidy-up of the two

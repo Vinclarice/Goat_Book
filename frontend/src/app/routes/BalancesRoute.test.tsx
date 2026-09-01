@@ -39,6 +39,7 @@ function accountsData(overrides: Record<string, unknown> = {}) {
         owes: true,
         balance: null,
         previous: "4500.00",
+        next_payment: null,
       },
       {
         id: 2,
@@ -48,6 +49,7 @@ function accountsData(overrides: Record<string, unknown> = {}) {
         owes: false,
         balance: null,
         previous: null,
+        next_payment: null,
       },
     ],
     owed_totals: {},
@@ -125,6 +127,7 @@ describe("BalancesRoute", () => {
               owes: true,
               balance: "4200.00",
               previous: "4500.00",
+              next_payment: null,
             },
           ],
         }),
@@ -215,6 +218,7 @@ describe("BalancesRoute", () => {
             owes: true,
             balance: null,
             previous: null,
+            next_payment: null,
           },
           true,
           201,
@@ -254,5 +258,100 @@ describe("BalancesRoute", () => {
     renderAt();
 
     expect(await screen.findByLabelText("Account name")).toBeInTheDocument();
+  });
+});
+
+describe("BalancesRoute, tied to the bills that pay it", () => {
+  /* Increment 7 of bill-as-a-model-plan.md, and the disconnect Vince reported
+     in his own words: *"I've added Dell Commenity and its showing up but now
+     there's a disconnect. Like it should be tied to the payments."* This
+     screen showed a card, a figure and nothing about how it gets paid. */
+  it("names what pays an account down, and links to it", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        accountsData({
+          accounts: [
+            {
+              id: 1,
+              name: "Dell Community",
+              kind: "card",
+              currency: "USD",
+              owes: true,
+              balance: "220.00",
+              previous: "300.00",
+              next_payment: {
+                task_id: 9,
+                payee: "Dell Community",
+                due_date: "2026-08-20",
+                amount: "80.00",
+                currency: "USD",
+              },
+            },
+          ],
+        }),
+      ),
+    );
+
+    renderAt();
+
+    // Found by the label rather than by the name: the card and the bill that
+    // pays it are both called "Dell Community", which is what somebody would
+    // actually type and is exactly the case this feature is for.
+    await screen.findAllByText("Dell Community");
+    const row = screen
+      .getByLabelText("Dell Community")
+      .closest<HTMLElement>("li")!;
+    expect(within(row).getByText(/80\.00 USD/)).toBeInTheDocument();
+    expect(within(row).getByRole("link", { name: /Dell Community/ })).toHaveAttribute(
+      "href",
+      "/money/bills/9",
+    );
+  });
+
+  it("says nothing rather than showing an empty row when nothing is filed", async () => {
+    /* Null is a real state -- most accounts will have none -- and a blank
+       slot reads as a figure that failed to load. */
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(accountsData()),
+    );
+
+    renderAt();
+
+    await screen.findByText("Amex");
+    expect(screen.queryByText(/Paid by/)).toBeNull();
+  });
+
+  it("says fed rather than paid for something held", async () => {
+    // An ISA is not paid down. The wording follows the direction the same way
+    // the pay button already does.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        accountsData({
+          accounts: [
+            {
+              id: 2,
+              name: "Stocks ISA",
+              kind: "investment",
+              currency: "USD",
+              owes: false,
+              balance: "1000.00",
+              previous: null,
+              next_payment: {
+                task_id: 4,
+                payee: "Monthly contribution",
+                due_date: "2026-08-20",
+                amount: "200.00",
+                currency: "USD",
+              },
+            },
+          ],
+        }),
+      ),
+    );
+
+    renderAt();
+
+    const row = (await screen.findByText("Stocks ISA")).closest<HTMLElement>("li")!;
+    expect(within(row).getByText(/Fed by/)).toBeInTheDocument();
   });
 });

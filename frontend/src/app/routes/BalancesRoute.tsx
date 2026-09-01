@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useEffect, useState } from "react";
-import { useParams } from "react-router";
+import { Link, useParams } from "react-router";
 
 import { apiV1 } from "../../api/client";
 import { RequestFailed, refusal, statusOf } from "../../api/failure";
@@ -245,6 +245,40 @@ export function BalancesRoute() {
                   {account.previous !== null && (
                     <span className="ml-2 text-xs text-muted-foreground">
                       last month {account.previous} {account.currency}
+                    </span>
+                  )}
+                  {/* **The disconnect, closed.** Vince, August 31, 2026:
+                      *"I've added Dell Commenity and its showing up but now
+                      there's a disconnect. Like it should be tied to the
+                      payments."* This screen showed a card, a figure, and
+                      nothing about how it gets paid --
+                      bill-as-a-model-plan.md increment 7.
+
+                      **Absent rather than empty when nothing is filed**, which
+                      is most accounts: a blank slot where a figure should be
+                      reads as something that failed to load.
+
+                      *Fed*, not *paid*, for something held. An ISA is not paid
+                      down, and the wording follows the direction the way the
+                      pay button already does. */}
+                  {account.next_payment !== null && (
+                    <span className="block text-xs text-muted-foreground">
+                      {account.owes ? "Paid by" : "Fed by"}{" "}
+                      <Link
+                        to={`/money/bills/${account.next_payment.task_id}`}
+                        className="hover:underline"
+                      >
+                        {account.next_payment.payee}
+                      </Link>
+                      {account.next_payment.amount !== null && (
+                        <>
+                          {" — "}
+                          {account.next_payment.amount}{" "}
+                          {account.next_payment.currency}
+                        </>
+                      )}
+                      {" due "}
+                      {account.next_payment.due_date}
                     </span>
                   )}
                 </span>

@@ -3299,6 +3299,28 @@
             ],
             "title": "Category Id"
           },
+          "account": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account"
+          },
+          "account_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Id"
+          },
           "direction": {
             "title": "Direction",
             "type": "string"
@@ -3337,6 +3359,8 @@
           "repeats",
           "category",
           "category_id",
+          "account",
+          "account_id",
           "direction",
           "recurrence",
           "lead_days",
@@ -3394,6 +3418,17 @@
             "default": 0,
             "title": "Lead Days",
             "type": "integer"
+          },
+          "account_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Id"
           }
         },
         "required": [
@@ -3493,6 +3528,22 @@
             "default": false,
             "title": "Clear Category",
             "type": "boolean"
+          },
+          "account_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Id"
+          },
+          "clear_account": {
+            "default": false,
+            "title": "Clear Account",
+            "type": "boolean"
           }
         },
         "title": "EditBillIn",
@@ -3546,6 +3597,17 @@
             "default": 0,
             "title": "Lead Days",
             "type": "integer"
+          },
+          "account_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Id"
           }
         },
         "required": [
@@ -3914,6 +3976,16 @@
               }
             ],
             "title": "Previous"
+          },
+          "next_payment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NextPaymentOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -3923,7 +3995,8 @@
           "currency",
           "owes",
           "balance",
-          "previous"
+          "previous",
+          "next_payment"
         ],
         "title": "AccountOut",
         "type": "object"
@@ -3964,6 +4037,48 @@
           "held_totals"
         ],
         "title": "AccountsOut",
+        "type": "object"
+      },
+      "NextPaymentOut": {
+        "description": "The soonest unpaid bill against an account.\n\n**The read half of increment 7**, and the reason `Account.paid_by` is\nallowed back. `d50d6eb` deleted the first version of this link because it\nwas *\"set by nothing and read by nothing\"*; a field with a writer and no\nreader is the same mistake with a longer runway, so the two ship together.\n\n**Soonest unpaid, not a list.** The balances screen answers *what do I owe\non this* and *what is coming*; every bill an account has ever had is the\nmonth page's question and is one click away through `task_id`.",
+        "properties": {
+          "task_id": {
+            "title": "Task Id",
+            "type": "integer"
+          },
+          "payee": {
+            "title": "Payee",
+            "type": "string"
+          },
+          "due_date": {
+            "format": "date",
+            "title": "Due Date",
+            "type": "string"
+          },
+          "amount": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id",
+          "payee",
+          "due_date",
+          "amount",
+          "currency"
+        ],
+        "title": "NextPaymentOut",
         "type": "object"
       },
       "NewAccountIn": {

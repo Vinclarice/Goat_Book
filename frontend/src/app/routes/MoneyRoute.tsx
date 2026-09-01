@@ -66,7 +66,31 @@ function AddBill({
   const [dueDate, setDueDate] = useState(month);
   const [recurrence, setRecurrence] = useState("monthly");
   const [leadDays, setLeadDays] = useState("");
+  const [accountId, setAccountId] = useState("");
   const [failed, setFailed] = useState<string | null>(null);
+
+  /* **What this is paying, asked where the bill is made.** The link between an
+     account and the bill that pays it was written on August 27, 2026 and
+     deleted the same day, having been set by nothing -- `d50d6eb`, which said
+     it comes back the day a surface wants it. This is that surface, and the
+     edit form below is the other half.
+
+     Not required, and no default: most bills pay nothing on this list, and a
+     picker that guessed would file rent against a credit card. */
+  const { data: accounts } = useQuery({
+    // **Keyed by the day, because the response is.** The picker only reads id
+    // and name, which do not vary by month -- but the endpoint also carries
+    // that month's balances, so a key that ignored the day would serve one
+    // month's payload for another. Cheap to get right, invisible to get wrong.
+    queryKey: ["money-accounts", month],
+    queryFn: async () => {
+      const { data, response } = await apiV1.GET("/api/v1/money/accounts/{day}", {
+        params: { path: { day: month } },
+      });
+      if (!data) throw new RequestFailed(response.status);
+      return data.accounts;
+    },
+  });
 
   const add = useMutation({
     mutationFn: async () => {
@@ -80,6 +104,7 @@ function AddBill({
             recurrence,
             repeats: recurrence !== "none",
             lead_days: leadDays.trim() === "" ? 0 : Number(leadDays),
+            account_id: accountId === "" ? null : Number(accountId),
           },
         });
         if (error || !response.ok) throw await refusal(error, response);
@@ -97,6 +122,7 @@ function AddBill({
           recurrence,
           repeats: recurrence !== "none",
           lead_days: leadDays.trim() === "" ? 0 : Number(leadDays),
+          account_id: accountId === "" ? null : Number(accountId),
         },
       });
       if (error || !response.ok) {
@@ -219,6 +245,26 @@ function AddBill({
             className="w-full rounded-lg border border-border bg-input px-3 py-2"
           />
         </span>
+        {(accounts ?? []).length > 0 && (
+          <span className="w-52 space-y-1">
+            <label htmlFor={`${direction}-account`} className="text-sm">
+              {incoming ? "Paid into" : "Pays down"}
+            </label>
+            <select
+              id={`${direction}-account`}
+              value={accountId}
+              onChange={(event) => setAccountId(event.target.value)}
+              className="w-full rounded-lg border border-border bg-input px-3 py-2"
+            >
+              <option value="">Nothing on the balances list</option>
+              {(accounts ?? []).map((each) => (
+                <option key={each.id} value={String(each.id)}>
+                  {each.name}
+                </option>
+              ))}
+            </select>
+          </span>
+        )}
       </div>
       {failed && <p className="text-sm text-destructive">{failed}</p>}
       <Button type="submit" disabled={add.isPending}>
@@ -240,6 +286,10 @@ type BillRow = {
      lookup, the id keys the edit form's picker. */
   category: string | null;
   category_id: number | null;
+  /* The account this moves money against -- a card it pays down, an
+     investment it feeds. Same pair, same reason as the category above. */
+  account: string | null;
+  account_id: number | null;
   direction: string;
   recurrence: string;
   lead_days: number;
@@ -279,9 +329,12 @@ function daysUntil(iso: string) {
 
 /** Correcting a bill without leaving the page it is shown on.
  *
- * The four fields do not live in one record -- amount, payee and currency are
+ * ~~The four fields do not live in one record -- amount, payee and currency are
  * the sidecar's and the due date is the task's -- and the server's `update_bill`
- * hides that, which is the point. This form does not know either.
+ * hides that, which is the point.~~ **They live in one record since
+ * September 1, 2026**, so there is nothing left for the service to hide:
+ * `bill-as-a-model-plan.md` made a bill a `Bill`. The form never knew either
+ * way, which is what the sentence was really claiming.
  */
 function EditBill({ bill, onDone }: { bill: BillRow; onDone: () => void }) {
   const queryClient = useQueryClient();
@@ -296,10 +349,28 @@ function EditBill({ bill, onDone }: { bill: BillRow; onDone: () => void }) {
       return data;
     },
   });
+  /* And what it pays down, filed the same way and for the same reason --
+     increment 7 of bill-as-a-model-plan.md. Keyed by the day like the add
+     form's, so the two share a cache entry whenever they are asking about the
+     same month and never share one when they are not. */
+  const { data: accounts } = useQuery({
+    queryKey: ["money-accounts", bill.due_date],
+    queryFn: async () => {
+      const { data, response } = await apiV1.GET(
+        "/api/v1/money/accounts/{day}",
+        { params: { path: { day: bill.due_date } } },
+      );
+      if (!data) throw new RequestFailed(response.status);
+      return data.accounts;
+    },
+  });
   // Seeded from the bill, or a save that only changed the amount would file it
   // back under Uncategorised without anybody asking for that.
   const [category, setCategory] = useState<string>(
     bill.category_id === null ? "" : String(bill.category_id),
+  );
+  const [account, setAccount] = useState<string>(
+    bill.account_id === null ? "" : String(bill.account_id),
   );
   const [payee, setPayee] = useState(bill.payee);
   const [amount, setAmount] = useState(bill.amount ?? "");
@@ -325,6 +396,10 @@ function EditBill({ bill, onDone }: { bill: BillRow; onDone: () => void }) {
             // rather than a field they left alone -- so it is said out loud.
             category_id: category === "" ? null : Number(category),
             clear_category: category === "",
+            // Same pair for the same reason: absent leaves it alone, so
+            // "nothing on the balances list" has to be said out loud.
+            account_id: account === "" ? null : Number(account),
+            clear_account: account === "",
           },
         },
       );
@@ -393,6 +468,26 @@ function EditBill({ bill, onDone }: { bill: BillRow; onDone: () => void }) {
             ))}
           </select>
         </span>
+        {(accounts ?? []).length > 0 && (
+          <span className="w-40 space-y-1">
+            <label htmlFor={`edit-account-${bill.task_id}`} className="text-xs">
+              {bill.direction === "in" ? "Paid into" : "Pays down"}
+            </label>
+            <select
+              id={`edit-account-${bill.task_id}`}
+              value={account}
+              onChange={(event) => setAccount(event.target.value)}
+              className="w-full rounded-lg border border-border bg-input px-2 py-1"
+            >
+              <option value="">Nothing on the balances list</option>
+              {(accounts ?? []).map((each) => (
+                <option key={each.id} value={String(each.id)}>
+                  {each.name}
+                </option>
+              ))}
+            </select>
+          </span>
+        )}
         <span className="w-36 space-y-1">
           <label htmlFor={`edit-due-${bill.task_id}`} className="text-xs">
             Due

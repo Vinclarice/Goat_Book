@@ -431,14 +431,22 @@ class Account(models.Model):
     makes every read carry a sign convention nobody wrote down. This says which
     direction the number points, once, where it belongs.
 
-    **No link to the bill that pays it, and that is deliberate.** `paid_by` was
-    written on August 27, 2026 and removed the same day, having been set by
-    nothing and read by nothing through two screens that were each supposed to
-    give it a purpose. The seam rule this project applies everywhere else --
-    *built and dark gets a declared trigger or a deletion* -- was being applied
-    to the codebase and not to the new code, so this is it applied evenly. It
-    comes back the day a surface actually wants it, which is a cheap migration
-    and an honest one.
+    **The link to the bill that pays it lives on `Bill.account`**, and this
+    paragraph is the history of how it got there rather than a rule.
+
+    `Account.paid_by` was written on August 27, 2026 and removed the same day,
+    having been set by nothing and read by nothing through two screens that
+    were each supposed to give it a purpose -- the seam rule this project
+    applies everywhere else, *built and dark gets a declared trigger or a
+    deletion*, applied evenly to new code for once. That commit said it would
+    come back *"the day a surface actually wants it"*, and it did, on
+    September 1, 2026: `bill-as-a-model-plan.md` increment 7.
+
+    **Pointed the other way, and both halves shipped together.** It is a
+    property of the bill rather than of the account, so the standing
+    arrangement lives on `BillSeries.account` and each occurrence snapshots it
+    -- §4 rule 3. The balances screen reads it back as `next_payment`, which is
+    the surface the first version never got.
 
     **Charter compliance** (architecture-trajectory.md §4):
 

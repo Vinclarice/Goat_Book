@@ -487,13 +487,16 @@ re-add it here.
   and a section of their own on the day. Vince's call, August 31: pay it.
   Bills are still on the agenda and the day.
 
-  ~~Increments 1–6.~~ **Shipped August 31 – September 1, 2026**, through the
-  flip and the replay: `Bill` and `BillSeries` exist, the data is converted,
-  every money read and write is on them, the tasks that were bills are deleted,
-  and a period that elapses unpaid now produces an occurrence. **What is open
-  is 7–9** — `Bill.account`, deleting `MoneyLine`, and renaming the `task_id`
-  key that now points at a bill. None of the three is load-bearing; the
-  argument is demonstrated.
+  ~~Increments 1–7.~~ **Shipped August 31 – September 1, 2026.** `Bill` and
+  `BillSeries` exist, the data is converted, every money read and write is on
+  them, the tasks that were bills are deleted, a period that elapses unpaid now
+  produces an occurrence, and **the disconnect he actually reported is
+  closed** — the balances screen names the bill that pays each account, and the
+  add and edit forms are where that gets set.
+
+  **What is open is 8 and 9**, both housekeeping: deleting the now-empty
+  `MoneyLine`, and renaming the `task_id` key that points at a bill and says
+  otherwise.
 
 - **Should money skip a missed period at all? — promoted August 28, 2026 from
   the entry above.** *Missed periods are skipped, not replayed* is the task

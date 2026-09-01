@@ -1789,6 +1789,10 @@ export interface components {
             category: string | null;
             /** Category Id */
             category_id: number | null;
+            /** Account */
+            account: string | null;
+            /** Account Id */
+            account_id: number | null;
             /** Direction */
             direction: string;
             /** Recurrence */
@@ -1838,6 +1842,8 @@ export interface components {
              * @default 0
              */
             lead_days: number;
+            /** Account Id */
+            account_id?: number | null;
         };
         /**
          * EditBillIn
@@ -1874,6 +1880,13 @@ export interface components {
              * @default false
              */
             clear_category: boolean;
+            /** Account Id */
+            account_id?: number | null;
+            /**
+             * Clear Account
+             * @default false
+             */
+            clear_account: boolean;
         };
         /**
          * NewIncomeIn
@@ -1910,6 +1923,8 @@ export interface components {
              * @default 0
              */
             lead_days: number;
+            /** Account Id */
+            account_id?: number | null;
         };
         /**
          * PayBillIn
@@ -2049,6 +2064,7 @@ export interface components {
             balance: string | null;
             /** Previous */
             previous: string | null;
+            next_payment: components["schemas"]["NextPaymentOut"] | null;
         };
         /** AccountsOut */
         AccountsOut: {
@@ -2067,6 +2083,34 @@ export interface components {
             held_totals: {
                 [key: string]: string;
             };
+        };
+        /**
+         * NextPaymentOut
+         * @description The soonest unpaid bill against an account.
+         *
+         *     **The read half of increment 7**, and the reason `Account.paid_by` is
+         *     allowed back. `d50d6eb` deleted the first version of this link because it
+         *     was *"set by nothing and read by nothing"*; a field with a writer and no
+         *     reader is the same mistake with a longer runway, so the two ship together.
+         *
+         *     **Soonest unpaid, not a list.** The balances screen answers *what do I owe
+         *     on this* and *what is coming*; every bill an account has ever had is the
+         *     month page's question and is one click away through `task_id`.
+         */
+        NextPaymentOut: {
+            /** Task Id */
+            task_id: number;
+            /** Payee */
+            payee: string;
+            /**
+             * Due Date
+             * Format: date
+             */
+            due_date: string;
+            /** Amount */
+            amount: string | null;
+            /** Currency */
+            currency: string;
         };
         /** NewAccountIn */
         NewAccountIn: {

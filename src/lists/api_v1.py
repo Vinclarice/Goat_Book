@@ -327,6 +327,17 @@ class MonthBillOut(Schema):
     #: type checker refusing a body that had lost a required field.
     category: str | None
     category_id: int | None
+    #: **The account this bill moves money against**, and null when it names
+    #: none. Both the name and the id, for the reason `category` sends both: a
+    #: row shows the name and an edit form's picker is keyed on the id.
+    #:
+    #: *Moves against*, not *paid from*. An outgoing bill against a card
+    #: reduces what is owed; an incoming one against an investment increases
+    #: what is held. Which current account the money physically left is a
+    #: second fact this product does not record, and one field meaning either
+    #: would make every reader guess.
+    account: str | None
+    account_id: int | None
     #: Which way the money goes -- "out" for a bill, "in" for income. The page
     #: needs it for the verb: you *pay* a bill and you *receive* income, and a
     #: button saying Pay beside a salary would be nonsense.
@@ -404,6 +415,10 @@ class NewBillIn(Schema):
     #: charged you. Zero is off, and `agenda.py` already surfaces anything
     #: inside its lead time.
     lead_days: int = 0
+    #: The account it pays down or feeds, when it is one. Increment 7 of
+    #: bill-as-a-model-plan.md -- the disconnect Vince reported, which is that a
+    #: card and the bill that pays it were unrelated records.
+    account_id: int | None = None
 
 
 @router.post("/money/bills", response={201: MonthBillOut}, auth=SessionAuthIfLoggedIn())
@@ -423,6 +438,13 @@ def add_bill(request, payload: NewBillIn):
             # rather than a field error: the form has one amount box and the
             # message is what it will show beside it.
             raise HttpError(409, "That amount is not a number.")
+    chosen_account = None
+    if payload.account_id is not None:
+        chosen_account = Account.objects.filter(
+            pk=payload.account_id, owner=request.user
+        ).first()
+        if chosen_account is None:
+            raise HttpError(404, "No such account.")
     try:
         bill = bills.record(
             request.user,
@@ -433,6 +455,7 @@ def add_bill(request, payload: NewBillIn):
             repeats=payload.repeats,
             recurrence=payload.recurrence,
             lead_days=payload.lead_days,
+            account=chosen_account,
         )
     except bills.TaskConflict as error:
         raise HttpError(409, str(error))
@@ -463,6 +486,10 @@ class EditBillIn(Schema):
     #: `clear_category`, which is how uncategorised is chosen deliberately.
     category_id: int | None = None
     clear_category: bool = False
+    #: The account it moves against, with the same pair for the same reason:
+    #: absent means leave it alone, so *no account* has to be said out loud.
+    account_id: int | None = None
+    clear_account: bool = False
 
 
 def _bill_row_out(bill):
@@ -492,6 +519,8 @@ def _bill_row_out(bill):
         "repeats": series is not None and series.ended_at is None,
         "category": bill.category.name if bill.category_id else None,
         "category_id": bill.category_id,
+        "account": bill.account.name if bill.account_id else None,
+        "account_id": bill.account_id,
         "direction": bill.direction,
         "recurrence": (
             series.cadence
@@ -510,7 +539,7 @@ def _bill_or_404(request, bill_id):
     """The caller's bill, or a refusal. One lookup for five endpoints."""
     bill = (
         Bill.objects.filter(pk=bill_id, owner=request.user)
-        .select_related("series", "category")
+        .select_related("series", "category", "account")
         .first()
     )
     if bill is None:
@@ -580,6 +609,15 @@ def edit_bill(request, task_id: int, payload: EditBillIn):
         if chosen is None:
             raise HttpError(404, "No such category.")
         fields["category"] = chosen
+    if payload.clear_account:
+        fields["account"] = None
+    elif payload.account_id is not None:
+        chosen_account = Account.objects.filter(
+            pk=payload.account_id, owner=request.user
+        ).first()
+        if chosen_account is None:
+            raise HttpError(404, "No such account.")
+        fields["account"] = chosen_account
     if payload.clear_amount:
         fields["clear_amount"] = True
     elif payload.amount not in (None, ""):
@@ -626,6 +664,12 @@ class NewIncomeIn(Schema):
     repeats: bool = True
     recurrence: str | None = None
     lead_days: int = 0
+    #: The account it feeds. **Declared here as well as on `NewBillIn`, and
+    #: wired**: this schema's twin declared `recurrence` and `lead_days` for
+    #: four days while the endpoint passed neither on, so the form's cadence
+    #: picker made monthly bills whatever it said. Every field a schema names
+    #: has to reach a service, and a test says so end to end.
+    account_id: int | None = None
 
 
 @router.post(
@@ -643,6 +687,13 @@ def add_income(request, payload: NewIncomeIn):
             amount = Decimal(payload.amount)
         except InvalidOperation:
             raise HttpError(409, "That amount is not a number.")
+    chosen_account = None
+    if payload.account_id is not None:
+        chosen_account = Account.objects.filter(
+            pk=payload.account_id, owner=request.user
+        ).first()
+        if chosen_account is None:
+            raise HttpError(404, "No such account.")
     try:
         bill = bills.record(
             request.user,
@@ -654,6 +705,7 @@ def add_income(request, payload: NewIncomeIn):
             recurrence=payload.recurrence,
             lead_days=payload.lead_days,
             direction=Direction.IN,
+            account=chosen_account,
         )
     except bills.TaskConflict as error:
         raise HttpError(409, str(error))
@@ -723,6 +775,32 @@ class AccountOut(Schema):
     #: The month before's, so the page can say which way it moved without a
     #: second request.
     previous: str | None
+    #: **What pays this down, or feeds it.** Null when nothing is filed against
+    #: it, which is a real state and gets its own sentence rather than an empty
+    #: row -- Vince, August 31, 2026: *"it should be tied to the payments."*
+    next_payment: NextPaymentOut | None
+
+
+class NextPaymentOut(Schema):
+    """The soonest unpaid bill against an account.
+
+    **The read half of increment 7**, and the reason `Account.paid_by` is
+    allowed back. `d50d6eb` deleted the first version of this link because it
+    was *"set by nothing and read by nothing"*; a field with a writer and no
+    reader is the same mistake with a longer runway, so the two ship together.
+
+    **Soonest unpaid, not a list.** The balances screen answers *what do I owe
+    on this* and *what is coming*; every bill an account has ever had is the
+    month page's question and is one click away through `task_id`.
+    """
+
+    #: A `Bill` id, spelled as the rest of this module spells it -- see
+    #: `MonthBillOut.task_id`, and increment 9, which renames all of them.
+    task_id: int
+    payee: str
+    due_date: date
+    amount: str | None
+    currency: str
 
 
 class AccountsOut(Schema):
@@ -1002,6 +1080,29 @@ def months_accounts(request, day: date):
     accounts = list(
         Account.objects.filter(owner=request.user).prefetch_related("readings")
     )
+    # **One query for every account, not one each.** This screen lists
+    # everything somebody has, so a lookup inside the loop below is the shape
+    # that turns eight accounts into eight queries. Ordered by date and taken
+    # first-wins, so each account keeps its soonest.
+    #
+    # Income counts: an investment is fed rather than paid down, and the page
+    # words it by direction the way the pay button already does.
+    next_payments = {}
+    for bill in (
+        Bill.objects.filter(
+            owner=request.user, paid_at__isnull=True, account__isnull=False
+        ).order_by("due_date", "id")
+    ):
+        next_payments.setdefault(
+            bill.account_id,
+            {
+                "task_id": bill.id,
+                "payee": bill.payee,
+                "due_date": bill.due_date,
+                "amount": str(bill.amount) if bill.amount is not None else None,
+                "currency": bill.currency,
+            },
+        )
     owed = defaultdict(Decimal)
     held = defaultdict(Decimal)
     rows = []
@@ -1021,6 +1122,7 @@ def months_accounts(request, day: date):
                 "previous": (
                     str(by_month[previous]) if previous in by_month else None
                 ),
+                "next_payment": next_payments.get(account.id),
             }
         )
     return {

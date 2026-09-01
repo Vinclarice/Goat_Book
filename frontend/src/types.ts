@@ -175,7 +175,21 @@ export interface AgendaProjectSummary {
   url: string;
 }
 
+/** A bill as the agenda and the day carry it -- what a bill is, and none of
+ * what a task is. `task_id` until the model split flips its source; see
+ * design/bill-as-a-model-plan.md. */
+export interface AgendaBill {
+  task_id: number;
+  payee: string;
+  due_date: string | null;
+  amount: string | null;
+  currency: string;
+  direction: string;
+  repeats: boolean;
+}
+
 export interface AgendaWorkspaceData {
+  bills?: AgendaBill[];
   /** The server's idea of today, as YYYY-MM-DD. Bucketing compares due
    * dates against this as plain strings, which keeps the client and the
    * daily digest agreeing about what "overdue" means. */

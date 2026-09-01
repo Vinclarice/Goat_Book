@@ -48,6 +48,7 @@ from lists.models import (
     Account,
     CadenceMode,
     ChecklistStep,
+    Direction,
     Item,
     List,
     MoneyCategory,
@@ -178,6 +179,23 @@ class AgendaProjectSummaryOut(Schema):
     url: str
 
 
+class AgendaBillOut(Schema):
+    """A bill as the agenda and the day carry it: what a bill is, and none of
+    what a task is.
+
+    **`task_id` until the flip**, because pay and delete are keyed on it -- see
+    `agenda._agenda_bill_out`.
+    """
+
+    task_id: int
+    payee: str
+    due_date: str | None
+    amount: str | None
+    currency: str
+    direction: str
+    repeats: bool
+
+
 class AgendaOut(Schema):
     today: str
     username: str
@@ -187,6 +205,12 @@ class AgendaOut(Schema):
     daily_digest: bool
     buckets: list[AgendaBucketOut]
     items: list[TaskOut]
+    #: **Bills, kept on this screen while they stop being tasks** --
+    #: bill-as-a-model-plan.md decision 4. They used to arrive in `items`
+    #: because a bill was an `Item`; they arrive here because soon it will not
+    #: be, and a screen that quietly dropped them would be the model change
+    #: taking a product decision with it.
+    bills: list[AgendaBillOut]
     completed_today: list[TaskOut]
     areas: list[AgendaAreaSummaryOut]
     projects: list[AgendaProjectSummaryOut]
@@ -1185,8 +1209,10 @@ def navigation(request):
 def agenda(request):
     user = request.user
     today = timezone.localdate()
+    # Bills leave `items` and arrive in `bills` -- decision 4 kept while the
+    # model splits. See `agenda.open_items_for`'s own note.
     all_open = agenda_reader.annotate_for_display(
-        list(agenda_reader.open_items_for(user)), today
+        list(agenda_reader.open_items_for(user, include_bills=False)), today
     )
     completed_today = agenda_reader.annotate_for_display(
         list(agenda_reader.completed_today_for(user, today)), today
@@ -1206,6 +1232,14 @@ def agenda(request):
         lists=lists,
         archived_count=archived_count,
         projects=projects,
+        open_bills=(
+            Item.objects.filter(
+                owner=user, status=Item.Status.ACTIVE, money_line__isnull=False
+            )
+            .exclude(money_line__direction=Direction.IN)
+            .select_related("money_line")
+            .order_by("due_date", "id")
+        ),
     )
 
 

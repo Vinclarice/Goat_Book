@@ -445,6 +445,84 @@ describe("AgendaWorkspace", () => {
     expect(open).toHaveAttribute("href", "/tasks/2");
   });
 
+  it("shows a bill in the bucket its date puts it in", async () => {
+    /* Decision 4: bills stay on this screen because paying is a real thing to
+       do on a day. They used to arrive in `items` because a bill was an Item;
+       they arrive in `bills` because soon it will not be, and `bucketFor` is
+       shared so a bill and a task due the same day land together. */
+    renderAgenda({
+      bills: [
+        {
+          task_id: 9,
+          payee: "Landlord",
+          due_date: TODAY,
+          amount: "1200.00",
+          currency: "USD",
+          direction: "out",
+          repeats: true,
+        },
+      ],
+    });
+
+    const card = screen.getByText("Landlord").closest<HTMLElement>("article")!;
+    expect(within(card).getByText("bill")).toBeInTheDocument();
+    expect(within(card).getByText("1200.00 USD")).toBeInTheDocument();
+    expect(
+      within(card).getByRole("link", { name: "Landlord" }),
+    ).toHaveAttribute("href", "/money/bills/9");
+  });
+
+  it("pays a bill from the agenda", async () => {
+    // The verb decision 4 exists for: the day is where paying gets noticed.
+    const user = userEvent.setup();
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      apiResponse({}),
+    );
+    renderAgenda({
+      bills: [
+        {
+          task_id: 9,
+          payee: "Landlord",
+          due_date: TODAY,
+          amount: "1200.00",
+          currency: "USD",
+          direction: "out",
+          repeats: true,
+        },
+      ],
+    });
+
+    await user.click(screen.getByRole("button", { name: "Mark paid" }));
+
+    await waitFor(() =>
+      expect(
+        requestedPaths(fetchMock).some((path) =>
+          path.includes("/api/v1/money/bills/entry/9/pay"),
+        ),
+      ).toBe(true),
+    );
+  });
+
+  it("says received rather than paid for money coming in", () => {
+    renderAgenda({
+      bills: [
+        {
+          task_id: 4,
+          payee: "Work",
+          due_date: TODAY,
+          amount: "3000.00",
+          currency: "USD",
+          direction: "in",
+          repeats: true,
+        },
+      ],
+    });
+
+    expect(
+      screen.getByRole("button", { name: "Mark received" }),
+    ).toBeInTheDocument();
+  });
+
   it("links to the archive with its count", () => {
     renderAgenda({ archived_count: 23 });
 

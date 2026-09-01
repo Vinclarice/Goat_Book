@@ -2214,6 +2214,30 @@ export interface components {
              */
             color_key: "sky" | "sage" | "amber" | "lilac" | "coral" | "azure" | "blush" | "straw";
         };
+        /**
+         * AgendaBillOut
+         * @description A bill as the agenda and the day carry it: what a bill is, and none of
+         *     what a task is.
+         *
+         *     **`task_id` until the flip**, because pay and delete are keyed on it -- see
+         *     `agenda._agenda_bill_out`.
+         */
+        AgendaBillOut: {
+            /** Task Id */
+            task_id: number;
+            /** Payee */
+            payee: string;
+            /** Due Date */
+            due_date: string | null;
+            /** Amount */
+            amount: string | null;
+            /** Currency */
+            currency: string;
+            /** Direction */
+            direction: string;
+            /** Repeats */
+            repeats: boolean;
+        };
         /** AgendaBucketOut */
         AgendaBucketOut: {
             /**
@@ -2244,6 +2268,8 @@ export interface components {
             buckets: components["schemas"]["AgendaBucketOut"][];
             /** Items */
             items: components["schemas"]["TaskOut"][];
+            /** Bills */
+            bills: components["schemas"]["AgendaBillOut"][];
             /** Completed Today */
             completed_today: components["schemas"]["TaskOut"][];
             /** Areas */

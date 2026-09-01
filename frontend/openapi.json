@@ -4310,6 +4310,64 @@
         "title": "AgendaAreaSummaryOut",
         "type": "object"
       },
+      "AgendaBillOut": {
+        "description": "A bill as the agenda and the day carry it: what a bill is, and none of\nwhat a task is.\n\n**`task_id` until the flip**, because pay and delete are keyed on it -- see\n`agenda._agenda_bill_out`.",
+        "properties": {
+          "task_id": {
+            "title": "Task Id",
+            "type": "integer"
+          },
+          "payee": {
+            "title": "Payee",
+            "type": "string"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "amount": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "direction": {
+            "title": "Direction",
+            "type": "string"
+          },
+          "repeats": {
+            "title": "Repeats",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "task_id",
+          "payee",
+          "due_date",
+          "amount",
+          "currency",
+          "direction",
+          "repeats"
+        ],
+        "title": "AgendaBillOut",
+        "type": "object"
+      },
       "AgendaBucketOut": {
         "properties": {
           "key": {
@@ -4380,6 +4438,13 @@
             "title": "Items",
             "type": "array"
           },
+          "bills": {
+            "items": {
+              "$ref": "#/components/schemas/AgendaBillOut"
+            },
+            "title": "Bills",
+            "type": "array"
+          },
           "completed_today": {
             "items": {
               "$ref": "#/components/schemas/TaskOut"
@@ -4411,6 +4476,7 @@
           "daily_digest",
           "buckets",
           "items",
+          "bills",
           "completed_today",
           "areas",
           "projects"

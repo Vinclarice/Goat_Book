@@ -192,8 +192,19 @@ def snooze_presets(today):
     ]
 
 
-def open_items_for(user):
+def open_items_for(user, *, include_bills=True):
     """Every task the user still has to do, across all of their lists.
+
+    **`include_bills=False` is the agenda and the day page**, which carry bills
+    in an array of their own since August 31, 2026 — `bill-as-a-model-plan.md`
+    decision 4, which keeps bills on those surfaces while they stop being
+    tasks. Passing it here rather than filtering in each caller keeps the
+    single selection point single: the digest and coming-up still get bills
+    inline, because their format has one kind of row and nothing to merge into.
+
+    **They move array, not visibility.** A bill excluded here appears in
+    `bills` instead, so the same bills are on the same screens; what changes is
+    which shape they arrive in, and therefore what can be done to them.
 
     **Income is not one of them.** A salary is money moving toward you on a
     date, which the money module tracks and can call late -- but it is not
@@ -209,9 +220,13 @@ def open_items_for(user):
     selection point the day and the agenda both use -- which is why the
     exclusion costs one clause instead of an audit.
     """
+    selected = Item.objects.filter(owner=user, status=Item.Status.ACTIVE)
+    if include_bills:
+        selected = selected.exclude(money_line__direction=Direction.IN)
+    else:
+        selected = selected.filter(money_line__isnull=True)
     return (
-        Item.objects.filter(owner=user, status=Item.Status.ACTIVE)
-        .exclude(money_line__direction=Direction.IN)
+        selected
         .select_related("list")
         .prefetch_related("tags")
         .annotate(
@@ -317,14 +332,43 @@ def tag_summaries(items):
     ]
 
 
+def _agenda_bill_out(item):
+    """One bill, as the agenda and the day carry it.
+
+    **Not `serialize_item`.** A bill row on these screens needs what a bill is
+    -- payee, what it comes to, whether it is settled -- and none of what a
+    task is. Sending a `TaskOut` would mean synthesising a dozen fields a bill
+    has not got, and the SPA would offer to file it in an area.
+
+    **`task_id`, not an id of its own**, until the flip: pay and delete are
+    keyed on it. The name survives the switch even though what it points at
+    changes, which is the one piece of this that will read oddly for a while
+    and is cheaper than a rename on both sides.
+    """
+    bill = item.money_line
+    return {
+        "task_id": item.id,
+        "payee": bill.payee,
+        "due_date": item.due_date.isoformat() if item.due_date else None,
+        "amount": str(bill.amount) if bill.amount is not None else None,
+        "currency": bill.currency,
+        "direction": bill.direction,
+        "repeats": item.recurrence != Item.Recurrence.NONE,
+    }
+
+
 def workspace_data_for(
     user, *, today, all_open, completed_today, lists, archived_count, projects,
+    open_bills=(),
 ):
     """Shapes the agenda JSON payload served by /api/v1/agenda.
 
     Callers supply already-queried data rather than this function
     querying itself, since /api/v1/agenda needs the same rows for the
     archived-count query it runs alongside this one.
+
+    `open_bills` defaults to empty so the many tests that build a payload
+    without them keep working; the endpoint passes the real ones.
     """
     return {
         "today": today.isoformat(),
@@ -342,6 +386,16 @@ def workspace_data_for(
             for key in BUCKET_ORDER
         ],
         "items": [serialize_item(item) for item in all_open],
+        # **Decision 4, kept while the model splits.** Bills are on this screen
+        # because paying is a real thing to do on a day -- and a bill that is
+        # no longer an `Item` cannot arrive in `items`, so it arrives here.
+        #
+        # **Sourced from the task-backed rows today**, and keyed on `task_id`
+        # for the same reason `/money/bills/:id` is: the pay and delete
+        # endpoints take that key, so a `Bill`-sourced row could not be acted
+        # on until they move. The array lands now and its source changes at the
+        # flip, which is the sequencing the detail page already used.
+        "bills": [_agenda_bill_out(item) for item in open_bills],
         "completed_today": [serialize_item(item) for item in completed_today],
         "areas": [
             {

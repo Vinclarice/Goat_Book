@@ -27,6 +27,7 @@ import {
 } from "./api";
 import { apiV1 } from "./api/client";
 import type {
+  AgendaBill,
   AgendaBucketKey,
   AgendaWorkspaceData,
   Task,
@@ -252,6 +253,81 @@ export function AgendaWorkspace({ initialData }: Props) {
     }
     return groups;
   }, [visible, buckets, today]);
+
+  /* **Bills, bucketed by the same rule.** They arrived in `items` until
+     August 31, 2026, because a bill was an `Item`; they arrive in their own
+     array because soon it will not be --
+     design/bill-as-a-model-plan.md decision 4, which keeps them on this
+     screen rather than letting the model change take a product decision with
+     it.
+
+     `bucketFor` is shared rather than reimplemented: one definition of
+     overdue, and a bill and a task due the same day land in the same
+     section. */
+  const groupedBills = useMemo(() => {
+    const groups = new Map<AgendaBucketKey, AgendaBill[]>();
+    for (const bucket of buckets) groups.set(bucket.key, []);
+    for (const bill of initialData.bills ?? []) {
+      groups.get(bucketFor(bill.due_date, today))?.push(bill);
+    }
+    return groups;
+  }, [initialData.bills, buckets, today]);
+
+  const payBill = useMutation({
+    mutationFn: async (taskId: number) => {
+      const { error } = await apiV1.POST(
+        "/api/v1/money/bills/entry/{task_id}/pay",
+        { params: { path: { task_id: taskId } }, body: {} },
+      );
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      // Every money surface moves when a bill is settled, and so does the
+      // agenda it was settled from.
+      queryClient.invalidateQueries({ queryKey: ["agenda"] });
+      queryClient.invalidateQueries({ queryKey: ["money-landing"] });
+      queryClient.invalidateQueries({ queryKey: ["bills"] });
+    },
+  });
+
+  /** One bill on the agenda: what it is, and the one verb it wants here.
+   *
+   * Deliberately not a task row. A bill has no area, tags, priority or
+   * checklist to show, and offering to file it in an area would be the
+   * abstraction leaking the way it did on the task detail page.
+   */
+  function renderBillRow(bill: AgendaBill) {
+    return (
+      <article
+        key={`bill-${bill.task_id}`}
+        aria-label={bill.payee}
+        className="flex flex-wrap items-baseline justify-between gap-3 rounded-xl border border-border bg-card px-3 py-2"
+      >
+        <span className="min-w-0">
+          <Link to={`/money/bills/${bill.task_id}`} className="hover:underline">
+            {bill.payee}
+          </Link>
+          <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+            {bill.direction === "in" ? "income" : "bill"}
+          </span>
+          {bill.amount !== null && (
+            <span className="ml-2 text-xs text-muted-foreground">
+              {bill.amount} {bill.currency}
+            </span>
+          )}
+        </span>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          disabled={payBill.isPending}
+          onClick={() => payBill.mutate(bill.task_id)}
+        >
+          {bill.direction === "in" ? "Mark received" : "Mark paid"}
+        </Button>
+      </article>
+    );
+  }
 
   const areaCounts = useMemo(() => {
     const open = new Map<number, number>();
@@ -851,7 +927,8 @@ export function AgendaWorkspace({ initialData }: Props) {
 
           {buckets.map((bucket) => {
             const items = grouped.get(bucket.key) ?? [];
-            if (items.length === 0) return null;
+            const billRows = groupedBills.get(bucket.key) ?? [];
+            if (items.length === 0 && billRows.length === 0) return null;
             const isCollapsed = collapsed.has(bucket.key);
             return (
               <section className="mb-6" key={bucket.key}>
@@ -873,7 +950,7 @@ export function AgendaWorkspace({ initialData }: Props) {
                     {bucket.label}
                   </h2>
                   <span className="text-xs tabular-nums text-muted-foreground">
-                    {items.length}
+                    {items.length + billRows.length}
                   </span>
                   <span
                     aria-hidden="true"
@@ -886,6 +963,7 @@ export function AgendaWorkspace({ initialData }: Props) {
                 </button>
                 <div className={`space-y-2 ${isCollapsed ? "hidden" : ""}`}>
                   {items.map((task) => renderRow(task))}
+                  {billRows.map((bill) => renderBillRow(bill))}
                 </div>
               </section>
             );

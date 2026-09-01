@@ -461,3 +461,120 @@ class TheAgendaSourceAgreesTest(TestCase):
 
         self.assertEqual(self.bill_payees_from_the_agenda(), ["Mine"])
         self.assertEqual(self.new_payees(), ["Mine"])
+
+
+class BillsStayOnTheAgendaTest(TestCase):
+    """Decision 4, asserted rather than intended.
+
+    `money-module-plan.md`: *bills stay ordinary tasks elsewhere -- day,
+    agenda, lists. Paying is a real thing to do on a day, and the day is where
+    it gets noticed.* The model split would drop them from every read that
+    queries `Item`, so they move to an array of their own **on the same
+    screen** rather than off it.
+
+    **What these guard is the move, not the array.** A bill that left `items`
+    and did not arrive in `bills` is decision 4 dying quietly, which is the
+    exact failure this plan's §5 exists to prevent.
+    """
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            "alice", "alice@example.com", "a secure password"
+        )
+        self.client.force_login(self.user)
+
+    def agenda(self):
+        return self.client.get("/api/v1/agenda").json()
+
+    def test_a_bill_is_on_the_agenda_and_only_once(self):
+        services.create_bill(
+            self.user,
+            payee="Landlord",
+            amount=Decimal("1200.00"),
+            due_date=datetime.date(2026, 8, 1),
+        )
+
+        body = self.agenda()
+
+        self.assertEqual([b["payee"] for b in body["bills"]], ["Landlord"])
+        self.assertEqual(
+            [i["text"] for i in body["items"]],
+            [],
+            "It left `items` rather than appearing in both.",
+        )
+
+    def test_a_task_is_untouched_by_any_of_this(self):
+        services.create_item(services.create_area(self.user, "Home"), "Call the vet")
+
+        body = self.agenda()
+
+        self.assertEqual([i["text"] for i in body["items"]], ["Call the vet"])
+        self.assertEqual(body["bills"], [])
+
+    def test_a_bill_carries_what_the_row_needs_and_nothing_of_a_task(self):
+        services.create_bill(
+            self.user,
+            payee="Comcast",
+            amount=Decimal("64.99"),
+            due_date=datetime.date(2026, 8, 22),
+        )
+
+        row = self.agenda()["bills"][0]
+
+        self.assertEqual(row["amount"], "64.99")
+        self.assertEqual(row["currency"], "USD")
+        self.assertEqual(row["direction"], "out")
+        self.assertTrue(row["repeats"])
+        self.assertNotIn("tags", row)
+        self.assertNotIn("area_id", row)
+
+    def test_income_is_on_neither(self):
+        """A salary is not something to do on a Tuesday, and it landing here
+        would make the agenda a ledger. Excluded from `items` before this
+        change and from `bills` after it."""
+        services.create_income(
+            self.user,
+            payer="Work",
+            amount=Decimal("3000.00"),
+            due_date=datetime.date(2026, 8, 28),
+        )
+
+        body = self.agenda()
+
+        self.assertEqual(body["bills"], [])
+        self.assertEqual(body["items"], [])
+
+    def test_a_paid_bill_is_on_neither(self):
+        bill = services.create_bill(
+            self.user,
+            payee="Comcast",
+            amount=Decimal("64.99"),
+            due_date=datetime.date(2026, 8, 22),
+        )
+        services.pay_bill(bill)
+
+        payees = [b["payee"] for b in self.agenda()["bills"]]
+
+        self.assertEqual(
+            payees, ["Comcast"], "The successor it spawned, which is still owed."
+        )
+
+    def test_the_daily_email_still_mentions_bills(self):
+        """`digest_items_for` keeps them inline, because its format has one
+        kind of row and nothing to merge into -- which is why
+        `open_items_for` takes a flag rather than dropping them for everybody.
+        """
+        from lists import agenda as agenda_reader
+
+        services.create_bill(
+            self.user,
+            payee="Landlord",
+            amount=Decimal("1200.00"),
+            due_date=datetime.date(2026, 8, 1),
+        )
+
+        digest = agenda_reader.digest_items_for(
+            self.user, datetime.date(2026, 8, 1)
+        )
+
+        self.assertIn("Pay Landlord", [item.text for item in digest])

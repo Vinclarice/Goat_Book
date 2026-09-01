@@ -69,6 +69,39 @@
       }
     },
     "/api/v1/money/bills/entry/{task_id}": {
+      "get": {
+        "operationId": "lists_api_v1_one_bill",
+        "summary": "One Bill",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "schema": {
+              "title": "Task Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MonthBillOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "One bill, for its own page.\n\n**The surface moves to Money before the model does.** A bill was opened at\n`/app/tasks/{id}` until August 31, 2026, borrowing the task detail page --\nwhich spent that morning being taught to call itself *Bill detail*, hide\nPriority, Area and Checklist, and link back here, because none of it was\ntrue for a bill. `bill-as-a-model-plan.md` makes the borrowing impossible:\na bill that is not an `Item` has no `/tasks/{id}` to borrow. Moving the\npage first keeps the flip from having to invent one at the same moment it\nchanges what a bill is.\n\n**On the write path's key, not a new one.** `PATCH`, `POST /pay` and\n`DELETE` already live on `entry/{task_id}`; a read at a second address for\nthe same thing is how two spellings of one resource start.\n\n**A plain task is not found here.** Answering for one would make *is this a\nbill* a question every caller has to ask afterwards, and the page has no\nfields for a task.",
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      },
       "patch": {
         "operationId": "lists_api_v1_edit_bill",
         "summary": "Edit Bill",

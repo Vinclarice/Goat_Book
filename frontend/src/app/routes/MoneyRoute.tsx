@@ -677,7 +677,10 @@ export function MoneyRoute() {
               >
                 <span className="min-w-0">
                   <Link
-                    to={`/tasks/${bill.task_id}`}
+                    /* Was `/tasks/${bill.task_id}` -- a bill opened the task
+                       detail page, which spent a morning being taught not to
+                       look like one. It has its own now. */
+                    to={`/money/bills/${bill.task_id}`}
                     className={
                       bill.paid ? "text-muted-foreground hover:underline" : "hover:underline"
                     }

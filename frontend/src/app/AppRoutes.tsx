@@ -7,6 +7,7 @@ import { AgendaRoute } from "./routes/AgendaRoute";
 import { ArchiveRoute } from "./routes/ArchiveRoute";
 import { CalendarRoute } from "./routes/CalendarRoute";
 import { BalancesRoute } from "./routes/BalancesRoute";
+import { BillDetailRoute } from "./routes/BillDetailRoute";
 import { CategoriesRoute } from "./routes/CategoriesRoute";
 import { HistoryRoute } from "./routes/HistoryRoute";
 import { MoneyLandingRoute } from "./routes/MoneyLandingRoute";
@@ -113,6 +114,12 @@ export function AppRoutes() {
         <Route path="/money" element={<MoneyLandingRoute />} />
         {/* Before /money/:month, or "balances" is read as a date and the
             monthly pass becomes an unparseable month. */}
+        {/* One bill's own page. Before /money/:month for the reason the
+            comment below gives, and under /money because the module owns it:
+            a bill borrowed /app/tasks/:id until August 31, 2026 and stops
+            being able to when it stops being a task --
+            design/bill-as-a-model-plan.md. */}
+        <Route path="/money/bills/:taskId" element={<BillDetailRoute />} />
         <Route path="/money/history" element={<HistoryRoute />} />
         <Route path="/money/categories" element={<CategoriesRoute />} />
         <Route path="/money/balances" element={<BalancesRoute />} />

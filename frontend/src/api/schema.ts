@@ -52,7 +52,28 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * One Bill
+         * @description One bill, for its own page.
+         *
+         *     **The surface moves to Money before the model does.** A bill was opened at
+         *     `/app/tasks/{id}` until August 31, 2026, borrowing the task detail page --
+         *     which spent that morning being taught to call itself *Bill detail*, hide
+         *     Priority, Area and Checklist, and link back here, because none of it was
+         *     true for a bill. `bill-as-a-model-plan.md` makes the borrowing impossible:
+         *     a bill that is not an `Item` has no `/tasks/{id}` to borrow. Moving the
+         *     page first keeps the flip from having to invent one at the same moment it
+         *     changes what a bill is.
+         *
+         *     **On the write path's key, not a new one.** `PATCH`, `POST /pay` and
+         *     `DELETE` already live on `entry/{task_id}`; a read at a second address for
+         *     the same thing is how two spellings of one resource start.
+         *
+         *     **A plain task is not found here.** Answering for one would make *is this a
+         *     bill* a question every caller has to ask afterwards, and the page has no
+         *     fields for a task.
+         */
+        get: operations["lists_api_v1_one_bill"];
         put?: never;
         post?: never;
         /**
@@ -4102,6 +4123,28 @@ export interface operations {
         responses: {
             /** @description Created */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MonthBillOut"];
+                };
+            };
+        };
+    };
+    lists_api_v1_one_bill: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };

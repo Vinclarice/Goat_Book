@@ -497,6 +497,39 @@ def _bill_row_out(item):
     }
 
 
+@router.get(
+    "/money/bills/entry/{task_id}", response=MonthBillOut, auth=SessionAuthIfLoggedIn()
+)
+def one_bill(request, task_id: int):
+    """One bill, for its own page.
+
+    **The surface moves to Money before the model does.** A bill was opened at
+    `/app/tasks/{id}` until August 31, 2026, borrowing the task detail page --
+    which spent that morning being taught to call itself *Bill detail*, hide
+    Priority, Area and Checklist, and link back here, because none of it was
+    true for a bill. `bill-as-a-model-plan.md` makes the borrowing impossible:
+    a bill that is not an `Item` has no `/tasks/{id}` to borrow. Moving the
+    page first keeps the flip from having to invent one at the same moment it
+    changes what a bill is.
+
+    **On the write path's key, not a new one.** `PATCH`, `POST /pay` and
+    `DELETE` already live on `entry/{task_id}`; a read at a second address for
+    the same thing is how two spellings of one resource start.
+
+    **A plain task is not found here.** Answering for one would make *is this a
+    bill* a question every caller has to ask afterwards, and the page has no
+    fields for a task.
+    """
+    item = (
+        Item.objects.filter(pk=task_id, owner=request.user, money_line__isnull=False)
+        .select_related("money_line", "money_line__category")
+        .first()
+    )
+    if item is None:
+        raise HttpError(404, "No such bill.")
+    return _bill_row_out(item)
+
+
 @router.patch(
     "/money/bills/entry/{task_id}", response=MonthBillOut, auth=SessionAuthIfLoggedIn()
 )

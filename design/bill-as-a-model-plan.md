@@ -233,8 +233,20 @@ Each is shippable and leaves the product working.
      `test_bill_reads_agree.py`. Dark, declared, waiting on the wiring.
    - **The payloads and the SPA.** Open, and the largest single piece in this
      plan.
-   - **A bill's own detail surface**, since it can no longer borrow the task's.
-     Open.
+   - ~~**A bill's own detail surface**, since it can no longer borrow the
+     task's.~~ **Done August 31, 2026.** `/money/bills/:id`, reading a new
+     `GET /api/v1/money/bills/entry/{task_id}` on the key the writes already
+     use. The month row links there instead of into the task core.
+
+     **The surface moves before the model does**, which is the point: it reads
+     the task-backed endpoint today and only its data source changes at the
+     flip, so that commit does not have to invent a page in the same breath as
+     it changes what a bill is.
+
+     **It shows what a bill is and none of what a task is** — no tags,
+     priority, area, checklist or project, not hidden but absent. The task page
+     spent the morning of the same day being taught to hide all five; that
+     teaching was the argument for this page, made one field at a time.
 6. **Missed periods are replayed for bills** — the life-cycle difference in §2,
    which is the whole justification, made real. Until this ships, the split has
    been argued and not demonstrated.

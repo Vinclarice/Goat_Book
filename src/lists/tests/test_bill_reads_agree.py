@@ -380,3 +380,84 @@ class BothLandingReadsAgreeTest(TestCase):
         self.assertEqual(old, new)
         self.assertEqual(new["overdue"], [])
         self.assertEqual(new["yearly"], {})
+
+
+class TheAgendaSourceAgreesTest(TestCase):
+    """`open_bills_for` selects what `agenda.open_items_for` selects, for bills.
+
+    **The read decision 4 is bought with.** Vince's call, August 31, 2026: bills
+    stay on the day and the agenda rather than being dropped as a side effect of
+    the model split. Every read that queries `Item` gains a second source, and
+    this is the proof that the second source picks the same rows.
+    """
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            "alice", "alice@example.com", "a secure password"
+        )
+
+    def bill_payees_from_the_agenda(self):
+        from lists import agenda as agenda_reader
+
+        return sorted(
+            item.money_line.payee
+            for item in agenda_reader.open_items_for(self.user)
+            if hasattr(item, "money_line")
+        )
+
+    def new_payees(self):
+        convert(self.user)
+        return sorted(row.payee for row in money_reader.open_bills_for(self.user))
+
+    def test_an_outstanding_bill_is_selected_by_both(self):
+        services.create_bill(
+            self.user,
+            payee="Landlord",
+            amount=Decimal("1200.00"),
+            due_date=datetime.date(2026, 8, 1),
+        )
+
+        self.assertEqual(self.bill_payees_from_the_agenda(), ["Landlord"])
+        self.assertEqual(self.new_payees(), ["Landlord"])
+
+    def test_a_paid_bill_is_selected_by_neither(self):
+        bill = services.create_bill(
+            self.user,
+            payee="Comcast",
+            amount=Decimal("64.99"),
+            due_date=datetime.date(2026, 8, 22),
+        )
+        services.pay_bill(bill)
+
+        old = self.bill_payees_from_the_agenda()
+        new = self.new_payees()
+
+        # The successor the payment spawned is outstanding and appears in both.
+        self.assertEqual(old, new)
+
+    def test_income_is_excluded_by_both(self):
+        """A salary is not something to do on a Tuesday, and it landing in the
+        agenda would make the list a ledger."""
+        services.create_income(
+            self.user,
+            payer="Work",
+            amount=Decimal("3000.00"),
+            due_date=datetime.date(2026, 8, 28),
+        )
+
+        self.assertEqual(self.bill_payees_from_the_agenda(), [])
+        self.assertEqual(self.new_payees(), [])
+
+    def test_one_persons_bills_are_their_own_in_both(self):
+        other = User.objects.create_user(
+            "bob", "bob@example.com", "another secure password"
+        )
+        services.create_bill(
+            other, payee="Theirs", amount=Decimal("9.00"), due_date=AUGUST
+        )
+        services.create_bill(
+            self.user, payee="Mine", amount=Decimal("9.00"), due_date=AUGUST
+        )
+
+        self.assertEqual(self.bill_payees_from_the_agenda(), ["Mine"])
+        self.assertEqual(self.new_payees(), ["Mine"])

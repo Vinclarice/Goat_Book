@@ -204,9 +204,37 @@ Each is shippable and leaves the product working.
    like. `test_bill_reads_agree.py` and `month_from_bills`'s `DARK` declaration
    are both deleted by this increment; a comparison test kept past its subject
    is how a suite grows things nobody can remove.
-5. **Decision 4's cost, paid.** Agenda, day and search read both. This is where
-   the split is felt outside Money, and where it is abandoned if it is going to
-   be.
+5. **Decision 4's cost, paid — Vince's call, August 31, 2026, and it moves
+   *before* increment 4 rather than after.**
+
+   **The ordering in this plan was wrong and the flip found it.** Increment 4
+   was written as though decision 4 broke at increment 5; it breaks at 4. A
+   bill created after the write switch has no `Item`, so it vanishes from the
+   agenda and the day — **while the bills created before it stay**, because
+   they still have theirs. That is not a clean break but an inconsistent one,
+   where whether a bill appears on your day depends on when you made it. The
+   `/tasks/{id}` link every month row carries breaks the same way.
+
+   So §7's off-ramp arrived with a concrete cost rather than a hypothetical
+   one, and was declined: **bills stay on the day and the agenda.**
+
+   **The size, measured**: `agenda.open_items_for` is the single selection
+   point the day, the agenda, the digest and coming-up all share — five
+   production call sites — and each needs a second source. The payload gains a
+   bills array rather than faking `TaskOut` rows, because a `Bill` id and an
+   `Item` id would collide in one list and the SPA completes a row by calling
+   `/api/v1/tasks/{id}`. That means server *and* client move together.
+
+   ~~This is where the split is felt outside Money, and where it is abandoned
+   if it is going to be.~~ It was felt, and it was not abandoned.
+
+   - ~~The read that mirrors `open_items_for` for bills.~~ **Done August 31,
+     2026** as `money.open_bills_for`, proven against the task read by
+     `test_bill_reads_agree.py`. Dark, declared, waiting on the wiring.
+   - **The payloads and the SPA.** Open, and the largest single piece in this
+     plan.
+   - **A bill's own detail surface**, since it can no longer borrow the task's.
+     Open.
 6. **Missed periods are replayed for bills** — the life-cycle difference in §2,
    which is the whole justification, made real. Until this ships, the split has
    been argued and not demonstrated.

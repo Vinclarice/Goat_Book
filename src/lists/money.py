@@ -466,6 +466,36 @@ def landing_from_bills(owner, *, today):
     )
 
 
+# DARK: no production caller. Trigger: the commit that pays decision 4 --
+# increment 5 of design/bill-as-a-model-plan.md, which is Vince's call of
+# August 31, 2026 to keep bills on the day and the agenda rather than let the
+# model split quietly drop them. That commit swaps this in beside
+# `agenda.open_items_for` at all five of its call sites.
+def open_bills_for(owner):
+    """Bills still owed, in the order the agenda sorts by — the `Bill` half of
+    `agenda.open_items_for`.
+
+    **Decision 4 is what this exists for.** `money-module-plan.md`: *bills stay
+    ordinary tasks elsewhere — day, agenda, lists. Paying is a real thing to do
+    on a day, and the day is where it gets noticed.* A bill that is no longer
+    an `Item` does not appear in a read that queries `Item`, so preserving that
+    decision means every such read gains a second source. This is that source.
+
+    **Income is excluded, exactly as `open_items_for` excludes it.** A salary
+    is not something to do on a Tuesday, and it landing in the agenda would
+    make the list a ledger.
+
+    **Sorted by due date, nulls impossible.** `Bill.due_date` is not nullable,
+    which is the one way this read is simpler than the task one it sits beside.
+    """
+    return (
+        Bill.objects.filter(owner=owner, paid_at__isnull=True)
+        .exclude(direction=Direction.IN)
+        .select_related("series", "category", "account")
+        .order_by("due_date", "id")
+    )
+
+
 def _balances(owner, today):
     """The latest figures and the move since the month before.
 

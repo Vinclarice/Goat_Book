@@ -48,7 +48,6 @@ from lists.models import (
     Account,
     CadenceMode,
     ChecklistStep,
-    Direction,
     Item,
     List,
     MoneyCategory,
@@ -1232,14 +1231,7 @@ def agenda(request):
         lists=lists,
         archived_count=archived_count,
         projects=projects,
-        open_bills=(
-            Item.objects.filter(
-                owner=user, status=Item.Status.ACTIVE, money_line__isnull=False
-            )
-            .exclude(money_line__direction=Direction.IN)
-            .select_related("money_line")
-            .order_by("due_date", "id")
-        ),
+        open_bills=agenda_reader.open_bill_rows_for(user),
     )
 
 

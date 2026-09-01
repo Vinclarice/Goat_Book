@@ -18,7 +18,12 @@ from accounts.models import SCOPE_DAY_READ, SCOPE_DAY_WRITE
 from daily import reads, services
 from lists import agenda
 from lists import projects as project_reader
-from lists.api_v1 import AgendaProjectSummaryOut, AreaColorKey, TaskOut
+from lists.api_v1 import (
+    AgendaBillOut,
+    AgendaProjectSummaryOut,
+    AreaColorKey,
+    TaskOut,
+)
 from lists.models import Item
 from lists.serializers import project_ref_for, serialize_item
 from mind import services as mind_services
@@ -100,6 +105,19 @@ class DayOut(Schema):
     # and empty-because-not-today are different, and only one of them
     # deserves "nothing due today".
     shows_action_items: bool
+    # **Bills, in an array of their own.** They were action items until
+    # August 31, 2026 because a bill was an `Item`; they are here because it
+    # is about to stop being one and decision 4 in bill-as-a-model-plan.md
+    # keeps them on this page anyway -- paying is a real thing to do on a day.
+    #
+    # `AgendaBillOut` rather than a daily-shaped copy, for exactly the reason
+    # `action_items` reuses `TaskOut`: these are the same rows the agenda
+    # serves, and a second schema would be free to drift from the first.
+    #
+    # Gated by `shows_action_items` too. An unpaid bill today was not
+    # necessarily unpaid on the 30th, and the row carries no history to say
+    # otherwise -- the same refusal, for the same reason.
+    bills: list[AgendaBillOut]
     # Where a brand-new account makes its first area, and with it its first
     # task. Additive, and sent on every day rather than only an empty one:
     # deciding here that a client "needs" it would be the server guessing at
@@ -475,6 +493,14 @@ def _day_out(owner, day):
             project_ref_for(each) for each in project_reader.projects_for(owner)
         ],
         "shows_action_items": shows_action_items,
+        "bills": (
+            [
+                agenda._agenda_bill_out(item)
+                for item in agenda.open_bill_rows_for(owner)
+            ]
+            if shows_action_items
+            else []
+        ),
         "focus": [_focus_out(focus) for focus in reads.focus_for(owner, day)],
         "draft": _draft_out(owner, day, today),
         "brief": _brief_out(owner, day, today),

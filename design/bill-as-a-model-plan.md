@@ -231,8 +231,32 @@ Each is shippable and leaves the product working.
    - ~~The read that mirrors `open_items_for` for bills.~~ **Done August 31,
      2026** as `money.open_bills_for`, proven against the task read by
      `test_bill_reads_agree.py`. Dark, declared, waiting on the wiring.
-   - **The payloads and the SPA.** Open, and the largest single piece in this
-     plan.
+   - ~~**The payloads and the SPA.**~~ **Done August 31, 2026**, and it was
+     the largest single piece. `open_items_for` grew `include_bills=False`;
+     the agenda and the day each grew a `bills` array beside `items` /
+     `action_items`, both sourced from one `agenda.open_bill_rows_for` so the
+     two surfaces cannot disagree about which bills exist. The SPA renders
+     them through the *shared* `bucketFor` and `dueLabel`, so a bill and a
+     task due the same day say the same thing about being overdue.
+
+     **Two answers this piece produced rather than inherited.** The day's
+     bills sit in a section of their own instead of among the action items:
+     a bill has no area, no priority and nothing to pin, so a merged list
+     would mean either showing fields it has not got or special-casing the
+     ones it has — which is precisely what made the task detail page a bill
+     page nobody designed. And `draft_day` stops proposing bills, which is
+     not decision 4 arriving by inheritance but a harder constraint:
+     `DailyFocus.task` is a foreign key to `Item`, so a bill that is not an
+     `Item` **cannot be pinned at all**. Proposing one would offer a verb the
+     model has taken away.
+
+     **What is still on `open_items_for`'s bill-carrying path, and must move
+     with the flip**: `coming_up_for` (the day brief's *coming* list),
+     `digest_items_for`, and `daily.reads`'s calendar due-counts. All three
+     have one kind of row and nothing to merge into, so they keep bills
+     inline today — and all three go silently empty of bills at increment 4
+     unless given the `Bill` source in the same commit. Written down here
+     because *silently* is the word: no test named for bills covers them.
    - ~~**A bill's own detail surface**, since it can no longer borrow the
      task's.~~ **Done August 31, 2026.** `/money/bills/:id`, reading a new
      `GET /api/v1/money/bills/entry/{task_id}` on the key the writes already

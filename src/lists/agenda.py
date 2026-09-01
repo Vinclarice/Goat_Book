@@ -332,6 +332,30 @@ def tag_summaries(items):
     ]
 
 
+def open_bill_rows_for(user):
+    """The bills the agenda and the day carry, in the shape `_agenda_bill_out`
+    reads.
+
+    **One query, two surfaces**, for the reason `open_items_for` is one query:
+    the agenda and the day disagreeing about which bills exist is a defect
+    nobody would find by reading either. Money coming in is excluded here
+    exactly as `open_items_for` excludes it -- a salary is not a thing to do
+    on a day.
+
+    **Sourced from tasks with a sidecar until the flip.** After it, this is
+    where `Bill.objects` arrives and neither caller changes --
+    `bill-as-a-model-plan.md` increment 5.
+    """
+    return (
+        Item.objects.filter(
+            owner=user, status=Item.Status.ACTIVE, money_line__isnull=False
+        )
+        .exclude(money_line__direction=Direction.IN)
+        .select_related("money_line")
+        .order_by("due_date", "id")
+    )
+
+
 def _agenda_bill_out(item):
     """One bill, as the agenda and the day carry it.
 

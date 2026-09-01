@@ -912,6 +912,28 @@ export function DayRoute() {
       queryClient.invalidateQueries({ queryKey: ["day", date ?? "today"] }),
   });
 
+  /* **The one verb a bill has here.** decision 4 in
+     bill-as-a-model-plan.md keeps bills on the day because paying is a real
+     thing to do on one -- and a page that showed them without offering it
+     would be a reminder, which is what the digest is for.
+
+     Every money surface moves when a bill settles, so all three are
+     invalidated rather than only the day it was settled from. */
+  const payBill = useMutation({
+    mutationFn: async (taskId: number) => {
+      const { error } = await apiV1.POST(
+        "/api/v1/money/bills/entry/{task_id}/pay",
+        { params: { path: { task_id: taskId } }, body: {} },
+      );
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["day", date ?? "today"] });
+      queryClient.invalidateQueries({ queryKey: ["money-landing"] });
+      queryClient.invalidateQueries({ queryKey: ["bills"] });
+    },
+  });
+
   // Routine writes answer with today's standings rather than the whole day,
   // so the day in cache is patched with them instead of refetched. Same
   // reason as the focus mutations: a refetch would settle the query again,
@@ -1252,6 +1274,62 @@ export function DayRoute() {
           </p>
         )}
       </section>
+
+      {/* **Its own section, not a row among the action items.** A bill has
+          no area to file it in, no priority and nothing to pin, so putting it
+          in that list would mean either showing fields it has not got or
+          quietly special-casing the ones it has -- which is what the task
+          detail page did before it became a bill page nobody designed.
+
+          Gated on shows_action_items for the same reason the list above is:
+          an unpaid bill today was not necessarily unpaid on the 1st, and the
+          row carries no history to say otherwise.
+
+          Absent rather than empty when there are none: "no bills" is not a
+          sentence this page needs to say on a day that has none. */}
+      {data.shows_action_items && data.bills.length > 0 && (
+        <section className="space-y-2">
+          <h2 className="text-sm font-bold">Bills</h2>
+          <ul className="space-y-2">
+            {data.bills.map((bill) => (
+              <li
+                key={bill.task_id}
+                className="flex flex-wrap items-baseline justify-between gap-3 rounded-xl border border-border bg-card px-3 py-2"
+              >
+                <span className="min-w-0">
+                  <Link
+                    to={`/money/bills/${bill.task_id}`}
+                    className="font-medium hover:underline"
+                  >
+                    {bill.payee}
+                  </Link>
+                  {bill.amount !== null && (
+                    <span className="ml-2 text-xs text-muted-foreground">
+                      {bill.amount} {bill.currency}
+                    </span>
+                  )}
+                  {bill.due_date !== null && (
+                    // dueLabel, the same authority the action items use, so a
+                    // bill and a task due the same day say the same thing.
+                    <span className="ml-2 text-xs text-muted-foreground">
+                      {dueLabel(bill.due_date, data.today)}
+                    </span>
+                  )}
+                </span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={payBill.isPending}
+                  onClick={() => payBill.mutate(bill.task_id)}
+                >
+                  {bill.direction === "in" ? "Mark received" : "Mark paid"}
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section className="space-y-2">
         <h2 className="text-sm font-bold">Routines</h2>

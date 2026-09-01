@@ -3238,6 +3238,8 @@ export interface components {
             projects: components["schemas"]["AgendaProjectSummaryOut"][];
             /** Shows Action Items */
             shows_action_items: boolean;
+            /** Bills */
+            bills: components["schemas"]["AgendaBillOut"][];
             /** Focus */
             focus: components["schemas"]["FocusOut"][];
             draft: components["schemas"]["DayDraftOut"];

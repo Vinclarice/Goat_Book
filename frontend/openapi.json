@@ -6901,6 +6901,13 @@
             "title": "Shows Action Items",
             "type": "boolean"
           },
+          "bills": {
+            "items": {
+              "$ref": "#/components/schemas/AgendaBillOut"
+            },
+            "title": "Bills",
+            "type": "array"
+          },
           "focus": {
             "items": {
               "$ref": "#/components/schemas/FocusOut"
@@ -6977,6 +6984,7 @@
           "areas",
           "projects",
           "shows_action_items",
+          "bills",
           "focus",
           "draft",
           "brief",

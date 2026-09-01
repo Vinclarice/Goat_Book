@@ -81,8 +81,17 @@ def action_items_for(owner, day):
     ``day`` is injected rather than read from the clock, so a page for the
     1st and a page for the 5th can disagree about the same task -- which is
     the correct answer, not a quirk.
+
+    **Bills are not here, and are still on the day.** They left this list on
+    August 31, 2026 and arrive in the payload's own ``bills`` array instead:
+    `bill-as-a-model-plan.md` decision 4 keeps them on the surfaces where
+    paying is a real thing to do, while the model split stops them being
+    tasks. No parameter, because both callers want the same answer -- see
+    `draft_day`, which wants it for a second reason.
     """
-    grouped = agenda.bucketed(agenda.open_items_for(owner), day)
+    grouped = agenda.bucketed(
+        agenda.open_items_for(owner, include_bills=False), day
+    )
     return [item for key in DAY_BUCKETS for item in grouped[key]]
 
 
@@ -348,6 +357,13 @@ def draft_day(owner, day, *, today):
     **Nothing for a day already lived.** The same refusal `typical_day_for`
     makes by excluding the day being planned from its own evidence: telling
     somebody what they should have done is a verdict, not a plan.
+
+    **And nothing about bills**, which `action_items_for` no longer returns.
+    That is not only decision 4 arriving here by inheritance: a pin is a
+    `DailyFocus` with a foreign key to `Item`, so a bill that is not an
+    `Item` cannot be pinned at all. Proposing one would be offering a verb the
+    model has taken away. Paying is the verb a bill has, and the day offers it
+    on the bill's own row.
     """
     available = action_items_for(owner, day)
     typical = typical_day_for(owner, day)

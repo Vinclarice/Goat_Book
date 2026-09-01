@@ -11,13 +11,14 @@ Which buckets belong to a day is the daily domain's decision; what
 "overdue" *means* stays in lists.agenda, which is the one authority for it.
 """
 from datetime import date, timedelta
+from decimal import Decimal
 
 from django.test import TestCase
 
 from accounts.models import User
 from daily import reads
 from lists import services as list_services
-from lists.models import List
+from lists.models import Item, List
 
 
 AUGUST_3 = date(2026, 8, 3)
@@ -90,3 +91,53 @@ class ActionItemsTest(TestCase):
 
         self.assertEqual(self.texts(day=AUGUST_3 - timedelta(days=2)), [])
         self.assertEqual(self.texts(day=AUGUST_3 + timedelta(days=2)), ["Due the 3rd"])
+
+
+class BillsLeaveTheActionListAndStayOnTheDayTest(TestCase):
+    """`bill-as-a-model-plan.md` decision 4, on the second daily surface.
+
+    A bill was an action item because a bill was an `Item`. It stops being
+    one, so it leaves this list -- and it arrives in the day payload's own
+    `bills` array instead, because the decision is that bills stay on the
+    surfaces where paying is a real thing to do on a day, not that they leave
+    the product for a month.
+
+    **The draft loses them and should.** `draft_day` proposes what to pin, and
+    a pin is a `DailyFocus` with a foreign key to `Item`. A bill that is not an
+    `Item` cannot be pinned at all, so proposing one would be offering a verb
+    the model has taken away. Paying is the verb a bill has.
+    """
+
+    def setUp(self):
+        self.alice = User.objects.create_user(
+            "alice", "alice@example.com", "a secure password"
+        )
+        self.list_ = List.objects.create(owner=self.alice, title="Home")
+
+    def bill(self, payee, due_date, amount="120.00"):
+        return list_services.create_bill(
+            self.alice,
+            payee=payee,
+            amount=Decimal(amount),
+            due_date=due_date,
+            recurrence=Item.Recurrence.MONTHLY,
+        )
+
+    def test_a_bill_is_not_an_action_item(self):
+        self.bill("Landlord", AUGUST_3)
+        list_services.create_item(self.list_, "Call the plumber", due_date=AUGUST_3)
+
+        self.assertEqual(
+            [item.text for item in reads.action_items_for(self.alice, AUGUST_3)],
+            ["Call the plumber"],
+        )
+
+    def test_the_draft_does_not_propose_pinning_a_bill(self):
+        """It cannot be pinned after the flip, so proposing it is offering a
+        verb that will not be there."""
+        self.bill("Landlord", AUGUST_3)
+
+        draft = reads.draft_day(self.alice, AUGUST_3, today=AUGUST_3)
+
+        self.assertEqual(draft.available, 0)
+        self.assertEqual(draft.proposed, [])

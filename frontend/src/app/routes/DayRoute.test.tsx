@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router";
 
 import { DayRoute } from "./DayRoute";
-import { sentRequests } from "../../test/fixtures";
+import { requestedPaths, sentRequests } from "../../test/fixtures";
 
 function jsonResponse(data: object, ok = true, status = ok ? 200 : 500) {
   const body = JSON.stringify(data);
@@ -32,6 +32,7 @@ function dayData(overrides: Record<string, unknown> = {}) {
     today: "2026-08-03",
     suggestions: [],
     action_items: [],
+    bills: [],
     // An area by default, because every other test here is about an account
     // that has started. A task belongs to a List and list_summaries filters
     // nothing, so "action items but no areas" -- what this fixture used to
@@ -243,6 +244,95 @@ describe("DayRoute", () => {
     // different statement about a different thing.
     expect(within(rent).getByText("Today")).toBeInTheDocument();
     expect(within(plumber).getByText("2 days overdue")).toBeInTheDocument();
+  });
+
+  it("shows a bill on the day, apart from the action items", async () => {
+    /* decision 4 in bill-as-a-model-plan.md: paying is a real thing to do on
+       a day, so bills stay here even as they stop being tasks. Its own
+       section rather than mixed into the action items, because it is not one
+       -- there is nothing to pin and no area to file it in. */
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        dayData({
+          action_items: [actionItem({ id: 1, text: "Call the plumber" })],
+          bills: [
+            {
+              task_id: 9,
+              payee: "Landlord",
+              due_date: "2026-08-03",
+              amount: "1200.00",
+              currency: "USD",
+              direction: "out",
+              repeats: true,
+            },
+          ],
+        }),
+      ),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    const bill = (await screen.findByText("Landlord")).closest<HTMLElement>("li")!;
+    expect(within(bill).getByText("1200.00 USD")).toBeInTheDocument();
+    expect(
+      within(bill).getByRole("link", { name: "Landlord" }),
+    ).toHaveAttribute("href", "/money/bills/9");
+    // Not in the action items, and the action items are not empty -- so this
+    // is a separation, not a page with nothing on it.
+    expect(screen.getByText("Call the plumber")).toBeInTheDocument();
+  });
+
+  it("pays a bill from the day", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = input instanceof Request ? input.url : String(input);
+      if (url.includes("/pay")) return jsonResponse({});
+      return jsonResponse(
+        dayData({
+          bills: [
+            {
+              task_id: 9,
+              payee: "Landlord",
+              due_date: "2026-08-03",
+              amount: "1200.00",
+              currency: "USD",
+              direction: "out",
+              repeats: true,
+            },
+          ],
+        }),
+      );
+    });
+
+    renderAt("/day/2026-08-03");
+    await userEvent.click(await screen.findByRole("button", { name: "Mark paid" }));
+
+    await waitFor(() =>
+      expect(
+        requestedPaths(fetchMock).some((path) =>
+          path.includes("/api/v1/money/bills/entry/9/pay"),
+        ),
+      ).toBe(true),
+    );
+  });
+
+  it("shows no bills section on a past day", async () => {
+    // The same refusal shows_action_items makes: an unpaid bill today was not
+    // necessarily unpaid on the 1st.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        dayData({
+          date: "2026-08-01",
+          today: "2026-08-03",
+          bills: [],
+          shows_action_items: false,
+        }),
+      ),
+    );
+
+    renderAt("/day/2026-08-01");
+
+    await screen.findByText(/Only today shows action items/);
+    expect(screen.queryByRole("heading", { name: "Bills" })).toBeNull();
   });
 
   it("says nothing is due rather than showing an empty box", async () => {

@@ -11,6 +11,7 @@ undated form answers with whatever "today" means in the requesting user's
 own time zone.
 """
 import json
+from decimal import Decimal
 from datetime import date, timedelta
 
 from django.test import Client, TestCase
@@ -449,6 +450,54 @@ class DayActionItemsTest(TestCase):
 
         for field in ("id", "text", "status", "due_date", "area_id", "url"):
             self.assertIn(field, item)
+
+    def test_a_bill_is_on_the_day_in_bills_and_not_in_action_items(self):
+        """decision 4's second surface. A bill leaves `action_items` because it
+        stops being a task, and arrives in `bills` because paying is a real
+        thing to do on a day -- the move is between arrays, not off the page.
+        """
+        list_services.create_bill(
+            self.alice,
+            payee="Landlord",
+            amount=Decimal("1200.00"),
+            due_date=self.today(),
+        )
+
+        body = self.client.get("/api/v1/day").json()
+
+        self.assertEqual(body["action_items"], [])
+        self.assertEqual([row["payee"] for row in body["bills"]], ["Landlord"])
+
+    def test_a_bill_row_carries_what_it_needs_and_nothing_of_a_task(self):
+        """No area, no priority, no checklist -- a bill has none, which is the
+        argument the split is made of."""
+        list_services.create_bill(
+            self.alice,
+            payee="Landlord",
+            amount=Decimal("1200.00"),
+            due_date=self.today(),
+        )
+
+        row = self.client.get("/api/v1/day").json()["bills"][0]
+
+        for field in ("task_id", "payee", "due_date", "amount", "currency"):
+            self.assertIn(field, row)
+        for absent in ("area_id", "priority", "status", "text"):
+            self.assertNotIn(absent, row)
+
+    def test_a_past_day_shows_no_bills_rather_than_todays(self):
+        """The same refusal `shows_action_items` makes, for the same reason: an
+        unpaid bill today was not necessarily unpaid on the 30th, and the row
+        carries no history to say otherwise."""
+        list_services.create_bill(
+            self.alice,
+            payee="Landlord",
+            amount=Decimal("1200.00"),
+            due_date=self.today(),
+        )
+        yesterday = (self.today() - timedelta(days=1)).isoformat()
+
+        self.assertEqual(self.client.get(f"/api/v1/day/{yesterday}").json()["bills"], [])
 
     def test_carries_the_caller_s_areas_and_projects_so_a_row_can_show_them(self):
         """ui-second-pass-plan.md F2/the sitting's Daily Page finding: an

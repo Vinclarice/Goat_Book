@@ -87,7 +87,7 @@ ELSEWHERE = {
     # against the old one by `lists/tests/test_bill_reads_agree.py` and called
     # by nothing until increment 4 moves the writes. Caught by this test within
     # minutes of being written, which is the third time it has paid for itself.
-    "lists/money.py": ("month_from_bills",),
+    "lists/money.py": ("landing_from_bills", "month_from_bills"),
     "routines/reads.py": ("occurrence_for",),
     "accounts/export.py": ("owned_models", "export_key"),
 }

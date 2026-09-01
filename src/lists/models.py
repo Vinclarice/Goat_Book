@@ -879,6 +879,15 @@ class Bill(models.Model):
     #: long past, which is the asymmetry this model exists for.
     paid_at = models.DateTimeField(null=True, blank=True)
 
+    #: How many days before the due date this should be mentioned. Zero is off.
+    #:
+    #: **A snapshot like `payee` and `amount`, not a read through the series**
+    #: -- and it was missed in increment 1, found by increment 4 porting the
+    #: landing read: `renewing_soon` needs a lead time *per bill*, and a
+    #: one-off has no series to read one from. `set_lead_days` works on any
+    #: task today, so a one-off with a lead time is a real row rather than a
+    #: hypothetical.
+    lead_days = models.PositiveSmallIntegerField(default=0)
     notes = models.TextField(blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

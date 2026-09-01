@@ -66,6 +66,12 @@ def convert(owner):
             category=line.category,
             paid_amount=line.paid_amount,
             paid_at=item.completed_at,
+            # **Missed on the first writing of this helper**, and the renewal
+            # test below caught it -- which is the risk of a second copy of
+            # `0055` behaving itself. In the migrations it is `0056`'s backfill
+            # that carries this over, because the column did not exist when
+            # `0055` was written.
+            lead_days=item.lead_days,
             notes=item.notes,
         )
 
@@ -248,3 +254,129 @@ class BothMonthReadsAgreeTest(TestCase):
         self.assertEqual(old, new)
         self.assertEqual(new["settled"], [True])
         self.assertEqual(new["paid"], {"USD": Decimal("1200.00")})
+
+
+class BothLandingReadsAgreeTest(TestCase):
+    """The second and last read the split touches.
+
+    Balances, history and categories read `Account`, `BalanceReading` and
+    `MoneyCategory`, which the split does not touch -- so with the month read
+    above, this is the whole surface increment 4 has to switch.
+    """
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            "alice", "alice@example.com", "a secure password"
+        )
+
+    def compare(self, today=AUGUST):
+        convert(self.user)
+        old = money_reader.landing_for(self.user, today=today)
+        new = money_reader.landing_from_bills(self.user, today=today)
+        return (
+            {
+                "overdue": [row.bill.payee for row in old.overdue],
+                "due_soon": [row.bill.payee for row in old.due_soon],
+                "renewing": [row.bill.payee for row in old.renewing_soon],
+                "yearly": old.yearly_totals,
+                "line_count": old.line_count,
+            },
+            {
+                "overdue": [row.payee for row in new.overdue],
+                "due_soon": [row.payee for row in new.due_soon],
+                "renewing": [row.payee for row in new.renewing_soon],
+                "yearly": new.yearly_totals,
+                "line_count": new.line_count,
+            },
+        )
+
+    def test_overdue_reaches_back_through_every_month_in_both(self):
+        services.create_bill(
+            self.user,
+            payee="Old subscription",
+            amount=Decimal("9.00"),
+            due_date=datetime.date(2026, 6, 3),
+        )
+
+        old, new = self.compare()
+
+        self.assertEqual(old, new)
+        self.assertEqual(new["overdue"], ["Old subscription"])
+
+    def test_due_soon_crosses_a_month_boundary_in_both(self):
+        services.create_bill(
+            self.user,
+            payee="Landlord",
+            amount=Decimal("1200.00"),
+            due_date=datetime.date(2026, 9, 1),
+        )
+
+        old, new = self.compare(today=datetime.date(2026, 8, 25))
+
+        self.assertEqual(old, new)
+        self.assertEqual(new["due_soon"], ["Landlord"])
+
+    def test_a_renewal_inside_its_lead_time_appears_in_both(self):
+        """**The case that found `Bill.lead_days` missing.** `renewing_soon`
+        needs a lead time per bill, and increment 1 put one only on the series
+        -- so a one-off with a lead time had nowhere to keep it."""
+        services.create_bill(
+            self.user,
+            payee="Adobe",
+            amount=Decimal("240.00"),
+            due_date=datetime.date(2026, 9, 20),
+            recurrence=Item.Recurrence.ANNUAL,
+            lead_days=30,
+        )
+
+        old, new = self.compare(today=datetime.date(2026, 8, 25))
+
+        self.assertEqual(old, new)
+        self.assertEqual(new["renewing"], ["Adobe"])
+
+    def test_the_yearly_cost_matches_in_both(self):
+        services.create_bill(
+            self.user,
+            payee="Netflix",
+            amount=Decimal("10.00"),
+            due_date=AUGUST,
+            recurrence=Item.Recurrence.MONTHLY,
+        )
+        services.create_bill(
+            self.user,
+            payee="Adobe",
+            amount=Decimal("240.00"),
+            due_date=AUGUST,
+            recurrence=Item.Recurrence.ANNUAL,
+        )
+
+        old, new = self.compare()
+
+        self.assertEqual(old, new)
+        self.assertEqual(new["yearly"], {"USD": Decimal("360.00")})
+
+    def test_a_one_off_is_not_an_annual_cost_in_either(self):
+        services.create_bill(
+            self.user,
+            payee="Plumber",
+            amount=Decimal("300.00"),
+            due_date=AUGUST,
+            recurrence=Item.Recurrence.NONE,
+        )
+
+        old, new = self.compare()
+
+        self.assertEqual(old, new)
+        self.assertEqual(new["yearly"], {})
+
+    def test_income_stays_out_of_the_landing_read_in_both(self):
+        """The landing page is about what is owed; a salary is not."""
+        services.create_income(
+            self.user, payer="Work", amount=Decimal("3000.00"), due_date=AUGUST
+        )
+
+        old, new = self.compare()
+
+        self.assertEqual(old, new)
+        self.assertEqual(new["overdue"], [])
+        self.assertEqual(new["yearly"], {})

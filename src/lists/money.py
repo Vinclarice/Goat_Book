@@ -400,6 +400,72 @@ def landing_for(owner, *, today):
     )
 
 
+# DARK: no production caller. Trigger: increment 4 of
+# design/bill-as-a-model-plan.md, the same one `month_from_bills` waits on --
+# reads and writes switch together, and these two are the whole read surface
+# the split touches. Balances, history and categories read `Account`,
+# `BalanceReading` and `MoneyCategory` and are untouched.
+def landing_from_bills(owner, *, today):
+    """`landing_for`, read from `Bill` instead of `MoneyLine` + `Item`.
+
+    **Three joins become none.** The old read walks `MoneyLine → Item` for the
+    date, the lead time and the recurrence, and `BillRow` exists to hold the
+    pair together. Every field this needs is on the row.
+
+    **`recurrence` becomes `series.cadence`, and a one-off is correctly
+    absent** rather than filtered: `TIMES_A_YEAR` has no entry for *does not
+    repeat*, and a bill with no series has no cadence to look up. The old read
+    reached the same answer through `Item.Recurrence.NONE` missing from the
+    same table, which is the same rule said twice.
+    """
+    rows = list(
+        Bill.objects.filter(owner=owner, direction=Direction.OUT).select_related(
+            "series"
+        )
+    )
+    open_rows = [row for row in rows if row.paid_at is None and row.due_date]
+    overdue = sorted(
+        (row for row in open_rows if row.due_date < today),
+        key=lambda row: row.due_date,
+    )
+    due_soon = sorted(
+        (row for row in open_rows if today <= row.due_date <= today + SOON),
+        key=lambda row: row.due_date,
+    )
+    already = {row.pk for row in overdue} | {row.pk for row in due_soon}
+    renewing = sorted(
+        (
+            row
+            for row in open_rows
+            if row.pk not in already
+            and row.lead_days
+            and row.due_date <= today + timedelta(days=row.lead_days)
+        ),
+        key=lambda row: row.due_date,
+    )
+    yearly = defaultdict(Decimal)
+    for row in rows:
+        cadence = row.series.cadence if row.series_id else None
+        times = TIMES_A_YEAR.get(cadence)
+        if times is None or row.amount is None:
+            continue
+        yearly[row.currency] += row.amount * times
+    owed, held, owed_change, held_change, unread = _balances(owner, today)
+    return MoneyLanding(
+        overdue=overdue,
+        due_soon=due_soon,
+        renewing_soon=renewing,
+        yearly_totals=dict(yearly),
+        owed_totals=owed,
+        held_totals=held,
+        owed_change=owed_change,
+        held_change=held_change,
+        unread_accounts=unread,
+        line_count=Bill.objects.filter(owner=owner).count(),
+        account_count=Account.objects.filter(owner=owner).count(),
+    )
+
+
 def _balances(owner, today):
     """The latest figures and the move since the month before.
 

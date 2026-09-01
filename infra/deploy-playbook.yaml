@@ -491,6 +491,41 @@
       # omission survived until the first real run.
       become: true
 
+    # Increment 6 of design/bill-as-a-model-plan.md, and the thing that makes
+    # the bill model worth having: a payment you did not make is still owed, so
+    # a period that elapses unpaid has to produce an occurrence. Nothing else
+    # creates one -- before this, a bill you fell behind on stopped being
+    # mentioned at all, and the further behind you were the less the module
+    # said.
+    #
+    # Ten past, so three `docker exec`s into one container do not land on the
+    # same instant; the other two are on the hour and five past.
+    #
+    # Hourly rather than nightly because `catch_up` compares due dates against
+    # each owner's today, so the pass has no opinion about time zones and a
+    # newly due bill simply appears within the hour instead of at whatever
+    # o'clock a daily run happened to be.
+    #
+    # No --owner, for the reason the maintenance pass above gives: an account
+    # created tomorrow is caught up without anybody remembering to add a line
+    # here.
+    #
+    # **This entry is the increment**, not a convenience on top of it. The
+    # command is inert without it, and `CLAUDE.md` records three seams in this
+    # repository that were built, tested, green and never switched on -- the
+    # digest directly below being one of them, which reached nobody for as long
+    # as it took somebody to notice.
+    - name: Schedule the bill catch-up pass
+      ansible.builtin.cron:
+        name: clarice-bill-catch-up
+        minute: "10"
+        hour: "*"
+        job: docker exec clarice ./manage.py catch_up_bills
+        user: root
+      # Writing root's crontab needs root -- the omission every other task here
+      # documents, and which only a real run finds.
+      become: true
+
     # The evening half of the same idea, and off by default -- nobody receives
     # this who has not asked for it, which is what `/privacy/` says in
     # published text. Hourly for the same reason as the digest above: the

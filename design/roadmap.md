@@ -487,14 +487,13 @@ re-add it here.
   and a section of their own on the day. Vince's call, August 31: pay it.
   Bills are still on the agenda and the day.
 
-  ~~Increments 1–5.~~ **Shipped August 31 – September 1, 2026**, through the
-  flip: `Bill` and `BillSeries` exist, the data is converted, every money read
-  and write is on them, and the tasks that were bills are deleted. **What is
-  open is 6–9** — replaying missed periods, `Bill.account`, deleting
-  `MoneyLine`, and renaming the `task_id` key that now points at a bill.
-  Increment 6 is the one that matters: it is the life-cycle difference in §2,
-  which is the entire justification for the model, and until it ships the split
-  has been argued and not demonstrated.
+  ~~Increments 1–6.~~ **Shipped August 31 – September 1, 2026**, through the
+  flip and the replay: `Bill` and `BillSeries` exist, the data is converted,
+  every money read and write is on them, the tasks that were bills are deleted,
+  and a period that elapses unpaid now produces an occurrence. **What is open
+  is 7–9** — `Bill.account`, deleting `MoneyLine`, and renaming the `task_id`
+  key that now points at a bill. None of the three is load-bearing; the
+  argument is demonstrated.
 
 - **Should money skip a missed period at all? — promoted August 28, 2026 from
   the entry above.** *Missed periods are skipped, not replayed* is the task
@@ -512,15 +511,23 @@ re-add it here.
   the last missed period rather than a special one. It is the doctrine itself,
   applied to a domain that arrived after it was written.
 
-  **Not obviously a defect, which is why it is a question.** Replaying missed
-  bills could equally produce a page full of arrears nobody will action, and
-  `MoneyLine` already records what was actually paid, so the history is not
-  lost even when the task is. **What is missing is any signal that a period
-  went by unpaid** — and the honest first step is looking at whether that has
-  ever happened in production, rather than building for it.
-  [`money-module-plan.md`](money-module-plan.md) is where a repair would be
-  specced; [`modules.md`](modules.md)'s input-ratio rule bears on it, since
-  anything requiring the person to confirm a skipped period is feeding.
+  ~~**Not obviously a defect, which is why it is a question.**~~ **Answered by
+  measuring it, September 1, 2026, and it was worse than this entry said.** The
+  honest first step asked for here was taken: not *has a period ever been
+  skipped in production*, but *what does the model produce for a repeating bill
+  nobody touches* — and the answer was **nothing, ever**. A monthly card bill
+  due August 20 and unpaid held one occurrence and would have held one in 2027,
+  because the only producer of a successor was settling or deleting the current
+  one. The doctrine's cost was not that a skipped period went unrecorded; it
+  was that falling behind made the module go quiet.
+
+  Replayed by `bills.catch_up`, hourly, in
+  [`bill-as-a-model-plan.md`](bill-as-a-model-plan.md) increment 6, which owns
+  the detail. `modules.md`'s input-ratio rule was respected rather than
+  worked around: nobody confirms anything. **The arrears risk this entry named
+  is real, was not designed around, and stays as that plan's §7 reversal
+  condition** — measured at six further unpaid rows by March 2027 on one
+  untouched series.
 
 - **The keystore is now a dependency of the task core, not only of Android —
   promoted August 31, 2026.** [`android-release-signing-plan.md`](android-release-signing-plan.md)

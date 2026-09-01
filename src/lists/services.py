@@ -802,10 +802,15 @@ def _advance_due_date(due_date, recurrence, today=None, mode=CadenceMode.ANCHORE
     `test_a_series_never_spawns_overdue.test_the_slot_the_completion_lands_on_is_not_respawned`
     now says so by name rather than by coincidence.
 
-    **What this does not decide** is whether *money* should skip a missed
-    period at all -- a bill you did not pay is still owed in a way a bin round
-    you missed is not. That is a product question about the doctrine below
-    rather than about this comparison, and `roadmap.md` carries it.
+    **What this does not decide** is whether *money* should skip a missed period
+    at all -- a bill you did not pay is still owed in a way a bin round you
+    missed is not. **Answered on September 1, 2026, and answered elsewhere**:
+    `lists/bills.py` replays them, and does it by calling this function for
+    exactly one interval rather than by changing what it means. So this
+    comparison and the doctrine below are still the task core's, unchanged and
+    still correct for tasks -- which is the point of the two models, and what
+    `test_a_missed_bill_is_still_owed.test_a_task_still_skips` exists to keep
+    true from the other side.
 
     It used to be one interval past the *previous due date*, full stop. A
     monthly commitment due July 4 and completed August 10 therefore produced a

@@ -240,11 +240,20 @@ done
 # joined on the same day for the same reason: two categories called Utilities
 # split a group in the month view, and the split is invisible unless somebody
 # counts.
+#
+# `bill_one_occurrence_per_period` joined on September 1, 2026 and is the same
+# argument in the same shape. `bills.catch_up` runs hourly and replays whatever
+# periods a live series has come to owe; without this constraint two overlapping
+# passes leave two September rents, and every total on the landing page, the
+# month and the digest is quietly doubled. **Silent, which is the whole test for
+# this list rather than the not-drilled one** -- a person reading "still to pay"
+# has no way to know the figure counted their rent twice.
 for constraint in \
   unique_daily_entry_per_owner_date \
   unique_daily_focus_per_entry_task \
   unique_weekly_review_per_owner_week \
-  unique_weekly_intention_per_owner_week
+  unique_weekly_intention_per_owner_week \
+  bill_one_occurrence_per_period
 do
   got=$(query "SELECT count(*) FROM pg_constraint
                WHERE conname = '$constraint' AND contype = 'u'")

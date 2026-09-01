@@ -8,10 +8,11 @@ module and a service module, from the first slice.*
 and is 1,500 lines. A bill stops being a task in this increment; its writes
 stopping being task writes is the same statement made in the file layout.
 
-**Everything here is dark until the surfaces switch**, which happens in the
-same commit that deletes `create_bill`, `pay_bill`, `update_bill` and
-`delete_bill` from `services.py`. Reads and writes move together — increment 3
-records why the alternative, a fifteen-site mirror, was not worth building.
+~~**Everything here is dark until the surfaces switch**~~ — that happened on
+September 1, 2026, in the commit that deleted `create_bill`, `pay_bill`,
+`update_bill` and `delete_bill` from `services.py`. Reads and writes moved
+together; increment 3 records why the alternative, a fifteen-site mirror, was
+not worth building.
 
 **What this does not carry over from the task versions**, each because the
 concept goes with `Item`:
@@ -24,12 +25,23 @@ concept goes with `Item`:
   a bill has *"do not live in one place"* — amount, payee and currency on the
   sidecar, the due date on the task — and that one service existed so a caller
   could not leave a bill half-corrected. They live in one place now.
+
+**And one thing that goes the other way: `catch_up` has no task equivalent, and
+must not acquire one.** *Missed periods are skipped, not replayed* is right for
+a task and wrong for a bill, which is the entire argument
+`architecture-trajectory.md` §4 was satisfied by — see
+`bill-as-a-model-plan.md` §2. The two doctrines now live in two modules, which
+is what having two models is for.
 """
+import logging
+
 from django.db import transaction
 from django.utils import timezone
 
 from lists.models import Bill, BillSeries, CadenceMode, Direction, Item
 from lists.services import TaskConflict, _advance_due_date, normalize_task_text
+
+logger = logging.getLogger(__name__)
 
 
 #: Sentinel for *leave this alone*, so `None` can mean *clear it* — the same
@@ -148,6 +160,21 @@ def spawn_next(bill, *, today=None):
     carries a month of argument about the `>` boundary that a second copy would
     lose. Sharing it is the one place a bill still leans on the task core, and
     it leans on a calculation rather than on a record.
+
+    **One period on, and never past today — the asymmetry §2 is built on.**
+    That function advances until it clears *today*, because five missed bin
+    rounds are five things that did not happen and inventing them is fabricated
+    history. A payment you did not make is still owed, so paying June's rent in
+    August must produce **July's**, not September's. Passing `bill.due_date` as
+    `today` asks the shared calculation for exactly one interval and leaves its
+    own doctrine, and the tasks that depend on it, untouched.
+
+    The `today` argument survives for `CadenceMode.FLOATING`, which ignores the
+    old due date entirely and counts from when the work was done — there is no
+    period to miss, so there is nothing here to correct.
+
+    What is still owed *between* the successor and today is
+    `catch_up`'s: this makes one, and that makes the rest.
     """
     series = bill.series
     if series is None or series.ended_at is not None:
@@ -158,7 +185,11 @@ def spawn_next(bill, *, today=None):
         owner=bill.owner,
         series=series,
         due_date=_advance_due_date(
-            bill.due_date, series.cadence, today=today, mode=series.cadence_mode
+            bill.due_date,
+            series.cadence,
+            today=today if series.cadence_mode == CadenceMode.FLOATING
+            else bill.due_date,
+            mode=series.cadence_mode,
         ),
         payee=series.payee,
         amount=None,
@@ -168,6 +199,108 @@ def spawn_next(bill, *, today=None):
         account=series.account,
         lead_days=series.lead_days,
     )
+
+
+#: A runaway guard, not a policy. A series can produce at most one occurrence
+#: per period since it was created, so real data is bounded by how long somebody
+#: has used the module -- a weekly bill untouched for two years is a hundred, and
+#: that is a true hundred. What this catches is a corrupt cadence or a due date
+#: seeded far in the past, where the honest response is to stop and say so
+#: rather than to write five thousand rows quietly.
+REPLAY_LIMIT = 400
+
+
+@transaction.atomic
+def catch_up(owner=None, today=None):
+    """Create every occurrence a live series has come to owe, up to today.
+
+    **This is the increment the model was argued for.**
+    `architecture-trajectory.md` §4 grants a model for a different life cycle,
+    and `bill-as-a-model-plan.md` §2 names it: the same event -- a period
+    elapsing unfinished -- has opposite meanings. A missed bin round did not
+    happen. A missed payment is still owed.
+
+    **Measured before it was written**, September 1, 2026. Nothing created an
+    occurrence except settling or deleting one, so a series nobody touched never
+    grew: a monthly card bill due August 20 and unpaid had exactly one row and
+    would have had one in 2027. **The further behind you were, the less the
+    module said** -- which is the doctrine's cost, not a bug in any one
+    function.
+
+    **Nobody is asked to confirm anything.** `modules.md`'s input ratio counts a
+    prompt about a skipped period as feeding, and `principles.md` sanctions this
+    outright: routine generation is an automation that may act because the act
+    is visible and undoable -- a replayed bill is a row on a page with a delete
+    button.
+
+    **Nothing after today.** A bill not yet due is not owed, and creating it
+    would put a forecast in the same column as a debt.
+
+    **Anchored only.** Floating counts from when the work was done, so by
+    construction no period elapses unnoticed -- that argument is
+    `_advance_due_date`'s and it needs no second version here.
+
+    **Idempotent, and guaranteed so by the database.** It runs on a schedule and
+    a second pass within a day must not double somebody's rent;
+    `bill_one_occurrence_per_period` is the constraint that makes that a promise
+    rather than an intention, per `principles.md`'s rule that retry-safety is
+    bought with a constraint and not with care.
+
+    Returns how many it created, because a scheduled job whose output is silence
+    is a job nobody can tell has stopped.
+    """
+    today = today or timezone.localdate()
+    series = BillSeries.objects.filter(
+        ended_at__isnull=True, cadence_mode=CadenceMode.ANCHORED
+    ).exclude(cadence=Item.Recurrence.NONE)
+    if owner is not None:
+        series = series.filter(owner=owner)
+
+    created = 0
+    for rule in series.select_related("category", "account"):
+        latest = (
+            Bill.objects.filter(series=rule)
+            .order_by("-due_date")
+            .values_list("due_date", flat=True)
+            .first()
+        )
+        if latest is None:
+            # A series with no occurrence at all cannot be replayed: its schedule
+            # says how far apart they fall and nothing says where they started.
+            # `record` makes both together, so this is unreachable by any path
+            # here -- and skipped rather than guessed at if one is ever found.
+            continue
+        for _ in range(REPLAY_LIMIT):
+            following = _advance_due_date(
+                latest, rule.cadence, today=latest, mode=rule.cadence_mode
+            )
+            if following is None or following > today:
+                break
+            Bill.objects.create(
+                owner=rule.owner,
+                series=rule,
+                due_date=following,
+                payee=rule.payee,
+                # Unpriced, which is `spawn_next`'s rule and for its reason:
+                # what a bill comes to is a fact about *this* occurrence.
+                amount=None,
+                currency=rule.currency,
+                direction=rule.direction,
+                category=rule.category,
+                account=rule.account,
+                lead_days=rule.lead_days,
+            )
+            created += 1
+            latest = following
+        else:
+            logger.warning(
+                "catch_up stopped at the replay limit for series %s (%s, %s); "
+                "its due date or cadence is probably wrong.",
+                rule.pk,
+                rule.payee,
+                rule.cadence,
+            )
+    return created
 
 
 @transaction.atomic

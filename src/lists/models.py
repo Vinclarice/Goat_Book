@@ -928,6 +928,24 @@ class Bill(models.Model):
                 ),
                 name="bill_paid_at_and_amount_agree",
             ),
+            # **One occurrence per period, and the guarantee is the database's.**
+            # `bills.catch_up` runs on a schedule and is idempotent by design --
+            # it asks for the latest occurrence and builds forward from it -- but
+            # `principles.md` is explicit that retry-safety is bought with a
+            # constraint rather than with care, and two passes overlapping would
+            # otherwise double somebody's rent.
+            #
+            # **Scoped to the series, so one-offs are unaffected**: they carry no
+            # series and nulls do not collide, which is exactly right. Two
+            # invoices from one supplier on one day are two records, and the
+            # refusal that used to prevent that was an artifact the split removed
+            # -- see `test_bill_writes.WhatABillRefusesTest`. What cannot happen
+            # is one *schedule* claiming the same date twice, because a schedule
+            # is a rule about periods and a period happens once.
+            models.UniqueConstraint(
+                fields=["series", "due_date"],
+                name="bill_one_occurrence_per_period",
+            ),
         ]
 
     @property

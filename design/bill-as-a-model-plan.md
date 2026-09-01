@@ -316,20 +316,59 @@ Each is shippable and leaves the product working.
      priority, area, checklist or project, not hidden but absent. The task page
      spent the morning of the same day being taught to hide all five; that
      teaching was the argument for this page, made one field at a time.
-6. **Missed periods are replayed for bills** — the life-cycle difference in §2,
-   which is the whole justification, made real. Until this ships, the split has
-   been argued and not demonstrated.
+6. ~~**Missed periods are replayed for bills**~~ — **Done September 1, 2026.**
+   The life-cycle difference in §2, which is the whole justification, made
+   real; until this shipped the split had been argued and not demonstrated.
 
-   **A concrete instance of it, found on September 1, 2026** by a test that
-   started failing for no reason but the date. `spawn_next` borrows
-   `services._advance_due_date`, which will not produce an occurrence already
-   overdue — right for a task, and the doctrine §2 says is wrong for a bill.
-   So deleting August's rent *on September 1* produces **October's**, and
-   September's rent silently never exists. Settling has the same shape.
+   **Measured first, which is what `roadmap.md`'s entry asked for**, and the
+   finding was worse than the shape it predicted. That entry described *paid in
+   August, schedules September, July is gone*. What this checkout actually
+   held: *American Express*, monthly, due August 20, unpaid — **one occurrence,
+   and there would never be another.** The only thing that created a successor
+   was settling or deleting the current one, so a series nobody touches never
+   grows. **The further behind you were, the less the module said.**
 
-   That is not a defect to fix separately: it is exactly the behaviour this
-   increment changes, in the one function both paths go through. Recorded here
-   so it is fixed once, where the reasoning is, rather than twice.
+   **Two mechanisms, and both moved.** `spawn_next` skipped past today, so
+   paying June's rent in August produced September's and July was owed by
+   nobody — it now advances exactly one period and leaves
+   `_advance_due_date`'s own doctrine, and every task that depends on it,
+   untouched. And `bills.catch_up` replays whatever a live series has come to
+   owe, up to and including today.
+
+   **The asymmetry is asserted from both sides.**
+   `test_a_missed_bill_is_still_owed.py` ends with a test that a *task* still
+   skips: if that ever fails, the fix for bills has leaked into the doctrine
+   that is correct for tasks.
+
+   **The scheduled pass is the increment**, not a convenience on top of it.
+   `catch_up_bills` runs hourly from the playbook, in this same commit —
+   `CLAUDE.md` records three seams here that were built, tested, green and
+   never switched on, the digest among them. Hourly rather than nightly because
+   `catch_up` compares due dates against each owner's today and so has no
+   opinion about time zones.
+
+   **Not in a read**, which was the tempting shape: `principles.md` asks that
+   reads and writes stay distinct, and `money.open_bills_for` is called by the
+   agenda, the day, the digest and the calendar. Not folded into the digest
+   either, or bills would stop appearing for anybody who turned email off.
+
+   **Idempotence is a constraint, not a promise.**
+   `bill_one_occurrence_per_period` — `principles.md`'s rule that retry-safety
+   is bought with a database constraint rather than with care. Scoped to the
+   series, so one-offs are unaffected and two invoices from one supplier on one
+   day remain two records.
+
+   **Nobody confirms anything**, per `modules.md`'s input ratio, and
+   `principles.md` sanctions it outright: routine generation may act because
+   the act is visible and undoable — a replayed bill is a row with a delete
+   button.
+
+   **The arrears risk that entry named is real and was not designed around.**
+   Demonstrated against this checkout's own data, rolled forward and rolled
+   back: at March 1, 2027 the untouched Amex series produces **six** further
+   unpaid rows. That is true, and a module that hid it would be lying about
+   money — but it is the thing to watch first if the page becomes unusable, and
+   §7 already says so.
 7. **`Account.paid_by` returns, as `Bill.account`.** The disconnect Vince
    actually reported. It comes last only because the model it points at should
    exist first; **if the split stalls, this is the increment to do anyway**, on
@@ -357,6 +396,15 @@ to buy a modelling one, and that is a bad trade made visible. Stop at 4, keep
 produces *"a page full of arrears nobody will action"* — `roadmap.md`'s own
 words — then the life-cycle difference that justified the model was
 theoretical, and this file should say so rather than quietly keeping the model.
+
+**It shipped on September 1, 2026 and this condition stays open**, because
+whether it produces a wall is a question about use rather than about code.
+Measured on this checkout's data: one untouched monthly series produces six
+further unpaid rows by March 2027, which the month page spreads across six
+months and the agenda would show together. **The signal to watch is the
+agenda**, and the cheapest answer if it arrives is a per-series cap on how many
+unpaid occurrences are surfaced — not a retreat from the model, which the
+month, the landing page and the digest all now depend on.
 
 ## 8. Where the facts live
 

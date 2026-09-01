@@ -30,12 +30,10 @@ function billsData(overrides: Record<string, unknown> = {}) {
     bills: [
       {
         task_id: 1,
-        text: "Rent",
         due_date: "2026-08-01",
         amount: "1200.00",
         currency: "USD",
         payee: "Landlord",
-        url: "/api/items/1/",
         paid: false,
         repeats: true,
       category: null,
@@ -96,7 +94,7 @@ describe("MoneyRoute", () => {
     // The same figure appears twice with one bill -- once on its row and
     // once as the month's total -- so each is asserted where it belongs
     // rather than by a text match that could match either.
-    const row = (await screen.findByText("Rent")).closest("li")!;
+    const row = (await screen.findByText("Landlord")).closest("li")!;
     expect(within(row).getByText("1200.00 USD")).toBeInTheDocument();
     expect(screen.getByText(/still to pay/)).toBeInTheDocument();
   });
@@ -112,12 +110,10 @@ describe("MoneyRoute", () => {
           bills: [
             {
               task_id: 1,
-              text: "Rent",
               due_date: "2026-08-01",
               amount: "1200.00",
               currency: "USD",
               payee: "Landlord",
-              url: "/api/items/1/",
               paid: true,
               repeats: false,
       category: null,
@@ -137,7 +133,7 @@ describe("MoneyRoute", () => {
 
     renderAt();
 
-    expect(await screen.findByText("Rent")).toBeInTheDocument();
+    expect(await screen.findByText("Landlord")).toBeInTheDocument();
     expect(screen.getByText("paid")).toBeInTheDocument();
     expect(screen.getByText("Everything this month is paid.")).toBeInTheDocument();
   });
@@ -161,7 +157,6 @@ describe("MoneyRoute", () => {
       amount,
       currency: "USD",
       payee: "Someone",
-      url: `/api/items/${task_id}/`,
       paid,
       repeats: false,
       category: null,
@@ -247,12 +242,10 @@ describe("MoneyRoute", () => {
           bills: [
             {
               task_id: 2,
-              text: "Water",
               due_date: "2026-08-10",
               amount: null,
               currency: "USD",
               payee: "",
-              url: "/api/items/2/",
             },
           ],
           due_totals: {},
@@ -425,12 +418,10 @@ describe("MoneyRoute", () => {
             bills: [
               {
                 task_id: 1,
-                text: "Plumber",
                 due_date: "2026-08-04",
                 amount: "90.00",
                 currency: "USD",
                 payee: "Plumber",
-                url: "/api/items/1/",
                 paid: false,
                 repeats: false,
       category: null,
@@ -496,12 +487,10 @@ describe("MoneyRoute", () => {
           bills: [
             {
               task_id: 1,
-              text: "Rent",
               due_date: "2026-08-01",
               amount: "1200.00",
               currency: "USD",
               payee: "Landlord",
-              url: "/api/items/1/",
               paid: true,
               repeats: false,
       category: null,
@@ -536,12 +525,10 @@ describe("MoneyRoute", () => {
           bills: [
             {
               task_id: 1,
-              text: "Pay Landlord",
               due_date: "2026-08-01",
               amount: "1200.00",
               currency: "USD",
               payee: "Landlord",
-              url: "/api/items/1/",
               paid: false,
               repeats: true,
       category: null,
@@ -554,12 +541,10 @@ describe("MoneyRoute", () => {
             },
             {
               task_id: 2,
-              text: "From Acme Ltd",
               due_date: "2026-08-28",
               amount: "3200.00",
               currency: "USD",
               payee: "Acme Ltd",
-              url: "/api/items/2/",
               paid: false,
               repeats: true,
               category: null,
@@ -659,7 +644,6 @@ describe("MoneyRoute", () => {
       amount: "10.00",
       currency: "USD",
       payee,
-      url: `/api/items/${task_id}/`,
       paid: false,
       repeats: true,
       category,
@@ -698,7 +682,7 @@ describe("MoneyRoute", () => {
 
     renderAt();
 
-    await screen.findByText("Rent");
+    await screen.findByText("Landlord");
     expect(screen.queryByText("Uncategorised")).not.toBeInTheDocument();
   });
 

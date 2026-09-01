@@ -26,6 +26,7 @@ from django.utils.formats import date_format
 from accounts.models import User
 from clarice.scheduled_mail import deliver_once_a_day
 from lists import agenda as agenda_reader
+from lists import money as money_reader
 
 
 # The local hours a digest is considered due, as [start, end). Not a
@@ -88,7 +89,42 @@ def _coming(item, today):
     )
 
 
-def build_message(user, items, coming, today):
+def _describe_bill(bill, today):
+    """One owed bill, as a line of the morning email.
+
+    **Not `_describe`.** A bill has no area to name and no `/tasks/{id}` to
+    open, so borrowing the task renderer would print a task's sentence about a
+    record that is not one and hand somebody a link that 404s. What it has
+    instead is a figure, which is the thing worth seeing in a message read on
+    a lock screen.
+    """
+    days = (today - bill.due_date).days
+    if days > 0:
+        when = "due yesterday" if days == 1 else f"{days} days overdue"
+    else:
+        when = "due today"
+    what = f"{bill.amount} {bill.currency}, " if bill.amount is not None else ""
+    return "\n".join(
+        [
+            f"  - {bill.payee} ({what}{when})",
+            f"    {_app_url(f'money/bills/{bill.id}')}",
+        ]
+    )
+
+
+def _coming_bill(bill, today):
+    days = (bill.due_date - today).days
+    when = "tomorrow" if days == 1 else f"in {days} days"
+    what = f"{bill.amount} {bill.currency}, " if bill.amount is not None else ""
+    return "\n".join(
+        [
+            f"  - {bill.payee} ({what}due {when})",
+            f"    {_app_url(f'money/bills/{bill.id}')}",
+        ]
+    )
+
+
+def build_message(user, items, coming, today, bills=(), coming_bills=()):
     overdue = [
         item for item in items
         if agenda_reader.bucket_for(item.due_date, today)
@@ -113,27 +149,45 @@ def build_message(user, items, coming, today):
         lines.append(f"Coming up ({len(coming)}):")
         lines += [_coming(item, today) for item in coming]
         lines.append("")
+    # **Bills in their own sections**, for the reason the day page gives them
+    # their own: there is nothing to file one in and nothing to pin, so a
+    # merged list would either show fields a bill has not got or special-case
+    # the ones it has. Below the tasks because paying is usually the shorter
+    # list, not because it matters less.
+    if bills:
+        lines.append(f"Bills ({len(bills)}):")
+        lines += [_describe_bill(bill, today) for bill in bills]
+        lines.append("")
+    if coming_bills:
+        lines.append(f"Bills coming up ({len(coming_bills)}):")
+        lines += [_coming_bill(bill, today) for bill in coming_bills]
+        lines.append("")
     lines.append(f"Work through them: {_app_url('day')}")
     return "\n".join(lines)
 
 
-def build_subject(items, today, coming=()):
+def build_subject(items, today, coming=(), bills=(), coming_bills=()):
     overdue = sum(
         1 for item in items
         if agenda_reader.bucket_for(item.due_date, today)
         == agenda_reader.OVERDUE
     )
+    # Counted into the same two words rather than given a third. "2 overdue,
+    # 1 due today" is what somebody wants from a subject line; "1 overdue, 1
+    # overdue bill" is the model leaking into the one sentence that has to
+    # survive being read on a lock screen.
+    overdue += sum(1 for bill in bills if bill.due_date < today)
     parts = []
     if overdue:
         parts.append(f"{overdue} overdue")
-    remaining = len(items) - overdue
+    remaining = len(items) + len(bills) - overdue
     if remaining:
         parts.append(f"{remaining} due today")
     # Only when there is nothing due, so a quiet week's advance warning still
     # has a subject that says something -- and a busy day's subject is not
     # diluted by a bill a week away.
-    if not parts and coming:
-        parts.append(f"{len(coming)} coming up")
+    if not parts and (coming or coming_bills):
+        parts.append(f"{len(coming) + len(coming_bills)} coming up")
     return f"Clarice · {date_format(today, 'M j')} · " + ", ".join(parts)
 
 
@@ -195,14 +249,25 @@ class Command(BaseCommand):
         def compose(user, today):
             items = agenda_reader.digest_items_for(user, today)
             coming = agenda_reader.coming_up_for(user, today)
-            # Either alone is worth a message. Gating on `items` only would
+            # **Four sources, not two**, since increment 4 of
+            # bill-as-a-model-plan.md: a bill is no longer an `Item`, so the
+            # two reads above return none of them and this -- the product's
+            # only outbound channel -- would have gone quiet about the records
+            # it is most useful for.
+            bills = [
+                bill
+                for bill in money_reader.open_bills_for(user)
+                if bill.due_date <= today
+            ]
+            coming_bills = money_reader.coming_bills_for(user, today)
+            # Any one alone is worth a message. Gating on `items` only would
             # leave the one channel that exists to warn you in advance silent
             # on exactly the quiet day it is for.
-            if not items and not coming:
+            if not items and not coming and not bills and not coming_bills:
                 return None
             return (
-                build_subject(items, today, coming),
-                build_message(user, items, coming, today),
+                build_subject(items, today, coming, bills, coming_bills),
+                build_message(user, items, coming, today, bills, coming_bills),
             )
 
         def show(user, subject, body):

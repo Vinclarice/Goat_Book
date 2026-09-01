@@ -109,11 +109,21 @@ def drop_copied_bills(apps, schema_editor):
     """Reverse by emptying both tables, which is safe **only while they are
     dark**.
 
-    Nothing writes them until increment 4, so everything in them came from the
-    forward function and deleting it loses nothing. **This reverse stops being
-    correct the moment increment 4 ships**, and that is the increment where
-    a rollback becomes `MIGRATION.md`'s restore drill rather than a
-    `migrate` command -- the same caveat `CLAUDE.md` records about rolling
+    Nothing wrote them until increment 4, so on a database where that has not
+    run, everything in them came from the forward function and deleting it
+    loses nothing.
+
+    **Increment 4 shipped on August 31, 2026 and this reverse became
+    destructive.** From then on the `Bill` rows are the record and the tasks
+    are gone -- `0057_retire_the_tasks_that_were_bills` deleted them -- so
+    reversing this on a live database deletes somebody's financial history and
+    reversing `0057` first does not bring the tasks back to replace it.
+
+    It is left runnable rather than made to raise, because the alternative is
+    an un-rewindable graph and every other app's migration tests rewind the
+    whole of it. What protects production is not this function: it is that
+    rolling a data migration back there is `MIGRATION.md`'s restore drill and
+    never a `migrate` command -- the caveat `CLAUDE.md` records about rolling
     back code but not the database.
     """
     apps.get_model("lists", "Bill").objects.all().delete()

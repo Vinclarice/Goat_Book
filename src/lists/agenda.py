@@ -11,7 +11,8 @@ from django.db.models import Case, Count, F, IntegerField, Q, Value, When
 from django.urls import reverse
 from django.utils import timezone
 
-from lists.models import Direction, Item, List, Priority
+from lists import money
+from lists.models import Item, List, Priority
 from lists.serializers import project_ref_for, serialize_item
 
 
@@ -192,19 +193,17 @@ def snooze_presets(today):
     ]
 
 
-def open_items_for(user, *, include_bills=True):
+def open_items_for(user):
     """Every task the user still has to do, across all of their lists.
 
-    **`include_bills=False` is the agenda and the day page**, which carry bills
-    in an array of their own since August 31, 2026 — `bill-as-a-model-plan.md`
-    decision 4, which keeps bills on those surfaces while they stop being
-    tasks. Passing it here rather than filtering in each caller keeps the
-    single selection point single: the digest and coming-up still get bills
-    inline, because their format has one kind of row and nothing to merge into.
-
-    **They move array, not visibility.** A bill excluded here appears in
-    `bills` instead, so the same bills are on the same screens; what changes is
-    which shape they arrive in, and therefore what can be done to them.
+    **No bills, and no filter for them either.** For one day this took an
+    `include_bills` flag, while some callers wanted the task-backed bills and
+    others did not; increment 4 of `bill-as-a-model-plan.md` settled it by
+    making a bill something other than an `Item`, so there is nothing here to
+    include or exclude. Every surface that shows bills has a `Bill` source of
+    its own — `open_bill_rows_for` for the agenda and the day,
+    `money.open_bills_for` and `money.coming_bills_for` for the digest and the
+    calendar.
 
     **Income is not one of them.** A salary is money moving toward you on a
     date, which the money module tracks and can call late -- but it is not
@@ -220,13 +219,8 @@ def open_items_for(user, *, include_bills=True):
     selection point the day and the agenda both use -- which is why the
     exclusion costs one clause instead of an audit.
     """
-    selected = Item.objects.filter(owner=user, status=Item.Status.ACTIVE)
-    if include_bills:
-        selected = selected.exclude(money_line__direction=Direction.IN)
-    else:
-        selected = selected.filter(money_line__isnull=True)
     return (
-        selected
+        Item.objects.filter(owner=user, status=Item.Status.ACTIVE)
         .select_related("list")
         .prefetch_related("tags")
         .annotate(
@@ -346,17 +340,10 @@ def open_bill_rows_for(user):
     where `Bill.objects` arrives and neither caller changes --
     `bill-as-a-model-plan.md` increment 5.
     """
-    return (
-        Item.objects.filter(
-            owner=user, status=Item.Status.ACTIVE, money_line__isnull=False
-        )
-        .exclude(money_line__direction=Direction.IN)
-        .select_related("money_line")
-        .order_by("due_date", "id")
-    )
+    return money.open_bills_for(user)
 
 
-def _agenda_bill_out(item):
+def _agenda_bill_out(bill):
     """One bill, as the agenda and the day carry it.
 
     **Not `serialize_item`.** A bill row on these screens needs what a bill is
@@ -369,15 +356,15 @@ def _agenda_bill_out(item):
     changes, which is the one piece of this that will read oddly for a while
     and is cheaper than a rename on both sides.
     """
-    bill = item.money_line
+    series = bill.series
     return {
-        "task_id": item.id,
+        "task_id": bill.id,
         "payee": bill.payee,
-        "due_date": item.due_date.isoformat() if item.due_date else None,
+        "due_date": bill.due_date.isoformat(),
         "amount": str(bill.amount) if bill.amount is not None else None,
         "currency": bill.currency,
         "direction": bill.direction,
-        "repeats": item.recurrence != Item.Recurrence.NONE,
+        "repeats": series is not None and series.ended_at is None,
     }
 
 

@@ -13,7 +13,6 @@ import {
   updateChecklistStepCarriesForward,
   updateChecklistStepDone,
   moveTaskToArea,
-  updateTaskBill,
   updateTaskLeadDays,
   updateTaskPriority,
   updateTaskDueDate,
@@ -31,7 +30,6 @@ import type {
   CadenceMode,
   ChecklistStep,
   Task,
-  TaskBill,
   TaskPriority,
   TaskRecurrence,
 } from "../../types";
@@ -120,23 +118,17 @@ export function TaskDetailRoute() {
   const [busy, setBusy] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
-  /** What this page calls the thing it is showing.
-   *
-   * **`money-module-plan.md`'s premise is that a bill is made and managed
-   * without anybody saying "task"**, and this page said it in the heading, in
-   * the field label, and in every notice a person reads immediately after
-   * acting. The heading was fixed on August 31, 2026 and the rest still leaked
-   * — *"Task updated."* after renaming a bill.
-   *
-   * One noun, declared once, rather than a ternary at each of fifteen strings:
-   * `principles.md`'s *one rule, one authoritative definition*, applied to
-   * vocabulary. The sidecar's presence is the whole test — `bill` is null on a
-   * task nobody has priced, and an object, possibly with a null amount, on one
-   * somebody marked.
-   */
-  const isBill = task?.bill != null;
-  const noun = isBill ? "Bill" : "Task";
-  const lowerNoun = noun.toLowerCase();
+  /* **This page no longer knows what a bill is**, and the whole apparatus
+     that made it pretend to is gone: `isBill`, a declared noun so fifteen
+     strings could say "Bill", three flags hiding Priority, Area and Checklist,
+     a back-link to Money, and a panel for editing an amount and a payee.
+
+     Every one of those was written on August 31, 2026, and each was an
+     admission that a bill was on the wrong screen. `bill-as-a-model-plan.md`
+     removed the possibility rather than the awkwardness: a bill is a `Bill`,
+     it has `/money/bills/:id`, and nothing routes here any more. */
+  const noun = "Task";
+  const lowerNoun = "task";
 
   const { data, isPending, isError, error: loadError, refetch } = useQuery({
     queryKey: ["task", id],
@@ -393,22 +385,6 @@ export function TaskDetailRoute() {
     }
   }
 
-  async function handleBill(bill: TaskBill | null) {
-    if (!task) return;
-    setError(null);
-    setNotice(null);
-    setBusy(true);
-    try {
-      const updated = await updateTaskBill(task, bill);
-      setTask(updated);
-      setNotice(bill === null ? "No longer a bill." : "Bill saved.");
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unable to save the bill.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
   async function handlePriority(priority: TaskPriority) {
     if (!task) return;
     setError(null);
@@ -566,25 +542,6 @@ export function TaskDetailRoute() {
 
   const archived = task.status === "archived";
 
-  /* **Task-shaped controls a bill has no use for** — Vince, August 31, 2026:
-     *"they aren't needed for bills."* A bill is unfiled by design
-     (`create_bill` makes a standing task), it is not ranked against other
-     work, and it has no steps.
-
-     **Hidden only when there is nothing to lose**, which is the whole care
-     here: any task can be marked a bill from this page, including one already
-     carrying a priority, an area or a checklist. Hiding those unconditionally
-     would make real records invisible while they went on existing — and a
-     recurring one would go on cloning its steps onto every occurrence, from a
-     page that showed no steps. `principles.md`: durable records stay
-     recoverable.
-
-     So the control disappears for a clean bill and stays for a task that
-     became one, which is the only case where it was ever carrying anything. */
-  const showPriority = !isBill || task.priority !== "none";
-  const showArea = !isBill || areaRef !== null;
-  const showChecklist = !isBill || checklistSteps.length > 0;
-
   // Whether "does this subtask come back next time?" is a question worth
   // asking at all. The flag exists on every subtask regardless; this only
   // decides whether the controls for it are worth the screen space.
@@ -592,30 +549,18 @@ export function TaskDetailRoute() {
 
   return (
     <div className="max-w-lg mx-auto px-4 py-8 space-y-6">
-      {/* **A bill knows it is one.** money-module-plan.md's premise is *a
-          bill, made where bills are, without anybody saying "task"*, and this
-          page said it twice to somebody arriving from /money: a heading
-          reading "Task detail" and an eyebrow reading "No area" -- true, since
-          create_bill makes a standing task deliberately, and both read as
-          defects on a surface that never mentions areas or tasks.
-
-          The row has linked here since the Bills work. What changed on August
-          30, 2026 is that it stopped hanging on "Loading…" for ever, which is
-          how a leak this old became visible. */}
       <Link
-        to={isBill ? "/money" : areaRef ? `/areas/${areaRef.id}` : "/agenda"}
+        to={areaRef ? `/areas/${areaRef.id}` : "/agenda"}
         className="text-sm text-muted-foreground hover:text-foreground"
       >
-        ← Back to {isBill ? "Money" : areaRef ? areaRef.title : "the agenda"}
+        ← Back to {areaRef ? areaRef.title : "the agenda"}
       </Link>
 
       <div>
         <p className="text-xs font-bold uppercase tracking-wide text-accent">
-          {isBill ? "Bill" : areaRef ? areaRef.title : "No area"}
+          {areaRef ? areaRef.title : "No area"}
         </p>
-        <h1 className="text-2xl font-bold">
-          {isBill ? "Bill detail" : "Task detail"}
-        </h1>
+        <h1 className="text-2xl font-bold">Task detail</h1>
       </div>
 
       {archived && (
@@ -757,73 +702,7 @@ export function TaskDetailRoute() {
         </p>
       </div>
 
-      {/* A bill is a recurring task with a number on it -- §4 said no to a
-          primitive, and the vision document's own example is "pay rent every
-          month". So this edits a sidecar rather than a different kind of
-          thing, and the task above is untouched either way. */}
-      <div className="space-y-1">
-        <p className="text-sm font-bold">Bill</p>
-        {task.bill === null ? (
-          <Button
-            type="button"
-            variant="ghost"
-            disabled={busy}
-            onClick={() => handleBill({ amount: null, currency: "USD", payee: "" })}
-          >
-            This is a bill
-          </Button>
-        ) : (
-          <div className="space-y-2 rounded-lg border border-border px-3 py-2">
-            <div className="space-y-1">
-              <label htmlFor="bill-amount" className="text-sm">
-                Amount
-              </label>
-              <input
-                id="bill-amount"
-                aria-label="Amount"
-                inputMode="decimal"
-                defaultValue={task.bill.amount ?? ""}
-                disabled={busy}
-                onBlur={(event) =>
-                  handleBill({
-                    ...task.bill!,
-                    amount: event.target.value.trim() || null,
-                  })
-                }
-                className="w-full rounded-lg border border-border bg-input px-3 py-1.5"
-              />
-            </div>
-            <div className="space-y-1">
-              <label htmlFor="bill-payee" className="text-sm">
-                Payee
-              </label>
-              <input
-                id="bill-payee"
-                aria-label="Payee"
-                defaultValue={task.bill.payee}
-                disabled={busy}
-                onBlur={(event) =>
-                  handleBill({ ...task.bill!, payee: event.target.value })
-                }
-                className="w-full rounded-lg border border-border bg-input px-3 py-1.5"
-              />
-            </div>
-            {/* An empty amount is a real state -- "the water bill, whatever
-                it comes to" -- so this removes the bill rather than the
-                number. */}
-            <Button
-              type="button"
-              variant="ghost"
-              disabled={busy}
-              onClick={() => handleBill(null)}
-            >
-              Not a bill
-            </Button>
-          </div>
-        )}
-      </div>
-
-      {showPriority && (
+      {(
       <div className="space-y-1">
         <label htmlFor="task-priority" className="text-sm font-bold">
           Priority
@@ -845,7 +724,7 @@ export function TaskDetailRoute() {
 
       )}
 
-      {showArea && (
+      {(
       <div className="space-y-1">
         <label htmlFor="task-area" className="text-sm font-bold">
           Area
@@ -923,7 +802,7 @@ export function TaskDetailRoute() {
           task's project comes from its Area now, so it's shown (and
           changed) on the Area's own page instead, not repeated here. */}
 
-      {showChecklist && (
+      {(
       <div className="space-y-2">
         <h2 className="text-sm font-bold">
           Checklist{" "}

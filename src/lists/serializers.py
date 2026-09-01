@@ -22,25 +22,6 @@ def serialize_checklist_step(step):
     }
 
 
-def _bill_for(item):
-    # **`money_line`, not `bill`** -- the reverse accessor was renamed with the
-    # model on August 27, 2026. A string here is invisible to a symbol rename,
-    # so this returned None for every task until a test caught it, and the
-    # payload said "not a bill" about bills.
-    #
-    # **The payload key stays `bill`**, and that is not an oversight: this is
-    # the task detail's answer to *is this task a bill*, a task's bill is still
-    # a bill, and income is never set from here.
-    bill = getattr(item, "money_line", None)
-    if bill is None:
-        return None
-    return {
-        "amount": str(bill.amount) if bill.amount is not None else None,
-        "currency": bill.currency,
-        "payee": bill.payee,
-    }
-
-
 def serialize_item(item):
     return {
         "id": item.id,
@@ -58,11 +39,6 @@ def serialize_item(item):
         "recurrence": item.recurrence,
         "priority": item.priority,
         "lead_days": item.lead_days,
-        # Null rather than an empty object: "not a bill" and "a bill with
-        # nothing filled in" are different facts, and the second is reachable
-        # on purpose. `getattr` because a OneToOne with no row raises rather
-        # than answering None.
-        "bill": _bill_for(item),
         "notes": item.notes,
         # Just the id -- callers already have (or can fetch) the area's
         # title/url from the top-level `areas` array in the page payload,

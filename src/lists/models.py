@@ -930,6 +930,32 @@ class Bill(models.Model):
             ),
         ]
 
+    @property
+    def paid(self):
+        """Settled, whichever direction the money went.
+
+        **`paid_at`, and there is nothing else to consult.** The read this
+        replaced had to explain that a paid *recurring* task is `ARCHIVED`
+        rather than `COMPLETED`, so settlement could never be taken from the
+        status -- a paragraph of reconciliation that has no equivalent here.
+        Kept as a property rather than left to callers so that "settled" has
+        one spelling.
+        """
+        return self.paid_at is not None
+
+    def overdue_on(self, today):
+        """Still owed, and its date has passed.
+
+        `today` is injected rather than read from the clock, for the reason
+        every date rule here is: the day boundary belongs to the owner's zone,
+        and `clarice.clocks` is the authority. A browser computing this would
+        be a second opinion.
+
+        **Income can be overdue too**, and deliberately: a salary that has not
+        arrived is exactly the thing worth saying out loud.
+        """
+        return self.paid_at is None and self.due_date < today
+
     def __str__(self):
         return f"{self.payee} due {self.due_date}"
 

@@ -26,6 +26,7 @@ from decimal import Decimal
 from django.test import TestCase
 
 from accounts.models import User
+from lists import bills
 from lists import services
 from lists.models import MoneyCategory
 
@@ -90,38 +91,38 @@ class CategoriesTest(TestCase):
 
     def test_a_bill_starts_uncategorised(self):
         """A bill added in a hurry does not have to answer a filing question."""
-        bill = services.create_bill(
+        bill = bills.record(
             self.user, payee="Landlord", amount=Decimal("1200.00"), due_date=AUGUST
         )
 
-        self.assertIsNone(bill.money_line.category)
+        self.assertIsNone(bill.category)
 
     def test_a_bill_can_be_filed_and_refiled(self):
-        bill = services.create_bill(
+        bill = bills.record(
             self.user, payee="Landlord", amount=Decimal("1200.00"), due_date=AUGUST
         )
         housing = services.categories_for(self.user).get(name="Housing")
 
-        services.update_bill(bill, category=housing)
+        bills.update(bill, category=housing)
 
         bill.refresh_from_db()
-        self.assertEqual(bill.money_line.category, housing)
+        self.assertEqual(bill.category, housing)
 
     def test_deleting_a_category_leaves_its_bills_alone(self):
         """A category is a label, not a container. Losing the label must not
         lose the bill -- which is what SET_NULL says and what this asserts,
         because it is the kind of thing a later edit gets wrong."""
-        bill = services.create_bill(
+        bill = bills.record(
             self.user, payee="Landlord", amount=Decimal("1200.00"), due_date=AUGUST
         )
         housing = services.categories_for(self.user).get(name="Housing")
-        services.update_bill(bill, category=housing)
+        bills.update(bill, category=housing)
 
         services.delete_category(housing)
 
         bill.refresh_from_db()
-        self.assertIsNone(bill.money_line.category)
-        self.assertEqual(bill.money_line.payee, "Landlord")
+        self.assertIsNone(bill.category)
+        self.assertEqual(bill.payee, "Landlord")
 
     def test_renaming_to_an_existing_name_is_refused(self):
         categories = services.categories_for(self.user)

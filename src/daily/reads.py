@@ -16,7 +16,7 @@ from django.db.models import F
 
 from clarice.search import to_query
 from daily.models import DailyEntry, DailyFocus
-from lists import agenda
+from lists import agenda, money
 
 
 # Which of the agenda's buckets a day surfaces: what is late, and what is
@@ -90,7 +90,7 @@ def action_items_for(owner, day):
     `draft_day`, which wants it for a second reason.
     """
     grouped = agenda.bucketed(
-        agenda.open_items_for(owner, include_bills=False), day
+        agenda.open_items_for(owner), day
     )
     return [item for key in DAY_BUCKETS for item in grouped[key]]
 
@@ -197,8 +197,9 @@ def month_for(owner, day):
     **A view over what is already there.** Two queries over rows that exist.
     The calendar that carries *events* is later work and needs a model this
     does not; routines are deferred by name here because they are measured
-    over a period rather than due on a date, and bills because they do not
-    exist yet.
+    over a period rather than due on a date. **Bills are counted**, and were
+    before they had a model of their own -- see the comment below, which is
+    the correction of what this paragraph used to claim.
 
     **Any day of the month addresses the same month**, the courtesy
     `intention_for` gives a week -- a client that had to know which day a month
@@ -209,6 +210,17 @@ def month_for(owner, day):
 
     due = Counter(
         agenda.open_items_for(owner)
+        .filter(due_date__gte=first, due_date__lte=last)
+        .values_list("due_date", flat=True)
+    )
+    # **Bills, counted deliberately rather than by accident.** They were in
+    # this figure before increment 4 of bill-as-a-model-plan.md because a bill
+    # was a task with a due date and this asks for tasks with due dates -- so
+    # the split would have quietly emptied it. A day with rent due is a day
+    # with something on it, which is decision 4 on the surface that shows
+    # thirty-one days at once.
+    due.update(
+        money.open_bills_for(owner)
         .filter(due_date__gte=first, due_date__lte=last)
         .values_list("due_date", flat=True)
     )

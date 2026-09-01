@@ -23,7 +23,6 @@ import { RouteFailure } from "./RouteFailure";
  */
 type Line = {
   task_id: number;
-  text: string;
   payee: string;
   due_date: string;
   amount: string | null;
@@ -63,7 +62,7 @@ function Section({
           >
             <span className="min-w-0">
               <Link to={`/tasks/${line.task_id}`} className="hover:underline">
-                {line.payee || line.text}
+                {line.payee}
               </Link>
               <span
                 className={`ml-2 text-xs ${

@@ -87,16 +87,13 @@ ELSEWHERE = {
     # against the old one by `lists/tests/test_bill_reads_agree.py` and called
     # by nothing until increment 4 moves the writes. Caught by this test within
     # minutes of being written, which is the third time it has paid for itself.
-    "lists/money.py": (
-        "landing_from_bills",
-        "month_from_bills",
-        "open_bills_for",
-    ),
-    # The whole write half of the bill split, dark together and switching on
-    # together -- increment 4 of bill-as-a-model-plan.md. `spawn_next` is
-    # absent because `settle` and `remove` call it, which is what this guard
-    # means by a caller.
-    "lists/bills.py": ("record", "remove", "revise_series", "settle", "update"),
+    # `lists/money.py` and `lists/bills.py` were both here until increment 4 of
+    # bill-as-a-model-plan.md shipped on August 31, 2026 -- the whole read half
+    # and the whole write half of the bill split, dark together and switched on
+    # together in one commit, because reading `Bill` while `MoneyLine` stayed
+    # authoritative would have needed every money mutation mirrored across two
+    # models. **Both entries are gone rather than emptied**, which is the shape
+    # this registry wants: a module with nothing dark in it does not appear.
     "routines/reads.py": ("occurrence_for",),
     "accounts/export.py": ("owned_models", "export_key"),
 }

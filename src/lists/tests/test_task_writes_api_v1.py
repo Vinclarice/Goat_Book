@@ -188,17 +188,6 @@ class TaskWriteApiTest(TestCase):
 
         self.assertEqual(response.status_code, 422)
 
-    def test_marks_and_unmarks_a_bill(self):
-        marked = self.patch(
-            self.task.id, {"bill": {"amount": "12.34", "currency": "gbp", "payee": "EDF"}}
-        )
-        self.assertEqual(marked.json()["task"]["bill"]["amount"], "12.34")
-        # Upper-cased and truncated at the boundary, as the old view did.
-        self.assertEqual(marked.json()["task"]["bill"]["currency"], "GBP")
-
-        cleared = self.patch(self.task.id, {"bill": None})
-        self.assertIsNone(cleared.json()["task"]["bill"])
-
     def test_refuses_a_negative_bill(self):
         response = self.patch(self.task.id, {"bill": {"amount": "-1"}})
 

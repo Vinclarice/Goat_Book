@@ -230,7 +230,6 @@ function AddBill({
 
 type BillRow = {
   task_id: number;
-  text: string;
   due_date: string;
   amount: string | null;
   currency: string;
@@ -457,7 +456,7 @@ function PayBill({ bill }: { bill: BillRow }) {
         onClick={() => setOpen(true)}
         className="touch-target text-sm font-medium hover:underline"
         aria-label={`${bill.direction === "in" ? "Receive" : "Pay"} ${
-          bill.payee || bill.text
+          bill.payee
         }`}
       >
         {/* You pay a bill and you receive income. A button saying Pay beside a
@@ -528,7 +527,7 @@ function DeleteBill({ bill }: { bill: BillRow }) {
         onClick={() => remove.mutate(false)}
         disabled={remove.isPending}
         className="touch-target text-sm text-muted-foreground hover:text-foreground"
-        aria-label={`Delete ${bill.payee || bill.text}`}
+        aria-label={`Delete ${bill.payee}`}
       >
         Delete
       </button>
@@ -541,7 +540,7 @@ function DeleteBill({ bill }: { bill: BillRow }) {
         type="button"
         onClick={() => setAsking(true)}
         className="touch-target text-sm text-muted-foreground hover:text-foreground"
-        aria-label={`Delete ${bill.payee || bill.text}`}
+        aria-label={`Delete ${bill.payee}`}
       >
         Delete
       </button>
@@ -685,7 +684,7 @@ export function MoneyRoute() {
                       bill.paid ? "text-muted-foreground hover:underline" : "hover:underline"
                     }
                   >
-                    {bill.text}
+                    {bill.payee}
                   </Link>
                   {/* A word, not a strikethrough: paid is a good outcome and
                       the month's record of it should not read as cancelled. */}
@@ -719,11 +718,6 @@ export function MoneyRoute() {
                       {cadenceLabel(bill.recurrence).toLowerCase()}
                     </span>
                   )}
-                  {bill.payee && (
-                    <span className="ml-2 text-sm text-muted-foreground">
-                      {bill.payee}
-                    </span>
-                  )}
                 </span>
                 <span className="flex shrink-0 items-baseline gap-3">
                   <span className="text-sm text-muted-foreground">
@@ -754,7 +748,7 @@ export function MoneyRoute() {
                     type="button"
                     onClick={() => setEditing(bill.task_id)}
                     className="touch-target text-sm text-muted-foreground hover:text-foreground"
-                    aria-label={`Edit ${bill.payee || bill.text}`}
+                    aria-label={`Edit ${bill.payee}`}
                   >
                     Edit
                   </button>
@@ -787,7 +781,7 @@ export function MoneyRoute() {
                     >
                       <span className="min-w-0">
                         <span className={bill.paid ? "text-muted-foreground" : ""}>
-                          {bill.text}
+                          {bill.payee}
                         </span>
                         {bill.paid && (
                           <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
@@ -821,7 +815,7 @@ export function MoneyRoute() {
                           type="button"
                           onClick={() => setEditing(bill.task_id)}
                           className="touch-target text-sm text-muted-foreground hover:text-foreground"
-                          aria-label={`Edit ${bill.payee || bill.text}`}
+                          aria-label={`Edit ${bill.payee}`}
                         >
                           Edit
                         </button>

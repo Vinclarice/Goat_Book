@@ -19,8 +19,9 @@ from decimal import Decimal
 from django.test import TestCase
 
 from accounts.models import User
+from lists import bills
 from lists import money as money_reader, services
-from lists.models import AccountKind, Item
+from lists.models import Direction, AccountKind, Item
 
 TODAY = datetime.date(2026, 8, 25)
 
@@ -32,7 +33,7 @@ class TheMoneyLandingTest(TestCase):
         )
 
     def bill(self, payee, *, due, amount="100.00", recurrence=None, lead_days=0):
-        return services.create_bill(
+        return bills.record(
             self.user,
             payee=payee,
             amount=Decimal(amount),
@@ -42,7 +43,7 @@ class TheMoneyLandingTest(TestCase):
         )
 
     def landing(self, today=TODAY):
-        return money_reader.landing_for(self.user, today=today)
+        return money_reader.landing_from_bills(self.user, today=today)
 
     def test_what_is_due_soon_crosses_a_month_boundary(self):
         """The defect this increment exists for: a fortnight from the 25th is
@@ -53,8 +54,8 @@ class TheMoneyLandingTest(TestCase):
         soon = self.landing().due_soon
 
         self.assertEqual(
-            [row.task.text for row in soon],
-            ["Pay Internet", "Pay Landlord"],
+            [row.payee for row in soon],
+            ["Internet", "Landlord"],
             "A bill due in six days was invisible because it falls in September.",
         )
 
@@ -70,16 +71,16 @@ class TheMoneyLandingTest(TestCase):
 
         overdue = self.landing().overdue
 
-        self.assertEqual([row.task.text for row in overdue], ["Pay Old subscription"])
+        self.assertEqual([row.payee for row in overdue], ["Old subscription"])
 
     def test_a_paid_bill_is_neither_overdue_nor_soon(self):
         paid = self.bill("Internet", due=datetime.date(2026, 8, 20))
-        services.pay_bill(paid)
+        bills.settle(paid)
 
         found = self.landing()
 
         self.assertEqual(found.overdue, [])
-        self.assertEqual([row.task.text for row in found.due_soon], [])
+        self.assertEqual([row.payee for row in found.due_soon], [])
 
     def test_it_says_what_renews_inside_its_lead_time(self):
         """The reason the module exists, on the page you arrive at."""
@@ -92,7 +93,7 @@ class TheMoneyLandingTest(TestCase):
 
         renewing = self.landing().renewing_soon
 
-        self.assertEqual([row.task.text for row in renewing], ["Pay Adobe"])
+        self.assertEqual([row.payee for row in renewing], ["Adobe"])
 
     def test_something_outside_its_lead_time_stays_quiet(self):
         """Eleven months of silence is the whole point of a lead time."""
@@ -157,7 +158,7 @@ class TheMoneyLandingTest(TestCase):
 
     def test_one_persons_money_is_their_own(self):
         other = User.objects.create_user("bob", "bob@example.com", "a password")
-        services.create_bill(
+        bills.record(
             other, payee="Theirs", amount=Decimal("50.00"), due_date=TODAY
         )
 
@@ -185,7 +186,7 @@ class TellingEmptyApartTest(TestCase):
         )
 
     def landing(self):
-        return money_reader.landing_for(self.user, today=TODAY)
+        return money_reader.landing_from_bills(self.user, today=TODAY)
 
     def test_a_new_account_has_nothing_of_either_kind(self):
         reading = self.landing()
@@ -194,7 +195,7 @@ class TellingEmptyApartTest(TestCase):
         self.assertEqual(reading.account_count, 0)
 
     def test_a_bill_counts_as_a_line(self):
-        services.create_bill(
+        bills.record(
             self.user, payee="Landlord", amount=Decimal("100.00"), due_date=TODAY
         )
 
@@ -206,8 +207,8 @@ class TellingEmptyApartTest(TestCase):
     def test_income_counts_too(self):
         """`line_count` is money lines, not bills. Somebody who has only
         recorded income has started."""
-        services.create_income(
-            self.user, payer="Work", amount=Decimal("2000.00"), due_date=TODAY
+        bills.record(
+            self.user, direction=Direction.IN, payee="Work", amount=Decimal("2000.00"), due_date=TODAY
         )
 
         self.assertEqual(self.landing().line_count, 1)
@@ -226,15 +227,15 @@ class TellingEmptyApartTest(TestCase):
         which is the distinction this whole class exists for.
 
         **Two, not one**, and this assertion was wrong when first written:
-        paying a monthly bill advances the commitment, so the successor is a
-        real second line. Counting it is correct rather than an artefact --
+        settling a repeating bill produces its successor, so that is a real
+        second row. Counting it is correct rather than an artefact --
         somebody who has paid one rent and owes the next has emphatically
         started.
         """
-        bill = services.create_bill(
+        bill = bills.record(
             self.user, payee="Landlord", amount=Decimal("100.00"), due_date=TODAY
         )
-        services.complete_item(bill)
+        bills.settle(bill)
 
         self.assertEqual(self.landing().line_count, 2)
 
@@ -242,7 +243,7 @@ class TellingEmptyApartTest(TestCase):
         other = User.objects.create_user(
             "bob", "bob@example.com", "another secure password"
         )
-        services.create_bill(
+        bills.record(
             other, payee="Theirs", amount=Decimal("50.00"), due_date=TODAY
         )
         services.create_account(other, name="Theirs", kind=AccountKind.CARD)
@@ -284,7 +285,7 @@ class TheLandingEndpointTest(TestCase):
         self.assertEqual(payload["account_count"], 0)
 
     def test_it_answers_with_bills_and_accounts_recorded(self):
-        services.create_bill(
+        bills.record(
             self.user,
             payee="Landlord",
             amount=Decimal("1200.00"),

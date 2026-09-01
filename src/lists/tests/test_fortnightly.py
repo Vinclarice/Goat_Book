@@ -20,8 +20,9 @@ from decimal import Decimal
 from django.test import TestCase
 
 from accounts.models import User
+from lists import bills
 from lists import money as money_reader, services
-from lists.models import Item
+from lists.models import Bill, Direction, Item
 
 AUGUST = datetime.date(2026, 8, 14)
 
@@ -33,20 +34,22 @@ class FortnightlyTest(TestCase):
         )
 
     def test_it_is_a_cadence_a_person_can_choose(self):
-        salary = services.create_income(
+        salary = bills.record(
             self.user,
-            payer="Acme Ltd",
+            direction=Direction.IN,
+            payee="Acme Ltd",
             amount=Decimal("1600.00"),
             due_date=AUGUST,
             recurrence=Item.Recurrence.FORTNIGHTLY,
         )
 
-        self.assertEqual(salary.recurrence, Item.Recurrence.FORTNIGHTLY)
+        self.assertEqual(salary.series.cadence, Item.Recurrence.FORTNIGHTLY)
 
     def test_the_next_one_lands_two_weeks_later(self):
-        salary = services.create_income(
+        salary = bills.record(
             self.user,
-            payer="Acme Ltd",
+            direction=Direction.IN,
+            payee="Acme Ltd",
             amount=Decimal("1600.00"),
             due_date=AUGUST,
             recurrence=Item.Recurrence.FORTNIGHTLY,
@@ -58,17 +61,17 @@ class FortnightlyTest(TestCase):
         # only true while the real date is before the 28th. It was written on
         # August 27, 2026, passed that day, and went red for good on the 28th.
         # `principles.md`: inject the clock; do not freeze it.
-        services.pay_bill(salary, today=AUGUST)
+        bills.settle(salary, today=AUGUST)
 
-        following = Item.objects.filter(
-            owner=self.user, completed_at__isnull=True
+        following = Bill.objects.filter(
+            owner=self.user, paid_at__isnull=True
         ).get()
         self.assertEqual(following.due_date, datetime.date(2026, 8, 28))
 
     def test_it_counts_twenty_six_times_a_year(self):
         """Twelve would understate a fortnightly figure by a sixth, which is
         the sort of error a yearly total exists to avoid rather than make."""
-        services.create_bill(
+        bills.record(
             self.user,
             payee="Cleaner",
             amount=Decimal("50.00"),
@@ -76,15 +79,16 @@ class FortnightlyTest(TestCase):
             recurrence=Item.Recurrence.FORTNIGHTLY,
         )
 
-        found = money_reader.landing_for(self.user, today=AUGUST)
+        found = money_reader.landing_from_bills(self.user, today=AUGUST)
 
         self.assertEqual(found.yearly_totals, {"USD": Decimal("1300.00")})
 
     def test_it_carries_into_the_next_occurrence(self):
         """Set once, like every other cadence."""
-        salary = services.create_income(
+        salary = bills.record(
             self.user,
-            payer="Acme Ltd",
+            direction=Direction.IN,
+            payee="Acme Ltd",
             amount=Decimal("1600.00"),
             due_date=AUGUST,
             recurrence=Item.Recurrence.FORTNIGHTLY,
@@ -94,9 +98,9 @@ class FortnightlyTest(TestCase):
         # cadence rather than the date and would pass either way. A test that
         # depends on the real clock without needing to is one that will fail on
         # a date nobody predicted.
-        services.pay_bill(salary, today=AUGUST)
+        bills.settle(salary, today=AUGUST)
 
-        following = Item.objects.filter(
-            owner=self.user, completed_at__isnull=True
+        following = Bill.objects.filter(
+            owner=self.user, paid_at__isnull=True
         ).get()
-        self.assertEqual(following.recurrence, Item.Recurrence.FORTNIGHTLY)
+        self.assertEqual(following.series.cadence, Item.Recurrence.FORTNIGHTLY)

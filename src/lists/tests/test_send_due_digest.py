@@ -11,7 +11,10 @@ from django.test import TestCase
 from django.utils import timezone
 
 from accounts.models import User
-from lists.models import Item, List
+from decimal import Decimal
+
+from lists import bills
+from lists.models import Direction, Item, List
 
 
 class SendDueDigestTest(TestCase):
@@ -339,6 +342,89 @@ MAKASSAR_AFTERNOON = datetime(2026, 8, 2, 7, 0, tzinfo=ZoneInfo("UTC"))
 # is 23:00-04:00 UTC and Edith's is 11:00-16:00 UTC -- which is the whole
 # point, and why these tests assert per user rather than about the outbox.
 NEW_YORK_MORNING = datetime(2026, 8, 2, 11, 0, tzinfo=ZoneInfo("UTC"))
+
+
+class BillsInTheDigestTest(TestCase):
+    """The digest keeps mentioning bills after they stop being tasks.
+
+    **The flip is where this could have gone silently wrong.** The digest reads
+    `agenda.open_items_for`, which after increment 4 of
+    `bill-as-a-model-plan.md` returns no bills at all, because there are none
+    left to return -- a bill is not an `Item`. Nothing in the digest's own
+    tests named a bill, so the one outbound channel this product has would have
+    quietly stopped mentioning the thing it is most useful for.
+
+    **Its own section, and its own link.** A bill has no area to name and no
+    `/tasks/{id}` to open, so rendering it through `_describe` would print a
+    task's sentence about a record that is not one.
+    """
+
+    def setUp(self):
+        self.today = timezone.localdate()
+        self.user = User.objects.create_user(
+            "vince", "vince@example.com", "sekrit-password"
+        )
+
+    def run_command(self, **options):
+        options.setdefault("send_hour", 0)
+        options.setdefault("until_hour", 24)
+        out = StringIO()
+        call_command("send_due_digest", stdout=out, **options)
+        return out.getvalue()
+
+    def bill(self, payee, due_offset, **kwargs):
+        return bills.record(
+            self.user,
+            payee=payee,
+            amount=Decimal("120.00"),
+            due_date=self.today + timedelta(days=due_offset),
+            **kwargs,
+        )
+
+    def test_an_overdue_bill_is_in_the_email(self):
+        self.bill("Landlord", -3)
+
+        self.run_command()
+
+        [message] = mail.outbox
+        self.assertIn("Landlord", message.body)
+
+    def test_a_bill_links_to_money_rather_than_to_a_task(self):
+        """`/tasks/{id}` would 404 on a record that is not a task, and the
+        link is the whole reason the digest is worth clicking."""
+        bill = self.bill("Landlord", 0)
+
+        self.run_command()
+
+        [message] = mail.outbox
+        self.assertIn(f"money/bills/{bill.id}", message.body)
+        self.assertNotIn(f"tasks/{bill.id}", message.body)
+
+    def test_a_settled_bill_is_not_mentioned(self):
+        bill = self.bill("Landlord", 0)
+        bills.settle(bill)
+
+        self.run_command()
+
+        self.assertEqual(mail.outbox, [])
+
+    def test_a_bill_alone_is_worth_a_message(self):
+        """The same rule advance notice already has: gating on tasks would
+        leave the channel silent on exactly the morning a bill is due."""
+        self.bill("Landlord", 0)
+
+        self.run_command()
+
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_money_coming_in_is_not_a_morning_reminder(self):
+        """`open_bills_for` excludes income for the reason the agenda does: a
+        salary is not something to do."""
+        self.bill("Work", 0, direction=Direction.IN)
+
+        self.run_command()
+
+        self.assertEqual(mail.outbox, [])
 
 
 class DigestSchedulingTest(TestCase):

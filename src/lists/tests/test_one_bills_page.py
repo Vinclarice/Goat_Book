@@ -21,6 +21,7 @@ from decimal import Decimal
 from django.test import TestCase
 
 from accounts.models import User
+from lists import bills
 from lists import services
 from lists.models import Item, MoneyCategory
 
@@ -32,7 +33,7 @@ class OneBillsPageTest(TestCase):
         self.user = User.objects.create_user(
             "alice", "alice@example.com", "a secure password"
         )
-        self.bill = services.create_bill(
+        self.bill = bills.record(
             self.user,
             payee="Landlord",
             amount=Decimal("1200.00"),
@@ -58,7 +59,7 @@ class OneBillsPageTest(TestCase):
         self.assertTrue(body["repeats"], "Monthly by default -- rent is the canon.")
 
     def test_an_unpriced_bill_says_so_rather_than_showing_a_zero(self):
-        water = services.create_bill(
+        water = bills.record(
             self.user, payee="Water", amount=None, due_date=AUGUST
         )
 
@@ -70,7 +71,7 @@ class OneBillsPageTest(TestCase):
         """The one thing a bill's own page shows that the month row does not,
         and the reason `paid_amount` is a second column rather than an
         overwrite: they stop being equal the moment somebody pays extra."""
-        services.pay_bill(self.bill, amount=Decimal("1275.40"))
+        bills.settle(self.bill, amount=Decimal("1275.40"))
 
         body = self.get().json()
 
@@ -85,7 +86,7 @@ class OneBillsPageTest(TestCase):
         """Both, because they serve different readers -- the heading needs no
         lookup and the picker is keyed on the id."""
         utilities = MoneyCategory.objects.create(owner=self.user, name="Utilities")
-        services.update_bill(self.bill, category=utilities)
+        bills.update(self.bill, category=utilities)
 
         body = self.get().json()
 
@@ -96,7 +97,7 @@ class OneBillsPageTest(TestCase):
         other = User.objects.create_user(
             "bob", "bob@example.com", "another secure password"
         )
-        theirs = services.create_bill(
+        theirs = bills.record(
             other, payee="Theirs", amount=Decimal("9.00"), due_date=AUGUST
         )
 

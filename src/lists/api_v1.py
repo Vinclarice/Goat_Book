@@ -40,14 +40,17 @@ from accounts.auth import SessionAuthIfLoggedIn, TokenAuth
 from accounts.models import SCOPE_AGENDA_READ, SCOPE_AGENDA_WRITE
 from clarice.clocks import today_for
 from lists import agenda as agenda_reader
+from lists import bills
 from lists import money as money_reader
 from lists import projects as project_reader
 from lists import services
 from lists.forms import ListTitleForm
 from lists.models import (
     Account,
+    Bill,
     CadenceMode,
     ChecklistStep,
+    Direction,
     Item,
     List,
     MoneyCategory,
@@ -114,18 +117,6 @@ class ChecklistStepOut(Schema):
     task_id: int
 
 
-class BillOut(Schema):
-    """What a task costs, when it is a bill. Null on the task when it is not.
-
-    `amount` is a string, not a float: this column exists to avoid binary
-    rounding and sending it as a JSON number would put it straight back.
-    """
-
-    amount: str | None
-    currency: str
-    payee: str
-
-
 class TaskOut(Schema):
     id: int
     text: str
@@ -141,9 +132,6 @@ class TaskOut(Schema):
     priority: TaskPriority
     #: Days before the due date this should be mentioned. Zero is off.
     lead_days: int
-    #: Null when the task is not a bill -- a different fact from a bill with
-    #: nothing filled in, which is reachable on purpose.
-    bill: BillOut | None
     notes: str
     # Nullable since August 14, 2026 -- a task may stand on its own, so this is
     # the boundary admitting a state the database already allowed. Ninja
@@ -311,14 +299,19 @@ class NavOut(Schema):
 
 
 class MonthBillOut(Schema):
+    #: **Still spelled `task_id`, and it is a `Bill` id since August 31, 2026.**
+    #: The name is kept across the flip on purpose: the pay, edit and delete
+    #: routes are all keyed on it and renaming server, contract, routes and SPA
+    #: in the commit that changes what a bill *is* would put two failure modes
+    #: in one place. The rename is its own increment.
     task_id: int
-    text: str
     due_date: date
-    #: A string, like `BillOut.amount`, and null for a bill nobody has priced.
+    #: A string, not a float: this column exists to avoid binary rounding
+    #: and sending it as a JSON number would put it straight back. Null for a
+    #: bill nobody has priced.
     amount: str | None
     currency: str
     payee: str
-    url: str
     #: Whether it is settled. Derived rather than stored -- there is one
     #: definition of paid and the day and the agenda already read it.
     paid: bool
@@ -391,7 +384,8 @@ class NewBillIn(Schema):
     """
 
     payee: str
-    #: A string like `BillOut.amount`, and null for a bill nobody has priced --
+    #: A string, for the reason `MonthBillOut.amount` is one, and null for a
+    #: bill nobody has priced --
     #: "the water bill, whatever it comes to" is a real bill and the month
     #: already counts unpriced ones rather than totalling them.
     amount: str | None = None
@@ -430,37 +424,22 @@ def add_bill(request, payload: NewBillIn):
             # message is what it will show beside it.
             raise HttpError(409, "That amount is not a number.")
     try:
-        item = services.create_bill(
+        bill = bills.record(
             request.user,
             payee=payload.payee,
             amount=amount,
             currency=payload.currency,
             due_date=payload.due_date,
             repeats=payload.repeats,
+            recurrence=payload.recurrence,
+            lead_days=payload.lead_days,
         )
-    except services.TaskConflict as error:
+    except bills.TaskConflict as error:
         raise HttpError(409, str(error))
-    bill = item.money_line
-    return 201, {
-        "task_id": item.id,
-        "text": item.text,
-        "due_date": item.due_date,
-        "amount": str(bill.amount) if bill.amount is not None else None,
-        "currency": bill.currency,
-        "payee": bill.payee,
-        "url": reverse("api_item_detail", args=[item.id]),
-        "paid": False,
-        "repeats": item.recurrence != Item.Recurrence.NONE,
-        "category": (
-            item.money_line.category.name if item.money_line.category_id else None
-        ),
-        "category_id": item.money_line.category_id,
-        "direction": item.money_line.direction,
-        "recurrence": item.recurrence,
-        "lead_days": item.lead_days,
-        "paid_amount": None,
-        "overdue": False,
-    }
+    # The same builder every other bill response uses. It used to be spelled
+    # out here because a freshly created task had no sidecar loaded yet; a
+    # `Bill` is one row and there is nothing to reload.
+    return 201, _bill_row_out(bill)
 
 
 class EditBillIn(Schema):
@@ -486,38 +465,57 @@ class EditBillIn(Schema):
     clear_category: bool = False
 
 
-def _bill_row_out(item):
-    """One bill, shaped like a row of the month it belongs to."""
-    bill = item.money_line
+def _bill_row_out(bill):
+    """One bill, shaped like a row of the month it belongs to.
+
+    **The record, not a task and its sidecar.** Before August 31, 2026 this
+    read two rows and reconciled them, and the month endpoint carried a second
+    hand-written copy of the same dict; both are one function over one row now.
+
+    **Three things it no longer has to do**, which is the split paying for
+    itself: `paid` reads `paid_at` rather than `completed_at` with a paragraph
+    explaining why the status cannot be trusted; `repeats` asks whether there
+    is a standing rule rather than inspecting a recurrence enum on the
+    occurrence; and there is no `url`, because a bill has no `/api/items/{id}`
+    to point at and nothing ever read the field.
+    """
+    series = bill.series
     return {
-        "task_id": item.id,
-        "text": item.text,
-        "due_date": item.due_date,
+        "task_id": bill.id,
+        "due_date": bill.due_date,
         "amount": str(bill.amount) if bill.amount is not None else None,
         "currency": bill.currency,
         "payee": bill.payee,
-        "url": reverse("api_item_detail", args=[item.id]),
-        # `completed_at`, not the status: a paid *recurring* occurrence is
-        # ARCHIVED rather than COMPLETED, so reading the status would report
-        # every paid rent as unpaid. Same rule as `BillRow.paid`.
-        "paid": item.completed_at is not None,
-        "repeats": item.recurrence != Item.Recurrence.NONE,
-        "category": (
-            item.money_line.category.name if item.money_line.category_id else None
+        "paid": bill.paid,
+        # A standing rule that has ended does not still repeat -- otherwise the
+        # page offers *stop this bill entirely* for a bill already stopped.
+        "repeats": series is not None and series.ended_at is None,
+        "category": bill.category.name if bill.category_id else None,
+        "category_id": bill.category_id,
+        "direction": bill.direction,
+        "recurrence": (
+            series.cadence
+            if series is not None and series.ended_at is None
+            else Item.Recurrence.NONE
         ),
-        "category_id": item.money_line.category_id,
-        "direction": item.money_line.direction,
-        "recurrence": item.recurrence,
-        "lead_days": item.lead_days,
+        "lead_days": bill.lead_days,
         "paid_amount": (
-            str(item.money_line.paid_amount) if item.money_line.paid_amount is not None else None
+            str(bill.paid_amount) if bill.paid_amount is not None else None
         ),
-        "overdue": (
-            item.completed_at is None
-            and item.due_date is not None
-            and item.due_date < today_for(item.owner)
-        ),
+        "overdue": bill.overdue_on(today_for(bill.owner)),
     }
+
+
+def _bill_or_404(request, bill_id):
+    """The caller's bill, or a refusal. One lookup for five endpoints."""
+    bill = (
+        Bill.objects.filter(pk=bill_id, owner=request.user)
+        .select_related("series", "category")
+        .first()
+    )
+    if bill is None:
+        raise HttpError(404, "No such bill.")
+    return bill
 
 
 @router.get(
@@ -543,14 +541,7 @@ def one_bill(request, task_id: int):
     bill* a question every caller has to ask afterwards, and the page has no
     fields for a task.
     """
-    item = (
-        Item.objects.filter(pk=task_id, owner=request.user, money_line__isnull=False)
-        .select_related("money_line", "money_line__category")
-        .first()
-    )
-    if item is None:
-        raise HttpError(404, "No such bill.")
-    return _bill_row_out(item)
+    return _bill_row_out(_bill_or_404(request, task_id))
 
 
 @router.patch(
@@ -570,9 +561,7 @@ def edit_bill(request, task_id: int, payload: EditBillIn):
     its name for exactly that reason: a model named after the module would have
     to hold both.
     """
-    item = Item.objects.filter(pk=task_id, owner=request.user).first()
-    if item is None:
-        raise HttpError(404, "No such bill.")
+    bill = _bill_or_404(request, task_id)
     fields = {}
     if payload.payee is not None:
         fields["payee"] = payload.payee
@@ -582,8 +571,6 @@ def edit_bill(request, task_id: int, payload: EditBillIn):
         fields["due_date"] = payload.due_date
     if payload.lead_days is not None:
         fields["lead_days"] = payload.lead_days
-    if payload.recurrence is not None:
-        fields["recurrence"] = payload.recurrence
     if payload.clear_category:
         fields["category"] = None
     elif payload.category_id is not None:
@@ -601,12 +588,17 @@ def edit_bill(request, task_id: int, payload: EditBillIn):
         except InvalidOperation:
             raise HttpError(409, "That amount is not a number.")
     try:
-        item = services.update_bill(item, **fields)
-    except services.TaskConflict as error:
+        bill = bills.update(bill, **fields)
+        # **Cadence last, and separately.** It lives on the series, not the
+        # occurrence, so changing it is a different act from correcting this
+        # month's figure -- see `bills.set_cadence`, which is where that
+        # distinction is made rather than smuggled into a field update.
+        if payload.recurrence is not None:
+            bill = bills.set_cadence(bill, payload.recurrence)
+    except bills.TaskConflict as error:
         raise HttpError(409, str(error))
-    except services.InvalidTaskTransition as error:
-        raise HttpError(409, str(error))
-    return _bill_row_out(item)
+    bill.refresh_from_db()
+    return _bill_row_out(bill)
 
 
 class PayBillIn(Schema):
@@ -652,19 +644,20 @@ def add_income(request, payload: NewIncomeIn):
         except InvalidOperation:
             raise HttpError(409, "That amount is not a number.")
     try:
-        item = services.create_income(
+        bill = bills.record(
             request.user,
-            payer=payload.payer,
+            payee=payload.payer,
             amount=amount,
             currency=payload.currency,
             due_date=payload.due_date,
             repeats=payload.repeats,
             recurrence=payload.recurrence,
             lead_days=payload.lead_days,
+            direction=Direction.IN,
         )
-    except services.TaskConflict as error:
+    except bills.TaskConflict as error:
         raise HttpError(409, str(error))
-    return 201, _bill_row_out(item)
+    return 201, _bill_row_out(bill)
 
 
 @router.post(
@@ -677,9 +670,7 @@ def pay_bill(request, task_id: int, payload: PayBillIn):
     delete a bill and not pay one, which is the thing a person does twelve
     times more often than both put together.
     """
-    item = Item.objects.filter(pk=task_id, owner=request.user).first()
-    if item is None:
-        raise HttpError(404, "No such bill.")
+    bill = _bill_or_404(request, task_id)
     amount = None
     if payload.amount not in (None, ""):
         try:
@@ -687,11 +678,11 @@ def pay_bill(request, task_id: int, payload: PayBillIn):
         except InvalidOperation:
             raise HttpError(409, "That amount is not a number.")
     try:
-        item = services.pay_bill(item, amount=amount)
-    except services.TaskConflict as error:
+        bill = bills.settle(bill, amount=amount)
+    except bills.TaskConflict as error:
         raise HttpError(409, str(error))
-    item.refresh_from_db()
-    return _bill_row_out(item)
+    bill.refresh_from_db()
+    return _bill_row_out(bill)
 
 
 @router.delete(
@@ -708,12 +699,10 @@ def remove_bill(request, task_id: int, whole_series: bool = False):
     somebody who meant *stop paying rent* has to say so, because the wider
     answer is the one that cannot be undone by adding a bill back.
     """
-    item = Item.objects.filter(pk=task_id, owner=request.user).first()
-    if item is None:
-        raise HttpError(404, "No such bill.")
+    bill = _bill_or_404(request, task_id)
     try:
-        services.delete_bill(item, whole_series=whole_series)
-    except services.TaskConflict as error:
+        bills.remove(bill, whole_series=whole_series)
+    except bills.TaskConflict as error:
         raise HttpError(409, str(error))
     return 204, None
 
@@ -782,8 +771,9 @@ class LandingLineOut(Schema):
     """One money line, as the landing page needs it -- shorter than a month row
     because a dashboard names things rather than offering every verb."""
 
+    #: A `Bill` id since August 31, 2026, still spelled `task_id` -- see
+    #: `MonthBillOut`, which explains why the rename is its own increment.
     task_id: int
-    text: str
     payee: str
     due_date: date
     amount: str | None
@@ -898,19 +888,16 @@ def money_landing(request):
     invite the question of what last Tuesday's dashboard looked like.
     """
     today = today_for(request.user)
-    found = money_reader.landing_for(request.user, today=today)
+    found = money_reader.landing_from_bills(request.user, today=today)
 
-    def line(row):
+    def line(bill):
         return {
-            "task_id": row.task.id,
-            "text": row.task.text,
-            "payee": row.bill.payee,
-            "due_date": row.task.due_date,
-            "amount": (
-                str(row.bill.amount) if row.bill.amount is not None else None
-            ),
-            "currency": row.bill.currency,
-            "days": (row.task.due_date - today).days,
+            "task_id": bill.id,
+            "payee": bill.payee,
+            "due_date": bill.due_date,
+            "amount": str(bill.amount) if bill.amount is not None else None,
+            "currency": bill.currency,
+            "days": (bill.due_date - today).days,
         }
 
     def money(totals):
@@ -1112,42 +1099,18 @@ def months_bills(request, day: date):
     and widening the token surface for one it cannot show would be the
     un-switched-on seam this project keeps finding.
     """
-    found = money_reader.bills_for(request.user, day)
+    found = money_reader.month_from_bills(request.user, day)
     first = day.replace(day=1)
     last = first.replace(day=monthrange(first.year, first.month)[1])
     return {
         "month_start": first,
         "previous_month": (first - timedelta(days=1)).replace(day=1),
         "next_month": last + timedelta(days=1),
-        "bills": [
-            {
-                "task_id": row.task.id,
-                "text": row.task.text,
-                "due_date": row.task.due_date,
-                "amount": (
-                    str(row.bill.amount) if row.bill.amount is not None else None
-                ),
-                "currency": row.bill.currency,
-                "payee": row.bill.payee,
-                "url": reverse("api_item_detail", args=[row.task.id]),
-                "paid": row.paid,
-                "repeats": row.task.recurrence != Item.Recurrence.NONE,
-                "category": (
-                    row.bill.category.name if row.bill.category_id else None
-                ),
-                "category_id": row.bill.category_id,
-                "direction": row.bill.direction,
-                "recurrence": row.task.recurrence,
-                "lead_days": row.task.lead_days,
-                "paid_amount": (
-                    str(row.bill.paid_amount)
-                    if row.bill.paid_amount is not None
-                    else None
-                ),
-                "overdue": row.overdue_on(today_for(request.user)),
-            }
-            for row in found.bills
-        ],
+        # **`_bill_row_out`, not a second copy of it.** This dict was written
+        # out here because the old row was a task *and* a sidecar and the two
+        # builders had drifted into differing about `paid`; one record means
+        # one builder.
+        "bills": [_bill_row_out(row) for row in found.bills],
         "due_totals": {
             code: str(total) for code, total in found.due_totals.items()
         },
@@ -1211,7 +1174,7 @@ def agenda(request):
     # Bills leave `items` and arrive in `bills` -- decision 4 kept while the
     # model splits. See `agenda.open_items_for`'s own note.
     all_open = agenda_reader.annotate_for_display(
-        list(agenda_reader.open_items_for(user, include_bills=False)), today
+        list(agenda_reader.open_items_for(user)), today
     )
     completed_today = agenda_reader.annotate_for_display(
         list(agenda_reader.completed_today_for(user, today)), today
@@ -1401,14 +1364,6 @@ class NewTaskIn(Schema):
     recurrence: TaskRecurrence | None = None
 
 
-class BillIn(Schema):
-    #: A string for the reason `BillOut.amount` is one: this column exists to
-    #: avoid binary rounding and a JSON number would put it straight back.
-    amount: str | None = None
-    currency: str = "USD"
-    payee: str = ""
-
-
 class TaskPatchIn(Schema):
     """Exactly one of these per request, which is the discipline the view this
     replaces ran on and is kept deliberately.
@@ -1439,7 +1394,6 @@ class TaskPatchIn(Schema):
     #: and never had the problem, because it read a dict.
     area_id: int | None = None
     priority: TaskPriority | None = None
-    bill: BillIn | None = None
     lead_days: int | None = None
 
 
@@ -1516,9 +1470,14 @@ def update_task(request, task_id: int, payload: TaskPatchIn):
     """Change exactly one thing about a task.
 
     **`__fields_set__` rather than a truthiness check**, because null is a real
-    value for several of these: `due_date: null` clears a date, `list: null`
-    unfiles a task, `bill: null` unmarks one. Treating absent and null alike
-    would make three deliberate operations unreachable.
+    value for several of these: `due_date: null` clears a date and `list: null`
+    unfiles a task. Treating absent and null alike would make two deliberate
+    operations unreachable.
+
+    **`bill` is gone from this endpoint.** A task could be marked as one until
+    August 31, 2026, which is the route `money-module-plan.md` was written to
+    replace and `bill-as-a-model-plan.md` finished off: a bill is not a task,
+    so there is nothing here to mark. Bills are made at `POST /money/bills`.
     """
     item = _owned_task(request, task_id)
     changed = payload.__fields_set__ & set(TaskPatchIn.model_fields)
@@ -1526,7 +1485,7 @@ def update_task(request, task_id: int, payload: TaskPatchIn):
         raise HttpError(
             400,
             "Change exactly one of text, status, due_date, tags, recurrence, "
-            "cadence_mode, notes, area_id, priority, bill or lead_days per "
+            "cadence_mode, notes, area_id, priority or lead_days per "
             "request.",
         )
     if (
@@ -1577,8 +1536,6 @@ def update_task(request, task_id: int, payload: TaskPatchIn):
             if payload.lead_days < 0:
                 raise HttpError(400, "Send a whole number of days, 0 or more.")
             item = services.set_lead_days(item, payload.lead_days)
-        elif field == "bill":
-            item = _set_bill(item, payload.bill)
         else:
             item, spawned = _set_status(item, payload.status)
     except services.TaskConflict as error:
@@ -1595,27 +1552,6 @@ def update_task(request, task_id: int, payload: TaskPatchIn):
             for step in spawned.checklist_steps.order_by("position", "id")
         ]
     return result
-
-
-def _set_bill(item, bill):
-    if bill is None:
-        return services.clear_bill(item)
-    amount = None
-    if bill.amount not in (None, ""):
-        try:
-            # str() first: a JSON float would bring binary rounding to a
-            # column that exists to avoid it.
-            amount = Decimal(str(bill.amount))
-        except (InvalidOperation, ValueError):
-            raise HttpError(400, "Use an amount like 12.34.")
-        if amount < 0:
-            raise HttpError(400, "A bill is something owed, so it cannot be negative.")
-    return services.set_bill(
-        item,
-        amount=amount,
-        currency=(bill.currency or "USD")[:3].upper(),
-        payee=(bill.payee or "")[:200],
-    )
 
 
 def _set_status(item, requested):

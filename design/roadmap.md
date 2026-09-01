@@ -475,12 +475,26 @@ re-add it here.
   the qualifying life-cycle difference is the entry directly below this one,
   written on August 28 and never connected to the model question until today.
 
-  **Two things make it worth doing now rather than arguing about.** Production
+  **Two things made it worth doing now rather than arguing about.** Production
   holds **one** `MoneyLine`, so the data migration is the cheapest it will ever
-  be. And the plan's own reversal conditions are concrete: if reading two
-  models in the agenda costs decision 4 — *bills stay ordinary tasks
+  be. And the plan's own reversal conditions were concrete: if reading two
+  models in the agenda cost decision 4 — *bills stay ordinary tasks
   elsewhere* — then a product decision was spent to buy a modelling one, and
   the plan says stop.
+
+  **The reversal condition was met, priced, and declined.** Reading two models
+  on the daily surfaces cost a `bills` array on two payloads, a second query,
+  and a section of their own on the day. Vince's call, August 31: pay it.
+  Bills are still on the agenda and the day.
+
+  ~~Increments 1–5.~~ **Shipped August 31 – September 1, 2026**, through the
+  flip: `Bill` and `BillSeries` exist, the data is converted, every money read
+  and write is on them, and the tasks that were bills are deleted. **What is
+  open is 6–9** — replaying missed periods, `Bill.account`, deleting
+  `MoneyLine`, and renaming the `task_id` key that now points at a bill.
+  Increment 6 is the one that matters: it is the life-cycle difference in §2,
+  which is the entire justification for the model, and until it ships the split
+  has been argued and not demonstrated.
 
 - **Should money skip a missed period at all? — promoted August 28, 2026 from
   the entry above.** *Missed periods are skipped, not replayed* is the task

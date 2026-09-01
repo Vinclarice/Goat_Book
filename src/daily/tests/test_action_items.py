@@ -17,7 +17,7 @@ from django.test import TestCase
 
 from accounts.models import User
 from daily import reads
-from lists import services as list_services
+from lists import bills, services as list_services
 from lists.models import Item, List
 
 
@@ -115,7 +115,7 @@ class BillsLeaveTheActionListAndStayOnTheDayTest(TestCase):
         self.list_ = List.objects.create(owner=self.alice, title="Home")
 
     def bill(self, payee, due_date, amount="120.00"):
-        return list_services.create_bill(
+        return bills.record(
             self.alice,
             payee=payee,
             amount=Decimal(amount),

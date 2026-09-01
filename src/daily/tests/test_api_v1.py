@@ -27,7 +27,7 @@ from accounts.models import (
 from daily import services
 from daily import services as daily_services
 from daily.models import DailyFocus
-from lists import services as list_services
+from lists import bills, services as list_services
 from lists.models import List, Project
 
 
@@ -456,7 +456,7 @@ class DayActionItemsTest(TestCase):
         stops being a task, and arrives in `bills` because paying is a real
         thing to do on a day -- the move is between arrays, not off the page.
         """
-        list_services.create_bill(
+        bills.record(
             self.alice,
             payee="Landlord",
             amount=Decimal("1200.00"),
@@ -471,7 +471,7 @@ class DayActionItemsTest(TestCase):
     def test_a_bill_row_carries_what_it_needs_and_nothing_of_a_task(self):
         """No area, no priority, no checklist -- a bill has none, which is the
         argument the split is made of."""
-        list_services.create_bill(
+        bills.record(
             self.alice,
             payee="Landlord",
             amount=Decimal("1200.00"),
@@ -489,7 +489,7 @@ class DayActionItemsTest(TestCase):
         """The same refusal `shows_action_items` makes, for the same reason: an
         unpaid bill today was not necessarily unpaid on the 30th, and the row
         carries no history to say otherwise."""
-        list_services.create_bill(
+        bills.record(
             self.alice,
             payee="Landlord",
             amount=Decimal("1200.00"),

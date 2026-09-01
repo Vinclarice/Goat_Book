@@ -16,7 +16,6 @@ from lists.models import (
     Direction,
     ChecklistStep,
     Item,
-    MoneyLine,
     List,
     Priority,
     Project,
@@ -347,194 +346,6 @@ def set_lead_days(item, days):
     return item
 
 
-@transaction.atomic
-def set_bill(item, *, amount=None, currency="USD", payee=""):
-    """Mark a task as a bill, or edit the one it already is.
-
-    Upserts rather than accumulating: a task is one bill or none, which is what
-    the one-to-one says and what "marking it twice" has to mean.
-
-    Deliberately **not** written through to the commitment, unlike text, notes
-    and the Area. What a bill comes to is a fact about *this* occurrence -- last
-    quarter's was 500 and this one is 525 -- so carrying it forward would state
-    an amount nobody has been told yet. The payee travels with the series only
-    in the sense that the next occurrence is created from the same commitment
-    and somebody fills it in again; inventing the number would be worse.
-    """
-    item = Item.objects.select_for_update().get(pk=item.pk)
-    if item.status == Item.Status.ARCHIVED:
-        raise InvalidTaskTransition("Restore this task before editing it")
-    if amount is not None and amount < 0:
-        raise TaskConflict("A bill is something owed, so it cannot be negative.")
-    MoneyLine.objects.update_or_create(
-        item=item,
-        defaults={"amount": amount, "currency": currency, "payee": payee},
-    )
-    return item
-
-
-@transaction.atomic
-def create_bill(
-    owner,
-    *,
-    payee,
-    amount=None,
-    currency="USD",
-    due_date=None,
-    repeats=True,
-    recurrence=None,
-    lead_days=0,
-    direction=Direction.OUT,
-):
-    """A bill, made where bills are, without anybody saying "task".
-
-    **The task and the sidecar in one transaction**, so the page named after
-    the concept can produce one. Until August 27, 2026 the only route was to
-    create a task elsewhere, open its detail page and fill in amount and payee
-    -- `money-module-plan.md` has what that cost.
-
-    **The name comes from the payee** and is not asked for: `Landlord` becomes
-    *Pay Landlord*. Vince's call, and the point is that adding a bill should
-    ask about money and dates and nothing else. Renaming afterwards works
-    wherever tasks are renamed; what is removed is the obligation to name one
-    up front.
-
-    **No Area.** `create_item` gained a standing `owner` exactly so a task
-    could exist without being filed, and *which Area does rent go in* is the
-    filing question this surface exists to avoid.
-
-    **Repeating by default**, because the canonical bill is rent and the
-    vision document's canonical recurring task is "pay rent every month".
-    `recurrence` names which cadence when it is not monthly; `repeats=False`
-    is the one-off, and is the same thing as `recurrence=NONE`.
-
-    **`lead_days` is how many days early it should start being mentioned**, and
-    it is the reason the money module exists rather than a convenience on top
-    of it: an annual subscription that only speaks on the day it renews has
-    already charged you. Zero is off. The field lives on the task, which its own
-    comment settled -- *a lead time is not a property of costing money* -- and
-    `_spawn_next_occurrence` carries it, so it is set once rather than every
-    renewal.
-    """
-    payee = (payee or "").strip()
-    if not payee:
-        # The name is derived from it, so an empty payee is not a blank field
-        # to tolerate -- it is a task with no name.
-        raise TaskConflict("A bill needs a payee, which is what it gets its name from.")
-    if recurrence is None:
-        recurrence = Item.Recurrence.MONTHLY if repeats else Item.Recurrence.NONE
-    if recurrence not in Item.Recurrence.values:
-        raise TaskConflict("Choose a valid cadence.")
-    incoming = direction == Direction.IN
-    try:
-        item = create_item(
-            None,
-            f"{'From' if incoming else 'Pay'} {payee}",
-            due_date=due_date,
-            recurrence=recurrence,
-            owner=owner,
-        )
-    except TaskConflict:
-        # **Two lines from one payee collide**, because the name is derived from
-        # the payee and `unique_active_arealess_item` is `(owner, text)` over
-        # everything unfiled and not archived. Two Amazon subscriptions, or a
-        # salary and a bonus from the same employer, are the real cases.
-        #
-        # **Accepted rather than designed around.** The alternative is putting
-        # an amount or a number into every name to serve the rarer case, which
-        # makes *Pay Landlord* worse for the common one. What is not acceptable
-        # is `create_item`'s own message -- "You've already got this in your
-        # list" is about a list, and there is no list here.
-        kind = "income" if incoming else "bill"
-        # **A way forward, not just a refusal.** Vince, August 27, 2026:
-        # suggest renaming the second one with a notation of what it is. The
-        # payee *is* the name, so adding the distinguishing word to it solves
-        # the collision and makes the row more readable than it would have been
-        # anyway -- "Amazon (Prime)" and "Amazon (Music)" tell you which is
-        # which on a page where "Amazon" twice would not.
-        raise TaskConflict(
-            f"There is already an open {kind} from {payee}. "
-            f"Add a word to tell them apart -- “{payee} (Prime)”, "
-            f"say -- or edit the existing one."
-        ) from None
-    set_bill(item, amount=amount, currency=currency, payee=payee)
-    if direction != Direction.OUT:
-        MoneyLine.objects.filter(item=item).update(direction=direction)
-    if lead_days:
-        set_lead_days(item, lead_days)
-    item.refresh_from_db()
-    return item
-
-
-_KEEP = object()
-
-
-@transaction.atomic
-def update_bill(item, *, payee=_KEEP, amount=_KEEP, currency=_KEEP, due_date=_KEEP,
-                lead_days=_KEEP, recurrence=_KEEP, category=_KEEP,
-                clear_amount=False):
-    """Correct a bill where it is shown, across both records it lives in.
-
-    **The four fields a bill actually has do not live in one place**: amount,
-    payee and currency are the sidecar's, and the due date is the task's. One
-    service rather than two calls from the page, so a caller cannot leave a bill
-    half-corrected when the second write fails -- and so the page does not have
-    to know which field is which, which is the whole point of
-    `money-module-plan.md`.
-
-    **Absent is not empty.** A field left out keeps its stored value, the same
-    partial-write contract the day and the review already have. Clearing an
-    amount back to unpriced is therefore an explicit act: `clear_amount=True`,
-    because *"the water bill, whatever it comes to"* is a state somebody chooses
-    rather than a field they forgot.
-
-    **It does not rename the task**, and that is a decision rather than an
-    omission. The name came from the payee when the bill was made; changing the
-    payee later is usually a correction to who gets paid, and
-    `RecurringCommitment.text` is what a series with history is called.
-    Renaming stays where tasks are renamed.
-    """
-    item = Item.objects.select_for_update().get(pk=item.pk)
-    if item.status == Item.Status.ARCHIVED:
-        raise InvalidTaskTransition("Restore this task before editing it")
-    bill = MoneyLine.objects.filter(item=item).first()
-    if bill is None:
-        raise TaskConflict("That task is not a bill.")
-
-    if payee is not _KEEP:
-        payee = (payee or "").strip()
-        if not payee:
-            raise TaskConflict("A bill needs a payee.")
-        bill.payee = payee
-    if currency is not _KEEP:
-        bill.currency = currency
-    if category is not _KEEP:
-        # None is a real value here -- it files the bill back under
-        # Uncategorised, which somebody may well want.
-        bill.category = category
-    if clear_amount:
-        bill.amount = None
-    elif amount is not _KEEP:
-        if amount is not None and amount < 0:
-            raise TaskConflict("A bill is something owed, so it cannot be negative.")
-        bill.amount = amount
-    bill.save(update_fields=["payee", "currency", "amount", "category"])
-
-    if due_date is not _KEEP:
-        # Through the service, so the life log hears it the way every other
-        # due-date change is heard rather than a second, quieter path.
-        set_due_date(item, due_date)
-        item.refresh_from_db()
-    if lead_days is not _KEEP:
-        # Thirty days turns out to be too late once, and then you want sixty.
-        set_lead_days(item, lead_days)
-        item.refresh_from_db()
-    if recurrence is not _KEEP:
-        set_recurrence(item, recurrence)
-        item.refresh_from_db()
-    return item
-
-
 #: What a fresh module starts with. Ordinary rows once written, so any of them
 #: can be renamed or deleted -- these are a starting point, not a schema.
 #:
@@ -696,138 +507,6 @@ def close_account(account):
     nothing here that keeping the row would preserve.
     """
     account.delete()
-
-
-@transaction.atomic
-def create_income(owner, *, payer, amount=None, currency="USD", due_date=None,
-                  repeats=True, recurrence=None, lead_days=0):
-    """Money expected in, on a date, usually every month.
-
-    **The same record as a bill, pointed the other way.** §4's test is a
-    different life cycle, and income has a bill's exactly: it recurs, it has a
-    date, it has an amount, it gets settled, it can be late. What differs is the
-    sign and whether you act or observe -- neither of which is a life cycle.
-
-    **The name comes from the payer**, so this asks no more for a task title
-    than the bill form does: `Acme Ltd` becomes *From Acme Ltd*, against a
-    bill's *Pay Landlord*.
-
-    **It will not appear on the day or the agenda.** `agenda.open_items_for`
-    excludes money coming in, because being paid is not something you do and a
-    line you cannot act on is clutter on the surface you use most.
-    """
-    return create_bill(
-        owner,
-        payee=payer,
-        amount=amount,
-        currency=currency,
-        due_date=due_date,
-        repeats=repeats,
-        recurrence=recurrence,
-        lead_days=lead_days,
-        direction=Direction.IN,
-    )
-
-
-@transaction.atomic
-def pay_bill(item, *, amount=None, today=None):
-    """Settle a money line, recording what actually moved.
-
-    **Both directions, under the name the commoner one uses.** A `receive_income`
-    alias stood beside this for an hour on August 27, 2026 and was deleted: it
-    delegated here and added a word, the endpoint already settles either
-    direction, and the page already says *Mark received* where it should. A
-    wrapper whose only content is a synonym is a service nothing calls, which
-    this project has a test for -- and that test is what found it.
-
-    **Paying is completing**, and there is no second definition of done: this
-    calls `complete_item`, so the day, the agenda and the review all hear it,
-    and a repeating bill spawns its successor exactly as it would have. What
-    this adds is the number.
-
-    **`amount` defaults to what was expected**, so the ordinary case is one
-    click and the number is still recorded rather than inferred later. Passing a
-    different one is the case that decided the design: paying extra must not
-    overwrite what the bill was *supposed* to be, or the month loses the
-    difference and "this has been creeping up" stops being answerable.
-
-    An unpriced bill can be paid with a real number, which is the moment
-    *"whatever it comes to"* comes to something.
-    """
-    item = Item.objects.select_for_update().get(pk=item.pk)
-    bill = MoneyLine.objects.filter(item=item).first()
-    if bill is None:
-        raise TaskConflict("That task is not a bill.")
-    if amount is not None and amount < 0:
-        raise TaskConflict("A payment cannot be negative.")
-
-    bill.paid_amount = bill.amount if amount is None else amount
-    bill.save(update_fields=["paid_amount"])
-    # After the amount, so a failure here leaves an unpaid bill with a stray
-    # number rather than a paid one with none -- the recoverable direction.
-    #
-    # `today` is passed through rather than defaulted here: a bill's successor
-    # date is the one thing about paying that depends on which day it is, and
-    # every caller in production leaves it None for the real clock.
-    complete_item(item, today=today)
-    return item
-
-
-@transaction.atomic
-def delete_bill(item, *, whole_series=False):
-    """Remove a bill, and say which bill is meant when it repeats.
-
-    **From the person's side there is no task**, so this removes the whole
-    thing rather than stripping the sidecar and leaving an orphan called
-    "Pay Landlord" in their lists. Vince's decision, August 27, 2026.
-
-    **`whole_series=False` means this month and not the habit.** A series
-    continues only because completing an occurrence spawns the next one -- so
-    deleting this one would end the series *silently*, with no next month and
-    nothing to notice until a bill failed to arrive. The successor is therefore
-    created before this occupant is removed. What somebody means by deleting
-    August's rent is *not this one*; they would have said so if they meant stop
-    paying rent.
-
-    **`whole_series=True` stops it coming round** and leaves every month that
-    already happened alone: the commitment ends, this occurrence goes, and past
-    ones stay because §4 rule 6 keeps a row whose existence answers whether
-    something happened.
-
-    **Archive then delete**, because `delete_archived_item` refuses anything
-    else and that rule is worth going through rather than around -- it is what
-    makes the life log hear a removal the same way everywhere.
-    """
-    item = Item.objects.select_for_update().get(pk=item.pk)
-    if not MoneyLine.objects.filter(item=item).exists():
-        raise TaskConflict("That task is not a bill.")
-
-    repeats = item.recurrence != Item.Recurrence.NONE
-    if repeats and whole_series:
-        # Ends the commitment; the link from this row stays, because it really
-        # was an occurrence of that series.
-        set_recurrence(item, Item.Recurrence.NONE)
-        item.refresh_from_db()
-        repeats = False
-
-    # **Archive first, then spawn.** `unique_active_arealess_item` is
-    # `(owner, text)` over everything not archived, so an unfiled successor
-    # cannot exist beside a live predecessor -- which is exactly why
-    # `complete_item` archives a recurring task rather than leaving it
-    # `COMPLETED`. Ordering it the other way round raises an IntegrityError,
-    # and did.
-    archive_item(item)
-    item.refresh_from_db()
-    if repeats:
-        _spawn_next_occurrence(item)
-    delete_archived_item(item)
-
-
-@transaction.atomic
-def clear_bill(item):
-    """Stop this task being a bill. The task itself is untouched."""
-    MoneyLine.objects.filter(item=item).delete()
-    return item
 
 
 @transaction.atomic
@@ -1233,27 +912,24 @@ def _spawn_next_occurrence(completed_item, carry_forward_steps=(), today=None):
     )
     next_item.tags.set(commitment.tags.all())
 
-    # **A repeating bill stays a bill.** Added August 27, 2026: nothing here
-    # touched `MoneyLine`, so paying rent produced a plain task for next month and
-    # rent silently stopped appearing on the page that exists to show bills.
-    # Recurrence was built for tasks and the sidecar was added beside it;
-    # neither was wrong and nobody joined them.
+    # **NOT CARRIED: MoneyLine.** There is nothing here to carry since August 31,
+    # 2026: a bill is a `Bill`, it is not spawned by completing a task, and
+    # `bills.spawn_next` is where its successor comes from.
     #
-    # **The payee and the currency carry. The amount does not**, which is
-    # `set_bill`'s own rule and the right one: what a bill comes to is a fact
-    # about *this* occurrence -- last quarter's was 500 and this one is 525 --
-    # so carrying the number forward would state something nobody has been
-    # told. What lands is an unpriced bill from a known payee, which is
-    # exactly what `MonthOfBills.unpriced` counts rather than totals.
-    previous_bill = MoneyLine.objects.filter(item=completed_item).first()
-    if previous_bill is not None:
-        MoneyLine.objects.create(
-            item=next_item,
-            amount=None,
-            currency=previous_bill.currency,
-            payee=previous_bill.payee,
-        )
-
+    # The relation is still named here, and deliberately: `MoneyLine` is still
+    # a model hanging off `Item` until increment 8 deletes it, so the guard in
+    # `tests/test_a_spawn_accounts_for_everything_on_a_task.py` still wants an
+    # answer about it. The answer is that the table is empty and nothing writes
+    # it.
+    #
+    # And this paragraph is kept rather than deleted because of what it used to
+    # say. Between bills shipping and August 27, 2026 nothing here touched the
+    # sidecar, so paying rent produced a plain *task* for next month and rent
+    # silently stopped appearing on the page that exists to show bills --
+    # recurrence was built for tasks, the sidecar was added beside it, and
+    # nobody joined them. The two-record shape is what made that possible, and
+    # this is the shape that replaced it.
+    #
     # **NOT CARRIED: Facet.** A facet records that a particular thought became
     # a particular task -- `mind.Facet.task`, whose invariant is that a
     # confirmed actionable facet has a live task. It is provenance about *one*
@@ -1267,10 +943,10 @@ def _spawn_next_occurrence(completed_item, carry_forward_steps=(), today=None):
     # before the task existed -- and the table is append-only by database
     # trigger, so it is not a thing to write casually in either direction.
     #
-    # Both declared rather than left silent, and
-    # `tests/test_a_spawn_accounts_for_everything_on_a_task.py` is why: `MoneyLine`
-    # was correctly not mentioned here either, right up until it turned out to
-    # be a defect that had been live since bills shipped.
+    # All three declared rather than left silent, and
+    # `tests/test_a_spawn_accounts_for_everything_on_a_task.py` is why: the
+    # sidecar was correctly not mentioned here either, right up until it turned
+    # out to be a defect that had been live since bills shipped.
 
     # Fresh copies, not carried state: a step that was already ticked off
     # this cycle starts the next one unchecked, the same way the parent

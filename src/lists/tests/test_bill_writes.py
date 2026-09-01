@@ -268,7 +268,12 @@ class RemovingTest(TestCase):
             self.user, payee="Landlord", amount=Decimal("1200.00"), due_date=DUE
         )
 
-        bills.remove(bill)
+        # Injected: the successor's date depends on today, because
+        # `_advance_due_date` will not produce one already overdue. This test
+        # read the wall clock until September 1, 2026, when it started failing
+        # for no reason but the date -- and it would have gone on passing for
+        # the whole of August while proving nothing about the boundary.
+        bills.remove(bill, today=DUE)
 
         self.assertFalse(Bill.objects.filter(pk=bill.pk).exists())
         successor = Bill.objects.get()
@@ -311,3 +316,130 @@ class RemovingTest(TestCase):
         bills.remove(bill)
 
         self.assertEqual(Bill.objects.count(), 0)
+
+
+class ChangingWhetherABillRepeatsTest(TestCase):
+    """Cadence lives on the series, so changing it is a series-level act even
+    when somebody does it from one occurrence's edit form.
+
+    **The old model could not express this at all**: `Item.recurrence` was on
+    the occurrence, so "does this repeat" and "what does the rule say" were the
+    same field. Splitting them is what makes *stop paying rent* different from
+    *delete August's rent* — and it is why this needs a function rather than an
+    assignment.
+    """
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            "vince", "vince@example.com", "a secure password"
+        )
+
+    def bill(self, **kwargs):
+        return bills.record(
+            self.user, payee="Landlord", amount=Decimal("1200.00"),
+            due_date=DUE, **kwargs,
+        )
+
+    def test_a_one_off_can_be_made_to_repeat(self):
+        bill = self.bill(repeats=False)
+
+        bills.set_cadence(bill, Item.Recurrence.MONTHLY)
+
+        bill.refresh_from_db()
+        self.assertIsNotNone(bill.series)
+        self.assertEqual(bill.series.cadence, Item.Recurrence.MONTHLY)
+
+    def test_a_new_series_carries_the_occurrence_it_was_made_from(self):
+        """Otherwise the first thing it spawns is a bill for nobody, with no
+        payee and no figure -- the series has to start from something."""
+        bill = self.bill(repeats=False)
+
+        bills.set_cadence(bill, Item.Recurrence.MONTHLY)
+
+        series = bill.series
+        self.assertEqual(series.payee, "Landlord")
+        self.assertEqual(series.amount, Decimal("1200.00"))
+        self.assertEqual(series.owner, self.user)
+
+    def test_a_repeating_bill_can_change_its_cadence(self):
+        bill = self.bill()
+
+        bills.set_cadence(bill, Item.Recurrence.ANNUAL)
+
+        bill.refresh_from_db()
+        self.assertEqual(bill.series.cadence, Item.Recurrence.ANNUAL)
+
+    def test_stopping_the_repeat_ends_the_series_and_keeps_this_one(self):
+        """`ended_at` rather than a delete, for the reason `remove` gives: the
+        occurrences it already produced are a record of money that moved."""
+        bill = self.bill()
+        series = bill.series
+
+        bills.set_cadence(bill, Item.Recurrence.NONE)
+
+        bill.refresh_from_db()
+        series.refresh_from_db()
+        self.assertIsNotNone(series.ended_at)
+        self.assertIsNone(bill.series, "This occurrence is still owed and still here.")
+        self.assertTrue(Bill.objects.filter(pk=bill.pk).exists())
+
+    def test_an_unchanged_cadence_does_nothing(self):
+        bill = self.bill()
+        before = bill.series.pk
+
+        bills.set_cadence(bill, Item.Recurrence.MONTHLY)
+
+        bill.refresh_from_db()
+        self.assertEqual(bill.series.pk, before)
+
+    def test_a_cadence_that_is_not_one_is_refused(self):
+        bill = self.bill()
+
+        with self.assertRaises(bills.TaskConflict):
+            bills.set_cadence(bill, "fortnightlyish")
+
+
+class WhatABillRefusesTest(TestCase):
+    """The refusals that survived the split, and the one that did not."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            "vince", "vince@example.com", "a secure password"
+        )
+
+    def test_a_bill_needs_a_payee(self):
+        """It is the only thing a bill is named by. The task version derived a
+        title from it -- *Landlord* became *Pay Landlord* -- so an empty one
+        produced a task called *Pay*; here it would produce a row nobody could
+        identify."""
+        with self.assertRaises(bills.TaskConflict):
+            bills.record(self.user, payee="", amount=Decimal("10.00"), due_date=DUE)
+
+    def test_whitespace_is_not_a_payee(self):
+        with self.assertRaises(bills.TaskConflict):
+            bills.record(self.user, payee="   ", due_date=DUE)
+
+    def test_an_edit_cannot_empty_the_payee_either(self):
+        bill = bills.record(self.user, payee="Landlord", due_date=DUE)
+
+        with self.assertRaises(bills.TaskConflict):
+            bills.update(bill, payee="")
+
+    def test_two_open_bills_from_one_payee_are_allowed_now(self):
+        """**A refusal that was an artifact, and is gone deliberately.**
+
+        Until August 31, 2026 this raised *"there is already an open bill from
+        Amazon"* and suggested writing *Amazon (Prime)* instead. Nothing in the
+        money domain wanted that: it was `unique_active_item`, the task core's
+        rule that one person cannot have two open tasks with the same text,
+        reaching money through the derived title *Pay Amazon*.
+
+        Two invoices from one supplier in a month is ordinary, and the old
+        model could not record it. The refusal went with the derived title, and
+        this test is here so that is a decision rather than something nobody
+        noticed.
+        """
+        bills.record(self.user, payee="Amazon", amount=Decimal("7.99"), due_date=DUE)
+        bills.record(self.user, payee="Amazon", amount=Decimal("4.99"), due_date=DUE)
+
+        self.assertEqual(Bill.objects.filter(payee="Amazon").count(), 2)

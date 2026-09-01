@@ -5,22 +5,16 @@ from Bills to Money: *"if I need to check on financial information, I know
 exactly where to go."* Bills did not become Money -- **bills became part of
 it**, and income is the sibling this file is now named to hold.
 
-**`MoneyLine` keeps its name**, deliberately. A bill is one kind of money thing and
-income is another; a model named after the module would have to be both, which
-is the collapse `architecture-trajectory.md` §4 exists to catch. The rename is
-the module and the namespace, not the noun.
+**The noun is `Bill`, and it is a model of its own since August 31, 2026.** A
+bill was a task with a `MoneyLine` sidecar until then, on the argument that §4
+says no to a primitive for a concept that only has a different *name*. What
+overturned it is in `bill-as-a-model-plan.md` §2: a missed period is gone for a
+task and still owed for a bill, which is a different life cycle and is exactly
+what §4 asks for.
 
-Original docstring follows.
-
-What is due this month, and what it comes to.
-
-A read, not a model. A bill is a task with a `MoneyLine` sidecar -- see that model
-for why §4 said no to a primitive -- so everything here is a question about
-rows that already exist.
-
-Its own module beside `agenda.py` and `projects.py`, because it is a read with
-its own vocabulary and putting it in the agenda would make the agenda answer a
-question about money.
+**These are reads, and the writes are `bills.py`.** Its own module beside
+`agenda.py` for the reason that one is: a read with its own vocabulary, and
+putting it in the agenda would make the agenda answer a question about money.
 """
 
 from calendar import monthrange
@@ -31,47 +25,9 @@ from datetime import timedelta
 from decimal import Decimal
 
 from django.db.models import Q
+from django.utils import timezone
 
 from lists.models import Account, Bill, Direction, Item, MoneyLine
-
-
-@dataclass(frozen=True)
-class BillRow:
-    task: Item
-    bill: MoneyLine
-
-    @property
-    def paid(self):
-        """Whether this one is settled.
-
-        **`completed_at`, not a status**, and the difference is not pedantry:
-        a completed *recurring* task is `ARCHIVED` rather than `COMPLETED` --
-        `complete_item` says so, because `unique_active_arealess_item` would
-        otherwise refuse the successor it spawns in the same breath. Reading the
-        status would therefore have hidden every paid rent, which is the bill
-        this page most exists for.
-
-        **There is still no second definition of paid**: `completed_at` is the
-        one the day and the agenda read, and it is cleared by `reopen_item`, so
-        un-paying works without anything here knowing about it.
-        """
-        return self.task.completed_at is not None
-
-    def overdue_on(self, today):
-        """Unpaid, and the day it was due has gone.
-
-        **Against the owner's own today**, not the month being looked at: an
-        unpaid July bill read in September is late, and reading it in July is
-        not what makes it so. `clarice.clocks.today_for` is the rule, and a
-        date worked out in a browser would be a second opinion on whose day it
-        is -- which is the defect D16 found in the note-to-day join.
-
-        A paid bill is never late, whenever it was paid. *Paid, eventually* is
-        a fact about the past and this is a state about now.
-        """
-        if self.paid or self.task.due_date is None:
-            return False
-        return self.task.due_date < today
 
 
 @dataclass(frozen=True)
@@ -111,118 +67,21 @@ class MonthOfBills:
     unpriced: int
 
 
-def bills_for(owner, day):
-    """Every bill in the month containing ``day``, soonest first, paid or not.
-
-    **Paid ones are included, and used not to be.** The filter said open only,
-    on the reasoning that *a paid bill is not still due, which is the agenda's
-    own definition of open rather than a second one* -- true of an agenda, and
-    wrong here. **Not due and not this month's are different facts**, and this
-    page is asked both *what do I owe* and *what did this month cost*; the old
-    read could answer only the first while appearing to answer both.
-
-    Archived bills stay out. That is not a filter on paid-ness -- it is the
-    task core's own "this is put away" and it means the same thing here.
-
-    Any day of the month asks about the same month, the courtesy
-    `intention_for` and `month_for` already give a week and a month.
-    """
-    first = day.replace(day=1)
-    last = first.replace(day=monthrange(first.year, first.month)[1])
-
-    rows = [
-        BillRow(task=bill.item, bill=bill)
-        for bill in MoneyLine.objects.filter(
-            item__owner=owner,
-            # Open ones, plus anything ever paid -- including the paid
-            # recurring occurrences that are `ARCHIVED` rather than
-            # `COMPLETED`. A task archived *without* being completed is
-            # genuinely put away and stays out.
-            item__due_date__gte=first,
-            item__due_date__lte=last,
-        )
-        .filter(Q(item__status=Item.Status.ACTIVE) | Q(item__completed_at__isnull=False))
-        .select_related("item", "item__list")
-        .order_by("item__due_date", "item__id")
-    ]
-
-    due = defaultdict(Decimal)
-    paid = defaultdict(Decimal)
-    expected_in = defaultdict(Decimal)
-    received = defaultdict(Decimal)
-    unpriced = 0
-    for row in rows:
-        if row.bill.amount is None:
-            # Counted whether or not it is paid: "the water bill, whatever it
-            # came to" is as unpriced after paying it as before.
-            unpriced += 1
-            continue
-        # **Four buckets, not two**, because a salary in the *still to pay*
-        # column would make every month look catastrophic. Direction decides
-        # which pair, settlement decides which of the pair.
-        incoming = row.bill.direction == Direction.IN
-        if row.paid:
-            # What actually moved, not what was expected -- they differ the
-            # moment somebody pays extra or a bonus lands. Falls back to the
-            # expected figure for rows settled before `paid_amount` existed.
-            settled = (
-                row.bill.paid_amount
-                if row.bill.paid_amount is not None
-                else row.bill.amount
-            )
-            (received if incoming else paid)[row.bill.currency] += settled
-        else:
-            (expected_in if incoming else due)[row.bill.currency] += row.bill.amount
-    return MonthOfBills(
-        bills=rows,
-        due_totals=dict(due),
-        paid_totals=dict(paid),
-        expected_in_totals=dict(expected_in),
-        received_totals=dict(received),
-        unpriced=unpriced,
-    )
-
-
-# DARK: no production caller. Trigger: increment 4 of
-# design/bill-as-a-model-plan.md, which moves the money writes onto `Bill` and
-# switches the surfaces to this read in the same step. Reads and writes move
-# together deliberately -- see this function's docstring for why the mirror
-# that would let them move separately is not worth building.
 def month_from_bills(owner, day):
-    """`bills_for`, read from `Bill` instead of `MoneyLine` + `Item`.
+    """What is owed and what was settled in the month `day` falls in.
 
-    **Increment 3 of `bill-as-a-model-plan.md`, and dark**: nothing calls this
-    yet. The trigger is increment 4, which moves the writes and switches the
-    surfaces to it in one step. `test_bill_reads_agree.py` is what makes the
-    switch safe -- it runs both reads over the same data and requires the same
-    answers.
+    **Three things the read this replaced had to do**, kept as a record of what
+    the split bought rather than as an argument for it. It wrapped each row in
+    a `BillRow` to hold a task and its sidecar together; here the row *is* the
+    record. It reconciled status, because a paid *recurring* task is `ARCHIVED`
+    rather than `COMPLETED`, so settlement had to be read from `completed_at`
+    and never from the status; `paid_at` has no such trap. And it filtered the
+    archive, because *put away* is a task state.
 
-    **Why the surfaces are not switched here**, against what that plan's
-    increment 3 first said. Reading `Bill` while `MoneyLine` remains
-    authoritative needs every money mutation mirrored into `Bill` -- and a
-    `Bill` mirrors fields owned by *two* models, so the mirror is about fifteen
-    call sites rather than the eight `_write_through_to_commitment` needs. Each
-    missed one is silent divergence, which is exactly the failure this codebase
-    keeps finding. A mirror that is a worse bug surface than the thing it
-    de-risks is not worth building, so reads and writes move together.
-
-    **Three things the old read had to do that this one does not**, and they
-    are the split paying for itself rather than an argument for it:
-
-    - **No `BillRow`.** That wrapper exists only to hold a task and its sidecar
-      together; here the row *is* the record.
-    - **No status reconciliation.** `BillRow.paid` needs a paragraph explaining
-      that a paid *recurring* task is `ARCHIVED` rather than `COMPLETED`, so
-      settlement must be read from `completed_at` and never from the status.
-      `paid_at` has no such ambiguity and needs no paragraph.
-    - **No archive filter.** The old read excludes tasks archived without being
-      completed, because *put away* is a task state. A bill has no such state.
-
-    **That last one is a decision rather than a simplification**, and it is
-    recorded in the plan: a bill you neither pay nor delete is now simply owed.
-    Nothing was affected -- development and production both held zero archived
-    bills when the conversion ran -- but the concept is gone rather than
-    carried, and that is deliberate.
+    **That last one is a decision rather than a simplification**: a bill you
+    neither pay nor delete is now simply owed. Nothing was affected --
+    development and production both held zero archived bills when the
+    conversion ran -- but the concept is gone rather than carried.
     """
     first = day.replace(day=1)
     last = first.replace(day=monthrange(first.year, first.month)[1])
@@ -334,83 +193,12 @@ class MoneyLanding:
     account_count: int
 
 
-def landing_for(owner, *, today):
-    """Everything the landing page says, in one pass.
-
-    ``today`` is injected rather than read from the clock -- `principles.md`,
-    *pass dates and times into domain logic* -- which is also what lets this be
-    tested at a month boundary without freezing time.
-    """
-    rows = [
-        BillRow(task=line.item, bill=line)
-        for line in MoneyLine.objects.filter(
-            item__owner=owner, direction=Direction.OUT
-        ).select_related("item")
-    ]
-    open_rows = [row for row in rows if not row.paid and row.task.due_date]
-
-    overdue = sorted(
-        (row for row in open_rows if row.task.due_date < today),
-        key=lambda row: row.task.due_date,
-    )
-    due_soon = sorted(
-        (
-            row
-            for row in open_rows
-            if today <= row.task.due_date <= today + SOON
-        ),
-        key=lambda row: row.task.due_date,
-    )
-    # Inside its lead time and not already in the two lists above: saying a
-    # thing twice on one screen is how a page stops being read.
-    already = {row.task.pk for row in overdue} | {row.task.pk for row in due_soon}
-    renewing = sorted(
-        (
-            row
-            for row in open_rows
-            if row.task.pk not in already
-            and row.task.lead_days
-            and row.task.due_date <= today + timedelta(days=row.task.lead_days)
-        ),
-        key=lambda row: row.task.due_date,
-    )
-
-    yearly = defaultdict(Decimal)
-    for row in rows:
-        times = TIMES_A_YEAR.get(row.task.recurrence)
-        if times is None or row.bill.amount is None:
-            continue
-        yearly[row.bill.currency] += row.bill.amount * times
-
-    owed, held, owed_change, held_change, unread = _balances(owner, today)
-    return MoneyLanding(
-        overdue=overdue,
-        due_soon=due_soon,
-        renewing_soon=renewing,
-        yearly_totals=dict(yearly),
-        owed_totals=dict(owed),
-        held_totals=dict(held),
-        owed_change=dict(owed_change),
-        held_change=dict(held_change),
-        unread_accounts=unread,
-        # Counted rather than derived from `rows` above: that list is this
-        # month's reading, and "have you ever" is a question about all of them.
-        line_count=MoneyLine.objects.filter(item__owner=owner).count(),
-        account_count=Account.objects.filter(owner=owner).count(),
-    )
-
-
-# DARK: no production caller. Trigger: increment 4 of
-# design/bill-as-a-model-plan.md, the same one `month_from_bills` waits on --
-# reads and writes switch together, and these two are the whole read surface
-# the split touches. Balances, history and categories read `Account`,
-# `BalanceReading` and `MoneyCategory` and are untouched.
 def landing_from_bills(owner, *, today):
-    """`landing_for`, read from `Bill` instead of `MoneyLine` + `Item`.
+    """How the money stands today: what is late, what is near, what it costs.
 
-    **Three joins become none.** The old read walks `MoneyLine → Item` for the
-    date, the lead time and the recurrence, and `BillRow` exists to hold the
-    pair together. Every field this needs is on the row.
+    **Three joins became none.** The read this replaced walked `MoneyLine` to
+    `Item` for the date, the lead time and the recurrence, with a `BillRow` to
+    hold the pair together. Every field here is on the row.
 
     **`recurrence` becomes `series.cadence`, and a one-off is correctly
     absent** rather than filtered: `TIMES_A_YEAR` has no entry for *does not
@@ -466,11 +254,6 @@ def landing_from_bills(owner, *, today):
     )
 
 
-# DARK: no production caller. Trigger: the commit that pays decision 4 --
-# increment 5 of design/bill-as-a-model-plan.md, which is Vince's call of
-# August 31, 2026 to keep bills on the day and the agenda rather than let the
-# model split quietly drop them. That commit swaps this in beside
-# `agenda.open_items_for` at all five of its call sites.
 def open_bills_for(owner):
     """Bills still owed, in the order the agenda sorts by — the `Bill` half of
     `agenda.open_items_for`.
@@ -493,6 +276,36 @@ def open_bills_for(owner):
         .exclude(direction=Direction.IN)
         .select_related("series", "category", "account")
         .order_by("due_date", "id")
+    )
+
+
+def coming_bills_for(owner, today=None):
+    """Bills inside their own lead time, soonest first — the `Bill` half of
+    `agenda.coming_up_for`.
+
+    **Advance notice is the feature bills need most**, and *"property tax, in
+    seven days"* is the archetypal case for a lead time. The task version
+    reads `open_items_for`, which stopped returning bills at increment 4 of
+    `bill-as-a-model-plan.md`; without this the one outbound channel this
+    product has would have gone quiet about the records it is most useful for,
+    while every test named for a lead time kept passing, because they all use
+    tasks.
+
+    **The same three rules the task version follows**, deliberately not
+    re-derived: strictly after today, so nothing is said twice in one email;
+    zero lead time is off rather than *the day itself*; and the comparison is
+    per row against that row's own `lead_days`, which is why it is not a plain
+    `due_date__lte` bound.
+    """
+    today = today or timezone.localdate()
+    return sorted(
+        (
+            bill
+            for bill in open_bills_for(owner)
+            if bill.lead_days
+            and today < bill.due_date <= today + timedelta(days=bill.lead_days)
+        ),
+        key=lambda bill: (bill.due_date, bill.id),
     )
 
 

@@ -1,7 +1,7 @@
 # A bill earns its own model — focused spec
 
 Vince · claimed August 31, 2026 · **overturns one written refusal, and does not
-override §4**
+override §4** · increments 1–5 shipped, **the flip passed September 1, 2026**
 
 ## 1. What is wrong
 
@@ -197,13 +197,58 @@ Each is shippable and leaves the product working.
    bill you neither pay nor delete is now simply owed. Nothing was affected —
    development and production both held zero archived bills when the conversion
    ran — but the concept is gone rather than carried.
-4. **The Money surfaces read *and* write `Bill`.** `create_bill` stops making
-   an `Item`, and the reads built in increment 3 switch on in the same step —
-   see that increment for why they could not move separately. **The point of no
-   return**, and the first increment that changes what a person's data looks
-   like. `test_bill_reads_agree.py` and `month_from_bills`'s `DARK` declaration
-   are both deleted by this increment; a comparison test kept past its subject
-   is how a suite grows things nobody can remove.
+4. ~~**The Money surfaces read *and* write `Bill`.**~~ **Done September 1,
+   2026 — the point of no return, passed.** Every money endpoint writes through
+   `bills.*` and reads `month_from_bills` / `landing_from_bills`;
+   `services.create_bill`, `create_income`, `set_bill`, `clear_bill`,
+   `pay_bill`, `update_bill` and `delete_bill` are deleted, along with
+   `bills_for`, `landing_for`, `BillRow`, `test_bill_reads_agree.py` and both
+   `DARK` registry entries.
+
+   **The plan missed a whole half of this increment, and it is the destructive
+   half.** `0055` *copied* rather than moved, deliberately, so the two reads
+   could be compared — which leaves every converted bill existing **twice**.
+   That was the point while both reads were live; the moment the writes moved
+   it became a duplicate the digest, the calendar, search, the archive and the
+   export would all go on showing, with a *Complete* button that would spawn a
+   shadow of next month's bill. So `0057_retire_the_tasks_that_were_bills`
+   deletes them, in this commit, because between the two the product is
+   incoherent. **That migration is what "point of no return" actually means**,
+   and nothing in this file said so until it was written.
+
+   **Three consequences worth naming, each found by doing it:**
+
+   - **The task core had to stop knowing what a bill is.** `PATCH /tasks/{id}
+     {bill: …}` could still have marked a task as one, writing a `MoneyLine`
+     that Money can no longer see — a feature silently doing nothing. So
+     `TaskOut.bill`, `_set_bill`, `serialize_item`'s `bill` key and the task
+     detail page's whole bill apparatus are gone. That apparatus was written on
+     August 31 and every piece of it — a declared noun so fifteen strings could
+     say *Bill*, three flags hiding Priority, Area and Checklist, a back-link to
+     Money — was an admission that a bill was on the wrong screen. The split
+     removed the possibility rather than the awkwardness.
+   - **A refusal disappeared, and it was an artifact.** Two open bills from one
+     payee used to raise *"there is already an open bill from Amazon"*. Nothing
+     in money wanted that: it was `unique_active_item`, the task core's rule
+     that one person cannot have two open tasks with the same text, reaching
+     money through the derived title *Pay Amazon*. Two invoices from one
+     supplier in a month is ordinary and the old model could not record it.
+     Pinned as a test in `test_bill_writes.py` so it is a decision.
+   - **`MonthBillOut` lost `text` and `url`.** A `Bill` has no title and no
+     `/api/items/{id}`, and nothing read `url` at all. The month page showed
+     `text` — *"Pay Landlord"* — beside a payee of *Landlord*; it shows the
+     payee once now. **`task_id` is deliberately still spelled that way** while
+     pointing at a `Bill` id: renaming server, contract, routes and SPA in the
+     commit that changes what a bill *is* would put two failure modes in one
+     place. The rename is increment 9.
+
+   **And a defect the flip found rather than caused.** `POST /money/bills`
+   declared `recurrence` and `lead_days`, the SPA's *Add a bill* form sent both,
+   and the endpoint passed neither to `create_bill` — so choosing *annual* made
+   a monthly bill and the lead days the form calls *"30 is usual"* were dropped
+   on the floor. Every test of those two fields called the service directly, so
+   all of them passed. Fixed here, since the call site was being rewritten
+   anyway.
 5. **Decision 4's cost, paid — Vince's call, August 31, 2026, and it moves
    *before* increment 4 rather than after.**
 
@@ -274,12 +319,32 @@ Each is shippable and leaves the product working.
 6. **Missed periods are replayed for bills** — the life-cycle difference in §2,
    which is the whole justification, made real. Until this ships, the split has
    been argued and not demonstrated.
+
+   **A concrete instance of it, found on September 1, 2026** by a test that
+   started failing for no reason but the date. `spawn_next` borrows
+   `services._advance_due_date`, which will not produce an occurrence already
+   overdue — right for a task, and the doctrine §2 says is wrong for a bill.
+   So deleting August's rent *on September 1* produces **October's**, and
+   September's rent silently never exists. Settling has the same shape.
+
+   That is not a defect to fix separately: it is exactly the behaviour this
+   increment changes, in the one function both paths go through. Recorded here
+   so it is fixed once, where the reasoning is, rather than twice.
 7. **`Account.paid_by` returns, as `Bill.account`.** The disconnect Vince
    actually reported. It comes last only because the model it points at should
    exist first; **if the split stalls, this is the increment to do anyway**, on
    `Item`, exactly as the deletion commit anticipated.
 8. **`MoneyLine` is deleted.** Not before every read and write has moved and a
-   backup has been taken.
+   backup has been taken. **Both conditions are now met** — the table is empty
+   and nothing writes it — so this is a schema removal and a tidy-up of the two
+   places that still name it: `accounts/export.py`'s `bills` key, and
+   `_spawn_next_occurrence`'s *NOT CARRIED* paragraph, which names the relation
+   because `test_a_spawn_accounts_for_everything_on_a_task.py` requires an
+   answer about every model hanging off `Item`.
+9. **The key is renamed from `task_id`.** It points at a `Bill` and says
+   otherwise, on `MonthBillOut`, `AgendaBillOut`, `LandingLineOut`, four routes
+   and the SPA. Held out of increment 4 on purpose: a mechanical rename is the
+   wrong thing to carry into the commit that changes what a bill is.
 
 ## 7. What would reverse this
 

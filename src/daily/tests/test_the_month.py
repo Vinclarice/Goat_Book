@@ -25,7 +25,9 @@ from django.test import TestCase
 
 from accounts.models import User
 from daily import reads, services
-from lists import services as list_services
+from decimal import Decimal
+
+from lists import bills, services as list_services
 from lists.models import List
 
 
@@ -86,6 +88,32 @@ class TheMonthTest(TestCase):
         empties."""
         done = self.due(MID_AUGUST)
         list_services.complete_item(done)
+
+        self.assertEqual(self.on(self.month(), MID_AUGUST).due, 0)
+
+    def test_a_bill_counts_towards_the_day_it_is_due_on(self):
+        """**The docstring above said bills "do not exist yet" while the count
+        was already including them**, because a bill was a task with a due
+        date and this query asks for tasks with due dates. Increment 4 of
+        bill-as-a-model-plan.md would have quietly ended that inclusion, so it
+        is made deliberate instead: a day with rent due is a day with
+        something on it, which is decision 4 on the surface that shows
+        thirty-one days at once."""
+        bills.record(
+            self.alice, payee="Landlord", amount=Decimal("1200.00"),
+            due_date=MID_AUGUST,
+        )
+
+        self.assertEqual(self.on(self.month(), MID_AUGUST).due, 1)
+
+    def test_a_settled_bill_does_not_still_count_as_due(self):
+        """The `Bill` half of `finished work does not still count`. Read from
+        `paid_at`, which needs no paragraph about ARCHIVED versus COMPLETED."""
+        bill = bills.record(
+            self.alice, payee="Landlord", amount=Decimal("1200.00"),
+            due_date=MID_AUGUST,
+        )
+        bills.settle(bill)
 
         self.assertEqual(self.on(self.month(), MID_AUGUST).due, 0)
 

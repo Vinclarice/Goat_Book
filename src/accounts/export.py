@@ -97,6 +97,13 @@ EXPORT_KEYS = {
     # Owned through its task rather than directly -- a sidecar has no owner of
     # its own, which is exactly the shape that goes missing from a list like
     # this. The test above is what caught it.
+    #
+    # **Empty since August 31, 2026, and still declared.** Increment 4 of
+    # bill-as-a-model-plan.md moved every bill into the two keys below and
+    # deleted the tasks the sidecars hung off, so this table has no rows and
+    # nothing writes it. It stays until increment 8 deletes the model, because
+    # a model this app owns without a key here is what the test above fails on
+    # -- and an empty list is the honest answer for an empty table.
     MoneyLine: "bills",
     # **Dark tables, exported anyway** -- increment 1 of
     # bill-as-a-model-plan.md. Nothing writes them yet, so both keys are empty
@@ -253,7 +260,9 @@ def _payload(user, *, now):
             "checklist_steps": _rows(ChecklistStep.objects.filter(owner=user)),
             "bills": _rows(MoneyLine.objects.filter(item__owner=user)),
             # Owned directly, unlike `bills` above, which is the point of the
-            # split: a bill stops being reached through a task.
+            # split: a bill stops being reached through a task. These two carry
+            # a person's whole financial history since the flip; `bills` is an
+            # empty table waiting to be dropped.
             "bill_series": _rows(BillSeries.objects.filter(owner=user)),
             "bill_occurrences": _rows(Bill.objects.filter(owner=user)),
             # **Named `accounts_with_balances`, not `accounts`.** The archive

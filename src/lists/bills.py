@@ -38,9 +38,6 @@ _KEEP = object()
 
 
 @transaction.atomic
-# DARK: no production caller. Trigger: the money endpoints stop calling `services.create_bill` --
-# increment 4 of design/bill-as-a-model-plan.md, which switches the
-# reads and the writes in one commit.
 def record(
     owner,
     *,
@@ -111,9 +108,6 @@ def record(
 
 
 @transaction.atomic
-# DARK: no production caller. Trigger: the pay endpoint stops calling `services.pay_bill` --
-# increment 4 of design/bill-as-a-model-plan.md, which switches the
-# reads and the writes in one commit.
 def settle(bill, *, amount=None, today=None):
     """Record that it was paid — or received — and produce the next one.
 
@@ -177,9 +171,6 @@ def spawn_next(bill, *, today=None):
 
 
 @transaction.atomic
-# DARK: no production caller. Trigger: the edit endpoint stops calling `services.update_bill` --
-# increment 4 of design/bill-as-a-model-plan.md, which switches the
-# reads and the writes in one commit.
 def update(
     bill,
     *,
@@ -234,11 +225,62 @@ def update(
 
 
 @transaction.atomic
-# DARK: no production caller. Trigger: the delete endpoint stops calling `services.delete_bill` --
-# increment 4 of design/bill-as-a-model-plan.md, which switches the
-# reads and the writes in one commit.
-def remove(bill, *, whole_series=False):
+def set_cadence(bill, recurrence):
+    """Change whether a bill repeats, and how often.
+
+    **A series-level act reached from one occurrence**, which is a distinction
+    the old model could not make: `Item.recurrence` sat on the occurrence, so
+    *does this repeat* and *what does the standing rule say* were one field.
+    Here they are two, which is what makes *stop paying rent* a different act
+    from *delete August's rent*.
+
+    Three cases, and each is a different verb underneath. Starting to repeat
+    creates the series **from this occurrence**, because a rule with no payee
+    and no figure would spawn a bill for nobody. Changing the cadence revises
+    the rule. Stopping ends it rather than deleting it -- the occurrences it
+    already produced are a record of money that moved -- and leaves this one
+    standing, since it is still owed.
+    """
+    if recurrence not in Item.Recurrence.values:
+        raise TaskConflict("Choose a valid cadence.")
+    series = bill.series
+    current = series.cadence if series is not None else Item.Recurrence.NONE
+    if recurrence == current:
+        return bill
+    if recurrence == Item.Recurrence.NONE:
+        if series is not None:
+            series.ended_at = timezone.now()
+            series.save(update_fields=["ended_at"])
+        bill.series = None
+        bill.save(update_fields=["series", "updated_at"])
+        return bill
+    if series is None:
+        bill.series = BillSeries.objects.create(
+            owner=bill.owner,
+            payee=bill.payee,
+            amount=bill.amount,
+            currency=bill.currency,
+            direction=bill.direction,
+            category=bill.category,
+            account=bill.account,
+            cadence=recurrence,
+            lead_days=bill.lead_days,
+        )
+        bill.save(update_fields=["series", "updated_at"])
+        return bill
+    revise_series(series, cadence=recurrence)
+    return bill
+
+
+@transaction.atomic
+def remove(bill, *, whole_series=False, today=None):
     """Delete a bill, and say which one is meant when it repeats.
+
+    **`today` is injected, like `settle`'s**, and for a reason a test found on
+    September 1, 2026: the successor's date depends on it, because
+    `_advance_due_date` will not produce one already overdue. Without a way to
+    pass it in, this function reads the wall clock and every test of it passes
+    or fails depending on the day it runs.
 
     **`whole_series=False` means this one and not the habit.** What somebody
     means by deleting August's rent is *not this one*; they would have said so
@@ -258,14 +300,11 @@ def remove(bill, *, whole_series=False):
         Bill.objects.filter(series=series, paid_at__isnull=True).delete()
         return
     if series is not None and series.ended_at is None:
-        spawn_next(bill)
+        spawn_next(bill, today=today)
     bill.delete()
 
 
 @transaction.atomic
-# DARK: no production caller. Trigger: a surface offers editing the standing rule rather than one month --
-# increment 4 of design/bill-as-a-model-plan.md, which switches the
-# reads and the writes in one commit.
 def revise_series(series, *, payee=_KEEP, amount=_KEEP, lead_days=_KEEP, cadence=_KEEP,
                   cadence_mode=_KEEP, category=_KEEP, account=_KEEP):
     """Change the standing rule, which takes effect on what it produces next.

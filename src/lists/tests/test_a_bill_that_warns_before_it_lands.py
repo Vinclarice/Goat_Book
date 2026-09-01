@@ -23,8 +23,9 @@ from decimal import Decimal
 from django.test import TestCase
 
 from accounts.models import User
+from lists import bills
 from lists import services
-from lists.models import Item
+from lists.models import Bill, Item
 
 MARCH = datetime.date(2027, 3, 14)
 
@@ -38,7 +39,7 @@ class ABillThatWarnsBeforeItLandsTest(TestCase):
     def test_an_annual_subscription_can_be_created(self):
         """Quarterly and annual are what the model has always offered and the
         form never did -- and they are the ones a person genuinely forgets."""
-        sub = services.create_bill(
+        sub = bills.record(
             self.user,
             payee="Adobe",
             amount=Decimal("239.88"),
@@ -46,10 +47,10 @@ class ABillThatWarnsBeforeItLandsTest(TestCase):
             recurrence=Item.Recurrence.ANNUAL,
         )
 
-        self.assertEqual(sub.recurrence, Item.Recurrence.ANNUAL)
+        self.assertEqual(sub.series.cadence, Item.Recurrence.ANNUAL)
 
     def test_it_can_be_told_to_speak_up_early(self):
-        sub = services.create_bill(
+        sub = bills.record(
             self.user,
             payee="Adobe",
             amount=Decimal("239.88"),
@@ -64,7 +65,7 @@ class ABillThatWarnsBeforeItLandsTest(TestCase):
         """The point of setting it once. A lead time that had to be re-entered
         every renewal would be forgotten in exactly the same way the renewal
         is."""
-        sub = services.create_bill(
+        sub = bills.record(
             self.user,
             payee="Adobe",
             amount=Decimal("239.88"),
@@ -73,18 +74,18 @@ class ABillThatWarnsBeforeItLandsTest(TestCase):
             lead_days=30,
         )
 
-        services.complete_item(sub)
+        bills.settle(sub, today=MARCH)
 
-        following = Item.objects.filter(
-            owner=self.user, completed_at__isnull=True
+        following = Bill.objects.filter(
+            owner=self.user, paid_at__isnull=True
         ).get()
         self.assertEqual(following.lead_days, 30)
-        self.assertEqual(following.recurrence, Item.Recurrence.ANNUAL)
+        self.assertEqual(following.series.cadence, Item.Recurrence.ANNUAL)
 
     def test_a_lead_time_is_optional_and_off_by_default(self):
         """Zero is off, not "the day itself" -- otherwise every dated bill in
         the product joins the advance reminder."""
-        rent = services.create_bill(
+        rent = bills.record(
             self.user, payee="Landlord", amount=Decimal("1200.00"), due_date=MARCH
         )
 
@@ -92,7 +93,7 @@ class ABillThatWarnsBeforeItLandsTest(TestCase):
 
     def test_it_refuses_a_cadence_that_is_not_one(self):
         with self.assertRaises(services.TaskConflict):
-            services.create_bill(
+            bills.record(
                 self.user,
                 payee="Adobe",
                 amount=Decimal("10.00"),
@@ -105,7 +106,7 @@ class ABillThatWarnsBeforeItLandsTest(TestCase):
 
     def test_the_lead_time_can_be_changed_later(self):
         """Thirty days turns out to be too late once, and then you want sixty."""
-        sub = services.create_bill(
+        sub = bills.record(
             self.user,
             payee="Adobe",
             amount=Decimal("239.88"),
@@ -114,7 +115,7 @@ class ABillThatWarnsBeforeItLandsTest(TestCase):
             lead_days=30,
         )
 
-        services.update_bill(sub, lead_days=60)
+        bills.update(sub, lead_days=60)
 
         sub.refresh_from_db()
         self.assertEqual(sub.lead_days, 60)

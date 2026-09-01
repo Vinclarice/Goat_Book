@@ -24,7 +24,6 @@ function jsonResponse(data: object, ok = true, status = ok ? 200 : 500) {
 function line(overrides: Record<string, unknown> = {}) {
   return {
     task_id: 1,
-    text: "Pay Landlord",
     payee: "Landlord",
     due_date: "2026-08-28",
     amount: "1200.00",

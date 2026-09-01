@@ -484,9 +484,14 @@ export interface paths {
          * @description Change exactly one thing about a task.
          *
          *     **`__fields_set__` rather than a truthiness check**, because null is a real
-         *     value for several of these: `due_date: null` clears a date, `list: null`
-         *     unfiles a task, `bill: null` unmarks one. Treating absent and null alike
-         *     would make three deliberate operations unreachable.
+         *     value for several of these: `due_date: null` clears a date and `list: null`
+         *     unfiles a task. Treating absent and null alike would make two deliberate
+         *     operations unreachable.
+         *
+         *     **`bill` is gone from this endpoint.** A task could be marked as one until
+         *     August 31, 2026, which is the route `money-module-plan.md` was written to
+         *     replace and `bill-as-a-model-plan.md` finished off: a bill is not a task,
+         *     so there is nothing here to mark. Bills are made at `POST /money/bills`.
          */
         patch: operations["lists_api_v1_update_task"];
         trace?: never;
@@ -1765,8 +1770,6 @@ export interface components {
         MonthBillOut: {
             /** Task Id */
             task_id: number;
-            /** Text */
-            text: string;
             /**
              * Due Date
              * Format: date
@@ -1778,8 +1781,6 @@ export interface components {
             currency: string;
             /** Payee */
             payee: string;
-            /** Url */
-            url: string;
             /** Paid */
             paid: boolean;
             /** Repeats */
@@ -1943,8 +1944,6 @@ export interface components {
         LandingLineOut: {
             /** Task Id */
             task_id: number;
-            /** Text */
-            text: string;
             /** Payee */
             payee: string;
             /**
@@ -2286,21 +2285,6 @@ export interface components {
             /** Url */
             url: string;
         };
-        /**
-         * BillOut
-         * @description What a task costs, when it is a bill. Null on the task when it is not.
-         *
-         *     `amount` is a string, not a float: this column exists to avoid binary
-         *     rounding and sending it as a JSON number would put it straight back.
-         */
-        BillOut: {
-            /** Amount */
-            amount: string | null;
-            /** Currency */
-            currency: string;
-            /** Payee */
-            payee: string;
-        };
         /** TaskOut */
         TaskOut: {
             /** Id */
@@ -2338,7 +2322,6 @@ export interface components {
             priority: "none" | "high" | "low";
             /** Lead Days */
             lead_days: number;
-            bill: components["schemas"]["BillOut"] | null;
             /** Notes */
             notes: string;
             /** Area Id */
@@ -2452,21 +2435,6 @@ export interface components {
              */
             spawned_checklist_steps: components["schemas"]["ChecklistStepOut"][];
         };
-        /** BillIn */
-        BillIn: {
-            /** Amount */
-            amount?: string | null;
-            /**
-             * Currency
-             * @default USD
-             */
-            currency: string;
-            /**
-             * Payee
-             * @default
-             */
-            payee: string;
-        };
         /**
          * TaskPatchIn
          * @description Exactly one of these per request, which is the discipline the view this
@@ -2498,7 +2466,6 @@ export interface components {
             area_id?: number | null;
             /** Priority */
             priority?: ("none" | "high" | "low") | null;
-            bill?: components["schemas"]["BillIn"] | null;
             /** Lead Days */
             lead_days?: number | null;
         };
@@ -3134,7 +3101,6 @@ export interface components {
             priority: "none" | "high" | "low";
             /** Lead Days */
             lead_days: number;
-            bill: components["schemas"]["BillOut"] | null;
             /** Notes */
             notes: string;
             /** Area Id */

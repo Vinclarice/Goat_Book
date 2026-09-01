@@ -23,6 +23,7 @@ from decimal import Decimal
 from django.test import TestCase
 
 from accounts.models import User
+from lists import bills
 from lists import money as money_reader
 from lists import services
 from lists.models import List
@@ -40,21 +41,23 @@ class TheMonthsBillsTest(TestCase):
         self.other = User.objects.create_user("bob", "bob@example.com", "a password")
         self.list_ = List.objects.create(owner=self.user, title="Home")
 
-    def bill(self, text, *, due=MID_AUGUST, amount="100.00", currency="USD", owner=None):
-        area = self.list_
-        if owner is not None:
-            area = List.objects.create(owner=owner, title="Theirs")
-        task = services.create_item(area, text, due_date=due)
-        services.set_bill(
-            task,
+    def bill(self, payee, *, due=MID_AUGUST, amount="100.00", currency="USD", owner=None):
+        """One bill. **The payee is the identity now**, where this used to take
+        a task title and attach a sidecar with the payee `Someone` -- which is
+        the shape the split removed: the thing a person names was the thing the
+        model did not store.
+        """
+        return bills.record(
+            owner or self.user,
+            payee=payee,
             amount=Decimal(amount) if amount is not None else None,
             currency=currency,
-            payee="Someone",
+            due_date=due,
+            repeats=False,
         )
-        return task
 
     def month(self, day=MID_AUGUST, owner=None):
-        return money_reader.bills_for(owner or self.user, day)
+        return money_reader.month_from_bills(owner or self.user, day)
 
     def test_a_month_with_no_bills_says_so_rather_than_showing_zero(self):
         """Zero due and nothing due are different, and only one of them
@@ -70,7 +73,7 @@ class TheMonthsBillsTest(TestCase):
         self.bill("Sooner", due=datetime.date(2026, 8, 3))
 
         self.assertEqual(
-            [row.task.text for row in self.month().bills], ["Sooner", "Later"]
+            [row.payee for row in self.month().bills], ["Sooner", "Later"]
         )
 
     def test_it_leaves_out_other_months(self):
@@ -117,11 +120,11 @@ class TheMonthsBillsTest(TestCase):
         *what do I owe* and *what did this month cost.*
         """
         paid = self.bill("Rent", amount="1200.00")
-        services.complete_item(paid)
+        bills.settle(paid)
 
         found = self.month()
 
-        self.assertEqual([row.task.text for row in found.bills], ["Rent"])
+        self.assertEqual([row.payee for row in found.bills], ["Rent"])
         self.assertTrue(found.bills[0].paid)
 
     def test_what_is_still_due_and_what_is_already_paid_are_separate_totals(self):
@@ -134,7 +137,7 @@ class TheMonthsBillsTest(TestCase):
         it picked.
         """
         paid = self.bill("Rent", amount="1200.00")
-        services.complete_item(paid)
+        bills.settle(paid)
         self.bill("Internet", amount="64.99")
 
         found = self.month()
@@ -155,7 +158,7 @@ class TheMonthsBillsTest(TestCase):
 
         Keyed on `completed_at` instead, which survives that archive.
         """
-        rent = services.create_bill(
+        rent = bills.record(
             self.user,
             payee="Landlord",
             amount=Decimal("1200.00"),
@@ -163,10 +166,10 @@ class TheMonthsBillsTest(TestCase):
             repeats=True,
         )
 
-        services.complete_item(rent)
+        bills.settle(rent)
 
         found = self.month()
-        rows = {row.task.pk: row for row in found.bills}
+        rows = {row.pk: row for row in found.bills}
         self.assertIn(
             rent.pk,
             rows,
@@ -176,13 +179,23 @@ class TheMonthsBillsTest(TestCase):
         self.assertTrue(rows[rent.pk].paid)
         self.assertEqual(found.paid_totals, {"USD": Decimal("1200.00")})
 
-    def test_a_task_archived_without_being_paid_stays_out(self):
-        """The other side of it: archived means put away, and only
-        `completed_at` means paid."""
-        bill = self.bill("Old subscription", amount="9.00")
-        services.archive_item(bill)
+    def test_a_bill_you_neither_pay_nor_delete_is_simply_owed(self):
+        """**A concept that went with the split, recorded rather than
+        absorbed.**
 
-        self.assertEqual(self.month().bills, [])
+        This used to read *a task archived without being paid stays out*: the
+        old read excluded tasks archived without completion, because *put away*
+        is a task state and a bill inherited it. A `Bill` has no such state --
+        `bill-as-a-model-plan.md` increment 3 says so out loud -- so the two
+        answers a bill can give are settled and owed. Nothing was affected when
+        it went: development and production both held zero archived bills when
+        the conversion ran.
+        """
+        self.bill("Old subscription", amount="9.00")
+
+        self.assertEqual([row.payee for row in self.month().bills],
+                         ["Old subscription"])
+        self.assertFalse(self.month().bills[0].paid)
 
     def test_an_unpaid_bill_is_not_marked_paid(self):
         """The other side of the flag, so `paid` cannot be a constant."""
@@ -190,7 +203,10 @@ class TheMonthsBillsTest(TestCase):
 
         self.assertFalse(self.month().bills[0].paid)
 
-    def test_a_task_that_is_not_a_bill_is_not_here(self):
+    def test_an_ordinary_task_is_not_here(self):
+        """It never could be now -- a task is not in this table at all -- which
+        is the guarantee the sidecar shape could only approximate with a
+        filter."""
         services.create_item(self.list_, "Ordinary task", due_date=MID_AUGUST)
 
         self.assertEqual(self.month().bills, [])

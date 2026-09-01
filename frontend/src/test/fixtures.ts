@@ -20,7 +20,6 @@ export function task(overrides: Partial<Task> = {}): Task {
     recurrence: "none",
   priority: "none",
   lead_days: 0,
-  bill: null,
     notes: "",
     area_id: 1,
     project_id: null,

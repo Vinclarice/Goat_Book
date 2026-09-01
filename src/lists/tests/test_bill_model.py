@@ -230,36 +230,10 @@ class BillTest(TestCase):
         )
 
 
-class NothingUsesTheseYetTest(TestCase):
-    """The declaration, with teeth.
-
-    `principles.md`: built-and-dark gets a **named trigger** or a deletion, and
-    this project has twice found a seam that read as live because something
-    adjacent to it was. These tables are new, so the honest check is the
-    cheapest one: nothing in the application writes them.
-
-    **This test is expected to fail at increment 3**, and that failure is the
-    signal to delete it rather than a regression.
-    """
-
-    def test_no_production_code_writes_a_bill(self):
-        import pathlib
-
-        src = pathlib.Path(__file__).resolve().parents[2]
-        writers = []
-        for path in src.rglob("*.py"):
-            if "test" in path.parts or path.name.startswith("test_"):
-                continue
-            if "migrations" in path.parts:
-                continue
-            text = path.read_text(encoding="utf-8")
-            if "Bill.objects.create" in text or "BillSeries.objects.create" in text:
-                writers.append(str(path.relative_to(src)))
-
-        self.assertEqual(
-            writers,
-            [],
-            "Something writes Bill now, which is increment 3 of "
-            "bill-as-a-model-plan.md arriving. Delete this test with the "
-            "commit that does it.",
-        )
+# `class NothingUsesTheseYetTest` stood here from August 31, 2026 until later
+# the same day. It scanned production source for anything writing a `Bill` and
+# failed the moment something did -- and its own docstring said that failure
+# was the signal to delete it rather than a regression. `lists/bills.py` is
+# what tripped it. The declaration it enforced now lives in
+# `clarice/tests/test_dark_services_declare_their_deferral.py`, which is the
+# guard that outlives this one.

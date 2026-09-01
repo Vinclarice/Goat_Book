@@ -88,6 +88,11 @@ ELSEWHERE = {
     # by nothing until increment 4 moves the writes. Caught by this test within
     # minutes of being written, which is the third time it has paid for itself.
     "lists/money.py": ("landing_from_bills", "month_from_bills"),
+    # The whole write half of the bill split, dark together and switching on
+    # together -- increment 4 of bill-as-a-model-plan.md. `spawn_next` is
+    # absent because `settle` and `remove` call it, which is what this guard
+    # means by a caller.
+    "lists/bills.py": ("record", "remove", "revise_series", "settle", "update"),
     "routines/reads.py": ("occurrence_for",),
     "accounts/export.py": ("owned_models", "export_key"),
 }

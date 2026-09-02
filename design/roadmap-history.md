@@ -16,6 +16,149 @@ nineteen journeys. Worth saying rather than quietly filling in, because this is
 the one file the index calls unable to go stale — and it cannot, but it can be
 incomplete, which reads the same to somebody looking for what happened.
 
+## A bill earns its own model — August 31 – September 2, 2026, **not yet deployed**
+
+Nine increments, six migrations, in the repository and **not in production** at
+the time of writing. The deploy carries `0055`–`0060`, of which one deletes rows
+(`0057`) and one drops a table (`0059`); until it runs, production is still on
+`MoneyLine` and a bill there is still a task. Written up now rather than after
+the deploy because the work itself is finished and the plan it came from is a
+stub — but nothing here is live, and a reader should not read it as though it
+were.
+
+**It began as one sentence with two things in it.** Vince, after using the
+repaired Money module and adding a *Dell Community* account: *"I've added Dell
+Commenity and its showing up but now there's a disconnect. Like it should be
+tied to the payments. So I really think we need to separate bills from a task."*
+The **disconnect** was that an account and the bill that pays it were unrelated
+records — increment 7. The **diagnosis** was that a bill should not be a task —
+increments 1 to 6, 8 and 9. Separating the two is the only reason this stayed
+tractable.
+
+### It overturned a refusal by satisfying the charter rather than waiving it
+
+`money-module-plan.md` had refused a bill as its own model on August 27, citing
+`architecture-trajectory.md` §4 — *a concept earns its own model when it has a
+different life cycle, not when it has a different name.* §4 never named bills,
+and **its test was met rather than set aside**: the qualifying difference had
+been written into `roadmap.md` on August 28, one day after the refusal, and
+nobody put the two side by side for three days.
+
+The difference is that the same event — a period elapsing unfinished — must
+produce opposite outcomes. Five missed bin rounds are five things that did not
+happen and inventing them is fabricated history. **A payment you did not make is
+still owed.** Two behaviours that cannot both live in one `status` field on one
+model is exactly what §4 asks for.
+
+**Recorded as a reversal of a decision, not of a mistake.** The refusal was
+sound about *names*, and was made before the evidence that answered it existed.
+
+### The reversal condition was met, priced, and declined
+
+The plan named its own off-ramps in writing before any of it was built. One of
+them triggered: reading two models on the daily surfaces was supposed to be the
+signal that a product decision had been spent to buy a modelling one. It cost a
+`bills` array on two payloads, a second query, and a section of its own on the
+day page. **Vince's call, August 31: pay it.** Bills are still on the agenda and
+the day, which is what decision 4 exists to protect.
+
+**Naming the off-ramp in advance is what made that a decision rather than a
+drift.** The alternative — noticing the cost afterwards and rationalising it —
+is available to any plan that does not write the condition down first.
+
+### What the split paid for, and what it cost
+
+**Paid for.** `BillRow` is gone, and with it a paragraph explaining that a paid
+*recurring* task is `ARCHIVED` rather than `COMPLETED` so settlement must never
+be read from the status; `paid_at` has no such trap. The month endpoint's
+hand-built row dict and `_bill_row_out` collapsed into one function over one
+record. The task detail page stopped being taught, one field at a time, to hide
+Priority, Area and Checklist and call itself *Bill detail* — a bill has none of
+them, and `/money/bills/:id` is its own page.
+
+**Cost.** Two shapes on the agenda and the day, the `bills` array above, and a
+`catch_up` pass with a cron entry to keep it running.
+
+**Deliberately dropped**: the archive. *Put away* was a task state a bill
+inherited; a bill you neither pay nor delete is now simply owed. Zero rows were
+affected, and the concept is gone rather than carried.
+
+**Deliberately gained**: two open bills from one payee. That was refused before,
+not by anything in the money domain but by `unique_active_item` reaching money
+through the derived title *Pay Amazon*. Two invoices from one supplier in a
+month is ordinary and the old model could not record it.
+
+### Four things the increments found that the plan had not
+
+**The plan's own ordering was wrong, and the flip found it.** Increment 4 was
+written as though decision 4 broke at increment 5. It broke at 4: a bill created
+after the write switch has no `Item` and vanishes from the day, *while bills
+created before it stay* — an inconsistent break rather than a clean one. The
+increments were resequenced.
+
+**`0055` copied rather than moved, so every converted bill existed twice.** That
+was the point while both reads were live and a duplicate the moment the writes
+moved. The plan never said what happened to the task copies; `0057` deletes
+them, and it is the other half of the conversion rather than a tidy-up.
+
+**Increment 6 was worse than `roadmap.md` predicted.** That entry described
+*paid in August, schedules September, July is gone*. Measured first, as it asked:
+a monthly card bill due August 20 and unpaid held **one** occurrence and would
+have held one in 2027, because the only producer of a successor was settling or
+deleting the current one. The doctrine's cost was not a skipped period going
+unrecorded — it was that **falling behind made the module go quiet**.
+
+**Increment 8 was filed as housekeeping and was not.** `MoneyLine` carried a
+not-negative CHECK; `Bill` had never been given one, so deleting the old model
+would have ended a database guarantee silently. And the restore drill was
+checking that constraint by name — after the drop it would have queried a
+constraint that cannot exist, reported `no`, and failed at step 5 with a paid
+scratch cluster running.
+
+### What it taught: a guard is only as good as its second direction
+
+The drill guard walked *declared → script* and *NOT_DRILLED → declared*, and
+never *script → declared*. So a constraint **added** without a decision failed
+the build, and a constraint **deleted** left its name in the drill and nothing
+said a word. One asymmetry, invisible for as long as nothing was deleted.
+
+That is the same shape as the `MoneyLine` CHECK itself: the guarantee was
+enforced on the old model and never carried to the new one, and no test asked
+whether the *replacement* still refused what its predecessor refused. **A
+migration is where guarantees go missing**, because every test that named the
+old one is deleted alongside it.
+
+Both fixed, the second with the guard whose absence allowed it — mutation-tested
+against a renamed constraint rather than trusted.
+
+### Two mistakes worth keeping
+
+**`git checkout -- <file>` is not an undo for one edit.** Used to revert a
+deliberate mutation-test change, it reverted every uncommitted change in that
+file — an increment's worth. Caught immediately by reading the diff. Copy the
+file, or stage first.
+
+**A rename script run twice rewrites its own prose.** The second pass over
+`agenda.py` turned `task_id` into `id` inside a docstring that had just been
+written to explain the rename, leaving it saying the key *"was spelled `id`"*.
+Caught by reading the diff, not by any test — which is the argument for reading
+diffs even when four suites are green.
+
+### Where the pieces live
+
+The plan is [`bill-as-a-model-plan.md`](bill-as-a-model-plan.md), reduced to a
+stub that maps the sections code cites. The charter is
+[`architecture-trajectory.md`](architecture-trajectory.md) §4. What the module
+is and refuses is [`money-module-plan.md`](money-module-plan.md), which loses
+one refusal to this and keeps the rest. How it scores is
+[`module-score.md`](module-score.md), which reads **not yet** and is not moved
+by any of this: the split is a modelling change, and the score is about use.
+
+**One condition stays open** and is `roadmap.md`'s — whether replaying missed
+periods produces a wall of arrears. It is promoted there as its own entry rather
+than left inside this narrative.
+
+
 ## The Money module — August 27, 2026, codename held
 
 Thirty-three commits and eight migrations, verified in production at 23:20 local

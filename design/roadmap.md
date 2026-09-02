@@ -463,88 +463,30 @@ re-add it here.
   anchored-only, because Clarice has one cadence field and cannot say which
   mode a commitment is, while `design-concept.md` calls the distinction
   load-bearing. Deliberate, and recorded at the function.
-- **A bill earns its own model, claimed August 31, 2026.** From Vince, after
-  using the repaired module: *"there's a disconnect. Like it should be tied to
-  the payments. So I really think we need to separate bills from a task."*
-  [`bill-as-a-model-plan.md`](bill-as-a-model-plan.md) is the spec and owns the
-  detail.
+- **Does replaying missed bills produce a wall of arrears? — promoted
+  September 2, 2026 from the two entries this replaces.** `bills.catch_up`
+  creates every occurrence a live series has come to owe, which is the
+  life-cycle difference that justified `Bill` existing at all. **The risk was
+  named before it was built and was deliberately not designed around**:
+  `roadmap.md`'s own words for it were *"a page full of arrears nobody will
+  action"*.
 
-  **It overturns one written refusal and overrides no charter.**
-  `money-module-plan.md` refused a bill as its own model on August 27 citing
-  §4; §4 never named bills, and **its test is now met rather than waived** —
-  the qualifying life-cycle difference is the entry directly below this one,
-  written on August 28 and never connected to the model question until today.
+  **Measured, September 2, 2026**: one untouched monthly series produces **six**
+  further unpaid rows by March 2027. The month page spreads those across six
+  months and would read fine; the agenda and the day show open bills together,
+  so **the agenda is the surface to watch**.
 
-  **Two things made it worth doing now rather than arguing about.** Production
-  holds **one** `MoneyLine`, so the data migration is the cheapest it will ever
-  be. And the plan's own reversal conditions were concrete: if reading two
-  models in the agenda cost decision 4 — *bills stay ordinary tasks
-  elsewhere* — then a product decision was spent to buy a modelling one, and
-  the plan says stop.
+  **It is a question about use, not about code**, which is why it is an entry
+  rather than a defect — nothing is wrong until somebody falls behind and finds
+  the page unusable. If it arrives, the cheapest answer is a per-series cap on
+  how many unpaid occurrences are surfaced. **Not a retreat from the model**,
+  which the month, the landing page, the calendar and the digest all now depend
+  on — and which is demonstrated rather than theoretical precisely because this
+  shipped.
 
-  **The reversal condition was met, priced, and declined.** Reading two models
-  on the daily surfaces cost a `bills` array on two payloads, a second query,
-  and a section of their own on the day. Vince's call, August 31: pay it.
-  Bills are still on the agenda and the day.
-
-  ~~Increments 1–7.~~ **Shipped August 31 – September 1, 2026.** `Bill` and
-  `BillSeries` exist, the data is converted, every money read and write is on
-  them, the tasks that were bills are deleted, a period that elapses unpaid now
-  produces an occurrence, and **the disconnect he actually reported is
-  closed** — the balances screen names the bill that pays each account, and the
-  add and edit forms are where that gets set.
-
-  ~~Increment 8.~~ **Done September 2, 2026** — `MoneyLine` is deleted. It was
-  filed as housekeeping and was not: the old model carried a not-negative CHECK
-  that `Bill` had never been given, so dropping it would have quietly ended a
-  database guarantee, and the restore drill was checking that constraint by
-  name and would have failed mid-drill. Both found by doing it; both fixed,
-  the second with the guard whose absence allowed it.
-
-  ~~Increment 9.~~ **Done September 2, 2026, and with it the whole plan.** The
-  key that pointed at a bill and called itself `task_id` is `id` where a schema
-  is a bill and `bill_id` where it is nested in an account row. It was held back
-  from the flip on purpose, and renamed by hand wherever task ids and bill ids
-  live in the same file — both are `int`, so a wrong rename type-checks and
-  404s at runtime.
-
-  **Nine of nine shipped**, none deployed. `design/bill-as-a-model-plan.md` is
-  the narrative until it is reduced to a stub; the one condition still open is
-  its §7 arrears watch, which is a question about use rather than about code.
-
-- **Should money skip a missed period at all? — promoted August 28, 2026 from
-  the entry above.** *Missed periods are skipped, not replayed* is the task
-  core's doctrine and it is right for tasks: five missed bin rounds are five
-  things that did not happen, and inventing them is a fabricated history
-  `principles.md` refuses. **A bill is not like that.** A payment you did not
-  make is still owed, and the money is still owed whether or not a task exists
-  saying so — so the doctrine that correctly declines to invent bin rounds
-  quietly declines to remind you about a bill.
-
-  **Concretely**: a monthly bill due June 1, paid on August 10, schedules
-  September 1. The July and August payments are simply gone from the surface
-  whose whole job is *how do I stand financially*, and nothing records that two
-  were dropped. This is not the `>` boundary — that was answered above and was
-  the last missed period rather than a special one. It is the doctrine itself,
-  applied to a domain that arrived after it was written.
-
-  ~~**Not obviously a defect, which is why it is a question.**~~ **Answered by
-  measuring it, September 1, 2026, and it was worse than this entry said.** The
-  honest first step asked for here was taken: not *has a period ever been
-  skipped in production*, but *what does the model produce for a repeating bill
-  nobody touches* — and the answer was **nothing, ever**. A monthly card bill
-  due August 20 and unpaid held one occurrence and would have held one in 2027,
-  because the only producer of a successor was settling or deleting the current
-  one. The doctrine's cost was not that a skipped period went unrecorded; it
-  was that falling behind made the module go quiet.
-
-  Replayed by `bills.catch_up`, hourly, in
-  [`bill-as-a-model-plan.md`](bill-as-a-model-plan.md) increment 6, which owns
-  the detail. `modules.md`'s input-ratio rule was respected rather than
-  worked around: nobody confirms anything. **The arrears risk this entry named
-  is real, was not designed around, and stays as that plan's §7 reversal
-  condition** — measured at six further unpaid rows by March 2027 on one
-  untouched series.
+  This is [`bill-as-a-model-plan.md`](bill-as-a-model-plan.md) §7's surviving
+  reversal condition; that plan is a stub and the narrative is in
+  [`roadmap-history.md`](roadmap-history.md).
 
 - **The keystore is now a dependency of the task core, not only of Android —
   promoted August 31, 2026.** [`android-release-signing-plan.md`](android-release-signing-plan.md)
@@ -624,6 +566,8 @@ copy. [`README.md`](README.md) owns the eviction rule this applies.
 - ~~**Removing user data from Sentry and Resend when an account goes**~~ — **closed August 26, 2026** as [`security-and-resilience-plan.md`](security-and-resilience-plan.md) §2.2. It sat here as live work for two days afterwards.
 - ~~**Three genuinely open decisions in `commercial-blueprint.md` Part 9**~~ — **Part 9 closed August 22, 2026, all five answered.** It sat here as live work for six days afterwards, and `commercial-blueprint.md`'s own header said so the whole time.
 - ~~**The task core's coherence**~~ — closed August 31, 2026, all six repairs, from *"developed more in bits and pieces"*; the record is [`coherence-audit-2026-08-30.md`](coherence-audit-2026-08-30.md) and its two survivors are promoted above.
+- ~~**A bill earns its own model**~~ — closed September 2, 2026, all nine increments, **and not yet deployed**; it overturned `money-module-plan.md`'s refusal by satisfying `architecture-trajectory.md` §4 rather than waiving it. Its surviving reversal condition is promoted above.
+- ~~**Should money skip a missed period at all?**~~ — answered September 1, 2026 by measuring it, and the answer was worse than the question assumed: a repeating bill nobody touched produced no further occurrences at all. Replayed by `bills.catch_up`; the arrears risk it named is promoted above.
 - ~~**A recurrence falling due exactly today is skipped**~~ — answered August 28, 2026, the day it was raised: `>` is correct and the docstring was wrong. The reasoning lives in `_advance_due_date` and in `test_the_slot_the_completion_lands_on_is_not_respawned`, which is where code cites its own decisions; production behaviour never changed. The money question it turned up is promoted above.
 
 

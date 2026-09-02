@@ -501,9 +501,16 @@ re-add it here.
   name and would have failed mid-drill. Both found by doing it; both fixed,
   the second with the guard whose absence allowed it.
 
-  **What is open is 9 alone**, and it is housekeeping: renaming the `task_id`
-  key that points at a bill and says otherwise, across four routes, three
-  schemas and the SPA.
+  ~~Increment 9.~~ **Done September 2, 2026, and with it the whole plan.** The
+  key that pointed at a bill and called itself `task_id` is `id` where a schema
+  is a bill and `bill_id` where it is nested in an account row. It was held back
+  from the flip on purpose, and renamed by hand wherever task ids and bill ids
+  live in the same file — both are `int`, so a wrong rename type-checks and
+  404s at runtime.
+
+  **Nine of nine shipped**, none deployed. `design/bill-as-a-model-plan.md` is
+  the narrative until it is reduced to a stub; the one condition still open is
+  its §7 arrears watch, which is a question about use rather than about code.
 
 - **Should money skip a missed period at all? — promoted August 28, 2026 from
   the entry above.** *Missed periods are skipped, not replayed* is the task

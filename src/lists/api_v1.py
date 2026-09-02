@@ -170,11 +170,12 @@ class AgendaBillOut(Schema):
     """A bill as the agenda and the day carry it: what a bill is, and none of
     what a task is.
 
-    **`task_id` until the flip**, because pay and delete are keyed on it -- see
-    `agenda._agenda_bill_out`.
+    **`id`, and it is a `Bill`'s.** It was `task_id` from August 31 to
+    September 2, 2026 -- deliberately, so that the commit changing what a bill
+    *is* did not also carry a mechanical rename. See `agenda._agenda_bill_out`.
     """
 
-    task_id: int
+    id: int
     payee: str
     due_date: str | None
     amount: str | None
@@ -299,12 +300,12 @@ class NavOut(Schema):
 
 
 class MonthBillOut(Schema):
-    #: **Still spelled `task_id`, and it is a `Bill` id since August 31, 2026.**
-    #: The name is kept across the flip on purpose: the pay, edit and delete
-    #: routes are all keyed on it and renaming server, contract, routes and SPA
-    #: in the commit that changes what a bill *is* would put two failure modes
-    #: in one place. The rename is its own increment.
-    task_id: int
+    #: The bill's own id. It was `task_id` for two days after the flip, kept
+    #: that way on purpose: the pay, edit and delete routes are all keyed on it,
+    #: and renaming server, contract, routes and SPA in the commit that changed
+    #: what a bill *is* would have put two failure modes in one place.
+    #: Increment 9 of `bill-as-a-model-plan.md` was that rename.
+    id: int
     due_date: date
     #: A string, not a float: this column exists to avoid binary rounding
     #: and sending it as a JSON number would put it straight back. Null for a
@@ -508,7 +509,7 @@ def _bill_row_out(bill):
     """
     series = bill.series
     return {
-        "task_id": bill.id,
+        "id": bill.id,
         "due_date": bill.due_date,
         "amount": str(bill.amount) if bill.amount is not None else None,
         "currency": bill.currency,
@@ -548,9 +549,9 @@ def _bill_or_404(request, bill_id):
 
 
 @router.get(
-    "/money/bills/entry/{task_id}", response=MonthBillOut, auth=SessionAuthIfLoggedIn()
+    "/money/bills/entry/{bill_id}", response=MonthBillOut, auth=SessionAuthIfLoggedIn()
 )
-def one_bill(request, task_id: int):
+def one_bill(request, bill_id: int):
     """One bill, for its own page.
 
     **The surface moves to Money before the model does.** A bill was opened at
@@ -563,20 +564,20 @@ def one_bill(request, task_id: int):
     changes what a bill is.
 
     **On the write path's key, not a new one.** `PATCH`, `POST /pay` and
-    `DELETE` already live on `entry/{task_id}`; a read at a second address for
+    `DELETE` already live on `entry/{bill_id}`; a read at a second address for
     the same thing is how two spellings of one resource start.
 
     **A plain task is not found here.** Answering for one would make *is this a
     bill* a question every caller has to ask afterwards, and the page has no
     fields for a task.
     """
-    return _bill_row_out(_bill_or_404(request, task_id))
+    return _bill_row_out(_bill_or_404(request, bill_id))
 
 
 @router.patch(
-    "/money/bills/entry/{task_id}", response=MonthBillOut, auth=SessionAuthIfLoggedIn()
+    "/money/bills/entry/{bill_id}", response=MonthBillOut, auth=SessionAuthIfLoggedIn()
 )
-def edit_bill(request, task_id: int, payload: EditBillIn):
+def edit_bill(request, bill_id: int, payload: EditBillIn):
     """Correct a bill without leaving the page it is shown on.
 
     **`entry/{id}` rather than `{id}`**, because `/money/bills/{day}` already
@@ -590,7 +591,7 @@ def edit_bill(request, task_id: int, payload: EditBillIn):
     noun. The model is named `Bill` for exactly that reason: one named after the
     module would have to mean both.
     """
-    bill = _bill_or_404(request, task_id)
+    bill = _bill_or_404(request, bill_id)
     fields = {}
     if payload.payee is not None:
         fields["payee"] = payload.payee
@@ -713,16 +714,16 @@ def add_income(request, payload: NewIncomeIn):
 
 
 @router.post(
-    "/money/bills/entry/{task_id}/pay", response=MonthBillOut, auth=SessionAuthIfLoggedIn()
+    "/money/bills/entry/{bill_id}/pay", response=MonthBillOut, auth=SessionAuthIfLoggedIn()
 )
-def pay_bill(request, task_id: int, payload: PayBillIn):
+def pay_bill(request, bill_id: int, payload: PayBillIn):
     """Pay a bill from the page it is shown on.
 
     **The action this page was missing entirely.** It could add a bill and
     delete a bill and not pay one, which is the thing a person does twelve
     times more often than both put together.
     """
-    bill = _bill_or_404(request, task_id)
+    bill = _bill_or_404(request, bill_id)
     amount = None
     if payload.amount not in (None, ""):
         try:
@@ -738,9 +739,9 @@ def pay_bill(request, task_id: int, payload: PayBillIn):
 
 
 @router.delete(
-    "/money/bills/entry/{task_id}", response={204: None}, auth=SessionAuthIfLoggedIn()
+    "/money/bills/entry/{bill_id}", response={204: None}, auth=SessionAuthIfLoggedIn()
 )
-def remove_bill(request, task_id: int, whole_series: bool = False):
+def remove_bill(request, bill_id: int, whole_series: bool = False):
     """Remove a bill, and say which one is meant when it repeats.
 
     **`whole_series` as a query parameter** rather than a body: a DELETE with a
@@ -751,7 +752,7 @@ def remove_bill(request, task_id: int, whole_series: bool = False):
     somebody who meant *stop paying rent* has to say so, because the wider
     answer is the one that cannot be undone by adding a bill back.
     """
-    bill = _bill_or_404(request, task_id)
+    bill = _bill_or_404(request, bill_id)
     try:
         bills.remove(bill, whole_series=whole_series)
     except bills.TaskConflict as error:
@@ -791,12 +792,14 @@ class NextPaymentOut(Schema):
 
     **Soonest unpaid, not a list.** The balances screen answers *what do I owe
     on this* and *what is coming*; every bill an account has ever had is the
-    month page's question and is one click away through `task_id`.
+    month page's question and is one click away through `id`.
     """
 
-    #: A `Bill` id, spelled as the rest of this module spells it -- see
-    #: `MonthBillOut.task_id`, and increment 9, which renames all of them.
-    task_id: int
+    #: **`bill_id`, not `id`.** This sits inside an account row that has an `id`
+    #: of its own, so a bare one would read as the account's. Everywhere a
+    #: schema *is* a bill -- `MonthBillOut`, `AgendaBillOut`, `LandingLineOut`
+    #: -- the field is `id`, matching `TaskOut.id` beside `/tasks/{task_id}`.
+    bill_id: int
     payee: str
     due_date: date
     amount: str | None
@@ -849,9 +852,9 @@ class LandingLineOut(Schema):
     """One money line, as the landing page needs it -- shorter than a month row
     because a dashboard names things rather than offering every verb."""
 
-    #: A `Bill` id since August 31, 2026, still spelled `task_id` -- see
-    #: `MonthBillOut`, which explains why the rename is its own increment.
-    task_id: int
+    #: The bill's own id -- see `MonthBillOut`, which carries why this was
+    #: `task_id` for two days first.
+    id: int
     payee: str
     due_date: date
     amount: str | None
@@ -970,7 +973,7 @@ def money_landing(request):
 
     def line(bill):
         return {
-            "task_id": bill.id,
+            "id": bill.id,
             "payee": bill.payee,
             "due_date": bill.due_date,
             "amount": str(bill.amount) if bill.amount is not None else None,
@@ -1096,7 +1099,7 @@ def months_accounts(request, day: date):
         next_payments.setdefault(
             bill.account_id,
             {
-                "task_id": bill.id,
+                "bill_id": bill.id,
                 "payee": bill.payee,
                 "due_date": bill.due_date,
                 "amount": str(bill.amount) if bill.amount is not None else None,

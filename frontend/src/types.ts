@@ -170,7 +170,7 @@ export interface AgendaProjectSummary {
  * what a task is. `task_id` until the model split flips its source; see
  * design/bill-as-a-model-plan.md. */
 export interface AgendaBill {
-  task_id: number;
+  id: number;
   payee: string;
   due_date: string | null;
   amount: string | null;

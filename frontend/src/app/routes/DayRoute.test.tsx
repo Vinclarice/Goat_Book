@@ -257,7 +257,7 @@ describe("DayRoute", () => {
           action_items: [actionItem({ id: 1, text: "Call the plumber" })],
           bills: [
             {
-              task_id: 9,
+              id: 9,
               payee: "Landlord",
               due_date: "2026-08-03",
               amount: "1200.00",
@@ -290,7 +290,7 @@ describe("DayRoute", () => {
         dayData({
           bills: [
             {
-              task_id: 9,
+              id: 9,
               payee: "Landlord",
               due_date: "2026-08-03",
               amount: "1200.00",

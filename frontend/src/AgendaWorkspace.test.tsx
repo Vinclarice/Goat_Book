@@ -453,7 +453,7 @@ describe("AgendaWorkspace", () => {
     renderAgenda({
       bills: [
         {
-          task_id: 9,
+          id: 9,
           payee: "Landlord",
           due_date: TODAY,
           amount: "1200.00",
@@ -481,7 +481,7 @@ describe("AgendaWorkspace", () => {
     renderAgenda({
       bills: [
         {
-          task_id: 9,
+          id: 9,
           payee: "Landlord",
           due_date: TODAY,
           amount: "1200.00",
@@ -507,7 +507,7 @@ describe("AgendaWorkspace", () => {
     renderAgenda({
       bills: [
         {
-          task_id: 4,
+          id: 4,
           payee: "Work",
           due_date: TODAY,
           amount: "3000.00",

@@ -275,7 +275,7 @@ function AddBill({
 }
 
 type BillRow = {
-  task_id: number;
+  id: number;
   due_date: string;
   amount: string | null;
   currency: string;
@@ -381,9 +381,9 @@ function EditBill({ bill, onDone }: { bill: BillRow; onDone: () => void }) {
   const save = useMutation({
     mutationFn: async () => {
       const { error, response } = await apiV1.PATCH(
-        "/api/v1/money/bills/entry/{task_id}",
+        "/api/v1/money/bills/entry/{bill_id}",
         {
-          params: { path: { task_id: bill.task_id } },
+          params: { path: { bill_id: bill.id } },
           body: {
             payee,
             currency,
@@ -416,22 +416,22 @@ function EditBill({ bill, onDone }: { bill: BillRow; onDone: () => void }) {
     <li className="space-y-2 rounded-lg border border-border px-3 py-2">
       <div className="flex flex-wrap gap-2">
         <span className="min-w-32 flex-1 space-y-1">
-          <label htmlFor={`edit-payee-${bill.task_id}`} className="text-xs">
+          <label htmlFor={`edit-payee-${bill.id}`} className="text-xs">
             Who it goes to
           </label>
           <input
-            id={`edit-payee-${bill.task_id}`}
+            id={`edit-payee-${bill.id}`}
             value={payee}
             onChange={(event) => setPayee(event.target.value)}
             className="w-full rounded-lg border border-border bg-input px-2 py-1"
           />
         </span>
         <span className="w-28 space-y-1">
-          <label htmlFor={`edit-amount-${bill.task_id}`} className="text-xs">
+          <label htmlFor={`edit-amount-${bill.id}`} className="text-xs">
             Amount
           </label>
           <input
-            id={`edit-amount-${bill.task_id}`}
+            id={`edit-amount-${bill.id}`}
             value={amount}
             onChange={(event) => setAmount(event.target.value)}
             inputMode="decimal"
@@ -439,11 +439,11 @@ function EditBill({ bill, onDone }: { bill: BillRow; onDone: () => void }) {
           />
         </span>
         <span className="w-20 space-y-1">
-          <label htmlFor={`edit-currency-${bill.task_id}`} className="text-xs">
+          <label htmlFor={`edit-currency-${bill.id}`} className="text-xs">
             Currency
           </label>
           <input
-            id={`edit-currency-${bill.task_id}`}
+            id={`edit-currency-${bill.id}`}
             value={currency}
             onChange={(event) => setCurrency(event.target.value.toUpperCase())}
             maxLength={3}
@@ -451,11 +451,11 @@ function EditBill({ bill, onDone }: { bill: BillRow; onDone: () => void }) {
           />
         </span>
         <span className="w-40 space-y-1">
-          <label htmlFor={`edit-category-${bill.task_id}`} className="text-xs">
+          <label htmlFor={`edit-category-${bill.id}`} className="text-xs">
             Category
           </label>
           <select
-            id={`edit-category-${bill.task_id}`}
+            id={`edit-category-${bill.id}`}
             value={category}
             onChange={(event) => setCategory(event.target.value)}
             className="w-full rounded-lg border border-border bg-input px-2 py-1"
@@ -470,11 +470,11 @@ function EditBill({ bill, onDone }: { bill: BillRow; onDone: () => void }) {
         </span>
         {(accounts ?? []).length > 0 && (
           <span className="w-40 space-y-1">
-            <label htmlFor={`edit-account-${bill.task_id}`} className="text-xs">
+            <label htmlFor={`edit-account-${bill.id}`} className="text-xs">
               {bill.direction === "in" ? "Paid into" : "Pays down"}
             </label>
             <select
-              id={`edit-account-${bill.task_id}`}
+              id={`edit-account-${bill.id}`}
               value={account}
               onChange={(event) => setAccount(event.target.value)}
               className="w-full rounded-lg border border-border bg-input px-2 py-1"
@@ -489,11 +489,11 @@ function EditBill({ bill, onDone }: { bill: BillRow; onDone: () => void }) {
           </span>
         )}
         <span className="w-36 space-y-1">
-          <label htmlFor={`edit-due-${bill.task_id}`} className="text-xs">
+          <label htmlFor={`edit-due-${bill.id}`} className="text-xs">
             Due
           </label>
           <input
-            id={`edit-due-${bill.task_id}`}
+            id={`edit-due-${bill.id}`}
             type="date"
             value={dueDate}
             onChange={(event) => setDueDate(event.target.value)}
@@ -528,9 +528,9 @@ function PayBill({ bill }: { bill: BillRow }) {
   const pay = useMutation({
     mutationFn: async () => {
       const { error, response } = await apiV1.POST(
-        "/api/v1/money/bills/entry/{task_id}/pay",
+        "/api/v1/money/bills/entry/{bill_id}/pay",
         {
-          params: { path: { task_id: bill.task_id } },
+          params: { path: { bill_id: bill.id } },
           body: { amount: amount.trim() === "" ? null : amount.trim() },
         },
       );
@@ -564,11 +564,11 @@ function PayBill({ bill }: { bill: BillRow }) {
 
   return (
     <span className="flex flex-wrap items-center gap-2">
-      <label htmlFor={`pay-amount-${bill.task_id}`} className="text-xs">
+      <label htmlFor={`pay-amount-${bill.id}`} className="text-xs">
         {bill.direction === "in" ? "Received" : "Paid"}
       </label>
       <input
-        id={`pay-amount-${bill.task_id}`}
+        id={`pay-amount-${bill.id}`}
         value={amount}
         onChange={(event) => setAmount(event.target.value)}
         inputMode="decimal"
@@ -599,10 +599,10 @@ function DeleteBill({ bill }: { bill: BillRow }) {
   const remove = useMutation({
     mutationFn: async (wholeSeries: boolean) => {
       const { error, response } = await apiV1.DELETE(
-        "/api/v1/money/bills/entry/{task_id}",
+        "/api/v1/money/bills/entry/{bill_id}",
         {
           params: {
-            path: { task_id: bill.task_id },
+            path: { bill_id: bill.id },
             query: { whole_series: wholeSeries },
           },
         },
@@ -758,23 +758,23 @@ export function MoneyRoute() {
                 </li>
               ) : null,
               ...grouped[group].map((bill) =>
-              editing === bill.task_id ? (
+              editing === bill.id ? (
                 <EditBill
-                  key={bill.task_id}
+                  key={bill.id}
                   bill={bill}
                   onDone={() => setEditing(null)}
                 />
               ) : (
               <li
-                key={bill.task_id}
+                key={bill.id}
                 className="flex flex-wrap items-baseline justify-between gap-3 rounded-lg border border-border px-3 py-2"
               >
                 <span className="min-w-0">
                   <Link
-                    /* Was `/tasks/${bill.task_id}` -- a bill opened the task
+                    /* Was `/tasks/${bill.id}` -- a bill opened the task
                        detail page, which spent a morning being taught not to
                        look like one. It has its own now. */
-                    to={`/money/bills/${bill.task_id}`}
+                    to={`/money/bills/${bill.id}`}
                     className={
                       bill.paid ? "text-muted-foreground hover:underline" : "hover:underline"
                     }
@@ -841,7 +841,7 @@ export function MoneyRoute() {
                   <PayBill bill={bill} />
                   <button
                     type="button"
-                    onClick={() => setEditing(bill.task_id)}
+                    onClick={() => setEditing(bill.id)}
                     className="touch-target text-sm text-muted-foreground hover:text-foreground"
                     aria-label={`Edit ${bill.payee}`}
                   >
@@ -863,15 +863,15 @@ export function MoneyRoute() {
               <h2 className="pt-2 text-sm font-bold">Coming in</h2>
               <ul className="space-y-1">
                 {incoming.map((bill) =>
-                  editing === bill.task_id ? (
+                  editing === bill.id ? (
                     <EditBill
-                      key={bill.task_id}
+                      key={bill.id}
                       bill={bill}
                       onDone={() => setEditing(null)}
                     />
                   ) : (
                     <li
-                      key={bill.task_id}
+                      key={bill.id}
                       className="flex flex-wrap items-baseline justify-between gap-3 rounded-lg border border-border px-3 py-2"
                     >
                       <span className="min-w-0">
@@ -908,7 +908,7 @@ export function MoneyRoute() {
                         <PayBill bill={bill} />
                         <button
                           type="button"
-                          onClick={() => setEditing(bill.task_id)}
+                          onClick={() => setEditing(bill.id)}
                           className="touch-target text-sm text-muted-foreground hover:text-foreground"
                           aria-label={`Edit ${bill.payee}`}
                         >

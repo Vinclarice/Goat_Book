@@ -23,7 +23,7 @@ function jsonResponse(data: object, ok = true, status = ok ? 200 : 500) {
 
 function line(overrides: Record<string, unknown> = {}) {
   return {
-    task_id: 1,
+    id: 1,
     payee: "Landlord",
     due_date: "2026-08-28",
     amount: "1200.00",
@@ -152,7 +152,7 @@ describe("MoneyLandingRoute", () => {
       jsonResponse(
         landing({
           overdue: [line({ days: -4, payee: "Water" })],
-          due_soon: [line({ task_id: 2, days: 1, payee: "Internet" })],
+          due_soon: [line({ id: 2, days: 1, payee: "Internet" })],
         }),
       ),
     );

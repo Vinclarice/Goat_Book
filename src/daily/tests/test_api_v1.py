@@ -480,10 +480,15 @@ class DayActionItemsTest(TestCase):
 
         row = self.client.get("/api/v1/day").json()["bills"][0]
 
-        for field in ("task_id", "payee", "due_date", "amount", "currency"):
+        for field in ("id", "payee", "due_date", "amount", "currency"):
             self.assertIn(field, row)
-        for absent in ("area_id", "priority", "status", "text"):
-            self.assertNotIn(absent, row)
+        for absent in ("area_id", "priority", "status", "text", "task_id"):
+            self.assertNotIn(
+                absent,
+                row,
+                "`task_id` among them: the key was spelled that for two days "
+                "after the flip and points at a `Bill` -- increment 9.",
+            )
 
     def test_a_past_day_shows_no_bills_rather_than_todays(self):
         """The same refusal `shows_action_items` makes, for the same reason: an

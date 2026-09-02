@@ -8,7 +8,7 @@ import { apiResponse, sentRequests } from "../../test/fixtures";
 
 function bill(overrides: Record<string, unknown> = {}) {
   return {
-    task_id: 7,
+    id: 7,
     text: "Pay Landlord",
     due_date: "2026-08-01",
     amount: "1200.00",
@@ -35,7 +35,7 @@ function renderBill() {
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={["/money/bills/7"]}>
         <Routes>
-          <Route path="/money/bills/:taskId" element={<BillDetailRoute />} />
+          <Route path="/money/bills/:billId" element={<BillDetailRoute />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,

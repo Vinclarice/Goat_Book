@@ -17,7 +17,7 @@ import { RouteFailure } from "./RouteFailure";
  * awkward: a bill that is not an `Item` has no `/tasks/{id}` to borrow.
  *
  * **So the surface moves before the model does.** This reads the same
- * `entry/{task_id}` the edit, pay and delete calls already use, and at the
+ * `entry/{id}` the edit, pay and delete calls already use, and at the
  * flip only its data source changes — which keeps that commit from having to
  * invent a page in the same breath as it changes what a bill is.
  *
@@ -35,8 +35,8 @@ function formatDate(iso: string) {
 }
 
 export function BillDetailRoute() {
-  const { taskId } = useParams();
-  const id = Number(taskId);
+  const { billId } = useParams();
+  const id = Number(billId);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -44,8 +44,8 @@ export function BillDetailRoute() {
     queryKey: ["bill", id],
     queryFn: async () => {
       const { data, response } = await apiV1.GET(
-        "/api/v1/money/bills/entry/{task_id}",
-        { params: { path: { task_id: id } } },
+        "/api/v1/money/bills/entry/{bill_id}",
+        { params: { path: { bill_id: id } } },
       );
       if (!data) throw new RequestFailed(response.status);
       return data;
@@ -64,8 +64,8 @@ export function BillDetailRoute() {
   const pay = useMutation({
     mutationFn: async () => {
       const { error } = await apiV1.POST(
-        "/api/v1/money/bills/entry/{task_id}/pay",
-        { params: { path: { task_id: id } }, body: {} },
+        "/api/v1/money/bills/entry/{bill_id}/pay",
+        { params: { path: { bill_id: id } }, body: {} },
       );
       if (error) throw error;
     },
@@ -75,10 +75,10 @@ export function BillDetailRoute() {
   const remove = useMutation({
     mutationFn: async (wholeSeries: boolean) => {
       const { error } = await apiV1.DELETE(
-        "/api/v1/money/bills/entry/{task_id}",
+        "/api/v1/money/bills/entry/{bill_id}",
         {
           params: {
-            path: { task_id: id },
+            path: { bill_id: id },
             query: { whole_series: wholeSeries },
           },
         },

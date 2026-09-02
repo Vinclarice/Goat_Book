@@ -274,10 +274,10 @@ export function AgendaWorkspace({ initialData }: Props) {
   }, [initialData.bills, buckets, today]);
 
   const payBill = useMutation({
-    mutationFn: async (taskId: number) => {
+    mutationFn: async (billId: number) => {
       const { error } = await apiV1.POST(
-        "/api/v1/money/bills/entry/{task_id}/pay",
-        { params: { path: { task_id: taskId } }, body: {} },
+        "/api/v1/money/bills/entry/{bill_id}/pay",
+        { params: { path: { bill_id: billId } }, body: {} },
       );
       if (error) throw error;
     },
@@ -299,12 +299,12 @@ export function AgendaWorkspace({ initialData }: Props) {
   function renderBillRow(bill: AgendaBill) {
     return (
       <article
-        key={`bill-${bill.task_id}`}
+        key={`bill-${bill.id}`}
         aria-label={bill.payee}
         className="flex flex-wrap items-baseline justify-between gap-3 rounded-xl border border-border bg-card px-3 py-2"
       >
         <span className="min-w-0">
-          <Link to={`/money/bills/${bill.task_id}`} className="hover:underline">
+          <Link to={`/money/bills/${bill.id}`} className="hover:underline">
             {bill.payee}
           </Link>
           <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
@@ -321,7 +321,7 @@ export function AgendaWorkspace({ initialData }: Props) {
           size="sm"
           variant="outline"
           disabled={payBill.isPending}
-          onClick={() => payBill.mutate(bill.task_id)}
+          onClick={() => payBill.mutate(bill.id)}
         >
           {bill.direction === "in" ? "Mark received" : "Mark paid"}
         </Button>

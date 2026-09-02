@@ -453,10 +453,37 @@ Each is shippable and leaves the product working.
    `test_a_spawn_accounts_for_everything_on_a_task.py`'s positive control moved
    off the model it was written about onto two relations that are not going
    anywhere.
-9. **The key is renamed from `task_id`.** It points at a `Bill` and says
-   otherwise, on `MonthBillOut`, `AgendaBillOut`, `LandingLineOut`, four routes
-   and the SPA. Held out of increment 4 on purpose: a mechanical rename is the
-   wrong thing to carry into the commit that changes what a bill is.
+9. ~~**The key is renamed from `task_id`.**~~ **Done September 2, 2026**, and
+   with it the plan. It pointed at a `Bill` and said otherwise for two days,
+   held out of increment 4 on purpose: a mechanical rename across the server,
+   the contract, four routes and the SPA is the wrong thing to carry into the
+   commit that changes what a bill *is*.
+
+   **`id` where a schema is a bill; `bill_id` where it is not.**
+   `MonthBillOut`, `AgendaBillOut` and `LandingLineOut` each *are* a bill, so
+   they take `id` — matching `TaskOut.id` beside `/tasks/{task_id}`, which is
+   the shape this file already used. `AccountOut.next_payment` is nested inside
+   a row that has an `id` of its own, so a bare one there would read as the
+   account's; it takes `bill_id`, as do the four route parameters.
+
+   **Renamed by hand where both kinds live together**, and that is the whole
+   risk of this increment: `ChecklistStepOut.task_id`, every `/tasks/{task_id}`
+   route, and `DailyFocus` all name a genuine `Item`, and both spellings are
+   `int`, so a wrong rename type-checks and 404s at runtime. `MoneyRoute`,
+   `BillDetailRoute` and `MoneyLandingRoute` were swept whole after asserting
+   they never touch the task API; `AgendaWorkspace` and `DayRoute` were edited
+   line by line, because they carry both.
+
+   **`test_task_vocabulary.ABillDoesNotCallItsKeyATaskTest`** reads the OpenAPI
+   schema rather than the Python classes — so it sees what a client sees — and
+   checks the route paths too, since `entry/{task_id}` is the same claim in the
+   place a person looks first. Mutation-tested by putting `task_id` back.
+
+   **Verified against the dev database**, not only in tests: every one of the
+   five payloads carries `id` or `bill_id` and none carries `task_id`, `GET`
+   and `PATCH` on `entry/{id}` answer 200, and an account's `next_payment.bill_id`
+   was proved to point at the right row by filing a bill against *Dell
+   Community* inside a transaction and rolling it back.
 
 ## 7. What would reverse this
 

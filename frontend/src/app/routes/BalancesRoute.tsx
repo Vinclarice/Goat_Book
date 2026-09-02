@@ -265,7 +265,7 @@ export function BalancesRoute() {
                     <span className="block text-xs text-muted-foreground">
                       {account.owes ? "Paid by" : "Fed by"}{" "}
                       <Link
-                        to={`/money/bills/${account.next_payment.task_id}`}
+                        to={`/money/bills/${account.next_payment.bill_id}`}
                         className="hover:underline"
                       >
                         {account.next_payment.payee}

@@ -280,7 +280,7 @@ describe("BalancesRoute, tied to the bills that pay it", () => {
               balance: "220.00",
               previous: "300.00",
               next_payment: {
-                task_id: 9,
+                bill_id: 9,
                 payee: "Dell Community",
                 due_date: "2026-08-20",
                 amount: "80.00",
@@ -337,7 +337,7 @@ describe("BalancesRoute, tied to the bills that pay it", () => {
               balance: "1000.00",
               previous: null,
               next_payment: {
-                task_id: 4,
+                bill_id: 4,
                 payee: "Monthly contribution",
                 due_date: "2026-08-20",
                 amount: "200.00",

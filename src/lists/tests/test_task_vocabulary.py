@@ -89,3 +89,52 @@ class TaskVocabularyTest(SimpleTestCase):
         }
 
         self.assertEqual(EXEMPT - served, set())
+
+
+class ABillDoesNotCallItsKeyATaskTest(SimpleTestCase):
+    """Increment 9 of `design/bill-as-a-model-plan.md`.
+
+    **The key said `task_id` and pointed at a `Bill` for two days**, on purpose:
+    a mechanical rename across the server, the contract, four routes and the SPA
+    is the wrong thing to carry into the commit that changes what a bill *is*.
+    It was the last thing in the money module still speaking the task core's
+    vocabulary, and this is what stops it coming back.
+
+    **Not a blanket ban.** `ChecklistStepOut.task_id` and every `/tasks/{id}`
+    route name a genuine `Item` and are correct; a pin is a `DailyFocus` with a
+    foreign key to one. What is refused is a bill-shaped schema carrying the
+    word.
+    """
+
+    BILL_SCHEMAS = ("MonthBillOut", "AgendaBillOut", "LandingLineOut", "NextPaymentOut")
+
+    def _properties(self, name):
+        return _schema()["components"]["schemas"][name]["properties"]
+
+    def test_no_bill_schema_has_a_task_id(self):
+        for name in self.BILL_SCHEMAS:
+            with self.subTest(schema=name):
+                self.assertNotIn(
+                    "task_id",
+                    self._properties(name),
+                    f"{name} points at a Bill; `task_id` is the task core's "
+                    "word and this module stopped speaking it.",
+                )
+
+    def test_the_bill_routes_take_a_bill_id(self):
+        """The path parameter too, not only the payload. A route reading
+        `entry/{task_id}` is the same claim in the place a person looks first."""
+        paths = [
+            route for route in _schema()["paths"] if "/money/bills/entry/" in route
+        ]
+
+        self.assertTrue(paths, "the bill entry routes have moved")
+        for route in paths:
+            with self.subTest(route=route):
+                self.assertNotIn("task_id", route)
+
+    def test_the_sweep_finds_the_schemas_it_claims_to(self):
+        """A positive control, for the reason every guard here carries one: a
+        lookup that quietly found nothing would pass over an empty set."""
+        for name in self.BILL_SCHEMAS:
+            self.assertIn("payee", self._properties(name))

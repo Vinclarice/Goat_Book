@@ -29,7 +29,7 @@ function billsData(overrides: Record<string, unknown> = {}) {
     next_month: "2026-09-01",
     bills: [
       {
-        task_id: 1,
+        id: 1,
         due_date: "2026-08-01",
         amount: "1200.00",
         currency: "USD",
@@ -109,7 +109,7 @@ describe("MoneyRoute", () => {
         billsData({
           bills: [
             {
-              task_id: 1,
+              id: 1,
               due_date: "2026-08-01",
               amount: "1200.00",
               currency: "USD",
@@ -149,9 +149,9 @@ describe("MoneyRoute", () => {
       text: string,
       amount: string,
       paid: boolean,
-      task_id: number,
+      id: number,
     ) => ({
-      task_id,
+      id,
       text,
       due_date: "2026-08-10",
       amount,
@@ -241,7 +241,7 @@ describe("MoneyRoute", () => {
         billsData({
           bills: [
             {
-              task_id: 2,
+              id: 2,
               due_date: "2026-08-10",
               amount: null,
               currency: "USD",
@@ -417,7 +417,7 @@ describe("MoneyRoute", () => {
           billsData({
             bills: [
               {
-                task_id: 1,
+                id: 1,
                 due_date: "2026-08-04",
                 amount: "90.00",
                 currency: "USD",
@@ -486,7 +486,7 @@ describe("MoneyRoute", () => {
         billsData({
           bills: [
             {
-              task_id: 1,
+              id: 1,
               due_date: "2026-08-01",
               amount: "1200.00",
               currency: "USD",
@@ -524,7 +524,7 @@ describe("MoneyRoute", () => {
         billsData({
           bills: [
             {
-              task_id: 1,
+              id: 1,
               due_date: "2026-08-01",
               amount: "1200.00",
               currency: "USD",
@@ -540,7 +540,7 @@ describe("MoneyRoute", () => {
               paid_amount: null,
             },
             {
-              task_id: 2,
+              id: 2,
               due_date: "2026-08-28",
               amount: "3200.00",
               currency: "USD",
@@ -633,12 +633,12 @@ describe("MoneyRoute", () => {
        because it is the pile you have not dealt with, and opening the page on
        the mess every time is not an improvement. */
     const bill = (
-      task_id: number,
+      id: number,
       payee: string,
       category: string | null,
       category_id: number | null,
     ) => ({
-      task_id,
+      id,
       text: `Pay ${payee}`,
       due_date: "2026-08-10",
       amount: "10.00",

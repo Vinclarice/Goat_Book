@@ -68,16 +68,16 @@
         ]
       }
     },
-    "/api/v1/money/bills/entry/{task_id}": {
+    "/api/v1/money/bills/entry/{bill_id}": {
       "get": {
         "operationId": "lists_api_v1_one_bill",
         "summary": "One Bill",
         "parameters": [
           {
             "in": "path",
-            "name": "task_id",
+            "name": "bill_id",
             "schema": {
-              "title": "Task Id",
+              "title": "Bill Id",
               "type": "integer"
             },
             "required": true
@@ -95,7 +95,7 @@
             }
           }
         },
-        "description": "One bill, for its own page.\n\n**The surface moves to Money before the model does.** A bill was opened at\n`/app/tasks/{id}` until August 31, 2026, borrowing the task detail page --\nwhich spent that morning being taught to call itself *Bill detail*, hide\nPriority, Area and Checklist, and link back here, because none of it was\ntrue for a bill. `bill-as-a-model-plan.md` makes the borrowing impossible:\na bill that is not an `Item` has no `/tasks/{id}` to borrow. Moving the\npage first keeps the flip from having to invent one at the same moment it\nchanges what a bill is.\n\n**On the write path's key, not a new one.** `PATCH`, `POST /pay` and\n`DELETE` already live on `entry/{task_id}`; a read at a second address for\nthe same thing is how two spellings of one resource start.\n\n**A plain task is not found here.** Answering for one would make *is this a\nbill* a question every caller has to ask afterwards, and the page has no\nfields for a task.",
+        "description": "One bill, for its own page.\n\n**The surface moves to Money before the model does.** A bill was opened at\n`/app/tasks/{id}` until August 31, 2026, borrowing the task detail page --\nwhich spent that morning being taught to call itself *Bill detail*, hide\nPriority, Area and Checklist, and link back here, because none of it was\ntrue for a bill. `bill-as-a-model-plan.md` makes the borrowing impossible:\na bill that is not an `Item` has no `/tasks/{id}` to borrow. Moving the\npage first keeps the flip from having to invent one at the same moment it\nchanges what a bill is.\n\n**On the write path's key, not a new one.** `PATCH`, `POST /pay` and\n`DELETE` already live on `entry/{id}`; a read at a second address for\nthe same thing is how two spellings of one resource start.\n\n**A plain task is not found here.** Answering for one would make *is this a\nbill* a question every caller has to ask afterwards, and the page has no\nfields for a task.",
         "security": [
           {
             "SessionAuthIfLoggedIn": []
@@ -108,9 +108,9 @@
         "parameters": [
           {
             "in": "path",
-            "name": "task_id",
+            "name": "bill_id",
             "schema": {
-              "title": "Task Id",
+              "title": "Bill Id",
               "type": "integer"
             },
             "required": true
@@ -151,9 +151,9 @@
         "parameters": [
           {
             "in": "path",
-            "name": "task_id",
+            "name": "bill_id",
             "schema": {
-              "title": "Task Id",
+              "title": "Bill Id",
               "type": "integer"
             },
             "required": true
@@ -217,16 +217,16 @@
         ]
       }
     },
-    "/api/v1/money/bills/entry/{task_id}/pay": {
+    "/api/v1/money/bills/entry/{bill_id}/pay": {
       "post": {
         "operationId": "lists_api_v1_pay_bill",
         "summary": "Pay Bill",
         "parameters": [
           {
             "in": "path",
-            "name": "task_id",
+            "name": "bill_id",
             "schema": {
-              "title": "Task Id",
+              "title": "Bill Id",
               "type": "integer"
             },
             "required": true
@@ -3241,8 +3241,8 @@
       },
       "MonthBillOut": {
         "properties": {
-          "task_id": {
-            "title": "Task Id",
+          "id": {
+            "title": "Id",
             "type": "integer"
           },
           "due_date": {
@@ -3350,7 +3350,7 @@
           }
         },
         "required": [
-          "task_id",
+          "id",
           "due_date",
           "amount",
           "currency",
@@ -3674,8 +3674,8 @@
       "LandingLineOut": {
         "description": "One money line, as the landing page needs it -- shorter than a month row\nbecause a dashboard names things rather than offering every verb.",
         "properties": {
-          "task_id": {
-            "title": "Task Id",
+          "id": {
+            "title": "Id",
             "type": "integer"
           },
           "payee": {
@@ -3708,7 +3708,7 @@
           }
         },
         "required": [
-          "task_id",
+          "id",
           "payee",
           "due_date",
           "amount",
@@ -4040,10 +4040,10 @@
         "type": "object"
       },
       "NextPaymentOut": {
-        "description": "The soonest unpaid bill against an account.\n\n**The read half of increment 7**, and the reason `Account.paid_by` is\nallowed back. `d50d6eb` deleted the first version of this link because it\nwas *\"set by nothing and read by nothing\"*; a field with a writer and no\nreader is the same mistake with a longer runway, so the two ship together.\n\n**Soonest unpaid, not a list.** The balances screen answers *what do I owe\non this* and *what is coming*; every bill an account has ever had is the\nmonth page's question and is one click away through `task_id`.",
+        "description": "The soonest unpaid bill against an account.\n\n**The read half of increment 7**, and the reason `Account.paid_by` is\nallowed back. `d50d6eb` deleted the first version of this link because it\nwas *\"set by nothing and read by nothing\"*; a field with a writer and no\nreader is the same mistake with a longer runway, so the two ship together.\n\n**Soonest unpaid, not a list.** The balances screen answers *what do I owe\non this* and *what is coming*; every bill an account has ever had is the\nmonth page's question and is one click away through `id`.",
         "properties": {
-          "task_id": {
-            "title": "Task Id",
+          "bill_id": {
+            "title": "Bill Id",
             "type": "integer"
           },
           "payee": {
@@ -4072,7 +4072,7 @@
           }
         },
         "required": [
-          "task_id",
+          "bill_id",
           "payee",
           "due_date",
           "amount",
@@ -4411,10 +4411,10 @@
         "type": "object"
       },
       "AgendaBillOut": {
-        "description": "A bill as the agenda and the day carry it: what a bill is, and none of\nwhat a task is.\n\n**`task_id` until the flip**, because pay and delete are keyed on it -- see\n`agenda._agenda_bill_out`.",
+        "description": "A bill as the agenda and the day carry it: what a bill is, and none of\nwhat a task is.\n\n**`id`, and it is a `Bill`'s.** It was `task_id` from August 31 to\nSeptember 2, 2026 -- deliberately, so that the commit changing what a bill\n*is* did not also carry a mechanical rename. See `agenda._agenda_bill_out`.",
         "properties": {
-          "task_id": {
-            "title": "Task Id",
+          "id": {
+            "title": "Id",
             "type": "integer"
           },
           "payee": {
@@ -4457,7 +4457,7 @@
           }
         },
         "required": [
-          "task_id",
+          "id",
           "payee",
           "due_date",
           "amount",

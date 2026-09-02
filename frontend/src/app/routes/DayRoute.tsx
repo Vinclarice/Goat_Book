@@ -920,10 +920,10 @@ export function DayRoute() {
      Every money surface moves when a bill settles, so all three are
      invalidated rather than only the day it was settled from. */
   const payBill = useMutation({
-    mutationFn: async (taskId: number) => {
+    mutationFn: async (billId: number) => {
       const { error } = await apiV1.POST(
-        "/api/v1/money/bills/entry/{task_id}/pay",
-        { params: { path: { task_id: taskId } }, body: {} },
+        "/api/v1/money/bills/entry/{bill_id}/pay",
+        { params: { path: { bill_id: billId } }, body: {} },
       );
       if (error) throw error;
     },
@@ -1293,12 +1293,12 @@ export function DayRoute() {
           <ul className="space-y-2">
             {data.bills.map((bill) => (
               <li
-                key={bill.task_id}
+                key={bill.id}
                 className="flex flex-wrap items-baseline justify-between gap-3 rounded-xl border border-border bg-card px-3 py-2"
               >
                 <span className="min-w-0">
                   <Link
-                    to={`/money/bills/${bill.task_id}`}
+                    to={`/money/bills/${bill.id}`}
                     className="font-medium hover:underline"
                   >
                     {bill.payee}
@@ -1321,7 +1321,7 @@ export function DayRoute() {
                   size="sm"
                   variant="outline"
                   disabled={payBill.isPending}
-                  onClick={() => payBill.mutate(bill.task_id)}
+                  onClick={() => payBill.mutate(bill.id)}
                 >
                   {bill.direction === "in" ? "Mark received" : "Mark paid"}
                 </Button>

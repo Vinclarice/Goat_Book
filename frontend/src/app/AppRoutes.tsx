@@ -119,7 +119,7 @@ export function AppRoutes() {
             a bill borrowed /app/tasks/:id until August 31, 2026 and stops
             being able to when it stops being a task --
             design/bill-as-a-model-plan.md. */}
-        <Route path="/money/bills/:taskId" element={<BillDetailRoute />} />
+        <Route path="/money/bills/:billId" element={<BillDetailRoute />} />
         <Route path="/money/history" element={<HistoryRoute />} />
         <Route path="/money/categories" element={<CategoriesRoute />} />
         <Route path="/money/balances" element={<BalancesRoute />} />

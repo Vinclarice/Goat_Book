@@ -22,7 +22,7 @@ import { RouteFailure } from "./RouteFailure";
  * fortnight from the 25th is mostly next month.
  */
 type Line = {
-  task_id: number;
+  id: number;
   payee: string;
   due_date: string;
   amount: string | null;
@@ -57,11 +57,11 @@ function Section({
       <ul className="space-y-1">
         {lines.map((line) => (
           <li
-            key={line.task_id}
+            key={line.id}
             className="flex flex-wrap items-baseline justify-between gap-3 rounded-lg border border-border px-3 py-2"
           >
             <span className="min-w-0">
-              <Link to={`/tasks/${line.task_id}`} className="hover:underline">
+              <Link to={`/tasks/${line.id}`} className="hover:underline">
                 {line.payee}
               </Link>
               <span

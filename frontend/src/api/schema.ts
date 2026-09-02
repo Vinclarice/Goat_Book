@@ -45,7 +45,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/money/bills/entry/{task_id}": {
+    "/api/v1/money/bills/entry/{bill_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -66,7 +66,7 @@ export interface paths {
          *     changes what a bill is.
          *
          *     **On the write path's key, not a new one.** `PATCH`, `POST /pay` and
-         *     `DELETE` already live on `entry/{task_id}`; a read at a second address for
+         *     `DELETE` already live on `entry/{id}`; a read at a second address for
          *     the same thing is how two spellings of one resource start.
          *
          *     **A plain task is not found here.** Answering for one would make *is this a
@@ -132,7 +132,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/money/bills/entry/{task_id}/pay": {
+    "/api/v1/money/bills/entry/{bill_id}/pay": {
         parameters: {
             query?: never;
             header?: never;
@@ -1768,8 +1768,8 @@ export interface components {
         };
         /** MonthBillOut */
         MonthBillOut: {
-            /** Task Id */
-            task_id: number;
+            /** Id */
+            id: number;
             /**
              * Due Date
              * Format: date
@@ -1957,8 +1957,8 @@ export interface components {
          *     because a dashboard names things rather than offering every verb.
          */
         LandingLineOut: {
-            /** Task Id */
-            task_id: number;
+            /** Id */
+            id: number;
             /** Payee */
             payee: string;
             /**
@@ -2095,11 +2095,11 @@ export interface components {
          *
          *     **Soonest unpaid, not a list.** The balances screen answers *what do I owe
          *     on this* and *what is coming*; every bill an account has ever had is the
-         *     month page's question and is one click away through `task_id`.
+         *     month page's question and is one click away through `id`.
          */
         NextPaymentOut: {
-            /** Task Id */
-            task_id: number;
+            /** Bill Id */
+            bill_id: number;
             /** Payee */
             payee: string;
             /**
@@ -2262,12 +2262,13 @@ export interface components {
          * @description A bill as the agenda and the day carry it: what a bill is, and none of
          *     what a task is.
          *
-         *     **`task_id` until the flip**, because pay and delete are keyed on it -- see
-         *     `agenda._agenda_bill_out`.
+         *     **`id`, and it is a `Bill`'s.** It was `task_id` from August 31 to
+         *     September 2, 2026 -- deliberately, so that the commit changing what a bill
+         *     *is* did not also carry a mechanical rename. See `agenda._agenda_bill_out`.
          */
         AgendaBillOut: {
-            /** Task Id */
-            task_id: number;
+            /** Id */
+            id: number;
             /** Payee */
             payee: string;
             /** Due Date */
@@ -4175,7 +4176,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                task_id: number;
+                bill_id: number;
             };
             cookie?: never;
         };
@@ -4199,7 +4200,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                task_id: number;
+                bill_id: number;
             };
             cookie?: never;
         };
@@ -4219,7 +4220,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                task_id: number;
+                bill_id: number;
             };
             cookie?: never;
         };
@@ -4269,7 +4270,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                task_id: number;
+                bill_id: number;
             };
             cookie?: never;
         };

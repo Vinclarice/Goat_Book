@@ -184,10 +184,10 @@ class TheApiSetsAndReadsItTest(TestCase):
         self.assertEqual(self.add_bill(account_id=theirs.id).status_code, 404)
 
     def test_an_existing_bill_can_be_filed_against_an_account(self):
-        task_id = self.add_bill().json()["task_id"]
+        bill_id = self.add_bill().json()["id"]
 
         response = self.client.patch(
-            f"/api/v1/money/bills/entry/{task_id}",
+            f"/api/v1/money/bills/entry/{bill_id}",
             data={"account_id": self.card.id},
             content_type="application/json",
         )
@@ -197,10 +197,10 @@ class TheApiSetsAndReadsItTest(TestCase):
     def test_clearing_it_is_an_explicit_act(self):
         """The same partial-write contract the category has, and for its reason:
         absent means *leave alone*, so *no account* has to be said out loud."""
-        task_id = self.add_bill(account_id=self.card.id).json()["task_id"]
+        bill_id = self.add_bill(account_id=self.card.id).json()["id"]
 
         response = self.client.patch(
-            f"/api/v1/money/bills/entry/{task_id}",
+            f"/api/v1/money/bills/entry/{bill_id}",
             data={"account_id": None, "clear_account": True},
             content_type="application/json",
         )
@@ -208,10 +208,10 @@ class TheApiSetsAndReadsItTest(TestCase):
         self.assertIsNone(response.json()["account_id"])
 
     def test_a_null_account_id_alone_leaves_it_alone(self):
-        task_id = self.add_bill(account_id=self.card.id).json()["task_id"]
+        bill_id = self.add_bill(account_id=self.card.id).json()["id"]
 
         response = self.client.patch(
-            f"/api/v1/money/bills/entry/{task_id}",
+            f"/api/v1/money/bills/entry/{bill_id}",
             data={"account_id": None, "payee": "Dell"},
             content_type="application/json",
         )
@@ -264,7 +264,7 @@ class AnAccountSaysWhatPaysItTest(TestCase):
             self.user, payee="Dell Community", due_date=AUGUST, account=self.card,
         )
 
-        self.assertEqual(self.account()["next_payment"]["task_id"], bill.id)
+        self.assertEqual(self.account()["next_payment"]["bill_id"], bill.id)
 
     def test_a_settled_bill_is_not_what_is_next(self):
         paid = bills.record(

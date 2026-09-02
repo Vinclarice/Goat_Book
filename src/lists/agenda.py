@@ -336,9 +336,9 @@ def open_bill_rows_for(user):
     exactly as `open_items_for` excludes it -- a salary is not a thing to do
     on a day.
 
-    **Sourced from tasks with a sidecar until the flip.** After it, this is
-    where `Bill.objects` arrives and neither caller changes --
-    `bill-as-a-model-plan.md` increment 5.
+    ~~**Sourced from tasks with a sidecar until the flip.**~~ It is
+    `money.open_bills_for` since September 1, 2026, and neither caller changed
+    -- which was the point of putting the query here first.
     """
     return money.open_bills_for(user)
 
@@ -351,14 +351,15 @@ def _agenda_bill_out(bill):
     task is. Sending a `TaskOut` would mean synthesising a dozen fields a bill
     has not got, and the SPA would offer to file it in an area.
 
-    **`task_id`, not an id of its own**, until the flip: pay and delete are
-    keyed on it. The name survives the switch even though what it points at
-    changes, which is the one piece of this that will read oddly for a while
-    and is cheaper than a rename on both sides.
+    **`id` is the `Bill`'s.** It was spelled `task_id` from August 31 to
+    September 2, 2026 -- the name was kept across the flip on purpose, because a
+    mechanical rename across the server, the contract, four routes and the SPA
+    is the wrong thing to carry into the commit that changes what a bill is. It
+    read oddly for two days and then stopped.
     """
     series = bill.series
     return {
-        "task_id": bill.id,
+        "id": bill.id,
         "payee": bill.payee,
         "due_date": bill.due_date.isoformat(),
         "amount": str(bill.amount) if bill.amount is not None else None,
@@ -397,16 +398,14 @@ def workspace_data_for(
             for key in BUCKET_ORDER
         ],
         "items": [serialize_item(item) for item in all_open],
-        # **Decision 4, kept while the model splits.** Bills are on this screen
-        # because paying is a real thing to do on a day -- and a bill that is
-        # no longer an `Item` cannot arrive in `items`, so it arrives here.
+        # **Decision 4.** Bills are on this screen because paying is a real
+        # thing to do on a day -- and a bill is not an `Item`, so it cannot
+        # arrive in `items` and arrives here instead.
         #
-        # **Sourced from the task-backed rows today**, and keyed on `task_id`
-        # for the same reason `/money/bills/:id` is: the pay and delete
-        # endpoints take that key, so a `Bill`-sourced row could not be acted
-        # on until they move. The array lands now and its source changes at the
-        # flip, which is the sequencing the detail page already used.
-        "bills": [_agenda_bill_out(item) for item in open_bills],
+        # The array landed before the model moved and its source changed at the
+        # flip without either caller noticing, which is the sequencing the
+        # detail page used first and the reason this was cheap.
+        "bills": [_agenda_bill_out(bill) for bill in open_bills],
         "completed_today": [serialize_item(item) for item in completed_today],
         "areas": [
             {

@@ -237,3 +237,61 @@ class BillTest(TestCase):
 # what tripped it. The declaration it enforced now lives in
 # `clarice/tests/test_dark_services_declare_their_deferral.py`, which is the
 # guard that outlives this one.
+
+
+class AmountsCannotGoNegativeTest(TestCase):
+    """**A guarantee that nearly went out with `MoneyLine`.**
+
+    The sidecar carried `money_line_amount_not_negative` -- *"a bill is
+    something owed; a negative one is a refund, which is a different thing"* --
+    refused in the database *"as well as at the boundary, because the boundary
+    is not the only writer"*. `Bill` was built without it, so between
+    September 1 and 2, 2026 the only thing refusing a negative bill was Python
+    in `bills.record` and `bills.update`.
+
+    Increment 8 deletes the old model. Carrying the constraint rather than
+    letting it go is `principles.md`'s rule that a guarantee is bought with a
+    constraint and not with care, applied to the one place it was about to be
+    lost quietly.
+    """
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            "alice", "alice@example.com", "a secure password"
+        )
+
+    def test_a_negative_expected_amount_is_refused_by_the_database(self):
+        with self.assertRaises(IntegrityError):
+            Bill.objects.create(
+                owner=self.user, due_date=datetime.date(2026, 8, 1),
+                payee="Landlord", amount=Decimal("-10.00"),
+            )
+
+    def test_a_negative_settlement_is_refused_too(self):
+        """`paid_amount` is what actually moved, and money moving backwards is
+        the same refund this refuses in the other column."""
+        with self.assertRaises(IntegrityError):
+            Bill.objects.create(
+                owner=self.user, due_date=datetime.date(2026, 8, 1),
+                payee="Landlord", amount=Decimal("10.00"),
+                paid_amount=Decimal("-10.00"), paid_at=timezone.now(),
+            )
+
+    def test_an_unpriced_bill_is_still_allowed(self):
+        """Null is not negative. "The water bill, whatever it comes to" has to
+        survive a constraint written about signs."""
+        Bill.objects.create(
+            owner=self.user, due_date=datetime.date(2026, 8, 1), payee="Water",
+        )
+
+        self.assertEqual(Bill.objects.filter(payee="Water").count(), 1)
+
+    def test_zero_is_allowed(self):
+        """A bill that came to nothing is a real month, and refusing it would
+        make somebody type a lie or delete the record."""
+        Bill.objects.create(
+            owner=self.user, due_date=datetime.date(2026, 8, 1), payee="Gym",
+            amount=Decimal("0.00"),
+        )
+
+        self.assertEqual(Bill.objects.filter(payee="Gym").count(), 1)

@@ -228,9 +228,11 @@ class Item(models.Model):
     #: off, not "the day itself" -- otherwise every dated task in the product
     #: would join the advance reminder.
     #:
-    #: On the task rather than on `MoneyLine`, because a lead time is not a
-    #: property of costing money: "remind me before the MOT" is the same
-    #: sentence. And it changes nothing about when a thing is *due* --
+    #: On the task rather than on the money record, because a lead time is not
+    #: a property of costing money: "remind me before the MOT" is the same
+    #: sentence. (The money record was `MoneyLine`, a sidecar on this task,
+    #: deleted September 1, 2026 — `Bill` carries its own `lead_days` now, for
+    #: the same reason turned the other way round.) And it changes nothing about when a thing is *due* --
     #: `bucket_for` is untouched, which also keeps this out of the three
     #: languages that mirror it.
     lead_days = models.PositiveSmallIntegerField(default=0)
@@ -416,7 +418,7 @@ class Account(models.Model):
 
     **It earns its own model, and `architecture-trajectory.md` §4 is why.** Its
     test is a different life cycle, not a different name, and this fails to be a
-    `MoneyLine` on exactly that: a bill is an expected movement on a date that
+    `Bill` on exactly that: a bill is an expected movement on a date that
     **settles once**; an account is a value that is **re-read forever** and
     never settles. A card's balance belongs to the card, not to this month's
     payment.
@@ -501,8 +503,9 @@ class BalanceReading(models.Model):
     **Its own row rather than a field on the account**, and the reason is the
     whole point of the feature: *is this loan actually going down* is a question
     about a series, and a field that gets overwritten each month keeps no series
-    to read. The same argument that gave `MoneyLine.paid_amount` its own column
-    instead of overwriting `amount`.
+    to read. The same argument that gave `Bill.paid_amount` its own column
+    instead of overwriting `amount` — made first for `MoneyLine`, the sidecar
+    that preceded it, and inherited when that was deleted.
 
     **One per account per month**, enforced rather than assumed -- the ritual is
     a monthly pass, and saving it twice should correct the figure rather than
@@ -603,100 +606,6 @@ class Direction(models.TextChoices):
     IN = "in", "Money in"
 
 
-class MoneyLine(models.Model):
-    """What a task is worth, when the task is money moving.
-
-    **Was `MoneyLine` until August 27, 2026**, renamed when income arrived. The name
-    was accurate while every row was something owed and became actively
-    misleading the moment half of them were salary -- and unlike `List`/Area or
-    `Item`/task, this is not one concept under two words. It is a concept that
-    genuinely widened, which is the case `architecture-trajectory.md` §7's
-    refusal of cosmetic renames does not cover.
-
-    **A sidecar, not a primitive**, and `architecture-trajectory.md` §4 is why:
-    a bill's life cycle -- arrives, is due, is paid, comes round again -- *is* a
-    recurring task's, and `daily-operating-system-vision.md` says so by
-    example, with "pay rent every month" as its canonical recurring task. A
-    `MoneyLine` model of its own would contradict the product's own statement and
-    re-implement recurrence, due dates, completion and snapshotting beside the
-    thing that already does them.
-
-    So this adds attributes without claiming a life cycle. One-to-one rather
-    than fields on `Item`, which keeps a decimal column that is null for almost
-    every row off the most-queried model in the application -- and makes "is
-    this a bill" a row's existence rather than a nullable flag.
-
-    **Not a `Facet` either.** That table carries inferred capabilities with a
-    confirmation flow; a number somebody typed is a fact, and putting it there
-    would muddy both.
-    """
-
-    item = models.OneToOneField(
-        "Item", related_name="money_line", on_delete=models.CASCADE
-    )
-    #: What kind of thing this is. Null is **Uncategorised**, which is a real
-    #: state rather than a missing one: a bill added in a hurry should not have
-    #: to answer a filing question, the same reason it has no Area. SET_NULL,
-    #: because deleting a category is losing a label and not losing the bill.
-    category = models.ForeignKey(
-        "MoneyCategory",
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name="lines",
-    )
-    #: Which way it goes. Out is the default because bills came first, and
-    #: because most rows will always be money leaving: a person has one salary
-    #: and a dozen subscriptions.
-    direction = models.CharField(
-        max_length=3, choices=Direction.choices, default=Direction.OUT
-    )
-    #: What it is **expected** to come to. Optional, because "the water bill,
-    #: whatever it comes to" is a real bill, and so is a bonus nobody can
-    #: predict. The *row* is what marks a task as money.
-    amount = models.DecimalField(
-        max_digits=12, decimal_places=2, null=True, blank=True
-    )
-    #: What **actually moved**, recorded when it is settled -- paid, for a
-    #: bill; received, for income. Null until then.
-    #:
-    #: **A second number rather than overwriting the first**, because they
-    #: answer different questions and stop being equal the moment somebody pays
-    #: extra -- Vince, August 27, 2026, and it is the ordinary case for a
-    #: variable bill rather than an edge one. Keeping both is what lets the
-    #: month say *still to pay* from expectations and *already paid* from
-    #: facts, and what makes "the electricity bill has been creeping up"
-    #: answerable at all: a field that gets overwritten has no history to read.
-    #:
-    #: **Not its own model.** §4's test is a different life cycle, and this has
-    #: the same one as the amount beside it -- set once, about this occurrence,
-    #: gone when the bill is. A `Payment` table would be a second answer to
-    #: "what did this cost" with nothing extra to say.
-    paid_amount = models.DecimalField(
-        max_digits=12, decimal_places=2, null=True, blank=True
-    )
-    #: Per bill rather than per account, so somebody paying rent in one
-    #: currency and a subscription in another is not a migration later. Three
-    #: characters and no lookup table: this is a label on a number, not an
-    #: exchange-rate system, and it does not become one by having a table.
-    currency = models.CharField(max_length=3, default="USD")
-    payee = models.CharField(max_length=200, blank=True, default="")
-
-    class Meta:
-        constraints = [
-            # A bill is something owed. A negative one is a refund, which is a
-            # different thing and not this -- refused in the database as well
-            # as at the boundary, because the boundary is not the only writer.
-            models.CheckConstraint(
-                condition=Q(amount__isnull=True) | Q(amount__gte=0),
-                name="money_line_amount_not_negative",
-            ),
-        ]
-
-    def __str__(self):
-        return f"bill for {self.item_id}"
-
-
 class BillSeries(models.Model):
     """The durable identity of a repeating bill, across its occurrences.
 
@@ -707,7 +616,7 @@ class BillSeries(models.Model):
     is abandoned at its own section 7, these two tables are dropped rather than
     left standing.
 
-    **Why a template at all**, when `MoneyLine` needed none:
+    **Why a template at all**, when the sidecar it replaced needed none:
     `architecture-trajectory.md` §4 rule 8 — anything that happens more than
     once splits into a durable template holding the rule and dated occurrence
     rows holding what actually happened. Its cost note is the argument for
@@ -730,7 +639,7 @@ class BillSeries(models.Model):
     )
     payee = models.CharField(max_length=200)
     #: What it is **expected** to come to, and null for *"the water bill,
-    #: whatever it comes to"* — the same reason `MoneyLine.amount` is nullable.
+    #: whatever it comes to"* — the reason the sidecar's amount was nullable too.
     #: Each occurrence snapshots this rather than reading through, per rule 3.
     amount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     currency = models.CharField(max_length=3, default="USD")
@@ -813,8 +722,8 @@ class Bill(models.Model):
     soft-delete because there is no undo surface to want one, and no tombstone
     because rule 2 does not apply — see below. A series being deleted does
     *not* take its occurrences: `SET_NULL` keeps the record of money that
-    actually moved, which is the same argument `MoneyLine.paid_amount` makes
-    for being a second column rather than an overwrite.
+    actually moved, which is the same argument `paid_amount` below makes for
+    being a second column rather than an overwrite.
 
     **§4 rule 2 does not apply.** A public identifier is for records a client
     may create offline, and no client creates a bill offline: `android/` has no
@@ -873,8 +782,8 @@ class Bill(models.Model):
     #: What **actually moved**. A second number rather than an overwrite of
     #: `amount`, because they stop being equal the moment somebody pays extra,
     #: and because *"the electricity bill has been creeping up"* is
-    #: unanswerable from a field with no history. Inherited wholesale from
-    #: `MoneyLine.paid_amount`, whose reasoning survives the move.
+    #: unanswerable from a field with no history. Inherited wholesale from the
+    #: sidecar this replaced, whose reasoning survived the move and outlived it.
     paid_amount = models.DecimalField(
         max_digits=12, decimal_places=2, null=True, blank=True
     )
@@ -902,8 +811,9 @@ class Bill(models.Model):
 
     class Meta:
         indexes = [
-            # §4 rule 7, and these are the reads `lists/money.py` already runs
-            # against `MoneyLine` + `Item`, named before they are moved.
+            # §4 rule 7. These were named before the reads moved, when
+            # `lists/money.py` still ran them against a sidecar joined to its
+            # task; they are the same three reads and they run here now.
             #
             # The month, overdue-across-every-month, and due-soon-across-a-
             # boundary all sort this person's bills by date.
@@ -953,6 +863,32 @@ class Bill(models.Model):
             models.UniqueConstraint(
                 fields=["series", "due_date"],
                 name="bill_one_occurrence_per_period",
+            ),
+            # **Inherited from the sidecar this replaced**, and nearly lost with
+            # it. `MoneyLine` carried `money_line_amount_not_negative` -- *a bill
+            # is something owed; a negative one is a refund, which is a different
+            # thing* -- refused in the database *"as well as at the boundary,
+            # because the boundary is not the only writer"*. `Bill` was built
+            # without it, so for one day the only thing refusing a negative bill
+            # was Python in `bills.record` and `bills.update`.
+            #
+            # Increment 8 deletes that model. Carrying the guarantee across
+            # rather than letting it go is `principles.md`'s rule that a
+            # guarantee is bought with a constraint and not with care.
+            #
+            # **`paid_amount` joins it**, which the original did not cover: it is
+            # what actually moved, and money moving backwards is the same refund
+            # the other column already refuses. Null stays legal in both --
+            # unpriced, and unsettled, are real states.
+            models.CheckConstraint(
+                condition=(
+                    (models.Q(amount__isnull=True) | models.Q(amount__gte=0))
+                    & (
+                        models.Q(paid_amount__isnull=True)
+                        | models.Q(paid_amount__gte=0)
+                    )
+                ),
+                name="bill_amount_not_negative",
             ),
         ]
 

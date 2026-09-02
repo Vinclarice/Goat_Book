@@ -36,6 +36,7 @@ point, because the drill it guards costs money and an hour.
 """
 
 import pathlib
+import re
 
 from django.apps import apps
 from django.test import SimpleTestCase
@@ -131,6 +132,25 @@ def declared_constraints():
     }
 
 
+
+
+def _constraints_the_script_checks(script):
+    """Every name the drill queries `pg_constraint` for.
+
+    Parsed rather than matched: the script is a shell file full of English, and
+    a substring search over it would call `exit` a constraint. The names live in
+    `for constraint in <names>` loops, which may continue across backslashes and
+    end at the `do` on the next line.
+    """
+    joined = re.sub(r"\\\n\s*", " ", script)
+    names = set()
+    for line in joined.split("\n"):
+        match = re.match(r"\s*for constraint in (.+)$", line)
+        if match:
+            names.update(match.group(1).split())
+    return names
+
+
 class RestoreDrillCoversTheSchemaTest(SimpleTestCase):
     def setUp(self):
         self.script = SCRIPT.read_text(encoding="utf-8")
@@ -161,6 +181,42 @@ class RestoreDrillCoversTheSchemaTest(SimpleTestCase):
         gone = NOT_DRILLED - declared_constraints()
 
         self.assertEqual(gone, set(), "listed as undrilled but no longer declared")
+
+    def test_the_script_checks_nothing_that_no_longer_exists(self):
+        """**The direction this file was missing**, found on September 2, 2026
+        by deleting a model.
+
+        `test_every_constraint_is_drilled_or_deliberately_not` walks *declared →
+        script*, so a constraint added without a decision fails. Nothing walked
+        *script → declared*, so a constraint **deleted** left its name in the
+        script and nothing said a word. `money_line_amount_not_negative` did
+        exactly that when increment 8 of `bill-as-a-model-plan.md` dropped
+        `MoneyLine`.
+
+        **What that costs is the drill itself.** The script would query a
+        constraint that cannot exist, report `no`, and fail -- at step 5, in
+        WSL, with a paid scratch cluster running, which is precisely the
+        mid-drill failure `CLAUDE.md` records for the executable-bit bug. A
+        drill that cannot be trusted to pass for the right reason is worse than
+        no drill, because it trains somebody to ignore it.
+
+        `NOT_DRILLED` already had this direction --
+        `test_nothing_is_listed_as_undrilled_that_no_longer_exists` -- and the
+        script did not. The asymmetry was the whole gap.
+        """
+        checked = _constraints_the_script_checks(self.script)
+        self.assertTrue(checked, "the script names no constraints at all")
+
+        declared = declared_constraints()
+        stale = {name for name in checked if name not in declared}
+
+        self.assertEqual(
+            stale,
+            set(),
+            "infra/check-restore-integrity.sh checks constraints that are no "
+            "longer declared anywhere. The drill will report `no` for each and "
+            "fail -- remove them from the script, or put the constraint back.",
+        )
 
     def test_nothing_is_both_drilled_and_listed_as_undrilled(self):
         """A name in both places reads as a considered decision and is a

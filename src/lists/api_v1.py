@@ -585,10 +585,10 @@ def edit_bill(request, task_id: int, payload: EditBillIn):
     read keeps the shorter path; the writes take the longer one.
 
     **Under `/money/` since August 27, 2026.** The resources are still bills --
-    a bill is one kind of money thing and income will be its sibling, not the
-    same record -- so what moved is the namespace, not the noun. `MoneyLine` keeps
-    its name for exactly that reason: a model named after the module would have
-    to hold both.
+    a bill is one kind of money thing and income is its sibling on the same
+    record, pointed the other way -- so what moved is the namespace, not the
+    noun. The model is named `Bill` for exactly that reason: one named after the
+    module would have to mean both.
     """
     bill = _bill_or_404(request, task_id)
     fields = {}

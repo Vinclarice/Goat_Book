@@ -31,7 +31,6 @@ from lists.models import (
     MoneyCategory,
     Bill,
     BillSeries,
-    MoneyLine,
     ChecklistStep,
     Item,
     List,
@@ -94,17 +93,12 @@ EXPORT_KEYS = {
     Project: "projects",
     Item: "items",
     ChecklistStep: "checklist_steps",
-    # Owned through its task rather than directly -- a sidecar has no owner of
-    # its own, which is exactly the shape that goes missing from a list like
-    # this. The test above is what caught it.
-    #
-    # **Empty since August 31, 2026, and still declared.** Increment 4 of
-    # bill-as-a-model-plan.md moved every bill into the two keys below and
-    # deleted the tasks the sidecars hung off, so this table has no rows and
-    # nothing writes it. It stays until increment 8 deletes the model, because
-    # a model this app owns without a key here is what the test above fails on
-    # -- and an empty list is the honest answer for an empty table.
-    MoneyLine: "bills",
+    # **`MoneyLine: "bills"` was here until September 1, 2026.** It was owned
+    # through its task rather than directly -- a sidecar has no owner of its
+    # own, which is exactly the shape that goes missing from a list like this,
+    # and the test above is what caught it the first time. Increment 8 of
+    # bill-as-a-model-plan.md deleted the model; the two keys below carry every
+    # bill a person has, owned directly.
     # **Dark tables, exported anyway** -- increment 1 of
     # bill-as-a-model-plan.md. Nothing writes them yet, so both keys are empty
     # lists today; naming them now is what stops the export silently missing a
@@ -258,11 +252,10 @@ def _payload(user, *, now):
             "projects": _rows(Project.objects.filter(owner=user)),
             "items": _rows(Item.objects.filter(owner=user), many_to_many=("tags",)),
             "checklist_steps": _rows(ChecklistStep.objects.filter(owner=user)),
-            "bills": _rows(MoneyLine.objects.filter(item__owner=user)),
-            # Owned directly, unlike `bills` above, which is the point of the
-            # split: a bill stops being reached through a task. These two carry
-            # a person's whole financial history since the flip; `bills` is an
-            # empty table waiting to be dropped.
+            # **Owned directly**, which is the point of the split: a bill
+            # stops being reached through a task. A `bills` key sat above these
+            # until September 1, 2026 and reached a sidecar through its task's
+            # owner; these two carry a person's whole financial history now.
             "bill_series": _rows(BillSeries.objects.filter(owner=user)),
             "bill_occurrences": _rows(Bill.objects.filter(owner=user)),
             # **Named `accounts_with_balances`, not `accounts`.** The archive

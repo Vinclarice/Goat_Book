@@ -70,6 +70,13 @@ class ASpawnAccountsForEverythingOnATaskTest(SimpleTestCase):
         has now found five times."""
         found = hangs_off_a_task()
 
-        self.assertIn("MoneyLine", found)
+        # **`MoneyLine` was named here until September 1, 2026**, and was the
+        # relation this whole file was written about -- a paid recurring bill
+        # silently stopped being a bill because the spawn had never heard of the
+        # sidecar. Increment 8 of bill-as-a-model-plan.md deleted it, so the
+        # control moves to two that are not going anywhere: a checklist step
+        # cascades with its task, and an activity event is the append-only log
+        # of what happened to it.
         self.assertIn("ChecklistStep", found)
+        self.assertIn("ActivityEvent", found)
         self.assertGreaterEqual(len(found), 3)

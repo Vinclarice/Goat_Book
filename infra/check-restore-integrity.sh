@@ -191,11 +191,12 @@ done
 # vocabulary, and `clarice/life_log.py` raises on a bad value *"rather than
 # failing at the database check constraint three layers down"* -- which names
 # this constraint as the backstop it is deliberately in front of.
-# `money_line_amount_not_negative` guards a number somebody plans a month
-# against. It was `bill_amount_not_negative` until August 27, 2026, when `Bill`
-# became `MoneyLine` -- and this line was the drill's half of that rename, found
-# by the test that fails when a constraint is in neither the script nor the
-# not-drilled list.
+# **A third one was here and is gone.** `money_line_amount_not_negative`
+# guarded a number somebody plans a month against; it was
+# `bill_amount_not_negative`, then `MoneyLine`'s, and on September 2, 2026 the
+# model went with increment 8 of design/bill-as-a-model-plan.md. What replaced
+# it guards the same number on the record that carries it now:
+# `bill_amount_not_negative` on `Bill`, checked in the same loop.
 #
 # `bill_paid_at_and_amount_agree` was drilled from the day it was written, when
 # nothing wrote `Bill` at all -- increment 1 of design/bill-as-a-model-plan.md.
@@ -205,12 +206,9 @@ done
 # and says nothing about for how much, so the month's *already paid* total is
 # quietly short. A wrong money figure that looks like a right one is the case
 # that list explicitly is not for.
-#
-# `money_line_amount_not_negative` now guards an empty table -- the sidecars
-# went with the tasks they hung off -- and stays drilled until increment 8 drops
-# the model, because a constraint that exists is a constraint the restore has to
-# bring back.
-for constraint in event_type_valid event_origin_valid money_line_amount_not_negative                   bill_paid_at_and_amount_agree
+
+for constraint in event_type_valid event_origin_valid \
+                  bill_amount_not_negative bill_paid_at_and_amount_agree
 do
   got=$(query "SELECT count(*) FROM pg_constraint
                WHERE conname = '$constraint' AND contype = 'c' AND convalidated")

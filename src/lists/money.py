@@ -6,8 +6,9 @@ exactly where to go."* Bills did not become Money -- **bills became part of
 it**, and income is the sibling this file is now named to hold.
 
 **The noun is `Bill`, and it is a model of its own since August 31, 2026.** A
-bill was a task with a `MoneyLine` sidecar until then, on the argument that §4
-says no to a primitive for a concept that only has a different *name*. What
+bill was a task with a `MoneyLine` sidecar until then -- deleted September 1 --
+on the argument that §4 says no to a primitive for a concept that only has a
+different *name*. What
 overturned it is in `bill-as-a-model-plan.md` §2: a missed period is gone for a
 task and still owed for a bill, which is a different life cycle and is exactly
 what §4 asks for.
@@ -27,7 +28,7 @@ from decimal import Decimal
 from django.db.models import Q
 from django.utils import timezone
 
-from lists.models import Account, Bill, Direction, Item, MoneyLine
+from lists.models import Account, Bill, Direction, Item
 
 
 @dataclass(frozen=True)
@@ -196,7 +197,7 @@ class MoneyLanding:
 def landing_from_bills(owner, *, today):
     """How the money stands today: what is late, what is near, what it costs.
 
-    **Three joins became none.** The read this replaced walked `MoneyLine` to
+    **Three joins became none.** The read this replaced walked a sidecar to its
     `Item` for the date, the lead time and the recurrence, with a `BillRow` to
     hold the pair together. Every field here is on the row.
 

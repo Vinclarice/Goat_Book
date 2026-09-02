@@ -494,9 +494,16 @@ re-add it here.
   closed** — the balances screen names the bill that pays each account, and the
   add and edit forms are where that gets set.
 
-  **What is open is 8 and 9**, both housekeeping: deleting the now-empty
-  `MoneyLine`, and renaming the `task_id` key that points at a bill and says
-  otherwise.
+  ~~Increment 8.~~ **Done September 2, 2026** — `MoneyLine` is deleted. It was
+  filed as housekeeping and was not: the old model carried a not-negative CHECK
+  that `Bill` had never been given, so dropping it would have quietly ended a
+  database guarantee, and the restore drill was checking that constraint by
+  name and would have failed mid-drill. Both found by doing it; both fixed,
+  the second with the guard whose absence allowed it.
+
+  **What is open is 9 alone**, and it is housekeeping: renaming the `task_id`
+  key that points at a bill and says otherwise, across four routes, three
+  schemas and the SPA.
 
 - **Should money skip a missed period at all? — promoted August 28, 2026 from
   the entry above.** *Missed periods are skipped, not replayed* is the task

@@ -917,17 +917,14 @@ def _spawn_next_occurrence(completed_item, carry_forward_steps=(), today=None):
     )
     next_item.tags.set(commitment.tags.all())
 
-    # **NOT CARRIED: MoneyLine.** There is nothing here to carry since August 31,
-    # 2026: a bill is a `Bill`, it is not spawned by completing a task, and
-    # `bills.spawn_next` is where its successor comes from.
+    # **There is no money relation to carry any more.** A bill is a `Bill`, it
+    # is not spawned by completing a task, and `bills.spawn_next` is where its
+    # successor comes from. The sidecar this paragraph used to name was deleted
+    # on September 1, 2026, so the guard in
+    # `tests/test_a_spawn_accounts_for_everything_on_a_task.py` no longer asks
+    # about it.
     #
-    # The relation is still named here, and deliberately: `MoneyLine` is still
-    # a model hanging off `Item` until increment 8 deletes it, so the guard in
-    # `tests/test_a_spawn_accounts_for_everything_on_a_task.py` still wants an
-    # answer about it. The answer is that the table is empty and nothing writes
-    # it.
-    #
-    # And this paragraph is kept rather than deleted because of what it used to
+    # The paragraph is kept rather than deleted because of what it used to
     # say. Between bills shipping and August 27, 2026 nothing here touched the
     # sidecar, so paying rent produced a plain *task* for next month and rent
     # silently stopped appearing on the page that exists to show bills --

@@ -413,13 +413,46 @@ Each is shippable and leaves the product working.
    would start green and cost little. Not built here — it is a codebase-wide
    guard rather than part of this increment — but the measurement is recorded
    so the decision is one line of work away.
-8. **`MoneyLine` is deleted.** Not before every read and write has moved and a
-   backup has been taken. **Both conditions are now met** — the table is empty
-   and nothing writes it — so this is a schema removal and a tidy-up of the two
-   places that still name it: `accounts/export.py`'s `bills` key, and
-   `_spawn_next_occurrence`'s *NOT CARRIED* paragraph, which names the relation
-   because `test_a_spawn_accounts_for_everything_on_a_task.py` requires an
-   answer about every model hanging off `Item`.
+8. ~~**`MoneyLine` is deleted.**~~ **Done September 2, 2026.** Both stated
+   conditions were met first: every read and write had moved, and the
+   production cluster's daily backup had passed that morning.
+
+   **Production was measured before the drop was written**, not after: one
+   `MoneyLine`, one task carrying it, no undated bill and no figure without a
+   completion — so neither `0055`'s refusal nor `0057`'s can fire there, and
+   `0059` drops a table that `0057` has already emptied by cascade two
+   migrations earlier in the same deploy.
+
+   ~~A schema removal and a tidy-up~~ — **it was not only that, and the
+   difference is a guarantee that would have gone out with the table.**
+   `MoneyLine` carried `money_line_amount_not_negative`: *a bill is something
+   owed, a negative one is a refund*, refused in the database *"as well as at
+   the boundary, because the boundary is not the only writer"*. **`Bill` was
+   built without it.** For one day the only thing refusing a negative bill was
+   Python in `bills.record` and `bills.update`, and deleting the old model
+   would have made that permanent silently. `0060` carries it across as
+   `bill_amount_not_negative`, and widens it to `paid_amount`, which the
+   original never covered — money moving backwards is the same refund in the
+   column that records what actually moved.
+
+   **And the restore drill was checking a constraint about to stop existing.**
+   `check-restore-integrity.sh` names `money_line_amount_not_negative` in its
+   CHECK loop; after the drop it would have queried a constraint that cannot
+   exist, reported `no`, and failed — at step 5, in WSL, with a paid scratch
+   cluster running. No test caught it, because
+   `test_restore_integrity_covers_the_schema.py` walked *declared → script* and
+   *NOT_DRILLED → declared* but never *script → declared*. That asymmetry was
+   the whole gap and it is closed:
+   `test_the_script_checks_nothing_that_no_longer_exists` parses the loops the
+   script actually runs, and was mutation-tested against a renamed constraint
+   rather than trusted.
+
+   The tidy-up was real too: `accounts/export.py`'s `bills` key is gone — every
+   bill is in `bill_occurrences` and `bill_series`, owned directly rather than
+   reached through a task's owner, verified against the real archive — and
+   `test_a_spawn_accounts_for_everything_on_a_task.py`'s positive control moved
+   off the model it was written about onto two relations that are not going
+   anywhere.
 9. **The key is renamed from `task_id`.** It points at a `Bill` and says
    otherwise, on `MonthBillOut`, `AgendaBillOut`, `LandingLineOut`, four routes
    and the SPA. Held out of increment 4 on purpose: a mechanical rename is the

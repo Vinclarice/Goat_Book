@@ -128,7 +128,7 @@
             }
           }
         },
-        "description": "Correct a bill without leaving the page it is shown on.\n\n**`entry/{id}` rather than `{id}`**, because `/money/bills/{day}` already\ntakes a date in that position and two routes differing only by the type of\none segment is a collision waiting for the first numeric-looking date. The\nread keeps the shorter path; the writes take the longer one.\n\n**Under `/money/` since August 27, 2026.** The resources are still bills --\na bill is one kind of money thing and income will be its sibling, not the\nsame record -- so what moved is the namespace, not the noun. `MoneyLine` keeps\nits name for exactly that reason: a model named after the module would have\nto hold both.",
+        "description": "Correct a bill without leaving the page it is shown on.\n\n**`entry/{id}` rather than `{id}`**, because `/money/bills/{day}` already\ntakes a date in that position and two routes differing only by the type of\none segment is a collision waiting for the first numeric-looking date. The\nread keeps the shorter path; the writes take the longer one.\n\n**Under `/money/` since August 27, 2026.** The resources are still bills --\na bill is one kind of money thing and income is its sibling on the same\nrecord, pointed the other way -- so what moved is the namespace, not the\nnoun. The model is named `Bill` for exactly that reason: one named after the\nmodule would have to mean both.",
         "requestBody": {
           "content": {
             "application/json": {

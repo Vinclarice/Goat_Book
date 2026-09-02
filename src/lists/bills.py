@@ -26,6 +26,11 @@ concept goes with `Item`:
   sidecar, the due date on the task — and that one service existed so a caller
   could not leave a bill half-corrected. They live in one place now.
 
+**What it still imports from `lists` is its own models**, and only until they
+move with it -- step 3 of the extraction. Everything else it needs from outside
+now comes from `clarice.recurrence` and `clarice.errors`, which belong to
+neither core.
+
 **And one thing that goes the other way: `catch_up` has no task equivalent, and
 must not acquire one.** *Missed periods are skipped, not replayed* is right for
 a task and wrong for a bill, which is the entire argument
@@ -38,8 +43,22 @@ import logging
 from django.db import transaction
 from django.utils import timezone
 
-from lists.models import Bill, BillSeries, CadenceMode, Direction, Item
-from lists.services import TaskConflict, _advance_due_date, normalize_task_text
+from clarice.errors import Conflict
+from clarice.recurrence import CadenceMode, Recurrence, advance_due_date
+from lists.models import Bill, BillSeries, Direction
+
+
+class BillConflict(Conflict):
+    """A money write refused because the domain says no.
+
+    **Its own class since September 2, 2026.** This module raised
+    `TaskConflict` until then -- it worked, because the boundary caught it by
+    name, and it said a bill refusing a write was a task conflict. A bill has
+    not been a task since increment 4.
+
+    A `clarice.errors.Conflict`, so a handler catching the base still gets it.
+    """
+
 
 logger = logging.getLogger(__name__)
 
@@ -82,17 +101,17 @@ def record(
     """
     payee = (payee or "").strip()
     if not payee:
-        raise TaskConflict("A bill needs a payee.")
+        raise BillConflict("A bill needs a payee.")
     if amount is not None and amount < 0:
-        raise TaskConflict("A bill is something owed, so it cannot be negative.")
+        raise BillConflict("A bill is something owed, so it cannot be negative.")
 
     if recurrence is None:
-        recurrence = Item.Recurrence.MONTHLY if repeats else Item.Recurrence.NONE
-    if recurrence not in Item.Recurrence.values:
-        raise TaskConflict("Choose a valid cadence.")
+        recurrence = Recurrence.MONTHLY if repeats else Recurrence.NONE
+    if recurrence not in Recurrence.values:
+        raise BillConflict("Choose a valid cadence.")
 
     series = None
-    if recurrence != Item.Recurrence.NONE:
+    if recurrence != Recurrence.NONE:
         series = BillSeries.objects.create(
             owner=owner,
             payee=payee,
@@ -135,9 +154,9 @@ def settle(bill, *, amount=None, today=None):
     """
     bill = Bill.objects.select_for_update().get(pk=bill.pk)
     if bill.paid_at is not None:
-        raise TaskConflict("That bill is already settled.")
+        raise BillConflict("That bill is already settled.")
     if amount is not None and amount < 0:
-        raise TaskConflict("A payment cannot be negative.")
+        raise BillConflict("A payment cannot be negative.")
 
     bill.paid_amount = bill.amount if amount is None else amount
     bill.paid_at = timezone.now()
@@ -155,11 +174,13 @@ def spawn_next(bill, *, today=None):
     nobody has been told. What lands is an unpriced bill from a known payee,
     which the month counts rather than totals.
 
-    **The cadence arithmetic is borrowed, not rewritten.**
-    `services._advance_due_date` is a pure function of dates and modes, and it
-    carries a month of argument about the `>` boundary that a second copy would
-    lose. Sharing it is the one place a bill still leans on the task core, and
-    it leans on a calculation rather than on a record.
+    **The cadence arithmetic is shared, not rewritten.**
+    `clarice.recurrence.advance_due_date` is a pure function of dates and modes
+    carrying a month of argument about its `>` boundary that a second copy would
+    lose. ~~The one place a bill still leans on the task core.~~ **It leans on
+    neither core since September 2, 2026**: this imported the private
+    `lists.services._advance_due_date` until then, which worked and said a
+    bill's schedule belonged to tasks. A calendar belongs to neither.
 
     **One period on, and never past today — the asymmetry §2 is built on.**
     That function advances until it clears *today*, because five missed bin
@@ -179,12 +200,12 @@ def spawn_next(bill, *, today=None):
     series = bill.series
     if series is None or series.ended_at is not None:
         return None
-    if series.cadence == Item.Recurrence.NONE:
+    if series.cadence == Recurrence.NONE:
         return None
     return Bill.objects.create(
         owner=bill.owner,
         series=series,
-        due_date=_advance_due_date(
+        due_date=advance_due_date(
             bill.due_date,
             series.cadence,
             today=today if series.cadence_mode == CadenceMode.FLOATING
@@ -252,7 +273,7 @@ def catch_up(owner=None, today=None):
     today = today or timezone.localdate()
     series = BillSeries.objects.filter(
         ended_at__isnull=True, cadence_mode=CadenceMode.ANCHORED
-    ).exclude(cadence=Item.Recurrence.NONE)
+    ).exclude(cadence=Recurrence.NONE)
     if owner is not None:
         series = series.filter(owner=owner)
 
@@ -271,7 +292,7 @@ def catch_up(owner=None, today=None):
             # here -- and skipped rather than guessed at if one is ever found.
             continue
         for _ in range(REPLAY_LIMIT):
-            following = _advance_due_date(
+            following = advance_due_date(
                 latest, rule.cadence, today=latest, mode=rule.cadence_mode
             )
             if following is None or following > today:
@@ -333,19 +354,19 @@ def update(
     if payee is not _KEEP:
         cleaned = (payee or "").strip()
         if not cleaned:
-            raise TaskConflict("A bill needs a payee.")
+            raise BillConflict("A bill needs a payee.")
         bill.payee = cleaned
     if clear_amount:
         bill.amount = None
     elif amount is not _KEEP:
         if amount is not None and amount < 0:
-            raise TaskConflict("A bill is something owed, so it cannot be negative.")
+            raise BillConflict("A bill is something owed, so it cannot be negative.")
         bill.amount = amount
     if currency is not _KEEP:
         bill.currency = (currency or "USD")[:3].upper()
     if due_date is not _KEEP:
         if due_date is None:
-            raise TaskConflict("A bill needs a date it is due.")
+            raise BillConflict("A bill needs a date it is due.")
         bill.due_date = due_date
     if lead_days is not _KEEP:
         bill.lead_days = lead_days
@@ -374,13 +395,13 @@ def set_cadence(bill, recurrence):
     already produced are a record of money that moved -- and leaves this one
     standing, since it is still owed.
     """
-    if recurrence not in Item.Recurrence.values:
-        raise TaskConflict("Choose a valid cadence.")
+    if recurrence not in Recurrence.values:
+        raise BillConflict("Choose a valid cadence.")
     series = bill.series
-    current = series.cadence if series is not None else Item.Recurrence.NONE
+    current = series.cadence if series is not None else Recurrence.NONE
     if recurrence == current:
         return bill
-    if recurrence == Item.Recurrence.NONE:
+    if recurrence == Recurrence.NONE:
         if series is not None:
             series.ended_at = timezone.now()
             series.save(update_fields=["ended_at"])
@@ -449,19 +470,19 @@ def revise_series(series, *, payee=_KEEP, amount=_KEEP, lead_days=_KEEP, cadence
     if payee is not _KEEP:
         cleaned = (payee or "").strip()
         if not cleaned:
-            raise TaskConflict("A bill needs a payee.")
+            raise BillConflict("A bill needs a payee.")
         series.payee = cleaned
     if amount is not _KEEP:
         series.amount = amount
     if lead_days is not _KEEP:
         series.lead_days = lead_days
     if cadence is not _KEEP:
-        if cadence not in Item.Recurrence.values:
-            raise TaskConflict("Choose a valid cadence.")
+        if cadence not in Recurrence.values:
+            raise BillConflict("Choose a valid cadence.")
         series.cadence = cadence
     if cadence_mode is not _KEEP:
         if cadence_mode not in CadenceMode.values:
-            raise TaskConflict("Choose a valid schedule mode.")
+            raise BillConflict("Choose a valid schedule mode.")
         series.cadence_mode = cadence_mode
     if category is not _KEEP:
         series.category = category

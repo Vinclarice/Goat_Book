@@ -1,57 +1,20 @@
 from django.conf import settings
 from django.contrib.postgres.indexes import GinIndex
 from django.contrib.postgres.search import SearchVector, SearchVectorField
+from clarice.recurrence import CadenceMode, Recurrence
 from django.db import models
 from django.db.models import Q
 from django.urls import reverse
 
 
-class Recurrence(models.TextChoices):
-    """How often a commitment repeats.
-
-    Module level rather than nested in `Item` because RecurringCommitment is
-    declared above `Item` and needs the same choices -- the cadence is the
-    commitment's rule, and an occurrence's copy is a snapshot of what it ran
-    under. `Item.Recurrence` remains an alias below, so nothing that already
-    says `Item.Recurrence.WEEKLY` has to change.
-    """
-
-    NONE = "none", "Doesn't repeat"
-    DAILY = "daily", "Daily"
-    WEEKLY = "weekly", "Weekly"
-    #: Added August 27, 2026, because a salary every two weeks is ordinary and
-    #: this had no word for it. Not a special case: `_nth_occurrence_after`
-    #: already advances weekly by whole weeks, so a fortnight is two of them.
-    FORTNIGHTLY = "fortnightly", "Every two weeks"
-    MONTHLY = "monthly", "Monthly"
-    # Added August 20, 2026 for the commitments that come round least often
-    # and are hardest to hold in your head -- a property tax bill due 5
-    # October could not be expressed at all. Both are the monthly arithmetic
-    # with a multiplier rather than new branches, so they inherit its
-    # anchor-and-clamp behaviour instead of restating it.
-    QUARTERLY = "quarterly", "Quarterly"
-    ANNUAL = "annual", "Annually"
-
-class CadenceMode(models.TextChoices):
-    """Whether a repeating commitment is fixed to the calendar or to the last
-    time it was actually done.
-
-    `design-concept.md` calls this distinction load-bearing, and it is: the two
-    modes disagree by months on a commitment done late, and each is plainly
-    wrong for the other's cases.
-
-    ANCHORED is the default, and the asymmetry is deliberate. A mortgage that
-    quietly drifts off the 1st is a missed payment; a furnace filter changed six
-    days early is nothing. Somebody who never discovers this setting keeps the
-    behaviour that cannot hurt them.
-    """
-
-    #: The calendar rule is the truth. Due the 1st whether or not last month's
-    #: was paid on time. Missed periods are skipped, never replayed.
-    ANCHORED = "anchored", "On a fixed schedule"
-    #: The elapsed interval is the truth. A filter lasts a month from when it
-    #: was changed, not from when it was notionally due.
-    FLOATING = "floating", "A set time after it is done"
+#: **Re-exported, not defined here, since September 2, 2026.**
+#: `clarice.recurrence` owns both — a task recurs and so does a bill, and the
+#: calendar is neither core's. These names stay because `Item.Recurrence` and
+#: `from lists.models import CadenceMode` are said in about two hundred places
+#: and each is correct where it stands; they are aliases of the same objects,
+#: so they cannot drift from the definitions.
+Recurrence = Recurrence
+CadenceMode = CadenceMode
 
 
 class Priority(models.TextChoices):

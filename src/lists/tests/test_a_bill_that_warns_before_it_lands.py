@@ -92,7 +92,7 @@ class ABillThatWarnsBeforeItLandsTest(TestCase):
         self.assertEqual(rent.lead_days, 0)
 
     def test_it_refuses_a_cadence_that_is_not_one(self):
-        with self.assertRaises(services.TaskConflict):
+        with self.assertRaises(bills.BillConflict):
             bills.record(
                 self.user,
                 payee="Adobe",

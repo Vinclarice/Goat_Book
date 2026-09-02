@@ -19,7 +19,7 @@ from django.utils import timezone
 from accounts.models import User
 from lists import bills
 from lists.models import Account, AccountKind, Bill, BillSeries, Direction, Item
-from lists.services import TaskConflict
+from lists.bills import BillConflict
 
 DUE = datetime.date(2026, 8, 1)
 
@@ -57,7 +57,7 @@ class CreatingTest(TestCase):
     def test_both_rows_arrive_or_neither_does(self):
         """`modules.md`: a module links to work through its own create path or
         not at all, so membership cannot be forgotten."""
-        with self.assertRaises(TaskConflict):
+        with self.assertRaises(BillConflict):
             bills.record(self.user, payee="   ", due_date=DUE)
 
         self.assertEqual(Bill.objects.count(), 0)
@@ -69,7 +69,7 @@ class CreatingTest(TestCase):
         self.assertIsNone(bill.amount)
 
     def test_a_negative_amount_is_refused(self):
-        with self.assertRaises(TaskConflict):
+        with self.assertRaises(BillConflict):
             bills.record(
                 self.user, payee="Landlord", amount=Decimal("-1"), due_date=DUE
             )
@@ -145,7 +145,7 @@ class SettlingTest(TestCase):
         bill = bills.record(self.user, payee="Comcast", due_date=DUE)
         bills.settle(bill)
 
-        with self.assertRaises(TaskConflict):
+        with self.assertRaises(BillConflict):
             bills.settle(bill)
 
     def test_settling_a_repeating_bill_produces_the_next_one(self):
@@ -234,7 +234,7 @@ class UpdatingTest(TestCase):
         self.assertEqual(self.bill.due_date, datetime.date(2026, 8, 25))
 
     def test_a_bill_cannot_lose_its_date(self):
-        with self.assertRaises(TaskConflict):
+        with self.assertRaises(BillConflict):
             bills.update(self.bill, due_date=None)
 
     def test_revising_the_series_leaves_what_already_happened_alone(self):
@@ -395,7 +395,7 @@ class ChangingWhetherABillRepeatsTest(TestCase):
     def test_a_cadence_that_is_not_one_is_refused(self):
         bill = self.bill()
 
-        with self.assertRaises(bills.TaskConflict):
+        with self.assertRaises(bills.BillConflict):
             bills.set_cadence(bill, "fortnightlyish")
 
 
@@ -412,17 +412,17 @@ class WhatABillRefusesTest(TestCase):
         title from it -- *Landlord* became *Pay Landlord* -- so an empty one
         produced a task called *Pay*; here it would produce a row nobody could
         identify."""
-        with self.assertRaises(bills.TaskConflict):
+        with self.assertRaises(bills.BillConflict):
             bills.record(self.user, payee="", amount=Decimal("10.00"), due_date=DUE)
 
     def test_whitespace_is_not_a_payee(self):
-        with self.assertRaises(bills.TaskConflict):
+        with self.assertRaises(bills.BillConflict):
             bills.record(self.user, payee="   ", due_date=DUE)
 
     def test_an_edit_cannot_empty_the_payee_either(self):
         bill = bills.record(self.user, payee="Landlord", due_date=DUE)
 
-        with self.assertRaises(bills.TaskConflict):
+        with self.assertRaises(bills.BillConflict):
             bills.update(bill, payee="")
 
     def test_two_open_bills_from_one_payee_are_allowed_now(self):

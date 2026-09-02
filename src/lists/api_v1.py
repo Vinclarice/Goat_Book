@@ -458,7 +458,7 @@ def add_bill(request, payload: NewBillIn):
             lead_days=payload.lead_days,
             account=chosen_account,
         )
-    except bills.TaskConflict as error:
+    except bills.BillConflict as error:
         raise HttpError(409, str(error))
     # The same builder every other bill response uses. It used to be spelled
     # out here because a freshly created task had no sidecar loaded yet; a
@@ -634,7 +634,7 @@ def edit_bill(request, bill_id: int, payload: EditBillIn):
         # distinction is made rather than smuggled into a field update.
         if payload.recurrence is not None:
             bill = bills.set_cadence(bill, payload.recurrence)
-    except bills.TaskConflict as error:
+    except bills.BillConflict as error:
         raise HttpError(409, str(error))
     bill.refresh_from_db()
     return _bill_row_out(bill)
@@ -708,7 +708,7 @@ def add_income(request, payload: NewIncomeIn):
             direction=Direction.IN,
             account=chosen_account,
         )
-    except bills.TaskConflict as error:
+    except bills.BillConflict as error:
         raise HttpError(409, str(error))
     return 201, _bill_row_out(bill)
 
@@ -732,7 +732,7 @@ def pay_bill(request, bill_id: int, payload: PayBillIn):
             raise HttpError(409, "That amount is not a number.")
     try:
         bill = bills.settle(bill, amount=amount)
-    except bills.TaskConflict as error:
+    except bills.BillConflict as error:
         raise HttpError(409, str(error))
     bill.refresh_from_db()
     return _bill_row_out(bill)
@@ -755,7 +755,7 @@ def remove_bill(request, bill_id: int, whole_series: bool = False):
     bill = _bill_or_404(request, bill_id)
     try:
         bills.remove(bill, whole_series=whole_series)
-    except bills.TaskConflict as error:
+    except bills.BillConflict as error:
         raise HttpError(409, str(error))
     return 204, None
 

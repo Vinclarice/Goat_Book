@@ -6,6 +6,8 @@ from django.db.models import Max
 from django.utils import timezone
 
 from clarice import life_log
+from clarice.errors import Conflict
+from clarice.recurrence import advance_due_date, nth_occurrence_after
 
 from lists.models import (
     Account,
@@ -34,8 +36,13 @@ class TaskServiceError(Exception):
     pass
 
 
-class TaskConflict(TaskServiceError):
-    pass
+class TaskConflict(TaskServiceError, Conflict):
+    """A task write refused because the domain says no.
+
+    **Also a `clarice.errors.Conflict` since September 2, 2026**, so a boundary
+    that handles refusals alike can catch the base and get a bill's as well.
+    Every handler naming this one keeps working and keeps meaning tasks.
+    """
 
 
 class InvalidTaskTransition(TaskServiceError):
@@ -747,109 +754,17 @@ def promote_checklist_step(step):
     return promoted
 
 
-def _nth_occurrence_after(base, recurrence, n):
-    """The nth scheduled date after `base`, counting in calendar units.
-
-    Computed from the anchor each time rather than by stepping one interval
-    off the last result, which matters for monthly: the 31st advanced through
-    February and then carried forward would spend the rest of the year on the
-    28th. Here February is the only month that clamps, and March is the 31st
-    again.
-    """
-    if recurrence == Item.Recurrence.DAILY:
-        return base + timedelta(days=n)
-    if recurrence == Item.Recurrence.WEEKLY:
-        return base + timedelta(weeks=n)
-    if recurrence == Item.Recurrence.FORTNIGHTLY:
-        return base + timedelta(weeks=2 * n)
-    # Quarterly and annual are monthly with a multiplier, deliberately: the
-    # anchor arithmetic below is the part that is easy to get wrong, and three
-    # copies of it would be three chances to.
-    months = {
-        Item.Recurrence.MONTHLY: 1,
-        Item.Recurrence.QUARTERLY: 3,
-        Item.Recurrence.ANNUAL: 12,
-    }.get(recurrence)
-    if months is not None:
-        n = n * months
-        month_index = base.month - 1 + n
-        year = base.year + month_index // 12
-        month = month_index % 12 + 1
-        return base.replace(
-            year=year, month=month, day=min(base.day, monthrange(year, month)[1])
-        )
-    return None
-
-
-def _advance_due_date(due_date, recurrence, today=None, mode=CadenceMode.ANCHORED):
-    """The next occurrence's due date, which is always strictly after today.
-
-    **Strictly after, and the strictness is the decision** -- corrected here on
-    August 28, 2026. This line read *"never already in the past"* for a month,
-    which is a weaker claim than the code makes: today is not the past, so that
-    wording promised an occurrence falling exactly on today would be kept, and
-    `candidate > today` drops it. The code was right and the sentence was
-    wrong.
-
-    **Why dropping it is right: the completion is happening today.** Bins every
-    Monday, last done June 1, done again today -- today's slot has just been
-    satisfied by the act that triggered this call, so returning it would hand
-    somebody a task due the day they did it. `>=` was measured rather than
-    argued about: it breaks
-    `test_a_very_late_weekly_commitment_skips_every_missed_week`, which spawns
-    August 10 instead of August 17 on a Monday-anchored series. That test pins
-    this boundary on purpose, and
-    `test_a_series_never_spawns_overdue.test_the_slot_the_completion_lands_on_is_not_respawned`
-    now says so by name rather than by coincidence.
-
-    **What this does not decide** is whether *money* should skip a missed period
-    at all -- a bill you did not pay is still owed in a way a bin round you
-    missed is not. **Answered on September 1, 2026, and answered elsewhere**:
-    `lists/bills.py` replays them, and does it by calling this function for
-    exactly one interval rather than by changing what it means. So this
-    comparison and the doctrine below are still the task core's, unchanged and
-    still correct for tasks -- which is the point of the two models, and what
-    `test_a_missed_bill_is_still_owed.test_a_task_still_skips` exists to keep
-    true from the other side.
-
-    It used to be one interval past the *previous due date*, full stop. A
-    monthly commitment due July 4 and completed August 10 therefore produced a
-    successor due August 4 -- overdue at the instant it was created, on a task
-    the person had just finished. `roadmap.md` carried this as "one defect to
-    fix on the way in rather than port"; the way in happened and it was not.
-
-    **Missed periods are skipped, not replayed.** The schedule keeps its anchor
-    and moves forward until it clears today, so a filter changed on the 4th is
-    still on the 4th afterwards, and five missed weeks produce one task rather
-    than five. Occurrences that did not happen are not invented -- a fabricated
-    history is worse than an absent one, and `principles.md` refuses it.
-
-    All of that describes **anchored**, which is the default and was the only
-    mode until August 15, 2026. **Floating** counts from the completion instead
-    -- a furnace filter lasts a month from when it was changed, not from a date
-    nobody acted on -- and needs no skipping, because it starts from today by
-    construction.
-
-    See `CadenceMode` for why anchored is the default rather than a coin toss.
-    """
-    if today is None:
-        today = timezone.localdate()
-    if mode == CadenceMode.FLOATING:
-        # The old due date is deliberately ignored, including a future one:
-        # floating means the clock restarts when the work is actually done.
-        return _nth_occurrence_after(today, recurrence, 1)
-
-    base = due_date or today
-
-    # Bounded rather than `while True`: a corrupt cadence or a due date far in
-    # the past should not spin. Two thousand steps clears five years of daily.
-    for n in range(1, 2001):
-        candidate = _nth_occurrence_after(base, recurrence, n)
-        if candidate is None:
-            return None
-        if candidate > today:
-            return candidate
-    return None
+#: **Re-exported, not defined here, since September 2, 2026.**
+#: `clarice.recurrence` owns the calendar arithmetic; both cores depend on it
+#: and neither owns it. The private spellings stay because this module says them
+#: in a dozen places and each reads correctly there — they are the same
+#: functions, not copies.
+#:
+#: `bills.py` used to import `_advance_due_date` from here, which is a private
+#: name money had no claim on. That is what step 2 of the app extraction
+#: removed; see `clarice/recurrence.py` for the argument.
+_nth_occurrence_after = nth_occurrence_after
+_advance_due_date = advance_due_date
 
 
 def _spawn_next_occurrence(completed_item, carry_forward_steps=(), today=None):

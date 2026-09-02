@@ -28,7 +28,8 @@ from decimal import Decimal
 from django.db.models import Q
 from django.utils import timezone
 
-from lists.models import Account, Bill, Direction, Item
+from clarice.recurrence import Recurrence
+from lists.models import Account, Bill, Direction
 
 
 @dataclass(frozen=True)
@@ -148,13 +149,13 @@ SOON = timedelta(days=14)
 #: once, and inflating the figure a person acts on is the one failure this
 #: number must not have.
 TIMES_A_YEAR = {
-    Item.Recurrence.WEEKLY: 52,
+    Recurrence.WEEKLY: 52,
     # 26, not 12. A fortnightly figure counted monthly understates the year by
     # a sixth, which is the sort of error a yearly total exists to avoid.
-    Item.Recurrence.FORTNIGHTLY: 26,
-    Item.Recurrence.MONTHLY: 12,
-    Item.Recurrence.QUARTERLY: 4,
-    Item.Recurrence.ANNUAL: 1,
+    Recurrence.FORTNIGHTLY: 26,
+    Recurrence.MONTHLY: 12,
+    Recurrence.QUARTERLY: 4,
+    Recurrence.ANNUAL: 1,
 }
 
 
@@ -211,7 +212,7 @@ def landing_from_bills(owner, *, today):
     **`recurrence` becomes `series.cadence`, and a one-off is correctly
     absent** rather than filtered: `TIMES_A_YEAR` has no entry for *does not
     repeat*, and a bill with no series has no cadence to look up. The old read
-    reached the same answer through `Item.Recurrence.NONE` missing from the
+    reached the same answer through `Recurrence.NONE` missing from the
     same table, which is the same rule said twice.
     """
     rows = list(

@@ -775,7 +775,7 @@ class Bill(models.Model):
     class Meta:
         indexes = [
             # §4 rule 7. These were named before the reads moved, when
-            # `lists/money.py` still ran them against a sidecar joined to its
+            # the money reads still ran them against a sidecar joined to its
             # task; they are the same three reads and they run here now.
             #
             # The month, overdue-across-every-month, and due-soon-across-a-

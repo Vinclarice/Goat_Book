@@ -26,7 +26,7 @@ from django.utils.formats import date_format
 from accounts.models import User
 from clarice.scheduled_mail import deliver_once_a_day
 from lists import agenda as agenda_reader
-from lists import money as money_reader
+from money import reads as money_reader
 
 
 # The local hours a digest is considered due, as [start, end). Not a

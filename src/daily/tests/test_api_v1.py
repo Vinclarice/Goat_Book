@@ -27,7 +27,8 @@ from accounts.models import (
 from daily import services
 from daily import services as daily_services
 from daily.models import DailyFocus
-from lists import bills, services as list_services
+from lists import services as list_services
+from money import services as bills
 from lists.models import List, Project
 
 

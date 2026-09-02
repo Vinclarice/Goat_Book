@@ -17,7 +17,8 @@ from django.test import TestCase
 
 from accounts.models import User
 from daily import reads
-from lists import bills, services as list_services
+from lists import services as list_services
+from money import services as bills
 from lists.models import Item, List
 
 

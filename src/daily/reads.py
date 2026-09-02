@@ -16,7 +16,8 @@ from django.db.models import F
 
 from clarice.search import to_query
 from daily.models import DailyEntry, DailyFocus
-from lists import agenda, money
+from lists import agenda
+from money import reads as money
 
 
 # Which of the agenda's buckets a day surfaces: what is late, and what is

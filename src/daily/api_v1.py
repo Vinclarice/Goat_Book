@@ -19,11 +19,11 @@ from daily import reads, services
 from lists import agenda
 from lists import projects as project_reader
 from lists.api_v1 import (
-    AgendaBillOut,
     AgendaProjectSummaryOut,
     AreaColorKey,
     TaskOut,
 )
+from money.api_v1 import AgendaBillOut
 from lists.models import Item
 from lists.serializers import project_ref_for, serialize_item
 from mind import services as mind_services

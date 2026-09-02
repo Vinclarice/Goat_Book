@@ -105,12 +105,14 @@ re-add it here.
   pay for that again.
 
   **Its central finding is that an app and a module are independent axes.**
-  Money has no Django app — it is `lists/money.py` and four models inside
-  `lists`. `routines` is a full app with `models`, `reads`, `services`,
-  `periods` and `api_v1`, and appears in the SPA's route table, `ViewNav` and
-  `SideNav` **zero times**; a routine can only be met inside somebody else's
-  page. One of each mismatch, and `startapp` gets you the code layout and no
-  place.
+  ~~Money has no Django app — it is `lists/money.py` and four models inside
+  the task core's.~~ **It has one from September 2, 2026**: `money/`, holding
+  its reads, writes, API, scheduled command and tests. Vince's call, and the
+  threshold was `Bill` ceasing to be an `Item` — a module is where somebody
+  goes, an app is where its code lives, and Money had earned only the first.
+  **What is still open is the model state**, which moves by state-only
+  migration keeping the `lists_*` table names; renaming the tables is a
+  separate question nobody has to answer yet.
 
   **Two decisions were taken and both are Vince's.** The shared rail **keeps**
   each module's surfaces rather than each module owning a column — the escape

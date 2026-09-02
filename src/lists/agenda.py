@@ -11,7 +11,7 @@ from django.db.models import Case, Count, F, IntegerField, Q, Value, When
 from django.urls import reverse
 from django.utils import timezone
 
-from lists import money
+from money import reads as money
 from lists.models import Item, List, Priority
 from lists.serializers import project_ref_for, serialize_item
 

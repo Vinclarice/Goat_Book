@@ -29,8 +29,12 @@ from django.test import SimpleTestCase
 
 SRC = pathlib.Path(__file__).resolve().parents[2]
 
-#: The money modules, by path. Two today; `money/*.py` after step 3.
-MONEY_MODULES = ("lists/bills.py", "lists/money.py")
+#: The money modules, by path. They were `lists/bills.py` and `lists/money.py`
+#: until step 3 moved them on September 2, 2026 -- and
+#: `test_the_modules_this_guards_still_exist` is what said so, by failing, which
+#: is the whole reason it is there. A guard over files that have moved passes
+#: over nothing.
+MONEY_MODULES = ("money/services.py", "money/reads.py", "money/api_v1.py")
 
 #: Where shared calendar vocabulary lives now. Both cores may depend on this;
 #: neither owns it.

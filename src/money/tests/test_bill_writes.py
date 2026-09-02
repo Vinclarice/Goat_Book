@@ -17,9 +17,9 @@ from django.test import TestCase
 from django.utils import timezone
 
 from accounts.models import User
-from lists import bills
+from money import services as bills
 from lists.models import Account, AccountKind, Bill, BillSeries, Direction, Item
-from lists.bills import BillConflict
+from money.services import BillConflict
 
 DUE = datetime.date(2026, 8, 1)
 

@@ -296,6 +296,10 @@ INSTALLED_APPS = [
     "django_otp.plugins.otp_static",
     "accounts",
     "lists",
+    # The Money module, an app of its own since September 2, 2026. Its models
+    # still live in `lists` until step 4 moves their state; what lives here is
+    # its reads, writes, API, scheduled command and tests.
+    "money",
     # `capture` stood here until August 15, 2026. It held the Inbox -- `Capture`
     # and `Idea` -- which Heron 4b deleted; the app itself stayed one more
     # deploy, holding nothing but migrations, because Django needs an app

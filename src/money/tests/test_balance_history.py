@@ -25,7 +25,8 @@ from decimal import Decimal
 from django.test import TestCase
 
 from accounts.models import User
-from lists import money as money_reader, services
+from lists import services
+from money import reads as money_reader
 from lists.models import AccountKind
 
 TODAY = datetime.date(2026, 8, 15)

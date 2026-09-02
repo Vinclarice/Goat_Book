@@ -6,7 +6,7 @@ a bill refused it. What it should not have to do is catch something called
 `TaskConflict` around a call about money.
 
 **Extracted September 2, 2026**, step 2 of moving Money into its own app.
-`lists.services.TaskConflict` and `lists.bills.BillConflict` both subclass
+`lists.services.TaskConflict` and `money.services.BillConflict` both subclass
 `Conflict`, so a handler may catch the base and get either, or catch one and
 get only that. Existing handlers that name `TaskConflict` keep working and keep
 meaning what they said.

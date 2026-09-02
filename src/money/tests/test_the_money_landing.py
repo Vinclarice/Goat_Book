@@ -19,8 +19,9 @@ from decimal import Decimal
 from django.test import TestCase
 
 from accounts.models import User
-from lists import bills
-from lists import money as money_reader, services
+from money import services as bills
+from lists import services
+from money import reads as money_reader
 from lists.models import Direction, AccountKind, Item
 
 TODAY = datetime.date(2026, 8, 25)
@@ -304,7 +305,7 @@ class TheLandingEndpointTest(TestCase):
         """The guard for the class of defect above, rather than for its
         instance: the response schema and the hand-built dict are two lists of
         keys that have to agree, and nothing made them."""
-        from lists.api_v1 import MoneyLandingOut
+        from money.api_v1 import MoneyLandingOut
 
         payload = self.client.get("/api/v1/money").json()
 

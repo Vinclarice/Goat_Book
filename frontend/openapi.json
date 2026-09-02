@@ -33,568 +33,6 @@
         ]
       }
     },
-    "/api/v1/money/bills": {
-      "post": {
-        "operationId": "lists_api_v1_add_bill",
-        "summary": "Add Bill",
-        "parameters": [],
-        "responses": {
-          "201": {
-            "description": "Created",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MonthBillOut"
-                }
-              }
-            }
-          }
-        },
-        "description": "Create a bill where bills are.\n\nSession-only for the same reason the month read is: a surface the phone\ndoes not have, and widening the token surface for one it cannot show is the\nun-switched-on seam this project keeps finding.",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/NewBillIn"
-              }
-            }
-          },
-          "required": true
-        },
-        "security": [
-          {
-            "SessionAuthIfLoggedIn": []
-          }
-        ]
-      }
-    },
-    "/api/v1/money/bills/entry/{bill_id}": {
-      "get": {
-        "operationId": "lists_api_v1_one_bill",
-        "summary": "One Bill",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "bill_id",
-            "schema": {
-              "title": "Bill Id",
-              "type": "integer"
-            },
-            "required": true
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MonthBillOut"
-                }
-              }
-            }
-          }
-        },
-        "description": "One bill, for its own page.\n\n**The surface moves to Money before the model does.** A bill was opened at\n`/app/tasks/{id}` until August 31, 2026, borrowing the task detail page --\nwhich spent that morning being taught to call itself *Bill detail*, hide\nPriority, Area and Checklist, and link back here, because none of it was\ntrue for a bill. `bill-as-a-model-plan.md` makes the borrowing impossible:\na bill that is not an `Item` has no `/tasks/{id}` to borrow. Moving the\npage first keeps the flip from having to invent one at the same moment it\nchanges what a bill is.\n\n**On the write path's key, not a new one.** `PATCH`, `POST /pay` and\n`DELETE` already live on `entry/{bill_id}`; a read at a second address for\nthe same thing is how two spellings of one resource start.\n\n**A plain task is not found here.** Answering for one would make *is this a\nbill* a question every caller has to ask afterwards, and the page has no\nfields for a task.",
-        "security": [
-          {
-            "SessionAuthIfLoggedIn": []
-          }
-        ]
-      },
-      "patch": {
-        "operationId": "lists_api_v1_edit_bill",
-        "summary": "Edit Bill",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "bill_id",
-            "schema": {
-              "title": "Bill Id",
-              "type": "integer"
-            },
-            "required": true
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MonthBillOut"
-                }
-              }
-            }
-          }
-        },
-        "description": "Correct a bill without leaving the page it is shown on.\n\n**`entry/{id}` rather than `{id}`**, because `/money/bills/{day}` already\ntakes a date in that position and two routes differing only by the type of\none segment is a collision waiting for the first numeric-looking date. The\nread keeps the shorter path; the writes take the longer one.\n\n**Under `/money/` since August 27, 2026.** The resources are still bills --\na bill is one kind of money thing and income is its sibling on the same\nrecord, pointed the other way -- so what moved is the namespace, not the\nnoun. The model is named `Bill` for exactly that reason: one named after the\nmodule would have to mean both.",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/EditBillIn"
-              }
-            }
-          },
-          "required": true
-        },
-        "security": [
-          {
-            "SessionAuthIfLoggedIn": []
-          }
-        ]
-      },
-      "delete": {
-        "operationId": "lists_api_v1_remove_bill",
-        "summary": "Remove Bill",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "bill_id",
-            "schema": {
-              "title": "Bill Id",
-              "type": "integer"
-            },
-            "required": true
-          },
-          {
-            "in": "query",
-            "name": "whole_series",
-            "schema": {
-              "default": false,
-              "title": "Whole Series",
-              "type": "boolean"
-            },
-            "required": false
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "No Content"
-          }
-        },
-        "description": "Remove a bill, and say which one is meant when it repeats.\n\n**`whole_series` as a query parameter** rather than a body: a DELETE with a\npayload is legal and poorly supported, and this is one boolean the caller\nalready knows before it asks.\n\nThe default is the narrow act. Deleting August's rent means *not this one*;\nsomebody who meant *stop paying rent* has to say so, because the wider\nanswer is the one that cannot be undone by adding a bill back.",
-        "security": [
-          {
-            "SessionAuthIfLoggedIn": []
-          }
-        ]
-      }
-    },
-    "/api/v1/money/income": {
-      "post": {
-        "operationId": "lists_api_v1_add_income",
-        "summary": "Add Income",
-        "parameters": [],
-        "responses": {
-          "201": {
-            "description": "Created",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MonthBillOut"
-                }
-              }
-            }
-          }
-        },
-        "description": "Record money expected in.\n\n**Beside bills under `/money/`, not a second top-level noun** -- which is\nwhat makes Money a module rather than a longer word for one page.",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/NewIncomeIn"
-              }
-            }
-          },
-          "required": true
-        },
-        "security": [
-          {
-            "SessionAuthIfLoggedIn": []
-          }
-        ]
-      }
-    },
-    "/api/v1/money/bills/entry/{bill_id}/pay": {
-      "post": {
-        "operationId": "lists_api_v1_pay_bill",
-        "summary": "Pay Bill",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "bill_id",
-            "schema": {
-              "title": "Bill Id",
-              "type": "integer"
-            },
-            "required": true
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MonthBillOut"
-                }
-              }
-            }
-          }
-        },
-        "description": "Pay a bill from the page it is shown on.\n\n**The action this page was missing entirely.** It could add a bill and\ndelete a bill and not pay one, which is the thing a person does twelve\ntimes more often than both put together.",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PayBillIn"
-              }
-            }
-          },
-          "required": true
-        },
-        "security": [
-          {
-            "SessionAuthIfLoggedIn": []
-          }
-        ]
-      }
-    },
-    "/api/v1/money/categories": {
-      "get": {
-        "operationId": "lists_api_v1_money_categories",
-        "summary": "Money Categories",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/CategoryOut"
-                  },
-                  "title": "Response",
-                  "type": "array"
-                }
-              }
-            }
-          }
-        },
-        "description": "This owner's categories, seeded on the first ask.",
-        "security": [
-          {
-            "SessionAuthIfLoggedIn": []
-          }
-        ]
-      },
-      "post": {
-        "operationId": "lists_api_v1_add_money_category",
-        "summary": "Add Money Category",
-        "parameters": [],
-        "responses": {
-          "201": {
-            "description": "Created",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CategoryOut"
-                }
-              }
-            }
-          }
-        },
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CategoryIn"
-              }
-            }
-          },
-          "required": true
-        },
-        "security": [
-          {
-            "SessionAuthIfLoggedIn": []
-          }
-        ]
-      }
-    },
-    "/api/v1/money/categories/{category_id}": {
-      "patch": {
-        "operationId": "lists_api_v1_rename_money_category",
-        "summary": "Rename Money Category",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "category_id",
-            "schema": {
-              "title": "Category Id",
-              "type": "integer"
-            },
-            "required": true
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CategoryOut"
-                }
-              }
-            }
-          }
-        },
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CategoryIn"
-              }
-            }
-          },
-          "required": true
-        },
-        "security": [
-          {
-            "SessionAuthIfLoggedIn": []
-          }
-        ]
-      },
-      "delete": {
-        "operationId": "lists_api_v1_remove_money_category",
-        "summary": "Remove Money Category",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "category_id",
-            "schema": {
-              "title": "Category Id",
-              "type": "integer"
-            },
-            "required": true
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "No Content"
-          }
-        },
-        "description": "Remove a label. **The bills keep going** -- `SET_NULL`, so they become\nuncategorised rather than leaving with it.",
-        "security": [
-          {
-            "SessionAuthIfLoggedIn": []
-          }
-        ]
-      }
-    },
-    "/api/v1/money": {
-      "get": {
-        "operationId": "lists_api_v1_money_landing",
-        "summary": "Money Landing",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MoneyLandingOut"
-                }
-              }
-            }
-          }
-        },
-        "description": "How the money stands, today.\n\n**No date in the path.** Every other read here takes one because it is about\na month; this one is about *now*, and a landing page addressed by date would\ninvite the question of what last Tuesday's dashboard looked like.",
-        "security": [
-          {
-            "SessionAuthIfLoggedIn": []
-          }
-        ]
-      }
-    },
-    "/api/v1/money/history": {
-      "get": {
-        "operationId": "lists_api_v1_balance_history",
-        "summary": "Balance History",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "months",
-            "schema": {
-              "default": 12,
-              "title": "Months",
-              "type": "integer"
-            },
-            "required": false
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BalanceHistoryOut"
-                }
-              }
-            }
-          }
-        },
-        "description": "Every account over the last ``months``, and six months of arithmetic.",
-        "security": [
-          {
-            "SessionAuthIfLoggedIn": []
-          }
-        ]
-      }
-    },
-    "/api/v1/money/accounts/{day}": {
-      "get": {
-        "operationId": "lists_api_v1_months_accounts",
-        "summary": "Months Accounts",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "day",
-            "schema": {
-              "format": "date",
-              "title": "Day",
-              "type": "string"
-            },
-            "required": true
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AccountsOut"
-                }
-              }
-            }
-          }
-        },
-        "description": "Every account, with the month's figure and the one before it.",
-        "security": [
-          {
-            "SessionAuthIfLoggedIn": []
-          }
-        ]
-      }
-    },
-    "/api/v1/money/accounts": {
-      "post": {
-        "operationId": "lists_api_v1_add_account",
-        "summary": "Add Account",
-        "parameters": [],
-        "responses": {
-          "201": {
-            "description": "Created",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AccountOut"
-                }
-              }
-            }
-          }
-        },
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/NewAccountIn"
-              }
-            }
-          },
-          "required": true
-        },
-        "security": [
-          {
-            "SessionAuthIfLoggedIn": []
-          }
-        ]
-      }
-    },
-    "/api/v1/money/balances": {
-      "post": {
-        "operationId": "lists_api_v1_record_balances",
-        "summary": "Record Balances",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AccountsOut"
-                }
-              }
-            }
-          }
-        },
-        "description": "The monthly pass, saved in one go.\n\n**One transaction**, so a bad figure in the fifth box does not leave four\nsaved and two not -- which is the failure a batch exists to prevent and\nwould otherwise quietly introduce.",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/BalancesIn"
-              }
-            }
-          },
-          "required": true
-        },
-        "security": [
-          {
-            "SessionAuthIfLoggedIn": []
-          }
-        ]
-      }
-    },
-    "/api/v1/money/bills/{day}": {
-      "get": {
-        "operationId": "lists_api_v1_months_bills",
-        "summary": "Months Bills",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "day",
-            "schema": {
-              "format": "date",
-              "title": "Day",
-              "type": "string"
-            },
-            "required": true
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MonthOfBillsOut"
-                }
-              }
-            }
-          }
-        },
-        "description": "What is due this month and what it comes to.\n\nSession-only, like the calendar: a new surface the phone does not have,\nand widening the token surface for one it cannot show would be the\nun-switched-on seam this project keeps finding.",
-        "security": [
-          {
-            "SessionAuthIfLoggedIn": []
-          }
-        ]
-      }
-    },
     "/api/v1/nav": {
       "get": {
         "operationId": "lists_api_v1_navigation",
@@ -3217,6 +2655,568 @@
           }
         ]
       }
+    },
+    "/api/v1/money/bills": {
+      "post": {
+        "operationId": "money_api_v1_add_bill",
+        "summary": "Add Bill",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MonthBillOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Create a bill where bills are.\n\nSession-only for the same reason the month read is: a surface the phone\ndoes not have, and widening the token surface for one it cannot show is the\nun-switched-on seam this project keeps finding.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewBillIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      }
+    },
+    "/api/v1/money/bills/entry/{bill_id}": {
+      "get": {
+        "operationId": "money_api_v1_one_bill",
+        "summary": "One Bill",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "bill_id",
+            "schema": {
+              "title": "Bill Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MonthBillOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "One bill, for its own page.\n\n**The surface moves to Money before the model does.** A bill was opened at\n`/app/tasks/{id}` until August 31, 2026, borrowing the task detail page --\nwhich spent that morning being taught to call itself *Bill detail*, hide\nPriority, Area and Checklist, and link back here, because none of it was\ntrue for a bill. `bill-as-a-model-plan.md` makes the borrowing impossible:\na bill that is not an `Item` has no `/tasks/{id}` to borrow. Moving the\npage first keeps the flip from having to invent one at the same moment it\nchanges what a bill is.\n\n**On the write path's key, not a new one.** `PATCH`, `POST /pay` and\n`DELETE` already live on `entry/{bill_id}`; a read at a second address for\nthe same thing is how two spellings of one resource start.\n\n**A plain task is not found here.** Answering for one would make *is this a\nbill* a question every caller has to ask afterwards, and the page has no\nfields for a task.",
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "money_api_v1_edit_bill",
+        "summary": "Edit Bill",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "bill_id",
+            "schema": {
+              "title": "Bill Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MonthBillOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Correct a bill without leaving the page it is shown on.\n\n**`entry/{id}` rather than `{id}`**, because `/money/bills/{day}` already\ntakes a date in that position and two routes differing only by the type of\none segment is a collision waiting for the first numeric-looking date. The\nread keeps the shorter path; the writes take the longer one.\n\n**Under `/money/` since August 27, 2026.** The resources are still bills --\na bill is one kind of money thing and income is its sibling on the same\nrecord, pointed the other way -- so what moved is the namespace, not the\nnoun. The model is named `Bill` for exactly that reason: one named after the\nmodule would have to mean both.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EditBillIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "money_api_v1_remove_bill",
+        "summary": "Remove Bill",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "bill_id",
+            "schema": {
+              "title": "Bill Id",
+              "type": "integer"
+            },
+            "required": true
+          },
+          {
+            "in": "query",
+            "name": "whole_series",
+            "schema": {
+              "default": false,
+              "title": "Whole Series",
+              "type": "boolean"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "description": "Remove a bill, and say which one is meant when it repeats.\n\n**`whole_series` as a query parameter** rather than a body: a DELETE with a\npayload is legal and poorly supported, and this is one boolean the caller\nalready knows before it asks.\n\nThe default is the narrow act. Deleting August's rent means *not this one*;\nsomebody who meant *stop paying rent* has to say so, because the wider\nanswer is the one that cannot be undone by adding a bill back.",
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      }
+    },
+    "/api/v1/money/income": {
+      "post": {
+        "operationId": "money_api_v1_add_income",
+        "summary": "Add Income",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MonthBillOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Record money expected in.\n\n**Beside bills under `/money/`, not a second top-level noun** -- which is\nwhat makes Money a module rather than a longer word for one page.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewIncomeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      }
+    },
+    "/api/v1/money/bills/entry/{bill_id}/pay": {
+      "post": {
+        "operationId": "money_api_v1_pay_bill",
+        "summary": "Pay Bill",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "bill_id",
+            "schema": {
+              "title": "Bill Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MonthBillOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Pay a bill from the page it is shown on.\n\n**The action this page was missing entirely.** It could add a bill and\ndelete a bill and not pay one, which is the thing a person does twelve\ntimes more often than both put together.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PayBillIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      }
+    },
+    "/api/v1/money/categories": {
+      "get": {
+        "operationId": "money_api_v1_money_categories",
+        "summary": "Money Categories",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CategoryOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            }
+          }
+        },
+        "description": "This owner's categories, seeded on the first ask.",
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "money_api_v1_add_money_category",
+        "summary": "Add Money Category",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryOut"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CategoryIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      }
+    },
+    "/api/v1/money/categories/{category_id}": {
+      "patch": {
+        "operationId": "money_api_v1_rename_money_category",
+        "summary": "Rename Money Category",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "category_id",
+            "schema": {
+              "title": "Category Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryOut"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CategoryIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "money_api_v1_remove_money_category",
+        "summary": "Remove Money Category",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "category_id",
+            "schema": {
+              "title": "Category Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "description": "Remove a label. **The bills keep going** -- `SET_NULL`, so they become\nuncategorised rather than leaving with it.",
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      }
+    },
+    "/api/v1/money": {
+      "get": {
+        "operationId": "money_api_v1_money_landing",
+        "summary": "Money Landing",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MoneyLandingOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "How the money stands, today.\n\n**No date in the path.** Every other read here takes one because it is about\na month; this one is about *now*, and a landing page addressed by date would\ninvite the question of what last Tuesday's dashboard looked like.",
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      }
+    },
+    "/api/v1/money/history": {
+      "get": {
+        "operationId": "money_api_v1_balance_history",
+        "summary": "Balance History",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "months",
+            "schema": {
+              "default": 12,
+              "title": "Months",
+              "type": "integer"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BalanceHistoryOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Every account over the last ``months``, and six months of arithmetic.",
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      }
+    },
+    "/api/v1/money/accounts/{day}": {
+      "get": {
+        "operationId": "money_api_v1_months_accounts",
+        "summary": "Months Accounts",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "day",
+            "schema": {
+              "format": "date",
+              "title": "Day",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountsOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Every account, with the month's figure and the one before it.",
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      }
+    },
+    "/api/v1/money/accounts": {
+      "post": {
+        "operationId": "money_api_v1_add_account",
+        "summary": "Add Account",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountOut"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewAccountIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      }
+    },
+    "/api/v1/money/balances": {
+      "post": {
+        "operationId": "money_api_v1_record_balances",
+        "summary": "Record Balances",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountsOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "The monthly pass, saved in one go.\n\n**One transaction**, so a bad figure in the fifth box does not leave four\nsaved and two not -- which is the failure a batch exists to prevent and\nwould otherwise quietly introduce.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BalancesIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      }
+    },
+    "/api/v1/money/bills/{day}": {
+      "get": {
+        "operationId": "money_api_v1_months_bills",
+        "summary": "Months Bills",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "day",
+            "schema": {
+              "format": "date",
+              "title": "Day",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MonthOfBillsOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "What is due this month and what it comes to.\n\nSession-only, like the calendar: a new surface the phone does not have,\nand widening the token surface for one it cannot show would be the\nun-switched-on seam this project keeps finding.",
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -3237,1001 +3237,6 @@
           "email"
         ],
         "title": "MeOut",
-        "type": "object"
-      },
-      "MonthBillOut": {
-        "properties": {
-          "id": {
-            "title": "Id",
-            "type": "integer"
-          },
-          "due_date": {
-            "format": "date",
-            "title": "Due Date",
-            "type": "string"
-          },
-          "amount": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Amount"
-          },
-          "currency": {
-            "title": "Currency",
-            "type": "string"
-          },
-          "payee": {
-            "title": "Payee",
-            "type": "string"
-          },
-          "paid": {
-            "title": "Paid",
-            "type": "boolean"
-          },
-          "repeats": {
-            "title": "Repeats",
-            "type": "boolean"
-          },
-          "category": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Category"
-          },
-          "category_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Category Id"
-          },
-          "account": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Account"
-          },
-          "account_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Account Id"
-          },
-          "direction": {
-            "title": "Direction",
-            "type": "string"
-          },
-          "recurrence": {
-            "title": "Recurrence",
-            "type": "string"
-          },
-          "lead_days": {
-            "title": "Lead Days",
-            "type": "integer"
-          },
-          "paid_amount": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Paid Amount"
-          },
-          "overdue": {
-            "title": "Overdue",
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "id",
-          "due_date",
-          "amount",
-          "currency",
-          "payee",
-          "paid",
-          "repeats",
-          "category",
-          "category_id",
-          "account",
-          "account_id",
-          "direction",
-          "recurrence",
-          "lead_days",
-          "paid_amount",
-          "overdue"
-        ],
-        "title": "MonthBillOut",
-        "type": "object"
-      },
-      "NewBillIn": {
-        "description": "What adding a bill asks for, and what it deliberately does not.\n\n**No task title.** The name is derived from the payee -- `Landlord` becomes\n*Pay Landlord* -- so this surface never asks the person to name a task or to\nknow that a bill is one. Vince's call, August 27, 2026.\n\n**No Area either.** A bill is not filed; `create_bill` makes a standing\ntask, which is what `create_item`'s owner argument exists for.",
-        "properties": {
-          "payee": {
-            "title": "Payee",
-            "type": "string"
-          },
-          "amount": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Amount"
-          },
-          "currency": {
-            "default": "USD",
-            "title": "Currency",
-            "type": "string"
-          },
-          "due_date": {
-            "format": "date",
-            "title": "Due Date",
-            "type": "string"
-          },
-          "repeats": {
-            "default": true,
-            "title": "Repeats",
-            "type": "boolean"
-          },
-          "recurrence": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Recurrence"
-          },
-          "lead_days": {
-            "default": 0,
-            "title": "Lead Days",
-            "type": "integer"
-          },
-          "account_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Account Id"
-          }
-        },
-        "required": [
-          "payee",
-          "due_date"
-        ],
-        "title": "NewBillIn",
-        "type": "object"
-      },
-      "EditBillIn": {
-        "description": "Every field optional, and absent is not empty.\n\nThe same partial-write contract the day and the review already have: a field\nleft out keeps its stored value. **Clearing an amount is explicit** --\n`amount: null` with `clear_amount: true` -- because \"the water bill,\nwhatever it comes to\" is a state somebody chooses rather than a field they\nforgot to fill in.",
-        "properties": {
-          "payee": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Payee"
-          },
-          "amount": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Amount"
-          },
-          "clear_amount": {
-            "default": false,
-            "title": "Clear Amount",
-            "type": "boolean"
-          },
-          "currency": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Currency"
-          },
-          "due_date": {
-            "anyOf": [
-              {
-                "format": "date",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Due Date"
-          },
-          "lead_days": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Lead Days"
-          },
-          "recurrence": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Recurrence"
-          },
-          "category_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Category Id"
-          },
-          "clear_category": {
-            "default": false,
-            "title": "Clear Category",
-            "type": "boolean"
-          },
-          "account_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Account Id"
-          },
-          "clear_account": {
-            "default": false,
-            "title": "Clear Account",
-            "type": "boolean"
-          }
-        },
-        "title": "EditBillIn",
-        "type": "object"
-      },
-      "NewIncomeIn": {
-        "description": "What adding income asks for. The mirror of `NewBillIn`, one word apart.\n\n`payer` rather than `payee`, because that is what a person calls the other\nend of money coming toward them -- and the name is derived from it the same\nway: `Acme Ltd` becomes *From Acme Ltd*.",
-        "properties": {
-          "payer": {
-            "title": "Payer",
-            "type": "string"
-          },
-          "amount": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Amount"
-          },
-          "currency": {
-            "default": "USD",
-            "title": "Currency",
-            "type": "string"
-          },
-          "due_date": {
-            "format": "date",
-            "title": "Due Date",
-            "type": "string"
-          },
-          "repeats": {
-            "default": true,
-            "title": "Repeats",
-            "type": "boolean"
-          },
-          "recurrence": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Recurrence"
-          },
-          "lead_days": {
-            "default": 0,
-            "title": "Lead Days",
-            "type": "integer"
-          },
-          "account_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Account Id"
-          }
-        },
-        "required": [
-          "payer",
-          "due_date"
-        ],
-        "title": "NewIncomeIn",
-        "type": "object"
-      },
-      "PayBillIn": {
-        "description": "What went out, when it is not what was expected.\n\nNull means *what the bill said*, so the ordinary case is one click and the\nfigure is still recorded rather than reconstructed later.",
-        "properties": {
-          "amount": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Amount"
-          }
-        },
-        "title": "PayBillIn",
-        "type": "object"
-      },
-      "CategoryOut": {
-        "properties": {
-          "id": {
-            "title": "Id",
-            "type": "integer"
-          },
-          "name": {
-            "title": "Name",
-            "type": "string"
-          },
-          "line_count": {
-            "title": "Line Count",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "id",
-          "name",
-          "line_count"
-        ],
-        "title": "CategoryOut",
-        "type": "object"
-      },
-      "CategoryIn": {
-        "properties": {
-          "name": {
-            "title": "Name",
-            "type": "string"
-          }
-        },
-        "required": [
-          "name"
-        ],
-        "title": "CategoryIn",
-        "type": "object"
-      },
-      "LandingLineOut": {
-        "description": "One money line, as the landing page needs it -- shorter than a month row\nbecause a dashboard names things rather than offering every verb.",
-        "properties": {
-          "id": {
-            "title": "Id",
-            "type": "integer"
-          },
-          "payee": {
-            "title": "Payee",
-            "type": "string"
-          },
-          "due_date": {
-            "format": "date",
-            "title": "Due Date",
-            "type": "string"
-          },
-          "amount": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Amount"
-          },
-          "currency": {
-            "title": "Currency",
-            "type": "string"
-          },
-          "days": {
-            "title": "Days",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "id",
-          "payee",
-          "due_date",
-          "amount",
-          "currency",
-          "days"
-        ],
-        "title": "LandingLineOut",
-        "type": "object"
-      },
-      "MoneyLandingOut": {
-        "properties": {
-          "today": {
-            "format": "date",
-            "title": "Today",
-            "type": "string"
-          },
-          "overdue": {
-            "items": {
-              "$ref": "#/components/schemas/LandingLineOut"
-            },
-            "title": "Overdue",
-            "type": "array"
-          },
-          "due_soon": {
-            "items": {
-              "$ref": "#/components/schemas/LandingLineOut"
-            },
-            "title": "Due Soon",
-            "type": "array"
-          },
-          "renewing_soon": {
-            "items": {
-              "$ref": "#/components/schemas/LandingLineOut"
-            },
-            "title": "Renewing Soon",
-            "type": "array"
-          },
-          "yearly_totals": {
-            "additionalProperties": {
-              "type": "string"
-            },
-            "title": "Yearly Totals",
-            "type": "object"
-          },
-          "owed_totals": {
-            "additionalProperties": {
-              "type": "string"
-            },
-            "title": "Owed Totals",
-            "type": "object"
-          },
-          "held_totals": {
-            "additionalProperties": {
-              "type": "string"
-            },
-            "title": "Held Totals",
-            "type": "object"
-          },
-          "owed_change": {
-            "additionalProperties": {
-              "type": "string"
-            },
-            "title": "Owed Change",
-            "type": "object"
-          },
-          "held_change": {
-            "additionalProperties": {
-              "type": "string"
-            },
-            "title": "Held Change",
-            "type": "object"
-          },
-          "unread_accounts": {
-            "title": "Unread Accounts",
-            "type": "integer"
-          },
-          "line_count": {
-            "title": "Line Count",
-            "type": "integer"
-          },
-          "account_count": {
-            "title": "Account Count",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "today",
-          "overdue",
-          "due_soon",
-          "renewing_soon",
-          "yearly_totals",
-          "owed_totals",
-          "held_totals",
-          "owed_change",
-          "held_change",
-          "unread_accounts",
-          "line_count",
-          "account_count"
-        ],
-        "title": "MoneyLandingOut",
-        "type": "object"
-      },
-      "BalanceHistoryOut": {
-        "properties": {
-          "months": {
-            "items": {
-              "format": "date",
-              "type": "string"
-            },
-            "title": "Months",
-            "type": "array"
-          },
-          "rows": {
-            "items": {
-              "$ref": "#/components/schemas/HistoryRowOut"
-            },
-            "title": "Rows",
-            "type": "array"
-          }
-        },
-        "required": [
-          "months",
-          "rows"
-        ],
-        "title": "BalanceHistoryOut",
-        "type": "object"
-      },
-      "HistoryRowOut": {
-        "properties": {
-          "account_id": {
-            "title": "Account Id",
-            "type": "integer"
-          },
-          "name": {
-            "title": "Name",
-            "type": "string"
-          },
-          "currency": {
-            "title": "Currency",
-            "type": "string"
-          },
-          "owes": {
-            "title": "Owes",
-            "type": "boolean"
-          },
-          "balances": {
-            "items": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "title": "Balances",
-            "type": "array"
-          },
-          "projection": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ProjectionOut"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "required": [
-          "account_id",
-          "name",
-          "currency",
-          "owes",
-          "balances",
-          "projection"
-        ],
-        "title": "HistoryRowOut",
-        "type": "object"
-      },
-      "ProjectionOut": {
-        "description": "Where a balance is heading, with its own derivation attached.",
-        "properties": {
-          "months": {
-            "items": {
-              "items": {
-                "type": "string"
-              },
-              "type": "array"
-            },
-            "title": "Months",
-            "type": "array"
-          },
-          "monthly_change": {
-            "title": "Monthly Change",
-            "type": "string"
-          },
-          "readings_used": {
-            "title": "Readings Used",
-            "type": "integer"
-          },
-          "clears_on": {
-            "anyOf": [
-              {
-                "format": "date",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Clears On"
-          }
-        },
-        "required": [
-          "months",
-          "monthly_change",
-          "readings_used",
-          "clears_on"
-        ],
-        "title": "ProjectionOut",
-        "type": "object"
-      },
-      "AccountOut": {
-        "properties": {
-          "id": {
-            "title": "Id",
-            "type": "integer"
-          },
-          "name": {
-            "title": "Name",
-            "type": "string"
-          },
-          "kind": {
-            "title": "Kind",
-            "type": "string"
-          },
-          "currency": {
-            "title": "Currency",
-            "type": "string"
-          },
-          "owes": {
-            "title": "Owes",
-            "type": "boolean"
-          },
-          "balance": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Balance"
-          },
-          "previous": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Previous"
-          },
-          "next_payment": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/NextPaymentOut"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "required": [
-          "id",
-          "name",
-          "kind",
-          "currency",
-          "owes",
-          "balance",
-          "previous",
-          "next_payment"
-        ],
-        "title": "AccountOut",
-        "type": "object"
-      },
-      "AccountsOut": {
-        "properties": {
-          "month_start": {
-            "format": "date",
-            "title": "Month Start",
-            "type": "string"
-          },
-          "accounts": {
-            "items": {
-              "$ref": "#/components/schemas/AccountOut"
-            },
-            "title": "Accounts",
-            "type": "array"
-          },
-          "owed_totals": {
-            "additionalProperties": {
-              "type": "string"
-            },
-            "title": "Owed Totals",
-            "type": "object"
-          },
-          "held_totals": {
-            "additionalProperties": {
-              "type": "string"
-            },
-            "title": "Held Totals",
-            "type": "object"
-          }
-        },
-        "required": [
-          "month_start",
-          "accounts",
-          "owed_totals",
-          "held_totals"
-        ],
-        "title": "AccountsOut",
-        "type": "object"
-      },
-      "NextPaymentOut": {
-        "description": "The soonest unpaid bill against an account.\n\n**The read half of increment 7**, and the reason `Account.paid_by` is\nallowed back. `d50d6eb` deleted the first version of this link because it\nwas *\"set by nothing and read by nothing\"*; a field with a writer and no\nreader is the same mistake with a longer runway, so the two ship together.\n\n**Soonest unpaid, not a list.** The balances screen answers *what do I owe\non this* and *what is coming*; every bill an account has ever had is the\nmonth page's question and is one click away through `id`.",
-        "properties": {
-          "bill_id": {
-            "title": "Bill Id",
-            "type": "integer"
-          },
-          "payee": {
-            "title": "Payee",
-            "type": "string"
-          },
-          "due_date": {
-            "format": "date",
-            "title": "Due Date",
-            "type": "string"
-          },
-          "amount": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Amount"
-          },
-          "currency": {
-            "title": "Currency",
-            "type": "string"
-          }
-        },
-        "required": [
-          "bill_id",
-          "payee",
-          "due_date",
-          "amount",
-          "currency"
-        ],
-        "title": "NextPaymentOut",
-        "type": "object"
-      },
-      "NewAccountIn": {
-        "properties": {
-          "name": {
-            "title": "Name",
-            "type": "string"
-          },
-          "kind": {
-            "default": "card",
-            "title": "Kind",
-            "type": "string"
-          },
-          "currency": {
-            "default": "USD",
-            "title": "Currency",
-            "type": "string"
-          },
-          "owes": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Owes"
-          }
-        },
-        "required": [
-          "name"
-        ],
-        "title": "NewAccountIn",
-        "type": "object"
-      },
-      "BalanceIn": {
-        "description": "One month's figure for one account.",
-        "properties": {
-          "account_id": {
-            "title": "Account Id",
-            "type": "integer"
-          },
-          "amount": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Amount"
-          }
-        },
-        "required": [
-          "account_id"
-        ],
-        "title": "BalanceIn",
-        "type": "object"
-      },
-      "BalancesIn": {
-        "description": "The monthly pass, as one request.\n\n**A batch because the ritual is a batch.** Vince described sitting down at\nmonth end and updating every balance; six separate requests would make that\nsix chances to be half-done, and a page that is half-saved is worse than one\nthat is not saved.",
-        "properties": {
-          "on_date": {
-            "format": "date",
-            "title": "On Date",
-            "type": "string"
-          },
-          "readings": {
-            "items": {
-              "$ref": "#/components/schemas/BalanceIn"
-            },
-            "title": "Readings",
-            "type": "array"
-          }
-        },
-        "required": [
-          "on_date",
-          "readings"
-        ],
-        "title": "BalancesIn",
-        "type": "object"
-      },
-      "MonthOfBillsOut": {
-        "properties": {
-          "month_start": {
-            "format": "date",
-            "title": "Month Start",
-            "type": "string"
-          },
-          "previous_month": {
-            "format": "date",
-            "title": "Previous Month",
-            "type": "string"
-          },
-          "next_month": {
-            "format": "date",
-            "title": "Next Month",
-            "type": "string"
-          },
-          "bills": {
-            "items": {
-              "$ref": "#/components/schemas/MonthBillOut"
-            },
-            "title": "Bills",
-            "type": "array"
-          },
-          "due_totals": {
-            "additionalProperties": {
-              "type": "string"
-            },
-            "title": "Due Totals",
-            "type": "object"
-          },
-          "paid_totals": {
-            "additionalProperties": {
-              "type": "string"
-            },
-            "title": "Paid Totals",
-            "type": "object"
-          },
-          "expected_in_totals": {
-            "additionalProperties": {
-              "type": "string"
-            },
-            "title": "Expected In Totals",
-            "type": "object"
-          },
-          "received_totals": {
-            "additionalProperties": {
-              "type": "string"
-            },
-            "title": "Received Totals",
-            "type": "object"
-          },
-          "unpriced": {
-            "title": "Unpriced",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "month_start",
-          "previous_month",
-          "next_month",
-          "bills",
-          "due_totals",
-          "paid_totals",
-          "expected_in_totals",
-          "received_totals",
-          "unpriced"
-        ],
-        "title": "MonthOfBillsOut",
         "type": "object"
       },
       "NavAreaOut": {
@@ -8771,6 +7776,1001 @@
           "unusual"
         ],
         "title": "WeekUnusualIn",
+        "type": "object"
+      },
+      "MonthBillOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "due_date": {
+            "format": "date",
+            "title": "Due Date",
+            "type": "string"
+          },
+          "amount": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "payee": {
+            "title": "Payee",
+            "type": "string"
+          },
+          "paid": {
+            "title": "Paid",
+            "type": "boolean"
+          },
+          "repeats": {
+            "title": "Repeats",
+            "type": "boolean"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "category_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category Id"
+          },
+          "account": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account"
+          },
+          "account_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Id"
+          },
+          "direction": {
+            "title": "Direction",
+            "type": "string"
+          },
+          "recurrence": {
+            "title": "Recurrence",
+            "type": "string"
+          },
+          "lead_days": {
+            "title": "Lead Days",
+            "type": "integer"
+          },
+          "paid_amount": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paid Amount"
+          },
+          "overdue": {
+            "title": "Overdue",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "due_date",
+          "amount",
+          "currency",
+          "payee",
+          "paid",
+          "repeats",
+          "category",
+          "category_id",
+          "account",
+          "account_id",
+          "direction",
+          "recurrence",
+          "lead_days",
+          "paid_amount",
+          "overdue"
+        ],
+        "title": "MonthBillOut",
+        "type": "object"
+      },
+      "NewBillIn": {
+        "description": "What adding a bill asks for, and what it deliberately does not.\n\n**No task title.** The name is derived from the payee -- `Landlord` becomes\n*Pay Landlord* -- so this surface never asks the person to name a task or to\nknow that a bill is one. Vince's call, August 27, 2026.\n\n**No Area either.** A bill is not filed; `create_bill` makes a standing\ntask, which is what `create_item`'s owner argument exists for.",
+        "properties": {
+          "payee": {
+            "title": "Payee",
+            "type": "string"
+          },
+          "amount": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          },
+          "currency": {
+            "default": "USD",
+            "title": "Currency",
+            "type": "string"
+          },
+          "due_date": {
+            "format": "date",
+            "title": "Due Date",
+            "type": "string"
+          },
+          "repeats": {
+            "default": true,
+            "title": "Repeats",
+            "type": "boolean"
+          },
+          "recurrence": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recurrence"
+          },
+          "lead_days": {
+            "default": 0,
+            "title": "Lead Days",
+            "type": "integer"
+          },
+          "account_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Id"
+          }
+        },
+        "required": [
+          "payee",
+          "due_date"
+        ],
+        "title": "NewBillIn",
+        "type": "object"
+      },
+      "EditBillIn": {
+        "description": "Every field optional, and absent is not empty.\n\nThe same partial-write contract the day and the review already have: a field\nleft out keeps its stored value. **Clearing an amount is explicit** --\n`amount: null` with `clear_amount: true` -- because \"the water bill,\nwhatever it comes to\" is a state somebody chooses rather than a field they\nforgot to fill in.",
+        "properties": {
+          "payee": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payee"
+          },
+          "amount": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          },
+          "clear_amount": {
+            "default": false,
+            "title": "Clear Amount",
+            "type": "boolean"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "lead_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lead Days"
+          },
+          "recurrence": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recurrence"
+          },
+          "category_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category Id"
+          },
+          "clear_category": {
+            "default": false,
+            "title": "Clear Category",
+            "type": "boolean"
+          },
+          "account_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Id"
+          },
+          "clear_account": {
+            "default": false,
+            "title": "Clear Account",
+            "type": "boolean"
+          }
+        },
+        "title": "EditBillIn",
+        "type": "object"
+      },
+      "NewIncomeIn": {
+        "description": "What adding income asks for. The mirror of `NewBillIn`, one word apart.\n\n`payer` rather than `payee`, because that is what a person calls the other\nend of money coming toward them -- and the name is derived from it the same\nway: `Acme Ltd` becomes *From Acme Ltd*.",
+        "properties": {
+          "payer": {
+            "title": "Payer",
+            "type": "string"
+          },
+          "amount": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          },
+          "currency": {
+            "default": "USD",
+            "title": "Currency",
+            "type": "string"
+          },
+          "due_date": {
+            "format": "date",
+            "title": "Due Date",
+            "type": "string"
+          },
+          "repeats": {
+            "default": true,
+            "title": "Repeats",
+            "type": "boolean"
+          },
+          "recurrence": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recurrence"
+          },
+          "lead_days": {
+            "default": 0,
+            "title": "Lead Days",
+            "type": "integer"
+          },
+          "account_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Id"
+          }
+        },
+        "required": [
+          "payer",
+          "due_date"
+        ],
+        "title": "NewIncomeIn",
+        "type": "object"
+      },
+      "PayBillIn": {
+        "description": "What went out, when it is not what was expected.\n\nNull means *what the bill said*, so the ordinary case is one click and the\nfigure is still recorded rather than reconstructed later.",
+        "properties": {
+          "amount": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          }
+        },
+        "title": "PayBillIn",
+        "type": "object"
+      },
+      "CategoryOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "line_count": {
+            "title": "Line Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "line_count"
+        ],
+        "title": "CategoryOut",
+        "type": "object"
+      },
+      "CategoryIn": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "CategoryIn",
+        "type": "object"
+      },
+      "LandingLineOut": {
+        "description": "One money line, as the landing page needs it -- shorter than a month row\nbecause a dashboard names things rather than offering every verb.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "payee": {
+            "title": "Payee",
+            "type": "string"
+          },
+          "due_date": {
+            "format": "date",
+            "title": "Due Date",
+            "type": "string"
+          },
+          "amount": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "days": {
+            "title": "Days",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "payee",
+          "due_date",
+          "amount",
+          "currency",
+          "days"
+        ],
+        "title": "LandingLineOut",
+        "type": "object"
+      },
+      "MoneyLandingOut": {
+        "properties": {
+          "today": {
+            "format": "date",
+            "title": "Today",
+            "type": "string"
+          },
+          "overdue": {
+            "items": {
+              "$ref": "#/components/schemas/LandingLineOut"
+            },
+            "title": "Overdue",
+            "type": "array"
+          },
+          "due_soon": {
+            "items": {
+              "$ref": "#/components/schemas/LandingLineOut"
+            },
+            "title": "Due Soon",
+            "type": "array"
+          },
+          "renewing_soon": {
+            "items": {
+              "$ref": "#/components/schemas/LandingLineOut"
+            },
+            "title": "Renewing Soon",
+            "type": "array"
+          },
+          "yearly_totals": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Yearly Totals",
+            "type": "object"
+          },
+          "owed_totals": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Owed Totals",
+            "type": "object"
+          },
+          "held_totals": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Held Totals",
+            "type": "object"
+          },
+          "owed_change": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Owed Change",
+            "type": "object"
+          },
+          "held_change": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Held Change",
+            "type": "object"
+          },
+          "unread_accounts": {
+            "title": "Unread Accounts",
+            "type": "integer"
+          },
+          "line_count": {
+            "title": "Line Count",
+            "type": "integer"
+          },
+          "account_count": {
+            "title": "Account Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "today",
+          "overdue",
+          "due_soon",
+          "renewing_soon",
+          "yearly_totals",
+          "owed_totals",
+          "held_totals",
+          "owed_change",
+          "held_change",
+          "unread_accounts",
+          "line_count",
+          "account_count"
+        ],
+        "title": "MoneyLandingOut",
+        "type": "object"
+      },
+      "BalanceHistoryOut": {
+        "properties": {
+          "months": {
+            "items": {
+              "format": "date",
+              "type": "string"
+            },
+            "title": "Months",
+            "type": "array"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/HistoryRowOut"
+            },
+            "title": "Rows",
+            "type": "array"
+          }
+        },
+        "required": [
+          "months",
+          "rows"
+        ],
+        "title": "BalanceHistoryOut",
+        "type": "object"
+      },
+      "HistoryRowOut": {
+        "properties": {
+          "account_id": {
+            "title": "Account Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "owes": {
+            "title": "Owes",
+            "type": "boolean"
+          },
+          "balances": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Balances",
+            "type": "array"
+          },
+          "projection": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProjectionOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "account_id",
+          "name",
+          "currency",
+          "owes",
+          "balances",
+          "projection"
+        ],
+        "title": "HistoryRowOut",
+        "type": "object"
+      },
+      "ProjectionOut": {
+        "description": "Where a balance is heading, with its own derivation attached.",
+        "properties": {
+          "months": {
+            "items": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "title": "Months",
+            "type": "array"
+          },
+          "monthly_change": {
+            "title": "Monthly Change",
+            "type": "string"
+          },
+          "readings_used": {
+            "title": "Readings Used",
+            "type": "integer"
+          },
+          "clears_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clears On"
+          }
+        },
+        "required": [
+          "months",
+          "monthly_change",
+          "readings_used",
+          "clears_on"
+        ],
+        "title": "ProjectionOut",
+        "type": "object"
+      },
+      "AccountOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "owes": {
+            "title": "Owes",
+            "type": "boolean"
+          },
+          "balance": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Balance"
+          },
+          "previous": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous"
+          },
+          "next_payment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NextPaymentOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "currency",
+          "owes",
+          "balance",
+          "previous",
+          "next_payment"
+        ],
+        "title": "AccountOut",
+        "type": "object"
+      },
+      "AccountsOut": {
+        "properties": {
+          "month_start": {
+            "format": "date",
+            "title": "Month Start",
+            "type": "string"
+          },
+          "accounts": {
+            "items": {
+              "$ref": "#/components/schemas/AccountOut"
+            },
+            "title": "Accounts",
+            "type": "array"
+          },
+          "owed_totals": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Owed Totals",
+            "type": "object"
+          },
+          "held_totals": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Held Totals",
+            "type": "object"
+          }
+        },
+        "required": [
+          "month_start",
+          "accounts",
+          "owed_totals",
+          "held_totals"
+        ],
+        "title": "AccountsOut",
+        "type": "object"
+      },
+      "NextPaymentOut": {
+        "description": "The soonest unpaid bill against an account.\n\n**The read half of increment 7**, and the reason `Account.paid_by` is\nallowed back. `d50d6eb` deleted the first version of this link because it\nwas *\"set by nothing and read by nothing\"*; a field with a writer and no\nreader is the same mistake with a longer runway, so the two ship together.\n\n**Soonest unpaid, not a list.** The balances screen answers *what do I owe\non this* and *what is coming*; every bill an account has ever had is the\nmonth page's question and is one click away through `id`.",
+        "properties": {
+          "bill_id": {
+            "title": "Bill Id",
+            "type": "integer"
+          },
+          "payee": {
+            "title": "Payee",
+            "type": "string"
+          },
+          "due_date": {
+            "format": "date",
+            "title": "Due Date",
+            "type": "string"
+          },
+          "amount": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          }
+        },
+        "required": [
+          "bill_id",
+          "payee",
+          "due_date",
+          "amount",
+          "currency"
+        ],
+        "title": "NextPaymentOut",
+        "type": "object"
+      },
+      "NewAccountIn": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "kind": {
+            "default": "card",
+            "title": "Kind",
+            "type": "string"
+          },
+          "currency": {
+            "default": "USD",
+            "title": "Currency",
+            "type": "string"
+          },
+          "owes": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owes"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "NewAccountIn",
+        "type": "object"
+      },
+      "BalanceIn": {
+        "description": "One month's figure for one account.",
+        "properties": {
+          "account_id": {
+            "title": "Account Id",
+            "type": "integer"
+          },
+          "amount": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          }
+        },
+        "required": [
+          "account_id"
+        ],
+        "title": "BalanceIn",
+        "type": "object"
+      },
+      "BalancesIn": {
+        "description": "The monthly pass, as one request.\n\n**A batch because the ritual is a batch.** Vince described sitting down at\nmonth end and updating every balance; six separate requests would make that\nsix chances to be half-done, and a page that is half-saved is worse than one\nthat is not saved.",
+        "properties": {
+          "on_date": {
+            "format": "date",
+            "title": "On Date",
+            "type": "string"
+          },
+          "readings": {
+            "items": {
+              "$ref": "#/components/schemas/BalanceIn"
+            },
+            "title": "Readings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "on_date",
+          "readings"
+        ],
+        "title": "BalancesIn",
+        "type": "object"
+      },
+      "MonthOfBillsOut": {
+        "properties": {
+          "month_start": {
+            "format": "date",
+            "title": "Month Start",
+            "type": "string"
+          },
+          "previous_month": {
+            "format": "date",
+            "title": "Previous Month",
+            "type": "string"
+          },
+          "next_month": {
+            "format": "date",
+            "title": "Next Month",
+            "type": "string"
+          },
+          "bills": {
+            "items": {
+              "$ref": "#/components/schemas/MonthBillOut"
+            },
+            "title": "Bills",
+            "type": "array"
+          },
+          "due_totals": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Due Totals",
+            "type": "object"
+          },
+          "paid_totals": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Paid Totals",
+            "type": "object"
+          },
+          "expected_in_totals": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Expected In Totals",
+            "type": "object"
+          },
+          "received_totals": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Received Totals",
+            "type": "object"
+          },
+          "unpriced": {
+            "title": "Unpriced",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "month_start",
+          "previous_month",
+          "next_month",
+          "bills",
+          "due_totals",
+          "paid_totals",
+          "expected_in_totals",
+          "received_totals",
+          "unpriced"
+        ],
+        "title": "MonthOfBillsOut",
         "type": "object"
       }
     },

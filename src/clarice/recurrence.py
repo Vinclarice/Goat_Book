@@ -6,7 +6,8 @@ same arithmetic for both — it is a fact about months and weeks, not about
 tasks or money.
 
 **Extracted September 2, 2026**, as step 2 of moving Money into an app of its
-own. Before that, `lists/bills.py` imported `Item.Recurrence` to spell
+own. Before that, what is now `money/services.py` imported `Item.Recurrence`
+to spell
 *monthly* and `lists.services._advance_due_date` — a **private** function — to
 work out a date. Both worked. Both said a bill's schedule was a property of the
 task core, which stopped being true nine increments earlier, and the second gave
@@ -144,7 +145,7 @@ def advance_due_date(due_date, recurrence, today=None, mode=CadenceMode.ANCHORED
     **What this does not decide** is whether *money* should skip a missed period
     at all -- a bill you did not pay is still owed in a way a bin round you
     missed is not. **Answered on September 1, 2026, and answered elsewhere**:
-    `lists/bills.py` replays them, and does it by calling this function for
+    `money.services` replays them, and does it by calling this function for
     exactly one interval rather than by changing what it means. So this
     comparison and the doctrine below are still the task core's, unchanged and
     still correct for tasks -- which is the point of the two models, and what

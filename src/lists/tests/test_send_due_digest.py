@@ -13,7 +13,7 @@ from django.utils import timezone
 from accounts.models import User
 from decimal import Decimal
 
-from lists import bills
+from money import services as bills
 from lists.models import Direction, Item, List
 
 

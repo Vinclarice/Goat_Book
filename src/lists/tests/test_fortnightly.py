@@ -20,8 +20,9 @@ from decimal import Decimal
 from django.test import TestCase
 
 from accounts.models import User
-from lists import bills
-from lists import money as money_reader, services
+from money import services as bills
+from lists import services
+from money import reads as money_reader
 from lists.models import Bill, Direction, Item
 
 AUGUST = datetime.date(2026, 8, 14)

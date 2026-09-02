@@ -19,7 +19,8 @@ from decimal import Decimal
 from django.test import Client, TestCase
 
 from accounts.models import User
-from lists import bills, services
+from lists import services
+from money import services as bills
 from lists.models import AccountKind, Bill
 
 AUGUST = datetime.date(2026, 8, 20)
@@ -365,14 +366,14 @@ class EveryDeclaredFieldIsSentTest(MoneyEndpointTest):
         return set(schema.model_fields)
 
     def test_the_landing_sends_every_field_it_declares(self):
-        from lists.api_v1 import MoneyLandingOut
+        from money.api_v1 import MoneyLandingOut
 
         body = self.client.get("/api/v1/money").json()
 
         self.assertEqual(self.declared(MoneyLandingOut) - set(body), set())
 
     def test_a_created_account_sends_every_field_it_declares(self):
-        from lists.api_v1 import AccountOut
+        from money.api_v1 import AccountOut
 
         body = self.client.post(
             "/api/v1/money/accounts",
@@ -383,7 +384,7 @@ class EveryDeclaredFieldIsSentTest(MoneyEndpointTest):
         self.assertEqual(self.declared(AccountOut) - set(body), set())
 
     def test_a_listed_account_sends_every_field_it_declares(self):
-        from lists.api_v1 import AccountOut
+        from money.api_v1 import AccountOut
 
         services.create_account(self.user, name="Amex", kind=AccountKind.CARD)
 
@@ -393,7 +394,7 @@ class EveryDeclaredFieldIsSentTest(MoneyEndpointTest):
         self.assertEqual(self.declared(AccountOut) - set(rows[0]), set())
 
     def test_a_month_row_sends_every_field_it_declares(self):
-        from lists.api_v1 import MonthBillOut
+        from money.api_v1 import MonthBillOut
 
         self.bill(amount=Decimal("80.00"))
 
@@ -403,7 +404,7 @@ class EveryDeclaredFieldIsSentTest(MoneyEndpointTest):
         self.assertEqual(self.declared(MonthBillOut) - set(rows[0]), set())
 
     def test_a_created_bill_sends_every_field_it_declares(self):
-        from lists.api_v1 import MonthBillOut
+        from money.api_v1 import MonthBillOut
 
         body = self.client.post(
             "/api/v1/money/bills",
@@ -417,7 +418,7 @@ class EveryDeclaredFieldIsSentTest(MoneyEndpointTest):
     def test_the_sweep_reads_real_schemas(self):
         """A positive control. Comparing an empty set against anything passes,
         so this proves the schemas were found and have fields."""
-        from lists.api_v1 import AccountOut, MonthBillOut, MoneyLandingOut
+        from money.api_v1 import AccountOut, MonthBillOut, MoneyLandingOut
 
         for schema in (AccountOut, MonthBillOut, MoneyLandingOut):
             self.assertGreater(len(self.declared(schema)), 3)

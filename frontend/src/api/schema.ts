@@ -21,313 +21,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/money/bills": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Add Bill
-         * @description Create a bill where bills are.
-         *
-         *     Session-only for the same reason the month read is: a surface the phone
-         *     does not have, and widening the token surface for one it cannot show is the
-         *     un-switched-on seam this project keeps finding.
-         */
-        post: operations["lists_api_v1_add_bill"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/money/bills/entry/{bill_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * One Bill
-         * @description One bill, for its own page.
-         *
-         *     **The surface moves to Money before the model does.** A bill was opened at
-         *     `/app/tasks/{id}` until August 31, 2026, borrowing the task detail page --
-         *     which spent that morning being taught to call itself *Bill detail*, hide
-         *     Priority, Area and Checklist, and link back here, because none of it was
-         *     true for a bill. `bill-as-a-model-plan.md` makes the borrowing impossible:
-         *     a bill that is not an `Item` has no `/tasks/{id}` to borrow. Moving the
-         *     page first keeps the flip from having to invent one at the same moment it
-         *     changes what a bill is.
-         *
-         *     **On the write path's key, not a new one.** `PATCH`, `POST /pay` and
-         *     `DELETE` already live on `entry/{bill_id}`; a read at a second address for
-         *     the same thing is how two spellings of one resource start.
-         *
-         *     **A plain task is not found here.** Answering for one would make *is this a
-         *     bill* a question every caller has to ask afterwards, and the page has no
-         *     fields for a task.
-         */
-        get: operations["lists_api_v1_one_bill"];
-        put?: never;
-        post?: never;
-        /**
-         * Remove Bill
-         * @description Remove a bill, and say which one is meant when it repeats.
-         *
-         *     **`whole_series` as a query parameter** rather than a body: a DELETE with a
-         *     payload is legal and poorly supported, and this is one boolean the caller
-         *     already knows before it asks.
-         *
-         *     The default is the narrow act. Deleting August's rent means *not this one*;
-         *     somebody who meant *stop paying rent* has to say so, because the wider
-         *     answer is the one that cannot be undone by adding a bill back.
-         */
-        delete: operations["lists_api_v1_remove_bill"];
-        options?: never;
-        head?: never;
-        /**
-         * Edit Bill
-         * @description Correct a bill without leaving the page it is shown on.
-         *
-         *     **`entry/{id}` rather than `{id}`**, because `/money/bills/{day}` already
-         *     takes a date in that position and two routes differing only by the type of
-         *     one segment is a collision waiting for the first numeric-looking date. The
-         *     read keeps the shorter path; the writes take the longer one.
-         *
-         *     **Under `/money/` since August 27, 2026.** The resources are still bills --
-         *     a bill is one kind of money thing and income is its sibling on the same
-         *     record, pointed the other way -- so what moved is the namespace, not the
-         *     noun. The model is named `Bill` for exactly that reason: one named after the
-         *     module would have to mean both.
-         */
-        patch: operations["lists_api_v1_edit_bill"];
-        trace?: never;
-    };
-    "/api/v1/money/income": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Add Income
-         * @description Record money expected in.
-         *
-         *     **Beside bills under `/money/`, not a second top-level noun** -- which is
-         *     what makes Money a module rather than a longer word for one page.
-         */
-        post: operations["lists_api_v1_add_income"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/money/bills/entry/{bill_id}/pay": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Pay Bill
-         * @description Pay a bill from the page it is shown on.
-         *
-         *     **The action this page was missing entirely.** It could add a bill and
-         *     delete a bill and not pay one, which is the thing a person does twelve
-         *     times more often than both put together.
-         */
-        post: operations["lists_api_v1_pay_bill"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/money/categories": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Money Categories
-         * @description This owner's categories, seeded on the first ask.
-         */
-        get: operations["lists_api_v1_money_categories"];
-        put?: never;
-        /** Add Money Category */
-        post: operations["lists_api_v1_add_money_category"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/money/categories/{category_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /**
-         * Remove Money Category
-         * @description Remove a label. **The bills keep going** -- `SET_NULL`, so they become
-         *     uncategorised rather than leaving with it.
-         */
-        delete: operations["lists_api_v1_remove_money_category"];
-        options?: never;
-        head?: never;
-        /** Rename Money Category */
-        patch: operations["lists_api_v1_rename_money_category"];
-        trace?: never;
-    };
-    "/api/v1/money": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Money Landing
-         * @description How the money stands, today.
-         *
-         *     **No date in the path.** Every other read here takes one because it is about
-         *     a month; this one is about *now*, and a landing page addressed by date would
-         *     invite the question of what last Tuesday's dashboard looked like.
-         */
-        get: operations["lists_api_v1_money_landing"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/money/history": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Balance History
-         * @description Every account over the last ``months``, and six months of arithmetic.
-         */
-        get: operations["lists_api_v1_balance_history"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/money/accounts/{day}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Months Accounts
-         * @description Every account, with the month's figure and the one before it.
-         */
-        get: operations["lists_api_v1_months_accounts"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/money/accounts": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Add Account */
-        post: operations["lists_api_v1_add_account"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/money/balances": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Record Balances
-         * @description The monthly pass, saved in one go.
-         *
-         *     **One transaction**, so a bad figure in the fifth box does not leave four
-         *     saved and two not -- which is the failure a batch exists to prevent and
-         *     would otherwise quietly introduce.
-         */
-        post: operations["lists_api_v1_record_balances"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/money/bills/{day}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Months Bills
-         * @description What is due this month and what it comes to.
-         *
-         *     Session-only, like the calendar: a new surface the phone does not have,
-         *     and widening the token surface for one it cannot show would be the
-         *     un-switched-on seam this project keeps finding.
-         */
-        get: operations["lists_api_v1_months_bills"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/nav": {
         parameters: {
             query?: never;
@@ -1755,6 +1448,313 @@ export interface paths {
         patch: operations["review_api_v1_correct_planning_session"];
         trace?: never;
     };
+    "/api/v1/money/bills": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add Bill
+         * @description Create a bill where bills are.
+         *
+         *     Session-only for the same reason the month read is: a surface the phone
+         *     does not have, and widening the token surface for one it cannot show is the
+         *     un-switched-on seam this project keeps finding.
+         */
+        post: operations["money_api_v1_add_bill"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/money/bills/entry/{bill_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * One Bill
+         * @description One bill, for its own page.
+         *
+         *     **The surface moves to Money before the model does.** A bill was opened at
+         *     `/app/tasks/{id}` until August 31, 2026, borrowing the task detail page --
+         *     which spent that morning being taught to call itself *Bill detail*, hide
+         *     Priority, Area and Checklist, and link back here, because none of it was
+         *     true for a bill. `bill-as-a-model-plan.md` makes the borrowing impossible:
+         *     a bill that is not an `Item` has no `/tasks/{id}` to borrow. Moving the
+         *     page first keeps the flip from having to invent one at the same moment it
+         *     changes what a bill is.
+         *
+         *     **On the write path's key, not a new one.** `PATCH`, `POST /pay` and
+         *     `DELETE` already live on `entry/{bill_id}`; a read at a second address for
+         *     the same thing is how two spellings of one resource start.
+         *
+         *     **A plain task is not found here.** Answering for one would make *is this a
+         *     bill* a question every caller has to ask afterwards, and the page has no
+         *     fields for a task.
+         */
+        get: operations["money_api_v1_one_bill"];
+        put?: never;
+        post?: never;
+        /**
+         * Remove Bill
+         * @description Remove a bill, and say which one is meant when it repeats.
+         *
+         *     **`whole_series` as a query parameter** rather than a body: a DELETE with a
+         *     payload is legal and poorly supported, and this is one boolean the caller
+         *     already knows before it asks.
+         *
+         *     The default is the narrow act. Deleting August's rent means *not this one*;
+         *     somebody who meant *stop paying rent* has to say so, because the wider
+         *     answer is the one that cannot be undone by adding a bill back.
+         */
+        delete: operations["money_api_v1_remove_bill"];
+        options?: never;
+        head?: never;
+        /**
+         * Edit Bill
+         * @description Correct a bill without leaving the page it is shown on.
+         *
+         *     **`entry/{id}` rather than `{id}`**, because `/money/bills/{day}` already
+         *     takes a date in that position and two routes differing only by the type of
+         *     one segment is a collision waiting for the first numeric-looking date. The
+         *     read keeps the shorter path; the writes take the longer one.
+         *
+         *     **Under `/money/` since August 27, 2026.** The resources are still bills --
+         *     a bill is one kind of money thing and income is its sibling on the same
+         *     record, pointed the other way -- so what moved is the namespace, not the
+         *     noun. The model is named `Bill` for exactly that reason: one named after the
+         *     module would have to mean both.
+         */
+        patch: operations["money_api_v1_edit_bill"];
+        trace?: never;
+    };
+    "/api/v1/money/income": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add Income
+         * @description Record money expected in.
+         *
+         *     **Beside bills under `/money/`, not a second top-level noun** -- which is
+         *     what makes Money a module rather than a longer word for one page.
+         */
+        post: operations["money_api_v1_add_income"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/money/bills/entry/{bill_id}/pay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Pay Bill
+         * @description Pay a bill from the page it is shown on.
+         *
+         *     **The action this page was missing entirely.** It could add a bill and
+         *     delete a bill and not pay one, which is the thing a person does twelve
+         *     times more often than both put together.
+         */
+        post: operations["money_api_v1_pay_bill"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/money/categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Money Categories
+         * @description This owner's categories, seeded on the first ask.
+         */
+        get: operations["money_api_v1_money_categories"];
+        put?: never;
+        /** Add Money Category */
+        post: operations["money_api_v1_add_money_category"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/money/categories/{category_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove Money Category
+         * @description Remove a label. **The bills keep going** -- `SET_NULL`, so they become
+         *     uncategorised rather than leaving with it.
+         */
+        delete: operations["money_api_v1_remove_money_category"];
+        options?: never;
+        head?: never;
+        /** Rename Money Category */
+        patch: operations["money_api_v1_rename_money_category"];
+        trace?: never;
+    };
+    "/api/v1/money": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Money Landing
+         * @description How the money stands, today.
+         *
+         *     **No date in the path.** Every other read here takes one because it is about
+         *     a month; this one is about *now*, and a landing page addressed by date would
+         *     invite the question of what last Tuesday's dashboard looked like.
+         */
+        get: operations["money_api_v1_money_landing"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/money/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Balance History
+         * @description Every account over the last ``months``, and six months of arithmetic.
+         */
+        get: operations["money_api_v1_balance_history"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/money/accounts/{day}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Months Accounts
+         * @description Every account, with the month's figure and the one before it.
+         */
+        get: operations["money_api_v1_months_accounts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/money/accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add Account */
+        post: operations["money_api_v1_add_account"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/money/balances": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record Balances
+         * @description The monthly pass, saved in one go.
+         *
+         *     **One transaction**, so a bad figure in the fifth box does not leave four
+         *     saved and two not -- which is the failure a batch exists to prevent and
+         *     would otherwise quietly introduce.
+         */
+        post: operations["money_api_v1_record_balances"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/money/bills/{day}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Months Bills
+         * @description What is due this month and what it comes to.
+         *
+         *     Session-only, like the calendar: a new surface the phone does not have,
+         *     and widening the token surface for one it cannot show would be the
+         *     un-switched-on seam this project keeps finding.
+         */
+        get: operations["money_api_v1_months_bills"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1765,435 +1765,6 @@ export interface components {
             username: string;
             /** Email */
             email: string;
-        };
-        /** MonthBillOut */
-        MonthBillOut: {
-            /** Id */
-            id: number;
-            /**
-             * Due Date
-             * Format: date
-             */
-            due_date: string;
-            /** Amount */
-            amount: string | null;
-            /** Currency */
-            currency: string;
-            /** Payee */
-            payee: string;
-            /** Paid */
-            paid: boolean;
-            /** Repeats */
-            repeats: boolean;
-            /** Category */
-            category: string | null;
-            /** Category Id */
-            category_id: number | null;
-            /** Account */
-            account: string | null;
-            /** Account Id */
-            account_id: number | null;
-            /** Direction */
-            direction: string;
-            /** Recurrence */
-            recurrence: string;
-            /** Lead Days */
-            lead_days: number;
-            /** Paid Amount */
-            paid_amount: string | null;
-            /** Overdue */
-            overdue: boolean;
-        };
-        /**
-         * NewBillIn
-         * @description What adding a bill asks for, and what it deliberately does not.
-         *
-         *     **No task title.** The name is derived from the payee -- `Landlord` becomes
-         *     *Pay Landlord* -- so this surface never asks the person to name a task or to
-         *     know that a bill is one. Vince's call, August 27, 2026.
-         *
-         *     **No Area either.** A bill is not filed; `create_bill` makes a standing
-         *     task, which is what `create_item`'s owner argument exists for.
-         */
-        NewBillIn: {
-            /** Payee */
-            payee: string;
-            /** Amount */
-            amount?: string | null;
-            /**
-             * Currency
-             * @default USD
-             */
-            currency: string;
-            /**
-             * Due Date
-             * Format: date
-             */
-            due_date: string;
-            /**
-             * Repeats
-             * @default true
-             */
-            repeats: boolean;
-            /** Recurrence */
-            recurrence?: string | null;
-            /**
-             * Lead Days
-             * @default 0
-             */
-            lead_days: number;
-            /** Account Id */
-            account_id?: number | null;
-        };
-        /**
-         * EditBillIn
-         * @description Every field optional, and absent is not empty.
-         *
-         *     The same partial-write contract the day and the review already have: a field
-         *     left out keeps its stored value. **Clearing an amount is explicit** --
-         *     `amount: null` with `clear_amount: true` -- because "the water bill,
-         *     whatever it comes to" is a state somebody chooses rather than a field they
-         *     forgot to fill in.
-         */
-        EditBillIn: {
-            /** Payee */
-            payee?: string | null;
-            /** Amount */
-            amount?: string | null;
-            /**
-             * Clear Amount
-             * @default false
-             */
-            clear_amount: boolean;
-            /** Currency */
-            currency?: string | null;
-            /** Due Date */
-            due_date?: string | null;
-            /** Lead Days */
-            lead_days?: number | null;
-            /** Recurrence */
-            recurrence?: string | null;
-            /** Category Id */
-            category_id?: number | null;
-            /**
-             * Clear Category
-             * @default false
-             */
-            clear_category: boolean;
-            /** Account Id */
-            account_id?: number | null;
-            /**
-             * Clear Account
-             * @default false
-             */
-            clear_account: boolean;
-        };
-        /**
-         * NewIncomeIn
-         * @description What adding income asks for. The mirror of `NewBillIn`, one word apart.
-         *
-         *     `payer` rather than `payee`, because that is what a person calls the other
-         *     end of money coming toward them -- and the name is derived from it the same
-         *     way: `Acme Ltd` becomes *From Acme Ltd*.
-         */
-        NewIncomeIn: {
-            /** Payer */
-            payer: string;
-            /** Amount */
-            amount?: string | null;
-            /**
-             * Currency
-             * @default USD
-             */
-            currency: string;
-            /**
-             * Due Date
-             * Format: date
-             */
-            due_date: string;
-            /**
-             * Repeats
-             * @default true
-             */
-            repeats: boolean;
-            /** Recurrence */
-            recurrence?: string | null;
-            /**
-             * Lead Days
-             * @default 0
-             */
-            lead_days: number;
-            /** Account Id */
-            account_id?: number | null;
-        };
-        /**
-         * PayBillIn
-         * @description What went out, when it is not what was expected.
-         *
-         *     Null means *what the bill said*, so the ordinary case is one click and the
-         *     figure is still recorded rather than reconstructed later.
-         */
-        PayBillIn: {
-            /** Amount */
-            amount?: string | null;
-        };
-        /** CategoryOut */
-        CategoryOut: {
-            /** Id */
-            id: number;
-            /** Name */
-            name: string;
-            /** Line Count */
-            line_count: number;
-        };
-        /** CategoryIn */
-        CategoryIn: {
-            /** Name */
-            name: string;
-        };
-        /**
-         * LandingLineOut
-         * @description One money line, as the landing page needs it -- shorter than a month row
-         *     because a dashboard names things rather than offering every verb.
-         */
-        LandingLineOut: {
-            /** Id */
-            id: number;
-            /** Payee */
-            payee: string;
-            /**
-             * Due Date
-             * Format: date
-             */
-            due_date: string;
-            /** Amount */
-            amount: string | null;
-            /** Currency */
-            currency: string;
-            /** Days */
-            days: number;
-        };
-        /** MoneyLandingOut */
-        MoneyLandingOut: {
-            /**
-             * Today
-             * Format: date
-             */
-            today: string;
-            /** Overdue */
-            overdue: components["schemas"]["LandingLineOut"][];
-            /** Due Soon */
-            due_soon: components["schemas"]["LandingLineOut"][];
-            /** Renewing Soon */
-            renewing_soon: components["schemas"]["LandingLineOut"][];
-            /** Yearly Totals */
-            yearly_totals: {
-                [key: string]: string;
-            };
-            /** Owed Totals */
-            owed_totals: {
-                [key: string]: string;
-            };
-            /** Held Totals */
-            held_totals: {
-                [key: string]: string;
-            };
-            /** Owed Change */
-            owed_change: {
-                [key: string]: string;
-            };
-            /** Held Change */
-            held_change: {
-                [key: string]: string;
-            };
-            /** Unread Accounts */
-            unread_accounts: number;
-            /** Line Count */
-            line_count: number;
-            /** Account Count */
-            account_count: number;
-        };
-        /** BalanceHistoryOut */
-        BalanceHistoryOut: {
-            /** Months */
-            months: string[];
-            /** Rows */
-            rows: components["schemas"]["HistoryRowOut"][];
-        };
-        /** HistoryRowOut */
-        HistoryRowOut: {
-            /** Account Id */
-            account_id: number;
-            /** Name */
-            name: string;
-            /** Currency */
-            currency: string;
-            /** Owes */
-            owes: boolean;
-            /** Balances */
-            balances: (string | null)[];
-            projection: components["schemas"]["ProjectionOut"] | null;
-        };
-        /**
-         * ProjectionOut
-         * @description Where a balance is heading, with its own derivation attached.
-         */
-        ProjectionOut: {
-            /** Months */
-            months: string[][];
-            /** Monthly Change */
-            monthly_change: string;
-            /** Readings Used */
-            readings_used: number;
-            /** Clears On */
-            clears_on: string | null;
-        };
-        /** AccountOut */
-        AccountOut: {
-            /** Id */
-            id: number;
-            /** Name */
-            name: string;
-            /** Kind */
-            kind: string;
-            /** Currency */
-            currency: string;
-            /** Owes */
-            owes: boolean;
-            /** Balance */
-            balance: string | null;
-            /** Previous */
-            previous: string | null;
-            next_payment: components["schemas"]["NextPaymentOut"] | null;
-        };
-        /** AccountsOut */
-        AccountsOut: {
-            /**
-             * Month Start
-             * Format: date
-             */
-            month_start: string;
-            /** Accounts */
-            accounts: components["schemas"]["AccountOut"][];
-            /** Owed Totals */
-            owed_totals: {
-                [key: string]: string;
-            };
-            /** Held Totals */
-            held_totals: {
-                [key: string]: string;
-            };
-        };
-        /**
-         * NextPaymentOut
-         * @description The soonest unpaid bill against an account.
-         *
-         *     **The read half of increment 7**, and the reason `Account.paid_by` is
-         *     allowed back. `d50d6eb` deleted the first version of this link because it
-         *     was *"set by nothing and read by nothing"*; a field with a writer and no
-         *     reader is the same mistake with a longer runway, so the two ship together.
-         *
-         *     **Soonest unpaid, not a list.** The balances screen answers *what do I owe
-         *     on this* and *what is coming*; every bill an account has ever had is the
-         *     month page's question and is one click away through `id`.
-         */
-        NextPaymentOut: {
-            /** Bill Id */
-            bill_id: number;
-            /** Payee */
-            payee: string;
-            /**
-             * Due Date
-             * Format: date
-             */
-            due_date: string;
-            /** Amount */
-            amount: string | null;
-            /** Currency */
-            currency: string;
-        };
-        /** NewAccountIn */
-        NewAccountIn: {
-            /** Name */
-            name: string;
-            /**
-             * Kind
-             * @default card
-             */
-            kind: string;
-            /**
-             * Currency
-             * @default USD
-             */
-            currency: string;
-            /** Owes */
-            owes?: boolean | null;
-        };
-        /**
-         * BalanceIn
-         * @description One month's figure for one account.
-         */
-        BalanceIn: {
-            /** Account Id */
-            account_id: number;
-            /** Amount */
-            amount?: string | null;
-        };
-        /**
-         * BalancesIn
-         * @description The monthly pass, as one request.
-         *
-         *     **A batch because the ritual is a batch.** Vince described sitting down at
-         *     month end and updating every balance; six separate requests would make that
-         *     six chances to be half-done, and a page that is half-saved is worse than one
-         *     that is not saved.
-         */
-        BalancesIn: {
-            /**
-             * On Date
-             * Format: date
-             */
-            on_date: string;
-            /** Readings */
-            readings: components["schemas"]["BalanceIn"][];
-        };
-        /** MonthOfBillsOut */
-        MonthOfBillsOut: {
-            /**
-             * Month Start
-             * Format: date
-             */
-            month_start: string;
-            /**
-             * Previous Month
-             * Format: date
-             */
-            previous_month: string;
-            /**
-             * Next Month
-             * Format: date
-             */
-            next_month: string;
-            /** Bills */
-            bills: components["schemas"]["MonthBillOut"][];
-            /** Due Totals */
-            due_totals: {
-                [key: string]: string;
-            };
-            /** Paid Totals */
-            paid_totals: {
-                [key: string]: string;
-            };
-            /** Expected In Totals */
-            expected_in_totals: {
-                [key: string]: string;
-            };
-            /** Received Totals */
-            received_totals: {
-                [key: string]: string;
-            };
-            /** Unpriced */
-            unpriced: number;
         };
         /** NavAreaOut */
         NavAreaOut: {
@@ -4118,6 +3689,435 @@ export interface components {
             /** Unusual */
             unusual: string;
         };
+        /** MonthBillOut */
+        MonthBillOut: {
+            /** Id */
+            id: number;
+            /**
+             * Due Date
+             * Format: date
+             */
+            due_date: string;
+            /** Amount */
+            amount: string | null;
+            /** Currency */
+            currency: string;
+            /** Payee */
+            payee: string;
+            /** Paid */
+            paid: boolean;
+            /** Repeats */
+            repeats: boolean;
+            /** Category */
+            category: string | null;
+            /** Category Id */
+            category_id: number | null;
+            /** Account */
+            account: string | null;
+            /** Account Id */
+            account_id: number | null;
+            /** Direction */
+            direction: string;
+            /** Recurrence */
+            recurrence: string;
+            /** Lead Days */
+            lead_days: number;
+            /** Paid Amount */
+            paid_amount: string | null;
+            /** Overdue */
+            overdue: boolean;
+        };
+        /**
+         * NewBillIn
+         * @description What adding a bill asks for, and what it deliberately does not.
+         *
+         *     **No task title.** The name is derived from the payee -- `Landlord` becomes
+         *     *Pay Landlord* -- so this surface never asks the person to name a task or to
+         *     know that a bill is one. Vince's call, August 27, 2026.
+         *
+         *     **No Area either.** A bill is not filed; `create_bill` makes a standing
+         *     task, which is what `create_item`'s owner argument exists for.
+         */
+        NewBillIn: {
+            /** Payee */
+            payee: string;
+            /** Amount */
+            amount?: string | null;
+            /**
+             * Currency
+             * @default USD
+             */
+            currency: string;
+            /**
+             * Due Date
+             * Format: date
+             */
+            due_date: string;
+            /**
+             * Repeats
+             * @default true
+             */
+            repeats: boolean;
+            /** Recurrence */
+            recurrence?: string | null;
+            /**
+             * Lead Days
+             * @default 0
+             */
+            lead_days: number;
+            /** Account Id */
+            account_id?: number | null;
+        };
+        /**
+         * EditBillIn
+         * @description Every field optional, and absent is not empty.
+         *
+         *     The same partial-write contract the day and the review already have: a field
+         *     left out keeps its stored value. **Clearing an amount is explicit** --
+         *     `amount: null` with `clear_amount: true` -- because "the water bill,
+         *     whatever it comes to" is a state somebody chooses rather than a field they
+         *     forgot to fill in.
+         */
+        EditBillIn: {
+            /** Payee */
+            payee?: string | null;
+            /** Amount */
+            amount?: string | null;
+            /**
+             * Clear Amount
+             * @default false
+             */
+            clear_amount: boolean;
+            /** Currency */
+            currency?: string | null;
+            /** Due Date */
+            due_date?: string | null;
+            /** Lead Days */
+            lead_days?: number | null;
+            /** Recurrence */
+            recurrence?: string | null;
+            /** Category Id */
+            category_id?: number | null;
+            /**
+             * Clear Category
+             * @default false
+             */
+            clear_category: boolean;
+            /** Account Id */
+            account_id?: number | null;
+            /**
+             * Clear Account
+             * @default false
+             */
+            clear_account: boolean;
+        };
+        /**
+         * NewIncomeIn
+         * @description What adding income asks for. The mirror of `NewBillIn`, one word apart.
+         *
+         *     `payer` rather than `payee`, because that is what a person calls the other
+         *     end of money coming toward them -- and the name is derived from it the same
+         *     way: `Acme Ltd` becomes *From Acme Ltd*.
+         */
+        NewIncomeIn: {
+            /** Payer */
+            payer: string;
+            /** Amount */
+            amount?: string | null;
+            /**
+             * Currency
+             * @default USD
+             */
+            currency: string;
+            /**
+             * Due Date
+             * Format: date
+             */
+            due_date: string;
+            /**
+             * Repeats
+             * @default true
+             */
+            repeats: boolean;
+            /** Recurrence */
+            recurrence?: string | null;
+            /**
+             * Lead Days
+             * @default 0
+             */
+            lead_days: number;
+            /** Account Id */
+            account_id?: number | null;
+        };
+        /**
+         * PayBillIn
+         * @description What went out, when it is not what was expected.
+         *
+         *     Null means *what the bill said*, so the ordinary case is one click and the
+         *     figure is still recorded rather than reconstructed later.
+         */
+        PayBillIn: {
+            /** Amount */
+            amount?: string | null;
+        };
+        /** CategoryOut */
+        CategoryOut: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Line Count */
+            line_count: number;
+        };
+        /** CategoryIn */
+        CategoryIn: {
+            /** Name */
+            name: string;
+        };
+        /**
+         * LandingLineOut
+         * @description One money line, as the landing page needs it -- shorter than a month row
+         *     because a dashboard names things rather than offering every verb.
+         */
+        LandingLineOut: {
+            /** Id */
+            id: number;
+            /** Payee */
+            payee: string;
+            /**
+             * Due Date
+             * Format: date
+             */
+            due_date: string;
+            /** Amount */
+            amount: string | null;
+            /** Currency */
+            currency: string;
+            /** Days */
+            days: number;
+        };
+        /** MoneyLandingOut */
+        MoneyLandingOut: {
+            /**
+             * Today
+             * Format: date
+             */
+            today: string;
+            /** Overdue */
+            overdue: components["schemas"]["LandingLineOut"][];
+            /** Due Soon */
+            due_soon: components["schemas"]["LandingLineOut"][];
+            /** Renewing Soon */
+            renewing_soon: components["schemas"]["LandingLineOut"][];
+            /** Yearly Totals */
+            yearly_totals: {
+                [key: string]: string;
+            };
+            /** Owed Totals */
+            owed_totals: {
+                [key: string]: string;
+            };
+            /** Held Totals */
+            held_totals: {
+                [key: string]: string;
+            };
+            /** Owed Change */
+            owed_change: {
+                [key: string]: string;
+            };
+            /** Held Change */
+            held_change: {
+                [key: string]: string;
+            };
+            /** Unread Accounts */
+            unread_accounts: number;
+            /** Line Count */
+            line_count: number;
+            /** Account Count */
+            account_count: number;
+        };
+        /** BalanceHistoryOut */
+        BalanceHistoryOut: {
+            /** Months */
+            months: string[];
+            /** Rows */
+            rows: components["schemas"]["HistoryRowOut"][];
+        };
+        /** HistoryRowOut */
+        HistoryRowOut: {
+            /** Account Id */
+            account_id: number;
+            /** Name */
+            name: string;
+            /** Currency */
+            currency: string;
+            /** Owes */
+            owes: boolean;
+            /** Balances */
+            balances: (string | null)[];
+            projection: components["schemas"]["ProjectionOut"] | null;
+        };
+        /**
+         * ProjectionOut
+         * @description Where a balance is heading, with its own derivation attached.
+         */
+        ProjectionOut: {
+            /** Months */
+            months: string[][];
+            /** Monthly Change */
+            monthly_change: string;
+            /** Readings Used */
+            readings_used: number;
+            /** Clears On */
+            clears_on: string | null;
+        };
+        /** AccountOut */
+        AccountOut: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Kind */
+            kind: string;
+            /** Currency */
+            currency: string;
+            /** Owes */
+            owes: boolean;
+            /** Balance */
+            balance: string | null;
+            /** Previous */
+            previous: string | null;
+            next_payment: components["schemas"]["NextPaymentOut"] | null;
+        };
+        /** AccountsOut */
+        AccountsOut: {
+            /**
+             * Month Start
+             * Format: date
+             */
+            month_start: string;
+            /** Accounts */
+            accounts: components["schemas"]["AccountOut"][];
+            /** Owed Totals */
+            owed_totals: {
+                [key: string]: string;
+            };
+            /** Held Totals */
+            held_totals: {
+                [key: string]: string;
+            };
+        };
+        /**
+         * NextPaymentOut
+         * @description The soonest unpaid bill against an account.
+         *
+         *     **The read half of increment 7**, and the reason `Account.paid_by` is
+         *     allowed back. `d50d6eb` deleted the first version of this link because it
+         *     was *"set by nothing and read by nothing"*; a field with a writer and no
+         *     reader is the same mistake with a longer runway, so the two ship together.
+         *
+         *     **Soonest unpaid, not a list.** The balances screen answers *what do I owe
+         *     on this* and *what is coming*; every bill an account has ever had is the
+         *     month page's question and is one click away through `id`.
+         */
+        NextPaymentOut: {
+            /** Bill Id */
+            bill_id: number;
+            /** Payee */
+            payee: string;
+            /**
+             * Due Date
+             * Format: date
+             */
+            due_date: string;
+            /** Amount */
+            amount: string | null;
+            /** Currency */
+            currency: string;
+        };
+        /** NewAccountIn */
+        NewAccountIn: {
+            /** Name */
+            name: string;
+            /**
+             * Kind
+             * @default card
+             */
+            kind: string;
+            /**
+             * Currency
+             * @default USD
+             */
+            currency: string;
+            /** Owes */
+            owes?: boolean | null;
+        };
+        /**
+         * BalanceIn
+         * @description One month's figure for one account.
+         */
+        BalanceIn: {
+            /** Account Id */
+            account_id: number;
+            /** Amount */
+            amount?: string | null;
+        };
+        /**
+         * BalancesIn
+         * @description The monthly pass, as one request.
+         *
+         *     **A batch because the ritual is a batch.** Vince described sitting down at
+         *     month end and updating every balance; six separate requests would make that
+         *     six chances to be half-done, and a page that is half-saved is worse than one
+         *     that is not saved.
+         */
+        BalancesIn: {
+            /**
+             * On Date
+             * Format: date
+             */
+            on_date: string;
+            /** Readings */
+            readings: components["schemas"]["BalanceIn"][];
+        };
+        /** MonthOfBillsOut */
+        MonthOfBillsOut: {
+            /**
+             * Month Start
+             * Format: date
+             */
+            month_start: string;
+            /**
+             * Previous Month
+             * Format: date
+             */
+            previous_month: string;
+            /**
+             * Next Month
+             * Format: date
+             */
+            next_month: string;
+            /** Bills */
+            bills: components["schemas"]["MonthBillOut"][];
+            /** Due Totals */
+            due_totals: {
+                [key: string]: string;
+            };
+            /** Paid Totals */
+            paid_totals: {
+                [key: string]: string;
+            };
+            /** Expected In Totals */
+            expected_in_totals: {
+                [key: string]: string;
+            };
+            /** Received Totals */
+            received_totals: {
+                [key: string]: string;
+            };
+            /** Unpriced */
+            unpriced: number;
+        };
     };
     responses: never;
     parameters: never;
@@ -4143,374 +4143,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MeOut"];
-                };
-            };
-        };
-    };
-    lists_api_v1_add_bill: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["NewBillIn"];
-            };
-        };
-        responses: {
-            /** @description Created */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["MonthBillOut"];
-                };
-            };
-        };
-    };
-    lists_api_v1_one_bill: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                bill_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["MonthBillOut"];
-                };
-            };
-        };
-    };
-    lists_api_v1_remove_bill: {
-        parameters: {
-            query?: {
-                whole_series?: boolean;
-            };
-            header?: never;
-            path: {
-                bill_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description No Content */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    lists_api_v1_edit_bill: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                bill_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["EditBillIn"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["MonthBillOut"];
-                };
-            };
-        };
-    };
-    lists_api_v1_add_income: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["NewIncomeIn"];
-            };
-        };
-        responses: {
-            /** @description Created */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["MonthBillOut"];
-                };
-            };
-        };
-    };
-    lists_api_v1_pay_bill: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                bill_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["PayBillIn"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["MonthBillOut"];
-                };
-            };
-        };
-    };
-    lists_api_v1_money_categories: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CategoryOut"][];
-                };
-            };
-        };
-    };
-    lists_api_v1_add_money_category: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CategoryIn"];
-            };
-        };
-        responses: {
-            /** @description Created */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CategoryOut"];
-                };
-            };
-        };
-    };
-    lists_api_v1_remove_money_category: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                category_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description No Content */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    lists_api_v1_rename_money_category: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                category_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CategoryIn"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CategoryOut"];
-                };
-            };
-        };
-    };
-    lists_api_v1_money_landing: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["MoneyLandingOut"];
-                };
-            };
-        };
-    };
-    lists_api_v1_balance_history: {
-        parameters: {
-            query?: {
-                months?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BalanceHistoryOut"];
-                };
-            };
-        };
-    };
-    lists_api_v1_months_accounts: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                day: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AccountsOut"];
-                };
-            };
-        };
-    };
-    lists_api_v1_add_account: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["NewAccountIn"];
-            };
-        };
-        responses: {
-            /** @description Created */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AccountOut"];
-                };
-            };
-        };
-    };
-    lists_api_v1_record_balances: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["BalancesIn"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AccountsOut"];
-                };
-            };
-        };
-    };
-    lists_api_v1_months_bills: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                day: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["MonthOfBillsOut"];
                 };
             };
         };
@@ -6149,6 +5781,374 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CheckInOut"];
+                };
+            };
+        };
+    };
+    money_api_v1_add_bill: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewBillIn"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MonthBillOut"];
+                };
+            };
+        };
+    };
+    money_api_v1_one_bill: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bill_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MonthBillOut"];
+                };
+            };
+        };
+    };
+    money_api_v1_remove_bill: {
+        parameters: {
+            query?: {
+                whole_series?: boolean;
+            };
+            header?: never;
+            path: {
+                bill_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    money_api_v1_edit_bill: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bill_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EditBillIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MonthBillOut"];
+                };
+            };
+        };
+    };
+    money_api_v1_add_income: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewIncomeIn"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MonthBillOut"];
+                };
+            };
+        };
+    };
+    money_api_v1_pay_bill: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bill_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PayBillIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MonthBillOut"];
+                };
+            };
+        };
+    };
+    money_api_v1_money_categories: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CategoryOut"][];
+                };
+            };
+        };
+    };
+    money_api_v1_add_money_category: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CategoryIn"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CategoryOut"];
+                };
+            };
+        };
+    };
+    money_api_v1_remove_money_category: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                category_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    money_api_v1_rename_money_category: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                category_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CategoryIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CategoryOut"];
+                };
+            };
+        };
+    };
+    money_api_v1_money_landing: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MoneyLandingOut"];
+                };
+            };
+        };
+    };
+    money_api_v1_balance_history: {
+        parameters: {
+            query?: {
+                months?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BalanceHistoryOut"];
+                };
+            };
+        };
+    };
+    money_api_v1_months_accounts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                day: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountsOut"];
+                };
+            };
+        };
+    };
+    money_api_v1_add_account: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewAccountIn"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountOut"];
+                };
+            };
+        };
+    };
+    money_api_v1_record_balances: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BalancesIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountsOut"];
+                };
+            };
+        };
+    };
+    money_api_v1_months_bills: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                day: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MonthOfBillsOut"];
                 };
             };
         };

@@ -41,7 +41,8 @@ from django.test import Client, TestCase
 from django.test.utils import CaptureQueriesContext
 
 from accounts.models import User
-from lists import bills, services
+from lists import services
+from money import services as bills
 from lists.models import AccountKind, Bill, Direction, Item
 
 AUGUST = datetime.date(2026, 8, 20)

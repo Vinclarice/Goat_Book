@@ -42,7 +42,7 @@ from django.db.utils import IntegrityError
 from django.test import TestCase
 
 from accounts.models import User
-from lists import bills
+from money import services as bills
 from lists.models import Bill, BillSeries, CadenceMode, Item
 
 JUNE = datetime.date(2026, 6, 1)

@@ -23,8 +23,8 @@ from decimal import Decimal
 from django.test import TestCase
 
 from accounts.models import User
-from lists import bills
-from lists import money as money_reader
+from money import services as bills
+from money import reads as money_reader
 from lists import services
 from lists.models import List
 

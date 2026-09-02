@@ -22,7 +22,7 @@ import logging
 from django.core.management.base import BaseCommand
 
 from accounts.models import User
-from lists import bills
+from money import services as bills
 
 logger = logging.getLogger(__name__)
 

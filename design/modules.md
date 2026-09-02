@@ -27,7 +27,8 @@ plan.
 ## What a module is — the containment test
 
 Not the date in the address; `/agenda` and `/archive` are dateless too. The
-discriminator was already written, in `lists/money.py`'s own docstring:
+discriminator was already written, in what is now `money/reads.py`'s own
+docstring:
 
 > *a read with its own vocabulary — putting it in the agenda would make the
 > agenda answer a question about money.*
@@ -114,10 +115,7 @@ core a module belongs to is a real question with a real answer.
 
 ### Not a Django app
 
-**Money has no app.** It is `lists/money.py`, `lists/services.py` and four models
-in `lists/models.py`. **`routines` is a full app with no module** — `models`,
-`reads`, `services`, `periods`, `api_v1`, the §4 rule-4 split done properly — and
-appears in `AppRoutes.tsx`, `ViewNav.tsx` and `SideNav.tsx` **zero times**.
+~~**Money has no app.**~~ **It has one from September 2, 2026** — `money/`, with its reads, writes, API, scheduled command and tests. The distinction this file draws still holds and is what made the move legible: **a module is where somebody goes; an app is where its code lives.** Money was the first to earn both, and it earned the second only when `Bill` stopped being an `Item` — five models with their own life cycles, an API namespace, a job, a vocabulary and six surfaces. **The models are still in `lists` until their state is moved**, which is a migration and is deliberately not the same commit.
 
 > **A Django app is where code lives. A module is where a person goes.**
 

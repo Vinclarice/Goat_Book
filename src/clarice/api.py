@@ -17,6 +17,7 @@ from accounts.auth import SessionAuthIfLoggedIn, TokenAuth
 from accounts.models import SCOPE_IDENTITY_READ
 from daily.api_v1 import router as daily_router
 from lists.api_v1 import router as lists_router
+from money.api_v1 import router as money_router
 from mind.api_v1 import router as capture_router
 from review.api_v1 import router as review_router
 from routines.api_v1 import router as routines_router
@@ -62,6 +63,12 @@ api.add_router("", routines_router)
 # The one router with no token operations at all, reads included. Nothing on
 # the phone shows a weekly review, so nothing here has needed widening.
 api.add_router("", review_router)
+# Every money operation is session-only, and stays that way: the phone has no
+# Money surface at all, so widening a token to reach one would be the
+# un-switched-on seam this project keeps finding. Its own router since
+# September 2, 2026 -- sixteen endpoints that were a large slice of a file
+# named `lists`.
+api.add_router("", money_router)
 
 
 class MeOut(Schema):

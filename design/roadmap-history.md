@@ -1151,8 +1151,11 @@ which costs nothing to know. *This time last year* is human temporal cueing at
 its cheapest and most reliable, it derives from `occurred_at` alone — so Part
 1's *facts, not derivations* holds with no row to write and no backfill to run —
 and it needs no ML, no threshold anybody has to defend, no budget and nothing
-switched on. That last part is why it could ship while **D14 is still open**: an
-anniversary is a recorded fact, not a similarity score.
+switched on. That last part is why it could ship while **D14 was still open**:
+an anniversary is a recorded fact, not a similarity score. (Tensed September 1,
+2026 — D14 was answered on August 22, within this same release, so the present
+tense read as a live claim to anybody arriving later. Not a correction: it was
+true at the moment it describes.)
 
 **It could not have been built before D16.** An anniversary is a claim about a
 calendar day, and a calendar day does not exist until somebody says whose clock
@@ -1411,8 +1414,24 @@ paragraph. Not lawyer-reviewed, with the trigger named: broader beta testing.
 ### The deployment
 
 `DEPLOYED-2026-08-19/0111`, carrying migration `0015_user_email_confirmed_at`.
-The bird was held for the planning-assistant release. The approval email below
-shipped after it and is **not yet deployed**.
+The bird was held for the planning-assistant release.
+
+~~The approval email below shipped after it and is **not yet deployed**.~~
+**It went out the same day**, in `DEPLOYED-2026-08-19/1339` — `2384cfc`, *Send
+the email three surfaces were already promising*. Corrected September 1, 2026,
+by which point the sentence had been false for thirteen days, and checked rather
+than reasoned about: that commit is an ancestor of `LIVE`, and
+`accounts.emails.send_account_approved` and its signal are both present in the
+running container.
+
+**Worth keeping as a correction rather than an edit**, because of where it
+happened. [`README.md`](README.md) calls this file *"the one file that cannot go
+stale, because it is explicitly about the past"* — and that is true of every
+sentence in it except one shape: **a deployment status written before the
+deployment.** *Not yet* is a claim about the present wearing the clothes of a
+record, and it rots exactly like the plan headers the stub rule exists to
+retire. The fix is not vigilance but tense: an entry should say when something
+shipped, or say nothing, and never say *not yet*.
 
 ### What it taught
 
@@ -1755,9 +1774,17 @@ the one route where it mattered most. `architecture-trajectory.md` §6 records
 closing this identical hole for `/` on August 3, and the API login shipped three
 days later without a matching rule.
 
-**The only one of these findings `roadmap.md` already carried as open**, and now
-the only one whose fix is not yet live: an nginx template changes nothing until
-the playbook runs.
+**The only one of these findings `roadmap.md` already carried as open**, and
+~~now the only one whose fix is not yet live: an nginx template changes nothing
+until the playbook runs.~~ **It has been live since the next deploy** — checked
+September 1, 2026 rather than assumed: `/etc/nginx/sites-available/clarice`
+carries both the `clarice_api_login` zone and the `limit_req` inside the
+`/api/v1/login` location, and nginx last started well after that file was
+written, so it is loaded rather than merely present on disk.
+
+Corrected in the same pass as the approval email above, and for the same reason:
+*not yet live* is a claim about the present in a file that is supposed to be
+only about the past.
 
 **What replaces it is a test, not a rule.** The rule closes this route; the test
 reads the template and the API together and fails on any operation with an

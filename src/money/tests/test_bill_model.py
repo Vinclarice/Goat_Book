@@ -23,15 +23,10 @@ from django.utils import timezone
 
 from accounts.models import User
 from lists.models import (
-    Account,
-    AccountKind,
-    Bill,
-    BillSeries,
     CadenceMode,
-    Direction,
     Item,
-    MoneyCategory,
 )
+from money.models import Account, AccountKind, Bill, BillSeries, Direction, MoneyCategory
 
 DUE = datetime.date(2026, 9, 1)
 

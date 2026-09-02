@@ -45,7 +45,7 @@ from django.utils import timezone
 
 from clarice.errors import Conflict
 from clarice.recurrence import CadenceMode, Recurrence, advance_due_date
-from lists.models import Bill, BillSeries, Direction
+from money.models import Bill, BillSeries, Direction
 
 
 class BillConflict(Conflict):

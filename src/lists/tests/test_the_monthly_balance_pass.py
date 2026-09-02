@@ -13,7 +13,7 @@ from django.test import Client, TestCase
 
 from accounts.models import User
 from lists import services
-from lists.models import AccountKind, BalanceReading
+from money.models import AccountKind, BalanceReading
 
 PASSWORD = "correct horse battery staple 47!"
 AUGUST = datetime.date(2026, 8, 1)

@@ -25,7 +25,8 @@ from django.test import TestCase
 from accounts.models import User
 from money import services as bills
 from lists import services
-from lists.models import Bill, Item
+from lists.models import Item
+from money.models import Bill
 
 MARCH = datetime.date(2027, 3, 14)
 

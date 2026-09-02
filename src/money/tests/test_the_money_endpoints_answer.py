@@ -21,7 +21,7 @@ from django.test import Client, TestCase
 from accounts.models import User
 from lists import services
 from money import services as bills
-from lists.models import AccountKind, Bill
+from money.models import AccountKind, Bill
 
 AUGUST = datetime.date(2026, 8, 20)
 PASSWORD = "a secure password"

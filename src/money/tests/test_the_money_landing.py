@@ -22,7 +22,8 @@ from accounts.models import User
 from money import services as bills
 from lists import services
 from money import reads as money_reader
-from lists.models import Direction, AccountKind, Item
+from lists.models import Item
+from money.models import AccountKind, Direction
 
 TODAY = datetime.date(2026, 8, 25)
 

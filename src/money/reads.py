@@ -29,7 +29,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 from clarice.recurrence import Recurrence
-from lists.models import Account, Bill, Direction
+from money.models import Account, Bill, Direction
 
 
 @dataclass(frozen=True)

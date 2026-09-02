@@ -36,7 +36,7 @@ from clarice.clocks import today_for
 from clarice.errors import Conflict
 from clarice.recurrence import Recurrence
 from lists import services
-from lists.models import Account, Bill, Direction, MoneyCategory
+from money.models import Account, Bill, Direction, MoneyCategory
 from money import reads as money_reader
 from money import services as bills
 

@@ -11,11 +11,11 @@ surfaces. What it has with the task core is an integration contract — the Day
 and the Agenda receive bills through `money.reads` — rather than inheritance
 from it.
 
-**`label` is `money` and the models still live in `lists`** until step 4 moves
-their state. That is deliberate sequencing: moving code needs no migration, and
-moving model state needs one that must not also be a data migration. `0057` and
-`0059` were both real ones and there is no appetite for a third in the same
-week.
+**The models moved too, and no table did.** Two state-only migrations changed
+which app owns them and emitted no SQL; `db_table` pins each to the `lists_`
+name it was created with. That sequencing was deliberate — code first, state
+second — because moving code needs no migration at all and it was worth knowing
+the code was right before writing one.
 """
 from django.apps import AppConfig
 

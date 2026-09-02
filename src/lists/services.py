@@ -10,12 +10,7 @@ from clarice.errors import Conflict
 from clarice.recurrence import advance_due_date, nth_occurrence_after
 
 from lists.models import (
-    Account,
-    MoneyCategory,
-    AccountKind,
-    BalanceReading,
     CadenceMode,
-    Direction,
     ChecklistStep,
     Item,
     List,
@@ -24,6 +19,14 @@ from lists.models import (
     RecurringCommitment,
     Tag,
 )
+
+# **The one seam the extraction leaves open.** `create_account`,
+# `record_balance` and the four category functions are money's writes sitting in
+# the task core's service module, and this import is what says so: their models
+# are in `money` and they are not. Moving them is a rename with no migration
+# behind it, which is why it did not need to be in the commit that moved model
+# state.
+from money.models import Account, AccountKind, BalanceReading, Direction, MoneyCategory
 
 
 EMPTY_ITEM_ERROR = "You can't have an empty list item"

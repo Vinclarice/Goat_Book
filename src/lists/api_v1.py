@@ -46,16 +46,13 @@ from lists import projects as project_reader
 from lists import services
 from lists.forms import ListTitleForm
 from lists.models import (
-    Account,
-    Bill,
     CadenceMode,
     ChecklistStep,
-    Direction,
     Item,
     List,
-    MoneyCategory,
     Priority,
 )
+from money.models import Account, Bill, Direction, MoneyCategory
 # **The contract, not a leak.** The Agenda shows bills, so it receives them
 # in the shape money defines -- `modules.md`'s integration contract rather
 # than inheritance. The dependency points this way and never back.

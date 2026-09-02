@@ -26,17 +26,19 @@ from uuid import UUID
 from accounts.models import Invitation, PersonalAccessToken, User
 from daily.models import DailyEntry, DailyFocus
 from lists.models import (
-    Account,
-    BalanceReading,
-    MoneyCategory,
-    Bill,
-    BillSeries,
     ChecklistStep,
     Item,
     List,
     Project,
     RecurringCommitment,
     Tag,
+)
+from money.models import (
+    Account,
+    BalanceReading,
+    Bill,
+    BillSeries,
+    MoneyCategory,
 )
 from mind import queries as mind_queries
 from mind.models import (

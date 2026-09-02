@@ -14,7 +14,8 @@ from accounts.models import User
 from decimal import Decimal
 
 from money import services as bills
-from lists.models import Direction, Item, List
+from lists.models import Item, List
+from money.models import Direction
 
 
 class SendDueDigestTest(TestCase):

@@ -23,7 +23,8 @@ from accounts.models import User
 from money import services as bills
 from lists import services
 from money import reads as money_reader
-from lists.models import Bill, Direction, Item
+from lists.models import Item
+from money.models import Bill, Direction
 
 AUGUST = datetime.date(2026, 8, 14)
 

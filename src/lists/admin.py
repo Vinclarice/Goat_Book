@@ -2,7 +2,7 @@ from django.contrib import admin
 
 from unfold.admin import ModelAdmin, TabularInline
 
-from .models import Bill, BillSeries, Item, List, Tag
+from .models import Item, List, Tag
 
 
 class ItemInline(TabularInline):
@@ -50,27 +50,3 @@ class TagAdmin(ModelAdmin):
     list_display = ("name", "owner")
     list_filter = ("owner",)
     search_fields = ("name", "owner__username")
-
-
-# **The only window onto two tables nothing else reads yet** -- increment 1 of
-# design/bill-as-a-model-plan.md. They are deliberately dark until that plan's
-# increment 3, and increment 2 migrates real rows into them, so being able to
-# look is the difference between verifying that migration and hoping.
-#
-# **Registered while their siblings are not**, which is an inconsistency worth
-# naming rather than hiding: MoneyLine, Account, BalanceReading and
-# MoneyCategory have no admin presence at all. That is arguably their gap
-# rather than this one's excess, and it is not fixed here.
-@admin.register(BillSeries)
-class BillSeriesAdmin(ModelAdmin):
-    list_display = ("payee", "owner", "cadence", "amount", "currency", "ended_at")
-    list_filter = ("owner", "cadence", "direction")
-    search_fields = ("payee", "owner__username", "owner__email")
-
-
-@admin.register(Bill)
-class BillAdmin(ModelAdmin):
-    list_display = ("payee", "owner", "due_date", "amount", "paid_amount", "paid_at")
-    list_filter = ("owner", "direction")
-    search_fields = ("payee", "owner__username", "owner__email")
-    date_hierarchy = "due_date"

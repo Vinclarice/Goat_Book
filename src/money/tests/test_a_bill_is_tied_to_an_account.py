@@ -43,7 +43,8 @@ from django.test.utils import CaptureQueriesContext
 from accounts.models import User
 from lists import services
 from money import services as bills
-from lists.models import AccountKind, Bill, Direction, Item
+from lists.models import Item
+from money.models import AccountKind, Bill, Direction
 
 AUGUST = datetime.date(2026, 8, 20)
 PASSWORD = "a secure password"

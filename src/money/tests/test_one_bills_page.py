@@ -23,7 +23,8 @@ from django.test import TestCase
 from accounts.models import User
 from money import services as bills
 from lists import services
-from lists.models import Item, MoneyCategory
+from lists.models import Item
+from money.models import MoneyCategory
 
 AUGUST = datetime.date(2026, 8, 10)
 

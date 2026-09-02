@@ -43,7 +43,8 @@ from django.test import TestCase
 
 from accounts.models import User
 from money import services as bills
-from lists.models import Bill, BillSeries, CadenceMode, Item
+from lists.models import CadenceMode, Item
+from money.models import Bill, BillSeries
 
 JUNE = datetime.date(2026, 6, 1)
 AUGUST = datetime.date(2026, 8, 10)

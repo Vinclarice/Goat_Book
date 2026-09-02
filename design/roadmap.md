@@ -110,9 +110,14 @@ re-add it here.
   its reads, writes, API, scheduled command and tests. Vince's call, and the
   threshold was `Bill` ceasing to be an `Item` — a module is where somebody
   goes, an app is where its code lives, and Money had earned only the first.
-  **What is still open is the model state**, which moves by state-only
-  migration keeping the `lists_*` table names; renaming the tables is a
-  separate question nobody has to answer yet.
+  **The model state moved the same day**, by two state-only migrations that
+  emit no SQL at all — `money.0001` adopts the five models, `lists.0061` gives
+  them up, and a third moves the content types so a permission granted on a
+  bill survives the app label changing. The tables are still `lists_*`:
+  renaming them is a physical migration over financial history bought for
+  consistency in `psql`, and it is **declined rather than pending**. What is
+  genuinely open is smaller — the account and category *services* still sit in
+  `lists/services.py` while their models are in `money`.
 
   **Two decisions were taken and both are Vince's.** The shared rail **keeps**
   each module's surfaces rather than each module owning a column — the escape

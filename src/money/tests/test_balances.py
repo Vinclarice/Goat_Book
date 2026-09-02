@@ -24,7 +24,7 @@ from django.test import TestCase
 
 from accounts.models import User
 from lists import services
-from lists.models import Account, AccountKind, BalanceReading
+from money.models import Account, AccountKind, BalanceReading
 
 AUGUST = datetime.date(2026, 8, 1)
 SEPTEMBER = datetime.date(2026, 9, 1)

@@ -115,7 +115,7 @@ core a module belongs to is a real question with a real answer.
 
 ### Not a Django app
 
-~~**Money has no app.**~~ **It has one from September 2, 2026** — `money/`, with its reads, writes, API, scheduled command and tests. The distinction this file draws still holds and is what made the move legible: **a module is where somebody goes; an app is where its code lives.** Money was the first to earn both, and it earned the second only when `Bill` stopped being an `Item` — five models with their own life cycles, an API namespace, a job, a vocabulary and six surfaces. **The models are still in `lists` until their state is moved**, which is a migration and is deliberately not the same commit.
+~~**Money has no app.**~~ **It has one from September 2, 2026** — `money/`, with its reads, writes, API, scheduled command and tests. The distinction this file draws still holds and is what made the move legible: **a module is where somebody goes; an app is where its code lives.** Money was the first to earn both, and it earned the second only when `Bill` stopped being an `Item` — five models with their own life cycles, an API namespace, a job, a vocabulary and six surfaces. **Its models moved the same day**, by state-only migration: the app label changed and no table and no row did. They are still called `lists_bill`, `lists_account` and so on, because renaming a table that holds financial history buys tidiness in `psql` and costs a physical migration — declined on the day rather than overlooked, and `clarice/tests/test_the_money_move_touched_no_table.py` is what keeps that a decision.
 
 > **A Django app is where code lives. A module is where a person goes.**
 

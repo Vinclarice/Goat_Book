@@ -66,7 +66,7 @@ export interface paths {
          *     changes what a bill is.
          *
          *     **On the write path's key, not a new one.** `PATCH`, `POST /pay` and
-         *     `DELETE` already live on `entry/{id}`; a read at a second address for
+         *     `DELETE` already live on `entry/{bill_id}`; a read at a second address for
          *     the same thing is how two spellings of one resource start.
          *
          *     **A plain task is not found here.** Answering for one would make *is this a
@@ -2263,7 +2263,7 @@ export interface components {
          *     what a task is.
          *
          *     **`id`, and it is a `Bill`'s.** It was `task_id` from August 31 to
-         *     September 2, 2026 -- deliberately, so that the commit changing what a bill
+         *     September 1, 2026 -- deliberately, so that the commit changing what a bill
          *     *is* did not also carry a mechanical rename. See `agenda._agenda_bill_out`.
          */
         AgendaBillOut: {

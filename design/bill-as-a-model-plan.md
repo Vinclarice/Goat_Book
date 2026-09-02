@@ -1,9 +1,9 @@
 # A bill earns its own model
 
-**Shipped August 31 – September 2, 2026. Nine increments, six migrations, and
-not yet deployed** — the deploy carries `0055`–`0060`, one of which deletes rows
-and one of which drops a table. From Vince, after using the repaired Money
-module: *"there's a disconnect. Like it should be tied to the payments. So I
+**Shipped and deployed August 31 – September 1, 2026** — nine increments, six
+migrations, live at 22:47 EDT as `DEPLOYED-2026-09-01/2247`. Two of those migrations changed data
+irreversibly: `0057` deleted the tasks that were bills, `0059` dropped the
+`MoneyLine` table. From Vince, after using the repaired Money module: *"there's a disconnect. Like it should be tied to the payments. So I
 really think we need to separate bills from a task."*
 
 This is a stub. What shipped, the reversal condition that was met and declined,
@@ -61,4 +61,4 @@ further unpaid rows by March 2027 on one untouched series. It is
 signal to watch is the agenda, and the cheapest answer if it arrives is a
 per-series cap on unpaid occurrences surfaced, not a retreat from the model.
 
-Reduced to a stub on September 2, 2026. See [`README.md`](README.md).
+Reduced to a stub on September 1, 2026. See [`README.md`](README.md).

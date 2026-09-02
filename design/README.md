@@ -170,7 +170,7 @@ tallies this file's own rule forbids — they drift the moment a plan stubs, whi
 
 **What makes a stub a stub is dropping the spec, not hitting a line count**, and
 that is the part worth keeping. ~~Two~~ **a few are much longer than the rest**
-— struck September 2, 2026 when a third arrived, and struck rather than
+— struck September 1, 2026 when a third arrived, and struck rather than
 incremented because a count of a growing set is the derived fact the rule at the
 top of this file forbids. Each is longer for a stated reason:
 
@@ -187,13 +187,14 @@ different sections and the stub says which — a reader arriving from
 `settings.py` on `§2.4` should not have to guess where the reasoning went.
 (~~Eleven code comments~~ — sixteen files at the August 28 recount.)
 
-`bill-as-a-model-plan.md`, stubbed September 2, 2026, for `admin-mfa-plan.md`'s
+`bill-as-a-model-plan.md`, stubbed September 1, 2026, for `admin-mfa-plan.md`'s
 reason and more so: fifty files cite it and eight by section, because nine
 increments each left a migration, a guard or a service explaining itself. Its
 stub maps `§2` and *decision 4* — the two the code leans on — and reduces the
-increments to one line each. **It is the first stub here for work that has not
-been deployed**, and says so in its first sentence rather than leaving a reader
-to assume; the narrative in `roadmap-history.md` opens the same way.
+increments to one line each. ~~**It is the first stub here for work that has not
+been deployed**~~ — it was, for four hours, and deployed the same evening as
+`DEPLOYED-2026-09-01/2247`. Both it and the narrative say so in their first
+sentence, which is the thing worth keeping from having briefly been true.
 
 **The `.html` mockups** — `agenda`, `archive`, `dashboard`, `projects`,
 `side-nav`, `tasks` from the Tailwind overhaul, and `landing`, `shell` from the

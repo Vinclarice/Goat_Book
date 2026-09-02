@@ -95,7 +95,7 @@
             }
           }
         },
-        "description": "One bill, for its own page.\n\n**The surface moves to Money before the model does.** A bill was opened at\n`/app/tasks/{id}` until August 31, 2026, borrowing the task detail page --\nwhich spent that morning being taught to call itself *Bill detail*, hide\nPriority, Area and Checklist, and link back here, because none of it was\ntrue for a bill. `bill-as-a-model-plan.md` makes the borrowing impossible:\na bill that is not an `Item` has no `/tasks/{id}` to borrow. Moving the\npage first keeps the flip from having to invent one at the same moment it\nchanges what a bill is.\n\n**On the write path's key, not a new one.** `PATCH`, `POST /pay` and\n`DELETE` already live on `entry/{id}`; a read at a second address for\nthe same thing is how two spellings of one resource start.\n\n**A plain task is not found here.** Answering for one would make *is this a\nbill* a question every caller has to ask afterwards, and the page has no\nfields for a task.",
+        "description": "One bill, for its own page.\n\n**The surface moves to Money before the model does.** A bill was opened at\n`/app/tasks/{id}` until August 31, 2026, borrowing the task detail page --\nwhich spent that morning being taught to call itself *Bill detail*, hide\nPriority, Area and Checklist, and link back here, because none of it was\ntrue for a bill. `bill-as-a-model-plan.md` makes the borrowing impossible:\na bill that is not an `Item` has no `/tasks/{id}` to borrow. Moving the\npage first keeps the flip from having to invent one at the same moment it\nchanges what a bill is.\n\n**On the write path's key, not a new one.** `PATCH`, `POST /pay` and\n`DELETE` already live on `entry/{bill_id}`; a read at a second address for\nthe same thing is how two spellings of one resource start.\n\n**A plain task is not found here.** Answering for one would make *is this a\nbill* a question every caller has to ask afterwards, and the page has no\nfields for a task.",
         "security": [
           {
             "SessionAuthIfLoggedIn": []
@@ -4411,7 +4411,7 @@
         "type": "object"
       },
       "AgendaBillOut": {
-        "description": "A bill as the agenda and the day carry it: what a bill is, and none of\nwhat a task is.\n\n**`id`, and it is a `Bill`'s.** It was `task_id` from August 31 to\nSeptember 2, 2026 -- deliberately, so that the commit changing what a bill\n*is* did not also carry a mechanical rename. See `agenda._agenda_bill_out`.",
+        "description": "A bill as the agenda and the day carry it: what a bill is, and none of\nwhat a task is.\n\n**`id`, and it is a `Bill`'s.** It was `task_id` from August 31 to\nSeptember 1, 2026 -- deliberately, so that the commit changing what a bill\n*is* did not also carry a mechanical rename. See `agenda._agenda_bill_out`.",
         "properties": {
           "id": {
             "title": "Id",

@@ -171,7 +171,7 @@ class AgendaBillOut(Schema):
     what a task is.
 
     **`id`, and it is a `Bill`'s.** It was `task_id` from August 31 to
-    September 2, 2026 -- deliberately, so that the commit changing what a bill
+    September 1, 2026 -- deliberately, so that the commit changing what a bill
     *is* did not also carry a mechanical rename. See `agenda._agenda_bill_out`.
     """
 

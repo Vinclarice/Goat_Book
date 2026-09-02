@@ -183,7 +183,7 @@ class RestoreDrillCoversTheSchemaTest(SimpleTestCase):
         self.assertEqual(gone, set(), "listed as undrilled but no longer declared")
 
     def test_the_script_checks_nothing_that_no_longer_exists(self):
-        """**The direction this file was missing**, found on September 2, 2026
+        """**The direction this file was missing**, found on September 1, 2026
         by deleting a model.
 
         `test_every_constraint_is_drilled_or_deliberately_not` walks *declared →

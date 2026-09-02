@@ -193,7 +193,7 @@ done
 # this constraint as the backstop it is deliberately in front of.
 # **A third one was here and is gone.** `money_line_amount_not_negative`
 # guarded a number somebody plans a month against; it was
-# `bill_amount_not_negative`, then `MoneyLine`'s, and on September 2, 2026 the
+# `bill_amount_not_negative`, then `MoneyLine`'s, and on September 1, 2026 the
 # model went with increment 8 of design/bill-as-a-model-plan.md. What replaced
 # it guards the same number on the record that carries it now:
 # `bill_amount_not_negative` on `Bill`, checked in the same loop.

@@ -464,14 +464,14 @@ re-add it here.
   mode a commitment is, while `design-concept.md` calls the distinction
   load-bearing. Deliberate, and recorded at the function.
 - **Does replaying missed bills produce a wall of arrears? — promoted
-  September 2, 2026 from the two entries this replaces.** `bills.catch_up`
+  September 1, 2026 from the two entries this replaces.** `bills.catch_up`
   creates every occurrence a live series has come to owe, which is the
   life-cycle difference that justified `Bill` existing at all. **The risk was
   named before it was built and was deliberately not designed around**:
   `roadmap.md`'s own words for it were *"a page full of arrears nobody will
   action"*.
 
-  **Measured, September 2, 2026**: one untouched monthly series produces **six**
+  **Measured, September 1, 2026**: one untouched monthly series produces **six**
   further unpaid rows by March 2027. The month page spreads those across six
   months and would read fine; the agenda and the day show open bills together,
   so **the agenda is the surface to watch**.
@@ -566,7 +566,7 @@ copy. [`README.md`](README.md) owns the eviction rule this applies.
 - ~~**Removing user data from Sentry and Resend when an account goes**~~ — **closed August 26, 2026** as [`security-and-resilience-plan.md`](security-and-resilience-plan.md) §2.2. It sat here as live work for two days afterwards.
 - ~~**Three genuinely open decisions in `commercial-blueprint.md` Part 9**~~ — **Part 9 closed August 22, 2026, all five answered.** It sat here as live work for six days afterwards, and `commercial-blueprint.md`'s own header said so the whole time.
 - ~~**The task core's coherence**~~ — closed August 31, 2026, all six repairs, from *"developed more in bits and pieces"*; the record is [`coherence-audit-2026-08-30.md`](coherence-audit-2026-08-30.md) and its two survivors are promoted above.
-- ~~**A bill earns its own model**~~ — closed September 2, 2026, all nine increments, **and not yet deployed**; it overturned `money-module-plan.md`'s refusal by satisfying `architecture-trajectory.md` §4 rather than waiving it. Its surviving reversal condition is promoted above.
+- ~~**A bill earns its own model**~~ — closed and deployed September 1, 2026 (`DEPLOYED-2026-09-01/2247`, no bird), all nine increments; it overturned `money-module-plan.md`'s refusal by satisfying `architecture-trajectory.md` §4 rather than waiving it. Its surviving reversal condition is promoted above.
 - ~~**Should money skip a missed period at all?**~~ — answered September 1, 2026 by measuring it, and the answer was worse than the question assumed: a repeating bill nobody touched produced no further occurrences at all. Replayed by `bills.catch_up`; the arrears risk it named is promoted above.
 - ~~**A recurrence falling due exactly today is skipped**~~ — answered August 28, 2026, the day it was raised: `>` is correct and the docstring was wrong. The reasoning lives in `_advance_due_date` and in `test_the_slot_the_completion_lands_on_is_not_respawned`, which is where code cites its own decisions; production behaviour never changed. The money question it turned up is promoted above.
 

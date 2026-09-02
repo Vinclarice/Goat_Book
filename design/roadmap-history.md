@@ -16,15 +16,30 @@ nineteen journeys. Worth saying rather than quietly filling in, because this is
 the one file the index calls unable to go stale — and it cannot, but it can be
 incomplete, which reads the same to somebody looking for what happened.
 
-## A bill earns its own model — August 31 – September 2, 2026, **not yet deployed**
+## A bill earns its own model — August 31 – September 1, 2026, `DEPLOYED-2026-09-01/2247`, no bird
 
-Nine increments, six migrations, in the repository and **not in production** at
-the time of writing. The deploy carries `0055`–`0060`, of which one deletes rows
-(`0057`) and one drops a table (`0059`); until it runs, production is still on
-`MoneyLine` and a bill there is still a task. Written up now rather than after
-the deploy because the work itself is finished and the plan it came from is a
-stub — but nothing here is live, and a reader should not read it as though it
-were.
+Sixteen commits and six migrations, deployed at 22:47 EDT (UTC-04:00) on
+September 1, 2026 — `DEPLOYED-2026-09-01/2247`, image `clarice:d0a249f70354`.
+Two of the migrations changed data irreversibly: `0057` deleted the tasks that
+were bills, and `0059` dropped the `MoneyLine` table.
+
+**Verified after the deploy rather than assumed.** The table is gone from
+`information_schema`, all three `Bill` constraints are present, `migrate --check`
+is clean, and the one real bill converted intact — *Dell Financial (Commenity)*,
+due August 20, owed, 100.00 USD, with its series — alongside 23 untouched tasks
+and one account. `catch_up_bills --dry-run` answers *would create 0*, which is
+the right answer: that bill's next occurrence is September 20 and is not owed
+yet.
+
+**One thing was not verified and is named rather than assumed**: the hourly cron
+entry itself. Reading root's crontab needs a password that is Vince's, and this
+host does not log cron to the journal — the digest and the evening nudge do not
+appear there either, so their absence proves nothing in either direction.
+
+**No bird**, and held rather than refused, for the reason the Money module's own
+codename is held: `module-score.md` still reads *not yet*, this is a modelling
+change underneath a module nobody has used much, and `CLAUDE.md`'s rule is that
+when it is arguable it is not a release.
 
 **It began as one sentence with two things in it.** Vince, after using the
 repaired Money module and adding a *Dell Community* account: *"I've added Dell

@@ -13,7 +13,7 @@ morning.
 earlier, in the same deploy. `0057` asserts the table is empty afterwards for
 exactly this reason.
 
-**Measured against production before this was written**, September 2, 2026: one
+**Measured against production before this was written**, September 1, 2026: one
 `MoneyLine`, one task carrying it, no undated bill and no figure without a
 completion — so neither `0055`'s refusal nor `0057`'s can fire there, and this
 drops a table with nothing in it.

@@ -352,7 +352,7 @@ def _agenda_bill_out(bill):
     has not got, and the SPA would offer to file it in an area.
 
     **`id` is the `Bill`'s.** It was spelled `task_id` from August 31 to
-    September 2, 2026 -- the name was kept across the flip on purpose, because a
+    September 1, 2026 -- the name was kept across the flip on purpose, because a
     mechanical rename across the server, the contract, four routes and the SPA
     is the wrong thing to carry into the commit that changes what a bill is. It
     read oddly for two days and then stopped.

@@ -61,7 +61,12 @@ function Section({
             className="flex flex-wrap items-baseline justify-between gap-3 rounded-lg border border-border px-3 py-2"
           >
             <span className="min-w-0">
-              <Link to={`/tasks/${line.id}`} className="hover:underline">
+              {/* **`/money/bills/`, not `/tasks/`.** These rows carried task
+                  ids until the flip and this link was never moved with them,
+                  so a bill's id was being used to open a *task* -- and the two
+                  sequences are independent, so it opened an unrelated task or
+                  a not-found page. Fixed September 2, 2026. */}
+              <Link to={`/money/bills/${line.id}`} className="hover:underline">
                 {line.payee}
               </Link>
               <span

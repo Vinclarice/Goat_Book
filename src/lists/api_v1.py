@@ -902,7 +902,11 @@ class CategoryIn(Schema):
 def money_categories(request):
     """This owner's categories, seeded on the first ask."""
     categories = services.categories_for(request.user).annotate(
-        used=Count("lines")
+        # `bills`, not `lines`. `lines` was `MoneyLine`'s reverse accessor and
+        # went with the model in increment 8; `Bill.category` is `bills`. A
+        # string is invisible to a rename, so this 500'd the Categories screen
+        # on load and on save until September 2, 2026.
+        used=Count("bills")
     )
     return [
         {"id": each.id, "name": each.name, "line_count": each.used}
@@ -939,7 +943,7 @@ def rename_money_category(request, category_id: int, payload: CategoryIn):
     return {
         "id": category.id,
         "name": category.name,
-        "line_count": category.lines.count(),
+        "line_count": category.bills.count(),
     }
 
 
@@ -1000,7 +1004,15 @@ def money_landing(request):
         # two disagreeing is a 500, not a missing key. It happened on August
         # 31, 2026 with these exact two fields, past 2009 green Django tests,
         # because every test drove `landing_for` and none made a request.
-        # `TheLandingEndpointTest` now does.
+        #
+        # ~~`TheLandingEndpointTest` now does.~~ **It did, for this endpoint,
+        # and that was the mistake**: the note and its test both covered the
+        # response they were written about. `AccountOut` gained `next_payment`
+        # on September 1 and this same defect 500'd account creation, in this
+        # same file, with this paragraph already here. **A note is not a
+        # control and a test of one endpoint is not a rule.**
+        # `test_the_money_endpoints_answer.EveryDeclaredFieldIsSentTest` reads
+        # every money schema against what its endpoint actually sends.
         "line_count": found.line_count,
         "account_count": found.account_count,
     }
@@ -1154,8 +1166,17 @@ def add_account(request, payload: NewAccountIn):
         "kind": account.kind,
         "currency": account.currency,
         "owes": account.owes,
+        # Null for all three, and none of them is a guess: an account created a
+        # moment ago has no reading this month, none last month, and nothing
+        # filed against it.
         "balance": None,
         "previous": None,
+        # **Added September 2, 2026 after this 500'd in production.**
+        # `AccountOut` gained `next_payment` in increment 7 and this dict did
+        # not, so Ninja refused the response *after* `create_account` had
+        # committed -- the account existed, the caller saw a 500, and retrying
+        # answered "you already have one called that".
+        "next_payment": None,
     }
 
 

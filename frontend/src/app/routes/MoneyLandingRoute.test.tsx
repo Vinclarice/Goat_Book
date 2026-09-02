@@ -223,3 +223,57 @@ describe("MoneyLandingRoute", () => {
     expect(await screen.findByRole("button", { name: /Try again/i })).toBeInTheDocument();
   });
 });
+
+describe("MoneyLandingRoute, linking where a bill lives", () => {
+  /* **Defect 3, found in production September 2, 2026.** These rows carried
+     task ids before the flip and the link was never moved with them, so a
+     bill's id opened `/tasks/{id}`. Task and bill ids are independent
+     sequences, so it showed an unrelated task or a not-found page -- a wrong
+     answer that looks like a right one, which is the worst kind. */
+  it("sends an overdue bill to its own page, not to a task", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(landing({ overdue: [line({ id: 9, payee: "Landlord" })] })),
+    );
+
+    renderLanding();
+
+    expect(
+      await screen.findByRole("link", { name: "Landlord" }),
+    ).toHaveAttribute("href", "/money/bills/9");
+  });
+
+  it("does the same for what is due soon and what is renewing", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        landing({
+          due_soon: [line({ id: 4, payee: "Internet" })],
+          renewing_soon: [line({ id: 7, payee: "Adobe" })],
+        }),
+      ),
+    );
+
+    renderLanding();
+
+    expect(await screen.findByRole("link", { name: "Internet" })).toHaveAttribute(
+      "href",
+      "/money/bills/4",
+    );
+    expect(screen.getByRole("link", { name: "Adobe" })).toHaveAttribute(
+      "href",
+      "/money/bills/7",
+    );
+  });
+
+  it("links nowhere near /tasks/", async () => {
+    /* Asserted as an absence too: the id is a number either way, so a link to
+       the wrong place renders perfectly and only fails when clicked. */
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(landing({ overdue: [line({ id: 9, payee: "Landlord" })] })),
+    );
+
+    renderLanding();
+
+    const link = await screen.findByRole("link", { name: "Landlord" });
+    expect(link.getAttribute("href")).not.toContain("/tasks/");
+  });
+});

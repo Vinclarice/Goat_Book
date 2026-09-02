@@ -99,15 +99,22 @@ def month_from_bills(owner, day):
     received = defaultdict(Decimal)
     unpriced = 0
     for row in rows:
+        incoming = row.direction == Direction.IN
         if row.amount is None:
             # Counted whether or not it is settled: "the water bill, whatever
             # it came to" is as unpriced after paying it as before.
             unpriced += 1
+            # **But a payment against it is still money that moved.** This
+            # `continue` used to come first, so an unpriced bill settled for an
+            # explicit 50 was counted as unpriced and then skipped -- and 50
+            # vanished from *already paid*. Both facts are true at once: what it
+            # was expected to come to is unknown, and what went out is 50.
+            if row.paid_at is not None and row.paid_amount is not None:
+                (received if incoming else paid)[row.currency] += row.paid_amount
             continue
         # Four buckets, not two. Direction decides which pair, settlement
         # decides which of the pair -- a salary in the *still to pay* column
         # would make every month look catastrophic.
-        incoming = row.direction == Direction.IN
         if row.paid_at is not None:
             # What actually moved, falling back to what was expected for rows
             # settled without a figure -- which is a real state here, see
@@ -208,9 +215,15 @@ def landing_from_bills(owner, *, today):
     same table, which is the same rule said twice.
     """
     rows = list(
-        Bill.objects.filter(owner=owner, direction=Direction.OUT).select_related(
-            "series"
-        )
+        Bill.objects.filter(owner=owner, direction=Direction.OUT)
+        .select_related("series")
+        # **Ordered because the yearly total depends on it.** That figure takes
+        # the most recent priced occurrence per series, and "most recent" is not
+        # a property an unordered query has -- Postgres would answer in whatever
+        # order it liked, so which month's price a person saw would be
+        # arbitrary and would change. Added September 2, 2026, with the fix that
+        # created the dependency.
+        .order_by("due_date", "id")
     )
     open_rows = [row for row in rows if row.paid_at is None and row.due_date]
     overdue = sorted(
@@ -232,11 +245,27 @@ def landing_from_bills(owner, *, today):
         ),
         key=lambda row: row.due_date,
     )
-    yearly = defaultdict(Decimal)
+    # **What the standing arrangements cost a year, counted once per
+    # arrangement.** This iterated every row until September 2, 2026, so a
+    # monthly bill first recorded at 10 and later at 12 reported 264 a year --
+    # (10 + 12) x 12 -- for one subscription. **Increment 6 made it inflate on a
+    # schedule**, because `catch_up` adds an occurrence a month to every live
+    # series, and this is the number a person is meant to act on when deciding
+    # what to cancel.
+    #
+    # **The most recent priced occurrence is the evidence**, not the oldest and
+    # not the series template: an occurrence is what a month actually cost, and
+    # the latest one is the best available claim about what the next will be.
+    # `rows` is ordered by date, so the last write per series wins.
+    latest_priced = {}
     for row in rows:
-        cadence = row.series.cadence if row.series_id else None
-        times = TIMES_A_YEAR.get(cadence)
-        if times is None or row.amount is None:
+        if row.series_id is None or row.amount is None:
+            continue
+        latest_priced[row.series_id] = row
+    yearly = defaultdict(Decimal)
+    for row in latest_priced.values():
+        times = TIMES_A_YEAR.get(row.series.cadence)
+        if times is None:
             continue
         yearly[row.currency] += row.amount * times
     owed, held, owed_change, held_change, unread = _balances(owner, today)

@@ -34,7 +34,14 @@ SRC = pathlib.Path(__file__).resolve().parents[2]
 #: `test_the_modules_this_guards_still_exist` is what said so, by failing, which
 #: is the whole reason it is there. A guard over files that have moved passes
 #: over nothing.
-MONEY_MODULES = ("money/services.py", "money/reads.py", "money/api_v1.py")
+MONEY_MODULES = (
+    "money/models.py",
+    "money/services.py",
+    "money/reads.py",
+    "money/api_v1.py",
+    "money/admin.py",
+    "money/management/commands/catch_up_bills.py",
+)
 
 #: Where shared calendar vocabulary lives now. Both cores may depend on this;
 #: neither owns it.
@@ -114,3 +121,31 @@ class MoneyDoesNotReachIntoTheTaskCoreTest(SimpleTestCase):
         for path in MONEY_MODULES:
             with self.subTest(module=path):
                 self.assertTrue((SRC / path).exists(), f"{path} has moved")
+
+    def test_no_money_module_imports_the_task_core_at_all(self):
+        """**The strongest form, and it became true on September 2, 2026.**
+
+        The four rules above each refuse one *kind* of borrowing. This refuses
+        the category: after step 5 moved the account and category writes across,
+        not one module in `money/` imports anything from `lists`. What money
+        shares with the task core is `clarice.recurrence` and `clarice.errors`,
+        which belong to neither.
+
+        **Its tests are exempt and deliberately so.** `money/tests/` still
+        imports `Item` and `lists.services` because some of what money promises
+        is an *asymmetry* -- `test_a_task_still_skips` asserts that the task
+        core did **not** get the missed-period replay, and it cannot assert that
+        without a task. A test reaching across is evidence about the boundary;
+        a module reaching across is a hole in it.
+        """
+        for path in MONEY_MODULES:
+            offenders = sorted({module for module, _ in _imports(path)
+                                if module.split(".")[0] == "lists"})
+            with self.subTest(module=path):
+                self.assertEqual(
+                    offenders,
+                    [],
+                    f"{path} imports {offenders}. Money is its own app and owns "
+                    "its own models; what it genuinely shares with the task core "
+                    "lives in clarice/.",
+                )

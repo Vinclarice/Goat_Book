@@ -437,6 +437,19 @@ def callers_in_module(modname, name, sources):
     # tags and filters, never by name, so there is nothing here to miss and a
     # false *live* is the one error this file cannot afford: it retires a
     # declaration on a function that has still never run.
+    #
+    # **A Python comment does the same thing and is not excluded**, found
+    # September 2, 2026: a sentence in `accounts/export.py` about what the sweep
+    # walks wrote the function's name with parentheses, and this promoted it to
+    # live. The comment was reworded, which is the cheap fix each time.
+    #
+    # **The real fix is to strip comments before matching**, and it is not done
+    # here on purpose. Measured before deciding: seventy-three names across
+    # `src/` are written `like_this(` inside a comment, so the change is not
+    # small, and this scan protects every app. It is worth doing deliberately
+    # rather than as a side effect of an app extraction -- and until it is, the
+    # symptom is legible: a function you know is dark reported as live, with its
+    # only mention in prose.
     return [
         path
         for path, text in sources.items()

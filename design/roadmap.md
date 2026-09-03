@@ -115,9 +115,12 @@ re-add it here.
   them up, and a third moves the content types so a permission granted on a
   bill survives the app label changing. The tables are still `lists_*`:
   renaming them is a physical migration over financial history bought for
-  consistency in `psql`, and it is **declined rather than pending**. What is
+  consistency in `psql`, and it is **declined rather than pending**. ~~What is
   genuinely open is smaller — the account and category *services* still sit in
-  `lists/services.py` while their models are in `money`.
+  `lists/services.py` while their models are in `money`.~~ **They moved the same
+  day, and with them the last of it**: no module in `money/` imports anything
+  from `lists`, which a guard now asserts. What money shares with the task core
+  is `clarice.recurrence` and `clarice.errors`, and neither core owns those.
 
   **Two decisions were taken and both are Vince's.** The shared rail **keeps**
   each module's surfaces rather than each module owning a column — the escape

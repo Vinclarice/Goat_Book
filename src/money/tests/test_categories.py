@@ -27,7 +27,6 @@ from django.test import TestCase
 
 from accounts.models import User
 from money import services as bills
-from lists import services
 from money.models import MoneyCategory
 
 AUGUST = datetime.date(2026, 8, 10)
@@ -42,51 +41,51 @@ class CategoriesTest(TestCase):
     def test_a_new_person_starts_with_a_usable_list(self):
         """Not empty. Somebody who came to look at their bills should not first
         have to invent a taxonomy."""
-        categories = services.categories_for(self.user)
+        categories = bills.categories_for(self.user)
 
         self.assertIn("Housing", [each.name for each in categories])
         self.assertIn("Subscriptions", [each.name for each in categories])
 
     def test_seeding_happens_once_however_often_it_is_asked(self):
-        services.categories_for(self.user)
-        services.categories_for(self.user)
+        bills.categories_for(self.user)
+        bills.categories_for(self.user)
 
         self.assertEqual(
             MoneyCategory.objects.filter(owner=self.user).count(),
-            len(services.SEED_CATEGORIES),
+            len(bills.SEED_CATEGORIES),
         )
 
     def test_the_seeds_are_ordinary_rows(self):
         """The whole point of a table rather than an enum: a seed can be
         renamed and deleted like anything else, with no special case."""
-        housing = services.categories_for(self.user).get(name="Housing")
+        housing = bills.categories_for(self.user).get(name="Housing")
 
-        services.rename_category(housing, "Home")
+        bills.rename_category(housing, "Home")
 
         housing.refresh_from_db()
         self.assertEqual(housing.name, "Home")
 
     def test_a_person_can_add_their_own(self):
-        added = services.add_category(self.user, name="Boat")
+        added = bills.add_category(self.user, name="Boat")
 
-        self.assertIn("Boat", [each.name for each in services.categories_for(self.user)])
+        self.assertIn("Boat", [each.name for each in bills.categories_for(self.user)])
         self.assertEqual(added.owner, self.user)
 
     def test_two_categories_cannot_share_a_name(self):
-        services.categories_for(self.user)
+        bills.categories_for(self.user)
 
-        with self.assertRaises(services.TaskConflict):
-            services.add_category(self.user, name="Housing")
+        with self.assertRaises(bills.BillConflict):
+            bills.add_category(self.user, name="Housing")
 
     def test_one_persons_categories_are_their_own(self):
         other = User.objects.create_user("bob", "bob@example.com", "a password")
-        services.categories_for(self.user)
+        bills.categories_for(self.user)
 
-        services.categories_for(other)
+        bills.categories_for(other)
 
         self.assertEqual(
             MoneyCategory.objects.filter(owner=self.user).count(),
-            len(services.SEED_CATEGORIES),
+            len(bills.SEED_CATEGORIES),
         )
 
     def test_a_bill_starts_uncategorised(self):
@@ -101,7 +100,7 @@ class CategoriesTest(TestCase):
         bill = bills.record(
             self.user, payee="Landlord", amount=Decimal("1200.00"), due_date=AUGUST
         )
-        housing = services.categories_for(self.user).get(name="Housing")
+        housing = bills.categories_for(self.user).get(name="Housing")
 
         bills.update(bill, category=housing)
 
@@ -115,22 +114,22 @@ class CategoriesTest(TestCase):
         bill = bills.record(
             self.user, payee="Landlord", amount=Decimal("1200.00"), due_date=AUGUST
         )
-        housing = services.categories_for(self.user).get(name="Housing")
+        housing = bills.categories_for(self.user).get(name="Housing")
         bills.update(bill, category=housing)
 
-        services.delete_category(housing)
+        bills.delete_category(housing)
 
         bill.refresh_from_db()
         self.assertIsNone(bill.category)
         self.assertEqual(bill.payee, "Landlord")
 
     def test_renaming_to_an_existing_name_is_refused(self):
-        categories = services.categories_for(self.user)
+        categories = bills.categories_for(self.user)
         housing = categories.get(name="Housing")
 
-        with self.assertRaises(services.TaskConflict):
-            services.rename_category(housing, "Utilities")
+        with self.assertRaises(bills.BillConflict):
+            bills.rename_category(housing, "Utilities")
 
     def test_a_category_needs_a_name(self):
-        with self.assertRaises(services.TaskConflict):
-            services.add_category(self.user, name="   ")
+        with self.assertRaises(bills.BillConflict):
+            bills.add_category(self.user, name="   ")

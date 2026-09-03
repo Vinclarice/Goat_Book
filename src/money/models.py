@@ -195,7 +195,7 @@ class MoneyCategory(models.Model):
     **Seeded on first use, with ordinary rows.** A person opening the module
     finds a usable list rather than an empty one and a form — and because the
     seeds are rows like any other, renaming or deleting one needs no special
-    case. `services.SEED_CATEGORIES` holds the starting set.
+    case. `bills.SEED_CATEGORIES` holds the starting set.
 
     **A label, not a container.** The bill points here and the reference is
     `SET_NULL`: deleting *Housing* must not delete the rent. That is the

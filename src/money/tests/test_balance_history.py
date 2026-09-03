@@ -25,7 +25,7 @@ from decimal import Decimal
 from django.test import TestCase
 
 from accounts.models import User
-from lists import services
+from money import services as bills
 from money import reads as money_reader
 from money.models import AccountKind
 
@@ -43,11 +43,11 @@ class BalanceHistoryTest(TestCase):
         )
 
     def account(self, name="Car loan", kind=AccountKind.LOAN):
-        return services.create_account(self.user, name=name, kind=kind)
+        return bills.create_account(self.user, name=name, kind=kind)
 
     def readings(self, account, figures, start_month=3, year=2026):
         for offset, figure in enumerate(figures):
-            services.record_balance(
+            bills.record_balance(
                 account,
                 on_date=month(year, start_month + offset),
                 amount=Decimal(figure),
@@ -163,6 +163,6 @@ class BalanceHistoryTest(TestCase):
 
     def test_one_persons_history_is_their_own(self):
         other = User.objects.create_user("bob", "bob@example.com", "a password")
-        services.create_account(other, name="Theirs")
+        bills.create_account(other, name="Theirs")
 
         self.assertEqual([row.account.name for row in self.history().rows], [])

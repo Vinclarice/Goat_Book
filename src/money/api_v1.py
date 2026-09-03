@@ -35,7 +35,6 @@ from accounts.auth import SessionAuthIfLoggedIn
 from clarice.clocks import today_for
 from clarice.errors import Conflict
 from clarice.recurrence import Recurrence
-from lists import services
 from money.models import Account, Bill, Direction, MoneyCategory
 from money import reads as money_reader
 from money import services as bills
@@ -662,7 +661,7 @@ class CategoryIn(Schema):
 )
 def money_categories(request):
     """This owner's categories, seeded on the first ask."""
-    categories = services.categories_for(request.user).annotate(
+    categories = bills.categories_for(request.user).annotate(
         # `bills`, not `lines`. `lines` was `MoneyLine`'s reverse accessor and
         # went with the model in increment 8; `Bill.category` is `bills`. A
         # string is invisible to a rename, so this 500'd the Categories screen
@@ -680,8 +679,8 @@ def money_categories(request):
 )
 def add_money_category(request, payload: CategoryIn):
     try:
-        category = services.add_category(request.user, name=payload.name)
-    except services.TaskConflict as error:
+        category = bills.add_category(request.user, name=payload.name)
+    except bills.BillConflict as error:
         raise HttpError(409, str(error))
     return 201, {"id": category.id, "name": category.name, "line_count": 0}
 
@@ -698,8 +697,8 @@ def rename_money_category(request, category_id: int, payload: CategoryIn):
     if category is None:
         raise HttpError(404, "No such category.")
     try:
-        services.rename_category(category, payload.name)
-    except services.TaskConflict as error:
+        bills.rename_category(category, payload.name)
+    except bills.BillConflict as error:
         raise HttpError(409, str(error))
     return {
         "id": category.id,
@@ -721,7 +720,7 @@ def remove_money_category(request, category_id: int):
     ).first()
     if category is None:
         raise HttpError(404, "No such category.")
-    services.delete_category(category)
+    bills.delete_category(category)
     return 204, None
 
 
@@ -912,14 +911,14 @@ def months_accounts(request, day: date):
 @router.post("/money/accounts", response={201: AccountOut}, auth=SessionAuthIfLoggedIn())
 def add_account(request, payload: NewAccountIn):
     try:
-        account = services.create_account(
+        account = bills.create_account(
             request.user,
             name=payload.name,
             kind=payload.kind,
             currency=payload.currency,
             owes=payload.owes,
         )
-    except services.TaskConflict as error:
+    except bills.BillConflict as error:
         raise HttpError(409, str(error))
     return 201, {
         "id": account.id,
@@ -966,14 +965,14 @@ def record_balances(request, payload: BalancesIn):
                 # which ids exist.
                 raise HttpError(400, "That is not one of your accounts.")
             try:
-                services.record_balance(
+                bills.record_balance(
                     account,
                     on_date=payload.on_date,
                     amount=Decimal(reading.amount),
                 )
             except InvalidOperation:
                 raise HttpError(409, f"{account.name}: that is not a number.")
-            except services.TaskConflict as error:
+            except bills.BillConflict as error:
                 raise HttpError(409, f"{account.name}: {error}")
     return months_accounts(request, payload.on_date)
 

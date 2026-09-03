@@ -19,7 +19,6 @@ from decimal import Decimal
 from django.test import Client, TestCase
 
 from accounts.models import User
-from lists import services
 from money import services as bills
 from money.models import AccountKind, Bill
 
@@ -91,14 +90,14 @@ class TheCategoriesScreenAnswersTest(MoneyEndpointTest):
 
     Both the listing and the rename used it, so the screen 500'd on load and on
     save. No test noticed, because every category test drove
-    `services.categories_for`, which does not count anything.
+    `bills.categories_for`, which does not count anything.
     """
 
     def test_listing_categories_answers(self):
         self.assertEqual(self.client.get("/api/v1/money/categories").status_code, 200)
 
     def test_a_category_counts_the_bills_filed_under_it(self):
-        housing = services.add_category(self.user, name="Housing")
+        housing = bills.add_category(self.user, name="Housing")
         self.bill(category=housing)
         self.bill(payee="Water", category=housing)
         self.bill(payee="Unfiled")
@@ -109,7 +108,7 @@ class TheCategoriesScreenAnswersTest(MoneyEndpointTest):
         self.assertEqual(rows["Housing"]["line_count"], 2)
 
     def test_an_empty_category_counts_nothing(self):
-        services.add_category(self.user, name="Housing")
+        bills.add_category(self.user, name="Housing")
 
         rows = {row["name"]: row for row in self.client.get(
             "/api/v1/money/categories").json()}
@@ -117,7 +116,7 @@ class TheCategoriesScreenAnswersTest(MoneyEndpointTest):
         self.assertEqual(rows["Housing"]["line_count"], 0)
 
     def test_renaming_a_category_answers_with_its_count(self):
-        housing = services.add_category(self.user, name="Housing")
+        housing = bills.add_category(self.user, name="Housing")
         self.bill(category=housing)
 
         response = self.client.patch(
@@ -132,8 +131,8 @@ class TheCategoriesScreenAnswersTest(MoneyEndpointTest):
 
     def test_only_this_owner_s_bills_are_counted(self):
         bob = User.objects.create_user("bob", "bob@example.com", PASSWORD)
-        housing = services.add_category(self.user, name="Housing")
-        theirs = services.add_category(bob, name="Housing")
+        housing = bills.add_category(self.user, name="Housing")
+        theirs = bills.add_category(bob, name="Housing")
         bills.record(bob, payee="Theirs", due_date=AUGUST, category=theirs)
 
         rows = {row["name"]: row for row in self.client.get(
@@ -271,14 +270,14 @@ class TheHandBuiltResponsesTest(MoneyEndpointTest):
     """
 
     def test_every_money_read_answers(self):
-        housing = services.add_category(self.user, name="Housing")
-        card = services.create_account(
+        housing = bills.add_category(self.user, name="Housing")
+        card = bills.create_account(
             self.user, name="Dell Community", kind=AccountKind.CARD
         )
         paid = self.bill(amount=Decimal("80.00"), category=housing, account=card)
         bills.settle(paid, today=AUGUST)
         self.bill(payee="Water", amount=None, repeats=False)
-        services.record_balance(
+        bills.record_balance(
             card, on_date=datetime.date(2026, 8, 1), amount=Decimal("220.00")
         )
 
@@ -294,8 +293,8 @@ class TheHandBuiltResponsesTest(MoneyEndpointTest):
                 self.assertEqual(response.status_code, 200, response.content[:200])
 
     def test_every_money_write_answers(self):
-        card = services.create_account(self.user, name="Amex", kind=AccountKind.CARD)
-        housing = services.add_category(self.user, name="Housing")
+        card = bills.create_account(self.user, name="Amex", kind=AccountKind.CARD)
+        housing = bills.add_category(self.user, name="Housing")
 
         created = self.client.post(
             "/api/v1/money/bills",
@@ -386,7 +385,7 @@ class EveryDeclaredFieldIsSentTest(MoneyEndpointTest):
     def test_a_listed_account_sends_every_field_it_declares(self):
         from money.api_v1 import AccountOut
 
-        services.create_account(self.user, name="Amex", kind=AccountKind.CARD)
+        bills.create_account(self.user, name="Amex", kind=AccountKind.CARD)
 
         rows = self.client.get(
             f"/api/v1/money/accounts/{AUGUST.isoformat()}").json()["accounts"]

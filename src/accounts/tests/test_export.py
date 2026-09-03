@@ -221,3 +221,74 @@ class ExportTest(TestCase):
         data = json.loads(self.read(self.alice, "clarice.json"))
 
         self.assertEqual(data["exported_at"], self.now.isoformat())
+
+
+class EveryOwnedAppIsListedTest(TestCase):
+    """`OWNED_APPS` is a hand-written list, and a hand-written list of apps
+    rots the same way a hand-written list of models does.
+
+    **It rotted on September 2, 2026 and nothing failed.** Step 4 of the Money
+    extraction changed five models' app label from `lists` to `money`. They left
+    the app `owned_models()` walks, so it stopped returning them, so
+    `test_every_owned_model_is_named_somewhere_in_the_export` above began
+    passing over five models instead of checking them. The export itself kept
+    working -- `EXPORT_KEYS` still named them and the payload still built them --
+    which is why nobody noticed: **what broke was the checking, not the thing
+    being checked.**
+
+    That is precisely the failure `owned_models`'s own comment predicts, one
+    level up: it warns that a missing *model* would unhold the promise silently,
+    and an app went missing instead.
+
+    **So the membership rule is derived here rather than trusted.** An app of
+    ours holding a model with a foreign key to `User` holds somebody's rows, and
+    an export that leaves it out is not the departure this product promises.
+    """
+
+    def _first_party_apps_with_an_owner(self):
+        import pathlib
+
+        from django.apps import apps
+        from django.conf import settings
+
+        src = pathlib.Path(settings.BASE_DIR)
+        found = set()
+        for config in apps.get_app_configs():
+            # Ours, not Django's and not a dependency's: `axes`, `admin` and
+            # `otp_totp` all have a user foreign key and none of them holds
+            # anything this account typed.
+            try:
+                path = pathlib.Path(config.path).resolve()
+                path.relative_to(src.resolve())
+            except (ValueError, OSError):
+                continue
+            for model in config.get_models():
+                if model._meta.auto_created:
+                    continue
+                for field in model._meta.get_fields():
+                    if not getattr(field, "many_to_one", False):
+                        continue
+                    if field.related_model is User:
+                        found.add(config.label)
+        return found
+
+    def test_every_first_party_app_with_an_owner_is_exported(self):
+        missing = self._first_party_apps_with_an_owner() - set(export.OWNED_APPS)
+
+        self.assertEqual(
+            missing,
+            set(),
+            f"{sorted(missing)} hold rows belonging to an account and are not "
+            "in OWNED_APPS, so the completeness test above walks past them. "
+            "Add them, or say here why their rows are not somebody's.",
+        )
+
+    def test_the_sweep_finds_the_apps_it_claims_to(self):
+        """A positive control. An empty set is a subset of anything, so the
+        assertion above would pass over a sweep that found nothing at all --
+        which is the shape of the bug it was written for."""
+        found = self._first_party_apps_with_an_owner()
+
+        self.assertIn("money", found)
+        self.assertIn("lists", found)
+        self.assertGreaterEqual(len(found), 4)

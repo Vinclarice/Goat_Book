@@ -150,7 +150,18 @@ EXPORT_KEYS = {
 # The apps whose rows belong to an account. `mind` and the task core both, which
 # is the whole point of the promise -- an export that covered one core would be
 # half a departure.
-OWNED_APPS = ("accounts", "lists", "daily", "routines", "review", "mind")
+#
+# **`money` joined on September 2, 2026 and the guard did not notice it was
+# missing**, which is the failure the comment below describes happening to an
+# app rather than to a model: step 4 changed five models' app label, they left
+# `lists`, and the sweep below stopped returning them. The export kept working
+# -- `EXPORT_KEYS` still named them and `_payload` still built them -- so
+# nothing failed. What stopped was the *checking*.
+#
+# `test_every_owned_app_is_listed_here` now derives this list's membership rule
+# rather than trusting the list, so the next app with an owner cannot be
+# forgotten the same way.
+OWNED_APPS = ("accounts", "lists", "money", "daily", "routines", "review", "mind")
 
 
 # DARK: no production caller. **Deliberately so -- this one holds a published

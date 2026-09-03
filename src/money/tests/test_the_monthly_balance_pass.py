@@ -12,7 +12,7 @@ from decimal import Decimal
 from django.test import Client, TestCase
 
 from accounts.models import User
-from lists import services
+from money import services as bills
 from money.models import AccountKind, BalanceReading
 
 PASSWORD = "correct horse battery staple 47!"
@@ -26,8 +26,8 @@ class TheMonthlyBalancePassTest(TestCase):
         )
         self.client = Client()
         self.client.force_login(self.alice)
-        self.card = services.create_account(self.alice, name="Amex")
-        self.isa = services.create_account(
+        self.card = bills.create_account(self.alice, name="Amex")
+        self.isa = bills.create_account(
             self.alice, name="Stocks ISA", kind=AccountKind.INVESTMENT
         )
 
@@ -54,7 +54,7 @@ class TheMonthlyBalancePassTest(TestCase):
     def test_an_untouched_box_leaves_that_account_alone(self):
         """Null is *skip me*, not *blank me*. Nothing is served by being able
         to un-know what a balance was."""
-        services.record_balance(self.card, on_date=AUGUST, amount=Decimal("4200.00"))
+        bills.record_balance(self.card, on_date=AUGUST, amount=Decimal("4200.00"))
 
         self.save(
             [
@@ -103,7 +103,7 @@ class TheMonthlyBalancePassTest(TestCase):
 
     def test_another_persons_account_is_refused(self):
         bob = User.objects.create_user("bob", "bob@example.com", "a password")
-        theirs = services.create_account(bob, name="Their card")
+        theirs = bills.create_account(bob, name="Their card")
 
         response = self.save([{"account_id": theirs.id, "amount": "10.00"}])
 
@@ -111,10 +111,10 @@ class TheMonthlyBalancePassTest(TestCase):
         self.assertEqual(BalanceReading.objects.count(), 0)
 
     def test_the_month_read_says_which_way_it_moved(self):
-        services.record_balance(
+        bills.record_balance(
             self.card, on_date=datetime.date(2026, 7, 1), amount=Decimal("4500.00")
         )
-        services.record_balance(self.card, on_date=AUGUST, amount=Decimal("4200.00"))
+        bills.record_balance(self.card, on_date=AUGUST, amount=Decimal("4200.00"))
 
         body = self.client.get("/api/v1/money/accounts/2026-08-15").json()
 

@@ -20,7 +20,6 @@ from django.test import TestCase
 
 from accounts.models import User
 from money import services as bills
-from lists import services
 from money import reads as money_reader
 from lists.models import Item
 from money.models import AccountKind, Direction
@@ -133,11 +132,11 @@ class TheMoneyLandingTest(TestCase):
         self.assertEqual(self.landing().yearly_totals, {})
 
     def test_balances_come_with_what_they_were_last_month(self):
-        card = services.create_account(self.user, name="Amex", kind=AccountKind.CARD)
-        services.record_balance(
+        card = bills.create_account(self.user, name="Amex", kind=AccountKind.CARD)
+        bills.record_balance(
             card, on_date=datetime.date(2026, 7, 1), amount=Decimal("4500.00")
         )
-        services.record_balance(
+        bills.record_balance(
             card, on_date=datetime.date(2026, 8, 1), amount=Decimal("4200.00")
         )
 
@@ -151,7 +150,7 @@ class TheMoneyLandingTest(TestCase):
         )
 
     def test_an_account_with_no_reading_yet_does_not_invent_one(self):
-        services.create_account(self.user, name="Amex")
+        bills.create_account(self.user, name="Amex")
 
         found = self.landing()
 
@@ -216,7 +215,7 @@ class TellingEmptyApartTest(TestCase):
         self.assertEqual(self.landing().line_count, 1)
 
     def test_an_account_counts_separately(self):
-        services.create_account(self.user, name="Amex", kind=AccountKind.CARD)
+        bills.create_account(self.user, name="Amex", kind=AccountKind.CARD)
 
         reading = self.landing()
 
@@ -248,7 +247,7 @@ class TellingEmptyApartTest(TestCase):
         bills.record(
             other, payee="Theirs", amount=Decimal("50.00"), due_date=TODAY
         )
-        services.create_account(other, name="Theirs", kind=AccountKind.CARD)
+        bills.create_account(other, name="Theirs", kind=AccountKind.CARD)
 
         reading = self.landing()
 
@@ -293,7 +292,7 @@ class TheLandingEndpointTest(TestCase):
             amount=Decimal("1200.00"),
             due_date=datetime.date(2026, 8, 20),
         )
-        services.create_account(self.user, name="Amex", kind=AccountKind.CARD)
+        bills.create_account(self.user, name="Amex", kind=AccountKind.CARD)
 
         response = self.client.get("/api/v1/money")
 

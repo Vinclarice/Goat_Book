@@ -41,7 +41,6 @@ from django.test import Client, TestCase
 from django.test.utils import CaptureQueriesContext
 
 from accounts.models import User
-from lists import services
 from money import services as bills
 from lists.models import Item
 from money.models import AccountKind, Bill, Direction
@@ -53,7 +52,7 @@ PASSWORD = "a secure password"
 class TyingABillToAnAccountTest(TestCase):
     def setUp(self):
         self.user = User.objects.create_user("alice", "alice@example.com", PASSWORD)
-        self.card = services.create_account(
+        self.card = bills.create_account(
             self.user, name="Dell Community", kind=AccountKind.CARD
         )
 
@@ -100,7 +99,7 @@ class TyingABillToAnAccountTest(TestCase):
         )
 
     def test_it_can_be_filed_and_refiled_and_cleared(self):
-        other = services.create_account(self.user, name="Amex", kind=AccountKind.CARD)
+        other = bills.create_account(self.user, name="Amex", kind=AccountKind.CARD)
         bill = self.bill()
 
         bills.update(bill, account=self.card)
@@ -118,7 +117,7 @@ class TyingABillToAnAccountTest(TestCase):
     def test_refiling_one_month_leaves_the_arrangement_alone(self):
         """§4 rule 3, which is what occurrences snapshot *for*. Paying August
         off a different card does not change what pays the card every month."""
-        other = services.create_account(self.user, name="Amex", kind=AccountKind.CARD)
+        other = bills.create_account(self.user, name="Amex", kind=AccountKind.CARD)
         bill = self.bill(account=self.card, recurrence=Item.Recurrence.MONTHLY)
 
         bills.update(bill, account=other)
@@ -149,7 +148,7 @@ class TheApiSetsAndReadsItTest(TestCase):
 
     def setUp(self):
         self.user = User.objects.create_user("alice", "alice@example.com", PASSWORD)
-        self.card = services.create_account(
+        self.card = bills.create_account(
             self.user, name="Dell Community", kind=AccountKind.CARD
         )
         # A plain client, like every other endpoint test in this app. CSRF is
@@ -181,7 +180,7 @@ class TheApiSetsAndReadsItTest(TestCase):
 
     def test_an_account_that_is_not_yours_is_not_found(self):
         bob = User.objects.create_user("bob", "bob@example.com", PASSWORD)
-        theirs = services.create_account(bob, name="Theirs", kind=AccountKind.CARD)
+        theirs = bills.create_account(bob, name="Theirs", kind=AccountKind.CARD)
 
         self.assertEqual(self.add_bill(account_id=theirs.id).status_code, 404)
 
@@ -228,7 +227,7 @@ class AnAccountSaysWhatPaysItTest(TestCase):
 
     def setUp(self):
         self.user = User.objects.create_user("alice", "alice@example.com", PASSWORD)
-        self.card = services.create_account(
+        self.card = bills.create_account(
             self.user, name="Dell Community", kind=AccountKind.CARD
         )
         # A plain client, like every other endpoint test in this app. CSRF is
@@ -287,7 +286,7 @@ class AnAccountSaysWhatPaysItTest(TestCase):
         self.assertEqual(self.account()["next_payment"]["payee"], "Dell 8")
 
     def test_a_bill_against_another_account_is_not_shown_here(self):
-        other = services.create_account(self.user, name="Amex", kind=AccountKind.CARD)
+        other = bills.create_account(self.user, name="Amex", kind=AccountKind.CARD)
         bills.record(
             self.user, payee="Amex", due_date=AUGUST, account=other, repeats=False,
         )
@@ -300,7 +299,7 @@ class AnAccountSaysWhatPaysItTest(TestCase):
     def test_money_coming_in_counts_too(self):
         """An investment is fed rather than paid down, and the field is named
         for the movement rather than for the direction. The page words it."""
-        isa = services.create_account(
+        isa = bills.create_account(
             self.user, name="ISA", kind=AccountKind.INVESTMENT
         )
         bills.record(
@@ -313,7 +312,7 @@ class AnAccountSaysWhatPaysItTest(TestCase):
 
     def test_one_person_never_sees_anothers(self):
         bob = User.objects.create_user("bob", "bob@example.com", PASSWORD)
-        theirs = services.create_account(bob, name="Theirs", kind=AccountKind.CARD)
+        theirs = bills.create_account(bob, name="Theirs", kind=AccountKind.CARD)
         bills.record(bob, payee="Theirs", due_date=AUGUST, account=theirs)
 
         self.assertIsNone(self.account()["next_payment"])
@@ -336,7 +335,7 @@ class AnAccountSaysWhatPaysItTest(TestCase):
         with_one = cost()
 
         for n in range(6):
-            account = services.create_account(
+            account = bills.create_account(
                 self.user, name=f"Card {n}", kind=AccountKind.CARD
             )
             bills.record(
@@ -359,7 +358,7 @@ class IncomeIsFiledAgainstAnAccountToo(TestCase):
 
     def setUp(self):
         self.user = User.objects.create_user("alice", "alice@example.com", PASSWORD)
-        self.isa = services.create_account(
+        self.isa = bills.create_account(
             self.user, name="Stocks ISA", kind=AccountKind.INVESTMENT
         )
         self.client = Client()
@@ -381,7 +380,7 @@ class IncomeIsFiledAgainstAnAccountToo(TestCase):
 
     def test_an_account_that_is_not_yours_is_not_found(self):
         bob = User.objects.create_user("bob", "bob@example.com", PASSWORD)
-        theirs = services.create_account(bob, name="Theirs", kind=AccountKind.CARD)
+        theirs = bills.create_account(bob, name="Theirs", kind=AccountKind.CARD)
 
         self.assertEqual(self.add_income(account_id=theirs.id).status_code, 404)
 

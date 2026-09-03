@@ -40,12 +40,20 @@ is what having two models is for.
 """
 import logging
 
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from clarice.errors import Conflict
 from clarice.recurrence import CadenceMode, Recurrence, advance_due_date
-from money.models import Bill, BillSeries, Direction
+from money.models import (
+    Account,
+    AccountKind,
+    BalanceReading,
+    Bill,
+    BillSeries,
+    Direction,
+    MoneyCategory,
+)
 
 
 class BillConflict(Conflict):
@@ -490,3 +498,153 @@ def revise_series(series, *, payee=_KEEP, amount=_KEEP, lead_days=_KEEP, cadence
         series.account = account
     series.save()
     return series
+
+
+# ---------------------------------------------------------------------------
+# Accounts and categories
+#
+# **Moved from `lists/services.py` on September 2, 2026**, the last thing the
+# app extraction left behind: their models had already gone and these had not,
+# so money's writes were still being made by the task core's service module.
+#
+# They kept `TaskConflict` while they lived there and raise `BillConflict` here,
+# for the reason every other write in this file does — a duplicate account name
+# is not a task conflict, and it has not been since the name was accurate.
+# ---------------------------------------------------------------------------
+
+#: What a fresh module starts with. Ordinary rows once written, so any of them
+#: can be renamed or deleted -- these are a starting point, not a schema.
+#:
+#: Chosen to cover the bills a person actually has rather than to be complete:
+#: an accountant's chart would be exhaustive and useless at eight entries.
+SEED_CATEGORIES = (
+    "Housing",
+    "Utilities",
+    "Subscriptions",
+    "Insurance",
+    "Debt",
+    "Transport",
+    "Health",
+)
+
+
+def categories_for(owner):
+    """This owner's categories, seeded on first ask.
+
+    **Seeding here rather than at signup** so that accounts predating the
+    feature get their list the first time they look, and nothing has to
+    backfill. `get_or_create` per name makes a second call a no-op rather than
+    a duplicate — and a person who has deleted *Transport* does not find it
+    back next time, because the seeding only runs when they have none at all.
+    """
+    existing = MoneyCategory.objects.filter(owner=owner)
+    if not existing.exists():
+        MoneyCategory.objects.bulk_create(
+            [
+                MoneyCategory(owner=owner, name=name, position=index)
+                for index, name in enumerate(SEED_CATEGORIES)
+            ]
+        )
+    return MoneyCategory.objects.filter(owner=owner)
+
+
+@transaction.atomic
+def add_category(owner, *, name):
+    """One more, at the end of the list."""
+    name = (name or "").strip()
+    if not name:
+        raise BillConflict("A category needs a name.")
+    last = (
+        MoneyCategory.objects.filter(owner=owner)
+        .order_by("-position")
+        .values_list("position", flat=True)
+        .first()
+    )
+    try:
+        return MoneyCategory.objects.create(
+            owner=owner, name=name, position=(last or 0) + 1
+        )
+    except IntegrityError as error:
+        raise BillConflict(f"There is already a category called {name}.") from error
+
+
+@transaction.atomic
+def rename_category(category, name):
+    name = (name or "").strip()
+    if not name:
+        raise BillConflict("A category needs a name.")
+    category.name = name
+    try:
+        category.save(update_fields=["name"])
+    except IntegrityError as error:
+        raise BillConflict(f"There is already a category called {name}.") from error
+    return category
+
+
+@transaction.atomic
+def delete_category(category):
+    """Remove a label. **The bills it labelled are untouched** -- the reference
+    is `SET_NULL`, so they become uncategorised rather than disappearing with
+    it. A category is a label and not a container."""
+    category.delete()
+
+
+@transaction.atomic
+def create_account(owner, *, name, kind=None, currency="USD", owes=None):
+    """Open something that carries a balance.
+
+    **`owes` defaults from the kind**, because a card and a loan are money you
+    owe and an investment or savings pot is money you have -- and making a
+    person answer that for every account would be asking them to restate what
+    they already said by choosing the kind.
+    """
+    name = (name or "").strip()
+    if not name:
+        raise BillConflict("An account needs a name.")
+    kind = kind or AccountKind.CARD
+    if kind not in AccountKind.values:
+        raise BillConflict("Choose a valid kind of account.")
+    if owes is None:
+        owes = kind in (AccountKind.CARD, AccountKind.LOAN)
+    try:
+        return Account.objects.create(
+            owner=owner,
+            name=name,
+            kind=kind,
+            currency=currency,
+            owes=owes,
+        )
+    except IntegrityError as error:
+        raise BillConflict(
+            f"There is already an account called {name}."
+        ) from error
+
+
+@transaction.atomic
+def record_balance(account, *, on_date, amount):
+    """What this account came to, in the month ``on_date`` falls in.
+
+    **Snapped to the first of the month**, because a balance is *what it came to
+    in August* rather than what it read at 14:32 on the 31st -- and two readings
+    a day apart would otherwise look like two months.
+
+    **Saving a month twice corrects it.** The ritual is a monthly pass; somebody
+    who mistypes and saves again means *that figure was wrong*, not *here is a
+    second August*. `update_or_create` under the unique constraint, so two
+    browser tabs cannot produce two rows either.
+    """
+    if amount is None:
+        raise BillConflict("A balance needs a figure.")
+    if amount < 0:
+        # Direction is `Account.owes`, not the sign of the number: a card at
+        # 4,200 and an ISA at 4,200 are both four thousand two hundred.
+        raise BillConflict(
+            "Enter the balance as a positive figure -- whether it is owed or "
+            "held is the account's own setting."
+        )
+    reading, _ = BalanceReading.objects.update_or_create(
+        account=account,
+        on_date=on_date.replace(day=1),
+        defaults={"amount": amount},
+    )
+    return reading

@@ -58,6 +58,19 @@ re-add it here.
 
 ## Open now
 
+- **Superlists 2.0 is the active task-core work, claimed September 3, 2026.**
+  Vince: *"I want to redesign the superlist core as I realize it's not really
+  something I'm going to use."* [`superlists-2.0-plan.md`](superlists-2.0-plan.md)
+  owns the design, the increments and its open decisions, and is not restated
+  here. The short form: one page replaces the Day page and the Agenda — the
+  bounded list chosen for today, a line drawn by the first act of execution,
+  what joined below it, the log, and the whole pool beside it; Areas and priorities go; an
+  `Appointment` record arrives, the model v3 argued for as `Event`. **Its first
+  increment is a week with no code**, and the plan says which sections of the
+  page that week decides the order of. Claimed here on the day the plan was
+  written, because the Money entry below records what a plan without a roadmap
+  entry cost.
+
 - **The Money module shipped, and this file did not know it existed — August 27,
   2026.** Fourteen increments across sixteen commits in one day, from
   *"everything is still sort of in silos"*: Bills was a report on a thing you

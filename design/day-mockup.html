@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clarice · Day mockup — the bounded list and the log</title>
+<style>
+:root {
+  --sl-bg: #08111f;
+  --sl-surface: rgba(18, 31, 49, 0.82);
+  --sl-surface-strong: #132237;
+  --sl-border: rgba(255, 255, 255, 0.1);
+  --sl-text: #f5f7fb;
+  --sl-muted: #a6b2c3;
+  --sl-accent: #7be0b8;
+  --sl-danger: #f08a8a;
+  --sl-warn: #f4c98a;
+  --sl-lilac: #c9a8dc;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  color: var(--sl-text);
+  background: var(--sl-bg);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.site-backdrop {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 15% 5%, rgba(67, 116, 155, 0.2), transparent 32rem),
+    radial-gradient(circle at 85% 25%, rgba(39, 132, 102, 0.16), transparent 28rem);
+}
+
+.container { width: 100%; max-width: 1080px; margin: 0 auto; padding: 0 1.25rem; }
+
+.mock-banner {
+  background: rgba(244, 201, 138, 0.1);
+  border-bottom: 1px solid rgba(244, 201, 138, 0.28);
+  color: var(--sl-warn);
+  font-size: 0.8rem;
+  text-align: center;
+  padding: 0.5rem 1rem;
+}
+.mock-banner strong { color: var(--sl-text); }
+
+.page-shell { padding: 2.5rem 0 4rem; }
+
+.diagnosis {
+  border: 1px solid rgba(244, 201, 138, 0.3);
+  background: rgba(244, 201, 138, 0.06);
+  border-radius: 0.9rem;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.25rem;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: var(--sl-muted);
+}
+.diagnosis strong { color: var(--sl-warn); }
+.diagnosis code {
+  background: rgba(255,255,255,0.06);
+  padding: 0.05rem 0.35rem;
+  border-radius: 0.3rem;
+  font-size: 0.82em;
+}
+.diagnosis:last-of-type { margin-bottom: 2rem; }
+
+/* ---------- the moment switch: a mockup can show one moment; this page
+   has three that matter, and the point of the design is what changes
+   between them. Not part of the real page. ---------- */
+.moment-row {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem;
+  margin-bottom: 2rem; font-size: 0.85rem; color: var(--sl-muted);
+}
+.moment-row .lbl { margin-right: 0.25rem; }
+.moment {
+  font: inherit; min-height: 2.75rem; padding: 0.5rem 1rem;
+  border: 1px solid var(--sl-border); border-radius: 999px;
+  background: var(--sl-surface); color: var(--sl-muted); cursor: pointer;
+}
+.moment[aria-pressed="true"] {
+  border-color: var(--sl-warn); background: rgba(244, 201, 138, 0.1); color: var(--sl-text);
+}
+
+/* ---------- masthead ---------- */
+.masthead { margin-bottom: 1.5rem; }
+.eyebrow {
+  margin: 0 0 0.5rem;
+  color: var(--sl-accent);
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.masthead h1 {
+  margin: 0 0 1rem;
+  font-size: clamp(2.1rem, 4.6vw, 3.2rem);
+  line-height: 1.03;
+  letter-spacing: -0.045em;
+}
+.scope-row { display: flex; flex-wrap: wrap; gap: 0.55rem; }
+.scope-pill {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  min-height: 2.75rem; padding: 0.5rem 1rem;
+  border: 1px solid var(--sl-border); border-radius: 999px;
+  background: var(--sl-surface); color: var(--sl-muted); font: inherit;
+}
+.scope-pill .num { font-size: 1.05rem; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--sl-text); }
+.scope-pill.is-accent .num { color: var(--sl-accent); }
+.scope-pill.is-warn .num { color: var(--sl-warn); }
+.scope-pill .lbl { font-size: 0.82rem; }
+
+/* ---------- two columns: the day, and the pool beside it. The pool is
+   what the Agenda page becomes -- not a second page, a panel the morning
+   picks from and the afternoon glances at. ---------- */
+.layout { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(18rem, 1fr); gap: 1.5rem; align-items: start; }
+@media (max-width: 860px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+
+.card {
+  background: var(--sl-surface); border: 1px solid var(--sl-border);
+  border-radius: 1.1rem; padding: 1.1rem 1.25rem; margin-bottom: 1.25rem;
+}
+.card h2 {
+  margin: 0 0 0.85rem; font-size: 0.8rem; font-weight: 800;
+  letter-spacing: 0.1em; text-transform: uppercase; color: var(--sl-muted);
+  display: flex; align-items: baseline; gap: 0.6rem;
+}
+.card h2 .sub { font-weight: 500; letter-spacing: 0; text-transform: none; font-size: 0.8rem; }
+
+/* ---------- appointments: a strip, not a list. They are context for the
+   pick, not candidates for it, so they never get a checkbox. ---------- */
+.appt { display: flex; gap: 0.85rem; align-items: baseline; padding: 0.35rem 0; font-size: 0.95rem; }
+.appt .when { flex: 0 0 6.5rem; font-variant-numeric: tabular-nums; color: var(--sl-lilac); font-weight: 700; font-size: 0.85rem; }
+.appt .where { color: var(--sl-muted); font-size: 0.85rem; }
+.appt.is-cancelled .what { text-decoration: line-through; color: var(--sl-muted); }
+.appt.is-ahead .when { color: var(--sl-muted); font-weight: 500; }
+
+/* ---------- the closed list ---------- */
+.pick { display: flex; align-items: center; gap: 0.75rem; min-height: 2.75rem; font-size: 1rem; }
+.pick .box {
+  flex: 0 0 auto; width: 1.25rem; height: 1.25rem; border-radius: 0.35rem;
+  border: 1.5px solid rgba(255,255,255,0.35); background: transparent;
+  display: inline-flex; align-items: center; justify-content: center;
+  cursor: pointer; padding: 0; color: var(--sl-bg); font-size: 0.8rem; font-weight: 800;
+  position: relative;
+}
+.pick .box::after { content: ""; position: absolute; inset: -0.8rem; }
+.pick.is-done .box { background: var(--sl-accent); border-color: var(--sl-accent); }
+.pick.is-done .txt { color: var(--sl-muted); text-decoration: line-through; }
+.pick .txt { flex: 1 1 auto; min-width: 0; }
+.pick .kind {
+  font-size: 0.72rem; color: var(--sl-muted); border: 1px solid var(--sl-border);
+  border-radius: 999px; padding: 0.1rem 0.5rem; white-space: nowrap;
+}
+.pick .kind.is-fixed { color: var(--sl-warn); border-color: rgba(244,201,138,0.35); }
+.pick .unpick, .pick .decide {
+  font: inherit; font-size: 0.8rem; min-height: 2.75rem; padding: 0 0.7rem;
+  border: 1px solid var(--sl-border); border-radius: 0.6rem;
+  background: transparent; color: var(--sl-muted); cursor: pointer;
+}
+.pick .decide:hover, .pick .unpick:hover { color: var(--sl-text); border-color: rgba(255,255,255,0.3); }
+.decide-row { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+
+.rule {
+  margin: 0.85rem 0 0.5rem; border: 0; border-top: 2px solid rgba(255,255,255,0.32);
+}
+.rule-note { font-size: 0.82rem; color: var(--sl-muted); margin: 0 0 0.25rem; }
+.rule-note strong { color: var(--sl-text); font-weight: 600; }
+.standing { font-size: 0.82rem; color: var(--sl-muted); font-style: italic; margin: 0; }
+
+/* ---------- the log ---------- */
+.log-line { display: flex; gap: 0.85rem; align-items: baseline; padding: 0.3rem 0; font-size: 0.95rem; line-height: 1.5; }
+.log-line .t { flex: 0 0 3.2rem; font-variant-numeric: tabular-nums; font-size: 0.8rem; color: var(--sl-muted); }
+.log-line .txt { flex: 1 1 auto; min-width: 0; }
+.log-line .src {
+  font-size: 0.72rem; color: var(--sl-muted); border: 1px solid var(--sl-border);
+  border-radius: 999px; padding: 0.1rem 0.5rem; white-space: nowrap;
+}
+.log-line.is-derived .txt { color: var(--sl-muted); }
+.log-line.is-arrival .txt::before { content: "to the pool · "; color: var(--sl-accent); font-size: 0.8rem; }
+.log-line.is-unplanned .src { color: var(--sl-warn); border-color: rgba(244,201,138,0.35); }
+.log-empty { color: var(--sl-muted); font-size: 0.9rem; padding: 0.5rem 0 0.25rem; margin: 0; }
+.log-empty strong { color: var(--sl-text); font-weight: 600; }
+
+.composer {
+  display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
+  background: rgba(255,255,255,0.03); border: 1px solid var(--sl-border);
+  border-radius: 1rem; padding: 0.5rem 0.6rem 0.5rem 1rem; margin-top: 0.85rem;
+}
+.composer[hidden] { display: none; }
+.composer input[type="text"] {
+  flex: 1 1 14rem; min-width: 0; background: transparent; border: 0;
+  color: var(--sl-text); font: inherit; padding: 0.5rem 0; outline: none;
+}
+.composer input::placeholder { color: var(--sl-muted); }
+.chip-toggle {
+  font: inherit; font-size: 0.82rem; min-height: 2.75rem; padding: 0 0.75rem;
+  border: 1px solid var(--sl-border); border-radius: 0.6rem;
+  background: transparent; color: var(--sl-muted); cursor: pointer;
+}
+.chip-toggle[aria-pressed="true"] { color: var(--sl-text); border-color: var(--sl-accent); background: rgba(123,224,184,0.1); }
+.composer-add {
+  font: inherit; font-weight: 700; font-size: 0.88rem;
+  min-height: 2.75rem; padding: 0 1.1rem;
+  border-radius: 0.65rem; border: 1px solid var(--sl-accent);
+  background: var(--sl-accent); color: var(--sl-bg); cursor: pointer;
+}
+
+/* ---------- the pool ---------- */
+.pool-search {
+  width: 100%; background: rgba(255,255,255,0.03); border: 1px solid var(--sl-border);
+  border-radius: 0.65rem; color: var(--sl-text); font: inherit; font-size: 0.9rem;
+  padding: 0.6rem 0.8rem; outline: none; margin-bottom: 0.85rem;
+}
+.pool-group { margin: 0.6rem 0 0.35rem; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--sl-muted); }
+.pool-row { display: flex; align-items: center; gap: 0.6rem; min-height: 2.75rem; font-size: 0.92rem; border-top: 1px solid rgba(255,255,255,0.05); }
+.pool-row .txt { flex: 1 1 auto; min-width: 0; }
+.pool-row .age { font-size: 0.75rem; color: var(--sl-muted); white-space: nowrap; }
+.pool-row .age.is-fixed { color: var(--sl-warn); }
+.pool-row .age.is-appt { color: var(--sl-lilac); }
+.pool-row.is-picked .txt { color: var(--sl-muted); }
+.pool-row.is-picked .txt::after { content: " · picked"; color: var(--sl-accent); font-size: 0.78rem; }
+.pool-row .pick-btn {
+  font: inherit; font-size: 0.8rem; min-height: 2.5rem; padding: 0 0.7rem;
+  border: 1px solid var(--sl-accent); border-radius: 0.6rem;
+  background: transparent; color: var(--sl-accent); cursor: pointer;
+}
+.pool-row .pick-btn:disabled { opacity: 0.35; cursor: default; }
+.stale {
+  margin: 0.2rem 0 0.5rem; padding: 0.6rem 0.75rem; border-radius: 0.7rem;
+  border: 1px solid rgba(244,201,138,0.3); background: rgba(244,201,138,0.06);
+  font-size: 0.82rem; color: var(--sl-muted);
+}
+.stale strong { color: var(--sl-warn); }
+.stale .decide-row { margin-top: 0.4rem; }
+.stale button {
+  font: inherit; font-size: 0.8rem; min-height: 2.5rem; padding: 0 0.7rem;
+  border: 1px solid var(--sl-border); border-radius: 0.6rem; background: transparent; color: var(--sl-muted); cursor: pointer;
+}
+
+.pool-more { margin: 0.9rem 0 0; font-size: 0.85rem; line-height: 1.5; }
+.pool-more a { color: var(--sl-accent); text-decoration: none; font-weight: 600; }
+.pool-more a:hover { text-decoration: underline; }
+.pool-more .sub { color: var(--sl-muted); font-size: 0.8rem; }
+.pick.is-late .txt { color: var(--sl-text); }
+.pick .kind.is-late { color: var(--sl-accent); border-color: rgba(123,224,184,0.35); }
+
+.summary { font-size: 0.9rem; color: var(--sl-muted); line-height: 1.6; margin: 0; }
+.summary strong { color: var(--sl-text); font-weight: 600; }
+.card[hidden] { display: none; }
+
+.retired { margin-top: 2.5rem; font-size: 0.82rem; color: var(--sl-muted); line-height: 1.6; }
+.retired code { background: rgba(255,255,255,0.06); padding: 0.05rem 0.35rem; border-radius: 0.3rem; font-size: 0.82em; }
+</style>
+</head>
+<body>
+
+<div class="mock-banner">Mockup — <strong>fake data, nothing is saved</strong>. Ticking, picking and the composer all work; use the three moments to see the day change shape.</div>
+
+<div class="site-backdrop">
+  <main class="container page-shell">
+
+    <div class="diagnosis">
+      <strong>What this replaces:</strong> both the Day page and the Agenda, and the
+      Areas they draw from. One page, one date. The left column is the day:
+      appointments, the list you chose for it, a line, and the log of what happened.
+      The right column is the pool — every open line you have, which is what the
+      Agenda becomes once there are no Areas to file into. Nothing on this page is a
+      copy of anything else: the list is <code>DailyFocus</code>, the log is a read
+      over records that already carry a time, and the pool is every active
+      <code>Item</code> the owner has.
+    </div>
+
+    <div class="diagnosis">
+      <strong>The four rules it draws:</strong> the morning's list is written <em>for</em> a
+      day and never <em>on</em> it; the first act of execution — a tick, a Did or a Today, never a
+      Note — draws the line under it; a tick is a
+      log line with a time; anything that joins later sits <em>below</em> the line and is
+      counted apart from what was chosen. The pool prunes itself — a line unpicked for three
+      weeks asks one question and then leaves.
+    </div>
+
+    <div class="moment-row" role="group" aria-label="Which moment of the day to show">
+      <span class="lbl">Show the page at:</span>
+      <button class="moment" data-moment="morning" aria-pressed="false">Morning — picking</button>
+      <button class="moment" data-moment="day" aria-pressed="true">Midday — line drawn</button>
+      <button class="moment" data-moment="evening" aria-pressed="false">Evening — leftovers</button>
+    </div>
+
+    <header class="masthead">
+      <p class="eyebrow">Thursday · 3 September 2026</p>
+      <h1 id="greeting">Today.</h1>
+      <div class="scope-row" id="scope-row"></div>
+    </header>
+
+    <div class="layout">
+      <div>
+        <section class="card" aria-labelledby="h-appt">
+          <h2 id="h-appt">Appointments <span class="sub" id="appt-sub"></span></h2>
+          <div id="appts"></div>
+        </section>
+
+        <section class="card" aria-labelledby="h-list">
+          <h2 id="h-list">The list <span class="sub" id="list-sub"></span></h2>
+          <div id="fixed-today"></div>
+          <div id="picks"></div>
+          <hr class="rule">
+          <p class="rule-note" id="rule-note"></p>
+          <div id="late"></div>
+          <p class="standing">Thursdays: errands after lunch.</p>
+        </section>
+
+        <section class="card" aria-labelledby="h-log">
+          <h2 id="h-log">Log</h2>
+          <div id="log"></div>
+          <form class="composer" id="composer" autocomplete="off">
+            <input type="text" id="line" placeholder="What happened" aria-label="Add a line">
+            <button type="button" class="chip-toggle" id="dest" aria-pressed="true" title="Where this line goes; click to change">Did</button>
+            <button type="submit" class="composer-add">Add</button>
+          </form>
+        </section>
+
+        <section class="card" id="summary-card" hidden aria-labelledby="h-sum">
+          <h2 id="h-sum">The day, read back</h2>
+          <p class="summary" id="summary"></p>
+        </section>
+      </div>
+
+      <aside>
+        <section class="card" aria-labelledby="h-pool">
+          <h2 id="h-pool">The pool <span class="sub" id="pool-sub"></span></h2>
+          <input class="pool-search" type="search" placeholder="Find a line" aria-label="Find a line in the pool" id="pool-search">
+          <div id="pool"></div>
+          <p class="pool-more"><a href="#" id="pool-link">The whole pool →</a> <span class="sub">its own page: everything open, search, the stale prompts, let go in bulk</span></p>
+        </section>
+      </aside>
+    </div>
+
+    <p class="retired">
+      The numbers above describe the day and do not grade it: no streak, warning or success
+      colour derives from any of them. A bill due today comes from Money and is neither
+      pickable nor tickable here; it sits in the fixed strip whether or not it was chosen.
+      Retired by this page: <code>AgendaWorkspace.tsx</code>, the Day route, Areas as a
+      filing step, priority, and manual ordering. Kept: <code>Item</code> as the line,
+      <code>DailyFocus</code> as the pick, <code>DailyEntry</code> as the day plus one
+      closed-at moment, routines, checklists. New: <code>Appointment</code>, a span with an
+      optional time, cancelled rather than deleted; and a second page, the whole pool,
+      reading the same query this panel does. Above or below the line is not a field:
+      a pin made before the day's closed-at moment is above it, and that is a comparison
+      of two timestamps <code>DailyFocus</code> and <code>DailyEntry</code> already carry.
+    </p>
+
+  </main>
+</div>
+
+<script>
+(function () {
+  const TODAY = "2026-09-03";
+
+  const POOL = [
+    { id: 1, text: "Draft the Money plan stub", added: 2 },
+    { id: 2, text: "Book dentist", added: 9 },
+    { id: 3, text: "Walk with Priya", added: 1 },
+    { id: 4, text: "Reply to the accountant", added: 4 },
+    { id: 5, text: "Renew car insurance", added: 12, due: "2026-09-03", kind: "bill", money: true },
+    { id: 6, text: "Ring the fencing people", added: 0 },
+    { id: 7, text: "Sort the garage shelves", added: 24, stale: true },
+    { id: 8, text: "Read the Forster book", added: 6 },
+    { id: 9, text: "Pay rent", added: 0, due: "2026-09-05", kind: "bill", money: true },
+    { id: 10, text: "Send Sam the export", added: 3, due: "2026-09-08" },
+    { id: 11, text: "Return the library books", added: 15 },
+    { id: 12, text: "Look at the Android login plan", added: 31, stale: true },
+    { id: 13, text: "Fix the fence latch", added: 0, late: "11:40" },
+    { id: 14, text: "Call the vet back", added: 0, late: "12:30" },
+  ];
+
+  const APPTS = [
+    { text: "Call with the accountant", on: "2026-09-03", at: "14:00", where: "phone" },
+    { text: "Parents' evening", on: "2026-09-04", at: "17:30", where: "school", cancelled: true },
+    { text: "Dutch Wonderland", on: "2026-09-05", to: "2026-09-06", where: "Lancaster, PA" },
+  ];
+
+  const INITIAL_PICKS = [4, 1, 2, 3];
+  const INITIAL_LATE = [13, 14];
+  const INITIAL_DONE = [4, 5, 13];
+  const INITIAL_LOG = [
+    { t: "08:12", text: "Replied to the accountant", src: "done", pickId: 4 },
+    { t: "09:15", text: "Read 20 pages of the Forster book" },
+    { t: "10:02", text: "Insurance paid, £412", src: "bill", derived: true, pickId: 5 },
+    { t: "11:30", text: "Neighbour asked about the fence. An hour." },
+    { t: "11:40", text: "Fix the fence latch", src: "did", late: true, pickId: 13 },
+    { t: "12:10", text: "Lessons 3 of 5", src: "routine", derived: true },
+    { t: "12:30", text: "Call the vet back", src: "today", late: true, pickId: 14 },
+    { t: "13:05", text: "Ring the fencing people", arrival: true },
+  ];
+  const DESTS = ["Did", "Today", "Pool", "Note"];
+
+  let moment = "day";
+  let picks = [...INITIAL_PICKS];
+  let late = [...INITIAL_LATE];
+  let done = new Set(INITIAL_DONE);
+  let log = INITIAL_LOG.map(l => ({ ...l }));
+  let decided = {};
+  let closedAt = "08:12";
+  let dest = 0;
+
+  const byId = id => POOL.find(p => p.id === id);
+  const el = id => document.getElementById(id);
+
+  function dayLabel(d) {
+    const dt = new Date(d + "T00:00:00");
+    const wd = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][dt.getDay()];
+    return `${wd} ${dt.getDate()}`;
+  }
+
+  function renderScope() {
+    const pills = [];
+    if (moment === "morning") {
+      pills.push(`<span class="scope-pill is-accent"><span class="num">${picks.length}</span><span class="lbl">chosen</span></span>`);
+      pills.push(`<span class="scope-pill"><span class="num">open</span><span class="lbl">list still open</span></span>`);
+    } else {
+      pills.push(`<span class="scope-pill is-accent"><span class="num">${[...done].filter(d => picks.includes(d)).length} of ${picks.length}</span><span class="lbl">chosen, done</span></span>`);
+      pills.push(`<span class="scope-pill"><span class="num">${closedAt}</span><span class="lbl">line drawn</span></span>`);
+      pills.push(`<span class="scope-pill is-warn"><span class="num">${[...done].filter(d => late.includes(d)).length} of ${late.length}</span><span class="lbl">below the line, done</span></span>`);
+    }
+    pills.push(`<span class="scope-pill"><span class="num">${POOL.filter(p => !done.has(p.id) && !decided[p.id] && !late.includes(p.id) && !(moment === "morning" && p.late)).length}</span><span class="lbl">in the pool</span></span>`);
+    el("scope-row").innerHTML = pills.join("");
+  }
+
+  function renderAppts() {
+    const today = APPTS.filter(a => a.on <= TODAY && (a.to || a.on) >= TODAY);
+    const ahead = APPTS.filter(a => a.on > TODAY);
+    const row = a => {
+      let when;
+      if (a.on > TODAY) when = a.to ? `${dayLabel(a.on)} – ${dayLabel(a.to)}` : `${dayLabel(a.on)}${a.at ? " " + a.at : ""}`;
+      else when = a.at ? a.at : "all day";
+      const cls = ["appt", a.cancelled ? "is-cancelled" : "", a.on > TODAY ? "is-ahead" : ""].join(" ");
+      return `<div class="${cls}"><span class="when">${when}</span><span class="what">${a.text}</span><span class="where">${a.cancelled ? "cancelled" : a.where}</span></div>`;
+    };
+    el("appts").innerHTML = today.map(row).join("") + (ahead.length ? `<div class="pool-group">Coming up</div>` + ahead.map(row).join("") : "");
+    el("appt-sub").textContent = today.length ? "" : "none today";
+  }
+
+  function pickRow(id, isLate) {
+    const p = byId(id);
+    const isDone = done.has(id);
+    const kind = p.due
+      ? `<span class="kind is-fixed">${p.kind === "bill" ? "bill · " : ""}due ${dayLabel(p.due)}</span>`
+      : isLate ? `<span class="kind is-late">joined ${p.late}</span>` : "";
+    let tail = "";
+    if (moment === "morning") tail = `<button class="unpick" data-unpick="${id}">Not today</button>`;
+    if (moment === "evening" && !isDone) {
+      tail = decided[id]
+        ? `<span class="kind">${decided[id]}</span>`
+        : `<span class="decide-row"><button class="decide" data-decide="tomorrow" data-id="${id}">Tomorrow</button><button class="decide" data-decide="back to the pool" data-id="${id}">Pool</button><button class="decide" data-decide="let go" data-id="${id}">Let go</button></span>`;
+    }
+    const box = `<button class="box" data-toggle="${id}" aria-pressed="${isDone}" aria-label="${isDone ? "Done" : "Not done"}: ${p.text}">${isDone ? "✓" : ""}</button>`;
+    return `<div class="pick ${isDone ? "is-done" : ""} ${isLate ? "is-late" : ""}">${box}<span class="txt">${p.text}</span>${kind}${tail}</div>`;
+  }
+
+  function renderPicks() {
+    const fixedToday = POOL.filter(p => p.due === TODAY && !picks.includes(p.id));
+    el("fixed-today").innerHTML = fixedToday.length
+      ? `<div class="pool-group">Fixed today · outside the chosen count</div>` + fixedToday.map(p => {
+          const paid = done.has(p.id);
+          return `<div class="pick ${paid ? "is-done" : ""}"><span class="box" aria-hidden="true" style="border-style:dashed;cursor:default;background:transparent;color:var(--sl-muted)">${paid ? "✓" : ""}</span><span class="txt">${p.text}</span><span class="kind is-fixed">${p.money ? "bill · from Money" : "due today"}</span></div>`;
+        }).join("") + `<div class="pool-group">Chosen</div>`
+      : "";
+    el("picks").innerHTML = picks.map(id => pickRow(id, false)).join("") || `<p class="log-empty">Nothing chosen. A valid day; there is no finish rate for a list of none.</p>`;
+    el("late").innerHTML = moment === "morning" ? "" : late.map(id => pickRow(id, true)).join("");
+    el("list-sub").textContent = moment === "morning" ? "open" : `line drawn at ${closedAt}`;
+    el("rule-note").innerHTML = moment === "morning"
+      ? `<strong>Still open.</strong> The first tick, or a Did or Today line, draws this line. A Note does not.`
+      : late.length
+        ? `<strong>Joined after the line was drawn.</strong> Counted apart from what was chosen.`
+        : `<strong>Nothing has joined since the line was drawn.</strong> What does sits here, apart from what was chosen.`;
+  }
+
+  function renderLog() {
+    if (!log.length) {
+      el("log").innerHTML = `<p class="log-empty"><strong>Nothing yet.</strong> The first line you write closes the list above.</p>`;
+    } else {
+      el("log").innerHTML = log.map(l => {
+        const cls = ["log-line", l.derived ? "is-derived" : "", l.arrival ? "is-arrival" : "", l.late ? "is-unplanned" : ""].join(" ");
+        const src = l.src ? `<span class="src">${l.src}</span>` : "";
+        return `<div class="${cls}"><span class="t">${l.t}</span><span class="txt">${l.text}</span>${src}</div>`;
+      }).join("");
+    }
+    el("line").placeholder = moment === "morning" ? "What happened (a Did or Today draws the line)" : "What happened";
+    el("dest").textContent = DESTS[dest];
+  }
+
+  function renderPool() {
+    const q = (el("pool-search").value || "").toLowerCase();
+    const live = POOL.filter(p => !done.has(p.id) && !decided[p.id] && !late.includes(p.id) && !(moment === "morning" && p.late) && p.text.toLowerCase().includes(q));
+    const fixed = live.filter(p => p.due).sort((a, b) => a.due.localeCompare(b.due));
+    const floatingAll = live.filter(p => !p.due).sort((a, b) => b.added - a.added);
+    const HEAD = 6;
+    const floating = q ? floatingAll : floatingAll.filter((p, i) => i < HEAD || p.added === 0);
+    const hidden = floatingAll.length - floating.length;
+    const apptRows = APPTS.filter(a => !a.cancelled && a.on >= TODAY).map(a =>
+      `<div class="pool-row"><span class="txt">${a.text}</span><span class="age is-appt">${a.to ? dayLabel(a.on) + " – " + dayLabel(a.to) : dayLabel(a.on) + (a.at ? " " + a.at : "")}</span></div>`);
+    const row = p => {
+      const picked = picks.includes(p.id);
+      const age = p.due
+        ? `<span class="age is-fixed">${p.kind === "bill" ? "bill · " : ""}due ${dayLabel(p.due)}</span>`
+        : `<span class="age">${p.added === 0 ? "added today" : p.added === 1 ? "added yesterday" : "added " + p.added + " days ago"}</span>`;
+      let btn = "";
+      if (p.money) btn = "";
+      else if (moment === "morning") btn = `<button class="pick-btn" data-pick="${p.id}" ${picked ? "disabled" : ""}>${picked ? "Picked" : "Pick"}</button>`;
+      else if (moment === "day" && !picked && !p.due) btn = `<button class="pick-btn" data-join="${p.id}" title="Joins below the line">Today</button>`;
+      const stale = p.stale && !picked ? `<div class="stale"><strong>Unpicked for ${p.added} days.</strong> Still want it?<div class="decide-row"><button data-keep="${p.id}">Keep</button><button data-letgo="${p.id}">Let go</button></div></div>` : "";
+      return `<div class="pool-row ${picked ? "is-picked" : ""}"><span class="txt">${p.text}</span>${age}${btn}</div>${stale}`;
+    };
+    el("pool").innerHTML =
+      `<div class="pool-group">Fixed</div>` + [...fixed.map(row), ...apptRows].join("") +
+      `<div class="pool-group">Floating · oldest first</div>` + floating.map(row).join("") +
+      (hidden ? `<div class="pool-row"><span class="txt" style="color:var(--sl-muted)">${hidden} more on the whole pool page</span></div>` : "");
+    el("pool-sub").textContent = `${live.length} open`;
+    el("pool-link").textContent = `The whole pool (${live.length}) →`;
+  }
+
+  function renderSummary() {
+    const card = el("summary-card");
+    if (moment !== "evening") { card.hidden = true; return; }
+    const finished = [...done].filter(d => picks.includes(d)).length;
+    const lateDone = [...done].filter(d => late.includes(d)).length;
+    const left = [...picks, ...late].filter(id => !done.has(id));
+    const undecided = left.filter(id => !decided[id]).length;
+    card.hidden = false;
+    el("summary").innerHTML =
+      `<strong>${finished} of ${picks.length}</strong> chosen lines done, <strong>${lateDone} of ${late.length}</strong> below the line, ` +
+      `<strong>${log.filter(l => l.arrival).length}</strong> arrived for the pool. ` +
+      (left.length ? `${left.length} left over, each gets one decision${undecided ? ` — <strong>${undecided}</strong> still waiting` : " — all decided"}. ` : "Nothing left over. ") +
+      `Nothing was moved for you.`;
+  }
+
+  function render() {
+    document.querySelectorAll(".moment").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.moment === moment)));
+    el("greeting").textContent = moment === "morning" ? "Good morning, Vince." : moment === "evening" ? "Closing the day." : "Today.";
+    el("composer").hidden = moment === "evening";
+    renderScope(); renderAppts(); renderPicks(); renderLog(); renderPool(); renderSummary();
+  }
+
+  function nowLabel() {
+    const seq = ["13:40", "14:05", "14:32", "15:10", "15:48"];
+    const n = log.filter(l => l.added).length;
+    return seq[Math.min(n, seq.length - 1)];
+  }
+
+  function reset(to) {
+    moment = to;
+    picks = [...INITIAL_PICKS];
+    decided = {};
+    dest = 0;
+    POOL.forEach(p => { if (p.id === 7 || p.id === 12) p.stale = true; });
+    if (to === "morning") { done = new Set(); log = []; late = []; }
+    else { done = new Set(INITIAL_DONE); log = INITIAL_LOG.map(l => ({ ...l })); late = [...INITIAL_LATE]; closedAt = "08:12"; }
+  }
+
+  document.querySelector(".moment-row").addEventListener("click", e => {
+    const b = e.target.closest(".moment"); if (!b) return;
+    reset(b.dataset.moment);
+    render();
+  });
+
+  document.addEventListener("click", e => {
+    const t = e.target.closest("button"); if (!t) return;
+    if (t.dataset.toggle) {
+      const id = Number(t.dataset.toggle);
+      const p = byId(id);
+      if (moment === "morning") { moment = "day"; closedAt = "08:40"; }
+      if (done.has(id)) { done.delete(id); log.push({ t: nowLabel(), text: p.text, src: "reopened", pickId: id, added: true }); }
+      else { done.add(id); log.push({ t: nowLabel(), text: p.text, src: "done", pickId: id, added: true }); }
+      render();
+    }
+    if (t.dataset.unpick) { picks = picks.filter(id => id !== Number(t.dataset.unpick)); render(); }
+    if (t.dataset.pick) { picks.push(Number(t.dataset.pick)); render(); }
+    if (t.dataset.join) { const id = Number(t.dataset.join); byId(id).late = nowLabel(); late.push(id); log.push({ t: byId(id).late, text: byId(id).text, src: "today", late: true, pickId: id, added: true }); render(); }
+    if (t.dataset.decide) { decided[Number(t.dataset.id)] = t.dataset.decide; render(); }
+    if (t.dataset.letgo) { decided[Number(t.dataset.letgo)] = "let go"; render(); }
+    if (t.dataset.keep) { byId(Number(t.dataset.keep)).stale = false; render(); }
+  });
+
+  el("dest").addEventListener("click", () => { dest = (dest + 1) % DESTS.length; el("dest").textContent = DESTS[dest]; });
+
+  el("composer").addEventListener("submit", e => {
+    e.preventDefault();
+    const text = el("line").value.trim(); if (!text) return;
+    const t = nowLabel();
+    const where = DESTS[dest];
+    if (moment === "morning" && (where === "Did" || where === "Today")) { moment = "day"; closedAt = "08:40"; }
+    if (where === "Did" || where === "Today") {
+      const id = POOL.length + 1;
+      POOL.push({ id, text, added: 0, late: t });
+      late.push(id);
+      if (where === "Did") { done.add(id); log.push({ t, text, src: "did", late: true, pickId: id, added: true }); }
+      else log.push({ t, text, src: "today", late: true, pickId: id, added: true });
+    } else if (where === "Pool") {
+      POOL.push({ id: POOL.length + 1, text, added: 0 });
+      log.push({ t, text, arrival: true, added: true });
+    } else {
+      log.push({ t, text, added: true });
+    }
+    el("line").value = "";
+    dest = 0;
+    render();
+  });
+
+  el("pool-link").addEventListener("click", e => { e.preventDefault(); el("pool-search").focus(); });
+
+  el("pool-search").addEventListener("input", renderPool);
+
+  render();
+})();
+</script>
+</body>
+</html>

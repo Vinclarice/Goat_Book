@@ -236,6 +236,21 @@ class EditBillIn(Schema):
     forgot to fill in.
     """
 
+    #: **Which bill is meant, when it repeats.** False edits this occurrence
+    #: -- August's rent went up. True edits the standing arrangement and every
+    #: later unpaid occurrence -- *rent* went up.
+    #:
+    #: **The delete path's word, not a new one.**
+    #: `DELETE .../entry/{id}?whole_series=true` already draws exactly this line,
+    #: and one distinction with two names in one module is how a reader starts
+    #: guessing. It defaults to the narrow act for the same reason delete does:
+    #: the wider answer is the one that is not undone by editing something back.
+    #:
+    #: **`due_date` ignores it**, deliberately. When a bill falls is the
+    #: cadence's answer, not a value to broadcast; and `recurrence` is the
+    #: mirror image -- always the rule's, because a cadence on one occurrence is
+    #: not a thing.
+    whole_series: bool = False
     payee: str | None = None
     amount: str | None = None
     clear_amount: bool = False
@@ -387,11 +402,23 @@ def edit_bill(request, bill_id: int, payload: EditBillIn):
         except InvalidOperation:
             raise HttpError(409, "That amount is not a number.")
     try:
-        bill = bills.update(bill, **fields)
+        if payload.whole_series:
+            # **The due date stays this occurrence's.** `revise_from` takes no
+            # date and it is not an omission: a series has no due date to
+            # revise, so a caller sending both is asking for one edit that is
+            # narrow and one that is wide, and gets exactly that.
+            moved = fields.pop("due_date", None)
+            bill = bills.revise_from(bill, **fields)
+            if moved is not None:
+                bill = bills.update(bill, due_date=moved)
+        else:
+            bill = bills.update(bill, **fields)
         # **Cadence last, and separately.** It lives on the series, not the
         # occurrence, so changing it is a different act from correcting this
         # month's figure -- see `bills.set_cadence`, which is where that
-        # distinction is made rather than smuggled into a field update.
+        # distinction is made rather than smuggled into a field update. It is
+        # series-level whichever scope was asked for, because there is no other
+        # place a cadence could live.
         if payload.recurrence is not None:
             bill = bills.set_cadence(bill, payload.recurrence)
     except bills.BillConflict as error:

@@ -387,6 +387,80 @@ def update(
 
 
 @transaction.atomic
+def revise_from(bill, *, payee=_KEEP, amount=_KEEP, currency=_KEEP,
+                lead_days=_KEEP, category=_KEEP, account=_KEEP,
+                clear_amount=False):
+    """This bill and every later one — and the standing rule behind them.
+
+    **The question `update` could not ask.** Rent went up: is that August, or is
+    that rent? `update` answers the first and this answers the second, and until
+    September 2, 2026 only the first was reachable from anywhere — six fields of
+    `revise_series` were live code no surface could call.
+
+    **What it reaches, and the boundary is the whole design:**
+
+    - The `BillSeries`, so everything it produces from now on is right.
+    - This occurrence, because *this* and future has to include this.
+    - Every **unpaid** occurrence dated on or after it, because `catch_up` and
+      `spawn_next` create rows ahead of time and a promise that only revised the
+      template would be quietly false for each of them.
+
+    **What it never reaches is anything settled.** §4 rule 3 is why occurrences
+    snapshot instead of reading through: a paid bill is a record of money that
+    actually moved, and renaming a payee in March must leave January saying what
+    January said. `revise_series` states the same rule for the template; this is
+    it applied to the rows.
+
+    **No `due_date`.** When a bill falls is the cadence's answer, not a value to
+    broadcast across occurrences — moving one occurrence's date is `update`'s,
+    and it stays there.
+
+    **A one-off is simply edited.** Asking *this or all* about something that
+    happens once is a question with one answer, so the caller is not made to
+    care and the series branch is skipped.
+    """
+    bill = Bill.objects.select_for_update().get(pk=bill.pk)
+    fields = {
+        "payee": payee,
+        "amount": amount,
+        "currency": currency,
+        "lead_days": lead_days,
+        "category": category,
+        "account": account,
+    }
+    given = {k: v for k, v in fields.items() if v is not _KEEP}
+
+    # Validated once, here, by editing this occurrence first: `update` owns the
+    # rules -- a payee cannot be blank, an amount cannot be negative -- and a
+    # second copy of them would be a second place to correct.
+    update(bill, clear_amount=clear_amount, **given)
+    bill.refresh_from_db()
+
+    series = bill.series
+    if series is None:
+        return bill
+
+    revisable = {k: v for k, v in given.items() if k != "currency"}
+    if clear_amount:
+        revisable["amount"] = None
+    if revisable:
+        revise_series(series, **revisable)
+    if "currency" in given:
+        series.currency = bill.currency
+        series.save(update_fields=["currency"])
+
+    # Later, unpaid, and not this one again -- ordered so a failure part-way
+    # through is a transaction that rolls back rather than a half-revised
+    # arrangement.
+    later = Bill.objects.select_for_update().filter(
+        series=series, paid_at__isnull=True, due_date__gte=bill.due_date
+    ).exclude(pk=bill.pk).order_by("due_date", "id")
+    for occurrence in later:
+        update(occurrence, clear_amount=clear_amount, **given)
+    return bill
+
+
+@transaction.atomic
 def set_cadence(bill, recurrence):
     """Change whether a bill repeats, and how often.
 
@@ -474,6 +548,14 @@ def revise_series(series, *, payee=_KEEP, amount=_KEEP, lead_days=_KEEP, cadence
     **It does not rewrite what already happened**, which is the whole reason
     occurrences snapshot rather than read through — §4 rule 3. Renaming a payee
     in March leaves January saying what January said.
+
+    **Its deferral was declared with the trigger *"a surface offers editing the
+    standing rule rather than one month"*, and that surface arrived on
+    September 2, 2026.** Until then only `set_cadence` reached this, so five of
+    its seven fields were unreachable from anywhere. `revise_from` is the caller
+    that changed it — this revises the rule, and that also carries the change to
+    the occurrences already standing, which is what a person means by *this and
+    future*.
     """
     if payee is not _KEEP:
         cleaned = (payee or "").strip()

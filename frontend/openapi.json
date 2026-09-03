@@ -7980,6 +7980,11 @@
       "EditBillIn": {
         "description": "Every field optional, and absent is not empty.\n\nThe same partial-write contract the day and the review already have: a field\nleft out keeps its stored value. **Clearing an amount is explicit** --\n`amount: null` with `clear_amount: true` -- because \"the water bill,\nwhatever it comes to\" is a state somebody chooses rather than a field they\nforgot to fill in.",
         "properties": {
+          "whole_series": {
+            "default": false,
+            "title": "Whole Series",
+            "type": "boolean"
+          },
           "payee": {
             "anyOf": [
               {

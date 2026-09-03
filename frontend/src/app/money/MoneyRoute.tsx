@@ -379,12 +379,16 @@ function EditBill({ bill, onDone }: { bill: BillRow; onDone: () => void }) {
   const [failed, setFailed] = useState<string | null>(null);
 
   const save = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (wholeSeries: boolean) => {
       const { error, response } = await apiV1.PATCH(
         "/api/v1/money/bills/entry/{bill_id}",
         {
           params: { path: { bill_id: bill.id } },
           body: {
+            // **Which bill is meant.** False is August's rent; true is rent.
+            // The server ignores it for the due date and always applies the
+            // cadence to the rule, because neither has a second place to live.
+            whole_series: wholeSeries,
             payee,
             currency,
             due_date: dueDate,
@@ -502,10 +506,33 @@ function EditBill({ bill, onDone }: { bill: BillRow; onDone: () => void }) {
         </span>
       </div>
       {failed && <p className="text-sm text-destructive">{failed}</p>}
+      {/* **Two buttons rather than a checkbox**, and the wording is the
+          whole feature. A repeating bill can be corrected for one month or
+          changed as an arrangement, and those are different acts -- the same
+          distinction the delete controls already draw between *Just this one*
+          and *Stop this bill entirely*. A tickbox beside one Save would make
+          the wider act the easier one to do by accident.
+
+          A one-off gets one button, because asking is a question with one
+          answer. */}
       <div className="flex flex-wrap items-center gap-2">
-        <Button size="sm" onClick={() => save.mutate()} disabled={save.isPending}>
-          Save
+        <Button
+          size="sm"
+          onClick={() => save.mutate(false)}
+          disabled={save.isPending}
+        >
+          {bill.repeats ? "Save this one" : "Save"}
         </Button>
+        {bill.repeats && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => save.mutate(true)}
+            disabled={save.isPending}
+          >
+            Save this and future
+          </Button>
+        )}
         <Button size="sm" variant="ghost" onClick={onDone}>
           Cancel
         </Button>

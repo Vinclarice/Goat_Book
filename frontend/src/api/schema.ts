@@ -3779,6 +3779,11 @@ export interface components {
          *     forgot to fill in.
          */
         EditBillIn: {
+            /**
+             * Whole Series
+             * @default false
+             */
+            whole_series: boolean;
             /** Payee */
             payee?: string | null;
             /** Amount */

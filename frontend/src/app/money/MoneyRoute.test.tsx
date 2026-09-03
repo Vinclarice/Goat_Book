@@ -346,11 +346,11 @@ describe("MoneyRoute", () => {
     /* Scoped to the row being edited: the add form above uses the same labels,
        correctly -- "Amount" is what both boxes are -- so an unscoped query
        finds two and the duplication is the page working, not a bug. */
-    const row = screen.getByRole("button", { name: "Save" }).closest("li")!;
+    const row = screen.getByRole("button", { name: "Save this one" }).closest("li")!;
     const amount = within(row).getByLabelText("Amount");
     await userEvent.clear(amount);
     await userEvent.type(amount, "1250.00");
-    await userEvent.click(within(row).getByRole("button", { name: "Save" }));
+    await userEvent.click(within(row).getByRole("button", { name: "Save this one" }));
 
     const patched = fetchSpy.mock.calls
       .map(([request]) => request as Request)
@@ -784,5 +784,117 @@ describe("MoneyRoute, saying what a bill pays down", () => {
     expect(picker.closest("form")).toContainElement(
       screen.getByRole("button", { name: "Add income" }),
     );
+  });
+});
+
+describe("MoneyRoute, editing this bill or the arrangement", () => {
+  /* The interface has edited occurrences since bills shipped, while the model
+     has distinguished a Bill from its BillSeries since increment 1. Six fields
+     of `revise_series` were reachable from nowhere. */
+  function withBill(overrides: Record<string, unknown> = {}) {
+    return vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const request = input as Request;
+      const path = new URL(request.url).pathname;
+      if (request.method === "PATCH") return jsonResponse({});
+      if (path.includes("/money/accounts")) {
+        return jsonResponse({ month_start: "2026-08-01", accounts: [],
+                              owed_totals: {}, held_totals: {} });
+      }
+      if (path.includes("/money/categories")) return jsonResponse([]);
+      return jsonResponse(
+        billsData({
+          bills: [
+            {
+              id: 5,
+              due_date: "2026-08-01",
+              amount: "1200.00",
+              currency: "USD",
+              payee: "Landlord",
+              paid: false,
+              repeats: true,
+              category: null,
+              category_id: null,
+              account: null,
+              account_id: null,
+              direction: "out",
+              recurrence: "monthly",
+              lead_days: 0,
+              overdue: false,
+              paid_amount: null,
+              ...overrides,
+            },
+          ],
+        }),
+      );
+    });
+  }
+
+  async function openTheEditor() {
+    await userEvent.click(
+      await screen.findByRole("button", { name: /Edit Landlord/ }),
+    );
+  }
+
+  it("offers both acts for a repeating bill", async () => {
+    withBill();
+    renderAt();
+
+    await openTheEditor();
+
+    expect(screen.getByRole("button", { name: "Save this one" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Save this and future" }),
+    ).toBeInTheDocument();
+  });
+
+  it("sends whole_series false for this one", async () => {
+    const fetchSpy = withBill();
+    renderAt();
+    await openTheEditor();
+
+    await userEvent.click(screen.getByRole("button", { name: "Save this one" }));
+
+    await waitFor(async () => {
+      const patched = fetchSpy.mock.calls
+        .map(([r]) => r as Request)
+        .filter((r) => r.method === "PATCH");
+      expect(patched).toHaveLength(1);
+      expect(await patched[0].clone().json()).toMatchObject({
+        whole_series: false,
+      });
+    });
+  });
+
+  it("sends whole_series true for this and future", async () => {
+    const fetchSpy = withBill();
+    renderAt();
+    await openTheEditor();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Save this and future" }),
+    );
+
+    await waitFor(async () => {
+      const patched = fetchSpy.mock.calls
+        .map(([r]) => r as Request)
+        .filter((r) => r.method === "PATCH");
+      expect(patched).toHaveLength(1);
+      expect(await patched[0].clone().json()).toMatchObject({
+        whole_series: true,
+      });
+    });
+  });
+
+  it("asks nothing of a one-off", async () => {
+    /* A question with one answer is not a question. */
+    withBill({ repeats: false });
+    renderAt();
+
+    await openTheEditor();
+
+    expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Save this and future" }),
+    ).toBeNull();
   });
 });

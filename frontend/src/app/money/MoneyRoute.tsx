@@ -6,7 +6,7 @@ import { Button } from "../../components/ui/button";
 
 import { apiV1 } from "../../api/client";
 import { RequestFailed, refusal, statusOf } from "../../api/failure";
-import { RouteFailure } from "./RouteFailure";
+import { RouteFailure } from "../routes/RouteFailure";
 
 /**
  * Money — what is due, what went out, and what the month came to.

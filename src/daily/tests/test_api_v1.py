@@ -703,3 +703,76 @@ class DayWriteTokenAuthTest(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
+
+
+class TheDayShowsOnlyTheBillsItHasAClaimOnTest(TestCase):
+    """A bill due next June is not today's problem, and was on today's page.
+
+    **Found September 2, 2026** while moving Money's reads into Money, from a
+    signature Vince proposed: `actionable_bills_for(owner, day)`. The read it
+    replaced took no day, which is what the defect was made of.
+
+    **The Day gates its tasks and did not gate its bills.** `action_items_for`
+    passes them through `DAY_BUCKETS` — overdue and today, and nothing else, so
+    a task due in June does not appear in September. Increment 5 gave bills an
+    array of their own and no bucketing at all, so every open bill appeared on
+    every day's page regardless of when it was due.
+
+    **The Agenda is right and stays as it is.** It buckets what it is given, so
+    a June bill lands under *Later* where it reads correctly. The two surfaces
+    want different questions answered — *what does this day have a claim on*
+    against *what is outstanding* — which is why one read cannot serve both and
+    why the day belongs in the signature.
+    """
+
+    def setUp(self):
+        self.alice = User.objects.create_user(
+            "alice", "alice@example.com", PASSWORD
+        )
+        self.client = Client()
+        self.client.force_login(self.alice)
+
+    def today(self):
+        return timezone.localdate()
+
+    def bill(self, payee, due):
+        return bills.record(
+            self.alice, payee=payee, amount=Decimal("50.00"),
+            due_date=due, repeats=False,
+        )
+
+    def payees(self, path="/api/v1/day"):
+        return [row["payee"] for row in self.client.get(path).json()["bills"]]
+
+    def test_a_bill_due_today_is_on_the_day(self):
+        self.bill("Due today", self.today())
+
+        self.assertEqual(self.payees(), ["Due today"])
+
+    def test_an_overdue_bill_is_on_the_day(self):
+        """Still owed is still today's problem, which is the whole asymmetry the
+        model exists for."""
+        self.bill("Late", self.today() - timedelta(days=40))
+
+        self.assertEqual(self.payees(), ["Late"])
+
+    def test_a_bill_due_later_is_not(self):
+        self.bill("Next June", self.today() + timedelta(days=270))
+
+        self.assertEqual(self.payees(), [])
+
+    def test_a_bill_due_tomorrow_is_not_either(self):
+        """The boundary, said out loud. `DAY_BUCKETS` is overdue and today; a
+        task due tomorrow does not appear either, and lead time is what exists
+        for saying something early."""
+        self.bill("Tomorrow", self.today() + timedelta(days=1))
+
+        self.assertEqual(self.payees(), [])
+
+    def test_the_agenda_still_shows_it(self):
+        """The other half, and the reason this is a gate rather than a filter on
+        the query: the Agenda buckets by date and a later bill reads correctly
+        there. Removing it from both would be losing it."""
+        self.bill("Next June", self.today() + timedelta(days=270))
+
+        self.assertEqual(self.payees("/api/v1/agenda"), ["Next June"])

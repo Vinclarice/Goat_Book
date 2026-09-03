@@ -117,6 +117,6 @@ class AccountsTest(TestCase):
         card = bills.create_account(self.user, name="Amex")
         bills.record_balance(card, on_date=AUGUST, amount=Decimal("4200.00"))
 
-        services.close_account(card)
+        bills.close_account(card)
 
         self.assertEqual(BalanceReading.objects.count(), 0)

@@ -326,47 +326,6 @@ def tag_summaries(items):
     ]
 
 
-def open_bill_rows_for(user):
-    """The bills the agenda and the day carry, in the shape `_agenda_bill_out`
-    reads.
-
-    **One query, two surfaces**, for the reason `open_items_for` is one query:
-    the agenda and the day disagreeing about which bills exist is a defect
-    nobody would find by reading either. Money coming in is excluded here
-    exactly as `open_items_for` excludes it -- a salary is not a thing to do
-    on a day.
-
-    ~~**Sourced from tasks with a sidecar until the flip.**~~ It is
-    `money.open_bills_for` since September 1, 2026, and neither caller changed
-    -- which was the point of putting the query here first.
-    """
-    return money.open_bills_for(user)
-
-
-def _agenda_bill_out(bill):
-    """One bill, as the agenda and the day carry it.
-
-    **Not `serialize_item`.** A bill row on these screens needs what a bill is
-    -- payee, what it comes to, whether it is settled -- and none of what a
-    task is. Sending a `TaskOut` would mean synthesising a dozen fields a bill
-    has not got, and the SPA would offer to file it in an area.
-
-    **`id` is the `Bill`'s.** It was spelled `task_id` from August 31 to
-    September 1, 2026 -- the name was kept across the flip on purpose, because a
-    mechanical rename across the server, the contract, four routes and the SPA
-    is the wrong thing to carry into the commit that changes what a bill is. It
-    read oddly for two days and then stopped.
-    """
-    series = bill.series
-    return {
-        "id": bill.id,
-        "payee": bill.payee,
-        "due_date": bill.due_date.isoformat(),
-        "amount": str(bill.amount) if bill.amount is not None else None,
-        "currency": bill.currency,
-        "direction": bill.direction,
-        "repeats": series is not None and series.ended_at is None,
-    }
 
 
 def workspace_data_for(
@@ -405,7 +364,7 @@ def workspace_data_for(
         # The array landed before the model moved and its source changed at the
         # flip without either caller noticing, which is the sequencing the
         # detail page used first and the reason this was cheap.
-        "bills": [_agenda_bill_out(bill) for bill in open_bills],
+        "bills": [money.bill_row(bill) for bill in open_bills],
         "completed_today": [serialize_item(item) for item in completed_today],
         "areas": [
             {

@@ -56,6 +56,7 @@ from money.models import Account, Bill, Direction, MoneyCategory
 # **The contract, not a leak.** The Agenda shows bills, so it receives them
 # in the shape money defines -- `modules.md`'s integration contract rather
 # than inheritance. The dependency points this way and never back.
+from money import reads as money_reads
 from money.api_v1 import AgendaBillOut
 from lists.serializers import (
     archive_workspace_data_for,
@@ -353,7 +354,7 @@ def agenda(request):
         lists=lists,
         archived_count=archived_count,
         projects=projects,
-        open_bills=agenda_reader.open_bill_rows_for(user),
+        open_bills=money_reads.open_bills_for(user),
     )
 
 

@@ -81,7 +81,13 @@ ELSEWHERE = {
     # in the monthly balance pass forever asking for a figure. Its declaration
     # carries the trigger. Found by this test, on work added hours after it was
     # cited approvingly -- which is the argument for a guard over a habit.
-    "lists/services.py": ("close_account",),
+    #
+    # **It moved to `money/services.py` on September 2, 2026** with the rest of
+    # the account writes, and this test found *that* too: a declaration keyed on
+    # a path is a declaration that has to move when the code does, and it failed
+    # on both modules at once until it did. Still dark, still for the same
+    # reason, and the trigger is unchanged.
+    "money/services.py": ("close_account",),
     # `month_from_bills` joined on August 31, 2026: increment 3 of
     # bill-as-a-model-plan.md is a read against the new `Bill` model, proven
     # against the old one by `lists/tests/test_bill_reads_agree.py` and called

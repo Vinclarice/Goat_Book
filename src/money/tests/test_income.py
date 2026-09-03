@@ -83,7 +83,7 @@ class IncomeTest(TestCase):
 
         self.assertEqual(list(agenda.open_items_for(self.user)), [])
         self.assertEqual(
-            [row.payee for row in agenda.open_bill_rows_for(self.user)],
+            [row.payee for row in money_reader.open_bills_for(self.user)],
             ["Landlord"],
         )
 

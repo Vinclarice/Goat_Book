@@ -5,7 +5,7 @@ import { Link, useParams } from "react-router";
 import { apiV1 } from "../../api/client";
 import { RequestFailed, refusal, statusOf } from "../../api/failure";
 import { Button } from "../../components/ui/button";
-import { RouteFailure } from "./RouteFailure";
+import { RouteFailure } from "../routes/RouteFailure";
 
 /**
  * The end-of-month pass — every balance, one screen, one save.

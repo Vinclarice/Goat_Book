@@ -3,7 +3,7 @@ import { Link } from "react-router";
 
 import { apiV1 } from "../../api/client";
 import { RequestFailed, statusOf } from "../../api/failure";
-import { RouteFailure } from "./RouteFailure";
+import { RouteFailure } from "../routes/RouteFailure";
 
 /**
  * How the money stands, today.

@@ -503,3 +503,109 @@ def history_for(owner, *, today, months=12):
             )
         )
     return BalanceHistory(months=window, rows=rows)
+
+
+# ---------------------------------------------------------------------------
+# What the task core's surfaces are given
+#
+# **Narrow contracts rather than a shared query.** The Day and the Agenda show
+# bills -- `bill-as-a-model-plan.md` decision 4 -- and they should not have to
+# know what a `Bill` is to do it. These three are what they consume; everything
+# else here is Money's own.
+#
+# **Moved from `lists/agenda.py` on September 2, 2026.** They lived there
+# because the agenda payload was where bills first needed serializing, which is
+# how a module's code ends up in a sibling: not by anybody deciding it should,
+# but by the first caller being over there.
+# ---------------------------------------------------------------------------
+
+
+def bill_row(bill):
+    """One bill, as the Day, the Agenda and the digest carry it.
+
+    **Not a task-shaped row.** A bill has no area, tag, priority or checklist,
+    so sending a `TaskOut` would mean synthesising a dozen fields it has not got
+    and the SPA would offer to file it in an Area.
+
+    `id` is the `Bill`'s. It was spelled `task_id` for two days after the flip;
+    see `money/api_v1.AgendaBillOut`, which this fills.
+    """
+    series = bill.series
+    return {
+        "id": bill.id,
+        "payee": bill.payee,
+        "due_date": bill.due_date.isoformat(),
+        "amount": str(bill.amount) if bill.amount is not None else None,
+        "currency": bill.currency,
+        "direction": bill.direction,
+        "repeats": series is not None and series.ended_at is None,
+    }
+
+
+def actionable_bills_for(owner, day):
+    """The bills `day` has a claim on: overdue, or due on it.
+
+    **The Day's question, and it is not the Agenda's.** `daily.reads` puts tasks
+    through `DAY_BUCKETS` -- overdue and today, nothing else -- so a task due in
+    June does not appear in September. Bills arrived in an array of their own at
+    increment 5 with no gating at all, and **every open bill appeared on every
+    day's page**: a bill due June 2027 was on the page for September 2, 2026.
+    Found by moving this read here, from a signature that had a `day` in it and
+    the one it replaced did not.
+
+    **Overdue is included and that is the asymmetry, not an oversight.** A
+    missed payment is still owed, which is the whole argument `Bill` exists on;
+    `daily.reads.action_items_for` includes overdue tasks for the ordinary
+    version of the same reason.
+    """
+    return [
+        bill for bill in open_bills_for(owner) if bill.due_date <= day
+    ]
+
+
+# ---------------------------------------------------------------------------
+# What the morning email says about a bill
+#
+# **Moved from `send_due_digest.py` on September 2, 2026.** The command owns
+# *when* somebody is written to and what a task's line says; what a *bill's*
+# line says is Money's, and it was over there for the same accidental reason
+# the agenda's row was -- the first caller happened to live there.
+#
+# `url_for` is passed in rather than imported, so Money composes the sentence
+# and the delivery channel still owns its own link-building. Money decides what
+# needs mentioning; notification infrastructure delivers it.
+# ---------------------------------------------------------------------------
+
+def digest_line(bill, today, url_for):
+    """One owed bill, as a line of the morning email.
+
+    **Not `_describe`.** A bill has no area to name and no `/tasks/{id}` to
+    open, so borrowing the task renderer would print a task's sentence about a
+    record that is not one and hand somebody a link that 404s. What it has
+    instead is a figure, which is the thing worth seeing in a message read on
+    a lock screen.
+    """
+    days = (today - bill.due_date).days
+    if days > 0:
+        when = "due yesterday" if days == 1 else f"{days} days overdue"
+    else:
+        when = "due today"
+    what = f"{bill.amount} {bill.currency}, " if bill.amount is not None else ""
+    return "\n".join(
+        [
+            f"  - {bill.payee} ({what}{when})",
+            f"    {url_for(f'money/bills/{bill.id}')}",
+        ]
+    )
+
+
+def digest_coming_line(bill, today, url_for):
+    days = (bill.due_date - today).days
+    when = "tomorrow" if days == 1 else f"in {days} days"
+    what = f"{bill.amount} {bill.currency}, " if bill.amount is not None else ""
+    return "\n".join(
+        [
+            f"  - {bill.payee} ({what}due {when})",
+            f"    {url_for(f'money/bills/{bill.id}')}",
+        ]
+    )

@@ -33,6 +33,10 @@ from lists.models import (
     RecurringCommitment,
     Tag,
 )
+from money import exports as money_exports
+
+# Imported for `EXPORT_KEYS` alone, which is what the completeness guard reads.
+# The rows themselves come from `money.exports`.
 from money.models import (
     Account,
     BalanceReading,
@@ -265,24 +269,14 @@ def _payload(user, *, now):
             "projects": _rows(Project.objects.filter(owner=user)),
             "items": _rows(Item.objects.filter(owner=user), many_to_many=("tags",)),
             "checklist_steps": _rows(ChecklistStep.objects.filter(owner=user)),
-            # **Owned directly**, which is the point of the split: a bill
-            # stops being reached through a task. A `bills` key sat above these
-            # until September 1, 2026 and reached a sidecar through its task's
-            # owner; these two carry a person's whole financial history now.
-            "bill_series": _rows(BillSeries.objects.filter(owner=user)),
-            "bill_occurrences": _rows(Bill.objects.filter(owner=user)),
-            # **Named `accounts_with_balances`, not `accounts`.** The archive
-            # already has an `account` key for the person's own login details,
-            # and two things called account in one payload is how somebody
-            # reading their own export learns the wrong thing about it.
-            "accounts_with_balances": _rows(Account.objects.filter(owner=user)),
-            # A person's own vocabulary for their money, which is theirs to
-            # take with them like anything else they typed.
-            "money_categories": _rows(MoneyCategory.objects.filter(owner=user)),
-            # Reached through the account rather than by an owner of their own:
-            # a reading belongs to an account and the account belongs to a
-            # person, which is the same shape `bills` uses through its item.
-            "balances": _rows(BalanceReading.objects.filter(account__owner=user)),
+            # **Money says which rows and this says what an archive is.**
+            # These five keys were built here until September 2, 2026, which
+            # meant this module knew Money's tables -- so a model added there
+            # was a change needed here, by somebody with no reason to look.
+            # `money.exports.for_owner` is the contract now; `_rows` still
+            # decides what a row looks like, because that is the archive's rule
+            # and there is nothing money-specific in it.
+            **money_exports.for_owner(user, _rows),
             "tags": _rows(Tag.objects.filter(owner=user)),
             "commitments": _rows(
                 RecurringCommitment.objects.filter(owner=user),

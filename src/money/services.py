@@ -648,3 +648,28 @@ def record_balance(account, *, on_date, amount):
         defaults={"amount": amount},
     )
     return reading
+
+
+@transaction.atomic
+# DARK: no production caller. Nothing on the balances screen closes an account,
+# so a card somebody stops using stays in the monthly pass forever, asking for a
+# figure that no longer exists. Trigger: a control for removing an account,
+# which the balances screen is the obvious home for and was not part of what
+# Vince asked for. Declared rather than deleted because the gap is real and
+# one-sided -- accounts can be created and not removed, which is a worse end
+# state than an uncalled function.
+# Two things about where and how this is written, both learned by getting them
+# wrong. It sits *below* the decorator because the guard reads the comment lines
+# immediately preceding `def`, and a declaration above `@transaction.atomic` is
+# invisible to it -- the same decorator-and-def adjacency CLAUDE.md records
+# costing a lost `@transaction.atomic` once already. And it has no blank comment
+# lines, because a bare `#` does not match `^# .*` and silently ends the block,
+# so only the paragraph after it is read.
+def close_account(account):
+    """Remove an account and the readings that belong to it.
+
+    Hard delete, per §4 rule 6: unlike a week somebody reviewed, an account's
+    existence answers nothing about whether a practice happened, so there is
+    nothing here that keeping the row would preserve.
+    """
+    account.delete()

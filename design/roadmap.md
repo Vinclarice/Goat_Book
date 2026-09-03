@@ -483,8 +483,13 @@ re-add it here.
 
   **Measured, September 1, 2026**: one untouched monthly series produces **six**
   further unpaid rows by March 2027. The month page spreads those across six
-  months and would read fine; the agenda and the day show open bills together,
-  so **the agenda is the surface to watch**.
+  months and would read fine; ~~the agenda and the day show open bills
+  together, so **the agenda is the surface to watch**.~~ **The day was corrected
+  on September 2, 2026** and now shows only what it has a claim on — overdue or
+  due today, the same gate its tasks pass through — so arrears do accumulate
+  there, one row per missed period, exactly as they should. **The agenda is
+  still the surface to watch**, because it shows every open bill whatever its
+  date, and it is where six unpaid rents would arrive as a wall.
 
   **It is a question about use, not about code**, which is why it is an entry
   rather than a defect — nothing is wrong until somebody falls behind and finds

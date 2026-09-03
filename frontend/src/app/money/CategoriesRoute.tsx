@@ -5,7 +5,7 @@ import { Link } from "react-router";
 import { apiV1 } from "../../api/client";
 import { RequestFailed, refusal, statusOf } from "../../api/failure";
 import { Button } from "../../components/ui/button";
-import { RouteFailure } from "./RouteFailure";
+import { RouteFailure } from "../routes/RouteFailure";
 
 /**
  * The category list, which belongs to the person rather than to the code.

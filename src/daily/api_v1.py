@@ -23,6 +23,7 @@ from lists.api_v1 import (
     AreaColorKey,
     TaskOut,
 )
+from money import reads as money_reads
 from money.api_v1 import AgendaBillOut
 from lists.models import Item
 from lists.serializers import project_ref_for, serialize_item
@@ -495,8 +496,8 @@ def _day_out(owner, day):
         "shows_action_items": shows_action_items,
         "bills": (
             [
-                agenda._agenda_bill_out(item)
-                for item in agenda.open_bill_rows_for(owner)
+                money_reads.bill_row(bill)
+                for bill in money_reads.actionable_bills_for(owner, day)
             ]
             if shows_action_items
             else []

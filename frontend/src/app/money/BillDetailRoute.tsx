@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams } from "react-router";
 import { Button } from "../../components/ui/button";
 import { apiV1 } from "../../api/client";
 import { RequestFailed, statusOf } from "../../api/failure";
-import { RouteFailure } from "./RouteFailure";
+import { RouteFailure } from "../routes/RouteFailure";
 
 /**
  * One bill, on a page that belongs to Money.

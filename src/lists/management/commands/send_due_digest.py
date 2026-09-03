@@ -89,39 +89,6 @@ def _coming(item, today):
     )
 
 
-def _describe_bill(bill, today):
-    """One owed bill, as a line of the morning email.
-
-    **Not `_describe`.** A bill has no area to name and no `/tasks/{id}` to
-    open, so borrowing the task renderer would print a task's sentence about a
-    record that is not one and hand somebody a link that 404s. What it has
-    instead is a figure, which is the thing worth seeing in a message read on
-    a lock screen.
-    """
-    days = (today - bill.due_date).days
-    if days > 0:
-        when = "due yesterday" if days == 1 else f"{days} days overdue"
-    else:
-        when = "due today"
-    what = f"{bill.amount} {bill.currency}, " if bill.amount is not None else ""
-    return "\n".join(
-        [
-            f"  - {bill.payee} ({what}{when})",
-            f"    {_app_url(f'money/bills/{bill.id}')}",
-        ]
-    )
-
-
-def _coming_bill(bill, today):
-    days = (bill.due_date - today).days
-    when = "tomorrow" if days == 1 else f"in {days} days"
-    what = f"{bill.amount} {bill.currency}, " if bill.amount is not None else ""
-    return "\n".join(
-        [
-            f"  - {bill.payee} ({what}due {when})",
-            f"    {_app_url(f'money/bills/{bill.id}')}",
-        ]
-    )
 
 
 def build_message(user, items, coming, today, bills=(), coming_bills=()):
@@ -156,11 +123,11 @@ def build_message(user, items, coming, today, bills=(), coming_bills=()):
     # list, not because it matters less.
     if bills:
         lines.append(f"Bills ({len(bills)}):")
-        lines += [_describe_bill(bill, today) for bill in bills]
+        lines += [money_reader.digest_line(bill, today, _app_url) for bill in bills]
         lines.append("")
     if coming_bills:
         lines.append(f"Bills coming up ({len(coming_bills)}):")
-        lines += [_coming_bill(bill, today) for bill in coming_bills]
+        lines += [money_reader.digest_coming_line(bill, today, _app_url) for bill in coming_bills]
         lines.append("")
     lines.append(f"Work through them: {_app_url('day')}")
     return "\n".join(lines)

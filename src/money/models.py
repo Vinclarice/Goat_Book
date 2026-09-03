@@ -118,6 +118,26 @@ class Account(models.Model):
     owes = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    #: When somebody stopped using this, or null while they still are.
+    #:
+    #: **`ended_at` spelled for accounts**, and the parallel is deliberate:
+    #: ending a `BillSeries` keeps what it produced because *"those rows are a
+    #: record of money that moved"*, and an account's readings are the same kind
+    #: of row. Twelve months proving a card was paid off is the one thing the
+    #: history page exists to show.
+    #:
+    #: **Closing and deleting are different acts**, which is the whole reason
+    #: this column exists. `close_account` says *I stopped using this*: out of
+    #: the monthly balance pass, out of what is owed, still in the history.
+    #: `delete_account` says *this should never have existed* and takes the
+    #: readings with it — §4 rule 6 asks for the deletion decision to be stated,
+    #: not for it to be hard, and this states both.
+    #:
+    #: Added September 3, 2026, discharging `close_account`'s declared
+    #: deferral — *"a card somebody stops using stays in the monthly balance
+    #: pass forever asking for a figure"*.
+    closed_at = models.DateTimeField(null=True, blank=True)
+
     class Meta:
         #: **The table does not move.** It was created as `lists_account`
         #: and every row in it is somebody\'s financial history; renaming

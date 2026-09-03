@@ -880,7 +880,12 @@ def months_accounts(request, day: date):
     first = day.replace(day=1)
     previous = (first - timedelta(days=1)).replace(day=1)
     accounts = list(
-        Account.objects.filter(owner=request.user).prefetch_related("readings")
+        # **Closed accounts leave the pass and keep their history**, which is
+        # the whole reason closing is not deleting. `close_account`'s deferral
+        # was declared with this exact sentence as its trigger: a card somebody
+        # stops using stays here forever asking for a figure.
+        Account.objects.filter(owner=request.user, closed_at__isnull=True)
+        .prefetch_related("readings")
     )
     # **One query for every account, not one each.** This screen lists
     # everything somebody has, so a lookup inside the loop below is the shape
@@ -932,6 +937,83 @@ def months_accounts(request, day: date):
         "accounts": rows,
         "owed_totals": {code: str(total) for code, total in owed.items()},
         "held_totals": {code: str(total) for code, total in held.items()},
+    }
+
+
+class EditAccountIn(Schema):
+    """Rename it, close it, or open it again.
+
+    **Absent is leave alone**, the partial-write contract every other edit on
+    this router has. `closed` is a tri-state for that reason: true closes,
+    false reopens, and absent means the caller was renaming and had no opinion.
+    """
+
+    name: str | None = None
+    #: True stops using it -- out of the monthly pass and out of what is owed,
+    #: still in the history. False starts again. See `Account.closed_at` for why
+    #: closing keeps the readings and deleting does not.
+    closed: bool | None = None
+
+
+def _account_or_404(request, account_id):
+    account = Account.objects.filter(pk=account_id, owner=request.user).first()
+    if account is None:
+        raise HttpError(404, "No such account.")
+    return account
+
+
+@router.patch(
+    # **`entry/{id}` rather than `{id}`**, exactly as the bill writes do and for
+    # the identical reason: `/money/accounts/{day}` already takes a date in that
+    # position, and two routes differing only by the type of one segment is a
+    # collision waiting for the first numeric-looking date. It is not waiting --
+    # Ninja answered 405 the first time this was tried. The read keeps the
+    # shorter path; the writes take the longer one.
+    "/money/accounts/entry/{account_id}", response=AccountOut,
+    auth=SessionAuthIfLoggedIn(),
+)
+def edit_account(request, account_id: int, payload: EditAccountIn):
+    """Correct an account's name, or stop and start using it."""
+    account = _account_or_404(request, account_id)
+    try:
+        if payload.name is not None:
+            account = bills.rename_account(account, payload.name)
+        if payload.closed is True:
+            account = bills.close_account(account)
+        elif payload.closed is False:
+            account = bills.reopen_account(account)
+    except bills.BillConflict as error:
+        raise HttpError(409, str(error))
+    return _account_out(account)
+
+
+@router.delete(
+    "/money/accounts/entry/{account_id}", response={204: None},
+    auth=SessionAuthIfLoggedIn(),
+)
+def remove_account(request, account_id: int):
+    """Delete an account and its readings.
+
+    **The other act, and the destructive one.** Closing says *I stopped using
+    this*; this says *this should never have existed*, and takes twelve months
+    of readings with it. `Account.closed_at` carries the argument.
+    """
+    bills.delete_account(_account_or_404(request, account_id))
+    return 204, None
+
+
+def _account_out(account):
+    """One account, with no figures: the writes above answer with what they
+    changed, and a balance belongs to a month rather than to an edit."""
+    return {
+        "id": account.id,
+        "name": account.name,
+        "kind": account.kind,
+        "currency": account.currency,
+        "owes": account.owes,
+        "balance": None,
+        "previous": None,
+        "next_payment": None,
     }
 
 

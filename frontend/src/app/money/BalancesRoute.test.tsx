@@ -355,3 +355,79 @@ describe("BalancesRoute, tied to the bills that pay it", () => {
     expect(within(row).getByText(/Fed by/)).toBeInTheDocument();
   });
 });
+
+describe("BalancesRoute, an account somebody stops using", () => {
+  /* `close_account` was dark from the day accounts were built, with this as
+     its declared trigger: a card somebody stops using stays in the monthly
+     balance pass forever asking for a figure. */
+  function withAccounts(fetchImpl?: (path: string) => unknown) {
+    return vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const request = input as Request;
+      if (request.method === "PATCH") return jsonResponse({});
+      return jsonResponse(accountsData());
+    });
+  }
+
+  it("offers to stop using an account, and to rename it", async () => {
+    withAccounts();
+    renderAt();
+
+    await screen.findByText("Amex");
+
+    expect(screen.getAllByRole("button", { name: "Stop using" }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("button", { name: "Rename" }).length).toBeGreaterThan(0);
+  });
+
+  it("closes rather than deletes", async () => {
+    /* The wording is the feature. Closing keeps the readings; deleting takes
+       twelve months of history, and the page must not make them look alike. */
+    const fetchSpy = withAccounts();
+    renderAt();
+    await screen.findByText("Amex");
+
+    await userEvent.click(screen.getAllByRole("button", { name: "Stop using" })[0]);
+
+    await waitFor(async () => {
+      const patched = fetchSpy.mock.calls
+        .map(([r]) => r as Request)
+        .filter((r) => r.method === "PATCH");
+      expect(patched).toHaveLength(1);
+      expect(new URL(patched[0].url).pathname).toContain("/money/accounts/entry/");
+      expect(await patched[0].clone().json()).toMatchObject({ closed: true });
+    });
+  });
+
+  it("sends the new name when renaming", async () => {
+    const fetchSpy = withAccounts();
+    renderAt();
+    await screen.findByText("Amex");
+
+    await userEvent.click(screen.getAllByRole("button", { name: "Rename" })[0]);
+    const box = await screen.findByLabelText("New name for Amex");
+    await userEvent.clear(box);
+    await userEvent.type(box, "American Express");
+    await userEvent.click(screen.getByRole("button", { name: "Save name" }));
+
+    await waitFor(async () => {
+      const patched = fetchSpy.mock.calls
+        .map(([r]) => r as Request)
+        .filter((r) => r.method === "PATCH");
+      expect(patched).toHaveLength(1);
+      expect(await patched[0].clone().json()).toMatchObject({
+        name: "American Express",
+      });
+    });
+  });
+
+  it("does not offer a delete on this page", async () => {
+    /* Deleting exists and is not here. This screen is the monthly ritual, and
+       the destructive verb does not belong beside a row somebody is tabbing
+       through entering figures. */
+    withAccounts();
+    renderAt();
+
+    await screen.findByText("Amex");
+
+    expect(screen.queryByRole("button", { name: /Delete/ })).toBeNull();
+  });
+});

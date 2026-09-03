@@ -111,12 +111,19 @@ class AccountsTest(TestCase):
         self.assertEqual(Account.objects.filter(owner=self.user).count(), 1)
         self.assertEqual(Account.objects.filter(owner=other).count(), 1)
 
-    def test_closing_an_account_takes_its_readings(self):
-        """§4 rule 6, hard delete: an account you closed and removed is not
-        history you are keeping."""
+    def test_deleting_an_account_takes_its_readings(self):
+        """~~§4 rule 6, hard delete: an account you closed and removed is not
+        history you are keeping.~~ **Still true of deleting, and it stopped
+        being true of closing on September 3, 2026** — those were one act and
+        are now two. *This should never have existed* takes the readings;
+        *I stopped using this* keeps them, because twelve months proving a card
+        was paid off is the one thing the history page exists to show. The
+        argument is at `Account.closed_at`, and
+        `test_an_account_can_be_closed.py` holds the other half.
+        """
         card = bills.create_account(self.user, name="Amex")
         bills.record_balance(card, on_date=AUGUST, amount=Decimal("4200.00"))
 
-        bills.close_account(card)
+        bills.delete_account(card)
 
         self.assertEqual(BalanceReading.objects.count(), 0)

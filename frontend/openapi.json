@@ -3113,6 +3113,77 @@
         ]
       }
     },
+    "/api/v1/money/accounts/entry/{account_id}": {
+      "patch": {
+        "operationId": "money_api_v1_edit_account",
+        "summary": "Edit Account",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "account_id",
+            "schema": {
+              "title": "Account Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Correct an account's name, or stop and start using it.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EditAccountIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "money_api_v1_remove_account",
+        "summary": "Remove Account",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "account_id",
+            "schema": {
+              "title": "Account Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "description": "Delete an account and its readings.\n\n**The other act, and the destructive one.** Closing says *I stopped using\nthis*; this says *this should never have existed*, and takes twelve months\nof readings with it. `Account.closed_at` carries the argument.",
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      }
+    },
     "/api/v1/money/accounts": {
       "post": {
         "operationId": "money_api_v1_add_account",
@@ -8623,6 +8694,35 @@
           "currency"
         ],
         "title": "NextPaymentOut",
+        "type": "object"
+      },
+      "EditAccountIn": {
+        "description": "Rename it, close it, or open it again.\n\n**Absent is leave alone**, the partial-write contract every other edit on\nthis router has. `closed` is a tri-state for that reason: true closes,\nfalse reopens, and absent means the caller was renaming and had no opinion.",
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "closed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closed"
+          }
+        },
+        "title": "EditAccountIn",
         "type": "object"
       },
       "NewAccountIn": {

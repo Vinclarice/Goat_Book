@@ -1690,6 +1690,34 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/money/accounts/entry/{account_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove Account
+         * @description Delete an account and its readings.
+         *
+         *     **The other act, and the destructive one.** Closing says *I stopped using
+         *     this*; this says *this should never have existed*, and takes twelve months
+         *     of readings with it. `Account.closed_at` carries the argument.
+         */
+        delete: operations["money_api_v1_remove_account"];
+        options?: never;
+        head?: never;
+        /**
+         * Edit Account
+         * @description Correct an account's name, or stop and start using it.
+         */
+        patch: operations["money_api_v1_edit_account"];
+        trace?: never;
+    };
     "/api/v1/money/accounts": {
         parameters: {
             query?: never;
@@ -4040,6 +4068,20 @@ export interface components {
             /** Currency */
             currency: string;
         };
+        /**
+         * EditAccountIn
+         * @description Rename it, close it, or open it again.
+         *
+         *     **Absent is leave alone**, the partial-write contract every other edit on
+         *     this router has. `closed` is a tri-state for that reason: true closes,
+         *     false reopens, and absent means the caller was renaming and had no opinion.
+         */
+        EditAccountIn: {
+            /** Name */
+            name?: string | null;
+            /** Closed */
+            closed?: boolean | null;
+        };
         /** NewAccountIn */
         NewAccountIn: {
             /** Name */
@@ -6084,6 +6126,52 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AccountsOut"];
+                };
+            };
+        };
+    };
+    money_api_v1_remove_account: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                account_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    money_api_v1_edit_account: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                account_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EditAccountIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountOut"];
                 };
             };
         };

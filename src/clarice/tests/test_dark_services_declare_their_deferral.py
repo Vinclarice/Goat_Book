@@ -76,18 +76,17 @@ SERVICES = SRC / "mind" / "services.py"
 #: So this is a registry of declarations, not a list of places to look.
 ELSEWHERE = {
     "lists/agenda.py": ("snooze_presets", "tag_summaries"),
-    # `close_account` joined on August 27, 2026, the day accounts were built:
-    # they can be created and not removed, so a card somebody stops using stays
-    # in the monthly balance pass forever asking for a figure. Its declaration
-    # carries the trigger. Found by this test, on work added hours after it was
-    # cited approvingly -- which is the argument for a guard over a habit.
+    # ~~`close_account` joined on August 27, 2026, the day accounts were
+    # built~~ -- **its trigger fired on September 3, 2026 and the declaration
+    # goes with it**, which is what a declaration is for. The trigger was named
+    # exactly: *they can be created and not removed, so a card somebody stops
+    # using stays in the monthly balance pass forever asking for a figure.* The
+    # Balances page now offers to stop using one.
     #
-    # **It moved to `money/services.py` on September 2, 2026** with the rest of
-    # the account writes, and this test found *that* too: a declaration keyed on
-    # a path is a declaration that has to move when the code does, and it failed
-    # on both modules at once until it did. Still dark, still for the same
-    # reason, and the trigger is unchanged.
-    "money/services.py": ("close_account",),
+    # It was found dark by this test on work added hours after the test was
+    # cited approvingly; it moved apps once while still dark, which this test
+    # also found; and it came alive here, which this test found as well. Three
+    # times, for one function, none of them by anybody remembering.
     # `month_from_bills` joined on August 31, 2026: increment 3 of
     # bill-as-a-model-plan.md is a read against the new `Bill` model, proven
     # against the old one by `lists/tests/test_bill_reads_agree.py` and called

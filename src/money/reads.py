@@ -353,7 +353,7 @@ def _balances(owner, today):
     owed, held = defaultdict(Decimal), defaultdict(Decimal)
     owed_change, held_change = defaultdict(Decimal), defaultdict(Decimal)
     unread = 0
-    for account in Account.objects.filter(owner=owner).prefetch_related("readings"):
+    for account in Account.objects.filter(owner=owner, closed_at__isnull=True).prefetch_related("readings"):
         by_month = {r.on_date: r.amount for r in account.readings.all()}
         current = by_month.get(this_month)
         if current is None:

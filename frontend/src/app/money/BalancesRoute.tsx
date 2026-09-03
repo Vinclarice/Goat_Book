@@ -146,6 +146,33 @@ export function BalancesRoute() {
   const [figures, setFigures] = useState<Record<number, string>>({});
   const [failed, setFailed] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [renaming, setRenaming] = useState<number | null>(null);
+  const [newName, setNewName] = useState("");
+  // `failed` is declared above and shared: this page has one place it says a
+  // write was refused, and a second would be a second place to look.
+
+  /* **Closing is not deleting**, and the page has to say so or somebody will
+     avoid the safe verb for fear it is the other one. Closing keeps the
+     readings and takes the account out of this list; deleting takes twelve
+     months of history with it. `money/models.py` carries the argument. */
+  const editAccount = useMutation({
+    mutationFn: async (
+      { id, body }: { id: number; body: Record<string, unknown> },
+    ) => {
+      const { error, response } = await apiV1.PATCH(
+        "/api/v1/money/accounts/entry/{account_id}",
+        { params: { path: { account_id: id } }, body },
+      );
+      if (error || !response.ok) throw await refusal(error, response);
+    },
+    onSuccess: () => {
+      setFailed(null);
+      setRenaming(null);
+      queryClient.invalidateQueries({ queryKey: ["accounts"] });
+      queryClient.invalidateQueries({ queryKey: ["money-landing"] });
+    },
+    onError: (caught: Error) => setFailed(caught.message),
+  });
 
   const day = month ?? new Date().toISOString().slice(0, 10);
   const { data, error, isPending, refetch } = useQuery({
@@ -227,6 +254,9 @@ export function BalancesRoute() {
 
       <AddAccount />
 
+      {/* The form below already has a line for `failed`, and a rename or a
+          close can only happen when there are accounts to show it beside. Two
+          would render the same refusal twice. */}
       {data.accounts.length === 0 ? null : (
         <form onSubmit={submit} className="space-y-4">
           <ul className="space-y-1">
@@ -261,6 +291,54 @@ export function BalancesRoute() {
                       *Fed*, not *paid*, for something held. An ISA is not paid
                       down, and the wording follows the direction the way the
                       pay button already does. */}
+                  {/* Two verbs, and the wording is the difference: one is
+                      reversible and named for what it means, the other is not.
+                      A closed account is not in this list at all, so reopening
+                      lives on the History page rather than here -- there is
+                      nothing to click on a row that is gone. */}
+                  <span className="ml-2 inline-flex gap-2 align-middle">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRenaming(account.id);
+                        setNewName(account.name);
+                      }}
+                      className="text-xs text-muted-foreground underline hover:text-foreground"
+                    >
+                      Rename
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        editAccount.mutate({ id: account.id, body: { closed: true } })
+                      }
+                      className="text-xs text-muted-foreground underline hover:text-foreground"
+                    >
+                      Stop using
+                    </button>
+                  </span>
+                  {renaming === account.id && (
+                    <span className="ml-2 inline-flex items-center gap-2 align-middle">
+                      <input
+                        aria-label={`New name for ${account.name}`}
+                        value={newName}
+                        onChange={(event) => setNewName(event.target.value)}
+                        className="rounded-lg border border-border bg-input px-2 py-1 text-sm"
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() =>
+                          editAccount.mutate({
+                            id: account.id,
+                            body: { name: newName },
+                          })
+                        }
+                      >
+                        Save name
+                      </Button>
+                    </span>
+                  )}
                   {account.next_payment !== null && (
                     <span className="block text-xs text-muted-foreground">
                       {account.owes ? "Paid by" : "Fed by"}{" "}

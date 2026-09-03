@@ -36,6 +36,16 @@ class Migration(migrations.Migration):
 
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
+        # **After the migrations that physically create these tables.** This one
+        # creates nothing -- it is state-only -- so without saying so, Django is
+        # free to order it before `lists.0053`, and money's state would then
+        # claim models whose tables do not exist yet.
+        #
+        # Added September 3, 2026 after `accounts.tests.test_migrations` failed
+        # with *relation "lists_account" does not exist*: it rewinds the whole
+        # graph, which is the one path that exercises the ordering. A
+        # forward-only build happened to be fine and proved nothing.
+        ("lists", "0060_bill_amount_not_negative"),
     ]
 
     operations = [

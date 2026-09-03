@@ -747,11 +747,90 @@ def record_balance(account, *, on_date, amount):
 # costing a lost `@transaction.atomic` once already. And it has no blank comment
 # lines, because a bare `#` does not match `^# .*` and silently ends the block,
 # so only the paragraph after it is read.
+@transaction.atomic
 def close_account(account):
+    """Stop using an account, and keep everything it recorded.
+
+    ~~Hard delete, per §4 rule 6: unlike a week somebody reviewed, an account's
+    existence answers nothing about whether a practice happened, so there is
+    nothing here that keeping the row would preserve.~~
+
+    **Corrected September 3, 2026, when the surface that discharges this
+    function's deferral was built.** That reasoning is true of the account row
+    and silent about what hangs off it: `BalanceReading` cascades, so closing a
+    card you had finally paid off deleted the twelve months proving you paid it
+    off — the one question `history_for` exists to answer.
+
+    **The precedent is one model away.** `remove(whole_series=True)` ends a
+    `BillSeries` rather than deleting it, because *"those rows are a record of
+    money that moved"*. An account's readings are the same kind of row.
+
+    **Idempotent, and the date is why**: how long something has been closed is
+    the only thing the timestamp is for, so a second call must not re-stamp it.
+    The same call `pause_project` makes for the same reason.
+
+    Undoable by `reopen_account`, which `principles.md` requires rather than
+    permits: an act with no way back is a durable decision, and *I stopped
+    using this card* is not one.
+    """
+    account = Account.objects.select_for_update().get(pk=account.pk)
+    if account.closed_at is not None:
+        return account
+    account.closed_at = timezone.now()
+    account.save(update_fields=["closed_at"])
+    return account
+
+
+@transaction.atomic
+def reopen_account(account):
+    """Start using it again. Clears the close and nothing else."""
+    account = Account.objects.select_for_update().get(pk=account.pk)
+    account.closed_at = None
+    account.save(update_fields=["closed_at"])
+    return account
+
+
+@transaction.atomic
+def rename_account(account, name):
+    """Correct what an account is called.
+
+    **The refusal is a sentence rather than an `IntegrityError`.**
+    `unique_account_name_per_owner` is the guarantee and this is the boundary:
+    two cards called Amex in one history is exactly the confusion the constraint
+    exists to prevent, and *"you already have an account called Amex"* is what a
+    person can act on.
+
+    **Renaming something to its own name is allowed**, because saving a form
+    without touching the name is not a collision and making somebody think about
+    that is the product being difficult.
+    """
+    account = Account.objects.select_for_update().get(pk=account.pk)
+    cleaned = (name or "").strip()
+    if not cleaned:
+        raise BillConflict("An account needs a name.")
+    clash = (
+        Account.objects.filter(owner=account.owner, name=cleaned)
+        .exclude(pk=account.pk)
+        .exists()
+    )
+    if clash:
+        raise BillConflict(f"You already have an account called {cleaned}.")
+    account.name = cleaned
+    account.save(update_fields=["name"])
+    return account
+
+
+@transaction.atomic
+def delete_account(account):
     """Remove an account and the readings that belong to it.
 
-    Hard delete, per §4 rule 6: unlike a week somebody reviewed, an account's
-    existence answers nothing about whether a practice happened, so there is
-    nothing here that keeping the row would preserve.
+    **The other act, and it is not closing.** *This should never have existed*
+    is a real thing to mean — a card added twice, a typo saved — and it wants
+    the row gone rather than dated. Hard, and cascading to the readings, because
+    a reading of an account that never should have existed is not history.
+
+    §4 rule 6 asks for the deletion decision to be **stated**, not for it to be
+    hard. `close_account` above is the soft half and this is the hard one; both
+    are stated, which is what the rule is for.
     """
     account.delete()

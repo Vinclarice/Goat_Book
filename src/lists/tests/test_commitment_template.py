@@ -301,7 +301,15 @@ class CadenceBelongsToTheCommitmentTest(TestCase):
         )
         task.refresh_from_db()
 
-        spawned = services.complete_item(task)._spawned
+        # **The clock is injected, and it has to be.** This read
+        # `complete_item(task)` against the real date until September 3, 2026,
+        # which is the day it went red: `advance_due_date` is *strictly* after
+        # today, so completing on the 3rd drops the September 3 slot and
+        # spawns October 3. The assertion was right about the cadence and
+        # wrong about the fixture -- a date that only passes for thirty of
+        # every thirty-one days, which is `principles.md`'s "a fixture that
+        # picks a convenient hour has chosen the passing case".
+        spawned = services.complete_item(task, today=date(2026, 8, 10))._spawned
 
         # A month on, not a week.
         self.assertEqual(spawned.due_date, date(2026, 9, 3))

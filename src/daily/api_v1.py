@@ -137,6 +137,9 @@ class DayOut(Schema):
     #: The evening's ask, or null. S5: the record and the morning's choice were
     #: already good, and nothing ever asked for the first.
     closing: "DayClosingOut | None"
+    #: When the first act of execution drew the line under this day's list, or
+    #: null while it is still open -- `superlists-2.0-plan.md` rules 3 and 11.
+    list_closed_at: str | None
     # The Personal Compass, read from the user on every request and stored
     # on no day. Sent with the day rather than fetched separately so the
     # page renders in one round trip -- and because a day is exactly the
@@ -300,6 +303,17 @@ class FocusOut(Schema):
     status: str | None
     due_date: str | None
     selected_at: str
+    #: Whether this was in the morning's set or joined after the day's work
+    #: began -- `superlists-2.0-plan.md` rule 4, *the line is a boundary, not a
+    #: wall*. What joined later is shown, and counted apart rather than folded
+    #: into what was chosen.
+    #:
+    #: **Not a stored field.** `daily.reads.above_the_line` computes it from
+    #: `selected_at` against the day's `list_closed_at`, which is what keeps it
+    #: from ever disagreeing with its own inputs. Sent rather than left to the
+    #: client for the same reason: the comparison is on timestamps in the
+    #: owner's zone and the browser is not necessarily in it.
+    above_the_line: bool
     #: Where the task itself lives, so the day can *act* rather than only
     #: render -- `principles.md`'s *the main surface can do the main thing*.
     #: The server supplies it for the reason it supplies every other URL: a
@@ -364,10 +378,11 @@ def _action_item_out(item, today):
     }
 
 
-def _focus_out(focus):
+def _focus_out(focus, closed_at):
     task = focus.task
     return {
         "task_id": focus.task_id,
+        "above_the_line": reads.above_the_line(focus, closed_at),
         # The live task while there is one, per charter rule 5 -- a renamed
         # task should read the same here as everywhere else. `task_text` is
         # the fallback for a task that has since been deleted, which is the
@@ -451,6 +466,7 @@ def _draft_out(owner, day, today):
 
 def _day_out(owner, day):
     entry = reads.entry_for(owner, day)
+    bounded = reads.bounded_list_for(owner, day)
     today = _today_for_request()
     # Action Items are live task state, and a task carries no history of
     # what it looked like on a past date. Showing today's open work on the
@@ -502,7 +518,22 @@ def _day_out(owner, day):
             if shows_action_items
             else []
         ),
-        "focus": [_focus_out(focus) for focus in reads.focus_for(owner, day)],
+        # **Chosen first, then what joined below the line** -- rule 4. One
+        # array rather than two, because it is one list a person reads down and
+        # the boundary is a rule about *order plus a marker*, not about two
+        # collections. `above_the_line` on each row is the marker; the sort is
+        # the order.
+        "focus": [
+            _focus_out(focus, bounded.closed_at)
+            for focus in [*bounded.chosen, *bounded.joined]
+        ],
+        # When the day's work began, or null on a day that closed unclosed --
+        # rule 11 refuses to write a midnight row into a day nobody executed
+        # on. The client needs it to draw the line itself, and to say *the list
+        # is still open* rather than guessing from an empty `joined`.
+        "list_closed_at": (
+            bounded.closed_at.isoformat() if bounded.closed_at else None
+        ),
         "draft": _draft_out(owner, day, today),
         "brief": _brief_out(owner, day, today),
         "closing": _closing_out(owner, day, today),
@@ -547,6 +578,34 @@ def _day_out(owner, day):
             for routine in routine_reads.paused_routines_for(owner)
         ],
     }
+
+
+def _refuse_a_past_day(day):
+    """Rule 11: a past day is read-only -- `superlists-2.0-plan.md`.
+
+    **A list is written *for* a day and never *on* one that has already
+    happened.** A pin backdated into last Tuesday would add a commitment to a
+    week whose finish rate has already been read, and `DailyFocus` exists
+    precisely so that denominator cannot be reconstructed after the fact.
+
+    **Here rather than in `daily.services.pin_task`, which is where the plan
+    asks for it.** That function is also how sixty tests across four apps build
+    history, and a service that cannot write a past day cannot express *on
+    August 3rd I pinned this*. The rule is about what a person may add to a day
+    they are looking at, and these two endpoints are the only door to that --
+    the SPA offers *Pin to today* and nothing else, so nothing but a hand-made
+    request can reach a past date at all. The tests in
+    `daily/tests/test_the_line.py` hold the door rather than the doorway.
+
+    409 rather than 403: the request is authorised and well-formed, and what it
+    conflicts with is the state of the day. The same code every other refused-
+    but-permitted write on this API answers with.
+
+    Nothing stops a *future* day. Tomorrow's list is the whole point of
+    increment 2, and the plan's *written for a day, never on it*.
+    """
+    if day < _today_for_request():
+        raise HttpError(409, "A day that has already happened cannot be planned.")
 
 
 def _own_task_or_404(owner, task_id):
@@ -617,6 +676,7 @@ def pin_to_day(request, day: date, payload: FocusIn):
     re-render the focus list and the action items together anyway, and one
     response keeps them from disagreeing for a frame.
     """
+    _refuse_a_past_day(day)
     task = _own_task_or_404(request.user, payload.task_id)
     try:
         services.pin_task(request.user, day, task)
@@ -634,6 +694,7 @@ def accept_days_draft(request, day: date, payload: DraftIn):
     morning. It is still a decision -- the draft is bounded by observed
     capacity and says what it left out.
     """
+    _refuse_a_past_day(day)
     tasks = [_own_task_or_404(request.user, task_id) for task_id in payload.task_ids]
     try:
         services.accept_draft(request.user, day, tasks)

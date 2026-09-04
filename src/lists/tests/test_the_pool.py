@@ -13,6 +13,7 @@ from django.utils import timezone
 
 from accounts.models import User
 from lists import agenda
+from daily import services as daily_services
 from lists.models import Item, List
 from money.models import Bill, Direction
 
@@ -252,3 +253,78 @@ class PoolEndpointTest(TestCase):
 
         self.assertEqual(payload["floating"], [])
         self.assertEqual(payload["open_count"], 0)
+
+
+class WhatIsAlreadyPickedTest(TestCase):
+    """A pool row says whether it has already been chosen, and for which day.
+
+    `superlists-2.0-plan.md` increment 2: the pool is where tomorrow's list is
+    made and where a line joins today below the line. Without this the button
+    is one that appears to do nothing -- and picking twice is idempotent on the
+    server, so nothing would ever say otherwise.
+
+    Today and tomorrow only, because those are the two days the page offers.
+    """
+
+    def setUp(self):
+        self.owner = User.objects.create_user(
+            "alice", "alice@example.com", "a secure password"
+        )
+        self.today = timezone.localdate()
+        self.tomorrow = self.today + timedelta(days=1)
+
+    def rows(self):
+        pool = agenda.pool_for(self.owner, self.today)
+        return {row["task"]["text"]: row["picked_for"] for row in pool["floating"]}
+
+    def test_an_unpicked_line_is_picked_for_nothing(self):
+        Item.objects.create(owner=self.owner, text="Book dentist")
+
+        self.assertEqual(self.rows()["Book dentist"], [])
+
+    def test_a_line_picked_for_today_says_so(self):
+        task = Item.objects.create(owner=self.owner, text="Book dentist")
+        daily_services.pin_task(self.owner, self.today, task)
+
+        self.assertEqual(self.rows()["Book dentist"], [self.today.isoformat()])
+
+    def test_a_line_picked_for_tomorrow_says_so(self):
+        task = Item.objects.create(owner=self.owner, text="Book dentist")
+        daily_services.pin_task(self.owner, self.tomorrow, task)
+
+        self.assertEqual(self.rows()["Book dentist"], [self.tomorrow.isoformat()])
+
+    def test_a_released_pin_is_not_a_pick(self):
+        task = Item.objects.create(owner=self.owner, text="Book dentist")
+        daily_services.pin_task(self.owner, self.today, task)
+        daily_services.unpin_task(self.owner, self.today, task)
+
+        self.assertEqual(self.rows()["Book dentist"], [])
+
+    def test_a_pick_on_a_day_the_page_does_not_offer_is_not_reported(self):
+        """Yesterday's pin is history, not a state of the line today."""
+        task = Item.objects.create(owner=self.owner, text="Book dentist")
+        daily_services.pin_task(self.owner, self.today - timedelta(days=1), task)
+
+        self.assertEqual(self.rows()["Book dentist"], [])
+
+    def test_a_fixed_line_carries_it_too(self):
+        task = Item.objects.create(
+            owner=self.owner, text="Send Sam the export", due_date=self.today
+        )
+        daily_services.pin_task(self.owner, self.today, task)
+
+        fixed = agenda.pool_for(self.owner, self.today)["fixed"]
+
+        self.assertEqual(fixed[0]["picked_for"], [self.today.isoformat()])
+
+    def test_a_bill_is_picked_for_nothing_because_it_cannot_be_picked(self):
+        """A bill is not an `Item`, so `DailyFocus` cannot point at one. The
+        field is empty rather than absent, so the client reads one shape.
+        """
+        Bill.objects.create(owner=self.owner, payee="Rent", due_date=self.today)
+
+        fixed = agenda.pool_for(self.owner, self.today)["fixed"]
+
+        self.assertEqual(fixed[0]["picked_for"], [])
+

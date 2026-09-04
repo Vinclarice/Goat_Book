@@ -260,6 +260,41 @@ POOL_ROW_KINDS = (POOL_BILL, POOL_TASK)
 _POOL_KIND_ORDER = {kind: index for index, kind in enumerate(POOL_ROW_KINDS)}
 
 
+# The days the pool offers to pick for, counting from today. Two, because the
+# page's buttons are Today and Tomorrow -- `superlists-2.0-plan.md` increment
+# 2: *`pin_task` to tomorrow from the pool page, and `pin_task` to today after
+# the line from an existing pool line*. A pick further out has no door, so
+# reporting one would be reporting a state nothing here can reach.
+POOL_PICKABLE_DAYS = 2
+
+
+def _picked_for(user, today):
+    """Which of the pool's offered days each task is currently chosen for.
+
+    **A released pin is not a pick.** `unpin_task` keeps the row so a
+    decommitment can be told from a failure, and a pool row that still read
+    *picked* afterwards would be reporting history as state.
+
+    **Yesterday is not reported either.** A pin on a past day is a fact about
+    that day, and the pool is a list of what is open now.
+
+    Imported inside the function: `daily.reads` imports `lists.agenda` at module
+    scope, so the reverse has to be lazy or the two packages gain an import
+    order to remember. The same shape `daily.reads.typical_day_for` uses for
+    `review.reads`, and `lists.services` for this same package.
+    """
+    from daily.models import DailyFocus
+
+    days = [today + timedelta(days=n) for n in range(POOL_PICKABLE_DAYS)]
+    picked = {}
+    for task_id, day in DailyFocus.objects.filter(
+        owner=user, entry__date__in=days, released_at__isnull=True
+    ).values_list("task_id", "entry__date"):
+        if task_id is not None:
+            picked.setdefault(task_id, []).append(day.isoformat())
+    return {task_id: sorted(days) for task_id, days in picked.items()}
+
+
 def pool_for(user, today, *, query=None):
     """Every open line the owner has, in one list -- `superlists-2.0-plan.md`
     rule 1, and its increment 1.
@@ -294,6 +329,7 @@ def pool_for(user, today, *, query=None):
     tasks = list(open_items_for(user))
     bills = list(money.open_bills_for(user))
     open_count = len(tasks) + len(bills)
+    picked = _picked_for(user, today)
 
     if needle:
         tasks = [each for each in tasks if needle in each.text.casefold()]
@@ -306,6 +342,7 @@ def pool_for(user, today, *, query=None):
             "days_until": (each.due_date - today).days,
             "task": serialize_item(each),
             "bill": None,
+            "picked_for": picked.get(each.id, []),
         }
         for each in tasks
         if each.due_date is not None
@@ -316,6 +353,11 @@ def pool_for(user, today, *, query=None):
             "days_until": (each.due_date - today).days,
             "task": None,
             "bill": money.bill_row(each),
+            # **Always empty, and present rather than absent.** A bill is not
+            # an `Item`, so `DailyFocus` cannot point at one and a bill can
+            # never be picked -- but a row that omitted the field would make
+            # the client read two shapes for one list.
+            "picked_for": [],
         }
         for each in bills
     ]
@@ -339,6 +381,7 @@ def pool_for(user, today, *, query=None):
             {
                 "task": serialize_item(each),
                 "age_in_days": age_in_days(each.created_at, today),
+                "picked_for": picked.get(each.id, []),
             }
             for each in floating
         ],

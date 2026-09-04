@@ -1,6 +1,13 @@
 import { useState } from "react";
-import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { Link } from "react-router";
+
+import { Button } from "@/components/ui/button";
 
 import { ageSentence, dueLabel } from "../../agenda";
 import { apiV1 } from "../../api/client";
@@ -20,12 +27,17 @@ import { RouteFailure } from "./RouteFailure";
  * line that needs a *why* will mention a project the way the knowledge core
  * mentions a person.
  *
- * **No write path yet.** Picking a line for a day is increment 2 and the stale
- * prompt is increment 6; this page reads, and a row is a way into the record
- * that owns it.
+ * **One write, and it is the pick** -- increment 2. A line can be chosen for
+ * today or for tomorrow, which is the plan's rule 2: the list is written *for*
+ * a day and never *on* it, so making tomorrow's set this evening is the
+ * ordinary case rather than the clever one. Choosing *today* after the day's
+ * work has begun lands the line below the line, and the server decides that by
+ * comparing two timestamps -- nothing here has to know where the line is. The
+ * stale prompt is increment 6.
  */
 export function PoolRoute() {
   const [query, setQuery] = useState("");
+  const queryClient = useQueryClient();
   const { data, error, isPending, refetch } = useQuery({
     queryKey: ["pool", query],
     queryFn: async () => {
@@ -39,6 +51,24 @@ export function PoolRoute() {
     // list to a loading state and back — which reads as the page flickering
     // rather than as a search narrowing.
     placeholderData: keepPreviousData,
+  });
+
+  const pick = useMutation({
+    mutationFn: async ({ taskId, day }: { taskId: number; day: string }) => {
+      const { data, response } = await apiV1.POST("/api/v1/day/{day}/focus", {
+        params: { path: { day } },
+        body: { task_id: taskId },
+      });
+      if (!data) throw new RequestFailed(response.status);
+      return data;
+    },
+    // Both surfaces, because one act changed both: the pool row now says
+    // "picked", and the day it was picked for has a new line on it. Leaving
+    // the day stale would mean a pick that only appears after a reload.
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["pool"] });
+      queryClient.invalidateQueries({ queryKey: ["day"] });
+    },
   });
 
   if (isPending) return <p className="text-sm text-muted-foreground">Loading…</p>;
@@ -119,6 +149,18 @@ export function PoolRoute() {
                   {row.kind === "bill" && "bill · "}
                   {dueLabel(row.due_date, data.today)}
                 </span>
+                {/* Only a task. A bill has no pick, because `DailyFocus` has
+                    nothing to point at once a bill stopped being an `Item`. */}
+                {row.task && (
+                  <PickButtons
+                    taskId={row.task.id}
+                    text={row.task.text}
+                    today={data.today}
+                    pickedFor={row.picked_for}
+                    onPick={(taskId, day) => pick.mutate({ taskId, day })}
+                    busy={pick.isPending}
+                  />
+                )}
               </li>
             ))}
           </ul>
@@ -152,6 +194,14 @@ export function PoolRoute() {
                 <span className="whitespace-nowrap text-xs text-muted-foreground">
                   {ageSentence(row.age_in_days)}
                 </span>
+                <PickButtons
+                  taskId={row.task.id}
+                  text={row.task.text}
+                  today={data.today}
+                  pickedFor={row.picked_for}
+                  onPick={(taskId, day) => pick.mutate({ taskId, day })}
+                  busy={pick.isPending}
+                />
               </li>
             ))}
           </ul>
@@ -160,3 +210,75 @@ export function PoolRoute() {
     </div>
   );
 }
+
+/** Tomorrow's date, from the server's today rather than the browser's clock.
+ *
+ * The day boundary belongs to the account's time zone, so a browser in another
+ * one would offer the wrong date — the same reason the pool's ages and due
+ * labels are all measured against `data.today`.
+ */
+function dayAfter(today: string) {
+  const date = new Date(`${today}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + 1);
+  return date.toISOString().slice(0, 10);
+}
+
+/**
+ * Choose this line for today or for tomorrow.
+ *
+ * **Two days and no date picker.** Rule 11 makes a past day read-only and rule
+ * 2 says the list is written for a day, so the useful range is exactly *the
+ * day I am in* and *the one I am planning*. A picker would offer a hundred
+ * days nobody wants and a wrong one that the server would then refuse.
+ *
+ * **A picked line says so instead of offering the button again.** Repinning is
+ * idempotent on the server, so without this the second click would look
+ * identical to the first and report nothing.
+ */
+function PickButtons({
+  taskId,
+  text,
+  today,
+  pickedFor,
+  onPick,
+  busy,
+}: {
+  taskId: number;
+  text: string;
+  today: string;
+  pickedFor: string[];
+  onPick: (taskId: number, day: string) => void;
+  busy: boolean;
+}) {
+  const tomorrow = dayAfter(today);
+  const days = [
+    { day: today, label: "Today", picked: "Picked for today" },
+    { day: tomorrow, label: "Tomorrow", picked: "Picked for tomorrow" },
+  ];
+  return (
+    <span className="flex shrink-0 items-center gap-1">
+      {days.map((each) =>
+        pickedFor.includes(each.day) ? (
+          <span key={each.day} className="text-xs text-accent">
+            {each.picked}
+          </span>
+        ) : (
+          <Button
+            key={each.day}
+            type="button"
+            variant="ghost"
+            disabled={busy}
+            /* The visible word is "Today"; the accessible name says which
+               line it belongs to, because a list of twenty identical "Today"
+               buttons tells a screen reader nothing. */
+            aria-label={`Pick ${text} for ${each.label.toLowerCase()}`}
+            onClick={() => onPick(taskId, each.day)}
+          >
+            {each.label}
+          </Button>
+        ),
+      )}
+    </span>
+  );
+}
+

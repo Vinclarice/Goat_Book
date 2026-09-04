@@ -404,7 +404,67 @@ def focus_for(owner, day):
     return list(
         DailyFocus.objects.filter(
             owner=owner, entry__date=day, released_at__isnull=True
-        ).select_related("task", "task__list")
+        ).select_related("task", "task__list", "entry")
+    )
+
+
+def above_the_line(focus, closed_at):
+    """Whether ``focus`` was chosen before the day's work began.
+
+    **Above or below is not a field**, and this function is why -- it is a
+    comparison of two timestamps `DailyFocus` and `DailyEntry` already carry.
+    `superlists-2.0-plan.md`, *The composer*: the morning pick is a pin whose
+    `selected_at` precedes `list_closed_at`, and an existing pool line chosen
+    at noon is the same act with a later timestamp. Storing the answer would
+    make it something that could disagree with its own inputs.
+
+    **A line never drawn puts everything above it.** Rule 11 keeps
+    `list_closed_at` null on a day nothing executed on, and a pin made on such
+    a day is still something that was chosen -- the alternative would silently
+    empty the denominator of every day somebody planned and then did not
+    start.
+
+    Strictly before, matching the plan's word: the tick that draws the line was
+    made *after* the pin it acted on.
+
+    One definition, read from two places -- the day's own split below and
+    `review.reads`' two bucketings, which is what keeps the finish rate and the
+    page from disagreeing about which pins were chosen.
+    """
+    return closed_at is None or focus.selected_at < closed_at
+
+
+@dataclass(frozen=True)
+class BoundedList:
+    """The day's list, split by the line -- `superlists-2.0-plan.md` rule 4.
+
+    *The line is a boundary, not a wall.* What joined later is here rather than
+    hidden, and counted apart rather than folded into what was chosen: a day
+    with three chosen and four unplanned done is a good day this can say so
+    about.
+    """
+
+    #: When work began, or None on a day that closed unclosed.
+    closed_at: object
+    #: The morning's set, in the order it was chosen.
+    chosen: list
+    #: What joined after the line, in the order it joined.
+    joined: list
+
+
+def bounded_list_for(owner, day):
+    """What was chosen for ``day``, and what joined below the line.
+
+    Released pins are on neither side, inheriting `focus_for`'s rule: a pin
+    somebody took off is history for the review to read, not work on the page.
+    """
+    entry = entry_for(owner, day)
+    closed_at = entry.list_closed_at if entry else None
+    pins = focus_for(owner, day)
+    return BoundedList(
+        closed_at=closed_at,
+        chosen=[each for each in pins if above_the_line(each, closed_at)],
+        joined=[each for each in pins if not above_the_line(each, closed_at)],
     )
 
 

@@ -336,14 +336,46 @@ cheapest evidence there is, not because it gates 1 and 2.
    Age says *added today* on every floating line, where the Day page's
    `AGE_WORTH_MENTIONING` threshold would say nothing — one phrasing,
    `ageSentence`, with `ageLabel` now calling it.
-2. **Pick to a date, and the line.** `DailyEntry.list_closed_at`, set by the
+2. ~~**Pick to a date, and the line.** `DailyEntry.list_closed_at`, set by the
    first act of execution — rule 3, D7 answered. The day's read splits pins by
    `selected_at` against it; `typical_day_for` and the finish rate read
    above-the-line pins only; a zero-pin day yields `None`. `pin_task` to
    tomorrow from the pool page, and `pin_task` to today after the line from an
    existing pool line, which lands below it. `pin_task` and the composer refuse
-   a past day. The *fixed today* strip, rule 9. **Acceptance: the mockup's
-   morning moment.**
+   a past day. The *fixed today* strip, rule 9.~~ **Shipped September 3, 2026**,
+   with three things different from the text above and one deliberately left.
+
+   **The refusal is at the endpoint, not in `pin_task`.** Written there first,
+   it made the service unable to write history — which is what sixty tests
+   across `daily`, `review`, `lists` and `clarice` use it for, because *on
+   August 3rd I pinned this* is a fixture rather than a defect. Rule 11 is
+   about what a person may add to a day they are looking at, and
+   `daily.api_v1`'s two pinning endpoints are the only door to that; both
+   already hold the request's own `today` in the owner's zone, which the
+   service would have had to read from the clock. `pin_task`'s docstring
+   carries the reasoning and `test_the_line.py` holds both doors.
+
+   **Ticking a task nobody chose leaves the list open.** Rule 3 enumerates —
+   *a tick on a chosen task, or a Did or Today line* — and an unchosen tick is
+   on neither list. Narrow on purpose, and the first thing to revisit if the
+   line turns out to be drawn too rarely; the site says so.
+
+   **A zero-pin day needed no new code.** `typical_day_for` already skips a day
+   whose `planned.total` is zero rather than averaging in a nought, and a day
+   whose whole list joined below the line now has a total of zero — so rule 10
+   arrives as a consequence of the denominator rather than as a nullable field.
+   A `joined_in_week` was written and then removed: the week grain has no use
+   for it until the closing ritual, and this repository fails a build for a
+   read nothing calls.
+
+   **What is left of the morning moment.** The line, the two sides, the pick
+   from the pool for today or tomorrow, and capacity measured against the
+   chosen count alone. The appointments strip is increment 7, the log is 3 and
+   the composer is 4, so the mockup's morning cannot be met whole here; the
+   *fixed today* strip needed no server work, because `action_items` and
+   `bills` have always shown every dated claim on the day whether or not it was
+   picked — which is rule 9 already true. The pool's rows gained `picked_for`,
+   without which a Pick button is one that appears to do nothing.
 3. **The log, as a read.** The day's timeline: nodes captured that day, task
    events **from the life-event log** — completed and reopened as separate
    lines, rule 6 — routine occurrences, bill payments, pins, in one order by

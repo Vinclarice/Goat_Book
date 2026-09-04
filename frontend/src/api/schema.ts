@@ -2017,6 +2017,10 @@ export interface components {
          *     `task` and `bill` are mutually exclusive and `kind` says which; an
          *     `Appointment` joins as a third variant at increment 7 without either
          *     existing one changing.
+         *
+         *     `picked_for` is which of the days this page offers -- today and tomorrow --
+         *     the line is currently chosen for, and is always empty on a bill, which
+         *     cannot be picked at all. See `agenda.POOL_PICKABLE_DAYS`.
          */
         PoolFixedRowOut: {
             /**
@@ -2030,6 +2034,8 @@ export interface components {
             days_until: number;
             task: components["schemas"]["TaskOut"] | null;
             bill: components["schemas"]["AgendaBillOut"] | null;
+            /** Picked For */
+            picked_for: string[];
         };
         /**
          * PoolFloatingRowOut
@@ -2043,6 +2049,8 @@ export interface components {
             task: components["schemas"]["TaskOut"];
             /** Age In Days */
             age_in_days: number;
+            /** Picked For */
+            picked_for: string[];
         };
         /** PoolOut */
         PoolOut: {
@@ -2935,6 +2943,8 @@ export interface components {
             draft: components["schemas"]["DayDraftOut"];
             brief: components["schemas"]["DayBriefOut"];
             closing: components["schemas"]["DayClosingOut"] | null;
+            /** List Closed At */
+            list_closed_at: string | null;
             /** Week Intention */
             week_intention: string;
             /** Typical Day */
@@ -2970,6 +2980,8 @@ export interface components {
             due_date: string | null;
             /** Selected At */
             selected_at: string;
+            /** Above The Line */
+            above_the_line: boolean;
             /** Url */
             url: string | null;
         };

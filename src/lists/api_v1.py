@@ -214,6 +214,10 @@ class PoolFixedRowOut(Schema):
     `task` and `bill` are mutually exclusive and `kind` says which; an
     `Appointment` joins as a third variant at increment 7 without either
     existing one changing.
+
+    `picked_for` is which of the days this page offers -- today and tomorrow --
+    the line is currently chosen for, and is always empty on a bill, which
+    cannot be picked at all. See `agenda.POOL_PICKABLE_DAYS`.
     """
 
     kind: PoolRowKind
@@ -225,6 +229,7 @@ class PoolFixedRowOut(Schema):
     days_until: int
     task: TaskOut | None
     bill: AgendaBillOut | None
+    picked_for: list[str]
 
 
 class PoolFloatingRowOut(Schema):
@@ -237,6 +242,10 @@ class PoolFloatingRowOut(Schema):
 
     task: TaskOut
     age_in_days: int
+    #: Which of today and tomorrow this line is already chosen for, so a Pick
+    #: button can say so rather than looking like it did nothing. Released pins
+    #: are not picks -- see `agenda._picked_for`.
+    picked_for: list[str]
 
 
 class PoolOut(Schema):

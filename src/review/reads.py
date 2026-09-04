@@ -111,7 +111,7 @@ def _local_date(instant):
 
 
 def planned_in_week(owner, week_start, week_end):
-    """The week's pins, sorted into what became of them by the week's end.
+    """The week's *chosen* pins, sorted into what became of them by its end.
 
     Both judgements are made **at the week's end** rather than at read
     time, which is what keeps a past week's figure from moving afterwards:
@@ -124,6 +124,25 @@ def planned_in_week(owner, week_start, week_end):
     left to ask. The denominator survives -- that is what `task_text` is
     for -- but the numerator can quietly fall, which is why §8 has
     completing a review stamp the figure it reported.
+
+    **Above the line only, since September 3, 2026** --
+    `superlists-2.0-plan.md`, *The composer*. What joined a day after its work
+    began is `joined_in_week` below, and it is reported rather than counted:
+    a day of eight lines added as they happened would otherwise raise what a
+    typical day holds and quietly hide over-commitment on the next draft. The
+    finish rate divides by what was *chosen*, which is what `DailyFocus` was
+    built to record and the only thing that can honestly be a denominator.
+
+    **Nothing about a week before that date changes**, because `list_closed_at`
+    is null everywhere until a line is drawn and a null line puts every pin
+    above it -- `daily.reads.above_the_line` owns that rule and this asks it
+    rather than restating it.
+
+    **What joined below the line is not read at this grain yet.** The day shows
+    it -- `daily.reads.bounded_list_for` -- and the *week* has no use for it
+    until the closing ritual offers its three moves on each unfinished pin
+    whichever side it fell, which is increment 5. A `joined_in_week` written
+    here now would have no caller, which this repository has a test for.
     """
     buckets = {"met": [], "unfinished": [], "set_aside": []}
     for focus in (
@@ -135,6 +154,8 @@ def planned_in_week(owner, week_start, week_end):
         .select_related("task", "entry")
         .order_by("entry__date", "position", "id")
     ):
+        if not daily_reads.above_the_line(focus, focus.entry.list_closed_at):
+            continue
         buckets[what_became_of(focus, week_end)].append(focus)
     return Planned(**buckets)
 

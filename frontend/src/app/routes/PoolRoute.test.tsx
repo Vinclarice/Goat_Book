@@ -55,6 +55,7 @@ function poolData(overrides: Record<string, unknown> = {}) {
         due_date: "2026-09-05",
         days_until: 2,
         task: null,
+        picked_for: [],
         bill: {
           id: 7,
           payee: "Rent",
@@ -66,7 +67,7 @@ function poolData(overrides: Record<string, unknown> = {}) {
         },
       },
     ],
-    floating: [{ task: task(), age_in_days: 9 }],
+    floating: [{ task: task(), age_in_days: 9, picked_for: [] }],
     ...overrides,
   };
 }
@@ -114,7 +115,9 @@ describe("PoolRoute", () => {
     // The Day page's AGE_WORTH_MENTIONING threshold does not apply here: the
     // pool sorts by age, so an unlabelled row would read as unordered.
     vi.spyOn(globalThis, "fetch").mockImplementation(() =>
-      jsonResponse(poolData({ floating: [{ task: task(), age_in_days: 0 }] })),
+      jsonResponse(
+        poolData({ floating: [{ task: task(), age_in_days: 0, picked_for: [] }] }),
+      ),
     );
 
     renderPool();
@@ -200,3 +203,90 @@ describe("PoolRoute", () => {
     );
   });
 });
+
+describe("PoolRoute, picking a line for a day", () => {
+  // superlists-2.0-plan.md increment 2: the pool is where tomorrow's list is
+  // made, and where an existing line joins today below the line.
+
+  afterEach(() => vi.restoreAllMocks());
+
+  it("picks a floating line for today", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(() => jsonResponse(poolData()));
+
+    renderPool();
+    await userEvent.click(
+      await screen.findByRole("button", { name: /Pick Book dentist for today/i }),
+    );
+
+    await waitFor(() => {
+      const posts = fetchSpy.mock.calls
+        .map(([sent]) => sent as Request)
+        .filter((request) => request.method === "POST");
+      expect(posts.some((r) => r.url.includes("/api/v1/day/2026-09-03/focus"))).toBe(
+        true,
+      );
+    });
+  });
+
+  it("picks it for tomorrow, which is the day the list is written for", async () => {
+    // Rule 2: the list is written *for* a day, never *on* it. The evening
+    // before is the ordinary case, not the edge one.
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(() => jsonResponse(poolData()));
+
+    renderPool();
+    await userEvent.click(
+      await screen.findByRole("button", {
+        name: /Pick Book dentist for tomorrow/i,
+      }),
+    );
+
+    await waitFor(() => {
+      const posts = fetchSpy.mock.calls
+        .map(([sent]) => sent as Request)
+        .filter((request) => request.method === "POST");
+      expect(posts.some((r) => r.url.includes("/api/v1/day/2026-09-04/focus"))).toBe(
+        true,
+      );
+    });
+  });
+
+  it("says a line is already picked rather than offering it again", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        poolData({
+          floating: [
+            { task: task(), age_in_days: 9, picked_for: ["2026-09-03"] },
+          ],
+        }),
+      ),
+    );
+
+    renderPool();
+
+    expect(await screen.findByText(/Picked for today/i)).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Pick Book dentist for today/i }),
+    ).toBeNull();
+    // Tomorrow is still on offer -- one pick is not the other.
+    expect(
+      screen.getByRole("button", { name: /Pick Book dentist for tomorrow/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("offers no pick on a bill, which cannot be chosen at all", async () => {
+    // A bill is not an `Item`, so `DailyFocus` has nothing to point at.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(poolData({ floating: [] })),
+    );
+
+    renderPool();
+
+    await screen.findByText("Rent");
+    expect(screen.queryByRole("button", { name: /^Pick /i })).toBeNull();
+  });
+});
+

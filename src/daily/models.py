@@ -54,6 +54,23 @@ class DailyEntry(models.Model):
     intentions = models.TextField(blank=True, default="")
     gratitude = models.TextField(blank=True, default="")
     happenings = models.TextField(blank=True, default="")
+    #: When the first act of execution drew the line under the day's list --
+    #: `superlists-2.0-plan.md` rules 3, 4 and 11.
+    #:
+    #: **Null means the line was never drawn**, and that is a fact rather than
+    #: a missing value: rule 11 refuses to write a midnight row into a day
+    #: nobody executed on, because *a day nobody answered closes unclosed,
+    #: which is itself a record* -- S5's own insistence, and the reason this
+    #: table has no delete path either. The freeze on a past day is derived
+    #: from the date, never from this column.
+    #:
+    #: **It is not a status and it does not move.** Reopening a task cannot
+    #: clear it: what it records is that the day's work began, not that
+    #: anything is finished. `daily/tests/test_the_line.py` holds both.
+    #:
+    #: Above or below the line is not a field on `DailyFocus`; it is
+    #: `selected_at` compared against this -- see `daily.reads.above_the_line`.
+    list_closed_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     # search-plan.md slice 1, and the half its trigger actually fired on: a day

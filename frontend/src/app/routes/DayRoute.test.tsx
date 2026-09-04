@@ -49,6 +49,7 @@ function dayData(overrides: Record<string, unknown> = {}) {
     compass_question: "",
     week_intention: "",
     typical_day: null,
+    list_closed_at: null,
     routines: [],
     routines_are_loggable: true,
     paused_routines: [],
@@ -78,6 +79,7 @@ function focusRow(overrides: Record<string, unknown> = {}) {
     status: "active",
     due_date: "2026-08-03",
     selected_at: "2026-08-03T09:00:00",
+    above_the_line: true,
     url: "/api/items/1/",
     ...overrides,
   };
@@ -1742,3 +1744,81 @@ describe("DayRoute", () => {
     expect(screen.queryByRole("button", { name: /add to tasks/i })).toBeNull();
   });
 });
+
+describe("DayRoute, the line under the list", () => {
+  // superlists-2.0-plan.md increment 2. The morning's set is protected and the
+  // day can still take things in below it -- rule 4, *the line is a boundary,
+  // not a wall*.
+
+  it("says the list is still open when no line has been drawn", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(dayData({ focus: [focusRow()], list_closed_at: null })),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    expect(await screen.findByText(/still open/i)).toBeInTheDocument();
+  });
+
+  it("draws the line and says when the day's work began", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        dayData({
+          focus: [focusRow()],
+          list_closed_at: "2026-08-03T08:12:00+00:00",
+        }),
+      ),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    expect(await screen.findByRole("separator")).toBeInTheDocument();
+  });
+
+  it("shows what joined below the line, counted apart", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        dayData({
+          focus: [
+            focusRow({ task_id: 1, text: "Chosen", above_the_line: true }),
+            focusRow({ task_id: 2, text: "Joined", above_the_line: false }),
+          ],
+          list_closed_at: "2026-08-03T08:12:00+00:00",
+        }),
+      ),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    expect(await screen.findByText("Chosen")).toBeInTheDocument();
+    expect(screen.getByText("Joined")).toBeInTheDocument();
+    // The count is what makes it "counted apart" rather than merely listed.
+    expect(screen.getByText(/1 joined below the line/i)).toBeInTheDocument();
+  });
+
+  it("measures capacity against what was chosen, not what joined later", async () => {
+    // The plan's *The composer*: below-the-line pins are reported, never used
+    // as evidence of what a day can hold. Two pins, one of them below the
+    // line, against a typical day of two is not over-committed.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        dayData({
+          focus: [
+            focusRow({ task_id: 1, text: "Chosen", above_the_line: true }),
+            focusRow({ task_id: 2, text: "Joined", above_the_line: false }),
+          ],
+          list_closed_at: "2026-08-03T08:12:00+00:00",
+          typical_day: 1,
+        }),
+      ),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    expect(await screen.findByText(/1 chosen for today/)).toBeInTheDocument();
+    expect(
+      screen.queryByText(/more than the day usually holds/),
+    ).not.toBeInTheDocument();
+  });
+});
+

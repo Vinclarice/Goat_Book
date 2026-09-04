@@ -3870,7 +3870,7 @@
         "type": "object"
       },
       "PoolFixedRowOut": {
-        "description": "A line with a date on it, whichever kind of record it came from.\n\n**A tagged row rather than two arrays**, unlike `AgendaOut`, and the\ndifference is what the surface is for: the agenda groups by bucket and the\nclient lays each group out, while the pool's fixed half is one sequence in\ndate order with bills among the tasks -- `superlists-2.0-plan.md` increment\n1. Interleaving on the client would mean the browser deciding what a date\nmeans, which is the server's by `principles.md`.\n\n`task` and `bill` are mutually exclusive and `kind` says which; an\n`Appointment` joins as a third variant at increment 7 without either\nexisting one changing.",
+        "description": "A line with a date on it, whichever kind of record it came from.\n\n**A tagged row rather than two arrays**, unlike `AgendaOut`, and the\ndifference is what the surface is for: the agenda groups by bucket and the\nclient lays each group out, while the pool's fixed half is one sequence in\ndate order with bills among the tasks -- `superlists-2.0-plan.md` increment\n1. Interleaving on the client would mean the browser deciding what a date\nmeans, which is the server's by `principles.md`.\n\n`task` and `bill` are mutually exclusive and `kind` says which; an\n`Appointment` joins as a third variant at increment 7 without either\nexisting one changing.\n\n`picked_for` is which of the days this page offers -- today and tomorrow --\nthe line is currently chosen for, and is always empty on a bill, which\ncannot be picked at all. See `agenda.POOL_PICKABLE_DAYS`.",
         "properties": {
           "kind": {
             "enum": [
@@ -3907,6 +3907,13 @@
                 "type": "null"
               }
             ]
+          },
+          "picked_for": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Picked For",
+            "type": "array"
           }
         },
         "required": [
@@ -3914,7 +3921,8 @@
           "due_date",
           "days_until",
           "task",
-          "bill"
+          "bill",
+          "picked_for"
         ],
         "title": "PoolFixedRowOut",
         "type": "object"
@@ -3928,11 +3936,19 @@
           "age_in_days": {
             "title": "Age In Days",
             "type": "integer"
+          },
+          "picked_for": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Picked For",
+            "type": "array"
           }
         },
         "required": [
           "task",
-          "age_in_days"
+          "age_in_days",
+          "picked_for"
         ],
         "title": "PoolFloatingRowOut",
         "type": "object"
@@ -6155,6 +6171,17 @@
               }
             ]
           },
+          "list_closed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "List Closed At"
+          },
           "week_intention": {
             "title": "Week Intention",
             "type": "string"
@@ -6213,6 +6240,7 @@
           "draft",
           "brief",
           "closing",
+          "list_closed_at",
           "week_intention",
           "typical_day",
           "compass_purpose",
@@ -6268,6 +6296,10 @@
             "title": "Selected At",
             "type": "string"
           },
+          "above_the_line": {
+            "title": "Above The Line",
+            "type": "boolean"
+          },
           "url": {
             "anyOf": [
               {
@@ -6286,6 +6318,7 @@
           "status",
           "due_date",
           "selected_at",
+          "above_the_line",
           "url"
         ],
         "title": "FocusOut",

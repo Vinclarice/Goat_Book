@@ -54,6 +54,10 @@ type Focus = {
   text: string;
   status: string | null;
   due_date: string | null;
+  /** Whether this was in the morning's set or joined after the day's work
+   * began -- superlists-2.0-plan.md rule 4. Not a stored field: the server
+   * computes it from selected_at against the day's list_closed_at. */
+  above_the_line: boolean;
   /** Where the task lives, so this page can act on it. Null for a pin whose
    * task was deleted -- the record of having planned it outlives the task. */
   url: string | null;
@@ -70,6 +74,7 @@ type Focus = {
 function FocusList({
   focus,
   today,
+  closedAt,
   onUnpin,
   onComplete,
   onDefer,
@@ -77,6 +82,7 @@ function FocusList({
 }: {
   focus: Focus[];
   today: string;
+  closedAt: string | null;
   onUnpin: (taskId: number) => void;
   onComplete: (item: Focus) => void;
   onDefer: (item: Focus) => void;
@@ -89,6 +95,85 @@ function FocusList({
       </p>
     );
   }
+  const chosen = focus.filter((item) => item.above_the_line);
+  const joined = focus.filter((item) => !item.above_the_line);
+  return (
+    <>
+      <FocusRows
+        focus={chosen}
+        today={today}
+        onUnpin={onUnpin}
+        onComplete={onComplete}
+        onDefer={onDefer}
+        busy={busy}
+      />
+      {/* **The line, drawn rather than described.** A rule element is what it
+          is on paper, and `role="separator"` is what it is to a screen reader.
+          Absent while the list is still open, because rule 11 keeps
+          `list_closed_at` null on a day nothing executed on and a line drawn
+          at nothing would be the midnight row that rule refuses. */}
+      {closedAt !== null && (
+        <>
+          <hr className="my-3 border-accent" />
+          <p className="text-sm text-muted-foreground">
+            Work began at {timeOfDay(closedAt)}. Nothing more joins above this.
+          </p>
+        </>
+      )}
+      {closedAt === null && focus.length > 0 && (
+        <p className="text-sm text-muted-foreground">
+          The list is still open. The first thing you finish draws the line.
+        </p>
+      )}
+      {joined.length > 0 && (
+        <>
+          {/* Counted apart rather than folded in -- rule 4. A day with three
+              chosen and four unplanned done is a good day, and this is the
+              sentence that lets the page say so. */}
+          <p className="mt-3 text-sm text-muted-foreground">
+            {joined.length} joined below the line.
+          </p>
+          <FocusRows
+            focus={joined}
+            today={today}
+            onUnpin={onUnpin}
+            onComplete={onComplete}
+            onDefer={onDefer}
+            busy={busy}
+          />
+        </>
+      )}
+    </>
+  );
+}
+
+/** A time of day in the reader's own locale, from an instant the server sent.
+ *
+ * The instant is the authority and this only formats it -- the same split the
+ * due labels already keep with `lists.agenda`.
+ */
+function timeOfDay(instant: string) {
+  return new Date(instant).toLocaleTimeString(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function FocusRows({
+  focus,
+  today,
+  onUnpin,
+  onComplete,
+  onDefer,
+  busy,
+}: {
+  focus: Focus[];
+  today: string;
+  onUnpin: (taskId: number) => void;
+  onComplete: (item: Focus) => void;
+  onDefer: (item: Focus) => void;
+  busy: boolean;
+}) {
   return (
     <ul className="space-y-1">
       {focus.map((item) => (
@@ -1012,6 +1097,9 @@ export function DayRoute() {
   }
 
   const isToday = data.date === data.today;
+  // What was chosen, as against what joined below the line. The denominator
+  // every number on this page divides by -- superlists-2.0-plan.md rule 4.
+  const chosenCount = data.focus.filter((each) => each.above_the_line).length;
   // Derived rather than stored: what is pinned is the focus list's answer,
   // and an action-item row asking "am I in it" must not be able to disagree.
   // Areas rather than emptiness: see the comment at the render below.
@@ -1209,6 +1297,7 @@ export function DayRoute() {
         <FocusList
           focus={data.focus}
           today={data.today}
+          closedAt={data.list_closed_at}
           onUnpin={(taskId) => focusMutation.mutate({ taskId, pin: false })}
           onComplete={(item) => completeMutation.mutate(item)}
           onDefer={(item) => deferMutation.mutate(item)}
@@ -1237,14 +1326,23 @@ export function DayRoute() {
             point is planning, the same distinction shows_action_items already
             makes at day == today, and on a past day this sentence is a verdict
             on something that cannot be changed. */}
-        {isToday && data.typical_day !== null && data.focus.length > 0 && (
-          <p className="text-sm text-muted-foreground">
-            {data.focus.length} pinned for today. You have finished{" "}
-            {data.typical_day} on a typical day.
-            {data.focus.length > data.typical_day &&
-              " That is more than the day usually holds."}
-          </p>
-        )}
+        {/* **Chosen only, since September 3, 2026.** This counted every pin
+            until the line existed, which would now include everything that
+            joined after the day's work began -- and the plan's *The composer*
+            is explicit that below-the-line pins are reported and never used as
+            evidence of what a day can hold. Counting them here would say
+            "more than the day usually holds" to somebody who planned two
+            things and simply had a productive afternoon. */}
+        {isToday &&
+          data.typical_day !== null &&
+          chosenCount > 0 && (
+            <p className="text-sm text-muted-foreground">
+              {chosenCount} chosen for today. You have finished{" "}
+              {data.typical_day} on a typical day.
+              {chosenCount > data.typical_day &&
+                " That is more than the day usually holds."}
+            </p>
+          )}
         {focusMutation.isError && (
           <p className="text-sm text-destructive">
             {focusMutation.error.message}

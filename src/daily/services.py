@@ -104,6 +104,29 @@ def _entry_for_writing(owner, day):
     return entry
 
 
+def draw_the_line(owner, day, *, now):
+    """Record that ``day``'s work began -- `superlists-2.0-plan.md` rule 3.
+
+    **Mechanical rather than a button, so it cannot be forgotten.** The only
+    way to leave a list open all day is to execute nothing on it, which is
+    rule 11's *closes unclosed* and a fact worth keeping.
+
+    **Idempotent by the WHERE clause, not by reading first.** Two ticks a
+    moment apart are two requests, and a read-then-write would let the second
+    move a line the first had already drawn. The line is when work *began*;
+    a later act cannot change that.
+
+    Nothing here decides *whether* an act draws the line -- that is rule 3's
+    enumeration, and it lives at each act's own site. This only records it.
+    """
+    entry, _ = DailyEntry.objects.get_or_create(owner=owner, date=day)
+    DailyEntry.objects.filter(pk=entry.pk, list_closed_at__isnull=True).update(
+        list_closed_at=now
+    )
+    entry.refresh_from_db(fields=["list_closed_at"])
+    return entry
+
+
 @transaction.atomic
 def pin_task(owner, day, task, *, from_draft=False):
     """Choose ``task`` as work for ``day``.
@@ -115,6 +138,16 @@ def pin_task(owner, day, task, *, from_draft=False):
     Repinning something previously released clears the release rather than
     writing a second row: one task chosen for one day is one decision,
     however many times it was turned over.
+
+    **Rule 11's refusal of a past day is one layer out, in `daily.api_v1`.**
+    `superlists-2.0-plan.md` increment 2 asks for it here, and here is where it
+    was written first -- it made this function unable to write history, which
+    is what sixty tests across `daily`, `review`, `lists` and `clarice` use it
+    for: *on August 3rd I pinned this* is a fixture, not a defect. Rule 11 is
+    about what a person may add to a day they are looking at, and the two
+    endpoints that pin are the only door to that; both already hold the
+    request's own `today`, computed in the owner's zone, which this function
+    would have had to read from the clock. See `_planning_a_past_day`.
     """
     if task.owner_id != owner.id:
         # Fails closed, per principles.md. The API addresses tasks by id, so

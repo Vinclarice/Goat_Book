@@ -789,7 +789,47 @@ def complete_item(item, *, today=None):
         life_log.record(
             item.owner, life_log.TASK_COMPLETED, task=item, occurred_at=now
         )
+        _draw_todays_line_if_this_was_chosen(item, now)
     return item
+
+
+def _draw_todays_line_if_this_was_chosen(item, now):
+    """Rule 3: the first act of execution draws the line under today's list.
+
+    **A tick on a *chosen* task, and rule 3 enumerates rather than describes.**
+    A Note, a Pool capture, an appointment passing and every derived event
+    leave the list open, because writing down something overheard at breakfast
+    is not the start of the day's work -- the plan's D7, answered the day it
+    was asked. A task nobody chose is not on either of rule 3's lists, so it
+    does not draw the line either; that reading is narrow on purpose and is the
+    one worth revisiting first if the line turns out to be drawn too rarely.
+    The composer's Did and Today lines join this site at increment 4.
+
+    **Today, never the pinned day.** The line records when *this* day's work
+    began, so completing something chosen for yesterday draws nothing --
+    yesterday closed unclosed and rule 11 keeps it that way.
+
+    `day_for` rather than `localdate`, because which day an instant fell on is
+    a property of the record and must answer the same to a request, a
+    management command and the phone -- `clarice/clocks.py` owns that split.
+
+    Imported inside the function: `daily` reads `lists`, and a module-level
+    import back would make the two packages import-order dependent for no gain.
+    The same shape `daily.reads.typical_day_for` uses for `review.reads`.
+    """
+    from clarice.clocks import day_for
+    from daily import services as daily_services
+    from daily.models import DailyFocus
+
+    today = day_for(item.owner, now)
+    chosen = DailyFocus.objects.filter(
+        owner=item.owner,
+        entry__date=today,
+        task=item,
+        released_at__isnull=True,
+    ).exists()
+    if chosen:
+        daily_services.draw_the_line(item.owner, today, now=now)
 
 
 @transaction.atomic

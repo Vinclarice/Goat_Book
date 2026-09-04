@@ -97,7 +97,20 @@ def test_the_proposal_cites_the_sentence_that_caused_it(owner, entry):
     assert facet.span_start is not None and facet.span_end is not None
 
 
-def test_all_three_fields_are_read(owner, entry):
+def test_only_what_happened_is_read(owner, entry):
+    """~~"all three fields are read"~~ -- **D5, answered September 4, 2026**,
+    `superlists-2.0-plan.md` increment 9.
+
+    The three fields say different things. `intentions` is a plan for the day,
+    and the morning pick is what makes a plan real -- offering a task for
+    something already chosen, or deliberately not, is the producer arguing with
+    a decision. `gratitude` is not about undertakings at all. What is left is
+    the field that records what happened, which is where a promise made in
+    passing turns up.
+
+    The contract genuinely changed, so this expectation changed with it rather
+    than being relaxed: it asserts one, and asserts *which* one.
+    """
     entry.intentions = "I must call the bank on 5 June."
     entry.gratitude = "Grateful for the quiet."
     entry.happenings = "I need to post the form on 8 June."
@@ -105,7 +118,9 @@ def test_all_three_fields_are_read(owner, entry):
 
     services.propose_journal_commitments(entry, now=NOW, actor="vince")
 
-    assert len(commitments_on(entry)) == 2
+    facets = commitments_on(entry)
+    assert len(facets) == 1
+    assert facets[0].cited_text.strip() == "I need to post the form on 8 June."
 
 
 def test_running_twice_proposes_nothing_new(owner, entry):

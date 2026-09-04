@@ -258,3 +258,83 @@ class TheComposerOverTheApiTest(TestCase):
 
         self.assertEqual(Item.objects.filter(owner=bob).count(), 0)
         self.assertEqual(Node.objects.filter(owner=bob).count(), 0)
+
+
+class ALogLineProposesNothingTest(TestCase):
+    """**D2, answered.** `superlists-2.0-plan.md` increment 9.
+
+    *Forty nodes a day will drown concept proposal and hypothesis detection if
+    each is treated as a considered note.* So a line written into the day's log
+    is a `Node` from the first keystroke -- searchable, mentionable, in the
+    graph -- and proposes nothing at capture.
+
+    **The attention tier was never the lever**, which the decision says in as
+    many words: `attention_tier` is computed at read time and already places a
+    node with no confirmed actionable facet in quiet knowledge. What is
+    suppressed here is the one producer that runs on the live path.
+    """
+
+    def setUp(self):
+        self.owner = make_user("alice")
+
+    def write(self, text, destination=None, **fields):
+        return composer.write_a_line(
+            self.owner,
+            text=text,
+            destination=destination or composer.NOTE,
+            now=timezone.now(),
+            **fields,
+        )
+
+    def proposals(self):
+        return Facet.objects.filter(
+            kind=FacetKind.ACTIONABLE, confirmed_at__isnull=True
+        )
+
+    def test_a_note_that_reads_like_a_commitment_proposes_nothing(self):
+        """The exact sentence the capture producer exists for, written into the
+        log instead. It is still a node, still searchable; what it does not do
+        is interrupt.
+        """
+        self.write("Call the dentist by Friday")
+
+        self.assertEqual(self.proposals().count(), 0)
+        self.assertEqual(Node.objects.filter(owner=self.owner).count(), 1)
+
+    def test_the_same_words_from_a_phone_still_propose(self):
+        """**The phone is the exception and not an oversight.** A capture
+        client exists to get one considered thought out of your head in three
+        seconds, which is the volume the producer was designed for and what
+        `bittern` validated. The day's composer is the other thing -- forty
+        lines as they happen -- and it is the only browser caller of this
+        endpoint.
+        """
+        self.write("Call the dentist by Friday", from_a_phone=True)
+
+        self.assertEqual(self.proposals().count(), 1)
+
+    def test_a_pool_line_proposes_nothing_either_and_confirms_instead(self):
+        """Proposing a commitment on top of one somebody just made explicitly
+        would be the system asking whether they meant what they said.
+        """
+        self.write("Ring the fencing people", composer.POOL)
+
+        self.assertEqual(self.proposals().count(), 0)
+        self.assertEqual(
+            Facet.objects.filter(
+                kind=FacetKind.ACTIONABLE, confirmed_at__isnull=False
+            ).count(),
+            1,
+        )
+
+    def test_a_log_line_is_in_the_graph_from_the_first_keystroke(self):
+        """*Searchable, mentionable and proposable the moment it is written* --
+        what is deferred is the proposal, not the node.
+        """
+        from mind import queries
+
+        self.write("Neighbour asked about the fence")
+
+        node = Node.objects.get(owner=self.owner)
+        self.assertIn(node, queries.live_nodes(self.owner))
+

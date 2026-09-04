@@ -587,9 +587,17 @@ cheapest evidence there is, not because it gates 1 and 2.
    refetches in flight while `_fixture_teardown` truncates underneath them.
    Diagnosed by evidence rather than by re-running: it never went green on its
    own, and ending the test on an assertion that waits for both fixed it.
-9. **Second Mind.** Whether log lines run the proposal detectors at capture
+9. ~~**Second Mind.** Whether log lines run the proposal detectors at capture
    (D2); the journal producer scoped to reflection (D5); appointment mentions
-   (D6).
+   (D6).~~ **Two of three shipped September 4, 2026, and the third is deferred
+   with its trigger named.** D2 and D5 are answered below and built; D6 is not,
+   and the reason is in its own entry rather than here.
+
+   **Every increment 1–9 has now shipped. The plan is not closed**, because its
+   own acceptance is a usage one — *the page is used on ordinary days for two
+   weeks after increment 5* — and none of this is deployed. Closing it on the
+   strength of the code existing would be the failure `CLAUDE.md` opens with,
+   in the other direction.
 
 ## Decisions
 
@@ -607,7 +615,7 @@ section is the status of what is undecided and nothing above summarises it.
   so the only thing at stake is which word a person reads, and the person is
   Vince. `architecture-trajectory.md` §7's precedent stands if that ever
   changes: the boundary may say a different word without the table moving.
-- **D2. Whether log lines feed the concept machinery on capture.** Forty nodes
+- ~~**D2. Whether log lines feed the concept machinery on capture.** Forty nodes
   a day will drown concept proposal and hypothesis detection if each is treated
   as a considered note. **The attention tier is not the lever**: `attention_tier`
   is computed at read time and already places any node with no confirmed
@@ -616,21 +624,64 @@ section is the status of what is undecided and nothing above summarises it.
   whether a node whose source is the day's composer runs the proposal
   detectors at capture, or only once a mention or a confirmation has lifted
   it. Proposal: the latter, so the log is searchable and mentionable from the
-  first line and proposes nothing until something links it.
+  first line and proposes nothing until something links it.~~
+  **Answered September 4, 2026 as proposed, and it turned out to be one flag.**
+  Only one producer runs at capture — `_propose_any_commitment`; concept
+  extraction and hypothesis detection are nightly passes and always were. So
+  `capture(propose=False)` is the whole of it, and the day's composer passes it.
+  **The dump already had this rule** — *during a dump, create nothing that
+  requires attention* — and a log line has the dump's volume without its
+  sitting, so it gets the dump's answer.
+  **The lifting half needed no code.** *Proposes nothing until something links
+  it* reads like machinery and is not: the node is in the graph from the first
+  keystroke, so every nightly pass already reads it and a mention or a
+  confirmation already lifts it. What was suppressed is a one-shot at capture.
+  **The phone is the exception**, and deliberately: a capture client exists to
+  get one considered thought out in three seconds, which is the volume the
+  producer was built for and what `bittern` validated.
 - **D3. The fate of `List` and `Project`.** Retired from the day and the pool
   under increment 8, tables kept. Deleting them is a separate decision with its
   own plan: S10–S12 are *works* on `Project`, and a project's *why* has a home
   in the knowledge core's project concept that nothing has yet wired.
 - **D4. Whether `Tag` survives** as the only grouping, or goes with Areas.
   Undecided, and nothing in 1–7 touches it.
-- **D5. `DailyEntry`'s three prose fields.** With the log carrying what
+- ~~**D5. `DailyEntry`'s three prose fields.** With the log carrying what
   happened line by line, `happenings` is either retired or kept as end-of-day
   reflection. Proposal: kept, and the journal producer reads it alone, so the
   two commitment producers keep two signals as `Facet.producer`'s own comment
-  intends.
+  intends.~~ **Answered September 4, 2026 as proposed.** All three fields stay;
+  the producer reads `happenings` alone. `intentions` is a plan for the day and
+  the morning pick is what makes a plan real, so proposing a task from it would
+  be the producer arguing with a decision already taken; `gratitude` is not
+  about undertakings at all.
+  **Narrowed by span rather than by reading a different string.** `entry_body`
+  stays the one definition offsets index into — `Facet.cited_text` reads them
+  back out of it, and a producer reading `happenings` alone would have shifted
+  every existing facet's quote by the length of whatever stood above it. That
+  is the alignment bug `entry_body`'s own docstring was written to prevent, and
+  it would have looked like a parser one.
 - **D6. Appointment companions and place as mentions.** The first task-core
   record to link into `mind.Mention`. After increment 7, as its own increment,
   because it crosses the seam `confirm_actionable` names as one-directional.
+  **Deferred September 4, 2026, with its trigger named — and the trigger is a
+  reader.** `Mention.node` is non-nullable, and `mention_unique` is
+  `nulls_distinct=False` precisely so a node-level mention cannot be written
+  twice; admitting an appointment means a nullable node, a widened constraint
+  that must also carry the appointment or two appointments mentioning one
+  concept would collide, and every mention read learning to tolerate a null
+  node. That is the knowledge core's most constrained table widened for a
+  surface that does not exist: **nothing renders an appointment's mentions**,
+  and a `ConceptCandidate` with no mention has no evidence, so the confirm
+  queue would never show it either. Building it would be the dark seam this
+  project keeps rediscovering, in the one table where it is most expensive.
+  **What the plan wanted from it already happens by another road.** *The log
+  becomes the graph's main source of people, places and activities* is true of
+  composer lines today: they are `Node`s, and concept extraction reads nodes.
+  D6 adds appointments as a second source of the same thing.
+  **The trigger**: a place or person concept's own page showing where it has
+  been — *you were at Lancaster, PA on the 5th* — which is a real surface
+  somebody can build. When there is a reader, this is a migration and a
+  producer. Until then it would be neither reversible nor called.
 - ~~**D7. What draws the line.** Rule 3 says the first log line. Whether a Note
   counts, or only a Did, Today or Pool, is a one-line decision in increment 2
   and should be made by using increment 2's manual equivalent in week 0.~~

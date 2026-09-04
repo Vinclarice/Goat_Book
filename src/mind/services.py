@@ -177,6 +177,7 @@ def capture(
     attachments: Sequence[AttachmentSpec] = (),
     session=None,
     came_from=None,
+    propose: bool = True,
 ) -> Node:
     """Record something, and return the node — new or already existing.
 
@@ -242,7 +243,15 @@ def capture(
     # minutes -- that is the surface teaching somebody to skim past it, and the
     # plan calls that unrecoverable. The producers run once at the end
     # instead, over the whole sitting, under a budget.
-    if session is None:
+    #
+    # **`propose=False` is the same rule reached from a second direction** --
+    # `superlists-2.0-plan.md`'s D2, answered September 4, 2026. A line written
+    # into the day's log has the dump's volume without its sitting, so it gets
+    # the dump's answer: it is a node from the first keystroke, searchable and
+    # mentionable and in the graph, and it interrupts nobody. The caller says
+    # so rather than this guessing from `source`, because which *box* a capture
+    # came from is not something a node records.
+    if session is None and propose:
         _propose_any_commitment(node, now=captured_at, actor=actor)
     return node
 
@@ -257,6 +266,7 @@ def capture_idempotent(
     actor: str,
     public_id: uuid_module.UUID | None = None,
     tags: Sequence[str] = (),
+    propose: bool = True,
 ) -> tuple[Node, bool]:
     """Record something and say whether it was new. The whole of a retry-safe
     capture, in one place.
@@ -288,6 +298,7 @@ def capture_idempotent(
         source=source,
         actor=actor,
         public_id=public_id,
+        propose=propose,
     )
     created = not existed
 
@@ -2469,13 +2480,36 @@ def propose_journal_commitments(entry, *, now: datetime, actor: str) -> list[Fac
     entry is saved on every pause in typing, so a producer proposing afresh each
     time would make the surface unusable before lunch. Dismissed suggestions
     stay dismissed, because the constraint spans every state.
+
+    **`happenings` alone, since September 4, 2026** -- `superlists-2.0-plan.md`'s
+    D5, answered. The three fields say different things. `intentions` is a plan
+    for the day, and the morning pick is what makes a plan real -- reading
+    commitments out of it would offer a task for something already chosen, or
+    for something deliberately not. `gratitude` is not about undertakings at
+    all. What is left is the field that records what happened, which is where a
+    promise made in passing turns up. The two commitment producers keep two
+    signals, which is what `Facet.producer`'s own comment asks for.
+
+    **Narrowed by span, not by reading a different string.** `entry_body` stays
+    the one definition offsets index into -- it is what `Facet.cited_text` reads
+    them back out of, and a producer reading `happenings` alone would have
+    shifted every existing facet's quote by the length of whatever stood above
+    it. That would have looked like a parser bug rather than an alignment one,
+    which is the failure `entry_body`'s own docstring was written to prevent.
     """
     body = entry_body(entry)
     if not body.strip():
         return []
 
+    # Where `happenings` begins inside `body`. It is joined last and empty
+    # parts are dropped, so this is exact rather than a search -- and it is
+    # `len(body)` when nothing was written there, which skips every sentence.
+    reflection_starts_at = len(body) - len(entry.happenings)
+
     proposed: list[Facet] = []
     for start, end, sentence in _sentences(body):
+        if start < reflection_starts_at:
+            continue
         if not _PROMISE.search(sentence):
             continue
 

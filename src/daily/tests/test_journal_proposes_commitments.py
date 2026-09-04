@@ -86,3 +86,69 @@ class WritingProposesCommitmentsTest(TestCase):
         )
 
         self.assertEqual(self.commitments(entry)[0].owner, self.alice)
+
+
+class ItReadsWhatHappenedAndNothingElseTest(TestCase):
+    """**D5, answered.** `superlists-2.0-plan.md` increment 9.
+
+    *With the log carrying what happened line by line, `happenings` is either
+    retired or kept as end-of-day reflection. Kept, and the journal producer
+    reads it alone, so the two commitment producers keep two signals as
+    `Facet.producer`'s own comment intends.*
+
+    The three fields say different things. `intentions` is a plan for the day,
+    and the morning pick is what makes a plan real -- reading commitments out
+    of it would propose a task for something already chosen, or for something
+    deliberately not. `gratitude` is not about undertakings at all. What is
+    left is the field that records what actually happened, which is where a
+    promise made in passing turns up.
+    """
+
+    def setUp(self):
+        self.alice = User.objects.create_user(
+            "alice", "alice@example.com", "a secure password"
+        )
+
+    def commitments(self):
+        return Facet.objects.filter(kind=FacetKind.ACTIONABLE)
+
+    def test_a_promise_in_what_happened_is_offered(self):
+        services.write_entry(
+            self.alice, AUGUST_3, happenings="I still need to ask Maya about the venue."
+        )
+
+        self.assertEqual(self.commitments().count(), 1)
+
+    def test_a_promise_in_the_intentions_is_not(self):
+        services.write_entry(
+            self.alice, AUGUST_3, intentions="I still need to ask Maya about the venue."
+        )
+
+        self.assertEqual(self.commitments().count(), 0)
+
+    def test_a_promise_in_the_gratitude_is_not(self):
+        services.write_entry(
+            self.alice, AUGUST_3, gratitude="I still need to ask Maya about the venue."
+        )
+
+        self.assertEqual(self.commitments().count(), 0)
+
+    def test_the_quote_still_points_at_the_words_that_caused_it(self):
+        """The alignment contract, which is the reason this narrows by *span*
+        rather than by reading a different string. `entry_body` stays the one
+        definition offsets index into -- a producer reading `happenings` alone
+        would have shifted every existing facet's quote by the length of
+        whatever was above it, and it would have looked like a parser bug.
+        """
+        entry = services.write_entry(
+            self.alice,
+            AUGUST_3,
+            intentions="Ship the slice.",
+            gratitude="Rain.",
+            happenings="I still need to ask Maya about the venue.",
+        )
+
+        facet = self.commitments().get()
+        self.assertEqual(facet.cited_text, "I still need to ask Maya about the venue.")
+        self.assertEqual(entry.happenings, "I still need to ask Maya about the venue.")
+

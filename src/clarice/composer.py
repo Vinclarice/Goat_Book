@@ -110,6 +110,20 @@ def write_a_line(owner, *, text, destination, now, captured_at=None, public_id=N
         actor=owner.get_username(),
         public_id=public_id,
         tags=list(tags),
+        # **D2, answered: a log line proposes nothing at capture.**
+        # `superlists-2.0-plan.md` increment 9. Forty lines a day would drown
+        # the one producer that runs on the live path, and a surface that
+        # teaches somebody to skim past a suggestion is unrecoverable -- the
+        # same argument the dump already makes for a sitting.
+        #
+        # **The phone is the exception and not an oversight.** A capture client
+        # exists to get one considered thought out in three seconds, which is
+        # the volume the producer was built for and what `bittern` validated;
+        # the day's composer is the other thing, and it is the only browser
+        # caller of this endpoint. Nothing is lost either way: the node is in
+        # the graph from the first keystroke, so every nightly pass still reads
+        # it and a mention or a confirmation lifts it exactly as before.
+        propose=from_a_phone,
     )
     # A replay of a key already seen. `capture_idempotent` returned the row the
     # first attempt made, and everything below is idempotent in its own right --

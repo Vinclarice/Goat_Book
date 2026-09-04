@@ -320,10 +320,22 @@ cheapest evidence there is, not because it gates 1 and 2.
    question is which of the page's sections got used, and that is the order
    for 3–7. [`daily-operating-system-vision.md`](daily-operating-system-vision.md):
    *build the manual workflow first.*
-1. **The pool, as a read and a page.** `lists/agenda.py`, the task core's
+1. ~~**The pool, as a read and a page.** `lists/agenda.py`, the task core's
    query module, gains the flat open list: fixed lines by date with bills and appointments interleaved, floating
    lines oldest first, age as a label, search. A route at its own address. No
-   write path yet; nothing retired.
+   write path yet; nothing retired.~~ **Shipped September 3, 2026.**
+   `agenda.pool_for`, `GET /api/v1/pool` and `/app/pool`, in the Views nav
+   beside the Agenda. Appointments are the one thing named here that is not in
+   it, because increment 7 is what builds the record; the fixed row is tagged
+   with its `kind` so a third variant joins without either existing one
+   changing. Two decisions the plan left open and the code had to close: a
+   bill sorts *before* a task on a shared date, stated in `POOL_ROW_KINDS`
+   rather than left to whichever query was concatenated first; and the search
+   is a substring that keeps the pool's order rather than `lists.search`,
+   which ranks and would rearrange the list you were pointing at as you typed.
+   Age says *added today* on every floating line, where the Day page's
+   `AGE_WORTH_MENTIONING` threshold would say nothing — one phrasing,
+   `ageSentence`, with `ageLabel` now calling it.
 2. **Pick to a date, and the line.** `DailyEntry.list_closed_at`, set by the
    first act of execution — rule 3, D7 answered. The day's read splits pins by
    `selected_at` against it; `typical_day_for` and the finish rate read

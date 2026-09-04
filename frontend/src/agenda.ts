@@ -239,6 +239,25 @@ export const AGE_WORTH_MENTIONING = 7;
  */
 export function ageLabel(days: number): string | null {
   if (days < AGE_WORTH_MENTIONING) return null;
+  return ageSentence(days);
+}
+
+/**
+ * The same sentence, said whatever the number is.
+ *
+ * The pool orders its floating lines oldest first, so age is that list's axis
+ * rather than a footnote on a row, and a line with no label above one that has
+ * one would read as unordered -- superlists-2.0-plan.md rule 1: *age is shown
+ * as a fact, added 40 days ago, never as debt.*
+ *
+ * A second exported function and not a second phrasing: `ageLabel` calls this,
+ * so there is still one sentence and AGE_WORTH_MENTIONING stays what it always
+ * was -- the Day page's display rule about when age is worth mentioning, not a
+ * claim about how age is worded.
+ */
+export function ageSentence(days: number): string {
+  if (days === 0) return "Added today";
+  if (days === 1) return "Added yesterday";
   return `Added ${days} days ago`;
 }
 

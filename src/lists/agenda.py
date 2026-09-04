@@ -247,6 +247,104 @@ def open_items_for(user):
     )
 
 
+POOL_TASK = "task"
+POOL_BILL = "bill"
+
+# Ordered as they sort within one date. **A bill first, deliberately.** A dated
+# task is a promise made to oneself and can be moved; a bill on the same day has
+# an outside party and a late fee, so it is the one of the two that a shared
+# date is actually about. Stated rather than left to whatever order the two
+# source queries happened to be concatenated in -- an accidental tie-break is a
+# rule nobody can find when it turns out to be wrong.
+POOL_ROW_KINDS = (POOL_BILL, POOL_TASK)
+_POOL_KIND_ORDER = {kind: index for index, kind in enumerate(POOL_ROW_KINDS)}
+
+
+def pool_for(user, today, *, query=None):
+    """Every open line the owner has, in one list -- `superlists-2.0-plan.md`
+    rule 1, and its increment 1.
+
+    Two halves, because the plan says there are two kinds of line and not two
+    kinds of ordering wearing one name. **Fixed** lines have a date, so they
+    sort by it and bills interleave among them: a bill stopped being an `Item`
+    on September 1, 2026, so preserving decision 4 -- *paying is a real thing to
+    do on a day* -- means this read has a second source, exactly as the agenda's
+    does. **Floating** lines have no date, cannot be overdue because nothing was
+    promised, and sort oldest first, which makes age the axis rather than a
+    footnote.
+
+    **`query` is a substring, and deliberately not `lists.search`.** That module
+    ranks across every status and answers *where did I write that*; this narrows
+    a list already on screen and must not reorder it, or typing a letter would
+    rearrange the thing you were pointing at. Two questions, two reads -- the
+    split `search.py`'s own docstring already draws against `agenda.py`.
+
+    `open_count` is the whole pool, before the search narrows it: the number a
+    person means by *how much is open* does not change because they typed into
+    a box.
+
+    **Age rides on the row, not on the task.** `age_in_days` says why -- it
+    needs a `today` to measure against, and `TaskOut` is serialised in places
+    that have not got one. The same shape `daily.api_v1.DayActionItemOut` uses.
+
+    Nothing here knows about a pin. Which lines were picked for a day is
+    increment 2's question, and the pool is the same query either way.
+    """
+    needle = (query or "").strip().casefold()
+    tasks = list(open_items_for(user))
+    bills = list(money.open_bills_for(user))
+    open_count = len(tasks) + len(bills)
+
+    if needle:
+        tasks = [each for each in tasks if needle in each.text.casefold()]
+        bills = [each for each in bills if needle in each.payee.casefold()]
+
+    fixed = [
+        {
+            "kind": POOL_TASK,
+            "due_date": each.due_date.isoformat(),
+            "days_until": (each.due_date - today).days,
+            "task": serialize_item(each),
+            "bill": None,
+        }
+        for each in tasks
+        if each.due_date is not None
+    ] + [
+        {
+            "kind": POOL_BILL,
+            "due_date": each.due_date.isoformat(),
+            "days_until": (each.due_date - today).days,
+            "task": None,
+            "bill": money.bill_row(each),
+        }
+        for each in bills
+    ]
+    fixed.sort(key=lambda row: (row["due_date"], _POOL_KIND_ORDER[row["kind"]]))
+
+    # Oldest first, and re-sorted rather than taken in `open_items_for`'s order:
+    # that query sorts undated tasks by `position`, which is the manual ordering
+    # this plan retires. Sorting on the raw timestamp rather than the local date
+    # `age_in_days` reports keeps two lines made on one day in the order they
+    # were made, which the day-resolution number cannot express.
+    floating = sorted(
+        (each for each in tasks if each.due_date is None),
+        key=lambda each: (each.created_at, each.id),
+    )
+
+    return {
+        "today": today.isoformat(),
+        "open_count": open_count,
+        "fixed": fixed,
+        "floating": [
+            {
+                "task": serialize_item(each),
+                "age_in_days": age_in_days(each.created_at, today),
+            }
+            for each in floating
+        ],
+    }
+
+
 def completed_today_for(user, today=None):
     """Ticked-off-but-not-yet-archived tasks, so they can be undone."""
     today = today or timezone.localdate()

@@ -190,6 +190,63 @@ class AgendaOut(Schema):
     projects: list[AgendaProjectSummaryOut]
 
 
+#: Mirrored from `agenda.POOL_ROW_KINDS` and asserted below, for the reason
+#: `TaskRecurrence` gives: Ninja needs a static type, so the duplication is
+#: real, and one that shouts when it drifts is a different thing from one that
+#: waits to be noticed.
+PoolRowKind = Literal["task", "bill"]
+assert set(get_args(PoolRowKind)) == set(agenda_reader.POOL_ROW_KINDS), (
+    "PoolRowKind has drifted from lists.agenda.POOL_ROW_KINDS: "
+    f"{set(agenda_reader.POOL_ROW_KINDS) ^ set(get_args(PoolRowKind))}"
+)
+
+
+class PoolFixedRowOut(Schema):
+    """A line with a date on it, whichever kind of record it came from.
+
+    **A tagged row rather than two arrays**, unlike `AgendaOut`, and the
+    difference is what the surface is for: the agenda groups by bucket and the
+    client lays each group out, while the pool's fixed half is one sequence in
+    date order with bills among the tasks -- `superlists-2.0-plan.md` increment
+    1. Interleaving on the client would mean the browser deciding what a date
+    means, which is the server's by `principles.md`.
+
+    `task` and `bill` are mutually exclusive and `kind` says which; an
+    `Appointment` joins as a third variant at increment 7 without either
+    existing one changing.
+    """
+
+    kind: PoolRowKind
+    due_date: str
+    #: Negative when it is already past. Computed here rather than in the
+    #: browser for the reason `age_in_days` gives: the account's zone decides
+    #: what day it is, and the machine reading the page is not necessarily in
+    #: it.
+    days_until: int
+    task: TaskOut | None
+    bill: AgendaBillOut | None
+
+
+class PoolFloatingRowOut(Schema):
+    """A line nothing was promised about, plus how long it has been waiting.
+
+    A wrapper rather than a field on `TaskOut`, on the standing decision in
+    `agenda.age_in_days` -- age needs a `today` to measure against and
+    `TaskOut` is serialised where there is not one.
+    """
+
+    task: TaskOut
+    age_in_days: int
+
+
+class PoolOut(Schema):
+    today: str
+    #: Every open line, before any search narrowed the two arrays below.
+    open_count: int
+    fixed: list[PoolFixedRowOut]
+    floating: list[PoolFloatingRowOut]
+
+
 class AreaRefOut(Schema):
     id: int
     title: str
@@ -356,6 +413,21 @@ def agenda(request):
         projects=projects,
         open_bills=money_reads.open_bills_for(user),
     )
+
+
+@router.get("/pool", response=PoolOut)
+def pool(request, q: str = ""):
+    """Every open line, in one list -- `superlists-2.0-plan.md` increment 1.
+
+    **Session only.** The phone has no pool surface, and widening a bearer to
+    reach one before there is anything to reach would be the un-switched-on seam
+    this project keeps finding. `clarice/tests/test_api_auth_surface.py` is the
+    authority on that and fails if this changes by accident.
+
+    `q` is optional and empty means the whole pool; `pool_for` owns what
+    matching means.
+    """
+    return agenda_reader.pool_for(request.user, timezone.localdate(), query=q)
 
 
 def _parse_date(value):

@@ -85,6 +85,42 @@
         ]
       }
     },
+    "/api/v1/pool": {
+      "get": {
+        "operationId": "lists_api_v1_pool",
+        "summary": "Pool",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "schema": {
+              "default": "",
+              "title": "Q",
+              "type": "string"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PoolOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Every open line, in one list -- `superlists-2.0-plan.md` increment 1.\n\n**Session only.** The phone has no pool surface, and widening a bearer to\nreach one before there is anything to reach would be the un-switched-on seam\nthis project keeps finding. `clarice/tests/test_api_auth_surface.py` is the\nauthority on that and fails if this changes by accident.\n\n`q` is optional and empty means the whole pool; `pool_for` owns what\nmatching means.",
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/areas/{area_id}": {
       "get": {
         "operationId": "lists_api_v1_area_detail",
@@ -3831,6 +3867,108 @@
           "url"
         ],
         "title": "TaskOut",
+        "type": "object"
+      },
+      "PoolFixedRowOut": {
+        "description": "A line with a date on it, whichever kind of record it came from.\n\n**A tagged row rather than two arrays**, unlike `AgendaOut`, and the\ndifference is what the surface is for: the agenda groups by bucket and the\nclient lays each group out, while the pool's fixed half is one sequence in\ndate order with bills among the tasks -- `superlists-2.0-plan.md` increment\n1. Interleaving on the client would mean the browser deciding what a date\nmeans, which is the server's by `principles.md`.\n\n`task` and `bill` are mutually exclusive and `kind` says which; an\n`Appointment` joins as a third variant at increment 7 without either\nexisting one changing.",
+        "properties": {
+          "kind": {
+            "enum": [
+              "task",
+              "bill"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "due_date": {
+            "title": "Due Date",
+            "type": "string"
+          },
+          "days_until": {
+            "title": "Days Until",
+            "type": "integer"
+          },
+          "task": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TaskOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "bill": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AgendaBillOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "kind",
+          "due_date",
+          "days_until",
+          "task",
+          "bill"
+        ],
+        "title": "PoolFixedRowOut",
+        "type": "object"
+      },
+      "PoolFloatingRowOut": {
+        "description": "A line nothing was promised about, plus how long it has been waiting.\n\nA wrapper rather than a field on `TaskOut`, on the standing decision in\n`agenda.age_in_days` -- age needs a `today` to measure against and\n`TaskOut` is serialised where there is not one.",
+        "properties": {
+          "task": {
+            "$ref": "#/components/schemas/TaskOut"
+          },
+          "age_in_days": {
+            "title": "Age In Days",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "task",
+          "age_in_days"
+        ],
+        "title": "PoolFloatingRowOut",
+        "type": "object"
+      },
+      "PoolOut": {
+        "properties": {
+          "today": {
+            "title": "Today",
+            "type": "string"
+          },
+          "open_count": {
+            "title": "Open Count",
+            "type": "integer"
+          },
+          "fixed": {
+            "items": {
+              "$ref": "#/components/schemas/PoolFixedRowOut"
+            },
+            "title": "Fixed",
+            "type": "array"
+          },
+          "floating": {
+            "items": {
+              "$ref": "#/components/schemas/PoolFloatingRowOut"
+            },
+            "title": "Floating",
+            "type": "array"
+          }
+        },
+        "required": [
+          "today",
+          "open_count",
+          "fixed",
+          "floating"
+        ],
+        "title": "PoolOut",
         "type": "object"
       },
       "AreaDetailOut": {

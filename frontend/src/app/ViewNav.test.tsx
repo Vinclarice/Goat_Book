@@ -72,6 +72,10 @@ describe("ViewNav", () => {
     for (const name of [
       "Today",
       "Agenda",
+      // superlists-2.0-plan.md increment 1. Beside the Agenda, which it
+      // eventually replaces: increment 8 retires that route, and until then
+      // both are surfaces and this nav is what says so.
+      "Pool",
       "Review",
       "Calendar",
       "Money",

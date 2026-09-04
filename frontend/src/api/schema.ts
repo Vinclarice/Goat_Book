@@ -63,6 +63,34 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/pool": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Pool
+         * @description Every open line, in one list -- `superlists-2.0-plan.md` increment 1.
+         *
+         *     **Session only.** The phone has no pool surface, and widening a bearer to
+         *     reach one before there is anything to reach would be the un-switched-on seam
+         *     this project keeps finding. `clarice/tests/test_api_auth_surface.py` is the
+         *     authority on that and fails if this changes by accident.
+         *
+         *     `q` is optional and empty means the whole pool; `pool_for` owns what
+         *     matching means.
+         */
+        get: operations["lists_api_v1_pool"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/areas/{area_id}": {
         parameters: {
             query?: never;
@@ -1974,6 +2002,58 @@ export interface components {
             project_id: number | null;
             /** Url */
             url: string;
+        };
+        /**
+         * PoolFixedRowOut
+         * @description A line with a date on it, whichever kind of record it came from.
+         *
+         *     **A tagged row rather than two arrays**, unlike `AgendaOut`, and the
+         *     difference is what the surface is for: the agenda groups by bucket and the
+         *     client lays each group out, while the pool's fixed half is one sequence in
+         *     date order with bills among the tasks -- `superlists-2.0-plan.md` increment
+         *     1. Interleaving on the client would mean the browser deciding what a date
+         *     means, which is the server's by `principles.md`.
+         *
+         *     `task` and `bill` are mutually exclusive and `kind` says which; an
+         *     `Appointment` joins as a third variant at increment 7 without either
+         *     existing one changing.
+         */
+        PoolFixedRowOut: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "task" | "bill";
+            /** Due Date */
+            due_date: string;
+            /** Days Until */
+            days_until: number;
+            task: components["schemas"]["TaskOut"] | null;
+            bill: components["schemas"]["AgendaBillOut"] | null;
+        };
+        /**
+         * PoolFloatingRowOut
+         * @description A line nothing was promised about, plus how long it has been waiting.
+         *
+         *     A wrapper rather than a field on `TaskOut`, on the standing decision in
+         *     `agenda.age_in_days` -- age needs a `today` to measure against and
+         *     `TaskOut` is serialised where there is not one.
+         */
+        PoolFloatingRowOut: {
+            task: components["schemas"]["TaskOut"];
+            /** Age In Days */
+            age_in_days: number;
+        };
+        /** PoolOut */
+        PoolOut: {
+            /** Today */
+            today: string;
+            /** Open Count */
+            open_count: number;
+            /** Fixed */
+            fixed: components["schemas"]["PoolFixedRowOut"][];
+            /** Floating */
+            floating: components["schemas"]["PoolFloatingRowOut"][];
         };
         /** AreaDetailOut */
         AreaDetailOut: {
@@ -4230,6 +4310,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AgendaOut"];
+                };
+            };
+        };
+    };
+    lists_api_v1_pool: {
+        parameters: {
+            query?: {
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PoolOut"];
                 };
             };
         };

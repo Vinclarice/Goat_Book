@@ -16,6 +16,7 @@ import { DayRoute } from "./routes/DayRoute";
 import { DevUiGallery } from "./routes/DevUiGallery";
 import { AreaRoute } from "./routes/AreaRoute";
 import { NotFoundRoute } from "./routes/NotFoundRoute";
+import { PoolRoute } from "./routes/PoolRoute";
 import { PreferencesRoute } from "./routes/PreferencesRoute";
 import { ProjectRoute } from "./routes/ProjectRoute";
 import { ProjectsIndexRoute } from "./routes/ProjectsIndexRoute";
@@ -98,6 +99,11 @@ export function AppRoutes() {
             LandingRedirect. */}
         <Route index element={<LandingRedirect />} />
         <Route path="/agenda" element={<AgendaRoute />} />
+        {/* superlists-2.0-plan.md increment 1: every open line, in one
+            list, with no Area. Beside the Agenda rather than in place of
+            it — increment 8 is what retires that route, and nothing in
+            1–7 depends on a deletion. */}
+        <Route path="/pool" element={<PoolRoute />} />
         {/* Two paths, one component. The undated one asks the server what
             today is rather than trusting the browser's clock, because the
             day boundary belongs to the account's time zone. */}

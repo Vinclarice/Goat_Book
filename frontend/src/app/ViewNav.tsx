@@ -37,6 +37,12 @@ export function ViewNav() {
             whichever day was current when the nav rendered. */}
         <Entry to="/day">Today</Entry>
         <Entry to="/agenda">Agenda</Entry>
+        {/* superlists-2.0-plan.md increment 1: every open line in one
+            list, with no Area to file into. Beside the Agenda rather than
+            in place of it — increment 8 is what retires that surface, and
+            a route reachable only by typing its address is the
+            un-switched-on seam this nav exists to prevent. */}
+        <Entry to="/pool">Pool</Entry>
         {/* Undated for the same reason as Today: the week you are in, not the
             one this nav last rendered in. */}
         <Entry to="/review">Review</Entry>

@@ -470,10 +470,41 @@ cheapest evidence there is, not because it gates 1 and 2.
    rather than dismissed — `dismiss_facet` means *this was never a commitment*
    and is the one correction the parser will ever get, and spending it on a
    commitment that was real and is now over would teach it the wrong thing.
-6. **The stale prompt.** A floating line unpicked past the threshold (D8) asks
+6. ~~**The stale prompt.** A floating line unpicked past the threshold (D8) asks
    once. *Let go* archives the task and retires the facet; *keep* resets the
    clock. The weekly review reports lines let go, which is a better number than
-   lines open.
+   lines open.~~ **Shipped September 3, 2026.** `agenda.STALE_AFTER_DAYS` is
+   twenty-one, `agenda.unpicked_for` is the clock, and the pool asks under the
+   floating list rather than inside a row.
+
+   **The clock measures neglect, not age**, and takes the latest of three
+   things: when the line was written, when it was last chosen *for* a day, and
+   when somebody last said *keep*. A released pin still counts — choosing
+   something and then unchoosing it is two acts of attention, and rule 8 asks
+   about lines nobody has looked at.
+
+   **`Item.kept_at` is the one new column**, and it is not `updated_at`: saying
+   *keep* is a decision and editing a task's notes is not, so a clock any edit
+   reset would quietly stop the pool pruning itself for anybody who tidies.
+
+   **A dated line is never asked about.** Rule 8 says *a floating line*, and a
+   promise with a date on it is not waiting to be noticed — so
+   `asks_to_be_kept` is on the floating row and nowhere else.
+
+   **The review's number needed a new fact.** `TASK_ARCHIVED` cannot tell filing
+   a finished task from abandoning an unfinished one — `archive_item` writes it
+   for both — so `EventType.TASK_LET_GO` names the second and
+   `review.reads.let_go_in_week` counts it. Two guards fired while it was being
+   added and both were right: `recall.py`'s partition, which refuses a new
+   event nobody has classified, and `test_emitters_are_idempotent.py`, which
+   caught `let_go` recording twice for one act.
+
+   **D8 is answered by placement rather than by number**: three weeks is the
+   mockup's figure and a judgement, but the threshold never reaches a second
+   language, because the server decides whether a line asks and the client only
+   renders the question. So it stays in `lists/agenda.py` and out of
+   `test_mirrored_business_rules.py`'s table — which is what that decision
+   actually turned on.
 7. **Appointment.** The app, the model above, its reads and services, the day
    strip, the pool's fixed lines, the calendar source, the two life events.
    Companions and place as text — mentions are D6.
@@ -526,11 +557,17 @@ section is the status of what is undecided and nothing above summarises it.
   The reason is the early-thought case: writing down something overheard at
   breakfast is not the start of the day's work, and a rule that said it was
   would end morning planning by accident. Rule 3 carries the answer.
-- **D8. The stale threshold.** Three weeks in the mockup, chosen for the
+- ~~**D8. The stale threshold.** Three weeks in the mockup, chosen for the
   picture. If it reaches a second language it belongs in
   `lists/tests/test_mirrored_business_rules.py`'s table beside
   `AGE_WORTH_MENTIONING`, which that test reads in TypeScript and Kotlin; the
-  number itself does not live in this file.
+  number itself does not live in this file.~~ **Answered September 3, 2026, and
+  the mirroring half is what settled it.** The threshold does *not* reach a
+  second language: `asks_to_be_kept` is computed server-side and the client
+  renders the question rather than deciding it, so the number stays in
+  `lists.agenda.STALE_AFTER_DAYS` alone and joins no table. Twenty-one days,
+  the mockup's figure, held as a judgement rather than a measurement and
+  written to be moved once there is a fortnight of use to move it on.
 - **D9. The composer's default.** Note, Did, or remember the last choice. The
   argument against Did is in *The composer*: it manufactures completed tasks
   and, without the above-the-line rule stated there, it would have fed

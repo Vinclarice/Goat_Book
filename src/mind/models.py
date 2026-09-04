@@ -1135,6 +1135,16 @@ class EventType(models.TextChoices):
     #: "its commitment changes" means in the brief's scope sentence.
     COMMITMENT_CHANGED = "commitment_changed"
     COMMITMENT_ENDED = "commitment_ended"
+    #: Stopped carrying something without doing it --
+    #: `superlists-2.0-plan.md` rule 8's *let go*.
+    #:
+    #: **Not `TASK_ARCHIVED`, and the difference is the whole point.**
+    #: `archive_item` writes that one for filing a finished task too, so a
+    #: count over it cannot tell tidying from abandoning -- and the weekly
+    #: review reports lines let go precisely because it is *"a better number
+    #: than lines open"*. Both rows are written: the archive happened, and so
+    #: did the decision.
+    TASK_LET_GO = "task_let_go"
 
     #: A day was planned, and un-planned. `DailyFocus` records what somebody
     #: *chose*, and `released_at` is how a pin ends -- so these two are what

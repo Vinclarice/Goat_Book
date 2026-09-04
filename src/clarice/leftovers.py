@@ -33,8 +33,10 @@ from datetime import timedelta
 from django.db import transaction
 from django.utils import timezone
 
+from clarice import life_log
 from daily import services as daily_services
 from lists import services as task_services
+from lists.models import Item
 from mind.models import Facet, FacetKind
 
 
@@ -118,7 +120,25 @@ def let_go(owner, task, *, today=None):
     Facet.objects.filter(
         task=task, kind=FacetKind.ACTIONABLE, retired_at__isnull=True
     ).update(retired_at=timezone.now())
-    return task_services.archive_item(task)
+    # Read before the archive, because after it every call looks the same.
+    # Doing the same thing twice is one fact -- the contract
+    # `test_emitters_are_idempotent.py` holds over every emitter, and this one
+    # over-recorded until that file failed on it.
+    was_open = (
+        Item.objects.filter(pk=task.pk)
+        .exclude(status=Item.Status.ARCHIVED)
+        .exists()
+    )
+    archived = task_services.archive_item(task)
+    if was_open:
+        # **Its own fact, beside the archive rather than instead of it.**
+        # `archive_item` writes `TASK_ARCHIVED` for filing a finished task too,
+        # so a count over that cannot tell tidying from abandoning -- and rule
+        # 8's payoff is that the weekly review can report lines let go, *"a
+        # better number than lines open"*. Two rows, because two things
+        # happened.
+        life_log.record(owner, life_log.TASK_LET_GO, task=task)
+    return archived
 
 
 def decide(owner, task, decision, *, today):

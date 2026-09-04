@@ -53,6 +53,30 @@ export function PoolRoute() {
     placeholderData: keepPreviousData,
   });
 
+  const stillWanted = useMutation({
+    mutationFn: async ({
+      taskId,
+      answer,
+    }: {
+      taskId: number;
+      answer: "keep" | "let_go";
+    }) => {
+      const { data, response } = await apiV1.POST(
+        "/api/v1/pool/{task_id}/still-wanted",
+        { params: { path: { task_id: taskId } }, body: { answer } },
+      );
+      if (!data) throw new RequestFailed(response.status);
+      return data;
+    },
+    // The day too: letting go archives a task, which may have been chosen for
+    // today, and a day still showing it would be the page disagreeing with
+    // itself.
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["pool"] });
+      queryClient.invalidateQueries({ queryKey: ["day"] });
+    },
+  });
+
   const pick = useMutation({
     mutationFn: async ({ taskId, day }: { taskId: number; day: string }) => {
       const { data, response } = await apiV1.POST("/api/v1/day/{day}/focus", {
@@ -205,6 +229,22 @@ export function PoolRoute() {
               </li>
             ))}
           </ul>
+          {/* Under the list rather than inside a row, because the prompts are
+              a second thing to do and interleaving them would make the pool
+              hard to read down. */}
+          {data.floating
+            .filter((row) => row.asks_to_be_kept)
+            .map((row) => (
+              <StalePrompt
+                key={`stale-${row.task.id}`}
+                text={row.task.text}
+                days={row.unpicked_for_days}
+                onAnswer={(answer) =>
+                  stillWanted.mutate({ taskId: row.task.id, answer })
+                }
+                busy={stillWanted.isPending}
+              />
+            ))}
         </section>
       )}
     </div>
@@ -279,6 +319,64 @@ function PickButtons({
         ),
       )}
     </span>
+  );
+}
+
+/**
+ * The one question the pool asks about a line nobody has touched.
+ *
+ * superlists-2.0-plan.md rule 8: *the pool prunes itself.* Paper could not drop
+ * a task without losing the idea, and the sentence about the note staying is
+ * load-bearing rather than reassurance — a person who thinks this deletes what
+ * they wrote will never press it, and then the pool stops pruning.
+ *
+ * **Asked, never decided.** Nothing is archived without somebody answering, and
+ * `principles.md` allows an automation to act only where the act is visible and
+ * undoable. This one is neither automatic nor irreversible: letting go archives,
+ * and the archive is a place somebody browses.
+ *
+ * **Whether to ask is the server's answer.** The threshold lives in
+ * `lists.agenda.STALE_AFTER_DAYS` and nowhere else — D8 keeps it out of a second
+ * language, so this renders `asks_to_be_kept` and never compares a number.
+ */
+function StalePrompt({
+  text,
+  days,
+  onAnswer,
+  busy,
+}: {
+  text: string;
+  days: number;
+  onAnswer: (answer: "keep" | "let_go") => void;
+  busy: boolean;
+}) {
+  return (
+    <div className="mt-3 rounded-lg border border-dashed border-border px-3 py-2 text-sm">
+      <p>
+        <strong>{text}</strong> — unpicked for {days} days. Still want it?
+      </p>
+      <p className="text-xs text-muted-foreground">
+        Letting go files the task; the note stays.
+      </p>
+      <span className="mt-1 flex gap-2">
+        <Button
+          type="button"
+          variant="ghost"
+          disabled={busy}
+          onClick={() => onAnswer("keep")}
+        >
+          Keep
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          disabled={busy}
+          onClick={() => onAnswer("let_go")}
+        >
+          Let go
+        </Button>
+      </span>
+    </div>
   );
 }
 

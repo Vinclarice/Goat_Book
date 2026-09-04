@@ -67,7 +67,15 @@ function poolData(overrides: Record<string, unknown> = {}) {
         },
       },
     ],
-    floating: [{ task: task(), age_in_days: 9, picked_for: [] }],
+    floating: [
+      {
+        task: task(),
+        age_in_days: 9,
+        picked_for: [],
+        unpicked_for_days: 9,
+        asks_to_be_kept: false,
+      },
+    ],
     ...overrides,
   };
 }
@@ -116,7 +124,17 @@ describe("PoolRoute", () => {
     // pool sorts by age, so an unlabelled row would read as unordered.
     vi.spyOn(globalThis, "fetch").mockImplementation(() =>
       jsonResponse(
-        poolData({ floating: [{ task: task(), age_in_days: 0, picked_for: [] }] }),
+        poolData({
+          floating: [
+            {
+              task: task(),
+              age_in_days: 0,
+              picked_for: [],
+              unpicked_for_days: 0,
+              asks_to_be_kept: false,
+            },
+          ],
+        }),
       ),
     );
 
@@ -259,7 +277,13 @@ describe("PoolRoute, picking a line for a day", () => {
       jsonResponse(
         poolData({
           floating: [
-            { task: task(), age_in_days: 9, picked_for: ["2026-09-03"] },
+            {
+              task: task(),
+              age_in_days: 9,
+              picked_for: ["2026-09-03"],
+              unpicked_for_days: 0,
+              asks_to_be_kept: false,
+            },
           ],
         }),
       ),
@@ -287,6 +311,116 @@ describe("PoolRoute, picking a line for a day", () => {
 
     await screen.findByText("Rent");
     expect(screen.queryByRole("button", { name: /^Pick /i })).toBeNull();
+  });
+});
+
+function stale(overrides: Record<string, unknown> = {}) {
+  return {
+    task: task({ text: "Sort the garage shelves" }),
+    age_in_days: 24,
+    picked_for: [],
+    unpicked_for_days: 24,
+    asks_to_be_kept: true,
+    ...overrides,
+  };
+}
+
+describe("PoolRoute, the pool pruning itself", () => {
+  // superlists-2.0-plan.md rule 8: a floating line unpicked for a stated
+  // number of days asks one question -- still want this? -- and let go
+  // archives the task and retires its facet while the node stays.
+
+  afterEach(() => vi.restoreAllMocks());
+
+  it("asks about a line nobody has touched, and says for how long", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(poolData({ floating: [stale()] })),
+    );
+
+    renderPool();
+
+    expect(await screen.findByText(/unpicked for 24 days/i)).toBeInTheDocument();
+  });
+
+  it("asks nothing about a line that is not stale", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(poolData()),
+    );
+
+    renderPool();
+
+    await screen.findByText("Book dentist");
+    expect(screen.queryByText(/still want it/i)).toBeNull();
+  });
+
+  it("does not decide which lines are stale for itself", async () => {
+    // D8: the threshold stays in one language. A client comparing
+    // `unpicked_for_days` against a number of its own would be the mirrored
+    // constant arriving by the back door -- so a long-unpicked line the server
+    // did not flag is not flagged here either.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        poolData({
+          floating: [stale({ unpicked_for_days: 400, asks_to_be_kept: false })],
+        }),
+      ),
+    );
+
+    renderPool();
+
+    await screen.findByText("Sort the garage shelves");
+    expect(screen.queryByText(/still want it/i)).toBeNull();
+  });
+
+  it("keeps it", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const request = input as Request;
+      if (request.method === "POST") return jsonResponse(poolData());
+      return jsonResponse(poolData({ floating: [stale()] }));
+    });
+
+    renderPool();
+    await userEvent.click(await screen.findByRole("button", { name: "Keep" }));
+
+    await waitFor(() => {
+      const posts = fetchSpy.mock.calls
+        .map(([sent]) => sent as Request)
+        .filter((request) => request.method === "POST");
+      expect(
+        posts.some((r) => r.url.includes("/api/v1/pool/1/still-wanted")),
+      ).toBe(true);
+    });
+  });
+
+  it("lets it go, and says the thought is not lost with it", async () => {
+    // Rule 8's whole argument: paper could not drop a task without losing the
+    // idea, and a person will not press this if they think it deletes what
+    // they wrote.
+    // Stateful, because the page refetches after the write rather than
+    // rendering the response: a mock that kept serving the stale row would be
+    // testing a server that had not done anything.
+    let gone = false;
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const request = input as Request;
+      if (request.method === "POST") {
+        gone = true;
+        return jsonResponse(poolData({ floating: [] }));
+      }
+      return jsonResponse(poolData({ floating: gone ? [] : [stale()] }));
+    });
+
+    renderPool();
+
+    await screen.findByText(/still want it/i);
+    expect(screen.getByText(/the note stays/i)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Let go" }));
+
+    // The row, not any mention of the words: the prompt names the line too.
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("link", { name: "Sort the garage shelves" }),
+      ).toBeNull(),
+    );
   });
 });
 

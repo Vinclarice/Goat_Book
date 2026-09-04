@@ -78,6 +78,34 @@ def completed_in_week(owner, week_start, week_end):
     )
 
 
+def let_go_in_week(owner, week_start, week_end):
+    """How many lines were let go this week -- `superlists-2.0-plan.md` rule 8.
+
+    *"A better number than lines open"*, which is the whole argument for the
+    pool pruning itself: an open count only ever goes up and says nothing about
+    whether anybody is deciding, while this counts decisions taken.
+
+    **From the log, not from a status.** `Item.archived_at` cannot tell filing
+    a finished task from abandoning an unfinished one -- `archive_item` writes
+    both -- and `TASK_LET_GO` exists precisely to name the second. Counting
+    archives would report a tidy-up as a week of abandonment.
+
+    A count rather than a list, on `DayClosing`'s reasoning: what a review needs
+    here is the shape of the week, and re-listing things somebody has decided
+    to stop carrying would be the opposite of letting go of them.
+    """
+    from clarice import life_log
+    from mind.models import ActivityEvent
+
+    start, end = _instant_range(week_start, week_end)
+    return ActivityEvent.objects.filter(
+        owner=owner,
+        event_type=life_log.TASK_LET_GO,
+        occurred_at__gte=start,
+        occurred_at__lt=end,
+    ).count()
+
+
 @dataclass(frozen=True)
 class Planned:
     """What a week was committed to, and what became of each commitment.

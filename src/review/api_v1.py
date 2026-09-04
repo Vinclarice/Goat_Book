@@ -403,6 +403,11 @@ class WeekOut(Schema):
     intention: str | None
     completed: list[CompletedTaskOut]
     planned: PlannedOut
+    #: How many lines were let go this week -- `superlists-2.0-plan.md` rule 8,
+    #: and *"a better number than lines open"*. An open count only ever goes up
+    #: and says nothing about whether anybody is deciding; this counts
+    #: decisions taken. Zero on most weeks, and zero is a fine answer.
+    let_go: int
     written: list[WrittenDayOut]
     thoughts: list[ThoughtOut]
     # Not week-scoped, and named so that is visible in the contract rather
@@ -479,6 +484,7 @@ def _week_out(owner, day):
         "previous_week": week_start - timedelta(days=DAYS_IN_WEEK),
         "next_week": week_start + timedelta(days=DAYS_IN_WEEK),
         "intention": intention.text if intention else None,
+        "let_go": reads.let_go_in_week(owner, week_start, week_end),
         "completed": [
             _completed_out(item)
             for item in reads.completed_in_week(owner, week_start, week_end)

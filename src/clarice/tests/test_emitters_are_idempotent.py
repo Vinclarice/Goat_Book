@@ -83,6 +83,15 @@ class EmitterContractTest(CrossCoreTestCase):
 
         self.assert_one(life_log.TASK_ARCHIVED)
 
+    def test_letting_go_twice_is_one_letting_go(self):
+        from clarice import leftovers
+
+        task = self.a_task()
+        leftovers.let_go(self.alice, task)
+        leftovers.let_go(self.alice, task)
+
+        self.assert_one(life_log.TASK_LET_GO)
+
     def test_setting_the_same_cadence_twice_is_one_change(self):
         task = self.a_task()
         list_services.set_recurrence(task, Item.Recurrence.WEEKLY)
@@ -173,6 +182,7 @@ class EmitterContractTest(CrossCoreTestCase):
             life_log.TASK_COMPLETED,
             life_log.TASK_REOPENED,
             life_log.TASK_ARCHIVED,
+            life_log.TASK_LET_GO,
             life_log.COMMITMENT_CHANGED,
             life_log.COMMITMENT_ENDED,
             life_log.FOCUS_PINNED,

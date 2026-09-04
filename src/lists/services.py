@@ -833,6 +833,26 @@ def _draw_todays_line_if_this_was_chosen(item, now):
 
 
 @transaction.atomic
+def keep(item):
+    """"Yes, still want this" -- `superlists-2.0-plan.md` rule 8's other answer.
+
+    Writes nothing but the clock. The line is unchanged in every way a reader
+    can see; what changed is that the pool has been told not to ask again for
+    another `agenda.STALE_AFTER_DAYS`.
+
+    **No life event.** The log records what happened to a life, and *I was
+    asked whether I still wanted something and said yes* is housekeeping about
+    a prompt -- the same call `recall.NOT_A_DEVELOPMENT` makes about a review
+    row. Letting go is the half that is a real decision, and that one is
+    recorded.
+    """
+    item = Item.objects.select_for_update().get(pk=item.pk)
+    item.kept_at = timezone.now()
+    item.save(update_fields=["kept_at", "updated_at"])
+    return item
+
+
+@transaction.atomic
 def reopen_item(item):
     item = Item.objects.select_for_update().get(pk=item.pk)
     if item.status == Item.Status.ARCHIVED:

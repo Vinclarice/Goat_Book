@@ -172,6 +172,18 @@ class Item(models.Model):
     )
     completed_at = models.DateTimeField(blank=True, null=True)
     archived_at = models.DateTimeField(blank=True, null=True)
+    #: When somebody last answered *yes, still want this* about a line the pool
+    #: had gone quiet on -- `superlists-2.0-plan.md` rule 8.
+    #:
+    #: **Its own column rather than `updated_at`.** Saying *keep* is a decision
+    #: and editing a task's notes is not, and a clock reset by any edit would
+    #: quietly stop the pool pruning itself for anybody who tidies. It is also
+    #: the only record that the question was ever asked and answered.
+    #:
+    #: Null for most tasks, which is the ordinary state: the clock falls back
+    #: to `created_at`, and `lists.agenda.unpicked_for` owns which of the three
+    #: candidates wins.
+    kept_at = models.DateTimeField(blank=True, null=True)
     due_date = models.DateField(blank=True, null=True)
     position = models.PositiveIntegerField(default=0)
     tags = models.ManyToManyField('Tag', blank=True, related_name='items')

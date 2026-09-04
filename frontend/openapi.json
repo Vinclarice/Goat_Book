@@ -121,6 +121,51 @@
         ]
       }
     },
+    "/api/v1/pool/{task_id}/still-wanted": {
+      "post": {
+        "operationId": "lists_api_v1_answer_the_pools_question",
+        "summary": "Answer The Pools Question",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "schema": {
+              "title": "Task Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PoolOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Rule 8's one question, answered -- keep it, or let it go.\n\n**One endpoint for both answers**, because they are two answers to one\nquestion and a page that had to know which URL each went to would be\nholding the question's shape twice.\n\n*Let go* is `clarice.leftovers.let_go`, the same function the evening's\nthird move calls: archives the task, retires its facets, leaves the node.\nRule 8 and rule 7 mean the same thing by the words, so they had better be\nthe same code.\n\nSession only. The phone has no pool, and this archives a task.\n\nAnswers with the whole pool, like every other write on this surface: the\nrow goes away, the count moves, and one response keeps them from\ndisagreeing for a frame.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StillWantedIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/areas/{area_id}": {
       "get": {
         "operationId": "lists_api_v1_area_detail",
@@ -3998,12 +4043,22 @@
             },
             "title": "Picked For",
             "type": "array"
+          },
+          "unpicked_for_days": {
+            "title": "Unpicked For Days",
+            "type": "integer"
+          },
+          "asks_to_be_kept": {
+            "title": "Asks To Be Kept",
+            "type": "boolean"
           }
         },
         "required": [
           "task",
           "age_in_days",
-          "picked_for"
+          "picked_for",
+          "unpicked_for_days",
+          "asks_to_be_kept"
         ],
         "title": "PoolFloatingRowOut",
         "type": "object"
@@ -4040,6 +4095,23 @@
           "floating"
         ],
         "title": "PoolOut",
+        "type": "object"
+      },
+      "StillWantedIn": {
+        "properties": {
+          "answer": {
+            "enum": [
+              "keep",
+              "let_go"
+            ],
+            "title": "Answer",
+            "type": "string"
+          }
+        },
+        "required": [
+          "answer"
+        ],
+        "title": "StillWantedIn",
         "type": "object"
       },
       "AreaDetailOut": {
@@ -8002,6 +8074,10 @@
           "planned": {
             "$ref": "#/components/schemas/PlannedOut"
           },
+          "let_go": {
+            "title": "Let Go",
+            "type": "integer"
+          },
           "written": {
             "items": {
               "$ref": "#/components/schemas/WrittenDayOut"
@@ -8063,6 +8139,7 @@
           "intention",
           "completed",
           "planned",
+          "let_go",
           "written",
           "thoughts",
           "names_to_confirm",

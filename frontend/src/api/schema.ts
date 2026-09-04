@@ -91,6 +91,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/pool/{task_id}/still-wanted": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Answer The Pools Question
+         * @description Rule 8's one question, answered -- keep it, or let it go.
+         *
+         *     **One endpoint for both answers**, because they are two answers to one
+         *     question and a page that had to know which URL each went to would be
+         *     holding the question's shape twice.
+         *
+         *     *Let go* is `clarice.leftovers.let_go`, the same function the evening's
+         *     third move calls: archives the task, retires its facets, leaves the node.
+         *     Rule 8 and rule 7 mean the same thing by the words, so they had better be
+         *     the same code.
+         *
+         *     Session only. The phone has no pool, and this archives a task.
+         *
+         *     Answers with the whole pool, like every other write on this surface: the
+         *     row goes away, the count moves, and one response keeps them from
+         *     disagreeing for a frame.
+         */
+        post: operations["lists_api_v1_answer_the_pools_question"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/areas/{area_id}": {
         parameters: {
             query?: never;
@@ -2085,6 +2120,10 @@ export interface components {
             age_in_days: number;
             /** Picked For */
             picked_for: string[];
+            /** Unpicked For Days */
+            unpicked_for_days: number;
+            /** Asks To Be Kept */
+            asks_to_be_kept: boolean;
         };
         /** PoolOut */
         PoolOut: {
@@ -2096,6 +2135,14 @@ export interface components {
             fixed: components["schemas"]["PoolFixedRowOut"][];
             /** Floating */
             floating: components["schemas"]["PoolFloatingRowOut"][];
+        };
+        /** StillWantedIn */
+        StillWantedIn: {
+            /**
+             * Answer
+             * @enum {string}
+             */
+            answer: "keep" | "let_go";
         };
         /** AreaDetailOut */
         AreaDetailOut: {
@@ -3802,6 +3849,8 @@ export interface components {
             /** Completed */
             completed: components["schemas"]["CompletedTaskOut"][];
             planned: components["schemas"]["PlannedOut"];
+            /** Let Go */
+            let_go: number;
             /** Written */
             written: components["schemas"]["WrittenDayOut"][];
             /** Thoughts */
@@ -4438,6 +4487,32 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PoolOut"];
+                };
+            };
+        };
+    };
+    lists_api_v1_answer_the_pools_question: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StillWantedIn"];
+            };
+        };
         responses: {
             /** @description OK */
             200: {

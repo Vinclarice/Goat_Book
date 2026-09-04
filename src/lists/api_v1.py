@@ -232,6 +232,15 @@ class PoolFixedRowOut(Schema):
     picked_for: list[str]
 
 
+#: The two answers rule 8's one question takes. Mirrored and asserted like
+#: every other `Literal` on this router.
+StillWanted = Literal["keep", "let_go"]
+
+
+class StillWantedIn(Schema):
+    answer: StillWanted
+
+
 class PoolFloatingRowOut(Schema):
     """A line nothing was promised about, plus how long it has been waiting.
 
@@ -246,6 +255,15 @@ class PoolFloatingRowOut(Schema):
     #: button can say so rather than looking like it did nothing. Released pins
     #: are not picks -- see `agenda._picked_for`.
     picked_for: list[str]
+    #: How long this has gone untouched -- written, chosen or kept, whichever
+    #: was latest. Not the same number as `age_in_days`, which is how long ago
+    #: it was written and never resets; this is the staleness clock.
+    unpicked_for_days: int
+    #: Whether the pool is asking about it -- rule 8. **The server decides**, so
+    #: the threshold stays in one language: a client comparing
+    #: `unpicked_for_days` against a number of its own would be D8's mirrored
+    #: constant arriving by the back door.
+    asks_to_be_kept: bool
 
 
 class PoolOut(Schema):
@@ -437,6 +455,35 @@ def pool(request, q: str = ""):
     matching means.
     """
     return agenda_reader.pool_for(request.user, timezone.localdate(), query=q)
+
+
+@router.post("/pool/{task_id}/still-wanted", response=PoolOut)
+def answer_the_pools_question(request, task_id: int, payload: StillWantedIn):
+    """Rule 8's one question, answered -- keep it, or let it go.
+
+    **One endpoint for both answers**, because they are two answers to one
+    question and a page that had to know which URL each went to would be
+    holding the question's shape twice.
+
+    *Let go* is `clarice.leftovers.let_go`, the same function the evening's
+    third move calls: archives the task, retires its facets, leaves the node.
+    Rule 8 and rule 7 mean the same thing by the words, so they had better be
+    the same code.
+
+    Session only. The phone has no pool, and this archives a task.
+
+    Answers with the whole pool, like every other write on this surface: the
+    row goes away, the count moves, and one response keeps them from
+    disagreeing for a frame.
+    """
+    from clarice import leftovers
+
+    task = _owned_task(request, task_id)
+    if payload.answer == "keep":
+        services.keep(task)
+    else:
+        leftovers.let_go(request.user, task)
+    return agenda_reader.pool_for(request.user, timezone.localdate())
 
 
 def _parse_date(value):

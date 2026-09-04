@@ -260,6 +260,45 @@ POOL_ROW_KINDS = (POOL_BILL, POOL_TASK)
 _POOL_KIND_ORDER = {kind: index for index, kind in enumerate(POOL_ROW_KINDS)}
 
 
+#: How long a floating line may go unpicked before the pool asks about it --
+#: `superlists-2.0-plan.md` rule 8, and its **D8**.
+#:
+#: **Three weeks, which is the mockup's number and is a judgement rather than a
+#: measurement.** Shorter and the pool nags about things that are simply not
+#: this month's; longer and it stops pruning at all, which is the failure it
+#: exists to prevent. It is here to be moved once there is a fortnight of use
+#: to move it on.
+#:
+#: **Python only, which is what keeps it out of the mirrored-rules table.** D8
+#: says the number belongs beside `AGE_WORTH_MENTIONING` *if it reaches a
+#: second language*, and it does not: the server decides whether a line asks,
+#: and the client renders the question. A threshold in TypeScript would be the
+#: third copy `mirrored-rules-brief.md` was written about.
+STALE_AFTER_DAYS = 21
+
+
+def unpicked_for(item, today, *, last_picked=None):
+    """How many of the owner's days a line has gone untouched.
+
+    Three candidates and the latest wins: when it was written down, when it was
+    last chosen for a day, and when somebody last said *keep*. Each is a person
+    engaging with the line, and the clock measures neglect rather than age --
+    which is why this is not `age_in_days`, and why the pool carries both.
+
+    **A released pin still counts.** Choosing something and then unchoosing it
+    is two acts of attention; rule 8 asks about lines nobody has looked at.
+
+    Measured between local dates, and never negative, for the reasons
+    `age_in_days` gives about a phone in Makassar and a backdated import.
+    """
+    touched = [timezone.localtime(item.created_at).date()]
+    if item.kept_at is not None:
+        touched.append(timezone.localtime(item.kept_at).date())
+    if last_picked is not None:
+        touched.append(last_picked)
+    return max(0, (today - max(touched)).days)
+
+
 # The days the pool offers to pick for, counting from today. Two, because the
 # page's buttons are Today and Tomorrow -- `superlists-2.0-plan.md` increment
 # 2: *`pin_task` to tomorrow from the pool page, and `pin_task` to today after
@@ -293,6 +332,28 @@ def _picked_for(user, today):
         if task_id is not None:
             picked.setdefault(task_id, []).append(day.isoformat())
     return {task_id: sorted(days) for task_id, days in picked.items()}
+
+
+def _last_picked(user):
+    """The most recent day each task was chosen for, released or not.
+
+    One query for the whole pool rather than one per row: a pool of forty lines
+    would otherwise ask forty times, on a read the page runs on every keystroke
+    in its search box.
+
+    **The day it was chosen *for*, not the instant it was chosen.** A line
+    picked for tomorrow is not neglected today, and measuring from
+    `selected_at` would say it was.
+    """
+    from daily.models import DailyFocus
+
+    latest = {}
+    for task_id, day in DailyFocus.objects.filter(owner=user).values_list(
+        "task_id", "entry__date"
+    ):
+        if task_id is not None and (task_id not in latest or day > latest[task_id]):
+            latest[task_id] = day
+    return latest
 
 
 def pool_for(user, today, *, query=None):
@@ -330,6 +391,7 @@ def pool_for(user, today, *, query=None):
     bills = list(money.open_bills_for(user))
     open_count = len(tasks) + len(bills)
     picked = _picked_for(user, today)
+    last_picked = _last_picked(user)
 
     if needle:
         tasks = [each for each in tasks if needle in each.text.casefold()]
@@ -382,6 +444,16 @@ def pool_for(user, today, *, query=None):
                 "task": serialize_item(each),
                 "age_in_days": age_in_days(each.created_at, today),
                 "picked_for": picked.get(each.id, []),
+                # Rule 8, and only on this half: a dated line is a promise to
+                # somebody rather than something waiting to be noticed, so
+                # asking whether it is still wanted would be the wrong question
+                # about a deadline.
+                "unpicked_for_days": (
+                    unpicked := unpicked_for(
+                        each, today, last_picked=last_picked.get(each.id)
+                    )
+                ),
+                "asks_to_be_kept": unpicked >= STALE_AFTER_DAYS,
             }
             for each in floating
         ],

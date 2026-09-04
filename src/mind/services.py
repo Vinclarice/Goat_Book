@@ -1352,6 +1352,51 @@ def confirm_actionable(facet: Facet, *, area=None, now: datetime, actor: str) ->
     return facet
 
 
+@transaction.atomic
+def attach_commitment(node: Node, *, area=None, now: datetime, actor: str) -> Facet:
+    """"This is a task", said by the person rather than guessed at.
+
+    **The other door to `confirm_actionable`, and it does not go round the
+    guard above.** `propose_facet` refuses `origin=explicit` on an actionable
+    facet because *an obligation nobody agreed to is worse than a missing
+    feature* -- and the invariant that enforces is that nothing becomes a task
+    except through `confirm_actionable`, which this calls. What the guard stops
+    is an inference attaching one; what this is, is somebody typing a line and
+    choosing where it goes, which is the agreement itself.
+
+    So the facet is `explicit` with a blank `producer`, and both matter:
+    `Facet.producer`'s own comment asks for blank *"for a facet nothing
+    proposed -- an explicitly attached one -- rather than a sentinel producer
+    that would then appear in the readings as though something had guessed"*,
+    and the commitment producers' attribution stays about producers.
+
+    `reason` stays null for the same reason. A proposal explains itself because
+    somebody has to decide whether to trust it; this had no proposal to
+    explain.
+
+    **Idempotent through both halves.** `get_or_create` finds a live actionable
+    facet rather than colliding with `facet_one_live_per_kind`, and
+    `confirm_actionable` returns early when one already has a task -- so a
+    retried composer line makes one task, not two.
+
+    `superlists-2.0-plan.md`'s composer is the caller: its Did, Today and Pool
+    destinations are this function, and its Note destination is the absence of
+    it.
+    """
+    facet, _ = Facet.objects.get_or_create(
+        node=node,
+        kind=FacetKind.ACTIONABLE,
+        retired_at=None,
+        defaults={
+            "data": {},
+            "origin": InferenceOrigin.EXPLICIT,
+            "reason": None,
+            "producer": "",
+        },
+    )
+    return confirm_actionable(facet, area=area, now=now, actor=actor)
+
+
 def record_maintenance_run(owner, *, now: datetime, actor: str) -> ActivityEvent:
     """Write down that the scheduled pass happened.
 

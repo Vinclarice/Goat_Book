@@ -5549,6 +5549,17 @@
               }
             ],
             "title": "Captured At"
+          },
+          "destination": {
+            "default": "note",
+            "enum": [
+              "note",
+              "did",
+              "today",
+              "pool"
+            ],
+            "title": "Destination",
+            "type": "string"
           }
         },
         "title": "CaptureIn",

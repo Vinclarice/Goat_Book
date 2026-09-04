@@ -631,52 +631,89 @@ function Routines({
   );
 }
 
+type Destination = "note" | "did" | "today" | "pool";
+
 /**
- * Rapid logging, on the page you are already looking at.
+ * The four places a line can go, and what each one is.
+ *
+ * In the order superlists-2.0-plan.md lists them, which is the order of *how
+ * much this commits you*: words, something already done, something for later
+ * today, something for whenever.
+ *
+ * The `went` sentence is what the box says afterwards, and it has to keep
+ * being true -- this box read "Sent to your Inbox." for a while after the
+ * Inbox stopped existing, and a confirmation naming the wrong place is worse
+ * than none because somebody goes and looks there.
+ */
+const DESTINATIONS: { value: Destination; label: string; went: string }[] = [
+  { value: "note", label: "Note", went: "Kept as a note." },
+  { value: "did", label: "Did", went: "Logged, below the line." },
+  { value: "today", label: "Today", went: "On the list, below the line." },
+  { value: "pool", label: "Pool", went: "In the pool." },
+];
+
+/**
+ * One box, and the four places a line can go — superlists-2.0-plan.md
+ * increment 4.
+ *
+ * **The capture box grown a question, not a second box beside it.** The plan
+ * says *one composer*, and a page with a "capture a thought" field and a
+ * separate "add a task" field is the two-pipelines shape this whole redesign
+ * is undoing.
  *
  * Posts to the capture endpoint the Android client already uses, so the row
  * it writes is the same row -- no daily-shaped capture, no second definition
  * of what an empty capture is. See mind/tests/test_capture_paths_agree.py.
+ * The destination is one optional field on that request, defaulting to a note,
+ * which is what leaves the phone alone.
  *
- * Since Heron 4a that row is a knowledge-core `Node` rather than an Inbox
- * `Capture`: same URL, same request, different destination. This box is one
- * of the three surfaces that change under it, and the one nobody counted --
- * one-capture-surface-plan.md said there were two.
+ * **Note is the default and D9 is still open.** The plan wants that answered by
+ * which destination a week of real use reaches for, not by preference, and Note
+ * is the reversible choice in the meantime: Did creates a completed task for
+ * every line, so a wrong default there fills the task history with things that
+ * were never commitments.
  *
- * Deliberately not part of the day's own form. What you capture is a thought
- * going somewhere to be thought about later; what you write below is this
- * day's record. Merging them into one save button is precisely the kind of
- * near-identical-controls-with-opposite-meanings confusion C2 found in the
- * task UI, and this page is new surface with no excuse for it.
+ * Deliberately not part of the day's own form. What you write here is a line
+ * of the log; what you write below is this day's reflection. Merging them into
+ * one save button is the near-identical-controls-with-opposite-meanings
+ * confusion C2 found in the task UI.
  */
-function CaptureBox() {
+function Composer() {
   const [text, setText] = useState("");
-  const [captured, setCaptured] = useState(false);
+  const [destination, setDestination] = useState<Destination>("note");
+  const [went, setWent] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: async (thought: string) => {
+    mutationFn: async (line: { text: string; destination: Destination }) => {
       const { error } = await apiV1.POST("/api/v1/capture", {
         // No tags UI here -- design/capture-tags-plan.md scoped tagging to
-        // the Android compose screen and read-only display in the web
-        // Inbox, not this quick-capture box.
-        body: { text: thought, tags: [] },
+        // the Android compose screen and read-only display, not this box.
+        body: { text: line.text, tags: [], destination: line.destination },
       });
-      if (error) throw new Error("Couldn't capture that. It's still here.");
+      if (error) throw new Error("Couldn't write that down. It's still here.");
+      return line.destination;
     },
-    onSuccess: () => {
+    onSuccess: (sent) => {
       // Cleared only now. principles.md: capture is durable before it is
       // clever -- a thought must not be lost to a failed request, so the
       // box empties on success and never on the way there.
       setText("");
-      setCaptured(true);
+      setWent(DESTINATIONS.find((each) => each.value === sent)?.went ?? "Kept.");
+      // A Did or Today line draws the line and joins below it; a Pool line
+      // changes the pool. Every destination puts a line in the log. So the day
+      // is refetched whatever was sent, rather than the page holding a second
+      // opinion about which destinations move something on it.
+      queryClient.invalidateQueries({ queryKey: ["day"] });
+      queryClient.invalidateQueries({ queryKey: ["pool"] });
     },
   });
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
-    setCaptured(false);
+    setWent(null);
     if (!text.trim()) return;
-    mutation.mutate(text);
+    mutation.mutate({ text, destination });
   }
 
   return (
@@ -688,25 +725,40 @@ function CaptureBox() {
         id="day-capture"
         value={text}
         onChange={(event) => {
-          setCaptured(false);
+          setWent(null);
           setText(event.target.value);
         }}
         rows={2}
-        placeholder="What's on your mind?"
+        placeholder="What happened?"
         className="w-full rounded-lg border border-border bg-input px-3 py-2"
       />
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
+        <label htmlFor="day-destination" className="text-sm text-muted-foreground">
+          Where this goes
+        </label>
+        <select
+          id="day-destination"
+          value={destination}
+          onChange={(event) => {
+            setWent(null);
+            setDestination(event.target.value as Destination);
+          }}
+          className="touch-target rounded-lg border border-border bg-input px-2 text-sm"
+        >
+          {DESTINATIONS.map((each) => (
+            <option key={each.value} value={each.value}>
+              {each.label}
+            </option>
+          ))}
+        </select>
         <Button type="submit" variant="secondary" disabled={mutation.isPending}>
-          Capture
+          Add
         </Button>
-        {/* Says where it went, and has to keep being true. Without it the
-            thought appears to vanish and the next one gets typed into
-            Intentions instead -- but a confirmation naming the wrong place is
-            worse than none, because somebody will go and look there. This read
-            "Sent to your Inbox." until Heron 4a moved the destination. */}
-        {captured && (
+        {/* Without this the line appears to vanish and the next one gets typed
+            into Intentions instead. */}
+        {went && (
           <span className="text-sm text-muted-foreground">
-            Kept. <a href="/mind/" className="touch-target underline">See it</a>
+            {went} <a href="/mind/" className="touch-target underline">See it</a>
           </span>
         )}
         {mutation.isError && (
@@ -715,8 +767,10 @@ function CaptureBox() {
           </span>
         )}
       </div>
+      {/* Two questions, four answers — the plan's own table, said in a line so
+          the select is not a menu of unexplained words. */}
       <p className="text-sm text-muted-foreground">
-        Goes to the Inbox to sort out later — not into this day&rsquo;s notes.
+        A note is only words. Did, Today and Pool make a line you can tick.
       </p>
     </form>
   );
@@ -1570,7 +1624,7 @@ export function DayRoute() {
         </>
       )}
 
-      <CaptureBox />
+      <Composer />
 
       {/* S5's missing half: the record and the morning's choice were already
           good, and nothing ever asked for the first.

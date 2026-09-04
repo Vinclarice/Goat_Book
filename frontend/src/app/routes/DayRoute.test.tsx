@@ -180,7 +180,12 @@ describe("DayRoute", () => {
     renderAt("/day/2026-08-01");
 
     expect(await screen.findByText("Your day")).toBeInTheDocument();
-    expect(screen.queryByText("Today")).not.toBeInTheDocument();
+    // The heading, not any occurrence of the word: the composer's destination
+    // select has a "Today" option on every day, and it is not a claim about
+    // which day this is.
+    expect(
+      screen.queryByRole("heading", { name: "Today" }),
+    ).not.toBeInTheDocument();
   });
 
   it("asks the server which day it is when the route carries no date", async () => {
@@ -393,9 +398,13 @@ describe("DayRoute", () => {
       await screen.findByLabelText("Capture a thought"),
       "A thought worth keeping",
     );
-    await userEvent.click(screen.getByRole("button", { name: "Capture" }));
+    await userEvent.click(screen.getByRole("button", { name: "Add" }));
 
-    await waitFor(() => expect(screen.getByText("Kept.")).toBeInTheDocument());
+    // "Kept as a note." rather than "Kept.": the composer says which of the
+    // four destinations it went to, because they are four different places.
+    await waitFor(() =>
+      expect(screen.getByText("Kept as a note.")).toBeInTheDocument(),
+    );
     // And it says where to go and look, which is no longer the Inbox.
     expect(screen.getByRole("link", { name: "See it" })).toHaveAttribute(
       "href",
@@ -424,7 +433,7 @@ describe("DayRoute", () => {
     renderAt("/day/2026-08-03");
     const box = await screen.findByLabelText("Capture a thought");
     await userEvent.type(box, "A thought worth keeping");
-    await userEvent.click(screen.getByRole("button", { name: "Capture" }));
+    await userEvent.click(screen.getByRole("button", { name: "Add" }));
 
     await waitFor(() => expect(box).toHaveValue(""));
   });
@@ -444,7 +453,7 @@ describe("DayRoute", () => {
     renderAt("/day/2026-08-03");
     const box = await screen.findByLabelText("Capture a thought");
     await userEvent.type(box, "Do not eat this");
-    await userEvent.click(screen.getByRole("button", { name: "Capture" }));
+    await userEvent.click(screen.getByRole("button", { name: "Add" }));
 
     await waitFor(() =>
       expect(screen.getByText(/It's still here/)).toBeInTheDocument(),
@@ -459,7 +468,7 @@ describe("DayRoute", () => {
 
     renderAt("/day/2026-08-03");
     await screen.findByLabelText("Capture a thought");
-    await userEvent.click(screen.getByRole("button", { name: "Capture" }));
+    await userEvent.click(screen.getByRole("button", { name: "Add" }));
 
     expect(
       fetchSpy.mock.calls.filter(([input]) =>
@@ -478,12 +487,16 @@ describe("DayRoute", () => {
     renderAt("/day/2026-08-03");
 
     await screen.findByLabelText("Capture a thought");
-    expect(screen.getByRole("button", { name: "Capture" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add" })).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Save the day" }),
     ).toBeInTheDocument();
+    // The sentence changed with the box: it said "goes to the Inbox to sort
+    // out later" long after the Inbox was deleted, and now says what the four
+    // destinations actually are. What the test is holding is unchanged --
+    // that the page tells you this box is not the day's own notes.
     expect(
-      screen.getByText(/not into this day/i),
+      screen.getByText(/A note is only words/i),
     ).toBeInTheDocument();
   });
 
@@ -1929,6 +1942,102 @@ describe("DayRoute, the log", () => {
 
     await screen.findByLabelText("Intentions");
     expect(screen.queryByRole("heading", { name: "Log" })).toBeNull();
+  });
+});
+
+describe("DayRoute, the composer", () => {
+  // superlists-2.0-plan.md increment 4: one box, four destinations. It is the
+  // capture box grown a question, not a second box beside it -- "one composer"
+  // is what the page says.
+
+  it("offers all four destinations", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() => jsonResponse(dayData()));
+
+    renderAt("/day/2026-08-03");
+
+    const box = await screen.findByLabelText(/Where this goes/i);
+    expect(
+      [...box.querySelectorAll("option")].map((each) => each.textContent),
+    ).toEqual(["Note", "Did", "Today", "Pool"]);
+  });
+
+  it("defaults to Note, so nothing becomes a task by accident", async () => {
+    // D9 is open and this is the reversible answer: Did manufactures a
+    // completed task for every line, and the argument against it is written
+    // down and unrebutted.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() => jsonResponse(dayData()));
+
+    renderAt("/day/2026-08-03");
+
+    expect(await screen.findByLabelText(/Where this goes/i)).toHaveValue("note");
+  });
+
+  it("sends the destination it was set to", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const request = input as Request;
+      if (request.method === "POST") {
+        return jsonResponse({ public_id: "x", captured_at: "2026-08-03T09:00:00Z" }, true, 201);
+      }
+      return jsonResponse(dayData());
+    });
+
+    renderAt("/day/2026-08-03");
+    await userEvent.type(
+      await screen.findByLabelText("Capture a thought"),
+      "Fix the fence latch",
+    );
+    await userEvent.selectOptions(screen.getByLabelText(/Where this goes/i), "did");
+    await userEvent.click(screen.getByRole("button", { name: "Add" }));
+
+    await waitFor(() => {
+      const posts = fetchSpy.mock.calls
+        .map(([sent]) => sent as Request)
+        .filter((request) => request.method === "POST");
+      expect(posts).toHaveLength(1);
+    });
+  });
+
+  it("says where the line went, and says something different per destination", async () => {
+    // A confirmation naming the wrong place is worse than none, because
+    // somebody will go and look there -- which this box has already been
+    // wrong about once, when it said "Sent to your Inbox."
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const request = input as Request;
+      if (request.method === "POST") {
+        return jsonResponse({ public_id: "x", captured_at: "2026-08-03T09:00:00Z" }, true, 201);
+      }
+      return jsonResponse(dayData());
+    });
+
+    renderAt("/day/2026-08-03");
+    await userEvent.type(
+      await screen.findByLabelText("Capture a thought"),
+      "Ring the fencing people",
+    );
+    await userEvent.selectOptions(screen.getByLabelText(/Where this goes/i), "pool");
+    await userEvent.click(screen.getByRole("button", { name: "Add" }));
+
+    // Not `/pool/i`, which also matches the select's own option.
+    expect(await screen.findByText("In the pool.")).toBeInTheDocument();
+  });
+
+  it("keeps the thought when the line cannot be written", async () => {
+    // principles.md: capture is durable before it is clever. The box empties
+    // on success and never on the way there.
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const request = input as Request;
+      if (request.method === "POST") return jsonResponse({ detail: "no" }, false, 500);
+      return jsonResponse(dayData());
+    });
+
+    renderAt("/day/2026-08-03");
+    const box = await screen.findByLabelText("Capture a thought");
+    await userEvent.type(box, "Half a thought");
+    await userEvent.selectOptions(screen.getByLabelText(/Where this goes/i), "did");
+    await userEvent.click(screen.getByRole("button", { name: "Add" }));
+
+    await waitFor(() => expect(screen.getByText(/still here/i)).toBeInTheDocument());
+    expect(box).toHaveValue("Half a thought");
   });
 });
 

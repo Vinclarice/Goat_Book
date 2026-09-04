@@ -407,9 +407,37 @@ cheapest evidence there is, not because it gates 1 and 2.
    never says a tally or a figure in a way its own module would not, and
    `clocks.day_bounds` now owns a day's two edges, with `recall._start_of`
    delegating to it rather than keeping a second copy.
-4. **The composer.** Four destinations over `confirm_actionable`, with Did
+4. ~~**The composer.** Four destinations over `confirm_actionable`, with Did
    creating the task completed. One optional field on `/api/v1/capture`, the
-   contract regenerated. The phone sends Note by default and needs no change.
+   contract regenerated. The phone sends Note by default and needs no change.~~
+   **Shipped September 3, 2026.** `clarice/composer.py`, and the Day page's
+   capture box grown a question rather than a second box beside it — *one
+   composer* is what the page says, and two input fields would be the two
+   pipelines this redesign is undoing.
+
+   **The line is drawn before the pin, not after**, and that is the one thing
+   the table above could not have told you. A Did or Today line is an act of
+   execution, so it closes the morning's list — and then joins *below* what it
+   just closed. Drawing afterwards would stamp `list_closed_at` later than the
+   pin's `selected_at` and put the line that ended the morning inside it. The
+   ordinary tick has the opposite shape for the same rule, because there the
+   pin was made hours earlier.
+
+   **`mind.services.attach_commitment` is the other door to
+   `confirm_actionable`**, and it does not go round `propose_facet`'s refusal of
+   an explicit actionable facet: what that guard enforces is that nothing
+   becomes a task except through `confirm_actionable`, which this calls. The
+   facet is `explicit` with a blank `producer`, so the commitment producers'
+   attribution stays about producers.
+
+   **A bearer token may send any of the four, and that is a widening**, stated
+   at the field rather than discovered: `capture:write` could previously only
+   write a node. Allowed because the plan asks for one endpoint rather than
+   two, because every one of those acts is the owner's own and undoable on the
+   day page, and because refusing would mean dropping a queued capture.
+
+   **The box defaults to Note and ~~D9 stays open~~** — see D9 below, which
+   now carries what shipped and what would answer it.
 5. **The evening.** The closing ritual that already exists gains the three
    moves on each unfinished pin, above or below the line: tomorrow, pool, let
    go. **Acceptance: the mockup's evening moment.** Never a date move.
@@ -480,6 +508,13 @@ section is the status of what is undecided and nothing above summarises it.
   capacity. The argument for it is that the log-first habit is the whole
   premise. **This is a week-0 question**, to be answered by which destination
   the manual week reached for, not by preference.
+  **Shipped as Note on September 3, 2026, and still open.** Note is the
+  reversible choice: a wrong default there costs a second click, and a wrong
+  default on Did fills the task history with completed things that were never
+  commitments. What has changed is that the question is now answerable by
+  ordinary use rather than by a manual week — the box exists, so which
+  destination gets reached for is a fact the log will hold. Changing it is one
+  line in `DayRoute.tsx`'s `Composer`.
 
 ## What this refuses
 

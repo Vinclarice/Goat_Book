@@ -163,14 +163,21 @@ class DailyPageOnAPhoneTest(BrowserTest):
         and a confirmation naming the wrong place is worse than none — somebody
         goes and looks there. This test would have passed either way, which is
         why the string is checked against where the thought actually went.
+
+        **The box is the composer since September 3, 2026** —
+        `superlists-2.0-plan.md` increment 4 — so the button reads *Add* and the
+        confirmation names which of four destinations the line took. The
+        default is a note, which is exactly what this test has always been
+        about, and what is asserted is unchanged: the words are kept, and they
+        are where the link says.
         """
         self.log_in(self.user)
         self.visit("/app/day")
 
         self.page.get_by_label("Capture a thought").fill("A thought on the move")
-        self.page.get_by_role("button", name="Capture").click()
+        self.page.get_by_role("button", name="Add").click()
 
-        expect(self.page.get_by_text("Kept.")).to_be_visible()
+        expect(self.page.get_by_text("Kept as a note.")).to_be_visible()
         expect(self.page.get_by_role("link", name="See it")).to_have_attribute(
             "href", "/mind/"
         )

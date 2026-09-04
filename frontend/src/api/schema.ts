@@ -2674,6 +2674,12 @@ export interface components {
             tags: string[];
             /** Captured At */
             captured_at?: string | null;
+            /**
+             * Destination
+             * @default note
+             * @enum {string}
+             */
+            destination: "note" | "did" | "today" | "pool";
         };
         /** QuestionOut */
         QuestionOut: {

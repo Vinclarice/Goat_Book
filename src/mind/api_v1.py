@@ -29,6 +29,7 @@ services, so the core that owns the record still decides what happens to it.
 
 import uuid
 from datetime import date, datetime
+from typing import Literal, get_args
 
 from django.utils import timezone
 from ninja import Header, Router, Schema, Status
@@ -36,6 +37,7 @@ from ninja.errors import HttpError
 
 from accounts.auth import SessionAuthIfLoggedIn, TokenAuth
 from accounts.models import SCOPE_CAPTURE_WRITE
+from clarice import composer
 from clarice.search import to_query
 from daily import reads as daily_reads
 from lists import search as lists_search
@@ -44,6 +46,17 @@ from . import queries, services
 from .models import ConceptCandidate, Facet, FacetKind, Node, NodeSource
 
 router = Router()
+
+
+#: Mirrored from `clarice.composer.DESTINATIONS` and asserted below, for the
+#: reason `lists.api_v1.TaskRecurrence` gives: Ninja needs a static type, so the
+#: duplication is real, and one that shouts when it drifts is a different thing
+#: from one that waits to be noticed by somebody typing a destination into a box.
+Destination = Literal["note", "did", "today", "pool"]
+assert set(get_args(Destination)) == set(composer.DESTINATIONS), (
+    "Destination has drifted from clarice.composer.DESTINATIONS: "
+    f"{set(composer.DESTINATIONS) ^ set(get_args(Destination))}"
+)
 
 
 class CaptureIn(Schema):
@@ -70,6 +83,25 @@ class CaptureIn(Schema):
     came back; six of them landed on the same second during the August 14, 2026
     device pass, which is how it was found. The fix went to `/mind/api/v1/capture`,
     which nothing calls, and the defect stayed live here for a day.
+    """
+
+    destination: Destination = composer.NOTE
+    """Where this line goes -- `superlists-2.0-plan.md` increment 4.
+
+    **Defaulting to `note` is what leaves the phone alone.** A body with no
+    destination behaves exactly as it did before this field existed, so the
+    shipped Android build, its share-sheet handler and its encrypted offline
+    queue need no change and no reconnect.
+
+    **A bearer token may send any of the four**, and that is a widening worth
+    stating rather than discovering: `capture:write` could previously only
+    write a node, and can now also make a task, choose it for today and finish
+    it. Allowed because the plan asks for one endpoint rather than two, because
+    every one of those acts is the owner's own and visible and undoable on the
+    day page -- and because the alternative refuses a queued capture, which
+    `principles.md` puts above cleverness. `test_api_auth_surface.py` still
+    holds *which* operations a token reaches; this is a note about what one of
+    them now does.
     """
 
 
@@ -125,16 +157,22 @@ def new_capture(
     from_a_phone = getattr(request, "token_authenticated", False)
 
     try:
-        node, created = services.capture_idempotent(
+        # **Through the composer, whatever the destination.** `note` is the
+        # absence of the three task branches rather than a separate path, so
+        # the capture a phone has always made and the one the day's box makes
+        # are the same write -- and there is one place where "every line is a
+        # `Node` first" is true rather than two that have to agree.
+        node, created = composer.write_a_line(
             request.user,
-            content=payload.text,
+            text=payload.text,
+            destination=payload.destination,
+            now=timezone.now(),
             # Now only when nobody said. Guessing a time would be worse than
             # having none, because a temporal detector cannot tell the two apart.
-            captured_at=payload.captured_at or timezone.now(),
-            source=NodeSource.MOBILE if from_a_phone else NodeSource.WEB,
-            actor=request.user.get_username(),
+            captured_at=payload.captured_at,
             public_id=public_id,
             tags=payload.tags,
+            from_a_phone=from_a_phone,
         )
     # 400, never 422 or 409. A queued client treats anything other than
     # 400/401/403 as "retry later", so an unprocessable body returned as 422

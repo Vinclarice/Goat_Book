@@ -155,7 +155,12 @@ class TheFourDestinationsTest(TestCase):
         self.write("Fix the fence latch", composer.DID)
 
         self.assertEqual(
-            [line.kind for line in day_log.lines_for(self.owner, self.today)],
+            [
+                line.kind
+                for line in day_log.lines_for(
+                    self.owner, self.today, now=timezone.now()
+                )
+            ],
             [day_log.WRITTEN, day_log.CHOSE, day_log.COMPLETED],
         )
 

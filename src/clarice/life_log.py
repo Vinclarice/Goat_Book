@@ -42,13 +42,19 @@ from mind.models import ActivityEvent, EventOrigin, EventType
 
 
 # The vocabulary, re-exported so the task core never imports the knowledge
-# core's models. These are the ten life events increment 1 added -- eleven
-# since `TASK_LET_GO` on September 3, 2026 -- and the note events above them in
-# `EventType` stay `mind`'s own business and are deliberately not surfaced here.
+# core's models. These began as increment 1's ten and have grown by three --
+# `TASK_LET_GO` and the two appointment events, September 3 and 4, 2026. The
+# note events above them in `EventType` stay `mind`'s own business and are
+# deliberately not surfaced here.
+#
+# **The count is not written down**, because it is a number that only goes up
+# and `LIFE_EVENTS` below is the list itself.
 TASK_COMPLETED = EventType.TASK_COMPLETED
 TASK_REOPENED = EventType.TASK_REOPENED
 TASK_ARCHIVED = EventType.TASK_ARCHIVED
 TASK_LET_GO = EventType.TASK_LET_GO
+APPOINTMENT_MADE = EventType.APPOINTMENT_MADE
+APPOINTMENT_CANCELLED = EventType.APPOINTMENT_CANCELLED
 COMMITMENT_CHANGED = EventType.COMMITMENT_CHANGED
 COMMITMENT_ENDED = EventType.COMMITMENT_ENDED
 FOCUS_PINNED = EventType.FOCUS_PINNED
@@ -69,6 +75,8 @@ LIFE_EVENTS = frozenset(
         TASK_REOPENED,
         TASK_ARCHIVED,
         TASK_LET_GO,
+        APPOINTMENT_MADE,
+        APPOINTMENT_CANCELLED,
         COMMITMENT_CHANGED,
         COMMITMENT_ENDED,
         FOCUS_PINNED,

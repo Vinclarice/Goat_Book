@@ -26,9 +26,11 @@ column would lose a completion that really happened. `TASK_COMPLETED` and
 `TASK_REOPENED` are separate append-only rows, so the log shows *done at 14:02,
 reopened at 14:05* and what happened never changes retroactively.
 
-**An appointment that passed joins at increment 7**, as a sixth source and
-without either of the five changing -- each is read on its own and merged by
-time, so there is no shape for a new one to disturb.
+**An appointment that passed joined at increment 7**, as a fifth source and
+without any of the four changing -- each is read on its own and merged by time,
+so there was no shape for a new one to disturb. It is the only source that can
+name something still in the future within the day being read, which is why this
+module now takes a `now`.
 """
 
 from dataclasses import dataclass
@@ -52,11 +54,16 @@ RELEASED = "released"
 ROUTINE = "routine"
 #: A bill that got paid.
 BILL = "bill"
+#: An appointment whose start has passed. **Not attendance**: whether you went
+#: is a line you write, never something inferred from a clock -- so this says
+#: the thing happened to the day, and the Did or Note beside it says what you
+#: did about it.
+APPOINTMENT = "appointment"
 
 #: Every kind a line can be, so a boundary can mirror the set rather than
 #: guess at it -- the same shape `lists.api_v1` uses for `Item.Recurrence`,
 #: with an assertion that shouts when the two part company.
-KINDS = (WRITTEN, COMPLETED, REOPENED, CHOSE, RELEASED, ROUTINE, BILL)
+KINDS = (WRITTEN, COMPLETED, REOPENED, CHOSE, RELEASED, ROUTINE, BILL, APPOINTMENT)
 
 #: Which life event makes which line.
 #:
@@ -107,7 +114,7 @@ class LogLine:
     subject_withheld: bool = False
 
 
-def lines_for(owner, day):
+def lines_for(owner, day, *, now):
     """Everything the records say about ``day``, in one order by time.
 
     **Oldest first.** The log is read the way it was written and the newest
@@ -125,6 +132,14 @@ def lines_for(owner, day):
     happened, so reading one back is history rather than inference. That is the
     same split `routines` already makes on the same page.
 
+    **`now` is what stops the log predicting.** Every other source is a record
+    of something that already happened -- a `completed_at`, a `paid_at`, a
+    `captured_at` -- and is in the past by construction. An appointment's start
+    is the one instant this read can meet that has not arrived yet, and a three
+    o'clock showing at nine would be the page asserting something that has not
+    occurred. Injected rather than read here, per `principles.md`: the request
+    boundary owns the clock.
+
     Five queries, one per source, merged in Python. A single query cannot span
     five tables with nothing in common but a timestamp, and a `UNION` over five
     different shapes would be the same merge written where it cannot be read.
@@ -135,6 +150,7 @@ def lines_for(owner, day):
         *_from_the_log(owner, start, end),
         *_routines(owner, start, end),
         *_bills(owner, start, end),
+        *_appointments(owner, day, start, min(end, now)),
     ]
     # By time, and by kind where two land in the same microsecond -- which
     # happens in tests and, one day, on a fast enough machine. An unstable sort
@@ -239,3 +255,45 @@ def _bills(owner, start, end):
             owner=owner, paid_at__gte=start, paid_at__lt=end
         )
     ]
+
+
+def _appointments(owner, day, start, until):
+    """Appointments on this day whose start has passed.
+
+    **A cancelled one produces no line**, which is rule 6 read from the other
+    end: it stays visible on its day, struck, in the strip -- and it did not
+    happen, so the record of what happened does not name it.
+
+    **Only on the day it starts.** A weekend away is one thing that began on
+    Saturday, and a second line on Sunday would be the log reporting the same
+    event twice. The strip is what shows it on every day of its span.
+
+    An all-day appointment lands at the start of its day, which is the only
+    honest instant for something with no time of day -- and puts it above the
+    day's first tick, where it belongs as the thing the day was arranged
+    around.
+    """
+    from appointments.models import Appointment
+
+    lines = []
+    for appointment in Appointment.objects.filter(
+        owner=owner,
+        deleted_at__isnull=True,
+        cancelled_at__isnull=True,
+        starts_on=day,
+    ):
+        at = start if appointment.starts_at is None else datetime.combine(
+            day, appointment.starts_at, tzinfo=start.tzinfo
+        )
+        if at >= until:
+            continue
+        lines.append(
+            LogLine(
+                at=at,
+                kind=APPOINTMENT,
+                text=appointment.text,
+                detail=appointment.location,
+            )
+        )
+    return lines
+

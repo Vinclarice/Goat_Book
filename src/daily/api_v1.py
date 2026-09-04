@@ -16,6 +16,8 @@ from ninja.errors import HttpError
 
 from accounts.auth import SessionAuthIfLoggedIn, TokenAuth
 from accounts.models import SCOPE_DAY_READ, SCOPE_DAY_WRITE
+from appointments import reads as appointment_reads
+from appointments.api_v1 import AppointmentOut, appointment_out
 from clarice import day_log, leftovers
 from daily import reads, services
 from lists import agenda
@@ -142,6 +144,15 @@ class DayOut(Schema):
     #: When the first act of execution drew the line under this day's list, or
     #: null while it is still open -- `superlists-2.0-plan.md` rules 3 and 11.
     list_closed_at: str | None
+    #: Everything covering this date, cancelled ones included and struck --
+    #: rule 6. **Present on a past day**, unlike `action_items`: an appointment
+    #: is a dated record of something that was going to happen, so reading one
+    #: back is history rather than inference.
+    appointments: list[AppointmentOut]
+    #: What is ahead within the week, soonest first. Only ever today's -- a
+    #: strip of what is coming, shown on the page for the 30th, would be
+    #: answering a question about now on a page about then.
+    appointments_coming: list[AppointmentOut]
     #: What happened, oldest first -- rule 6. **Present on a past day**, unlike
     #: `action_items` and `bills`: those are live task state and a task holds no
     #: record of what it looked like on the 30th, while every source of a log
@@ -214,7 +225,14 @@ class DecisionIn(Schema):
 #: duplication is real, and one that shouts when it drifts is a different thing
 #: from one that waits to be noticed.
 LogKind = Literal[
-    "written", "completed", "reopened", "chose", "released", "routine", "bill"
+    "written",
+    "completed",
+    "reopened",
+    "chose",
+    "released",
+    "routine",
+    "bill",
+    "appointment",
 ]
 assert set(get_args(LogKind)) == set(day_log.KINDS), (
     "LogKind has drifted from clarice.day_log.KINDS: "
@@ -261,6 +279,9 @@ class CalendarDayOut(Schema):
     date: date
     #: Open tasks due on this date -- the agenda's own definition of open.
     due: int
+    #: Appointments covering it, counted apart from `due`. A day with a
+    #: deadline and a day with a two o'clock are different days.
+    appointments: int
     #: Whether the day has words in it, not merely a row.
     written: bool
 
@@ -624,6 +645,18 @@ def _day_out(owner, day):
         "list_closed_at": (
             bounded.closed_at.isoformat() if bounded.closed_at else None
         ),
+        "appointments": [
+            appointment_out(each)
+            for each in appointment_reads.on_day(owner, day)
+        ],
+        "appointments_coming": (
+            [
+                appointment_out(each)
+                for each in appointment_reads.coming_up(owner, day)
+            ]
+            if day == today
+            else []
+        ),
         "log": [
             {
                 "at": line.at.isoformat(),
@@ -632,7 +665,7 @@ def _day_out(owner, day):
                 "detail": line.detail,
                 "subject_withheld": line.subject_withheld,
             }
-            for line in day_log.lines_for(owner, day)
+            for line in day_log.lines_for(owner, day, now=timezone.now())
         ],
         "draft": _draft_out(owner, day, today),
         "brief": _brief_out(owner, day, today),
@@ -762,7 +795,12 @@ def calendar_month(request, day: date):
         "next_month": days[-1].date + timedelta(days=1),
         "today": _today_for_request(),
         "days": [
-            {"date": each.date, "due": each.due, "written": each.written}
+            {
+                "date": each.date,
+                "due": each.due,
+                "appointments": each.appointments,
+                "written": each.written,
+            }
             for each in days
         ],
     }

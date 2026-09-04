@@ -3424,6 +3424,106 @@
           }
         ]
       }
+    },
+    "/api/v1/appointments": {
+      "post": {
+        "operationId": "appointments_api_v1_make_appointment",
+        "summary": "Make Appointment",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppointmentOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Write down something that is going to happen.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppointmentIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      }
+    },
+    "/api/v1/appointments/{public_id}/cancel": {
+      "post": {
+        "operationId": "appointments_api_v1_cancel_appointment",
+        "summary": "Cancel Appointment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "public_id",
+            "schema": {
+              "format": "uuid",
+              "title": "Public Id",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppointmentOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "It was called off -- and it stays on its day, struck.\n\nNot a deletion, and the two have their own endpoints for that reason: a\nsurface that offered one button for both would make *\"the parents' evening\nwas cancelled\"* unanswerable a month later.",
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      }
+    },
+    "/api/v1/appointments/{public_id}": {
+      "delete": {
+        "operationId": "appointments_api_v1_remove_appointment",
+        "summary": "Remove Appointment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "public_id",
+            "schema": {
+              "format": "uuid",
+              "title": "Public Id",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "description": "It should never have been written down.\n\nSoft, so the id can never be reused -- see `services.remove`.",
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -3969,13 +4069,94 @@
         "title": "TaskOut",
         "type": "object"
       },
+      "AppointmentOut": {
+        "description": "One appointment, as every surface renders it.\n\n**Dates and times apart, never assembled into an instant here.** The\nboundary carries what the record holds; a client that wanted a datetime\nwould be inventing a time zone for an all-day thing, which is the mistake\nthe model exists to prevent.\n\n`ends_on` is null for a one-day appointment and `starts_at` is null for an\nall-day one, and those two nulls mean different things -- so the contract\nkeeps them apart rather than sending a computed `is_all_day` a client could\ndisagree with.",
+        "properties": {
+          "public_id": {
+            "format": "uuid",
+            "title": "Public Id",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "starts_on": {
+            "format": "date",
+            "title": "Starts On",
+            "type": "string"
+          },
+          "ends_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ends On"
+          },
+          "starts_at": {
+            "anyOf": [
+              {
+                "format": "time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Starts At"
+          },
+          "ends_at": {
+            "anyOf": [
+              {
+                "format": "time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ends At"
+          },
+          "location": {
+            "title": "Location",
+            "type": "string"
+          },
+          "notes": {
+            "title": "Notes",
+            "type": "string"
+          },
+          "cancelled": {
+            "title": "Cancelled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "public_id",
+          "text",
+          "starts_on",
+          "ends_on",
+          "starts_at",
+          "ends_at",
+          "location",
+          "notes",
+          "cancelled"
+        ],
+        "title": "AppointmentOut",
+        "type": "object"
+      },
       "PoolFixedRowOut": {
-        "description": "A line with a date on it, whichever kind of record it came from.\n\n**A tagged row rather than two arrays**, unlike `AgendaOut`, and the\ndifference is what the surface is for: the agenda groups by bucket and the\nclient lays each group out, while the pool's fixed half is one sequence in\ndate order with bills among the tasks -- `superlists-2.0-plan.md` increment\n1. Interleaving on the client would mean the browser deciding what a date\nmeans, which is the server's by `principles.md`.\n\n`task` and `bill` are mutually exclusive and `kind` says which; an\n`Appointment` joins as a third variant at increment 7 without either\nexisting one changing.\n\n`picked_for` is which of the days this page offers -- today and tomorrow --\nthe line is currently chosen for, and is always empty on a bill, which\ncannot be picked at all. See `agenda.POOL_PICKABLE_DAYS`.",
+        "description": "A line with a date on it, whichever kind of record it came from.\n\n**A tagged row rather than two arrays**, unlike `AgendaOut`, and the\ndifference is what the surface is for: the agenda groups by bucket and the\nclient lays each group out, while the pool's fixed half is one sequence in\ndate order with bills among the tasks -- `superlists-2.0-plan.md` increment\n1. Interleaving on the client would mean the browser deciding what a date\nmeans, which is the server's by `principles.md`.\n\n`task`, `bill` and `appointment` are mutually exclusive and `kind` says\nwhich. **The third arrived at increment 7 and neither of the first two\nchanged**, which is what the tagged row was built for.\n\n`picked_for` is which of the days this page offers -- today and tomorrow --\nthe line is currently chosen for, and is always empty on a bill, which\ncannot be picked at all. See `agenda.POOL_PICKABLE_DAYS`.",
         "properties": {
           "kind": {
             "enum": [
-              "task",
-              "bill"
+              "appointment",
+              "bill",
+              "task"
             ],
             "title": "Kind",
             "type": "string"
@@ -4008,6 +4189,16 @@
               }
             ]
           },
+          "appointment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AppointmentOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "picked_for": {
             "items": {
               "type": "string"
@@ -4022,6 +4213,7 @@
           "days_until",
           "task",
           "bill",
+          "appointment",
           "picked_for"
         ],
         "title": "PoolFixedRowOut",
@@ -6258,7 +6450,8 @@
               "chose",
               "released",
               "routine",
-              "bill"
+              "bill",
+              "appointment"
             ],
             "title": "Kind",
             "type": "string"
@@ -6388,6 +6581,20 @@
             ],
             "title": "List Closed At"
           },
+          "appointments": {
+            "items": {
+              "$ref": "#/components/schemas/AppointmentOut"
+            },
+            "title": "Appointments",
+            "type": "array"
+          },
+          "appointments_coming": {
+            "items": {
+              "$ref": "#/components/schemas/AppointmentOut"
+            },
+            "title": "Appointments Coming",
+            "type": "array"
+          },
           "log": {
             "items": {
               "$ref": "#/components/schemas/DayLogLineOut"
@@ -6454,6 +6661,8 @@
           "brief",
           "closing",
           "list_closed_at",
+          "appointments",
+          "appointments_coming",
           "log",
           "week_intention",
           "typical_day",
@@ -6765,6 +6974,10 @@
             "title": "Due",
             "type": "integer"
           },
+          "appointments": {
+            "title": "Appointments",
+            "type": "integer"
+          },
           "written": {
             "title": "Written",
             "type": "boolean"
@@ -6773,6 +6986,7 @@
         "required": [
           "date",
           "due",
+          "appointments",
           "written"
         ],
         "title": "CalendarDayOut",
@@ -9313,6 +9527,71 @@
           "unpriced"
         ],
         "title": "MonthOfBillsOut",
+        "type": "object"
+      },
+      "AppointmentIn": {
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "starts_on": {
+            "format": "date",
+            "title": "Starts On",
+            "type": "string"
+          },
+          "ends_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ends On"
+          },
+          "starts_at": {
+            "anyOf": [
+              {
+                "format": "time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Starts At"
+          },
+          "ends_at": {
+            "anyOf": [
+              {
+                "format": "time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ends At"
+          },
+          "location": {
+            "default": "",
+            "title": "Location",
+            "type": "string"
+          },
+          "notes": {
+            "default": "",
+            "title": "Notes",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "starts_on"
+        ],
+        "title": "AppointmentIn",
         "type": "object"
       }
     },

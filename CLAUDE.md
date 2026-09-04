@@ -194,7 +194,7 @@ activating:
 
 ```powershell
 docker compose up -d db   # once per session; starts local Postgres
-.\.venv\Scripts\python.exe src\manage.py test accounts lists clarice daily routines review money
+.\.venv\Scripts\python.exe src\manage.py test accounts lists clarice daily routines review money appointments
 .\.venv\Scripts\python.exe -m pytest          # the mind app; config in pytest.ini
 pnpm --dir frontend test
 pnpm --dir frontend build

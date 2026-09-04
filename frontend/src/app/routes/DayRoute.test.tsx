@@ -51,6 +51,8 @@ function dayData(overrides: Record<string, unknown> = {}) {
     typical_day: null,
     list_closed_at: null,
     log: [],
+    appointments: [],
+    appointments_coming: [],
     routines: [],
     routines_are_loggable: true,
     paused_routines: [],
@@ -2178,6 +2180,162 @@ describe("DayRoute, the evening", () => {
     // page, and what rule 12 forbids is a verdict *about the numbers*.
     const block = heading.closest("section")!;
     expect(block.textContent).not.toMatch(/only|failed|behind|streak|well done/i);
+  });
+});
+
+function appointment(overrides: Record<string, unknown> = {}) {
+  return {
+    public_id: "aaaaaaaa-0000-0000-0000-000000000001",
+    text: "Call with the accountant",
+    starts_on: "2026-08-03",
+    ends_on: null,
+    starts_at: "14:00:00",
+    ends_at: null,
+    location: "phone",
+    notes: "",
+    cancelled: false,
+    ...overrides,
+  };
+}
+
+describe("DayRoute, appointments", () => {
+  // superlists-2.0-plan.md increment 7. Something that happens at a time
+  // whether or not you act -- so it is never ticked, never picked, and never
+  // in the chosen count.
+
+  it("shows what is on today, with its time and where", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(dayData({ appointments: [appointment()] })),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    const row = (await screen.findByText("Call with the accountant")).closest("li")!;
+    expect(row).toHaveTextContent("phone");
+    expect(row).toHaveTextContent(/2:00|14:00/);
+  });
+
+  it("says all day rather than inventing a time", async () => {
+    // The Dutch Wonderland case, and the reason the record is dates plus an
+    // optional time rather than a pair of instants.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        dayData({
+          appointments: [
+            appointment({
+              text: "Dutch Wonderland",
+              starts_at: null,
+              ends_on: "2026-08-04",
+              location: "Lancaster, PA",
+            }),
+          ],
+        }),
+      ),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    const row = (await screen.findByText("Dutch Wonderland")).closest("li")!;
+    expect(row).toHaveTextContent(/all day/i);
+  });
+
+  it("keeps a cancelled one on its day, struck", async () => {
+    // Rule 6: a cancelled Thursday afternoon is a fact about that Thursday,
+    // and a row that vanished would make it unanswerable a month later.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(dayData({ appointments: [appointment({ cancelled: true })] })),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    const text = await screen.findByText("Call with the accountant");
+    expect(text.className).toMatch(/line-through/);
+  });
+
+  it("never offers to tick one", async () => {
+    // It happens whether or not you act, which is the whole of why it has its
+    // own model rather than being a task with a date.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(dayData({ appointments: [appointment()] })),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    await screen.findByText("Call with the accountant");
+    expect(
+      screen.queryByRole("button", { name: /Complete Call with the accountant/i }),
+    ).toBeNull();
+  });
+
+  it("shows what is coming up, apart from what is on today", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        dayData({
+          appointments: [appointment()],
+          appointments_coming: [
+            appointment({
+              public_id: "aaaaaaaa-0000-0000-0000-000000000002",
+              text: "Parents' evening",
+              starts_on: "2026-08-05",
+            }),
+          ],
+        }),
+      ),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    expect(await screen.findByText(/Coming up/i)).toBeInTheDocument();
+    expect(screen.getByText("Parents' evening")).toBeInTheDocument();
+  });
+
+  it("writes one down", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const request = input as Request;
+      if (request.method === "POST") return jsonResponse(appointment(), true, 201);
+      return jsonResponse(dayData());
+    });
+
+    renderAt("/day/2026-08-03");
+    // The form is behind a button: a diary form open on every day page would
+    // be six inputs competing with the day's own writing.
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Add an appointment" }),
+    );
+    await userEvent.type(
+      screen.getByLabelText("What is happening"),
+      "Call with the accountant",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Add to the day" }));
+
+    await waitFor(() => {
+      const posts = fetchSpy.mock.calls
+        .map(([sent]) => sent as Request)
+        .filter((request) => request.method === "POST");
+      expect(posts.some((r) => r.url.includes("/api/v1/appointments"))).toBe(true);
+    });
+  });
+
+  it("cancels one rather than deleting it", async () => {
+    // Two buttons, because they are two facts. A surface with one would make
+    // "the parents' evening was cancelled" unanswerable a month later.
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const request = input as Request;
+      if (request.method === "POST") return jsonResponse(appointment({ cancelled: true }));
+      return jsonResponse(dayData({ appointments: [appointment()] }));
+    });
+
+    renderAt("/day/2026-08-03");
+    await userEvent.click(
+      await screen.findByRole("button", { name: /Cancel Call with the accountant/i }),
+    );
+
+    await waitFor(() => {
+      const posts = fetchSpy.mock.calls
+        .map(([sent]) => sent as Request)
+        .filter((request) => request.method === "POST");
+      expect(posts.some((r) => r.url.includes("/cancel"))).toBe(true);
+    });
   });
 });
 

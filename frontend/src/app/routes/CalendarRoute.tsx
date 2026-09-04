@@ -95,8 +95,8 @@ export function CalendarRoute() {
             key={day.date}
             to={`/day/${day.date}`}
             aria-label={`${day.date}${day.due > 0 ? `, ${day.due} due` : ""}${
-              day.written ? ", written" : ""
-            }`}
+              day.appointments > 0 ? `, ${day.appointments} in the diary` : ""
+            }${day.written ? ", written" : ""}`}
             className={`flex min-h-16 flex-col rounded-lg border px-2 py-1 hover:border-accent ${
               day.date === data.today ? "border-accent" : "border-border"
             }`}
@@ -110,6 +110,14 @@ export function CalendarRoute() {
             {day.due > 0 && (
               <span className="text-xs text-muted-foreground">
                 {day.due} due
+              </span>
+            )}
+            {/* Counted apart from `due`, because a day with a deadline and a
+                day with a two o'clock are different days -- one number could
+                not say which. */}
+            {day.appointments > 0 && (
+              <span className="text-xs text-muted-foreground">
+                {day.appointments} on
               </span>
             )}
             {day.written && (

@@ -11,6 +11,7 @@ import { updateTaskStatus } from "../../api";
 import type { AreaColorKey } from "../../types";
 import { FirstRun } from "./FirstRun";
 import { JournalSuggestions } from "./JournalSuggestions";
+import { Appointments } from "./Appointments";
 import { RouteFailure } from "./RouteFailure";
 
 const SECTIONS = [
@@ -1435,6 +1436,18 @@ export function DayRoute() {
         <FirstRun />
       ) : (
         <>
+      {/* Above the list -- rule 9's shape. A fixed commitment is never
+          invisible for not having been chosen, and what the afternoon has to
+          bend around belongs where it is read first. Editable only on today,
+          for the same reason `shows_action_items` gates the rows below: a past
+          day is read-only. */}
+      <Appointments
+        today={data.appointments}
+        coming={data.appointments_coming}
+        day={data.date}
+        editable={isToday}
+      />
+
       <section className="space-y-2">
         <h2 className="text-sm font-bold">Focus</h2>
         {/* The awareness half of the brief — *what changed*, never what

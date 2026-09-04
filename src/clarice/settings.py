@@ -336,6 +336,13 @@ INSTALLED_APPS = [
     # §3, and an app is the cheapest way to stop a routine quietly becoming
     # a kind of Item later.
     "routines",
+    # Appointments -- `superlists-2.0-plan.md` increment 7. Its own app on the
+    # `routines` precedent and for the same boundary reason: something that
+    # happens at a time whether or not you act is not a kind of task, and an
+    # app is the cheapest way to stop it quietly becoming one. Added to CI's
+    # app list and CLAUDE.md's test line in the same commit, which the plan
+    # asks for because the guards catch the omission and not the intent.
+    "appointments",
     # The weekly review: a read layer over lists, daily, routines and
     # capture, plus one small record of its own. Its own app because
     # architecture-trajectory.md §4 anticipates exactly one

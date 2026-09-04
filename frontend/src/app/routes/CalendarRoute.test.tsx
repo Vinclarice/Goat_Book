@@ -28,8 +28,8 @@ function monthData(overrides: Record<string, unknown> = {}) {
     next_month: "2026-09-01",
     today: "2026-08-14",
     days: [
-      { date: "2026-08-01", due: 0, written: false },
-      { date: "2026-08-14", due: 2, written: true },
+      { date: "2026-08-01", due: 0, appointments: 0, written: false },
+      { date: "2026-08-14", due: 2, appointments: 1, written: true },
     ],
     ...overrides,
   };

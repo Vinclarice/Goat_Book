@@ -175,7 +175,11 @@ class DailyPageOnAPhoneTest(BrowserTest):
         self.visit("/app/day")
 
         self.page.get_by_label("Capture a thought").fill("A thought on the move")
-        self.page.get_by_role("button", name="Add").click()
+        # `exact=True`, because the page grew a second Add-ish button when
+        # appointments arrived -- Playwright matches an accessible name by
+        # substring unless told otherwise, and "Add an appointment" contains
+        # "Add". The composer's button is the one this test is about.
+        self.page.get_by_role("button", name="Add", exact=True).click()
 
         expect(self.page.get_by_text("Kept as a note.")).to_be_visible()
         expect(self.page.get_by_role("link", name="See it")).to_have_attribute(

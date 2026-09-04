@@ -14,6 +14,7 @@ from datetime import date as date_type, timedelta
 from django.contrib.postgres.search import SearchRank
 from django.db.models import F
 
+from appointments import reads as appointment_reads
 from clarice.search import to_query
 from daily.models import DailyEntry, DailyFocus
 from lists import agenda
@@ -181,6 +182,11 @@ class CalendarDay:
     #: second one -- a calendar that kept counting completed work would show a
     #: month that never empties.
     due: int
+    #: How many appointments cover this date -- the calendar's fourth source,
+    #: after tasks, routines and bills. **Counted apart from `due`**: a day
+    #: with a deadline and a day with a two o'clock are different days, and
+    #: one number could not say which.
+    appointments: int
     #: Whether the day has words in it. A `DailyEntry` row exists as soon as
     #: anything is pinned, so an empty one is the ordinary state of a planned
     #: day rather than something written -- the same call `written_in_week`
@@ -234,10 +240,22 @@ def month_for(owner, day):
         or entry.gratitude.strip()
         or entry.happenings.strip()
     }
+    # **The fourth source, and counted on every day of its span** -- an
+    # appointment is a span, so a weekend away marks both squares. That is what
+    # `days_covered` is for, and why this is a loop rather than a `values_list`
+    # like the three above: the other three are on one date by construction.
+    #
+    # Kept apart from `due` rather than added to it. A day with a deadline and
+    # a day with a two o'clock are different days, and folding them into one
+    # number would make the calendar unable to say which.
+    covering = Counter()
+    for appointment in appointment_reads.in_month(owner, first, last):
+        covering.update(appointment_reads.days_covered(appointment, first, last))
     return [
         CalendarDay(
             date=first + timedelta(days=offset),
             due=due.get(first + timedelta(days=offset), 0),
+            appointments=covering.get(first + timedelta(days=offset), 0),
             written=(first + timedelta(days=offset)) in written,
         )
         for offset in range((last - first).days + 1)

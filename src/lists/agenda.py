@@ -11,6 +11,8 @@ from django.db.models import Case, Count, F, IntegerField, Q, Value, When
 from django.urls import reverse
 from django.utils import timezone
 
+from appointments import reads as appointment_reads
+from appointments.api_v1 import appointment_out
 from money import reads as money
 from lists.models import Item, List, Priority
 from lists.serializers import project_ref_for, serialize_item
@@ -249,6 +251,7 @@ def open_items_for(user):
 
 POOL_TASK = "task"
 POOL_BILL = "bill"
+POOL_APPOINTMENT = "appointment"
 
 # Ordered as they sort within one date. **A bill first, deliberately.** A dated
 # task is a promise made to oneself and can be moved; a bill on the same day has
@@ -256,7 +259,12 @@ POOL_BILL = "bill"
 # date is actually about. Stated rather than left to whatever order the two
 # source queries happened to be concatenated in -- an accidental tie-break is a
 # rule nobody can find when it turns out to be wrong.
-POOL_ROW_KINDS = (POOL_BILL, POOL_TASK)
+#: An appointment sorts first of the three on a shared date. It is the one
+#: with a *time* rather than a deadline -- two o'clock is when the afternoon
+#: has to bend around it, and a list that put it under a bill would be ordering
+#: the day wrong. Added September 4, 2026; the tagged row was built for this at
+#: increment 1 and neither existing variant changed.
+POOL_ROW_KINDS = (POOL_APPOINTMENT, POOL_BILL, POOL_TASK)
 _POOL_KIND_ORDER = {kind: index for index, kind in enumerate(POOL_ROW_KINDS)}
 
 
@@ -389,13 +397,21 @@ def pool_for(user, today, *, query=None):
     needle = (query or "").strip().casefold()
     tasks = list(open_items_for(user))
     bills = list(money.open_bills_for(user))
-    open_count = len(tasks) + len(bills)
+    # **Only what is ahead**, unlike tasks and bills: an overdue task is still
+    # owed and a late bill is still owed, while a Tuesday that has passed is
+    # not a line waiting for anybody. The pool is what is open, and an
+    # appointment stops being open by happening.
+    appointments = list(appointment_reads.coming_up(user, today))
+    open_count = len(tasks) + len(bills) + len(appointments)
     picked = _picked_for(user, today)
     last_picked = _last_picked(user)
 
     if needle:
         tasks = [each for each in tasks if needle in each.text.casefold()]
         bills = [each for each in bills if needle in each.payee.casefold()]
+        appointments = [
+            each for each in appointments if needle in each.text.casefold()
+        ]
 
     fixed = [
         {
@@ -404,6 +420,7 @@ def pool_for(user, today, *, query=None):
             "days_until": (each.due_date - today).days,
             "task": serialize_item(each),
             "bill": None,
+            "appointment": None,
             "picked_for": picked.get(each.id, []),
         }
         for each in tasks
@@ -415,6 +432,7 @@ def pool_for(user, today, *, query=None):
             "days_until": (each.due_date - today).days,
             "task": None,
             "bill": money.bill_row(each),
+            "appointment": None,
             # **Always empty, and present rather than absent.** A bill is not
             # an `Item`, so `DailyFocus` cannot point at one and a bill can
             # never be picked -- but a row that omitted the field would make
@@ -422,6 +440,21 @@ def pool_for(user, today, *, query=None):
             "picked_for": [],
         }
         for each in bills
+    ] + [
+        {
+            "kind": POOL_APPOINTMENT,
+            "due_date": each.starts_on.isoformat(),
+            "days_until": (each.starts_on - today).days,
+            "task": None,
+            "bill": None,
+            "appointment": appointment_out(each),
+            # An appointment cannot be picked either, and for a stronger reason
+            # than a bill: there is nothing to *do*. It happens at a time
+            # whether or not you act, which is the whole of why it has its own
+            # model rather than being a task with a date.
+            "picked_for": [],
+        }
+        for each in appointments
     ]
     fixed.sort(key=lambda row: (row["due_date"], _POOL_KIND_ORDER[row["kind"]]))
 

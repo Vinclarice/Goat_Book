@@ -92,6 +92,41 @@ class EmitterContractTest(CrossCoreTestCase):
 
         self.assert_one(life_log.TASK_LET_GO)
 
+    # -- the calendar ----------------------------------------------------
+
+    def test_cancelling_twice_is_one_cancellation(self):
+        import datetime
+
+        from appointments import services as appointment_services
+
+        appointment = appointment_services.make(
+            self.alice, text="Parents' evening", starts_on=datetime.date(2026, 9, 4)
+        )
+        appointment_services.cancel(appointment)
+        appointment_services.cancel(appointment)
+
+        self.assert_one(life_log.APPOINTMENT_CANCELLED)
+
+    def test_making_the_same_appointment_twice_is_one_appointment(self):
+        """Idempotent on the id the client owns, like a capture: a retry the
+        client never saw succeed must not put two Thursdays in the diary.
+        """
+        import datetime
+        import uuid
+
+        from appointments import services as appointment_services
+
+        key = uuid.uuid4()
+        for _ in range(2):
+            appointment_services.make(
+                self.alice,
+                text="Call with the accountant",
+                starts_on=datetime.date(2026, 9, 4),
+                public_id=key,
+            )
+
+        self.assert_one(life_log.APPOINTMENT_MADE)
+
     def test_setting_the_same_cadence_twice_is_one_change(self):
         task = self.a_task()
         list_services.set_recurrence(task, Item.Recurrence.WEEKLY)
@@ -183,6 +218,8 @@ class EmitterContractTest(CrossCoreTestCase):
             life_log.TASK_REOPENED,
             life_log.TASK_ARCHIVED,
             life_log.TASK_LET_GO,
+            life_log.APPOINTMENT_MADE,
+            life_log.APPOINTMENT_CANCELLED,
             life_log.COMMITMENT_CHANGED,
             life_log.COMMITMENT_ENDED,
             life_log.FOCUS_PINNED,

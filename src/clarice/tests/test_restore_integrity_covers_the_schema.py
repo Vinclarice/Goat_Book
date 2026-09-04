@@ -67,6 +67,14 @@ NOT_DRILLED = {
     # takes -- visible as an empty entry, not a wrong answer.
     "decision_chose_something",
     "edge_confidence_range",
+    # An appointment's own two span checks, and the same reasoning exactly:
+    # a weekend that ends before it starts, or an end time with no start time,
+    # is a row the next read shows as nonsense rather than a correctness
+    # argument quietly becoming false. `appointments.services.make` raises on
+    # both first, with a sentence a person can act on -- the constraints are
+    # the guarantee behind that and not something any docstring leans on.
+    "appointment_span_ends_after_it_starts",
+    "appointment_end_time_needs_a_start_time",
     "facet_span_ordered",
     "facet_span_paired",
     "hypothesis_confidence_range",

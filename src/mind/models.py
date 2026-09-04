@@ -1145,6 +1145,16 @@ class EventType(models.TextChoices):
     #: than lines open"*. Both rows are written: the archive happened, and so
     #: did the decision.
     TASK_LET_GO = "task_let_go"
+    #: Something was written into the calendar, and something was called off --
+    #: `superlists-2.0-plan.md` increment 7's two life events.
+    #:
+    #: **A pair, like every other pair here**, and for the sharper reason rule
+    #: 6 gives: *cancelled* is a fact about a life and *deleted* is a typo, so
+    #: only the first of those two gets a row. What is deliberately absent is a
+    #: third for attendance -- whether you went is a line you write, never
+    #: something inferred from a date having passed.
+    APPOINTMENT_MADE = "appointment_made"
+    APPOINTMENT_CANCELLED = "appointment_cancelled"
 
     #: A day was planned, and un-planned. `DailyFocus` records what somebody
     #: *chose*, and `released_at` is how a pin ends -- so these two are what

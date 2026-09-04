@@ -1880,6 +1880,72 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/appointments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Make Appointment
+         * @description Write down something that is going to happen.
+         */
+        post: operations["appointments_api_v1_make_appointment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/appointments/{public_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel Appointment
+         * @description It was called off -- and it stays on its day, struck.
+         *
+         *     Not a deletion, and the two have their own endpoints for that reason: a
+         *     surface that offered one button for both would make *"the parents' evening
+         *     was cancelled"* unanswerable a month later.
+         */
+        post: operations["appointments_api_v1_cancel_appointment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/appointments/{public_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove Appointment
+         * @description It should never have been written down.
+         *
+         *     Soft, so the id can never be reused -- see `services.remove`.
+         */
+        delete: operations["appointments_api_v1_remove_appointment"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2073,6 +2139,46 @@ export interface components {
             url: string;
         };
         /**
+         * AppointmentOut
+         * @description One appointment, as every surface renders it.
+         *
+         *     **Dates and times apart, never assembled into an instant here.** The
+         *     boundary carries what the record holds; a client that wanted a datetime
+         *     would be inventing a time zone for an all-day thing, which is the mistake
+         *     the model exists to prevent.
+         *
+         *     `ends_on` is null for a one-day appointment and `starts_at` is null for an
+         *     all-day one, and those two nulls mean different things -- so the contract
+         *     keeps them apart rather than sending a computed `is_all_day` a client could
+         *     disagree with.
+         */
+        AppointmentOut: {
+            /**
+             * Public Id
+             * Format: uuid
+             */
+            public_id: string;
+            /** Text */
+            text: string;
+            /**
+             * Starts On
+             * Format: date
+             */
+            starts_on: string;
+            /** Ends On */
+            ends_on: string | null;
+            /** Starts At */
+            starts_at: string | null;
+            /** Ends At */
+            ends_at: string | null;
+            /** Location */
+            location: string;
+            /** Notes */
+            notes: string;
+            /** Cancelled */
+            cancelled: boolean;
+        };
+        /**
          * PoolFixedRowOut
          * @description A line with a date on it, whichever kind of record it came from.
          *
@@ -2083,9 +2189,9 @@ export interface components {
          *     1. Interleaving on the client would mean the browser deciding what a date
          *     means, which is the server's by `principles.md`.
          *
-         *     `task` and `bill` are mutually exclusive and `kind` says which; an
-         *     `Appointment` joins as a third variant at increment 7 without either
-         *     existing one changing.
+         *     `task`, `bill` and `appointment` are mutually exclusive and `kind` says
+         *     which. **The third arrived at increment 7 and neither of the first two
+         *     changed**, which is what the tagged row was built for.
          *
          *     `picked_for` is which of the days this page offers -- today and tomorrow --
          *     the line is currently chosen for, and is always empty on a bill, which
@@ -2096,13 +2202,14 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "task" | "bill";
+            kind: "appointment" | "bill" | "task";
             /** Due Date */
             due_date: string;
             /** Days Until */
             days_until: number;
             task: components["schemas"]["TaskOut"] | null;
             bill: components["schemas"]["AgendaBillOut"] | null;
+            appointment: components["schemas"]["AppointmentOut"] | null;
             /** Picked For */
             picked_for: string[];
         };
@@ -3026,7 +3133,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "written" | "completed" | "reopened" | "chose" | "released" | "routine" | "bill";
+            kind: "written" | "completed" | "reopened" | "chose" | "released" | "routine" | "bill" | "appointment";
             /** Text */
             text: string | null;
             /** Detail */
@@ -3065,6 +3172,10 @@ export interface components {
             closing: components["schemas"]["DayClosingOut"] | null;
             /** List Closed At */
             list_closed_at: string | null;
+            /** Appointments */
+            appointments: components["schemas"]["AppointmentOut"][];
+            /** Appointments Coming */
+            appointments_coming: components["schemas"]["AppointmentOut"][];
             /** Log */
             log: components["schemas"]["DayLogLineOut"][];
             /** Week Intention */
@@ -3230,6 +3341,8 @@ export interface components {
             date: string;
             /** Due */
             due: number;
+            /** Appointments */
+            appointments: number;
             /** Written */
             written: boolean;
         };
@@ -4407,6 +4520,32 @@ export interface components {
             };
             /** Unpriced */
             unpriced: number;
+        };
+        /** AppointmentIn */
+        AppointmentIn: {
+            /** Text */
+            text: string;
+            /**
+             * Starts On
+             * Format: date
+             */
+            starts_on: string;
+            /** Ends On */
+            ends_on?: string | null;
+            /** Starts At */
+            starts_at?: string | null;
+            /** Ends At */
+            ends_at?: string | null;
+            /**
+             * Location
+             * @default
+             */
+            location: string;
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
         };
     };
     responses: never;
@@ -6561,6 +6700,72 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["MonthOfBillsOut"];
                 };
+            };
+        };
+    };
+    appointments_api_v1_make_appointment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AppointmentIn"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppointmentOut"];
+                };
+            };
+        };
+    };
+    appointments_api_v1_cancel_appointment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                public_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppointmentOut"];
+                };
+            };
+        };
+    };
+    appointments_api_v1_remove_appointment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                public_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

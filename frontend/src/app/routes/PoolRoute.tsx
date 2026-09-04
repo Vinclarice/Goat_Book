@@ -10,6 +10,7 @@ import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
 
 import { ageSentence, dueLabel } from "../../agenda";
+import { whenItIs } from "./Appointments";
 import { apiV1 } from "../../api/client";
 import { RequestFailed, statusOf } from "../../api/failure";
 import { RouteFailure } from "./RouteFailure";
@@ -146,32 +147,44 @@ export function PoolRoute() {
           <ul className="flex flex-col">
             {data.fixed.map((row) => (
               <li
-                key={`${row.kind}-${row.task?.id ?? row.bill?.id}`}
+                key={`${row.kind}-${row.task?.id ?? row.bill?.id ?? row.appointment?.public_id}`}
                 className="flex min-h-11 items-center gap-3 border-t border-border text-sm"
               >
-                {row.task ? (
+                {row.task && (
                   <Link
                     to={`/tasks/${row.task.id}`}
                     className="min-w-0 flex-1 truncate hover:text-accent"
                   >
                     {row.task.text}
                   </Link>
-                ) : (
-                  /* A bill leaves for Money rather than opening a task page.
-                     It stopped being an `Item` on September 1, 2026, and it is
-                     in this list because paying is a real thing to do on a
-                     day — bill-as-a-model-plan.md decision 4 — not because it
-                     is a line you can pick. */
+                )}
+                {/* A bill leaves for Money rather than opening a task page.
+                    It stopped being an `Item` on September 1, 2026, and it is
+                    in this list because paying is a real thing to do on a
+                    day — bill-as-a-model-plan.md decision 4 — not because it
+                    is a line you can pick. */}
+                {row.bill && (
                   <Link
-                    to={`/money/bills/${row.bill?.id}`}
+                    to={`/money/bills/${row.bill.id}`}
                     className="min-w-0 flex-1 truncate hover:text-accent"
                   >
-                    {row.bill?.payee}
+                    {row.bill.payee}
                   </Link>
+                )}
+                {/* An appointment has nowhere to go: it is not a task and not
+                    a bill, and the day it falls on is where it is acted on.
+                    Plain text rather than a link to a page that would say the
+                    same six words again. */}
+                {row.appointment && (
+                  <span className="min-w-0 flex-1 truncate">
+                    {row.appointment.text}
+                  </span>
                 )}
                 <span className="whitespace-nowrap text-xs text-muted-foreground">
                   {row.kind === "bill" && "bill · "}
-                  {dueLabel(row.due_date, data.today)}
+                  {row.appointment
+                    ? whenItIs(row.appointment)
+                    : dueLabel(row.due_date, data.today)}
                 </span>
                 {/* Only a task. A bill has no pick, because `DailyFocus` has
                     nothing to point at once a bill stopped being an `Item`. */}

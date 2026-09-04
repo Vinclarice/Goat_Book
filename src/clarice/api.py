@@ -13,6 +13,7 @@ from ninja import NinjaAPI, Schema
 from ninja.security import django_auth
 
 from accounts.api_v1 import router as accounts_router
+from appointments.api_v1 import router as appointments_router
 from accounts.auth import SessionAuthIfLoggedIn, TokenAuth
 from accounts.models import SCOPE_IDENTITY_READ
 from daily.api_v1 import router as daily_router
@@ -69,6 +70,11 @@ api.add_router("", review_router)
 # September 2, 2026 -- sixteen endpoints that were a large slice of a file
 # named `lists`.
 api.add_router("", money_router)
+# Session-only, all three operations. The phone has no calendar, so a bearer
+# reaching a diary would be the un-switched-on seam this project keeps finding
+# -- and the four surfaces that *read* an appointment get it inside a payload
+# they already fetch, so nothing here is a read.
+api.add_router("", appointments_router)
 
 
 class MeOut(Schema):

@@ -57,6 +57,7 @@ from money.models import Account, Bill, Direction, MoneyCategory
 # in the shape money defines -- `modules.md`'s integration contract rather
 # than inheritance. The dependency points this way and never back.
 from money import reads as money_reads
+from appointments.api_v1 import AppointmentOut
 from money.api_v1 import AgendaBillOut
 from lists.serializers import (
     archive_workspace_data_for,
@@ -194,7 +195,7 @@ class AgendaOut(Schema):
 #: `TaskRecurrence` gives: Ninja needs a static type, so the duplication is
 #: real, and one that shouts when it drifts is a different thing from one that
 #: waits to be noticed.
-PoolRowKind = Literal["task", "bill"]
+PoolRowKind = Literal["appointment", "bill", "task"]
 assert set(get_args(PoolRowKind)) == set(agenda_reader.POOL_ROW_KINDS), (
     "PoolRowKind has drifted from lists.agenda.POOL_ROW_KINDS: "
     f"{set(agenda_reader.POOL_ROW_KINDS) ^ set(get_args(PoolRowKind))}"
@@ -211,9 +212,9 @@ class PoolFixedRowOut(Schema):
     1. Interleaving on the client would mean the browser deciding what a date
     means, which is the server's by `principles.md`.
 
-    `task` and `bill` are mutually exclusive and `kind` says which; an
-    `Appointment` joins as a third variant at increment 7 without either
-    existing one changing.
+    `task`, `bill` and `appointment` are mutually exclusive and `kind` says
+    which. **The third arrived at increment 7 and neither of the first two
+    changed**, which is what the tagged row was built for.
 
     `picked_for` is which of the days this page offers -- today and tomorrow --
     the line is currently chosen for, and is always empty on a bill, which
@@ -229,6 +230,7 @@ class PoolFixedRowOut(Schema):
     days_until: int
     task: TaskOut | None
     bill: AgendaBillOut | None
+    appointment: AppointmentOut | None
     picked_for: list[str]
 
 

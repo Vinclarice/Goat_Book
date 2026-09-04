@@ -114,6 +114,8 @@ PERSON_EVENTS = frozenset(
         EventType.TASK_REOPENED,
         EventType.TASK_ARCHIVED,
         EventType.TASK_LET_GO,
+        EventType.APPOINTMENT_MADE,
+        EventType.APPOINTMENT_CANCELLED,
         EventType.COMMITMENT_CHANGED,
         EventType.COMMITMENT_ENDED,
         EventType.FOCUS_PINNED,

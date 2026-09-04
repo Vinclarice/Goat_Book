@@ -55,6 +55,7 @@ function poolData(overrides: Record<string, unknown> = {}) {
         due_date: "2026-09-05",
         days_until: 2,
         task: null,
+        appointment: null,
         picked_for: [],
         bill: {
           id: 7,
@@ -421,6 +422,48 @@ describe("PoolRoute, the pool pruning itself", () => {
         screen.queryByRole("link", { name: "Sort the garage shelves" }),
       ).toBeNull(),
     );
+  });
+});
+
+describe("PoolRoute, appointments among the fixed lines", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("shows one, and offers no pick on it", async () => {
+    // Nothing to do: it happens at a time whether or not you act, which is a
+    // stronger reason than a bill's for having no Pick button.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        poolData({
+          fixed: [
+            {
+              kind: "appointment",
+              due_date: "2026-09-04",
+              days_until: 1,
+              task: null,
+              bill: null,
+              picked_for: [],
+              appointment: {
+                public_id: "aaaaaaaa-0000-0000-0000-000000000001",
+                text: "Call with the accountant",
+                starts_on: "2026-09-04",
+                ends_on: null,
+                starts_at: "14:00:00",
+                ends_at: null,
+                location: "phone",
+                notes: "",
+                cancelled: false,
+              },
+            },
+          ],
+          floating: [],
+        }),
+      ),
+    );
+
+    renderPool();
+
+    expect(await screen.findByText("Call with the accountant")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Pick /i })).toBeNull();
   });
 });
 

@@ -24,6 +24,7 @@ from io import BytesIO
 from uuid import UUID
 
 from accounts.models import Invitation, PersonalAccessToken, User
+from appointments.models import Appointment
 from daily.models import DailyEntry, DailyFocus
 from lists.models import (
     ChecklistStep,
@@ -119,6 +120,7 @@ EXPORT_KEYS = {
     RecurringCommitment: "commitments",
     DailyEntry: "entries",
     DailyFocus: "focus",
+    Appointment: "appointments",
     Routine: "routines",
     RoutineOccurrence: "occurrences",
     RoutinePause: "pauses",
@@ -165,7 +167,16 @@ EXPORT_KEYS = {
 # `test_every_owned_app_is_listed_here` now derives this list's membership rule
 # rather than trusting the list, so the next app with an owner cannot be
 # forgotten the same way.
-OWNED_APPS = ("accounts", "lists", "money", "daily", "routines", "review", "mind")
+OWNED_APPS = (
+    "accounts",
+    "lists",
+    "money",
+    "daily",
+    "routines",
+    "appointments",
+    "review",
+    "mind",
+)
 
 
 # DARK: no production caller. **Deliberately so -- this one holds a published
@@ -287,6 +298,10 @@ def _payload(user, *, now):
             "entries": _rows(DailyEntry.objects.filter(owner=user)),
             "focus": _rows(DailyFocus.objects.filter(owner=user)),
         },
+        # The diary, deleted rows included. A soft-deleted appointment is still
+        # this person's writing -- the tombstone exists so an id cannot be
+        # reused, not to hide what they wrote from them.
+        "appointments": _rows(Appointment.objects.filter(owner=user)),
         "routines": {
             "routines": _rows(Routine.objects.filter(owner=user)),
             "occurrences": _rows(RoutineOccurrence.objects.filter(owner=user)),

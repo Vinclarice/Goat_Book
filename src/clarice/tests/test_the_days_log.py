@@ -30,7 +30,7 @@ class TheDaysLogTest(CrossCoreTestCase):
         self.today = timezone.localdate()
 
     def lines(self, day=None):
-        return day_log.lines_for(self.alice, day or self.today)
+        return day_log.lines_for(self.alice, day or self.today, now=timezone.now())
 
     def kinds(self, day=None):
         return [(line.kind, line.text) for line in self.lines(day)]
@@ -203,7 +203,106 @@ class TheDayBelongsToTheOwnerTest(CrossCoreTestCase):
         self.a_node("Late thought", when=evening)
 
         self.assertEqual(
-            [line.text for line in day_log.lines_for(self.alice, date(2026, 9, 3))],
+            [
+                line.text
+                for line in day_log.lines_for(
+                    self.alice, date(2026, 9, 3), now=timezone.now()
+                )
+            ],
             ["Late thought"],
         )
-        self.assertEqual(day_log.lines_for(self.alice, date(2026, 9, 4)), [])
+        self.assertEqual(
+            day_log.lines_for(self.alice, date(2026, 9, 4), now=timezone.now()), []
+        )
+
+
+class AnAppointmentThatPassedTest(CrossCoreTestCase):
+    """The fifth source, and the only one that can name something still ahead.
+
+    `superlists-2.0-plan.md`: *the log, as a derived line when its start passes
+    -- whether you went is a line you write, not something inferred -- and a
+    cancelled one produces no log line.*
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.today = timezone.localdate()
+
+    def at(self, hour):
+        """An instant today, in the owner's own zone."""
+        from clarice import clocks
+
+        start, _ = clocks.day_bounds(self.alice, self.today)
+        return start + timedelta(hours=hour)
+
+    def an_appointment(self, text="Call with the accountant", **fields):
+        from appointments import services as appointment_services
+
+        return appointment_services.make(
+            self.alice, text=text, starts_on=self.today, **fields
+        )
+
+    def lines(self, now):
+        return [
+            (line.kind, line.text, line.detail)
+            for line in day_log.lines_for(self.alice, self.today, now=now)
+        ]
+
+    def test_one_that_has_started_is_a_line(self):
+        from datetime import time
+
+        self.an_appointment(starts_at=time(14, 0), location="phone")
+
+        self.assertEqual(
+            self.lines(self.at(15)),
+            [(day_log.APPOINTMENT, "Call with the accountant", "phone")],
+        )
+
+    def test_one_still_ahead_is_not_a_line_yet(self):
+        """The log is what happened. A three o'clock showing at nine would be
+        the page asserting something that has not occurred.
+        """
+        from datetime import time
+
+        self.an_appointment(starts_at=time(15, 0))
+
+        self.assertEqual(self.lines(self.at(9)), [])
+
+    def test_an_all_day_one_lands_at_the_start_of_its_day(self):
+        """The only honest instant for something with no time of day -- and it
+        puts it above the day's first tick, where the thing the day was
+        arranged around belongs.
+        """
+        self.an_appointment(text="Dutch Wonderland")
+
+        [(kind, text, _)] = self.lines(self.at(12))
+        self.assertEqual((kind, text), (day_log.APPOINTMENT, "Dutch Wonderland"))
+
+    def test_a_cancelled_one_produces_no_line(self):
+        """Rule 6 from the other end: it stays visible on its day, struck, in
+        the strip -- and it did not happen, so the record of what happened does
+        not name it.
+        """
+        from appointments import services as appointment_services
+
+        appointment_services.cancel(self.an_appointment())
+
+        self.assertEqual(self.lines(self.at(23)), [])
+
+    def test_a_span_is_one_line_on_the_day_it_began(self):
+        """A weekend away is one thing that began on Saturday; a second line on
+        Sunday would be the log reporting the same event twice.
+        """
+        self.an_appointment(
+            text="Dutch Wonderland", ends_on=self.today + timedelta(days=1)
+        )
+
+        tomorrow = self.today + timedelta(days=1)
+        from clarice import clocks
+
+        start, _ = clocks.day_bounds(self.alice, tomorrow)
+        self.assertEqual(
+            day_log.lines_for(self.alice, tomorrow, now=start + timedelta(hours=23)),
+            [],
+        )
+

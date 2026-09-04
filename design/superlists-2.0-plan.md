@@ -505,9 +505,45 @@ cheapest evidence there is, not because it gates 1 and 2.
    renders the question. So it stays in `lists/agenda.py` and out of
    `test_mirrored_business_rules.py`'s table — which is what that decision
    actually turned on.
-7. **Appointment.** The app, the model above, its reads and services, the day
+7. ~~**Appointment.** The app, the model above, its reads and services, the day
    strip, the pool's fixed lines, the calendar source, the two life events.
-   Companions and place as text — mentions are D6.
+   Companions and place as text — mentions are D6.~~ **Shipped September 4,
+   2026.** `src/appointments/`, its own app on the `routines` precedent, in the
+   CI app list and `CLAUDE.md`'s test line in this commit as the plan asks.
+   The field list above is the table; the span, the two nulls and rule 6's two
+   endings are all as written.
+
+   **Four surfaces read it and none owns it** — the day's strip above the list
+   (rule 9), the pool's fixed lines, the calendar as a fourth source, and the
+   day's log when a start has passed. That is rule 5: nothing is written onto
+   `DailyEntry`.
+
+   **The log needed a `now`, and it is the only source that does.** Every other
+   one is a record of something that already happened — a `completed_at`, a
+   `paid_at` — and is in the past by construction. An appointment's start is
+   the one instant the day's log can meet that has not arrived, and a three
+   o'clock showing at nine would be the page asserting something that had not
+   occurred.
+
+   **A cancelled one is on its day and not in its log**, which is rule 6 read
+   from both ends: it stays visible, struck, because a cancelled Thursday is a
+   fact about that Thursday — and it did not happen, so the record of what
+   happened does not name it. Deleting is the other ending, soft and with no
+   life event, because a typo is not something that happened to a life.
+
+   **Four guards fired and all four were right**: `recall.py`'s partition on
+   the two new event types, `test_emitters_are_idempotent.py` on both of them,
+   `test_restore_integrity_covers_the_schema.py` on the two new constraints,
+   and `accounts/export.py`'s owned-app rule — an app with an owner that is not
+   in the export is a promise `/privacy/` makes and cannot keep.
+
+   **A span sorts first of the three kinds on a shared date.** It is the one
+   with a *time* rather than a deadline: two o'clock is when the afternoon has
+   to bend around it. The pool's tagged row was built for a third variant at
+   increment 1 and neither existing one changed.
+
+   **The name is D1, answered by using Vince's word** — see the model's own
+   docstring for why `Engagement` reads better and lost anyway.
 8. **Retire.** The Day and Agenda routes redirect to the new page. Areas leave
    the navigation and the composer. Priority and manual ordering leave the
    interface. The tables stay until D3 is answered.
@@ -520,10 +556,17 @@ cheapest evidence there is, not because it gates 1 and 2.
 Open until struck. A header may state a decision and never a tally, so this
 section is the status of what is undecided and nothing above summarises it.
 
-- **D1. The name.** `Appointment` is Vince's word and reads oddly on a theme
+- ~~**D1. The name.** `Appointment` is Vince's word and reads oddly on a theme
   park; `Engagement` is the English word for any fixed claim on time; `Event`
   is taken twice in the knowledge core (`ActivityEvent`, `EventType`). The
-  field list is the same under all three.
+  field list is the same under all three.~~ **Answered September 4, 2026:
+  `Appointment`.** `Event` was never really available — a third meaning beside
+  `ActivityEvent` and `EventType` would make every reader disambiguate — so it
+  was `Engagement` against Vince's own word. What settled it is the sentence
+  the decision already contained: *the field list is the same under all three*,
+  so the only thing at stake is which word a person reads, and the person is
+  Vince. `architecture-trajectory.md` §7's precedent stands if that ever
+  changes: the boundary may say a different word without the table moving.
 - **D2. Whether log lines feed the concept machinery on capture.** Forty nodes
   a day will drown concept proposal and hypothesis detection if each is treated
   as a considered note. **The attention tier is not the lever**: `attention_tier`

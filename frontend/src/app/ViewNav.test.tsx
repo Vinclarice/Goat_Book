@@ -43,7 +43,7 @@ function renderNav(at = "/day") {
         <ViewNav />
         <Routes>
           <Route path="/day" element={<p>Day page</p>} />
-          <Route path="/agenda" element={<p>Agenda page</p>} />
+          <Route path="/pool" element={<p>Pool page</p>} />
           <Route path="/review" element={<p>Review page</p>} />
           <Route path="/archive" element={<p>Archive page</p>} />
         </Routes>
@@ -71,10 +71,10 @@ describe("ViewNav", () => {
     // because it is the same surface under a word that survives a salary line.
     for (const name of [
       "Today",
-      "Agenda",
-      // superlists-2.0-plan.md increment 1. Beside the Agenda, which it
-      // eventually replaces: increment 8 retires that route, and until then
-      // both are surfaces and this nav is what says so.
+      // ~~"Agenda"~~ -- retired into the day at increment 8. The list below is
+      // the point of this test, so removing an entry belongs here and not only
+      // in the component: a surface that stops existing has to stop being
+      // asserted, deliberately.
       "Pool",
       "Review",
       "Calendar",
@@ -131,6 +131,15 @@ describe("ViewNav", () => {
     renderNav();
 
     expect(screen.getByRole("navigation", { name: "Views" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Agenda" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Today" })).toBeInTheDocument();
+  });
+
+  it("no longer offers the Agenda, which retired into the day", async () => {
+    // superlists-2.0-plan.md increment 8. Asserted as an absence, because a
+    // nav that quietly keeps a dead surface is how `/capture/` and the Inbox
+    // both outlived themselves in this codebase.
+    renderNav();
+
+    expect(screen.queryByRole("link", { name: "Agenda" })).toBeNull();
   });
 });

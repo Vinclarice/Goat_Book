@@ -9,9 +9,9 @@ import { AppRoutes } from "./AppRoutes";
  * had no index route, so a direct visit matched nothing and rendered an
  * empty shell -- a blank page that looks exactly like a broken deploy.
  *
- * Asserting on the resolved pathname rather than on Agenda's content keeps
- * these honest about what they test. Whether the Agenda renders is
- * AgendaRoute's business; whether "/" resolves to it is this table's.
+ * Asserting on the resolved pathname rather than on a page's content keeps
+ * these honest about what they test. Whether the day renders is DayRoute's
+ * business; whether "/" resolves to it is this table's.
  */
 function PathnameProbe() {
   const location = useLocation();
@@ -40,51 +40,31 @@ describe("AppRoutes", () => {
     vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("not used"));
   });
 
-  it("sends a bare /app/ visit somewhere real even if the preference is unreachable", async () => {
-    // B2.1's defect was a blank page, so the case that matters most is the
-    // one where the answer never arrives: it must still land on a surface
-    // rather than render nothing. fetch is rejected by the beforeEach
-    // above, which is exactly that case.
+  it("sends a bare /app/ visit to the day, without asking anything first", async () => {
+    // B2.1's defect was a blank page, so the case that matters most is the one
+    // where nothing answers: it must still land on a surface. fetch is
+    // rejected by the beforeEach above, which is exactly that case -- and
+    // since superlists-2.0-plan.md increment 8 there is nothing to ask,
+    // because there is one surface to land on.
     renderAt("/");
 
-    // waitFor rather than findBy: the probe is on screen from the first
-    // render, so findBy would resolve at "/" before the redirect happens.
-    // The redirect is asynchronous now that the destination is the
-    // server's answer.
     await waitFor(() =>
       expect(screen.getByTestId("pathname")).toHaveTextContent("/day"),
     );
   });
 
-  it("sends a bare /app/ visit to the landing surface the server names", async () => {
-    // Crane 1 slice 6 turned this from a fixed /agenda into a preference.
-    // The answer is the server's; this table only follows it.
-    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
-      Promise.resolve({
-        ok: true,
-        status: 200,
-        headers: new Headers({ "content-type": "application/json" }),
-        json: () => Promise.resolve({ landing_surface: "agenda", areas: [] }),
-        text: () =>
-          Promise.resolve(JSON.stringify({ landing_surface: "agenda", areas: [] })),
-        clone() {
-          return this;
-        },
-      } as unknown as Response),
-    );
-
-    renderAt("/");
+  it("sends a bookmarked Agenda to the day rather than to a 404", async () => {
+    // ~~"sends a bare /app/ visit to the landing surface the server names"~~
+    // and ~~"says something while it works out where to send you"~~ --
+    // **superlists-2.0-plan.md increment 8 retired the Agenda into the day**,
+    // so there is no preference to follow and no answer to wait for. Both
+    // tests are replaced by this one, which holds the thing that still
+    // matters: a path somebody bookmarked lands somewhere real.
+    renderAt("/agenda");
 
     await waitFor(() =>
-      expect(screen.getByTestId("pathname")).toHaveTextContent("/agenda"),
+      expect(screen.getByTestId("pathname")).toHaveTextContent("/day"),
     );
-  });
-
-  it("says something while it works out where to send you", async () => {
-    // Never a blank /app/, which is the exact shape of B2.1's defect.
-    renderAt("/");
-
-    expect(screen.getByText("Loading…")).toBeInTheDocument();
   });
 
   it("gives an unknown path a real page rather than an empty shell", async () => {

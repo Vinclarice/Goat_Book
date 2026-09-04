@@ -73,12 +73,19 @@ describe("SideNav", () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(() => jsonResponse(NAV));
   });
 
-  it("lists every list with its open and overdue counts", async () => {
+  it("no longer lists Areas at all", async () => {
+    // ~~"lists every list with its open and overdue counts"~~ --
+    // **superlists-2.0-plan.md increment 8**: *Areas leave the navigation and
+    // the composer.* Filing was the toll this redesign removes, and a rail
+    // listing the places to file into is the strongest invitation to pay it.
+    // Asserted as an absence, because a nav that quietly keeps a dead group is
+    // how `/capture/` and the Inbox both outlived themselves here.
     renderNav();
 
-    expect(await screen.findByText("Programming")).toBeInTheDocument();
-    expect(screen.getByText("Home")).toBeInTheDocument();
-    expect(screen.getByLabelText("2 overdue")).toBeInTheDocument();
+    await screen.findByRole("navigation", { name: "Contents" });
+    expect(screen.queryByText("Areas")).toBeNull();
+    expect(screen.queryByText("Programming")).toBeNull();
+    expect(screen.queryByLabelText("2 overdue")).toBeNull();
   });
 
   it("lists open projects in their own group, flat across areas", async () => {
@@ -138,24 +145,13 @@ describe("SideNav", () => {
     expect(await screen.findByText("No projects yet.")).toBeInTheDocument();
   });
 
-  it("navigates to a list rather than filtering the agenda", async () => {
-    const user = userEvent.setup();
-    renderNav();
-
-    await user.click(await screen.findByText("Programming"));
-
-    // The whole point of the split: the nav means the same thing on every
-    // page, so it navigates and the header chips filter.
-    expect(await screen.findByText("Area page")).toBeInTheDocument();
-  });
-
   it("no longer offers the core's surfaces, because ViewNav does", async () => {
     // Today, Agenda, Review and Archive were a "Views" group in here, which is
     // what forced this rail to mean two things at once -- somewhere to switch
     // surface and a list of what the core holds. They are a sub-nav under the
     // app bar now, and ViewNav.test.tsx covers them there.
     renderNav();
-    await screen.findByText("Programming");
+    await screen.findByText("No projects yet.");
 
     // Scoped to the rail, because AppLayout renders ViewNav too and these
     // links are very much on the page -- the claim is about where they are,
@@ -175,7 +171,7 @@ describe("SideNav", () => {
     // mechanics is the defect that forced the move, and a second one reappearing
     // here would be the same defect returning.
     renderNav();
-    await screen.findByText("Programming");
+    await screen.findByText("No projects yet.");
 
     expect(screen.queryByRole("link", { name: "Preferences" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Log out" })).toBeNull();
@@ -186,7 +182,7 @@ describe("SideNav", () => {
     // dropping the tests that covered them: a nav entry pointing at a route
     // that 404s is the kind of thing nobody notices until they click it.
     renderNav();
-    await screen.findByText("Programming");
+    await screen.findByText("No projects yet.");
 
     expect(screen.queryByRole("link", { name: /Inbox/ })).toBeNull();
     expect(screen.queryByRole("link", { name: "Ideas" })).toBeNull();
@@ -198,7 +194,7 @@ describe("SideNav", () => {
     // no longer one-way. The rule that travelled with it is asserted where it
     // now applies, in test_app_bar.py: that entry must never grow a count.
     renderNav();
-    await screen.findByText("Programming");
+    await screen.findByText("No projects yet.");
 
     expect(screen.queryByRole("link", { name: /Second Mind/ })).toBeNull();
   });
@@ -213,7 +209,9 @@ describe("SideNav", () => {
     expect(
       screen.getByRole("navigation", { name: "Contents" }),
     ).toBeInTheDocument();
-    expect(screen.getByText("Areas")).toBeInTheDocument();
+    // ~~"Areas"~~ retired at increment 8; Projects is what the rail still
+    // renders before its data arrives.
+    expect(screen.getByText("Projects")).toBeInTheDocument();
   });
 
   it("closes the narrow-screen disclosure after navigating", async () => {
@@ -222,7 +220,7 @@ describe("SideNav", () => {
     const disclosure = document.querySelector("details") as HTMLDetailsElement;
     disclosure.open = true;
 
-    await user.click(await screen.findByText("Programming"));
+    await user.click(await screen.findByRole("link", { name: "Projects" }));
 
     await waitFor(() => expect(disclosure.open).toBe(false));
   });

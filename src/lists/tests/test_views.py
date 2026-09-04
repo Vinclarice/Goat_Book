@@ -61,14 +61,15 @@ class DashboardTest(TestCase):
 
         self.assertRedirects(response, "/accounts/login/?next=/dashboard/")
 
-    def test_redirects_to_the_surface_the_user_landed_on(self):
-        """Crane 1 slice 6 moved this from a fixed route to a preference.
+    def test_redirects_to_the_day(self):
+        """~~Crane 1 slice 6 moved this from a fixed route to a preference.~~
 
-        It used to assert /app/agenda unconditionally. The Daily Page is now
-        the default home surface, and this view is the one place that
-        decides -- so both answers are asserted here rather than only the
-        new one. Reaching either surface directly is covered in
-        daily/tests/test_landing.py.
+        **Back to a fixed route on September 4, 2026** --
+        `superlists-2.0-plan.md` increment 8 retired the Agenda into the day,
+        and a preference between two things is not a preference when there is
+        one. `User.landing_surface` is kept and no longer read; the column
+        holds a choice somebody made, and dropping it is a separate and
+        destructive decision.
         """
         response = self.client.get("/dashboard/")
 
@@ -76,13 +77,17 @@ class DashboardTest(TestCase):
             response, "/app/day", fetch_redirect_response=False,
         )
 
+        # And still the day for somebody whose stored preference says
+        # otherwise. The value is deliberately not migrated away, so this is
+        # the case that matters -- a choice made months ago must land
+        # somewhere real rather than on a redirect to a redirect.
         self.user.landing_surface = User.LandingSurface.AGENDA
         self.user.save(update_fields=["landing_surface"])
 
         response = self.client.get("/dashboard/")
 
         self.assertRedirects(
-            response, "/app/agenda", fetch_redirect_response=False,
+            response, "/app/day", fetch_redirect_response=False,
         )
 
 

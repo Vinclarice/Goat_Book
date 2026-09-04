@@ -364,7 +364,14 @@ def _last_picked(user):
     return latest
 
 
-def pool_for(user, today, *, query=None):
+#: How many of the oldest floating lines the day's panel shows before the link
+#: takes over. Six, which is the mockup's number and is a judgement about a
+#: column rather than about a pool: more and the panel stops being scannable
+#: beside a day, fewer and it stops being a sample of anything.
+POOL_HEAD_FLOATING = 6
+
+
+def pool_for(user, today, *, query=None, head=False):
     """Every open line the owner has, in one list -- `superlists-2.0-plan.md`
     rule 1, and its increment 1.
 
@@ -393,6 +400,17 @@ def pool_for(user, today, *, query=None):
 
     Nothing here knows about a pin. Which lines were picked for a day is
     increment 2's question, and the pool is the same query either way.
+
+    **`head` is the panel beside the day** -- `superlists-2.0-plan.md`'s *the
+    pool is a panel and a page*. Both read this, so neither is a copy of the
+    other; what the panel gets is the same rows narrowed to what fits in a
+    column: fixed lines inside the week, today's arrivals, and the oldest
+    floating lines. `open_count` is untouched by it, so the link beside the
+    panel can say how many there really are.
+
+    **Narrowed here rather than in the browser**, for the same reason the search
+    is: what *the head of the pool* means is the pool's own rule, and a client
+    slicing an array would be a second definition of it that could disagree.
     """
     needle = (query or "").strip().casefold()
     tasks = list(open_items_for(user))
@@ -468,28 +486,43 @@ def pool_for(user, today, *, query=None):
         key=lambda each: (each.created_at, each.id),
     )
 
+    floating_rows = [
+        {
+            "task": serialize_item(each),
+            "age_in_days": age_in_days(each.created_at, today),
+            "picked_for": picked.get(each.id, []),
+            # Rule 8, and only on this half: a dated line is a promise to
+            # somebody rather than something waiting to be noticed, so asking
+            # whether it is still wanted would be the wrong question about a
+            # deadline.
+            "unpicked_for_days": (
+                unpicked := unpicked_for(
+                    each, today, last_picked=last_picked.get(each.id)
+                )
+            ),
+            "asks_to_be_kept": unpicked >= STALE_AFTER_DAYS,
+        }
+        for each in floating
+    ]
+
+    if head:
+        fixed = [row for row in fixed if row["days_until"] <= WEEK_HORIZON_DAYS]
+        # The oldest few, **plus everything that arrived today** wherever it
+        # falls. A panel that showed only the oldest would never show the thing
+        # somebody wrote ten minutes ago, which is the one they are most likely
+        # to be looking for -- and the two sets overlap on a quiet pool rather
+        # than doubling, hence the index check rather than a concatenation.
+        floating_rows = [
+            row
+            for index, row in enumerate(floating_rows)
+            if index < POOL_HEAD_FLOATING or row["age_in_days"] == 0
+        ]
+
     return {
         "today": today.isoformat(),
         "open_count": open_count,
         "fixed": fixed,
-        "floating": [
-            {
-                "task": serialize_item(each),
-                "age_in_days": age_in_days(each.created_at, today),
-                "picked_for": picked.get(each.id, []),
-                # Rule 8, and only on this half: a dated line is a promise to
-                # somebody rather than something waiting to be noticed, so
-                # asking whether it is still wanted would be the wrong question
-                # about a deadline.
-                "unpicked_for_days": (
-                    unpicked := unpicked_for(
-                        each, today, last_picked=last_picked.get(each.id)
-                    )
-                ),
-                "asks_to_be_kept": unpicked >= STALE_AFTER_DAYS,
-            }
-            for each in floating
-        ],
+        "floating": floating_rows,
     }
 
 

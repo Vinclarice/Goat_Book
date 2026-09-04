@@ -39,8 +39,15 @@ class LandingSurfaceTest(TestCase):
 
         self.assertEqual(response.redirect_chain[-1][0], "/app/day")
 
-    def test_choosing_the_agenda_makes_the_next_login_land_there(self):
-        """The second half."""
+    def test_a_stored_preference_for_the_agenda_still_lands_on_the_day(self):
+        """~~"choosing the agenda makes the next login land there"~~ --
+        **superlists-2.0-plan.md increment 8**, September 4, 2026: the Agenda
+        retired into the day, which carries the head of the pool beside it.
+
+        The stored value is deliberately *not* migrated away, so this is the
+        case that matters: somebody who chose the Agenda months ago must land
+        somewhere real rather than on a redirect to a redirect.
+        """
         self.user.landing_surface = User.LandingSurface.AGENDA
         self.user.save(update_fields=["landing_surface"])
 
@@ -50,24 +57,18 @@ class LandingSurfaceTest(TestCase):
             follow=True,
         )
 
-        self.assertEqual(response.redirect_chain[-1][0], "/app/agenda")
+        self.assertEqual(response.redirect_chain[-1][0], "/app/day")
 
-    def test_the_agenda_stays_reachable_whatever_the_preference_says(self):
-        """The third. A default is not a redirect trap: anyone who prefers
-        the agenda can still go straight to it, and so can anyone who
-        doesn't."""
+    def test_the_agendas_address_still_resolves_rather_than_404ing(self):
+        """~~"the agenda stays reachable whatever the preference says"~~. It is
+        the SPA shell either way -- the client-side table is what redirects
+        `/agenda` to `/day`, and `AppRoutes.test.tsx` holds that. What this
+        holds is the half the server owns: the path is served, so a bookmark
+        does not meet a 404 before the router ever runs.
+        """
         self.client.force_login(self.user)
 
         response = self.client.get("/app/agenda")
-
-        self.assertEqual(response.status_code, 200)
-
-    def test_the_daily_page_stays_reachable_for_someone_who_chose_the_agenda(self):
-        self.user.landing_surface = User.LandingSurface.AGENDA
-        self.user.save(update_fields=["landing_surface"])
-        self.client.force_login(self.user)
-
-        response = self.client.get("/app/day")
 
         self.assertEqual(response.status_code, 200)
 

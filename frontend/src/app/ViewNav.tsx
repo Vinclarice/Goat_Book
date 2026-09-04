@@ -36,12 +36,10 @@ export function ViewNav() {
         {/* Undated on purpose, so the link always means "today" rather than
             whichever day was current when the nav rendered. */}
         <Entry to="/day">Today</Entry>
-        <Entry to="/agenda">Agenda</Entry>
-        {/* superlists-2.0-plan.md increment 1: every open line in one
-            list, with no Area to file into. Beside the Agenda rather than
-            in place of it — increment 8 is what retires that surface, and
-            a route reachable only by typing its address is the
-            un-switched-on seam this nav exists to prevent. */}
+        {/* ~~Agenda~~ — **retired into the day at increment 8**, September 4,
+            2026. It answered *what is open*; the day answers it now, with the
+            head of the pool beside it. `/agenda` still redirects, so a
+            bookmark lands somewhere. */}
         <Entry to="/pool">Pool</Entry>
         {/* Undated for the same reason as Today: the week you are in, not the
             one this nav last rendered in. */}

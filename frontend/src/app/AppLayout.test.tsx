@@ -89,6 +89,7 @@ function renderLayout(initialPath = "/agenda") {
           <Route element={<AppLayout />}>
             <Route path="/agenda" element={<p>Agenda page</p>} />
             <Route path="/areas/:areaId" element={<p>Area page</p>} />
+            <Route path="/projects" element={<p>Projects index page</p>} />
           </Route>
         </Routes>
       </MemoryRouter>
@@ -131,9 +132,9 @@ describe("AppLayout disclosure", () => {
     setViewport({ wide: true });
     renderLayout();
 
-    await user.click(await screen.findByText("Programming"));
+    await user.click(await screen.findByRole("link", { name: "Projects" }));
 
-    expect(await screen.findByText("Area page")).toBeInTheDocument();
+    expect(await screen.findByText("Projects index page")).toBeInTheDocument();
     expect(disclosure().open).toBe(true);
   });
 
@@ -143,9 +144,9 @@ describe("AppLayout disclosure", () => {
     renderLayout();
     disclosure().open = true;
 
-    await user.click(await screen.findByText("Programming"));
+    await user.click(await screen.findByRole("link", { name: "Projects" }));
 
-    expect(await screen.findByText("Area page")).toBeInTheDocument();
+    expect(await screen.findByText("Projects index page")).toBeInTheDocument();
     expect(disclosure().open).toBe(false);
   });
 

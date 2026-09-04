@@ -115,35 +115,17 @@ export function SideNav() {
         </div>
       )}
 
-      <div className={styles.group}>
-        <h3>Areas</h3>
-        {areas.length === 0 && <p className={styles.empty}>No areas yet.</p>}
-        {areas.map((each) => (
-          <NavLink
-            key={each.id}
-            to={`/areas/${each.id}`}
-            className={navLinkClass}
-            title={each.title}
-          >
-            <span
-              className={styles.dot}
-              aria-hidden="true"
-              style={{ background: colorForKey(each.color_key) }}
-            />
-            <span className={styles.name}>{each.title}</span>
-            <span
-              className={`${styles.count}${each.overdue_count ? ` ${styles.warn}` : ""}`}
-            >
-              {each.overdue_count > 0 && (
-                <span aria-label={`${each.overdue_count} overdue`}>
-                  ⚠ {each.overdue_count} ·{" "}
-                </span>
-              )}
-              {each.open_count}
-            </span>
-          </NavLink>
-        ))}
-      </div>
+      {/* ~~The Areas group stood here~~ — **retired September 4, 2026**,
+          superlists-2.0-plan.md increment 8: *Areas leave the navigation and
+          the composer.* Filing was the toll this redesign removes, and a rail
+          listing the places to file into is the strongest possible invitation
+          to pay it. What replaces the question it answered — *where is
+          everything?* — is the pool.
+
+          **The pages stay reachable.** `/areas/:id` still renders, and a
+          task's own page still says which Area it is in and can move it; what
+          left is the standing invitation, not the capability. D3 decides the
+          tables, and this is deliberately not that decision. */}
 
       {/* Its own group rather than nested under Areas -- ui-second-pass-plan.md
           F3, Vince's call. Flat across areas, same weight as the group above

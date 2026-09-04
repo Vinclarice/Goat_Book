@@ -222,7 +222,7 @@ describe("TaskDetailRoute", () => {
     expect(screen.getByRole("button", { name: "Reopen" })).toBeInTheDocument();
   });
 
-  it("leaves an ordinary task with all three", async () => {
+  it("leaves an ordinary task with its area and its checklist", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(
       routeRequests(({ path }) => {
         if (path.includes("/api/v1/nav")) {
@@ -235,7 +235,10 @@ describe("TaskDetailRoute", () => {
     renderAt("1");
 
     expect(await screen.findByRole("heading", { name: "Task detail" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Priority")).toBeInTheDocument();
+    // ~~Priority~~ retired at increment 8. **Area stays**: the plan says
+    // Areas leave *the navigation and the composer*, and this is neither --
+    // it is changing where an existing task is filed, which is the bend
+    // product-stories.md named when PATCH could not do it at all.
     expect(screen.getByLabelText("Area")).toBeInTheDocument();
     expect(screen.getByText(/No checklist steps yet/)).toBeInTheDocument();
   });
@@ -283,40 +286,19 @@ describe("TaskDetailRoute", () => {
     expect(await screen.findByText("Task updated.")).toBeInTheDocument();
   });
 
-  it("marks a task as pressing", async () => {
-    const user = userEvent.setup();
-    let sent: unknown = null;
+  it("no longer offers a priority, because the morning pick is the priority", async () => {
+    // ~~"marks a task as pressing"~~ and ~~"offers no middle value, because an
+    // unmarked task already is one"~~ -- **superlists-2.0-plan.md increment
+    // 8**: *priority leaves the interface.* Choosing three things for today
+    // says more than marking nine of them high, and a field that ranks a
+    // backlog is a way of planning without deciding.
+    //
+    // `Item.priority` and its API field both stay -- the column holds what
+    // somebody marked, and removing it is D3's kind of decision. So this is an
+    // absence in the interface, asserted rather than quietly dropped.
     vi.spyOn(globalThis, "fetch").mockImplementation(
-      routeRequests(({ path, method, body }) => {
-        if (method === "GET") {
-          if (path.includes("/api/v1/nav")) {
-            return jsonResponse({ areas: [], projects: [], archived_count: 0 });
-          }
-          return jsonResponse(taskDetailData());
-        }
-        if ("priority" in body) sent = body.priority;
-        return taskWrite(task({ priority: "high" }));
-      }),
-    );
-
-    renderAt("1");
-    await screen.findByDisplayValue("Write tests");
-
-    await user.selectOptions(await screen.findByLabelText("Priority"), "high");
-
-    await waitFor(() => expect(sent).toBe("high"));
-    expect(await screen.findByText("Priority updated.")).toBeInTheDocument();
-  });
-
-  it("offers no middle value, because an unmarked task already is one", async () => {
-    // The design decision, held by a test rather than only by a docstring:
-    // offering "medium" beside "no priority" invites the distinction every
-    // to-do app collapses into, where everything is medium.
-    vi.spyOn(globalThis, "fetch").mockImplementation(
-      routeRequests(({ path, method, body }) => {
-        if (
-          path.includes("/api/v1/nav")
-        ) {
+      routeRequests(({ path }) => {
+        if (path.includes("/api/v1/nav")) {
           return jsonResponse({ areas: [], projects: [], archived_count: 0 });
         }
         return jsonResponse(taskDetailData());
@@ -324,11 +306,9 @@ describe("TaskDetailRoute", () => {
     );
 
     renderAt("1");
+    await screen.findByDisplayValue("Write tests");
 
-    const select = await screen.findByLabelText("Priority");
-    expect(
-      Array.from(select.querySelectorAll("option")).map((o) => o.textContent),
-    ).toEqual(["No priority", "Pressing", "Whenever"]);
+    expect(screen.queryByLabelText("Priority")).toBeNull();
   });
 
   it("moves a task into another of your areas", async () => {

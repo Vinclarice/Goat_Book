@@ -3,7 +3,6 @@ import { Navigate, Route, Routes, useParams } from "react-router";
 
 import { apiV1 } from "../api/client";
 import { AppLayout } from "./AppLayout";
-import { AgendaRoute } from "./routes/AgendaRoute";
 import { ArchiveRoute } from "./routes/ArchiveRoute";
 import { CalendarRoute } from "./routes/CalendarRoute";
 import { BalancesRoute } from "./money/BalancesRoute";
@@ -26,33 +25,19 @@ import { TaskDetailRoute } from "./routes/TaskDetailRoute";
 /**
  * Sends a bare /app/ wherever a fresh login would have gone.
  *
- * Asks the nav endpoint rather than deciding here, so this and
- * lists.views.dashboard cannot drift into disagreeing about the same
- * preference. That makes the redirect asynchronous, where it used to be a
- * synchronous <Navigate> -- so it says "Loading…" rather than rendering
- * null while the answer is in flight. A blank /app/ is precisely the defect
- * B2.1 fixed, and a brief one on a slow connection still reads as a broken
- * deploy.
+ * ~~Asks the nav endpoint rather than deciding here~~ — **there is one surface
+ * to land on since superlists-2.0-plan.md increment 8**, so this is a
+ * synchronous redirect again and the "Loading…" beat it used to need is gone
+ * with the question. `lists.views.dashboard` made the same change in the same
+ * commit; the two still cannot disagree, because neither of them decides
+ * anything any more.
  *
- * If the answer never arrives it still lands somewhere, on the default,
- * rather than stranding anyone on an empty shell.
+ * `User.landing_surface` is kept and no longer read here. The column is
+ * somebody's stored preference and deleting it is a separate, destructive
+ * decision — the same restraint D3 asks for over `List` and `Project`.
  */
 function LandingRedirect() {
-  const { data, isPending } = useQuery({
-    queryKey: ["nav"],
-    queryFn: async () => {
-      const { data, error } = await apiV1.GET("/api/v1/nav");
-      if (error) throw error;
-      return data;
-    },
-  });
-  if (isPending) return <p className="p-6">Loading…</p>;
-  return (
-    <Navigate
-      to={data?.landing_surface === "agenda" ? "/agenda" : "/day"}
-      replace
-    />
-  );
+  return <Navigate to="/day" replace />;
 }
 
 /**
@@ -98,7 +83,13 @@ export function AppRoutes() {
             server's answer, not a second one hard-coded here: see
             LandingRedirect. */}
         <Route index element={<LandingRedirect />} />
-        <Route path="/agenda" element={<AgendaRoute />} />
+        {/* **Retired into the day — superlists-2.0-plan.md increment 8.**
+            The Agenda answered *what is open*; the day answers it now, with
+            the pool beside it and the whole pool one link away. The path stays
+            as a redirect rather than a 404 because a bookmark and a browser
+            history are worth two lines — the same call `/lists/:id` and
+            `/bills/:month` already made. */}
+        <Route path="/agenda" element={<Navigate to="/day" replace />} />
         {/* superlists-2.0-plan.md increment 1: every open line, in one
             list, with no Area. Beside the Agenda rather than in place of
             it — increment 8 is what retires that route, and nothing in

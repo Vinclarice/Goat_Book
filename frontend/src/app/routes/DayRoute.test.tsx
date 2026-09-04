@@ -119,7 +119,23 @@ function dayProject(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function emptyPool() {
+  return { today: "2026-08-03", open_count: 0, fixed: [], floating: [] };
+}
+
 function renderAt(path: string, stored = dayData()) {
+  // **The day fetches the pool panel too, since increment 8.** Every test here
+  // mocks fetch with the day's own payload, which the panel would then read as
+  // a pool and fail on -- so this wraps whatever the test installed and routes
+  // the panel's request to an empty pool. The alternative was making the panel
+  // tolerate a payload that is not a pool, which is a defensive shape hiding a
+  // real one; a test that wants to assert about the panel supplies its own.
+  const inner = globalThis.fetch;
+  vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
+    const url = typeof input === "string" ? input : (input as Request).url;
+    if (url.includes("/api/v1/pool")) return jsonResponse(emptyPool());
+    return inner(input as never, init as never);
+  });
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
@@ -210,9 +226,14 @@ describe("DayRoute", () => {
     const client = new QueryClient({
       defaultOptions: { queries: { retry: false } },
     });
-    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
-      jsonResponse(dayData({ intentions: "Stored text" })),
-    );
+    // This one renders its own tree rather than going through `renderAt`, so
+    // it routes the pool panel's request itself -- see `renderAt` for why the
+    // panel is not made to tolerate a payload that is not a pool.
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = typeof input === "string" ? input : (input as Request).url;
+      if (url.includes("/api/v1/pool")) return jsonResponse(emptyPool());
+      return jsonResponse(dayData({ intentions: "Stored text" }));
+    });
 
     render(
       <QueryClientProvider client={client}>

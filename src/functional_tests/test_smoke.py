@@ -8,7 +8,7 @@ import re
 from playwright.sync_api import expect
 
 from functional_tests.base import BrowserTest
-from lists.models import Item, List
+from lists.models import Item, List, Project
 
 
 class LandingSurfaceTest(BrowserTest):
@@ -63,27 +63,43 @@ class LandingSurfaceTest(BrowserTest):
         expect(self.page).to_have_url(re.compile(r"/app/areas/\d+$"))
         expect(self.page.get_by_text("Call the dentist")).to_be_visible()
 
-    def test_choosing_the_agenda_puts_it_back(self):
+    def test_a_stored_preference_for_the_agenda_still_lands_on_the_day(self):
+        """~~"choosing the agenda puts it back"~~ --
+        **superlists-2.0-plan.md increment 8**, September 4, 2026: the Agenda
+        retired into the day, which carries the head of the pool beside it.
+
+        The stored value is deliberately not migrated away, so this is the case
+        that matters: somebody who chose the Agenda months ago has to land
+        somewhere real, in a real browser, rather than on a redirect to a
+        redirect.
+        """
         user = self.make_user()
         user.landing_surface = user.LandingSurface.AGENDA
         user.save(update_fields=["landing_surface"])
 
         self.log_in(user)
 
-        expect(self.page).to_have_url(f"{self.live_server_url}/app/agenda")
+        expect(self.page).to_have_url(f"{self.live_server_url}/app/day")
 
-    def test_both_surfaces_stay_in_the_navigation_either_way(self):
-        """A default is not a redirect trap."""
+    def test_the_surfaces_that_exist_are_in_the_navigation(self):
+        """A default is not a redirect trap.
+
+        ~~Today and Agenda~~ -- the Agenda is gone and the Pool is what answers
+        *what is open* now. Asserted as a presence *and* an absence, because a
+        nav that quietly keeps a dead surface is how `/capture/` and the Inbox
+        both outlived themselves here.
+        """
         user = self.make_user()
         self.log_in(user)
 
-        # The task core's sub-nav, under the app bar. These two were in the
-        # side rail until the rail became contents; the landmark moved with
-        # them rather than the assertion being loosened to find them anywhere.
+        # The task core's sub-nav, under the app bar. These were in the side
+        # rail until the rail became contents; the landmark moved with them
+        # rather than the assertion being loosened to find them anywhere.
         nav = self.page.get_by_role("navigation", name="Views")
 
         expect(nav.get_by_role("link", name="Today")).to_be_visible()
-        expect(nav.get_by_role("link", name="Agenda")).to_be_visible()
+        expect(nav.get_by_role("link", name="Pool")).to_be_visible()
+        expect(nav.get_by_role("link", name="Agenda")).to_have_count(0)
 
 
 class TaskJourneyTest(BrowserTest):
@@ -97,34 +113,43 @@ class TaskJourneyTest(BrowserTest):
         List.objects.create(owner=user, title="Work")
 
         self.log_in(user)
-        self.visit("/app/agenda")
+        self.visit("/app/day")
 
-        self.page.fill("#agenda-add-text", "Write the smoke test")
-        self.page.get_by_role("button", name="Add").click()
+        # **Through the composer, since superlists-2.0-plan.md increment 8.**
+        # This journey went via the Agenda's add box until the Agenda retired
+        # into the day; what it claims is unchanged, and the route to it is the
+        # one that exists. A *Did* line is the sharpest version of the claim:
+        # one submission has to write a node, make a task, choose it for today
+        # and finish it, all in one transaction the browser never sees.
+        self.page.get_by_label("Capture a thought").fill("Write the smoke test")
+        self.page.get_by_label("Where this goes").select_option("did")
+        self.page.get_by_role("button", name="Add", exact=True).click()
 
-        # A task with no due date lands in the "No due date" bucket, which
-        # the server marks collapsed -- so the row exists in the DOM but
-        # nobody can see it until the section is opened. Opening it is
-        # honest about how the page works; asserting on the hidden row
-        # would be a test that passes while the thing it claims to have
-        # created is invisible.
-        self.page.get_by_role("button", name="No due date").click()
+        # The composer says where it went, which means the POST was accepted.
+        expect(self.page.get_by_text("Logged, below the line.")).to_be_visible()
 
-        # exact=True because the confirmation toast quotes the same text,
-        # and matching that instead would assert something was announced
-        # rather than that a row exists. Rendered from the server's
-        # response, so seeing it means the POST was accepted and the client
-        # placed the result -- not merely that something was typed in a box.
+        # In the log, rendered from the day the server sent back on the refetch
+        # -- so seeing it means the result was placed, not merely that
+        # something was typed in a box.
         expect(
-            self.page.get_by_text("Write the smoke test", exact=True)
+            self.page.get_by_text("Write the smoke test").first
         ).to_be_visible()
 
-        self.page.get_by_role(
-            "button", name="Complete “Write the smoke test”"
-        ).click()
-
+        # And it is finished: the day's list offers no Complete on it, because
+        # the composer already ticked it.
         expect(
-            self.page.get_by_role("button", name="Reopen “Write the smoke test”")
+            self.page.get_by_role("button", name="Complete Write the smoke test")
+        ).to_have_count(0)
+
+        # **Waiting on the panel is not decoration.** Every mutation on this
+        # page invalidates the day *and* the pool, so a test that ended on the
+        # day alone would leave the panel's request in flight while
+        # `_fixture_teardown` truncated the tables underneath it -- which is a
+        # deadlock, reported against whichever test runs next. CLAUDE.md
+        # describes that as a rare flake; ending a test immediately after a
+        # write makes it every time.
+        expect(
+            self.page.get_by_role("heading", name=re.compile(r"The pool"))
         ).to_be_visible()
 
 
@@ -162,7 +187,8 @@ class ProjectJourneyTest(BrowserTest):
     in jsdom.
 
     Two things only a real browser answers here. Creating a project (the
-    Agenda sidebar), assigning an area to it (the project's own page) and
+    projects index, and the Agenda's sidebar before increment 8), assigning an
+    area to it (the project's own page) and
     reading the result back (the area's own page) are three different
     pages talking to the same API through openapi-fetch, and the component
     tests mock all three independently, so nothing below the component had
@@ -181,9 +207,12 @@ class ProjectJourneyTest(BrowserTest):
         self.log_in(self.user)
 
     def test_creating_a_project_adding_an_area_and_finishing_it(self):
-        self.visit("/app/agenda")
+        # **From the projects index, since increment 8.** Creating a project
+        # was a control in the Agenda's sidebar; the Agenda retired into the
+        # day, and the index has carried the same form since
+        # project-workspace-plan.md gave completed projects somewhere to live.
+        self.visit("/app/projects")
 
-        self.page.get_by_text("+ New project").click()
         self.page.get_by_label("Project name").fill("Website Relaunch")
         self.page.get_by_role("button", name="Create project").click()
 
@@ -223,10 +252,9 @@ class ProjectJourneyTest(BrowserTest):
     def test_creating_a_brand_new_area_directly_in_a_project(self):
         # Vince's call, August 10, 2026: the predominant use case for a
         # project is areas that don't exist yet, not reassigning ones that
-        # do -- so this needs no first task, unlike the Agenda sidebar's
-        # own "+ New area".
-        self.visit("/app/agenda")
-        self.page.get_by_text("+ New project").click()
+        # do -- so this needs no first task, unlike the Agenda sidebar's own
+        # "+ New area", which retired with the Agenda at increment 8.
+        self.visit("/app/projects")
         self.page.get_by_label("Project name").fill("Launch the business")
         self.page.get_by_role("button", name="Create project").click()
         expect(self.page).to_have_url(re.compile(r"/app/projects/\d+$"))
@@ -240,8 +268,7 @@ class ProjectJourneyTest(BrowserTest):
         self.assertEqual(list(legal.item_set.all()), [])
 
     def test_deleting_a_project_keeps_its_area_and_task(self):
-        self.visit("/app/agenda")
-        self.page.get_by_text("+ New project").click()
+        self.visit("/app/projects")
         self.page.get_by_label("Project name").fill("Website Relaunch")
         self.page.get_by_role("button", name="Create project").click()
         expect(self.page).to_have_url(re.compile(r"/app/projects/\d+$"))
@@ -253,16 +280,18 @@ class ProjectJourneyTest(BrowserTest):
         self.page.get_by_role("button", name="Delete project").click()
         self.page.get_by_role("button", name="Delete permanently").click()
 
-        # Deleting a project ends on the Agenda -- ProjectRoute's own
-        # navigate("/agenda") on success.
-        expect(self.page).to_have_url(f"{self.live_server_url}/app/agenda")
+        # Deleting a project ends on the day -- ProjectRoute still navigates
+        # to `/agenda`, which the router redirects since increment 8. Asserted
+        # on where somebody actually lands rather than on the intermediate
+        # hop, because the hop is what a later commit is free to change.
+        expect(self.page).to_have_url(f"{self.live_server_url}/app/day")
 
     def test_the_projects_index_keeps_a_completed_project_reachable(self):
-        # Vince's call: a central landing page reachable from the sidebar.
-        # The nav's own Projects group only lists open projects, so a
-        # completed one needs somewhere else to stay reachable from.
-        self.visit("/app/agenda")
-        self.page.get_by_text("+ New project").click()
+        # Vince's call: a central landing page reachable from the rail. The
+        # nav's own Projects group only lists open projects, so a completed one
+        # needs somewhere else to stay reachable from -- and since increment 8
+        # the index is also where a project is *made*.
+        self.visit("/app/projects")
         self.page.get_by_label("Project name").fill("Website Relaunch")
         self.page.get_by_role("button", name="Create project").click()
         expect(self.page).to_have_url(re.compile(r"/app/projects/\d+$"))
@@ -470,32 +499,35 @@ class MobileNavigationTest(BrowserTest):
         what every test that existed at the time did.
         """
         user = self.make_user()
-        List.objects.create(owner=user, title="Work")
+        Project.objects.create(owner=user, title="Website Relaunch")
         self.log_in(user)
         self.page.set_viewport_size(self.WIDE)
-        self.visit("/app/agenda")
+        self.visit("/app/day")
 
         # No clicking. On a wide screen the rail is not something you open,
         # it is something that is there.
         #
-        # Asserted on an area rather than on Archive, which now lives in the
-        # sub-nav above and is visible at every width -- it would have made
+        # Asserted on a project rather than on Archive, which lives in the
+        # sub-nav above and is visible at every width -- that would have made
         # this vacuous, which is the exact failure mode B0 slipped through.
+        # **It was an Area until increment 8**, when Areas left the rail; a
+        # project is what is left in it that only appears at this width.
         rail = self.page.get_by_role("navigation", name="Contents")
-        expect(rail.get_by_role("link", name="Work")).to_be_visible()
+        expect(rail.get_by_role("link", name="Website Relaunch")).to_be_visible()
 
     def test_the_disclosure_opens_navigates_and_closes(self):
         user = self.make_user()
-        List.objects.create(owner=user, title="Work")
+        Project.objects.create(owner=user, title="Website Relaunch")
         self.log_in(user)
         self.page.set_viewport_size(self.NARROW)
-        self.visit("/app/agenda")
+        self.visit("/app/day")
 
-        # Scoped to the rail, and to an area: Archive used to be the subject
+        # Scoped to the rail, and to a project: Archive used to be the subject
         # here and is now in the sub-nav, visible at every width, which would
-        # have quietly turned this into a test of nothing.
+        # have quietly turned this into a test of nothing. An Area was the
+        # subject until increment 8, when Areas left the rail.
         rail = self.page.get_by_role("navigation", name="Contents")
-        area = rail.get_by_role("link", name="Work")
+        area = rail.get_by_role("link", name="Website Relaunch")
 
         # Closed to begin with: the rail is not simply always on screen at
         # this width, which is what makes the rest of this meaningful.
@@ -508,5 +540,5 @@ class MobileNavigationTest(BrowserTest):
 
         # Navigating has to close it. Leaving it open covers the page you
         # just asked for with the menu you used to ask.
-        expect(self.page).to_have_url(re.compile(r"/app/areas/\d+$"))
+        expect(self.page).to_have_url(re.compile(r"/app/projects/\d+$"))
         expect(area).not_to_be_visible()

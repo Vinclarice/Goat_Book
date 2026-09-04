@@ -328,3 +328,96 @@ class WhatIsAlreadyPickedTest(TestCase):
 
         self.assertEqual(fixed[0]["picked_for"], [])
 
+
+class TheHeadOfThePoolTest(TestCase):
+    """The panel beside the day -- the same rows, narrowed to a column.
+
+    `superlists-2.0-plan.md`: *the pool is a panel **and** a page. Both read the
+    same query, so neither is a copy of the other.*
+    """
+
+    def setUp(self):
+        self.owner = User.objects.create_user(
+            "alice", "alice@example.com", "a secure password"
+        )
+        self.today = timezone.localdate()
+
+    def head(self):
+        return agenda.pool_for(self.owner, self.today, head=True)
+
+    def test_fixed_lines_stop_at_the_week(self):
+        Item.objects.create(
+            owner=self.owner, text="This week", due_date=self.today + timedelta(days=3)
+        )
+        Item.objects.create(
+            owner=self.owner, text="Next month", due_date=self.today + timedelta(days=40)
+        )
+
+        self.assertEqual(
+            [row["task"]["text"] for row in self.head()["fixed"]], ["This week"]
+        )
+
+    def test_an_overdue_line_is_still_in_the_head(self):
+        """More urgent than next Tuesday, not less."""
+        Item.objects.create(
+            owner=self.owner, text="Late", due_date=self.today - timedelta(days=9)
+        )
+
+        self.assertEqual([row["task"]["text"] for row in self.head()["fixed"]], ["Late"])
+
+    def test_the_oldest_few_floating_lines_and_nothing_after_them(self):
+        for age in range(agenda.POOL_HEAD_FLOATING + 3):
+            backdate(
+                Item.objects.create(owner=self.owner, text=f"Line {age}"), age + 1
+            )
+
+        self.assertEqual(
+            len(self.head()["floating"]), agenda.POOL_HEAD_FLOATING
+        )
+
+    def test_what_arrived_today_is_in_the_head_however_deep_it_falls(self):
+        """A panel that showed only the oldest would never show the thing
+        somebody wrote ten minutes ago, which is the one they are looking for.
+        """
+        for age in range(agenda.POOL_HEAD_FLOATING + 3):
+            backdate(
+                Item.objects.create(owner=self.owner, text=f"Line {age}"), age + 1
+            )
+        Item.objects.create(owner=self.owner, text="Just now")
+
+        self.assertIn(
+            "Just now", [row["task"]["text"] for row in self.head()["floating"]]
+        )
+
+    def test_the_count_is_still_the_whole_pool(self):
+        """Which is what lets the link beside the panel say how many there
+        really are.
+        """
+        for age in range(agenda.POOL_HEAD_FLOATING + 3):
+            backdate(
+                Item.objects.create(owner=self.owner, text=f"Line {age}"), age + 1
+            )
+
+        self.assertEqual(self.head()["open_count"], agenda.POOL_HEAD_FLOATING + 3)
+
+    def test_the_page_is_not_narrowed(self):
+        for age in range(agenda.POOL_HEAD_FLOATING + 3):
+            backdate(
+                Item.objects.create(owner=self.owner, text=f"Line {age}"), age + 1
+            )
+
+        whole = agenda.pool_for(self.owner, self.today)
+
+        self.assertEqual(len(whole["floating"]), agenda.POOL_HEAD_FLOATING + 3)
+
+    def test_the_endpoint_takes_it(self):
+        Item.objects.create(
+            owner=self.owner, text="Next month", due_date=self.today + timedelta(days=40)
+        )
+        self.client.force_login(self.owner)
+
+        payload = self.client.get("/api/v1/pool?head=true").json()
+
+        self.assertEqual(payload["fixed"], [])
+        self.assertEqual(payload["open_count"], 1)
+

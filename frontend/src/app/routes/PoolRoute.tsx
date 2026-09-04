@@ -288,7 +288,7 @@ function dayAfter(today: string) {
  * idempotent on the server, so without this the second click would look
  * identical to the first and report nothing.
  */
-function PickButtons({
+export function PickButtons({
   taskId,
   text,
   today,

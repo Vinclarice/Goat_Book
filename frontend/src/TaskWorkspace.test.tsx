@@ -357,12 +357,20 @@ describe("TaskWorkspace", () => {
     );
   });
 
-  it("reorders tasks on drag and drop and posts the new order", async () => {
+  it("no longer reorders tasks by dragging them", async () => {
+    // ~~"reorders tasks on drag and drop and posts the new order"~~ --
+    // **superlists-2.0-plan.md increment 8**: *manual ordering leaves the
+    // interface.* Dragging a backlog into an order is planning without
+    // deciding, and the morning pick is what replaces it.
+    //
+    // The endpoint and `Item.position` both stay -- removing a write path is
+    // D3's kind of decision, not this one's -- so this asserts that nothing
+    // reaches them from here rather than that they are gone.
     const first = task({ id: 1, text: "First" });
     const second = task({ id: 2, text: "Second" });
-    vi.spyOn(globalThis, "fetch").mockReturnValue(
-      apiResponse([second, first]),
-    );
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockReturnValue(apiResponse([second, first]));
     render(
       <TaskWorkspace
         initialData={{
@@ -380,16 +388,14 @@ describe("TaskWorkspace", () => {
     fireEvent.dragStart(screen.getByText("First").closest("article")!);
     fireEvent.drop(screen.getByText("Second").closest("article")!);
 
-    await waitFor(async () =>
-      expect(await sentRequests(fetch as never)).toContainEqual({
-        path: "/api/v1/areas/1/tasks/reorder",
-        method: "POST",
-        body: JSON.stringify({ ordered_ids: [2, 1] }),
-      }),
-    );
+    expect(
+      (await sentRequests(fetchSpy as never)).some((call) =>
+        call.path.includes("reorder"),
+      ),
+    ).toBe(false);
   });
 
-  it("sorts tasks by due date ascending with undated tasks last, then restores manual order", async () => {
+  it("sorts tasks by due date ascending with undated tasks last, then back", async () => {
     const user = userEvent.setup();
     const dated = task({ id: 1, text: "Later task", due_date: "2026-08-20" });
     const undated = task({ id: 2, text: "No due date" });
@@ -419,7 +425,9 @@ describe("TaskWorkspace", () => {
 
     expect(taskTexts()).toEqual(["Sooner task", "Later task", "No due date"]);
 
-    await user.selectOptions(screen.getByLabelText("Sort tasks"), "manual");
+    // ~~"manual"~~ retired at increment 8; "added" is the order the rows
+    // arrive in, which is what the list falls back to.
+    await user.selectOptions(screen.getByLabelText("Sort tasks"), "added");
 
     expect(taskTexts()).toEqual(["Later task", "No due date", "Sooner task"]);
   });

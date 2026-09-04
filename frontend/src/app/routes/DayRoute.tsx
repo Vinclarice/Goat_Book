@@ -12,6 +12,7 @@ import type { AreaColorKey } from "../../types";
 import { FirstRun } from "./FirstRun";
 import { JournalSuggestions } from "./JournalSuggestions";
 import { Appointments } from "./Appointments";
+import { PoolPanel } from "./PoolPanel";
 import { RouteFailure } from "./RouteFailure";
 
 const SECTIONS = [
@@ -1616,6 +1617,14 @@ export function DayRoute() {
           superlists-2.0-plan.md's page puts the log here and the composer
           under it — increment 4. */}
       <DayLog log={data.log} />
+
+      {/* **The head of the pool, beside the day** — and the reason the Agenda
+          could retire at increment 8. Until this existed the day page could
+          not answer *what is open*, so the rest lived on another screen.
+          Only on today: a panel of what is open now, on the page for the
+          30th, would be answering a question about today on a page about
+          then. */}
+      {isToday && <PoolPanel />}
 
       <section className="space-y-2">
         <h2 className="text-sm font-bold">Action items</h2>

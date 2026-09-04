@@ -445,7 +445,7 @@ def agenda(request):
 
 
 @router.get("/pool", response=PoolOut)
-def pool(request, q: str = ""):
+def pool(request, q: str = "", head: bool = False):
     """Every open line, in one list -- `superlists-2.0-plan.md` increment 1.
 
     **Session only.** The phone has no pool surface, and widening a bearer to
@@ -455,8 +455,14 @@ def pool(request, q: str = ""):
 
     `q` is optional and empty means the whole pool; `pool_for` owns what
     matching means.
+
+    `head` is the panel beside the day rather than the page -- the same rows,
+    narrowed to what fits in a column. `open_count` is the whole pool either
+    way, which is what lets the panel's link say how many there really are.
     """
-    return agenda_reader.pool_for(request.user, timezone.localdate(), query=q)
+    return agenda_reader.pool_for(
+        request.user, timezone.localdate(), query=q, head=head
+    )
 
 
 @router.post("/pool/{task_id}/still-wanted", response=PoolOut)

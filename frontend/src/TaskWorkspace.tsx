@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 
 import {
   createTask,
-  reorderTasks,
   updateTaskDueDate,
   updateTaskRecurrence,
   updateTaskStatus,
@@ -118,7 +117,13 @@ function parseTagInput(value: string): string[] {
 }
 
 type Filter = "all" | "active" | "completed";
-type Sort = "manual" | "due_date";
+//: ~~"manual"~~ -- **retired September 4, 2026**, superlists-2.0-plan.md
+//: increment 8: *manual ordering leaves the interface.* Dragging a backlog
+//: into an order is planning without deciding, and the morning pick is what
+//: replaces it. `Item.position` and `POST /areas/{id}/tasks/reorder` both
+//: stay -- the column holds an order somebody made, and removing a write path
+//: is D3's kind of decision rather than this one's.
+type Sort = "due_date" | "added";
 
 interface Props {
   initialData: TaskWorkspaceData;
@@ -147,7 +152,7 @@ export function TaskWorkspace({ initialData }: Props) {
   const [newDueDate, setNewDueDate] = useState("");
   const [newTags, setNewTags] = useState("");
   const [newRecurrence, setNewRecurrence] = useState<TaskRecurrence>("none");
-  const [sort, setSort] = useState<Sort>("manual");
+  const [sort, setSort] = useState<Sort>("added");
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
@@ -158,10 +163,6 @@ export function TaskWorkspace({ initialData }: Props) {
   const [busyId, setBusyId] = useState<number | "new" | null>(null);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
-  const [draggedId, setDraggedId] = useState<number | null>(null);
-
-  const canReorder =
-    sort === "manual" && filter === "all" && query.trim() === "" && tagFilter === null;
 
   const counts = useMemo(
     () => ({
@@ -376,43 +377,6 @@ export function TaskWorkspace({ initialData }: Props) {
     await saveTags(task, Array.from(new Set([...task.tags, ...additions])));
   }
 
-  async function handleReorder(nextItems: Task[]) {
-    const previous = items;
-    setItems(nextItems);
-    setError("");
-    try {
-      // The server requires the complete set, including any task the current
-      // filter or search is hiding -- not just what's on screen.
-      await reorderTasks(
-        initialData.area.id,
-        nextItems.map((item) => item.id),
-      );
-      refreshNav();
-    } catch (caught) {
-      setItems(previous);
-      setError(caught instanceof Error ? caught.message : "Unable to reorder tasks.");
-    }
-  }
-
-  function handleDrop(targetId: number) {
-    if (!canReorder || draggedId === null || draggedId === targetId) {
-      setDraggedId(null);
-      return;
-    }
-    const dragged = items.find((item) => item.id === draggedId);
-    const target = items.find((item) => item.id === targetId);
-    setDraggedId(null);
-    if (!dragged || !target) return;
-
-    const currentIndex = items.findIndex((item) => item.id === dragged.id);
-    const targetIndex = items.findIndex((item) => item.id === target.id);
-    if (currentIndex === -1 || targetIndex === -1) return;
-    const next = [...items];
-    const [moved] = next.splice(currentIndex, 1);
-    next.splice(targetIndex, 0, moved);
-    handleReorder(next);
-  }
-
   function startEditing(task: Task) {
     setEditingId(task.id);
     setEditingText(task.text);
@@ -535,7 +499,7 @@ export function TaskWorkspace({ initialData }: Props) {
               value={sort}
               onChange={(event) => setSort(event.target.value as Sort)}
             >
-              <option value="manual">Manual order</option>
+              <option value="added">Added</option>
               <option value="due_date">Due date</option>
             </select>
           </label>
@@ -632,20 +596,9 @@ export function TaskWorkspace({ initialData }: Props) {
               "group relative flex items-start gap-3 border-b border-l-4 border-border py-3 pr-1 pl-3",
               item.status === "completed" ? "is-completed" : "",
               isOverdue(item) ? "is-overdue border-l-destructive" : "border-l-transparent",
-              draggedId === item.id ? "opacity-50" : "",
             ]
               .filter(Boolean)
               .join(" ")}
-            draggable={canReorder}
-            onDragStart={() => setDraggedId(item.id)}
-            onDragOver={(event) => {
-              if (canReorder) event.preventDefault();
-            }}
-            onDrop={(event) => {
-              event.preventDefault();
-              handleDrop(item.id);
-            }}
-            onDragEnd={() => setDraggedId(null)}
           >
             <span className="flex flex-none items-center gap-2 pt-0.5">
               {selectMode ? (
@@ -657,20 +610,9 @@ export function TaskWorkspace({ initialData }: Props) {
                   disabled={bulkBusy}
                 />
               ) : (
-                <>
-                  {canReorder && (
-                    <span
-                      className="cursor-grab text-muted-foreground select-none"
-                      aria-hidden="true"
-                      title="Drag to reorder"
-                    >
-                      ⠿
-                    </span>
-                  )}
-                  <span className="text-xs tabular-nums text-muted-foreground">
-                    {String(index + 1).padStart(2, "0")}
-                  </span>
-                </>
+                <span className="text-xs tabular-nums text-muted-foreground">
+                  {String(index + 1).padStart(2, "0")}
+                </span>
               )}
             </span>
             <div className="min-w-0 flex-1">

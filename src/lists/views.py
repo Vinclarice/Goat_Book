@@ -16,16 +16,20 @@ def dashboard(request):
 
     This is LOGIN_REDIRECT_URL, so the login form, a bookmark of /dashboard/
     and the Django shell's own "Today" link all agree without any of them
-    knowing the rule. Crane made the Daily Page the default; the preference
-    is what keeps a default from being a redirect trap -- both surfaces stay
-    directly reachable either way.
+    knowing the rule.
+
+    **~~The preference decides~~ -- there is one surface since September 4,
+    2026**, `superlists-2.0-plan.md` increment 8: the Agenda retired into the
+    day, which now carries the head of the pool beside it. A preference between
+    two things is not a preference when there is one, and `AppRoutes`'
+    `LandingRedirect` stopped asking in the same commit -- so the two still
+    cannot disagree, because neither decides anything any more.
+
+    `User.landing_surface` is kept and no longer read. It holds a choice
+    somebody made, and dropping a column is a separate and destructive
+    decision -- the same restraint D3 asks for over `List` and `Project`.
     """
-    surface = (
-        "day"
-        if request.user.landing_surface == request.user.LandingSurface.DAY
-        else "agenda"
-    )
-    return redirect(_spa_path(surface))
+    return redirect(_spa_path("day"))
 
 
 @login_required

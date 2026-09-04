@@ -544,9 +544,49 @@ cheapest evidence there is, not because it gates 1 and 2.
 
    **The name is D1, answered by using Vince's word** — see the model's own
    docstring for why `Engagement` reads better and lost anyway.
-8. **Retire.** The Day and Agenda routes redirect to the new page. Areas leave
+8. ~~**Retire.** The Day and Agenda routes redirect to the new page. Areas leave
    the navigation and the composer. Priority and manual ordering leave the
-   interface. The tables stay until D3 is answered.
+   interface. The tables stay until D3 is answered.~~ **Shipped September 4,
+   2026**, with one thing different from the text: **the Day route is not
+   redirected, because it *is* the new page.** Increments 2 through 7 grew it
+   into one — the bounded list, the line, what joined below it, the log, the
+   composer, the evening's three moves, the appointments strip — and this
+   increment gave it the last piece it was missing.
+
+   **The pool panel is what let the Agenda go.** The Agenda answered *what is
+   open*, and until this increment the day could not: it showed what was due
+   and what was chosen, and the rest lived on another screen. `pool_for` gained
+   `head`, so the panel and the page read one query and the server decides what
+   *the head of a pool* is — fixed lines inside the week, today's arrivals, the
+   oldest six floating lines, and `open_count` untouched so the link can say how
+   many there really are.
+
+   `/agenda` redirects rather than 404s, on `/lists/:id`'s precedent: a bookmark
+   is worth two lines. `AgendaWorkspace.tsx` and its test are deleted — 1,795
+   lines — and `GET /api/v1/agenda` **stays**, because the phone calls it with a
+   bearer token.
+
+   **`landing_surface` stopped being read and was not dropped.** A preference
+   between two things is not a preference when there is one, so the choice left
+   Preferences and both landing paths go to the day — but the column holds
+   something somebody chose, and deleting it is the destructive decision D3 asks
+   restraint about. The test that mattered is the one asserting a stored
+   *agenda* preference still lands somewhere real.
+
+   **Areas left the rail and nothing else.** The plan says *the navigation and
+   the composer*; a task's own page still says which Area it is in and can move
+   it, which is the bend `product-stories.md` named when PATCH could not.
+   Priority left the task page, manual ordering left the Area page, and both
+   columns and both endpoints stay.
+
+   **The browser suite earned its place twice.** Five journeys navigated through
+   surfaces this increment deleted and had to be rerouted rather than deleted.
+   And the rewritten first journey deadlocked at teardown *every run* — not the
+   rare flake `CLAUDE.md` documents but its deterministic cousin, because a test
+   that ends immediately after a write leaves the day's *and* the pool's
+   refetches in flight while `_fixture_teardown` truncates underneath them.
+   Diagnosed by evidence rather than by re-running: it never went green on its
+   own, and ending the test on an assertion that waits for both fixed it.
 9. **Second Mind.** Whether log lines run the proposal detectors at capture
    (D2); the journal producer scoped to reflection (D5); appointment mentions
    (D6).

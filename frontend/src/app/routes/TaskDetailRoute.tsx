@@ -702,27 +702,14 @@ export function TaskDetailRoute() {
         </p>
       </div>
 
-      {(
-      <div className="space-y-1">
-        <label htmlFor="task-priority" className="text-sm font-bold">
-          Priority
-        </label>
-        <select
-          id="task-priority"
-          value={task.priority}
-          onChange={(event) => handlePriority(event.target.value as TaskPriority)}
-          disabled={busy}
-          className="w-full rounded-lg border border-border bg-input px-3 py-1.5"
-        >
-          {(Object.keys(PRIORITY_LABELS) as TaskPriority[]).map((value) => (
-            <option key={value} value={value}>
-              {PRIORITY_LABELS[value]}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      )}
+      {/* ~~Priority stood here~~ — **retired September 4, 2026**,
+          superlists-2.0-plan.md increment 8. *The morning pick is the
+          priority*: choosing three things for today says more than marking
+          nine of them high, and a field that ranks a backlog is a way of
+          planning without deciding. `Item.priority` and its API field stay
+          until D3-style cleanup — the column holds what somebody marked, and
+          `agenda.open_items_for` still orders by it under the due date, where
+          it costs nothing and is read by nobody. */}
 
       {(
       <div className="space-y-1">

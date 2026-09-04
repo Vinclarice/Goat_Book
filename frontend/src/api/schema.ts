@@ -81,6 +81,10 @@ export interface paths {
          *
          *     `q` is optional and empty means the whole pool; `pool_for` owns what
          *     matching means.
+         *
+         *     `head` is the panel beside the day rather than the page -- the same rows,
+         *     narrowed to what fits in a column. `open_count` is the whole pool either
+         *     way, which is what lets the panel's link say how many there really are.
          */
         get: operations["lists_api_v1_pool"];
         put?: never;
@@ -4620,6 +4624,7 @@ export interface operations {
         parameters: {
             query?: {
                 q?: string;
+                head?: boolean;
             };
             header?: never;
             path?: never;

@@ -203,26 +203,15 @@ export function PreferencesRoute() {
           </p>
         </div>
 
-        <div className="space-y-1">
-          <label htmlFor="pref-landing-surface" className="text-sm font-bold">
-            Start me on
-          </label>
-          <select
-            id="pref-landing-surface"
-            value={landingSurface}
-            onChange={(event) =>
-              edit(setLandingSurface, event.target.value as "day" | "agenda")
-            }
-            className="w-full rounded-lg border border-border bg-input px-3 py-1.5"
-          >
-            <option value="day">Today&rsquo;s page</option>
-            <option value="agenda">Agenda</option>
-          </select>
-          <p className="text-sm text-muted-foreground">
-            Where Clarice opens when you sign in. Both stay in the navigation
-            either way.
-          </p>
-        </div>
+        {/* ~~"Start me on"~~ — **retired September 4, 2026**,
+            superlists-2.0-plan.md increment 8. It chose between the day and the
+            Agenda, and the Agenda retired into the day; a preference between
+            two things is not a preference when there is one.
+
+            The value is still read and still sent back unchanged, so nobody's
+            stored choice is quietly overwritten by a form that no longer
+            offers it. Dropping the column is a separate, destructive decision
+            — the same restraint D3 asks for over `List` and `Project`. */}
 
         {/* Grouped and labelled as one thing, because it is: a standing
             note re-read on every Daily Page, not two more settings. */}

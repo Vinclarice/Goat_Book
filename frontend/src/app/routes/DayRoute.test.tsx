@@ -763,7 +763,7 @@ describe("DayRoute", () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(() =>
       jsonResponse(
         dayData({
-          closing: { chosen: 3, finished: 2, unfinished: 1, released: 1 },
+          closing: closing({ chosen: 3, finished: 2, unfinished: 1, released: 1 }),
         }),
       ),
     );
@@ -940,30 +940,23 @@ describe("DayRoute", () => {
     });
   });
 
-  it("moves a pinned task to tomorrow without leaving the day", async () => {
+  it("chooses a pinned task for tomorrow without touching its due date", async () => {
     // S2's second verb: "moves one task to tomorrow", in bed, on a phone.
-    // The date comes from `snoozePresets`, the client-side authority the
-    // Agenda already uses, rather than an inline today+1 -- that would be a
-    // third copy of a rule already mirrored twice.
     //
-    // Not carry-forward. daily-operating-system-vision.md forbids rewriting
-    // due dates *automatically*; "one item, one decision" is exactly this.
-    // `called()` stood here and returned `body: undefined` for a Request,
-    // which was fine while task writes came through the hand-rolled client as
-    // (url, init). They are Requests now, so the body has to be read
-    // asynchronously -- see sentRequests.
+    // **It moved the due date until September 3, 2026.**
+    // superlists-2.0-plan.md rule 7 is *never a move* and increment 5 says
+    // *never a date move*: a due date is a promise to somebody, and choosing
+    // to work on something tomorrow is not the same act as re-promising it.
+    // Leaving both behaviours on one page would have meant the word
+    // "Tomorrow" doing two opposite things a few inches apart.
+    //
+    // Not carry-forward either way. daily-operating-system-vision.md forbids
+    // rescheduling *automatically*; "one item, one decision" is exactly this.
     const fetchSpy = vi
       .spyOn(globalThis, "fetch")
       .mockImplementation((input) => {
         const request = input as Request;
-        const { url, method } = request;
-        if (method === "PATCH" && url.includes("/api/v1/tasks/1")) {
-          return jsonResponse({
-            task: focusRow({ due_date: "2026-08-04" }),
-            spawned: null,
-            spawned_checklist_steps: [],
-          });
-        }
+        if (request.method === "POST") return jsonResponse(dayData());
         return jsonResponse(dayData({ focus: [focusRow()] }));
       });
 
@@ -973,13 +966,17 @@ describe("DayRoute", () => {
     );
 
     await waitFor(async () => {
-      const patched = (await sentRequests(fetchSpy)).find(
-        (call) => call.method === "PATCH",
-      );
-      expect(patched?.path).toContain("/api/v1/tasks/1");
-      expect(JSON.parse(String(patched?.body))).toEqual({
-        due_date: "2026-08-04",
-      });
+      const sent = await sentRequests(fetchSpy);
+      expect(
+        sent.some(
+          (call) =>
+            call.method === "POST" &&
+            call.path.includes("/api/v1/day/2026-08-03/leftovers/1") &&
+            JSON.parse(String(call.body)).decision === "tomorrow",
+        ),
+      ).toBe(true);
+      // And nothing re-promised it.
+      expect(sent.some((call) => call.method === "PATCH")).toBe(false);
     });
   });
 
@@ -2038,6 +2035,149 @@ describe("DayRoute, the composer", () => {
 
     await waitFor(() => expect(screen.getByText(/still here/i)).toBeInTheDocument());
     expect(box).toHaveValue("Half a thought");
+  });
+});
+
+function closing(overrides: Record<string, unknown> = {}) {
+  return {
+    chosen: 2,
+    finished: 1,
+    unfinished: 1,
+    released: 0,
+    joined: 0,
+    joined_finished: 0,
+    leftovers: [],
+    ...overrides,
+  };
+}
+
+function leftover(overrides: Record<string, unknown> = {}) {
+  return {
+    task_id: 1,
+    text: "Book dentist",
+    above_the_line: true,
+    moved_to_tomorrow: false,
+    ...overrides,
+  };
+}
+
+describe("DayRoute, the evening", () => {
+  // superlists-2.0-plan.md rule 7: leftovers get one decision each, never a
+  // move. daily-operating-system-vision.md underneath it: never automatically
+  // reschedule everything left incomplete.
+
+  it("offers three moves on each thing left over", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(dayData({ closing: closing({ leftovers: [leftover()] }) })),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    await screen.findByText("Close the day");
+    for (const name of [
+      /Book dentist to tomorrow/i,
+      /Book dentist back to the pool/i,
+      /Let go of Book dentist/i,
+    ]) {
+      expect(screen.getByRole("button", { name })).toBeInTheDocument();
+    }
+  });
+
+  it("offers no way to decide about all of them at once", async () => {
+    // The vision document's first rule is a shape, not a warning: there is no
+    // sweep, so there is no button for one.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        dayData({
+          closing: closing({
+            leftovers: [leftover(), leftover({ task_id: 2, text: "Call Sam" })],
+          }),
+        }),
+      ),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    await screen.findByText("Close the day");
+    // Three buttons per row and no fourth for the set. `/all/i` matched the
+    // per-row ones, which is what the first version of this got wrong.
+    expect(
+      screen.getAllByRole("button").map((each) => each.getAttribute("aria-label")),
+    ).not.toContain("Move everything to tomorrow");
+    expect(screen.queryByText(/all of these|move them all/i)).toBeNull();
+  });
+
+  it("sends one decision for one task", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const request = input as Request;
+      if (request.method === "POST") return jsonResponse(dayData());
+      return jsonResponse(dayData({ closing: closing({ leftovers: [leftover()] }) }));
+    });
+
+    renderAt("/day/2026-08-03");
+    await userEvent.click(
+      await screen.findByRole("button", { name: /Book dentist to tomorrow/i }),
+    );
+
+    await waitFor(() => {
+      const posts = fetchSpy.mock.calls
+        .map(([sent]) => sent as Request)
+        .filter((request) => request.method === "POST");
+      expect(
+        posts.some((r) => r.url.includes("/api/v1/day/2026-08-03/leftovers/1")),
+      ).toBe(true);
+    });
+  });
+
+  it("says which ones are still waiting, and stops when none are", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        dayData({
+          closing: closing({
+            leftovers: [
+              leftover(),
+              leftover({ task_id: 2, text: "Call Sam", moved_to_tomorrow: true }),
+            ],
+          }),
+        }),
+      ),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    expect(await screen.findByText(/1 still waiting/i)).toBeInTheDocument();
+  });
+
+  it("reports what joined below the line apart from what was chosen", async () => {
+    // Rule 4, at the end of the day: three chosen and four unplanned done is a
+    // good day, and this is where the page can say so.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        dayData({
+          closing: closing({ chosen: 3, finished: 3, joined: 4, joined_finished: 4 }),
+        }),
+      ),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    expect(await screen.findByText(/4 of 4 below the line/i)).toBeInTheDocument();
+  });
+
+  it("draws no conclusion from any of the numbers", async () => {
+    // Rule 12. The S3 precedent: a test asserts the scolding phrasing is
+    // absent, not merely that the describing one is present.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(dayData({ closing: closing({ chosen: 5, finished: 0 }) })),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    const heading = await screen.findByText("Close the day");
+    // Scoped to the closing block: "only" appears in prose elsewhere on the
+    // page, and what rule 12 forbids is a verdict *about the numbers*.
+    const block = heading.closest("section")!;
+    expect(block.textContent).not.toMatch(/only|failed|behind|streak|well done/i);
   });
 });
 

@@ -1827,6 +1827,61 @@
         ]
       }
     },
+    "/api/v1/day/{day}/leftovers/{task_id}": {
+      "post": {
+        "operationId": "daily_api_v1_decide_about_a_leftover",
+        "summary": "Decide About A Leftover",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "day",
+            "schema": {
+              "format": "date",
+              "title": "Day",
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "in": "path",
+            "name": "task_id",
+            "schema": {
+              "title": "Task Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DayOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "One of rule 7's three decisions, on one unfinished pin.\n\n**One at a time, and never a sweep.** `daily-operating-system-vision.md`'s\nfirst rule is *never automatically reschedule everything left incomplete*,\nso there is no endpoint that takes a list -- which is a shape decision, not\nan omission. `clarice.leftovers` owns what each decision does and why none\nof them rewrites today.\n\n**Session only.** The phone has no evening ritual, and letting go archives\na task -- widening a bearer that sits in a keystore for ninety days to do\nthat should be asked for rather than arrive with a closing prompt.\n\nReturns the whole day, like every other write here: the leftovers list, the\ncounts and the log all move together, and one response keeps them from\ndisagreeing for a frame.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecisionIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      }
+    },
     "/api/v1/suggestions/{suggestion_id}/confirm": {
       "post": {
         "operationId": "daily_api_v1_confirm_suggestion",
@@ -6053,13 +6108,31 @@
           "released": {
             "title": "Released",
             "type": "integer"
+          },
+          "joined": {
+            "title": "Joined",
+            "type": "integer"
+          },
+          "joined_finished": {
+            "title": "Joined Finished",
+            "type": "integer"
+          },
+          "leftovers": {
+            "items": {
+              "$ref": "#/components/schemas/LeftoverOut"
+            },
+            "title": "Leftovers",
+            "type": "array"
           }
         },
         "required": [
           "chosen",
           "finished",
           "unfinished",
-          "released"
+          "released",
+          "joined",
+          "joined_finished",
+          "leftovers"
         ],
         "title": "DayClosingOut",
         "type": "object"
@@ -6423,6 +6496,35 @@
         "title": "FocusTaskOut",
         "type": "object"
       },
+      "LeftoverOut": {
+        "description": "One thing still open, and whether it has been decided about.\n\n`moved_to_tomorrow` is derived from tomorrow's own pins rather than stored:\na pin on tomorrow *is* the record of having chosen tomorrow, and a second\ncopy of that is a second opinion. The other two decisions need no flag,\nbecause both release the pin and the line stops being a leftover.",
+        "properties": {
+          "task_id": {
+            "title": "Task Id",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "above_the_line": {
+            "title": "Above The Line",
+            "type": "boolean"
+          },
+          "moved_to_tomorrow": {
+            "title": "Moved To Tomorrow",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "task_id",
+          "text",
+          "above_the_line",
+          "moved_to_tomorrow"
+        ],
+        "title": "LeftoverOut",
+        "type": "object"
+      },
       "PausedRoutineOut": {
         "description": "A routine that has been put down.\n\nNo standing, because a paused routine has no current period -- that is\nwhat pausing means. Just enough to recognise it and pick it back up.",
         "properties": {
@@ -6671,6 +6773,24 @@
           "task_ids"
         ],
         "title": "DraftIn",
+        "type": "object"
+      },
+      "DecisionIn": {
+        "properties": {
+          "decision": {
+            "enum": [
+              "tomorrow",
+              "pool",
+              "let_go"
+            ],
+            "title": "Decision",
+            "type": "string"
+          }
+        },
+        "required": [
+          "decision"
+        ],
+        "title": "DecisionIn",
         "type": "object"
       },
       "StandingsOut": {

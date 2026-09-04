@@ -438,9 +438,38 @@ cheapest evidence there is, not because it gates 1 and 2.
 
    **The box defaults to Note and ~~D9 stays open~~** — see D9 below, which
    now carries what shipped and what would answer it.
-5. **The evening.** The closing ritual that already exists gains the three
+5. ~~**The evening.** The closing ritual that already exists gains the three
    moves on each unfinished pin, above or below the line: tomorrow, pool, let
-   go. **Acceptance: the mockup's evening moment.** Never a date move.
+   go. **Acceptance: the mockup's evening moment.** Never a date move.~~
+   **Shipped September 3, 2026.** `clarice/leftovers.py` holds the three, the
+   closing block offers them one row at a time, and the readback gained the
+   below-the-line pair — *you finished 0 of 1, and 1 you set aside. 1 of 1
+   below the line.*
+
+   **None of the three rewrites today, and that is the whole of *never a
+   move*.** Each decides what happens next. *Tomorrow* pins to tomorrow and
+   leaves today's pin standing as unfinished, because you chose it, did not do
+   it, and are choosing it again — releasing it would make a finish rate nobody
+   can fail. *Pool* and *let go* release the pin, which lands in `set_aside`,
+   reported beside the denominator rather than inside it.
+
+   **The Day page's own row-level *Tomorrow* was moving a due date**, and
+   stopped. Rule 7 is *never a move* and this increment says *never a date
+   move* in as many words; leaving both would have had one word doing two
+   opposite things a few inches apart. A due date is a promise to somebody, and
+   choosing to work on something tomorrow is not the same act as re-promising
+   it. Found by writing this increment, not by looking for it.
+
+   **`joined_in_week` came back**, with the caller it was removed for lacking
+   at increment 3 — the closing ritual needs below-the-line pins bucketed the
+   same way, so *one of two below the line* is the same kind of statement as
+   *three of four chosen*.
+
+   *Let go* is `let_go`, shared with increment 6's stale prompt: it archives the
+   task, retires every live actionable facet on it, and leaves the node. Retired
+   rather than dismissed — `dismiss_facet` means *this was never a commitment*
+   and is the one correction the parser will ever get, and spending it on a
+   commitment that was real and is now over would teach it the wrong thing.
 6. **The stale prompt.** A floating line unpicked past the threshold (D8) asks
    once. *Let go* archives the task and retires the facet; *keep* resets the
    clock. The weekly review reports lines let go, which is a better number than

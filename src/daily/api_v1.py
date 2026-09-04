@@ -16,7 +16,7 @@ from ninja.errors import HttpError
 
 from accounts.auth import SessionAuthIfLoggedIn, TokenAuth
 from accounts.models import SCOPE_DAY_READ, SCOPE_DAY_WRITE
-from clarice import day_log
+from clarice import day_log, leftovers
 from daily import reads, services
 from lists import agenda
 from lists import projects as project_reader
@@ -197,6 +197,18 @@ class DayOut(Schema):
     paused_routines: list[PausedRoutineOut]
 
 
+#: Mirrored from `clarice.leftovers.DECISIONS`, asserted for the reason below.
+Decision = Literal["tomorrow", "pool", "let_go"]
+assert set(get_args(Decision)) == set(leftovers.DECISIONS), (
+    "Decision has drifted from clarice.leftovers.DECISIONS: "
+    f"{set(leftovers.DECISIONS) ^ set(get_args(Decision))}"
+)
+
+
+class DecisionIn(Schema):
+    decision: Decision
+
+
 #: Mirrored from `clarice.day_log.KINDS` and asserted below, for the reason
 #: `lists.api_v1.TaskRecurrence` gives: Ninja needs a static type, so the
 #: duplication is real, and one that shouts when it drifts is a different thing
@@ -303,6 +315,30 @@ class DayClosingOut(Schema):
     #: Reported apart from `unfinished`, because "I decided this wasn't for
     #: today" and "I never got to it" are different facts.
     released: int
+    #: What joined after the line was drawn, and how much of it got done --
+    #: `superlists-2.0-plan.md` rule 4. Counted apart from `chosen` and never
+    #: folded into it: *a day with three chosen and four unplanned done is a
+    #: good day this can say so about.*
+    joined: int
+    joined_finished: int
+    #: Every unfinished pin, whichever side of the line it fell, each awaiting
+    #: one of rule 7's three decisions.
+    leftovers: list["LeftoverOut"]
+
+
+class LeftoverOut(Schema):
+    """One thing still open, and whether it has been decided about.
+
+    `moved_to_tomorrow` is derived from tomorrow's own pins rather than stored:
+    a pin on tomorrow *is* the record of having chosen tomorrow, and a second
+    copy of that is a second opinion. The other two decisions need no flag,
+    because both release the pin and the line stops being a leftover.
+    """
+
+    task_id: int
+    text: str
+    above_the_line: bool
+    moved_to_tomorrow: bool
 
 
 class DayDraftOut(Schema):
@@ -488,6 +524,17 @@ def _closing_out(owner, day, today):
         "finished": closing.finished,
         "unfinished": closing.unfinished,
         "released": closing.released,
+        "joined": closing.joined,
+        "joined_finished": closing.joined_finished,
+        "leftovers": [
+            {
+                "task_id": each.task_id,
+                "text": each.text,
+                "above_the_line": each.above_the_line,
+                "moved_to_tomorrow": each.moved_to_tomorrow,
+            }
+            for each in closing.leftovers
+        ],
     }
 
 
@@ -761,6 +808,37 @@ def unpin_from_day(request, day: date, task_id: int):
     """Take a task off this day, keeping the record that it was chosen."""
     task = _own_task_or_404(request.user, task_id)
     services.unpin_task(request.user, day, task)
+    return _day_out(request.user, day)
+
+
+@router.post(
+    "/day/{day}/leftovers/{task_id}",
+    response=DayOut,
+    auth=SessionAuthIfLoggedIn(),
+)
+def decide_about_a_leftover(request, day: date, task_id: int, payload: DecisionIn):
+    """One of rule 7's three decisions, on one unfinished pin.
+
+    **One at a time, and never a sweep.** `daily-operating-system-vision.md`'s
+    first rule is *never automatically reschedule everything left incomplete*,
+    so there is no endpoint that takes a list -- which is a shape decision, not
+    an omission. `clarice.leftovers` owns what each decision does and why none
+    of them rewrites today.
+
+    **Session only.** The phone has no evening ritual, and letting go archives
+    a task -- widening a bearer that sits in a keystore for ninety days to do
+    that should be asked for rather than arrive with a closing prompt.
+
+    Returns the whole day, like every other write here: the leftovers list, the
+    counts and the log all move together, and one response keeps them from
+    disagreeing for a frame.
+    """
+    _refuse_a_past_day(day)
+    task = _own_task_or_404(request.user, task_id)
+    try:
+        leftovers.decide(request.user, task, payload.decision, today=day)
+    except leftovers.LeftoverError as error:
+        raise HttpError(409, str(error))
     return _day_out(request.user, day)
 
 

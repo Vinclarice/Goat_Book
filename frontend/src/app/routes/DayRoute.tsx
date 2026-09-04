@@ -4,10 +4,10 @@ import { Link, useParams } from "react-router";
 
 import { Button } from "@/components/ui/button";
 
-import { ageLabel, colorForKey, dueLabel, snoozePresets } from "../../agenda";
+import { ageLabel, colorForKey, dueLabel } from "../../agenda";
 import { apiV1 } from "../../api/client";
 import { RequestFailed, statusOf } from "../../api/failure";
-import { updateTaskDueDate, updateTaskStatus } from "../../api";
+import { updateTaskStatus } from "../../api";
 import type { AreaColorKey } from "../../types";
 import { FirstRun } from "./FirstRun";
 import { JournalSuggestions } from "./JournalSuggestions";
@@ -958,6 +958,106 @@ function AddRoutine({
   );
 }
 
+type Decision = "tomorrow" | "pool" | "let_go";
+
+async function decideAboutLeftover(day: string, taskId: number, decision: Decision) {
+  const { error } = await apiV1.POST("/api/v1/day/{day}/leftovers/{task_id}", {
+    params: { path: { day, task_id: taskId } },
+    body: { decision },
+  });
+  if (error) throw new Error("Couldn't decide about that one.");
+}
+
+type LeftoverRow = {
+  task_id: number;
+  text: string;
+  above_the_line: boolean;
+  moved_to_tomorrow: boolean;
+};
+
+/**
+ * The three decisions a leftover gets — superlists-2.0-plan.md rule 7.
+ *
+ * **One at a time, and there is no fourth button.** *Never automatically
+ * reschedule everything left incomplete* is the vision document's first rule,
+ * so "all of these to tomorrow" is a control this page deliberately does not
+ * have — the absence is the feature, and a test asserts it.
+ *
+ * A line already sent to tomorrow says so instead of offering the three again:
+ * that is what makes "still waiting" a number the page can show.
+ */
+function Leftovers({
+  rows,
+  onDecide,
+  busy,
+}: {
+  rows: LeftoverRow[];
+  onDecide: (taskId: number, decision: Decision) => void;
+  busy: boolean;
+}) {
+  if (rows.length === 0) return null;
+  const waiting = rows.filter((each) => !each.moved_to_tomorrow).length;
+  return (
+    <div className="space-y-1">
+      <p className="text-sm text-muted-foreground">
+        {rows.length} left over, each gets one decision
+        {waiting > 0 ? ` — ${waiting} still waiting.` : " — all decided."}
+      </p>
+      <ul className="space-y-1">
+        {rows.map((row) => (
+          <li
+            key={row.task_id}
+            className="flex flex-wrap items-baseline justify-between gap-2 text-sm"
+          >
+            <span className="min-w-0">
+              {row.text}
+              {/* Which side it was chosen on. A day where four unplanned
+                  things are outstanding is a different evening from one where
+                  four chosen ones are. */}
+              {!row.above_the_line && (
+                <span className="text-muted-foreground"> · joined later</span>
+              )}
+            </span>
+            {row.moved_to_tomorrow ? (
+              <span className="text-sm text-accent">On tomorrow</span>
+            ) : (
+              <span className="flex shrink-0 gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  disabled={busy}
+                  aria-label={`Move ${row.text} to tomorrow`}
+                  onClick={() => onDecide(row.task_id, "tomorrow")}
+                >
+                  Tomorrow
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  disabled={busy}
+                  aria-label={`Put ${row.text} back to the pool`}
+                  onClick={() => onDecide(row.task_id, "pool")}
+                >
+                  Pool
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  disabled={busy}
+                  aria-label={`Let go of ${row.text}`}
+                  onClick={() => onDecide(row.task_id, "let_go")}
+                >
+                  Let go
+                </Button>
+              </span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export function DayRoute() {
   const { date } = useParams();
   const queryClient = useQueryClient();
@@ -1112,25 +1212,37 @@ export function DayRoute() {
   // left incomplete". One person, one item, one decision is the shape that
   // rule deliberately leaves open, and this is it.
   //
-  // The date comes from `snoozePresets`, the authority the Agenda's own snooze
-  // menu uses, rather than an inline today+1. That rule is already mirrored in
-  // Python and TypeScript; a third copy here would be the exact drift
-  // `mirrored-rules-brief.md` was written about. Serving the presets in the
-  // payload -- the blueprint's highest-ROI adopt item -- would delete the
-  // mirror properly, and is a bigger change than this one.
+  // ~~The date comes from `snoozePresets`~~ -- **there is no date any more.**
+  // This chose tomorrow's *due date* until September 3, 2026 and now chooses
+  // tomorrow's *list*, so the server owns the arithmetic and the client needs
+  // no copy of a rule already mirrored in three languages.
+  /* **Chooses it for tomorrow; does not move its due date.**
+     superlists-2.0-plan.md rule 7 is *never a move*, and increment 5 says
+     *never a date move* in as many words: a due date is a promise to somebody
+     and choosing to work on something tomorrow is not the same act as
+     re-promising it. This called `updateTaskDueDate` until September 3, 2026,
+     which meant the word "Tomorrow" did two opposite things on one page --
+     this button re-promised, and the evening's chooses. */
   const deferMutation = useMutation({
     mutationFn: async (item: Focus) => {
-      const tomorrow = snoozePresets(data?.today ?? "").find(
-        (preset) => preset.key === "tomorrow",
-      );
-      if (item.task_id === null || !tomorrow) throw new Error("Couldn't move that.");
-      return updateTaskDueDate(
-        { id: item.task_id } as Parameters<typeof updateTaskDueDate>[0],
-        tomorrow.dueDate,
-      );
+      if (item.task_id === null || !data) throw new Error("Couldn't move that.");
+      return decideAboutLeftover(data.date, item.task_id, "tomorrow");
     },
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: ["day", date ?? "today"] }),
+  });
+
+  /* One decision, one task. There is no endpoint that takes a list, because
+     the vision document's first rule is that nothing reschedules a set. */
+  const leftoverMutation = useMutation({
+    mutationFn: async (move: { taskId: number; decision: Decision }) => {
+      if (!data) throw new Error("Couldn't decide about that.");
+      return decideAboutLeftover(data.date, move.taskId, move.decision);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["day"] });
+      queryClient.invalidateQueries({ queryKey: ["pool"] });
+    },
   });
 
   /* **The one verb a bill has here.** decision 4 in
@@ -1651,8 +1763,31 @@ export function DayRoute() {
                 .{" "}
               </>
             ) : null}
+            {/* Rule 4 at the end of the day: counted apart, never folded in.
+                *A day with three chosen and four unplanned done is a good day
+                this can say so about.* */}
+            {data.closing.joined > 0 && (
+              <>
+                {data.closing.joined_finished} of {data.closing.joined} below
+                the line.{" "}
+              </>
+            )}
             What happened today, while it is still true?
           </p>
+          {/* Rule 12: the numbers above describe and this offers the moves.
+              Nothing here grades — no streak, no warning, no success colour. */}
+          <Leftovers
+            rows={data.closing.leftovers}
+            onDecide={(taskId, decision) =>
+              leftoverMutation.mutate({ taskId, decision })
+            }
+            busy={leftoverMutation.isPending}
+          />
+          {leftoverMutation.isError && (
+            <p className="text-sm text-destructive">
+              {leftoverMutation.error.message}
+            </p>
+          )}
         </section>
       )}
 

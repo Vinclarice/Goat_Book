@@ -138,12 +138,33 @@ def planned_in_week(owner, week_start, week_end):
     above it -- `daily.reads.above_the_line` owns that rule and this asks it
     rather than restating it.
 
-    **What joined below the line is not read at this grain yet.** The day shows
-    it -- `daily.reads.bounded_list_for` -- and the *week* has no use for it
-    until the closing ritual offers its three moves on each unfinished pin
-    whichever side it fell, which is increment 5. A `joined_in_week` written
-    here now would have no caller, which this repository has a test for.
+    **What joined below the line is `joined_in_week` below**, written at
+    increment 5 when the closing ritual gave it a caller. It was written once at
+    increment 3 and removed the same afternoon for having none, which is a test
+    in this repository rather than a matter of taste.
     """
+    return _pins_becoming(owner, week_start, week_end, chosen=True)
+
+
+def joined_in_week(owner, week_start, week_end):
+    """The week's pins made *after* the line was drawn on their day.
+
+    `superlists-2.0-plan.md` rule 4: what joined later sits below the line,
+    visibly, and is counted apart. **Reported, never used as evidence of what a
+    day can hold** -- nothing here feeds `typical_day_for` or a finish rate, and
+    the plan is explicit about why: a day of eight lines added as they happened
+    would raise what a typical day holds and quietly hide over-commitment on the
+    next draft.
+
+    Bucketed by the same `what_became_of` as the chosen pins above, so *one of
+    two below the line* is the same kind of statement as *three of four chosen*
+    -- and so the closing ritual can offer its three moves on an unfinished pin
+    whichever side it fell.
+    """
+    return _pins_becoming(owner, week_start, week_end, chosen=False)
+
+
+def _pins_becoming(owner, week_start, week_end, *, chosen):
     buckets = {"met": [], "unfinished": [], "set_aside": []}
     for focus in (
         DailyFocus.objects.filter(
@@ -154,7 +175,7 @@ def planned_in_week(owner, week_start, week_end):
         .select_related("task", "entry")
         .order_by("entry__date", "position", "id")
     ):
-        if not daily_reads.above_the_line(focus, focus.entry.list_closed_at):
+        if daily_reads.above_the_line(focus, focus.entry.list_closed_at) != chosen:
             continue
         buckets[what_became_of(focus, week_end)].append(focus)
     return Planned(**buckets)

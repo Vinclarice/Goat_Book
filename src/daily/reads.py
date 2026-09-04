@@ -8,7 +8,7 @@ has stayed right.
 """
 from calendar import monthrange
 from collections import Counter
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date as date_type, timedelta
 
 from django.contrib.postgres.search import SearchRank
@@ -257,11 +257,34 @@ CLOSING_HOUR = 18
 
 
 @dataclass(frozen=True)
+class Leftover:
+    """One unfinished pin, and whether it has been decided about yet.
+
+    `superlists-2.0-plan.md` rule 7: *leftovers get one decision each.* Which
+    means the evening has to be able to say which ones are still waiting --
+    and `moved_to_tomorrow` derives that rather than storing it, because a pin
+    on tomorrow is already the record of having chosen tomorrow. Pooling and
+    letting go need no flag at all: both release the pin, so the line simply
+    stops being a leftover.
+    """
+
+    task_id: int
+    text: str
+    #: Which side of the line it was chosen on -- reported because rule 7 says
+    #: *above or below*, and a day where four unplanned things are outstanding
+    #: is a different evening from one where four chosen ones are.
+    above_the_line: bool
+    moved_to_tomorrow: bool
+
+
+@dataclass(frozen=True)
 class DayClosing:
     """What the day held, at the point of writing it down.
 
-    Counts rather than lists: the ask is for the record, and a closing prompt
-    that re-listed the day would be the page somebody already read.
+    Counts rather than lists **for the day's shape**, because the ask is for the
+    record and a closing prompt that re-listed the day would be the page
+    somebody already read. `leftovers` is the one list, and it is there because
+    rule 7 needs somewhere to put three buttons.
     """
 
     #: Planned commitments still standing -- the denominator S6 rests on.
@@ -273,6 +296,16 @@ class DayClosing:
     #: counting it as a failure would be the product disagreeing with a
     #: decision somebody made.
     released: int
+    #: What joined after the line was drawn, counted apart -- rule 4. *Three
+    #: chosen and four unplanned done is a good day*, and these two numbers are
+    #: what lets the evening say so. Never folded into `chosen`: the plan is
+    #: explicit that below-the-line pins are reported and never used as
+    #: evidence of what a day can hold.
+    joined: int = 0
+    joined_finished: int = 0
+    #: Every unfinished pin, whichever side it fell, still awaiting one of the
+    #: three decisions.
+    leftovers: list = field(default_factory=list)
 
 
 def closing_for(owner, day, *, today, hour):
@@ -317,12 +350,60 @@ def closing_summary_for(owner, day):
     from review import reads as review_reads
 
     planned = review_reads.planned_in_week(owner, day, day)
+    # Rule 4's other half, and the second reader `joined_in_week` was written
+    # for and then removed at increment 3 for having none. Same bucketing, same
+    # `what_became_of`, so *one of two below the line* is the same kind of
+    # statement as *three of four chosen*.
+    joined = review_reads.joined_in_week(owner, day, day)
     return DayClosing(
         chosen=planned.total,
         finished=len(planned.met),
         unfinished=len(planned.unfinished),
         released=len(planned.set_aside),
+        joined=joined.total,
+        joined_finished=len(joined.met),
+        # Both sides, in the order the page reads them: what was chosen, then
+        # what joined. Rule 7 offers the same three moves to each.
+        leftovers=[
+            *_leftovers(owner, planned.unfinished, day, above=True),
+            *_leftovers(owner, joined.unfinished, day, above=False),
+        ],
     )
+
+
+def _leftovers(owner, unfinished, day, *, above):
+    """Unfinished pins as the evening needs them, with tomorrow answered once.
+
+    One query for the whole set rather than one per row: an evening with a
+    dozen leftovers would otherwise ask the same question a dozen times, and
+    this read already runs on every day payload after six in the evening.
+
+    A pin whose task has since been permanently deleted is skipped. There is
+    nothing left to decide about, and `what_became_of` counts it as unfinished
+    precisely because the denominator must survive the task -- which is a fact
+    about the count, not a row somebody can press a button on.
+    """
+    live = [focus for focus in unfinished if focus.task_id is not None]
+    chosen_for_tomorrow = set(
+        DailyFocus.objects.filter(
+            owner=owner,
+            entry__date=day + timedelta(days=1),
+            released_at__isnull=True,
+            task_id__in=[focus.task_id for focus in live],
+        ).values_list("task_id", flat=True)
+    )
+    return [
+        Leftover(
+            task_id=focus.task_id,
+            # The live task while there is one, per charter rule 5 -- the same
+            # rule `_focus_out` follows, and for the same reason: a renamed
+            # task should read the same here as everywhere else.
+            text=focus.task.text if focus.task else focus.task_text,
+            above_the_line=above,
+            moved_to_tomorrow=focus.task_id in chosen_for_tomorrow,
+        )
+        for focus in live
+    ]
 
 
 @dataclass(frozen=True)

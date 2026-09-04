@@ -1016,6 +1016,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/day/{day}/leftovers/{task_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Decide About A Leftover
+         * @description One of rule 7's three decisions, on one unfinished pin.
+         *
+         *     **One at a time, and never a sweep.** `daily-operating-system-vision.md`'s
+         *     first rule is *never automatically reschedule everything left incomplete*,
+         *     so there is no endpoint that takes a list -- which is a shape decision, not
+         *     an omission. `clarice.leftovers` owns what each decision does and why none
+         *     of them rewrites today.
+         *
+         *     **Session only.** The phone has no evening ritual, and letting go archives
+         *     a task -- widening a bearer that sits in a keystore for ninety days to do
+         *     that should be asked for rather than arrive with a closing prompt.
+         *
+         *     Returns the whole day, like every other write here: the leftovers list, the
+         *     counts and the log all move together, and one response keeps them from
+         *     disagreeing for a frame.
+         */
+        post: operations["daily_api_v1_decide_about_a_leftover"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/suggestions/{suggestion_id}/confirm": {
         parameters: {
             query?: never;
@@ -2902,6 +2936,12 @@ export interface components {
             unfinished: number;
             /** Released */
             released: number;
+            /** Joined */
+            joined: number;
+            /** Joined Finished */
+            joined_finished: number;
+            /** Leftovers */
+            leftovers: components["schemas"]["LeftoverOut"][];
         };
         /**
          * DayDraftOut
@@ -3028,6 +3068,25 @@ export interface components {
             text: string;
             /** Due Date */
             due_date: string | null;
+        };
+        /**
+         * LeftoverOut
+         * @description One thing still open, and whether it has been decided about.
+         *
+         *     `moved_to_tomorrow` is derived from tomorrow's own pins rather than stored:
+         *     a pin on tomorrow *is* the record of having chosen tomorrow, and a second
+         *     copy of that is a second opinion. The other two decisions need no flag,
+         *     because both release the pin and the line stops being a leftover.
+         */
+        LeftoverOut: {
+            /** Task Id */
+            task_id: number;
+            /** Text */
+            text: string;
+            /** Above The Line */
+            above_the_line: boolean;
+            /** Moved To Tomorrow */
+            moved_to_tomorrow: boolean;
         };
         /**
          * PausedRoutineOut
@@ -3161,6 +3220,14 @@ export interface components {
         DraftIn: {
             /** Task Ids */
             task_ids: number[];
+        };
+        /** DecisionIn */
+        DecisionIn: {
+            /**
+             * Decision
+             * @enum {string}
+             */
+            decision: "tomorrow" | "pool" | "let_go";
         };
         /** StandingsOut */
         StandingsOut: {
@@ -5457,6 +5524,33 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DayOut"];
+                };
+            };
+        };
+    };
+    daily_api_v1_decide_about_a_leftover: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                day: string;
+                task_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecisionIn"];
+            };
+        };
         responses: {
             /** @description OK */
             200: {

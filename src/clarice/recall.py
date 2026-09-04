@@ -972,7 +972,12 @@ def this_time_before(owner, *, on, years=DEFAULT_YEARS_BACK, per_year=DEFAULT_PE
 def _start_of(day, zone):
     """Midnight on ``day`` in ``zone``, as an aware instant.
 
-    The conversion D16 made available. Doing it here rather than in SQL keeps
-    the query a plain bounded range over an indexed column.
+    The conversion D16 made available. **Moved into `clarice.clocks` on
+    September 3, 2026** and delegated to from here: the day's log needed the
+    same two edges, and two implementations of *when does a day begin* is
+    precisely the drift `clocks.py` exists to prevent. The name stays because
+    this module's callers read better with it.
     """
-    return datetime.combine(day, datetime.min.time(), tzinfo=zone)
+    from . import clocks
+
+    return clocks.start_of_day(day, zone)

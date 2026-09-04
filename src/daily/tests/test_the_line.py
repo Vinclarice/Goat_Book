@@ -15,6 +15,7 @@ from django.test import TestCase
 from django.utils import timezone
 
 from accounts.models import User
+from clarice.testing import make_node
 from daily import reads, services
 from daily.models import DailyEntry, DailyFocus
 from lists import services as task_services
@@ -311,3 +312,51 @@ class TheDayCarriesTheLineTest(TestCase):
             [(each["text"], each["above_the_line"]) for each in payload["focus"]],
             [("Chosen", True), ("Joined", False)],
         )
+
+
+class TheDayCarriesItsLogTest(TestCase):
+    """Rule 6, at the boundary. The read is `clarice.day_log`'s and tested
+    there; this is that the day hands it over, and on a past day too.
+    """
+
+    def setUp(self):
+        self.owner = User.objects.create_user(
+            "alice", "alice@example.com", "a secure password"
+        )
+        self.today = timezone.localdate()
+        self.client.force_login(self.owner)
+
+    def test_a_tick_is_a_log_line_with_a_time(self):
+        task = Item.objects.create(owner=self.owner, text="Fix the fence latch")
+        services.pin_task(self.owner, self.today, task)
+        task_services.complete_item(task)
+
+        payload = self.client.get("/api/v1/day").json()
+
+        self.assertEqual(
+            [(line["kind"], line["text"]) for line in payload["log"]],
+            [("chose", "Fix the fence latch"), ("completed", "Fix the fence latch")],
+        )
+
+    def test_a_past_day_still_shows_what_happened_on_it(self):
+        """The one thing on this page that is *more* available on a past day
+        than on today: action items are live state and cannot be, a log is a
+        record and must be.
+
+        The fixture is a note written yesterday rather than a pin made for
+        yesterday, and the difference is the point: pinning something *for* a
+        past day still happens *now*, so its event lands on today's log. That
+        is the log recording when things happened rather than what they were
+        about, and the first version of this test asserted the opposite.
+        """
+        yesterday = self.today - timedelta(days=1)
+        make_node(self.owner, "Yesterday's thought", when=timezone.now() - timedelta(days=1))
+
+        payload = self.client.get(f"/api/v1/day/{yesterday.isoformat()}").json()
+
+        self.assertFalse(payload["shows_action_items"])
+        self.assertEqual(
+            [(line["kind"], line["text"]) for line in payload["log"]],
+            [("written", "Yesterday's thought")],
+        )
+

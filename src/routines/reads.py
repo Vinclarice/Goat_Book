@@ -111,3 +111,24 @@ def standings_for(owner, day):
             )
         )
     return standings
+
+
+def progress_detail(occurrence):
+    """What one decided period came to, in this domain's own words.
+
+    Composed here rather than by whoever renders it, so the phrase a person
+    reads on the day's log is the phrase this app would use anywhere else --
+    `principles.md`, *one rule, one authoritative definition*. `money.reads`
+    owns a bill's sentence for exactly the same reason, and its own header
+    records what it cost to have that wording live in a sibling app.
+
+    **Read from the occurrence's snapshot, never from the routine.** Rule 3 of
+    the charter is why `target_quantity` and `unit` are copied at creation: a
+    target changed from five to three next month must not silently rewrite what
+    last month said.
+
+    The unit is optional, so a routine with none reads *3 of 5* rather than
+    *3 of 5 * with a space nobody put there.
+    """
+    of_target = f"{occurrence.progress} of {occurrence.target_quantity}"
+    return f"{of_target} {occurrence.unit}" if occurrence.unit else of_target

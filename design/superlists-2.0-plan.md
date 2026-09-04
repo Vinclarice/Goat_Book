@@ -376,11 +376,37 @@ cheapest evidence there is, not because it gates 1 and 2.
    `bills` have always shown every dated claim on the day whether or not it was
    picked — which is rule 9 already true. The pool's rows gained `picked_for`,
    without which a Pick button is one that appears to do nothing.
-3. **The log, as a read.** The day's timeline: nodes captured that day, task
+3. ~~**The log, as a read.** The day's timeline: nodes captured that day, task
    events **from the life-event log** — completed and reopened as separate
    lines, rule 6 — routine occurrences, bill payments, pins, in one order by
    time, each saying which it is. **Acceptance: the mockup's midday moment**,
-   minus the composer.
+   minus the composer.~~ **Shipped September 3, 2026.** `clarice/day_log.py`,
+   beside `life_log.py` and `recall.py` because a read crossing both cores
+   belongs to neither — this one reaches into `mind`, `lists`, `daily`,
+   `routines` and `money` at once. Seven kinds, four sources, merged by time
+   and no new table.
+
+   **Two of the five sources are not in the log at all**, which is why this is
+   a module rather than a call to `recall.around`: a bill's `paid_at` and an
+   occurrence's `decided_at` are columns on records that were never events.
+   Ticks, unticks and picks come from `ActivityEvent`; notes come from
+   `live_nodes`, so there is one node-visibility rule and a note somebody
+   deleted is not a line of their day.
+
+   **Rule 6's correction is proved rather than asserted.** Reopening a task
+   clears `completed_at`, and the log still reads *done at 01:49, reopened at
+   02:16* — verified in a browser, not only in a test.
+
+   **The log shows on a past day**, where `action_items` and `bills` cannot.
+   Those are live task state and a task holds no record of what it looked like
+   on the 30th; every source here is a dated record of something that happened.
+   That is the split `routines` already makes on the same page.
+
+   Two wordings moved to the domains that own them —
+   `routines.reads.progress_detail` and `money.reads.paid_detail` — so the log
+   never says a tally or a figure in a way its own module would not, and
+   `clocks.day_bounds` now owns a day's two edges, with `recall._start_of`
+   delegating to it rather than keeping a second copy.
 4. **The composer.** Four destinations over `confirm_actionable`, with Did
    creating the task completed. One optional field on `/api/v1/capture`, the
    contract regenerated. The phone sends Note by default and needs no change.

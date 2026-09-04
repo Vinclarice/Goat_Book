@@ -609,3 +609,21 @@ def digest_coming_line(bill, today, url_for):
             f"    {url_for(f'money/bills/{bill.id}')}",
         ]
     )
+
+
+def paid_detail(bill):
+    """What actually moved, in the words this module already uses for a figure.
+
+    **`paid_amount`, not `amount`.** The log records what happened, and those
+    two stop being equal the moment somebody pays extra -- which is the whole
+    reason the second column exists rather than an overwrite of the first.
+
+    Amount then currency, matching `digest_line` above: a second convention for
+    saying the same figure is how one product comes to word its own money two
+    ways. Empty when nothing was recorded, because *"whatever it comes to"* is
+    a real state of a bill and inventing a nought for it would be a figure
+    nobody wrote.
+    """
+    if bill.paid_amount is None:
+        return ""
+    return f"{bill.paid_amount} {bill.currency}"

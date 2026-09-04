@@ -66,3 +66,33 @@ def today_for(owner) -> datetime.date:
     where one is not.
     """
     return day_for(owner, timezone.now())
+
+
+def start_of_day(day, zone) -> datetime.datetime:
+    """Midnight on ``day`` in ``zone``, as an aware instant.
+
+    Done in Python rather than in SQL so that a query over it stays a plain
+    bounded range on an indexed column, instead of a transform Postgres cannot
+    use the index for.
+    """
+    return datetime.datetime.combine(day, datetime.time.min, tzinfo=zone)
+
+
+def day_bounds(owner, day):
+    """The half-open instant range ``day`` covers on the owner's clock.
+
+    `[start, end)`, so a row landing exactly on midnight belongs to the day
+    beginning rather than to two days at once.
+
+    **The one place a day's edges are decided.** Every read that asks *what
+    happened on this date* needs the same two instants, and a second
+    implementation of them is how one surface comes to put an evening in New
+    York on the following day while another does not -- which is the failure
+    this module was written for.
+    """
+    zone = zone_for(owner)
+    return (
+        start_of_day(day, zone),
+        start_of_day(day + datetime.timedelta(days=1), zone),
+    )
+

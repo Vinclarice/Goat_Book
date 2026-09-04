@@ -6,6 +6,7 @@ has to decide what day it is -- that is a per-user time-zone question, and
 `principles.md` puts the answer on the server.
 """
 from datetime import date, timedelta
+from typing import Literal, get_args
 
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
@@ -15,6 +16,7 @@ from ninja.errors import HttpError
 
 from accounts.auth import SessionAuthIfLoggedIn, TokenAuth
 from accounts.models import SCOPE_DAY_READ, SCOPE_DAY_WRITE
+from clarice import day_log
 from daily import reads, services
 from lists import agenda
 from lists import projects as project_reader
@@ -140,6 +142,12 @@ class DayOut(Schema):
     #: When the first act of execution drew the line under this day's list, or
     #: null while it is still open -- `superlists-2.0-plan.md` rules 3 and 11.
     list_closed_at: str | None
+    #: What happened, oldest first -- rule 6. **Present on a past day**, unlike
+    #: `action_items` and `bills`: those are live task state and a task holds no
+    #: record of what it looked like on the 30th, while every source of a log
+    #: line is a dated record of something that happened. Same page, two honest
+    #: answers, and the same split `routines` already makes here.
+    log: list["DayLogLineOut"]
     # The Personal Compass, read from the user on every request and stored
     # on no day. Sent with the day rather than fetched separately so the
     # page renders in one round trip -- and because a day is exactly the
@@ -187,6 +195,41 @@ class DayOut(Schema):
     # `routines` above, because a paused routine has no standing in this or
     # any period -- that is what pausing means.
     paused_routines: list[PausedRoutineOut]
+
+
+#: Mirrored from `clarice.day_log.KINDS` and asserted below, for the reason
+#: `lists.api_v1.TaskRecurrence` gives: Ninja needs a static type, so the
+#: duplication is real, and one that shouts when it drifts is a different thing
+#: from one that waits to be noticed.
+LogKind = Literal[
+    "written", "completed", "reopened", "chose", "released", "routine", "bill"
+]
+assert set(get_args(LogKind)) == set(day_log.KINDS), (
+    "LogKind has drifted from clarice.day_log.KINDS: "
+    f"{set(day_log.KINDS) ^ set(get_args(LogKind))}"
+)
+
+
+class DayLogLineOut(Schema):
+    """One thing that happened, at the time it happened.
+
+    `superlists-2.0-plan.md` rule 6. Nothing here is stored: every line is read
+    from a record that already carried a timestamp, and `clarice.day_log` owns
+    which records those are.
+
+    `text` is null when the subject is gone -- the log outlives what it names,
+    and `subject_withheld` is what lets the page say *something happened here*
+    rather than render a bare verb.
+    """
+
+    at: str
+    kind: LogKind
+    text: str | None
+    #: A short qualifier its own domain words -- *3 of 5 lessons*, *412.00 USD*
+    #: -- and empty on the kinds that have none. Composed server-side so the
+    #: log never says a figure in a way its own module would not.
+    detail: str
+    subject_withheld: bool
 
 
 class DayActionItemOut(TaskOut):
@@ -534,6 +577,16 @@ def _day_out(owner, day):
         "list_closed_at": (
             bounded.closed_at.isoformat() if bounded.closed_at else None
         ),
+        "log": [
+            {
+                "at": line.at.isoformat(),
+                "kind": line.kind,
+                "text": line.text,
+                "detail": line.detail,
+                "subject_withheld": line.subject_withheld,
+            }
+            for line in day_log.lines_for(owner, day)
+        ],
         "draft": _draft_out(owner, day, today),
         "brief": _brief_out(owner, day, today),
         "closing": _closing_out(owner, day, today),

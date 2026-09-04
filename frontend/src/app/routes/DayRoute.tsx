@@ -147,6 +147,88 @@ function FocusList({
   );
 }
 
+type LogLine = {
+  at: string;
+  kind: string;
+  text: string | null;
+  detail: string;
+  subject_withheld: boolean;
+};
+
+/**
+ * What a line of the log is, said in one word.
+ *
+ * **The verb, not the noun.** The log is a record of what happened, so a line
+ * reads "done" rather than "task" -- and superlists-2.0-plan.md rule 6 keeps
+ * "done" and "reopened" apart precisely so a reopen cannot erase a completion.
+ *
+ * Client-side because it is a rendering of the server's `kind`, the same split
+ * `ageLabel` keeps: the server says which kind of thing happened, and how that
+ * reads on a line is a question about the page.
+ */
+const LOG_VERBS: Record<string, string> = {
+  written: "wrote",
+  completed: "done",
+  reopened: "reopened",
+  chose: "chose",
+  released: "put down",
+  routine: "logged",
+  bill: "paid",
+};
+
+/**
+ * The day's log — rule 6, and the half of this page that is a record.
+ *
+ * Nothing here is stored. Every line is read from something that already
+ * carried a timestamp, which is why the log and the list are "the same rows
+ * read from two ends": ticking a chosen task moves it above the line *and*
+ * puts a line here, with no copy of anything.
+ *
+ * Absent entirely when the day holds nothing, rather than an empty box with a
+ * heading. A day with nothing logged is a fact about the day, and the page
+ * says it by having nothing to show — rule 12, which forbids drawing a verdict
+ * from any of this.
+ */
+function DayLog({ log }: { log: LogLine[] }) {
+  if (log.length === 0) return null;
+  return (
+    <section className="space-y-2">
+      <h2 className="text-sm font-bold">Log</h2>
+      {/* Oldest first, the server's order, so the newest line is at the
+          bottom — where somebody adding to it is already looking. */}
+      <ul className="space-y-1">
+        {log.map((line, index) => (
+          <li
+            key={`${line.at}-${line.kind}-${index}`}
+            className="flex items-baseline gap-3 text-sm"
+          >
+            <span className="w-14 shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
+              {timeOfDay(line.at)}
+            </span>
+            <span className="min-w-0 flex-1">
+              {line.text ?? (
+                /* The log outlives what it names. Dropping the line would make
+                   the day quietly report less than happened; saying so is what
+                   tells "about something you can no longer see" from "never
+                   had a subject". */
+                <span className="italic text-muted-foreground">
+                  no longer available
+                </span>
+              )}
+              {line.detail && (
+                <span className="text-muted-foreground"> · {line.detail}</span>
+              )}
+            </span>
+            <span className="shrink-0 text-xs text-muted-foreground">
+              {LOG_VERBS[line.kind] ?? line.kind}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 /** A time of day in the reader's own locale, from an instant the server sent.
  *
  * The instant is the authority and this only formats it -- the same split the
@@ -1349,6 +1431,12 @@ export function DayRoute() {
           </p>
         )}
       </section>
+
+      {/* Under the list and above the agenda's rows, because that is the
+          order the day is read in: what you chose, the line, what happened.
+          superlists-2.0-plan.md's page puts the log here and the composer
+          under it — increment 4. */}
+      <DayLog log={data.log} />
 
       <section className="space-y-2">
         <h2 className="text-sm font-bold">Action items</h2>

@@ -6087,6 +6087,56 @@
         "title": "DayDraftOut",
         "type": "object"
       },
+      "DayLogLineOut": {
+        "description": "One thing that happened, at the time it happened.\n\n`superlists-2.0-plan.md` rule 6. Nothing here is stored: every line is read\nfrom a record that already carried a timestamp, and `clarice.day_log` owns\nwhich records those are.\n\n`text` is null when the subject is gone -- the log outlives what it names,\nand `subject_withheld` is what lets the page say *something happened here*\nrather than render a bare verb.",
+        "properties": {
+          "at": {
+            "title": "At",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "written",
+              "completed",
+              "reopened",
+              "chose",
+              "released",
+              "routine",
+              "bill"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text"
+          },
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "subject_withheld": {
+            "title": "Subject Withheld",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "at",
+          "kind",
+          "text",
+          "detail",
+          "subject_withheld"
+        ],
+        "title": "DayLogLineOut",
+        "type": "object"
+      },
       "DayOut": {
         "properties": {
           "date": {
@@ -6182,6 +6232,13 @@
             ],
             "title": "List Closed At"
           },
+          "log": {
+            "items": {
+              "$ref": "#/components/schemas/DayLogLineOut"
+            },
+            "title": "Log",
+            "type": "array"
+          },
           "week_intention": {
             "title": "Week Intention",
             "type": "string"
@@ -6241,6 +6298,7 @@
           "brief",
           "closing",
           "list_closed_at",
+          "log",
           "week_intention",
           "typical_day",
           "compass_purpose",

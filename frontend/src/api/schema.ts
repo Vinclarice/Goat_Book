@@ -2914,6 +2914,33 @@ export interface components {
             /** Available */
             available: number;
         };
+        /**
+         * DayLogLineOut
+         * @description One thing that happened, at the time it happened.
+         *
+         *     `superlists-2.0-plan.md` rule 6. Nothing here is stored: every line is read
+         *     from a record that already carried a timestamp, and `clarice.day_log` owns
+         *     which records those are.
+         *
+         *     `text` is null when the subject is gone -- the log outlives what it names,
+         *     and `subject_withheld` is what lets the page say *something happened here*
+         *     rather than render a bare verb.
+         */
+        DayLogLineOut: {
+            /** At */
+            at: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "written" | "completed" | "reopened" | "chose" | "released" | "routine" | "bill";
+            /** Text */
+            text: string | null;
+            /** Detail */
+            detail: string;
+            /** Subject Withheld */
+            subject_withheld: boolean;
+        };
         /** DayOut */
         DayOut: {
             /** Date */
@@ -2945,6 +2972,8 @@ export interface components {
             closing: components["schemas"]["DayClosingOut"] | null;
             /** List Closed At */
             list_closed_at: string | null;
+            /** Log */
+            log: components["schemas"]["DayLogLineOut"][];
             /** Week Intention */
             week_intention: string;
             /** Typical Day */

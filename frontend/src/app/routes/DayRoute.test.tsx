@@ -50,6 +50,7 @@ function dayData(overrides: Record<string, unknown> = {}) {
     week_intention: "",
     typical_day: null,
     list_closed_at: null,
+    log: [],
     routines: [],
     routines_are_loggable: true,
     paused_routines: [],
@@ -1819,6 +1820,115 @@ describe("DayRoute, the line under the list", () => {
     expect(
       screen.queryByText(/more than the day usually holds/),
     ).not.toBeInTheDocument();
+  });
+});
+
+function logLine(overrides: Record<string, unknown> = {}) {
+  return {
+    at: "2026-08-03T09:15:00+00:00",
+    kind: "written",
+    text: "Neighbour asked about the fence",
+    detail: "",
+    subject_withheld: false,
+    ...overrides,
+  };
+}
+
+describe("DayRoute, the log", () => {
+  // superlists-2.0-plan.md rule 6: the log is a read, not a table -- and rule
+  // 5, a tick is a log line with a time.
+
+  it("shows what happened, with the time it happened", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(dayData({ log: [logLine()] })),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    const line = (await screen.findByText("Neighbour asked about the fence")).closest(
+      "li",
+    )!;
+    expect(line).toHaveTextContent(/\d{1,2}:\d{2}/);
+  });
+
+  it("says which kind of thing each line was", async () => {
+    // "each saying which it is" -- a tick, a note and a payment read the same
+    // without it, and the log stops being a record of anything in particular.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        dayData({
+          log: [
+            logLine({ kind: "completed", text: "Fix the fence latch" }),
+            logLine({ kind: "bill", text: "Car insurance", detail: "412.00 USD" }),
+          ],
+        }),
+      ),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    const latch = (await screen.findByText("Fix the fence latch")).closest("li")!;
+    expect(latch).toHaveTextContent(/done/i);
+    const bill = screen.getByText("Car insurance").closest("li")!;
+    expect(bill).toHaveTextContent(/paid/i);
+    expect(bill).toHaveTextContent("412.00 USD");
+  });
+
+  it("keeps a completion that was later reopened", async () => {
+    // Rule 6's correction. A read from `completed_at` would show only the
+    // reopen, and what actually happened must never change retroactively.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        dayData({
+          log: [
+            logLine({
+              kind: "completed",
+              text: "Fix the fence latch",
+              at: "2026-08-03T14:02:00+00:00",
+            }),
+            logLine({
+              kind: "reopened",
+              text: "Fix the fence latch",
+              at: "2026-08-03T14:05:00+00:00",
+            }),
+          ],
+        }),
+      ),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    const lines = await screen.findAllByText("Fix the fence latch");
+    expect(lines).toHaveLength(2);
+    expect(lines[0].closest("li")).toHaveTextContent(/done/i);
+    expect(lines[1].closest("li")).toHaveTextContent(/reopened/i);
+  });
+
+  it("keeps a line whose subject is gone rather than dropping it", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        dayData({
+          log: [
+            logLine({ kind: "completed", text: null, subject_withheld: true }),
+          ],
+        }),
+      ),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    expect(await screen.findByText(/no longer/i)).toBeInTheDocument();
+  });
+
+  it("says nothing rather than showing an empty log", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(dayData({ log: [] })),
+    );
+
+    renderAt("/day/2026-08-03");
+
+    await screen.findByLabelText("Intentions");
+    expect(screen.queryByRole("heading", { name: "Log" })).toBeNull();
   });
 });
 

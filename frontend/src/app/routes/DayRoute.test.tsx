@@ -154,40 +154,30 @@ function renderAt(path: string, stored = dayData()) {
 afterEach(() => vi.restoreAllMocks());
 
 describe("DayRoute", () => {
-  it("shows what was already written for the day", async () => {
+  it("no longer offers anywhere to write the day in prose", async () => {
+    // ~~"shows what was already written for the day"~~, ~~"sends only the
+    // day's own text when saving"~~, ~~"does not overwrite what is being typed
+    // when the query refetches"~~ and ~~"does not lose a half-written day when
+    // something is pinned"~~ -- **September 4, 2026, Vince's call**: Intentions,
+    // Grateful for and Happenings left the Day page, and the save with them.
+    //
+    // The page had two ways of writing into it. The composer puts a line in
+    // the log as it happens; these asked, at the end, for the same day in
+    // prose. Asserted as an absence rather than dropped quietly, because the
+    // columns, the API and every read of them are untouched -- what left is
+    // the editor, and a stray textarea reappearing here would be the feature
+    // coming back by accident.
     vi.spyOn(globalThis, "fetch").mockImplementation(() =>
       jsonResponse(dayData({ intentions: "Finish the slice", gratitude: "Rain" })),
     );
 
     renderAt("/day/2026-08-03");
 
-    expect(await screen.findByLabelText("Intentions")).toHaveValue(
-      "Finish the slice",
-    );
-    expect(screen.getByLabelText("Grateful for")).toHaveValue("Rain");
-  });
-
-  it("sends only the day's own text when saving", async () => {
-    const fetchSpy = vi
-      .spyOn(globalThis, "fetch")
-      .mockImplementation((input) => {
-        const request = input as Request;
-        if (request.method === "PATCH") {
-          return jsonResponse(dayData({ intentions: "Ship it" }));
-        }
-        return jsonResponse(dayData());
-      });
-
-    renderAt("/day/2026-08-03");
-    const intentions = await screen.findByLabelText("Intentions");
-    await userEvent.type(intentions, "Ship it");
-    await userEvent.click(screen.getByRole("button", { name: "Save the day" }));
-
-    await waitFor(() => expect(screen.getByText("Saved.")).toBeInTheDocument());
-    const patch = fetchSpy.mock.calls
-      .map(([input]) => input as Request)
-      .find((request) => request.method === "PATCH");
-    expect(patch?.url).toContain("/api/v1/day/2026-08-03");
+    await screen.findByLabelText("Capture a thought");
+    for (const label of ["Intentions", "Grateful for", "Happenings"]) {
+      expect(screen.queryByLabelText(label)).toBeNull();
+    }
+    expect(screen.queryByRole("button", { name: "Save the day" })).toBeNull();
   });
 
   it("labels the day as Today only when the server says it is", async () => {
@@ -213,44 +203,9 @@ describe("DayRoute", () => {
 
     renderAt("/day");
 
-    await screen.findByLabelText("Intentions");
+    await screen.findByLabelText("Capture a thought");
     const url = (fetchSpy.mock.calls[0][0] as Request).url;
     expect(url).toMatch(/\/api\/v1\/day$/);
-  });
-
-  it("does not overwrite what is being typed when the query refetches", async () => {
-    // The bug PreferencesRoute already had: an alt-tab refetch that seeds
-    // the form again silently restores the stored text over an edit in
-    // progress, and the save that follows reports success for the wrong
-    // value.
-    const client = new QueryClient({
-      defaultOptions: { queries: { retry: false } },
-    });
-    // This one renders its own tree rather than going through `renderAt`, so
-    // it routes the pool panel's request itself -- see `renderAt` for why the
-    // panel is not made to tolerate a payload that is not a pool.
-    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
-      const url = typeof input === "string" ? input : (input as Request).url;
-      if (url.includes("/api/v1/pool")) return jsonResponse(emptyPool());
-      return jsonResponse(dayData({ intentions: "Stored text" }));
-    });
-
-    render(
-      <QueryClientProvider client={client}>
-        <MemoryRouter initialEntries={["/day/2026-08-03"]}>
-          <Routes>
-            <Route path="/day/:date" element={<DayRoute />} />
-          </Routes>
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
-
-    const intentions = await screen.findByLabelText("Intentions");
-    await userEvent.clear(intentions);
-    await userEvent.type(intentions, "Half a thought");
-    await client.refetchQueries({ queryKey: ["day", "2026-08-03"] });
-
-    await waitFor(() => expect(intentions).toHaveValue("Half a thought"));
   });
 
   it("lists today's action items with the agenda's own due labels", async () => {
@@ -500,9 +455,12 @@ describe("DayRoute", () => {
     ).toHaveLength(0);
   });
 
-  it("keeps capture separate from the day's own save", async () => {
-    // The C2 failure mode, refused on new surface: two controls that look
-    // alike and mean different things.
+  it("says what the composer's box is for, now that it is the only one", async () => {
+    // ~~"keeps capture separate from the day's own save"~~ -- the C2 failure
+    // mode was two controls that look alike and mean different things, and
+    // there is one control since the day's own save left on September 4, 2026.
+    // What the test still holds is the half that survives: the page says what
+    // this box does.
     vi.spyOn(globalThis, "fetch").mockImplementation(() =>
       jsonResponse(dayData()),
     );
@@ -511,9 +469,6 @@ describe("DayRoute", () => {
 
     await screen.findByLabelText("Capture a thought");
     expect(screen.getByRole("button", { name: "Add" })).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Save the day" }),
-    ).toBeInTheDocument();
     // The sentence changed with the box: it said "goes to the Inbox to sort
     // out later" long after the Inbox was deleted, and now says what the four
     // destinations actually are. What the test is holding is unchanged --
@@ -776,7 +731,7 @@ describe("DayRoute", () => {
 
     renderAt("/day/2026-08-03");
 
-    await screen.findByLabelText("Happenings");
+    await screen.findByLabelText("Capture a thought");
     expect(screen.queryByText("Since yesterday")).not.toBeInTheDocument();
   });
 
@@ -807,7 +762,7 @@ describe("DayRoute", () => {
 
     renderAt("/day/2026-08-03");
 
-    await screen.findByLabelText("Happenings");
+    await screen.findByLabelText("Capture a thought");
     expect(screen.queryByText(/close the day/i)).not.toBeInTheDocument();
   });
 
@@ -1037,30 +992,6 @@ describe("DayRoute", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("does not lose a half-written day when something is pinned", async () => {
-    // Pinning returns the whole day, which lands in the cache. If that
-    // reseeded the form it would silently discard whatever was being typed.
-    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
-      const request = input as Request;
-      if (request.method === "POST") {
-        return jsonResponse(
-          dayData({ action_items: [actionItem()], focus: [focusRow()] }),
-        );
-      }
-      return jsonResponse(dayData({ action_items: [actionItem()] }));
-    });
-
-    renderAt("/day/2026-08-03");
-    const intentions = await screen.findByLabelText("Intentions");
-    await userEvent.type(intentions, "Half a thought");
-    await userEvent.click(screen.getByRole("button", { name: "Pin to today" }));
-
-    await waitFor(() =>
-      expect(screen.queryByText(/Nothing pinned yet/)).not.toBeInTheDocument(),
-    );
-    expect(intentions).toHaveValue("Half a thought");
-  });
-
   it("shows a pinned task whose task has been deleted, without an unpin", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(() =>
       jsonResponse(
@@ -1249,7 +1180,7 @@ describe("DayRoute", () => {
 
     renderAt("/day/2026-08-03");
 
-    await screen.findByLabelText("Intentions");
+    await screen.findByLabelText("Capture a thought");
     expect(screen.queryByText(/Edit your compass/)).not.toBeInTheDocument();
   });
 
@@ -1960,7 +1891,7 @@ describe("DayRoute, the log", () => {
 
     renderAt("/day/2026-08-03");
 
-    await screen.findByLabelText("Intentions");
+    await screen.findByLabelText("Capture a thought");
     expect(screen.queryByRole("heading", { name: "Log" })).toBeNull();
   });
 });
@@ -2096,7 +2027,7 @@ describe("DayRoute, the evening", () => {
 
     renderAt("/day/2026-08-03");
 
-    await screen.findByText("Close the day");
+    await screen.findByText("The day, read back");
     for (const name of [
       /Book dentist to tomorrow/i,
       /Book dentist back to the pool/i,
@@ -2121,7 +2052,7 @@ describe("DayRoute, the evening", () => {
 
     renderAt("/day/2026-08-03");
 
-    await screen.findByText("Close the day");
+    await screen.findByText("The day, read back");
     // Three buttons per row and no fourth for the set. `/all/i` matched the
     // per-row ones, which is what the first version of this got wrong.
     expect(
@@ -2196,7 +2127,7 @@ describe("DayRoute, the evening", () => {
 
     renderAt("/day/2026-08-03");
 
-    const heading = await screen.findByText("Close the day");
+    const heading = await screen.findByText("The day, read back");
     // Scoped to the closing block: "only" appears in prose elsewhere on the
     // page, and what rule 12 forbids is a verdict *about the numbers*.
     const block = heading.closest("section")!;

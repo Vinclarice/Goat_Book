@@ -327,19 +327,27 @@ class DayClosing:
 
 
 def closing_for(owner, day, *, today, hour):
-    """Whether to ask for the day's record, and what to say while asking.
+    """The day read back, and one decision on each thing left over.
 
     S5's missing half. `DailyEntry.happenings` and `DailyFocus` were already
     good; nothing ever asked.
 
-    **Only for today, and only in the evening.** A prompt on a past day would
-    ask somebody to reconstruct one, and the record is worth reading in six
-    months precisely because it was written while it was still true. A day
-    nobody answered closes unclosed, which is itself a fact -- `DailyEntry` has
-    no deleted or archived state for the same reason.
+    **Only for today, and only in the evening.** A readback on a past day would
+    be a verdict on something that cannot be changed, and the leftovers are
+    decisions about *tomorrow*. A day nobody answered closes unclosed, which is
+    itself a fact -- `DailyEntry` has no deleted or archived state for the same
+    reason.
 
-    **It stops once the record exists.** The ask is for the writing, so a
-    prompt that stayed after it would be nagging about something done.
+    **~~It stops once the record exists.~~ It does not stop, since September 4,
+    2026.** That gate existed because this block *asked* for the day's writing,
+    and a prompt that stayed after the writing would be nagging about something
+    done. The three prose fields left the Day page on Vince's call, so there is
+    nothing to ask for and nothing to stop for: what is left is the numbers and
+    rule 7's three moves, and a leftover does not stop needing a decision
+    because somebody wrote a paragraph.
+
+    **`closing_summary_for` keeps the gate**, because the evening mail still
+    asks. The two used to be one question and are now two -- see there.
 
     **The counts are `planned_in_week`'s, for a one-day window** -- the same
     borrowing `typical_day_for` does, because D2 is explicit that two
@@ -350,21 +358,32 @@ def closing_for(owner, day, *, today, hour):
     """
     if day != today or hour < CLOSING_HOUR:
         return None
-    return closing_summary_for(owner, day)
+    return _what_the_day_held(owner, day)
 
 
 def closing_summary_for(owner, day):
     """What the day held, or None once the record exists.
 
-    Split out of `closing_for` so the evening mail and the page ask the same
-    question. The page's gate is *today, and evening*; the mail's is the
-    scheduler's own window, which has already decided both by the time it
-    composes. What neither may decide twice is what the day held and whether
-    it has already been written -- so that lives here.
+    **The evening mail's question, and only its**, since September 4, 2026.
+    This was split out of `closing_for` so the mail and the page asked the same
+    thing; they no longer do. The page reads the day back and offers the three
+    moves whatever has been written, because a leftover still needs deciding.
+    The mail *asks for the writing*, so it still stops once the writing exists.
+
+    **Which leaves the mail asking for something the Day page cannot answer.**
+    Nobody has `closing_nudge` switched on -- checked on the host, September 4,
+    2026 -- so this is latent rather than live, and it is recorded as an open
+    consequence in `superlists-2.0-plan.md` rather than fixed by guessing at
+    what the mail should say instead. That depends on whether the three prose
+    fields have a future at all, which is a decision Vince deferred.
     """
     entry = entry_for(owner, day)
     if entry is not None and entry.happenings.strip():
         return None
+    return _what_the_day_held(owner, day)
+
+
+def _what_the_day_held(owner, day):
     from review import reads as review_reads
 
     planned = review_reads.planned_in_week(owner, day, day)

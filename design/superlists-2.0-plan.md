@@ -599,6 +599,48 @@ cheapest evidence there is, not because it gates 1 and 2.
    strength of the code existing would be the failure `CLAUDE.md` opens with,
    in the other direction.
 
+## What the day no longer asks for
+
+**Vince's call, September 4, 2026, after the deploy**: *Intentions*, *Grateful
+for* and *Happenings* leave the Day page, and *Close the day*'s ask goes with
+them. The page had grown two ways of writing into it — the composer puts a line
+in the log as it happens, and these asked at the end for the same day in prose
+— and once the log carries what happened line by line, the second is the one
+paying rent it no longer earns.
+
+**What stayed.** The composer, whole. And the evening's readback, under the
+mockup's own heading, *The day, read back*: the numbers, and rule 7's three
+moves on each leftover. Those are decisions rather than an ask, and a leftover
+does not stop needing one because somebody wrote a paragraph — which is why
+`closing_for` dropped its *stops once written* gate while
+`closing_summary_for`, which the evening mail uses, kept it.
+
+**What was not touched, deliberately.** `DailyEntry` keeps all three columns;
+`search_entries`, `written_in_week` and `propose_journal_commitments` still
+read them; `PATCH /api/v1/day` still accepts them. Only the editor left.
+**Whether the columns have a future is deferred** — Vince's answer when asked
+was *decide that later* — so nothing here is destructive and one commit puts
+the fields back.
+
+**Two live consequences, promoted here rather than buried in the decision that
+caused them.**
+
+- **`propose_journal_commitments` has no live writer any more.** Its only
+  trigger was this form. The call chain is intact — `write_entry` still invokes
+  it and `PATCH /api/v1/day` still reaches `write_entry` — so no guard fires,
+  and that is precisely why it is written down: this is the shape of a dark
+  seam that `test_dark_services_declare_their_deferral` cannot see, because
+  what went missing is the *person*, not the caller. It was answered as D5 the
+  same day and is unreachable by the evening. Either `happenings` gets a
+  surface again or the producer is retired with it; both wait on the deferred
+  question above.
+- **The evening mail asks for something the Day page cannot answer.**
+  `send_closing_nudge` says *what happened today, while it is still true?* and
+  links to a page with no box. **Latent rather than live** — nobody has
+  `closing_nudge` switched on, checked on the host on September 4, 2026 — and
+  left alone on purpose, because what the mail should say instead depends on
+  the same deferred question.
+
 ## Decisions
 
 Open until struck. A header may state a decision and never a tally, so this
@@ -654,6 +696,10 @@ section is the status of what is undecided and nothing above summarises it.
   the morning pick is what makes a plan real, so proposing a task from it would
   be the producer arguing with a decision already taken; `gratitude` is not
   about undertakings at all.
+  **And the field it reads lost its editor the same day** — see *What the day
+  no longer asks for* above, which is where that consequence lives. The answer
+  here is unchanged and now unreachable, which is a fact about the surface
+  rather than about the decision.
   **Narrowed by span rather than by reading a different string.** `entry_body`
   stays the one definition offsets index into — `Facet.cited_text` reads them
   back out of it, and a producer reading `happenings` alone would have shifted

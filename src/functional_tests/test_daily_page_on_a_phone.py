@@ -85,8 +85,13 @@ class DailyPageOnAPhoneTest(BrowserTest):
         self.log_in(self.user)
         self.visit("/app/day")
 
-        # The compass, the two lists, capture, and the day's own writing --
-        # the whole assembled page from slices 1 through 6.
+        # The compass, the two lists and the composer.
+        #
+        # ~~and the day's own writing~~ -- Intentions, Grateful for and
+        # Happenings left the page on September 4, 2026, Vince's call. The
+        # list is the point of this test, so an entry that stops existing has
+        # to stop being asserted, deliberately; the absence is held in
+        # `DayRoute.test.tsx`, which is where a stray textarea would reappear.
         expect(
             self.page.get_by_text("Build something worth maintaining.")
         ).to_be_visible()
@@ -95,9 +100,7 @@ class DailyPageOnAPhoneTest(BrowserTest):
             self.page.get_by_role("heading", level=2, name="Action items")
         ).to_be_visible()
         expect(self.page.get_by_label("Capture a thought")).to_be_visible()
-        expect(self.page.get_by_label("Intentions")).to_be_visible()
-        expect(self.page.get_by_label("Grateful for")).to_be_visible()
-        expect(self.page.get_by_label("Happenings")).to_be_visible()
+        expect(self.page.get_by_label("Where this goes")).to_be_visible()
 
     def test_no_control_is_clipped_off_the_right_edge(self):
         """Visible is not the same as reachable.
@@ -109,7 +112,11 @@ class DailyPageOnAPhoneTest(BrowserTest):
         self.a_full_day()
         self.log_in(self.user)
         self.visit("/app/day")
-        expect(self.page.get_by_role("button", name="Save the day")).to_be_visible()
+        # Waited on ~~"Save the day"~~ until it left with the day's writing;
+        # the composer's own button is the last control down the page now, and
+        # waiting for *something* is what stops this measuring a half-rendered
+        # page and finding nothing clipped.
+        expect(self.page.get_by_role("button", name="Add", exact=True)).to_be_visible()
 
         width = self.page.evaluate("document.documentElement.clientWidth")
         clipped = []
@@ -144,15 +151,22 @@ class DailyPageOnAPhoneTest(BrowserTest):
 
         expect(self.page).to_have_url(f"{self.live_server_url}/app/day")
 
-    def test_the_day_can_still_be_written_and_saved_on_a_phone(self):
-        """Fits is necessary and not sufficient -- the point is using it."""
+    def test_a_line_can_still_be_written_into_the_day_on_a_phone(self):
+        """Fits is necessary and not sufficient -- the point is using it.
+
+        ~~"the day can still be written and saved"~~ meant the three prose
+        fields, which left the page on September 4, 2026. What the claim was
+        always about is that a phone-width day is *usable*, and the composer is
+        what there is to use -- so the journey moves to it rather than going
+        with the fields.
+        """
         self.log_in(self.user)
         self.visit("/app/day")
 
-        self.page.get_by_label("Intentions").fill("Typed on a phone")
-        self.page.get_by_role("button", name="Save the day").click()
+        self.page.get_by_label("Capture a thought").fill("Typed on a phone")
+        self.page.get_by_role("button", name="Add", exact=True).click()
 
-        expect(self.page.get_by_text("Saved.")).to_be_visible()
+        expect(self.page.get_by_text("Kept as a note.")).to_be_visible()
 
     def test_a_thought_can_be_captured_on_a_phone(self):
         """Rapid logging is the affordance the vision document calls

@@ -125,13 +125,36 @@ class ClosingTheDayTest(TestCase):
             self.closing(day=TUESDAY + timedelta(days=1), today=TUESDAY)
         )
 
-    def test_it_stops_asking_once_the_day_has_been_written(self):
-        """The ask is for the record, so it ends when the record exists. A
-        prompt that stayed would be nagging about something already done."""
+    def test_it_keeps_reading_the_day_back_after_something_is_written(self):
+        """~~"it stops asking once the day has been written"~~ --
+        **September 4, 2026, Vince's call**: the three prose fields left the Day
+        page, so this block no longer asks for anything.
+
+        The gate existed because a prompt that stayed after the writing would
+        be nagging about something done. What is left is the numbers and rule
+        7's three moves, and **a leftover does not stop needing a decision
+        because somebody wrote a paragraph.** The evening mail still asks and
+        still stops -- `closing_summary_for` keeps the gate, and the test
+        below holds it.
+        """
         self.pin("Pay rent")
         services.write_entry(self.alice, TUESDAY, happenings="Rained all day.")
 
-        self.assertIsNone(self.closing())
+        closing = self.closing()
+        self.assertIsNotNone(closing)
+        self.assertEqual([each.text for each in closing.leftovers], ["Pay rent"])
+
+    def test_the_evening_mail_still_stops_once_the_day_is_written(self):
+        """The half that is still an ask, and therefore still stops. The two
+        were one question until the fields left the page; keeping the mail's
+        gate is what stops it nagging for something already done.
+        """
+        from daily import reads
+
+        self.pin("Pay rent")
+        services.write_entry(self.alice, TUESDAY, happenings="Rained all day.")
+
+        self.assertIsNone(reads.closing_summary_for(self.alice, TUESDAY))
 
     def test_a_day_nobody_planned_is_still_worth_closing(self):
         """The record is the point, not the score. A day with no pins can

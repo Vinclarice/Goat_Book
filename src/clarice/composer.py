@@ -4,11 +4,12 @@
 and *is it for today?* -- so there are four destinations and one existing
 service underneath all of them:
 
-    Destination   Node   Facet and Item   Pin               Completed
-    Note          yes    no               no                --
-    Did           yes    yes              below the line    yes
-    Today         yes    yes              below the line    no
-    Pool          yes    yes              no                no
+    Destination   Node   Facet and Item   Pin                  Completed
+    Note          yes    no               no                   --
+    Did           yes    yes              below the line       yes
+    Today         yes    yes              whichever side the   no
+                                          day is already on
+    Pool          yes    yes              no                   no
 
 **Every line is a `Node` first**, which is what makes the log an intake pipe
 rather than a second task list: a line is searchable, mentionable and
@@ -59,11 +60,28 @@ DESTINATIONS = (NOTE, DID, TODAY, POOL)
 #: what it was.
 MAKE_A_TASK = frozenset({DID, TODAY, POOL})
 
-#: The two that are acts of execution -- `superlists-2.0-plan.md` rule 3, whose
-#: enumeration is *a tick on a chosen task, or a Did or Today line*. Increment
-#: 2 built the tick, in `lists.services`; this is the other half, and the two
+#: The two that go on today's list.
+PIN_TO_TODAY = frozenset({DID, TODAY})
+
+#: What is an act of execution -- `superlists-2.0-plan.md` rule 3. Increment 2
+#: built the tick, in `lists.services`; this is the other half, and the two
 #: sites are the whole of it.
-DRAW_THE_LINE = frozenset({DID, TODAY})
+#:
+#: **~~`{DID, TODAY}`~~ -- Today left on September 4, 2026**, and rule 3's
+#: enumeration changed with it. It was there because the plan said *a Did or
+#: Today line*, and the evidence against it is what the rule was written to
+#: prevent: at eight in the morning on a day nothing had happened yet, the
+#: first thing you added to your own list drew the line and landed *below* it,
+#: so the morning's set stayed empty and every subsequent pick joined late.
+#: That is *"capturing an early thought would finish the morning's planning by
+#: accident"* arriving through the one door the rule left open.
+#:
+#: **Writing down something to do later today is planning, not execution.**
+#: Doing it is. So Today pins and nothing else, and which side of the line it
+#: lands on falls out of whether the day's work has started -- which is what
+#: the line is for, and what `pin_task` from the pool has always done. One word,
+#: one meaning, two controls that agree.
+DRAW_THE_LINE = frozenset({DID})
 
 
 class ComposerError(Exception):
@@ -80,13 +98,14 @@ def write_a_line(owner, *, text, destination, now, captured_at=None, public_id=N
     no live task"* is not a state anything can reach -- and a Did line adds a
     pin and a completion to that same all-or-nothing.
 
-    **The line is drawn before the pin, not after.** A Did or Today line is an
-    act of execution, so it closes the morning's list -- and then joins *below*
-    what it just closed, which is the plan's table. Drawing afterwards would
-    stamp `list_closed_at` later than the pin's `selected_at` and put the line
-    that ended the morning inside it. The ordinary tick in `lists.services` has
-    the opposite shape for the same rule: there the pin was made hours earlier
-    and belongs above.
+    **A Did draws the line before it pins; a Today draws nothing.** Doing
+    something is an act of execution, so it closes the morning's list and then
+    joins *below* what it just closed -- drawing afterwards would stamp
+    `list_closed_at` later than the pin's `selected_at` and put the line that
+    ended the morning inside it. Writing down something to do later today is
+    planning, so it just pins, and which side it lands on is decided by whether
+    the day's work has already started. See `DRAW_THE_LINE` for why Today left
+    that set on September 4, 2026.
 
     **The day pinned to is the owner's today, whatever `captured_at` says.**
     *Today* means today. A capture that waited in a phone's offline queue keeps
@@ -139,8 +158,15 @@ def write_a_line(owner, *, text, destination, now, captured_at=None, public_id=N
             node, now=now, actor=owner.get_username()
         )
         today = clocks.day_for(owner, now)
-        if destination in DRAW_THE_LINE:
-            daily_services.draw_the_line(owner, today, now=now)
+        if destination in PIN_TO_TODAY:
+            # **Before the pin, for a Did.** A Did is an act of execution, so
+            # it closes the morning's list and then joins below what it just
+            # closed. Drawing afterwards would stamp `list_closed_at` later
+            # than the pin's `selected_at` and put the line that ended the
+            # morning inside it. A Today draws nothing, so it lands wherever
+            # the day already is.
+            if destination in DRAW_THE_LINE:
+                daily_services.draw_the_line(owner, today, now=now)
             daily_services.pin_task(owner, today, facet.task)
         if destination == DID:
             task_services.complete_item(facet.task)

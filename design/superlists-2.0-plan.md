@@ -55,11 +55,23 @@ just *the line*, from here on.
    from the pool, or was made the evening before. It is finite because it was
    made before the day started.
 3. **The first act of execution draws the line.** Ticking a chosen task, or a
-   Did or Today line from the composer. A Note, a Pool capture, an appointment
-   passing and every other derived event do not — otherwise capturing an early
-   thought would finish the morning's planning by accident. Mechanical rather
-   than a button, so it cannot be forgotten: the only way to avoid it is to
-   execute nothing all day. Nothing more can join *above* it after that.
+   ~~Did or Today line~~ **Did line** from the composer. A Note, ~~a Today
+   line~~, a Pool capture, an appointment passing and every other derived event
+   do not — otherwise capturing an early thought would finish the morning's
+   planning by accident. Mechanical rather than a button, so it cannot be
+   forgotten: the only way to avoid it is to execute nothing all day. Nothing
+   more can join *above* it after that.
+
+   **Today left this list on September 4, 2026, and the evidence is the
+   accident the rule was written to prevent.** At eight in the morning on a day
+   nothing had happened yet, the first thing you added to your own list drew
+   the line and landed *below* it — so the morning's set stayed empty and every
+   later pick joined late. Writing down something to do later today is
+   planning; doing it is execution. So a Today line pins and draws nothing, and
+   which side of the line it lands on falls out of whether the day's work has
+   started — which is what the line is for, and what `pin_task` from the pool
+   has always done. Two controls called *Today* now agree, where they used to
+   do opposite things on the same untouched morning.
 4. **The line is a boundary, not a wall.** What joins later — done on the spot,
    or added to do later today — sits *below* it, visibly, and is counted apart.
    Forster's strict closed list was tried in the mockup and rejected by Vince
@@ -178,7 +190,7 @@ today?* — so there are four destinations and one existing service:
 |---|---|---|---|---|
 | **Note** | yes | no | no | — |
 | **Did** | yes | yes | below the line | yes |
-| **Today** | yes | yes | below the line | no |
+| **Today** | yes | yes | whichever side the day is on | no |
 | **Pool** | yes | yes | no | no |
 
 Every line is a `Node` first, which is what makes the log an intake pipe: a
@@ -186,6 +198,9 @@ line is searchable, mentionable and proposable the moment it is written. The
 morning pick is the same facet confirmed with a pin *above* the line — a pin
 whose `selected_at` precedes `list_closed_at`. **Above or below is not a
 field**; it is a comparison of two timestamps the tables already carry.
+
+**A Today line draws no line**, unlike a Did — see rule 3, corrected on
+September 4, 2026 after the morning's list turned out to be unbuildable.
 
 **Which destination the box defaults to is D9**, not a settled fact. The first
 draft said Did. The objection is that Did creates a completed task for every
@@ -416,12 +431,14 @@ cheapest evidence there is, not because it gates 1 and 2.
    pipelines this redesign is undoing.
 
    **The line is drawn before the pin, not after**, and that is the one thing
-   the table above could not have told you. A Did or Today line is an act of
-   execution, so it closes the morning's list — and then joins *below* what it
-   just closed. Drawing afterwards would stamp `list_closed_at` later than the
-   pin's `selected_at` and put the line that ended the morning inside it. The
-   ordinary tick has the opposite shape for the same rule, because there the
-   pin was made hours earlier.
+   the table above could not have told you. A Did ~~or Today~~ line is an act
+   of execution, so it closes the morning's list — and then joins *below* what
+   it just closed. Drawing afterwards would stamp `list_closed_at` later than
+   the pin's `selected_at` and put the line that ended the morning inside it.
+   The ordinary tick has the opposite shape for the same rule, because there
+   the pin was made hours earlier. **A Today line stopped drawing it on
+   September 4, 2026** — see rule 3, corrected after the morning's list turned
+   out to be unbuildable.
 
    **`mind.services.attach_commitment` is the other door to
    `confirm_actionable`**, and it does not go round `propose_facet`'s refusal of

@@ -157,7 +157,18 @@ class WhatIsLeftOverTest(CrossCoreTestCase):
     def test_something_that_joined_below_the_line_is_left_over_too(self):
         """Rule 7 says *each unfinished pin, above or below the line*. A thing
         added at noon and not done is still a thing to decide about.
+
+        The Did line comes first and is not decoration: since September 4, 2026
+        a Today line draws nothing, so on an untouched day it would be part of
+        the *chosen* set. What puts it below the line is the day having
+        started, which is the whole point of the line.
         """
+        composer.write_a_line(
+            self.alice,
+            text="Started the day",
+            destination=composer.DID,
+            now=timezone.now(),
+        )
         composer.write_a_line(
             self.alice,
             text="Call the vet back",
@@ -165,6 +176,7 @@ class WhatIsLeftOverTest(CrossCoreTestCase):
             now=timezone.now(),
         )
 
+        # "Started the day" is done, so it is not left over; the Today line is.
         self.assertEqual(
             [(each.text, each.above_the_line) for each in self.closing().leftovers],
             [("Call the vet back", False)],

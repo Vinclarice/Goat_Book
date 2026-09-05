@@ -82,13 +82,37 @@ class TheFourDestinationsTest(TestCase):
         self.assertEqual(daily_reads.focus_for(self.owner, self.today), [])
         self.assertIsNone(self.closed_at())
 
-    def test_today_makes_a_task_and_puts_it_below_the_line(self):
+    def test_today_joins_the_chosen_list_on_a_day_nothing_has_happened_on(self):
+        """~~"puts it below the line"~~ -- **September 4, 2026.** At eight in
+        the morning on an untouched day, the first thing you add to your own
+        list has to *be* your list. It drew the line and landed below it, so
+        the morning's set stayed empty and every later pick joined late -- the
+        exact accident rule 3 was written to prevent, through the one door it
+        left open.
+        """
         self.write("Call the vet back", composer.TODAY)
 
         bounded = daily_reads.bounded_list_for(self.owner, self.today)
-        self.assertEqual(bounded.chosen, [])
-        self.assertEqual([each.task_text for each in bounded.joined], ["Call the vet back"])
+        self.assertEqual([each.task_text for each in bounded.chosen], ["Call the vet back"])
+        self.assertEqual(bounded.joined, [])
+        self.assertIsNone(self.closed_at())
         self.assertEqual(Item.objects.get(owner=self.owner).status, Item.Status.ACTIVE)
+
+    def test_today_joins_below_the_line_once_the_day_has_started(self):
+        """And the other half, which is what makes it one rule rather than a
+        special case: where a Today line lands is decided by whether the work
+        has begun, not by the destination.
+        """
+        self.write("Fixed the fence latch", composer.DID)
+
+        self.write("Call the vet back", composer.TODAY)
+
+        bounded = daily_reads.bounded_list_for(self.owner, self.today)
+        self.assertEqual(
+            [each.task_text for each in bounded.joined],
+            ["Fixed the fence latch", "Call the vet back"],
+        )
+        self.assertEqual(bounded.chosen, [])
 
     def test_did_makes_a_task_below_the_line_and_finishes_it(self):
         self.write("Fix the fence latch", composer.DID)
@@ -100,16 +124,20 @@ class TheFourDestinationsTest(TestCase):
             Item.objects.get(owner=self.owner).status, Item.Status.COMPLETED
         )
 
-    def test_a_did_and_a_today_both_draw_the_line(self):
-        """Rule 3's other half. Increment 2 built the tick; this is the
-        composer, and both are acts of execution.
+    def test_a_did_draws_the_line_and_a_today_does_not(self):
+        """Rule 3's other half, corrected. Increment 2 built the tick; a Did is
+        the composer's version of it. **A Today is not** -- writing down
+        something to do later today is planning, and a rule that ended the
+        morning on it would be the accident rule 3 exists to prevent.
         """
-        for destination in (composer.DID, composer.TODAY):
-            with self.subTest(destination=destination):
-                DailyEntry.objects.filter(owner=self.owner).delete()
-                Item.objects.filter(owner=self.owner).delete()
-                self.write(f"a {destination} line", destination)
-                self.assertIsNotNone(self.closed_at())
+        self.write("a did line", composer.DID)
+        self.assertIsNotNone(self.closed_at())
+
+        DailyEntry.objects.filter(owner=self.owner).delete()
+        Item.objects.filter(owner=self.owner).delete()
+
+        self.write("a today line", composer.TODAY)
+        self.assertIsNone(self.closed_at())
 
     def test_a_pool_line_leaves_the_list_open(self):
         """A commitment made is not a commitment kept: filing something for
@@ -214,11 +242,24 @@ class TheComposerOverTheApiTest(TestCase):
             Item.objects.get(owner=self.owner).status, Item.Status.COMPLETED
         )
 
-    def test_a_today_line_lands_below_the_line(self):
+    def test_a_today_line_joins_the_list_wherever_the_day_already_is(self):
+        """~~"lands below the line"~~ -- September 4, 2026. A Today line pins
+        and draws nothing, so on an untouched day it is part of the set you
+        chose, and after the first tick it joins below it.
+        """
         self.post({"text": "Call the vet back", "destination": "today"})
 
         bounded = daily_reads.bounded_list_for(self.owner, self.today)
-        self.assertEqual([each.task_text for each in bounded.joined], ["Call the vet back"])
+        self.assertEqual([each.task_text for each in bounded.chosen], ["Call the vet back"])
+
+        self.post({"text": "Fixed the fence latch", "destination": "did"})
+        self.post({"text": "Ring the fencing people", "destination": "today"})
+
+        bounded = daily_reads.bounded_list_for(self.owner, self.today)
+        self.assertEqual(
+            [each.task_text for each in bounded.joined],
+            ["Fixed the fence latch", "Ring the fencing people"],
+        )
 
     def test_an_unknown_destination_is_a_bad_request_not_a_silent_note(self):
         """A queued client treats 400 as permanent, which this is: the server

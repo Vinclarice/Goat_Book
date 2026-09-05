@@ -232,6 +232,83 @@ function DayLog({ log }: { log: LogLine[] }) {
   );
 }
 
+/**
+ * Put a new task straight on today's list.
+ *
+ * Vince's ask, September 4, 2026. The composer's *Today* destination does the
+ * same thing and is two controls away — a select and a button — which is the
+ * long way round when what you are doing is building the morning's list. This
+ * is the short way, and **it posts the same request**: one endpoint, one
+ * meaning, no second definition of what *today* does to a line.
+ *
+ * **Above the line, before the day starts.** It pins and draws nothing, so a
+ * task added at eight in the morning is part of the set you chose and one
+ * added at three joins below it. That is the line doing its own work rather
+ * than this control deciding — see `clarice.composer.DRAW_THE_LINE`, which
+ * stopped counting a Today line as execution on the same day.
+ *
+ * Not on a past day: the endpoint refuses one, and a box that answers 409 is
+ * worse than no box.
+ */
+function AddToTheList({ onAdded }: { onAdded: () => void }) {
+  const [text, setText] = useState("");
+
+  const add = useMutation({
+    mutationFn: async (line: string) => {
+      const { error } = await apiV1.POST("/api/v1/capture", {
+        body: { text: line, tags: [], destination: "today" },
+      });
+      if (error) throw new Error("Couldn't add that. It's still here.");
+    },
+    onSuccess: () => {
+      // Cleared only now — principles.md: a thought must not be lost to a
+      // failed request, so the box empties on success and never on the way.
+      setText("");
+      onAdded();
+    },
+  });
+
+  function handleSubmit(event: FormEvent) {
+    event.preventDefault();
+    if (!text.trim()) return;
+    add.mutate(text);
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-wrap items-center gap-2">
+      {/* **The field and its button need different names.** They both read
+          "Add to today's list" for a few minutes, which made the *button* the
+          thing a label lookup found -- so a screen reader would have met two
+          controls announcing the same words, and a test typed into one of them
+          and hit nothing. */}
+      <label htmlFor="day-add-task" className="sr-only">
+        New task for today
+      </label>
+      <input
+        id="day-add-task"
+        value={text}
+        onChange={(event) => setText(event.target.value)}
+        placeholder="Add to today's list"
+        className="min-w-0 flex-1 rounded-lg border border-border bg-input px-3 py-2 text-sm"
+      />
+      {/* The visible word is "Add"; the accessible name says which Add.
+          The composer below has one too, and two buttons called "Add" on one
+          page is a screen reader being told nothing twice. */}
+      <Button
+        type="submit"
+        variant="secondary"
+        disabled={add.isPending}
+        aria-label="Add to today's list"
+      >
+        Add
+      </Button>
+      {add.isError && (
+        <span className="text-sm text-destructive">{add.error.message}</span>
+      )}
+    </form>
+  );
+}
+
 /** A time of day in the reader's own locale, from an instant the server sent.
  *
  * The instant is the authority and this only formats it -- the same split the
@@ -1619,6 +1696,17 @@ export function DayRoute() {
           <p className="text-sm text-destructive">
             {focusMutation.error.message}
           </p>
+        )}
+        {/* Under the list it adds to, and only on today. The composer below
+            still reaches the same place through its Today destination; this is
+            the short way for the one moment it is the whole job. */}
+        {isToday && (
+          <AddToTheList
+            onAdded={() => {
+              queryClient.invalidateQueries({ queryKey: ["day"] });
+              queryClient.invalidateQueries({ queryKey: ["pool"] });
+            }}
+          />
         )}
       </section>
 

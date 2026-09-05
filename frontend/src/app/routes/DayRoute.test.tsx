@@ -2378,3 +2378,71 @@ describe("DayRoute, letting a line go from the list", () => {
   });
 });
 
+describe("DayRoute, adding a task straight to the list", () => {
+  // Vince's ask, September 4, 2026. The composer's Today destination reaches
+  // the same place; this is the short way for the one moment it is the whole
+  // job, and it posts the same request rather than inventing a second one.
+
+  it("adds a line to today's list", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const request = input as Request;
+      if (request.method === "POST") {
+        return jsonResponse({ public_id: "x", captured_at: "2026-08-03T09:00:00Z" }, true, 201);
+      }
+      return jsonResponse(dayData());
+    });
+
+    renderAt("/day");
+    await userEvent.type(
+      await screen.findByLabelText("New task for today"),
+      "Call the vet back",
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Add to today's list" }),
+    );
+
+    await waitFor(async () => {
+      const sent = await sentRequests(fetchSpy);
+      expect(
+        sent.some(
+          (call) =>
+            call.method === "POST" &&
+            call.path.includes("/api/v1/capture") &&
+            JSON.parse(String(call.body)).destination === "today",
+        ),
+      ).toBe(true);
+    });
+  });
+
+  it("keeps the line when it cannot be added", async () => {
+    // principles.md: capture is durable before it is clever. The box empties
+    // on success and never on the way there.
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const request = input as Request;
+      if (request.method === "POST") return jsonResponse({ detail: "no" }, false, 500);
+      return jsonResponse(dayData());
+    });
+
+    renderAt("/day");
+    const box = await screen.findByLabelText("New task for today");
+    await userEvent.type(box, "Call the vet back");
+    await userEvent.click(
+      screen.getByRole("button", { name: "Add to today's list" }),
+    );
+
+    await waitFor(() => expect(screen.getByText(/still here/i)).toBeInTheDocument());
+    expect(box).toHaveValue("Call the vet back");
+  });
+
+  it("is absent on a past day, where the endpoint would refuse the pin", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(dayData({ date: "2026-08-01", today: "2026-08-03" })),
+    );
+
+    renderAt("/day/2026-08-01");
+
+    await screen.findByLabelText("Capture a thought");
+    expect(screen.queryByLabelText("New task for today")).toBeNull();
+  });
+});
+

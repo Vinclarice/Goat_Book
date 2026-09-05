@@ -43,9 +43,12 @@ class DailyPageOnAPhoneTest(BrowserTest):
     def a_full_day(self):
         """A day with something in every section, since an empty page
         cannot overflow and would prove nothing."""
+        from datetime import timedelta
+
         from django.utils import timezone
 
         from daily import services as daily_services
+        from lists.models import Item
 
         today = timezone.localdate()
         task = list_services.create_item(
@@ -53,8 +56,29 @@ class DailyPageOnAPhoneTest(BrowserTest):
             "Pay the rent before the landlord emails again",
             due_date=today,
         )
-        list_services.create_item(
-            self.list_, "Call the plumber about the upstairs leak"
+        # **An action item that is not also pinned, long, and old enough to
+        # carry its age label** -- September 4, 2026. This fixture pinned every
+        # dated task, so the *action item* row never rendered its own widest
+        # shape: title, area chip, age and "Pin to today" on one line.
+        #
+        # **And it still does not reproduce the overflow it was widened for.**
+        # That row measured 389px against a 375px edge on real data while this
+        # suite reported the page fitting; three fixtures failed to make it
+        # happen here, so the wrap that fixes it is verified by measuring a
+        # live page and not by this. Recorded rather than left implied: a guard
+        # nobody knows is blind is worse than one nobody has.
+        unpinned = list_services.create_item(
+            self.list_,
+            "Call the plumber about the upstairs leak before the weekend",
+            due_date=today,
+        )
+        # **Old enough to carry its age label**, which is the part that was
+        # missing. `ageLabel` says nothing below `AGE_WORTH_MENTIONING`, so a
+        # freshly created fixture task renders a narrower row than any real
+        # one -- and the widest shape of this row is title, area chip, age and
+        # "Pin to today" together.
+        Item.objects.filter(pk=unpinned.pk).update(
+            created_at=timezone.now() - timedelta(days=40)
         )
         daily_services.pin_task(self.user, today, task)
         daily_services.write_entry(

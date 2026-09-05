@@ -2291,3 +2291,90 @@ describe("DayRoute, appointments", () => {
   });
 });
 
+describe("DayRoute, letting a line go from the list", () => {
+  // Vince's ask, September 4, 2026: a way to delete something from today's
+  // list. Rule 7 already had the verb -- this puts it on the row and all day,
+  // rather than only in the evening's readback.
+
+  it("offers all three of rule 7's moves on a row, in its own words", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(dayData({ focus: [focusRow({ text: "Book dentist" })] })),
+    );
+
+    renderAt("/day");
+
+    expect(
+      await screen.findByRole("button", { name: "Move Book dentist to tomorrow" }),
+    ).toBeInTheDocument();
+    // ~~Unpin~~ -- the same act under the plan's own word, so the row and the
+    // evening stop using two vocabularies for one move.
+    expect(
+      screen.getByRole("button", { name: "Put Book dentist back to the pool" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Let go of Book dentist" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Unpin" })).toBeNull();
+  });
+
+  it("lets one go through the same service the evening uses", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const request = input as Request;
+      if (request.method === "POST") return jsonResponse(dayData());
+      return jsonResponse(dayData({ focus: [focusRow({ text: "Book dentist" })] }));
+    });
+
+    renderAt("/day");
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Let go of Book dentist" }),
+    );
+
+    await waitFor(async () => {
+      const sent = await sentRequests(fetchSpy);
+      expect(
+        sent.some(
+          (call) =>
+            call.method === "POST" &&
+            call.path.includes("/leftovers/1") &&
+            JSON.parse(String(call.body)).decision === "let_go",
+        ),
+      ).toBe(true);
+    });
+  });
+
+  it("does not offer it on a past day, where the endpoint would refuse", async () => {
+    // Letting go releases *this day's* pin, and rule 11 makes a past day
+    // read-only. A button that answers 409 is worse than no button.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        dayData({
+          date: "2026-08-01",
+          today: "2026-08-03",
+          focus: [focusRow({ text: "Book dentist" })],
+        }),
+      ),
+    );
+
+    renderAt("/day/2026-08-01");
+
+    await screen.findByText("Book dentist");
+    expect(screen.queryByRole("button", { name: "Let go of Book dentist" })).toBeNull();
+  });
+
+  it("does not offer it on something already done", async () => {
+    // You do not let go of what you did.
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      jsonResponse(
+        dayData({
+          focus: [focusRow({ text: "Book dentist", status: "completed" })],
+        }),
+      ),
+    );
+
+    renderAt("/day");
+
+    await screen.findByText("Book dentist");
+    expect(screen.queryByRole("button", { name: "Let go of Book dentist" })).toBeNull();
+  });
+});
+

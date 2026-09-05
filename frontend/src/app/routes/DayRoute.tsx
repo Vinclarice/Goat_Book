@@ -69,16 +69,20 @@ type Focus = {
 function FocusList({
   focus,
   today,
+  isToday,
   closedAt,
   onUnpin,
+  onLetGo,
   onComplete,
   onDefer,
   busy,
 }: {
   focus: Focus[];
   today: string;
+  isToday: boolean;
   closedAt: string | null;
   onUnpin: (taskId: number) => void;
+  onLetGo: (taskId: number) => void;
   onComplete: (item: Focus) => void;
   onDefer: (item: Focus) => void;
   busy: boolean;
@@ -97,7 +101,9 @@ function FocusList({
       <FocusRows
         focus={chosen}
         today={today}
+        isToday={isToday}
         onUnpin={onUnpin}
+        onLetGo={onLetGo}
         onComplete={onComplete}
         onDefer={onDefer}
         busy={busy}
@@ -131,7 +137,9 @@ function FocusList({
           <FocusRows
             focus={joined}
             today={today}
+            isToday={isToday}
             onUnpin={onUnpin}
+            onLetGo={onLetGo}
             onComplete={onComplete}
             onDefer={onDefer}
             busy={busy}
@@ -239,14 +247,18 @@ function timeOfDay(instant: string) {
 function FocusRows({
   focus,
   today,
+  isToday,
   onUnpin,
+  onLetGo,
   onComplete,
   onDefer,
   busy,
 }: {
   focus: Focus[];
   today: string;
+  isToday: boolean;
   onUnpin: (taskId: number) => void;
+  onLetGo: (taskId: number) => void;
   onComplete: (item: Focus) => void;
   onDefer: (item: Focus) => void;
   busy: boolean;
@@ -256,14 +268,21 @@ function FocusRows({
       {focus.map((item) => (
         <li
           key={item.task_id ?? item.text}
-          className="flex items-baseline justify-between gap-3 rounded-lg border border-accent px-3 py-2"
+          /* **Wraps, since the row gained a fourth verb on September 4,
+             2026.** Complete, Tomorrow, Pool and Let go do not fit 375px on
+             one line -- the browser suite measured them 49px past the edge,
+             which is a control nobody can press. `gap-y` rather than a bare
+             wrap so the two lines do not touch. */
+          className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 rounded-lg border border-accent px-3 py-2"
         >
           <span className="min-w-0">
             <span className={item.status === "completed" ? "line-through" : ""}>
               {item.text}
             </span>
           </span>
-          <span className="flex shrink-0 items-baseline gap-3">
+          {/* ~~`shrink-0`~~ dropped with the same change: it is what stopped
+              the buttons giving way, and four of them have to. */}
+          <span className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
             {item.due_date && (
               <span className="text-sm text-muted-foreground">
                 {dueLabel(item.due_date, today)}
@@ -292,14 +311,47 @@ function FocusRows({
                 Tomorrow
               </Button>
             )}
+            {/* ~~"Unpin"~~ -- **"Pool" since September 4, 2026.** The same act
+                and the same service underneath: `unpin_task`, which is exactly
+                what rule 7 calls *back to the pool*. The row and the evening
+                were using two words for one move, and the evening's is the
+                plan's. */}
             {item.task_id !== null && (
               <Button
                 type="button"
                 variant="ghost"
                 disabled={busy}
+                aria-label={`Put ${item.text} back to the pool`}
                 onClick={() => onUnpin(item.task_id!)}
               >
-                Unpin
+                Pool
+              </Button>
+            )}
+            {/* Rule 7's third move, on the row and all day rather than only in
+                the evening -- Vince's ask for a way to *delete* something from
+                the list. Pool leaves it open and this does not: the task is
+                archived, its facet retired, and the note kept.
+
+                **Reversible rather than destructive**, which is why it is this
+                verb and not a hard delete. `principles.md` allows an act
+                without a confirmation only where it is visible and undoable;
+                the Archive is where this lands and where a permanent deletion
+                still lives, behind its own dialog.
+
+                **Today only.** Letting go releases *this day's* pin, and rule
+                11 makes a past day read-only -- the endpoint refuses one, so
+                offering a button that would 409 is worse than not offering it.
+                Not on something already finished either: you do not let go of
+                what you did. */}
+            {item.task_id !== null && item.status !== "completed" && isToday && (
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={busy}
+                aria-label={`Let go of ${item.text}`}
+                onClick={() => onLetGo(item.task_id!)}
+              >
+                Let go
               </Button>
             )}
           </span>
@@ -357,7 +409,18 @@ function ActionItems({
         return (
           <li
             key={item.id}
-            className="flex items-baseline justify-between gap-3 rounded-lg border border-border px-3 py-2"
+            /* Wraps for the reason the focus row above it does, and this one
+               was already 14px past a 375px edge before the fourth verb
+               existed -- a long title, an area chip, an age label and "Pin to
+               today" do not fit one line. Found while measuring the row above;
+               fixing one and leaving its neighbour clipped would be worse than
+               either.
+
+               **The browser guard does not catch this one.** Three fixtures
+               failed to reproduce it -- see `a_full_day` in
+               `test_daily_page_on_a_phone.py`, which says so -- so the wrap is
+               verified by measuring a live page rather than by a test. */
+            className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 rounded-lg border border-border px-3 py-2"
           >
             {/* **These links deliberately carry no `touch-target`.** The
                 utility's own note says two controls closer than ~12px apart
@@ -417,7 +480,7 @@ function ActionItems({
                 </span>
               )}
             </span>
-            <span className="flex shrink-0 items-baseline gap-3">
+            <span className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
               {/* Deliberately the same muted grey as the due label beside
                   it, and deliberately not destructive: the acceptance for
                   this is a tone test, and a red badge shouting about
@@ -1501,14 +1564,19 @@ export function DayRoute() {
         <FocusList
           focus={data.focus}
           today={data.today}
+          isToday={isToday}
           closedAt={data.list_closed_at}
           onUnpin={(taskId) => focusMutation.mutate({ taskId, pin: false })}
+          // The evening's own third move, reached from the row. One service,
+          // one endpoint, one meaning -- `clarice.leftovers.let_go`.
+          onLetGo={(taskId) => leftoverMutation.mutate({ taskId, decision: "let_go" })}
           onComplete={(item) => completeMutation.mutate(item)}
           onDefer={(item) => deferMutation.mutate(item)}
           busy={
             focusMutation.isPending ||
             completeMutation.isPending ||
-            deferMutation.isPending
+            deferMutation.isPending ||
+            leftoverMutation.isPending
           }
         />
         {/* What the day actually holds — product-stories.md S3, whose

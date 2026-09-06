@@ -187,6 +187,33 @@ waits.
      **A router in `mind/api_v1.py`, never a second API** — `CLAUDE.md` is
      explicit, and the knowledge core's own `NinjaAPI` was deleted on August
      15 having never been called.
+
+     Struck here as each lands, because 2a is many small commits rather than
+     one, and an increment that ships in pieces is the kind that gets
+     mis-remembered as finished:
+
+     - ~~**Concepts** — index and detail~~ **September 6, 2026.**
+       `GET /concepts`, `GET /concepts/{public_id}`. Session-only. Mirrors
+       `views.concepts` and `views.concept` rather than improving on them,
+       **including the evidence sentences** — a candidate that showed its count
+       without them would be a quieter surface, not the same one. One
+       deliberate divergence: an unknown id is a **404** where the page
+       redirects to the index, because a panel needs to know it asked for
+       something that is not there.
+     - Notes — index (new, G3) and detail
+     - People — index (new, G3) and detail
+     - Sources / *Read* — index and detail
+     - Decisions — index and detail
+     - Review / *Pending*
+     - *Then* — this time before
+     - Numbers
+     - Start
+     - Dump and Ask
+
+     **`Dump` is a writing surface and may belong with capture rather than
+     here.** Rule 4 keeps `/mind/` and `/mind/share/` server-rendered for the
+     thumb-typing property, and Dump is bulk entry — the same property, one
+     surface further out. Noticed while enumerating; not decided.
    - **2b. The panels.** The SPA consumes 2a; the ten surfaces retire with
      redirects, including the PWA's two shortcuts.
 

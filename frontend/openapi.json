@@ -1480,6 +1480,67 @@
         ]
       }
     },
+    "/api/v1/concepts": {
+      "get": {
+        "operationId": "mind_api_v1_list_concepts",
+        "summary": "List Concepts",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConceptsOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "The things a person keeps mentioning, and the few worth naming.\n\nMirrors `views.concepts` rather than improving on it. Reading it changes\nnothing -- unlike the review, whose whole design is that showing and\nsurfacing are one act -- so nothing here starts a clock and a candidate\nnever confirmed simply stays a candidate.",
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      }
+    },
+    "/api/v1/concepts/{public_id}": {
+      "get": {
+        "operationId": "mind_api_v1_read_concept",
+        "summary": "Read Concept",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "public_id",
+            "schema": {
+              "format": "uuid",
+              "title": "Public Id",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConceptDetailOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Everything about one thing.\n\nThe payoff the concept layer exists for: not a search result but the\nmaterial itself, gathered without anybody having filed it anywhere.\n\n**404 where the page redirects.** `views.concept` sends an unknown id back\nto the index, which is right for a browser and wrong for an API -- a panel\nneeds to know it asked for something that is not there, and `_concept_or_404`\nis the answer this module already gives everywhere else.",
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      }
+    },
     "/api/v1/concepts/{public_id}/confirm": {
       "post": {
         "operationId": "mind_api_v1_confirm_name",
@@ -5919,6 +5980,153 @@
           "id"
         ],
         "title": "CommitmentOut",
+        "type": "object"
+      },
+      "ConceptCandidateOut": {
+        "description": "A name, whether or not it has been confirmed.\n\nOne schema for both halves of the index rather than two, because a\ncandidate and a confirmed name are the same row at different moments --\n`ConceptCandidate.confirmed_at` is the whole difference, and modelling it\nas two shapes would invite them to disagree.",
+        "properties": {
+          "public_id": {
+            "format": "uuid",
+            "title": "Public Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "concept_type": {
+            "title": "Concept Type",
+            "type": "string"
+          },
+          "confirmed": {
+            "title": "Confirmed",
+            "type": "boolean"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/ConceptNodeOut"
+            },
+            "title": "Evidence",
+            "type": "array"
+          }
+        },
+        "required": [
+          "public_id",
+          "label",
+          "concept_type",
+          "confirmed",
+          "evidence"
+        ],
+        "title": "ConceptCandidateOut",
+        "type": "object"
+      },
+      "ConceptNodeOut": {
+        "description": "A note, as a concept page shows it.",
+        "properties": {
+          "public_id": {
+            "format": "uuid",
+            "title": "Public Id",
+            "type": "string"
+          },
+          "body": {
+            "title": "Body",
+            "type": "string"
+          },
+          "captured_at": {
+            "format": "date-time",
+            "title": "Captured At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "public_id",
+          "body",
+          "captured_at"
+        ],
+        "title": "ConceptNodeOut",
+        "type": "object"
+      },
+      "ConceptsOut": {
+        "properties": {
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/ConceptCandidateOut"
+            },
+            "title": "Candidates",
+            "type": "array"
+          },
+          "confirmed": {
+            "items": {
+              "$ref": "#/components/schemas/ConceptCandidateOut"
+            },
+            "title": "Confirmed",
+            "type": "array"
+          }
+        },
+        "required": [
+          "candidates",
+          "confirmed"
+        ],
+        "title": "ConceptsOut",
+        "type": "object"
+      },
+      "ConceptDetailOut": {
+        "properties": {
+          "concept": {
+            "$ref": "#/components/schemas/ConceptCandidateOut"
+          },
+          "nodes": {
+            "items": {
+              "$ref": "#/components/schemas/ConceptNodeOut"
+            },
+            "title": "Nodes",
+            "type": "array"
+          },
+          "aliases": {
+            "items": {
+              "$ref": "#/components/schemas/ConceptCandidateOut"
+            },
+            "title": "Aliases",
+            "type": "array"
+          },
+          "kinds": {
+            "items": {
+              "$ref": "#/components/schemas/ConceptKindOut"
+            },
+            "title": "Kinds",
+            "type": "array"
+          },
+          "is_a_person": {
+            "title": "Is A Person",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "concept",
+          "nodes",
+          "aliases",
+          "kinds",
+          "is_a_person"
+        ],
+        "title": "ConceptDetailOut",
+        "type": "object"
+      },
+      "ConceptKindOut": {
+        "properties": {
+          "value": {
+            "title": "Value",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "value",
+          "label"
+        ],
+        "title": "ConceptKindOut",
         "type": "object"
       },
       "ConceptOut": {

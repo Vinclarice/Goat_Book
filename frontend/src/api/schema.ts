@@ -840,6 +840,59 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/concepts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Concepts
+         * @description The things a person keeps mentioning, and the few worth naming.
+         *
+         *     Mirrors `views.concepts` rather than improving on it. Reading it changes
+         *     nothing -- unlike the review, whose whole design is that showing and
+         *     surfacing are one act -- so nothing here starts a clock and a candidate
+         *     never confirmed simply stays a candidate.
+         */
+        get: operations["mind_api_v1_list_concepts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/concepts/{public_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Concept
+         * @description Everything about one thing.
+         *
+         *     The payoff the concept layer exists for: not a search result but the
+         *     material itself, gathered without anybody having filed it anywhere.
+         *
+         *     **404 where the page redirects.** `views.concept` sends an unknown id back
+         *     to the index, which is right for a browser and wrong for an API -- a panel
+         *     needs to know it asked for something that is not there, and `_concept_or_404`
+         *     is the answer this module already gives everywhere else.
+         */
+        get: operations["mind_api_v1_read_concept"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/concepts/{public_id}/confirm": {
         parameters: {
             query?: never;
@@ -2885,6 +2938,74 @@ export interface components {
         CommitmentOut: {
             /** Id */
             id: number;
+        };
+        /**
+         * ConceptCandidateOut
+         * @description A name, whether or not it has been confirmed.
+         *
+         *     One schema for both halves of the index rather than two, because a
+         *     candidate and a confirmed name are the same row at different moments --
+         *     `ConceptCandidate.confirmed_at` is the whole difference, and modelling it
+         *     as two shapes would invite them to disagree.
+         */
+        ConceptCandidateOut: {
+            /**
+             * Public Id
+             * Format: uuid
+             */
+            public_id: string;
+            /** Label */
+            label: string;
+            /** Concept Type */
+            concept_type: string;
+            /** Confirmed */
+            confirmed: boolean;
+            /** Evidence */
+            evidence: components["schemas"]["ConceptNodeOut"][];
+        };
+        /**
+         * ConceptNodeOut
+         * @description A note, as a concept page shows it.
+         */
+        ConceptNodeOut: {
+            /**
+             * Public Id
+             * Format: uuid
+             */
+            public_id: string;
+            /** Body */
+            body: string;
+            /**
+             * Captured At
+             * Format: date-time
+             */
+            captured_at: string;
+        };
+        /** ConceptsOut */
+        ConceptsOut: {
+            /** Candidates */
+            candidates: components["schemas"]["ConceptCandidateOut"][];
+            /** Confirmed */
+            confirmed: components["schemas"]["ConceptCandidateOut"][];
+        };
+        /** ConceptDetailOut */
+        ConceptDetailOut: {
+            concept: components["schemas"]["ConceptCandidateOut"];
+            /** Nodes */
+            nodes: components["schemas"]["ConceptNodeOut"][];
+            /** Aliases */
+            aliases: components["schemas"]["ConceptCandidateOut"][];
+            /** Kinds */
+            kinds: components["schemas"]["ConceptKindOut"][];
+            /** Is A Person */
+            is_a_person: boolean;
+        };
+        /** ConceptKindOut */
+        ConceptKindOut: {
+            /** Value */
+            value: string;
+            /** Label */
+            label: string;
         };
         /** ConceptOut */
         ConceptOut: {
@@ -5520,6 +5641,48 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CommitmentOut"];
+                };
+            };
+        };
+    };
+    mind_api_v1_list_concepts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConceptsOut"];
+                };
+            };
+        };
+    };
+    mind_api_v1_read_concept: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                public_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConceptDetailOut"];
                 };
             };
         };

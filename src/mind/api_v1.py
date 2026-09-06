@@ -43,7 +43,7 @@ from daily import reads as daily_reads
 from lists import search as lists_search
 
 from . import queries, services
-from .models import ConceptCandidate, Facet, FacetKind, Node, NodeSource
+from .models import ConceptCandidate, ConceptType, Facet, FacetKind, Node, NodeSource
 
 router = Router()
 
@@ -307,6 +307,139 @@ def dismiss_commitment(request, facet_id: int):
         facet, now=timezone.now(), actor=request.user.get_username()
     )
     return {"id": facet.id}
+
+
+#: How many candidates the index offers, mirrored from `views.CANDIDATE_LIMIT`.
+#:
+#: **Not imported from `views`**, which would make this router depend on the
+#: templates it exists to replace -- and 2b deletes that module's browsing half.
+#:
+#: **Unlike `Destination` above, this copy is not asserted, and that is a real
+#: difference rather than an oversight.** `Destination` mirrors a value in
+#: `clarice.composer`, which both sides keep; asserting this one would mean
+#: importing `views` precisely to check a number, creating the dependency the
+#: duplication exists to avoid. The exposure is bounded and temporary: two
+#: numbers can disagree only until 2b retires the page, and if they disagree
+#: before then the panel offers a different number of candidates from the
+#: template -- visible, not silent.
+CANDIDATE_LIMIT = 8
+
+
+class ConceptNodeOut(Schema):
+    """A note, as a concept page shows it."""
+
+    public_id: uuid.UUID
+    body: str
+    captured_at: datetime
+
+    @staticmethod
+    def resolve_body(obj):
+        # The current text, not `original_content`. A note that has been
+        # corrected reads as it reads now, which is what the page does --
+        # `views.note` takes the same route through `queries.current_body`.
+        return queries.current_body(obj)
+
+
+class ConceptKindOut(Schema):
+    value: str
+    label: str
+
+
+class ConceptCandidateOut(Schema):
+    """A name, whether or not it has been confirmed.
+
+    One schema for both halves of the index rather than two, because a
+    candidate and a confirmed name are the same row at different moments --
+    `ConceptCandidate.confirmed_at` is the whole difference, and modelling it
+    as two shapes would invite them to disagree.
+    """
+
+    public_id: uuid.UUID
+    label: str
+    concept_type: str
+    confirmed: bool
+    evidence: list[ConceptNodeOut]
+
+    @staticmethod
+    def resolve_confirmed(obj):
+        return obj.confirmed_at is not None
+
+    @staticmethod
+    def resolve_evidence(obj):
+        # Attached by the index to candidates only, the way `views.concepts`
+        # attaches it -- "Indonesian, 4 mentions" asks somebody to take the
+        # system's word for it, and the sentences let them check. A confirmed
+        # name carries none, so this reads what may not be there rather than
+        # letting the schema fail on the half that never has it.
+        return list(getattr(obj, "evidence", []))
+
+
+class ConceptsOut(Schema):
+    candidates: list[ConceptCandidateOut]
+    confirmed: list[ConceptCandidateOut]
+
+
+class ConceptDetailOut(Schema):
+    concept: ConceptCandidateOut
+    nodes: list[ConceptNodeOut]
+    aliases: list[ConceptCandidateOut]
+    kinds: list[ConceptKindOut]
+    is_a_person: bool
+
+
+# DARK: no client yet. app-overhaul-plan.md increment 2a builds the knowledge
+# core's reads and 2b is what consumes them; `/mind/concepts/` still serves the
+# page. Declared rather than left to be noticed, and the trigger is named:
+# these come alive when the concepts panel lands.
+@router.get("/concepts", response=ConceptsOut, auth=SessionAuthIfLoggedIn())
+def list_concepts(request):
+    """The things a person keeps mentioning, and the few worth naming.
+
+    Mirrors `views.concepts` rather than improving on it. Reading it changes
+    nothing -- unlike the review, whose whole design is that showing and
+    surfacing are one act -- so nothing here starts a clock and a candidate
+    never confirmed simply stays a candidate.
+    """
+    candidates = list(queries.concept_candidates(request.user)[:CANDIDATE_LIMIT])
+    for candidate in candidates:
+        candidate.evidence = list(
+            queries.nodes_mentioning(request.user, candidate)[:3]
+        )
+
+    return {
+        "candidates": candidates,
+        "confirmed": queries.confirmed_concepts(request.user).order_by("label"),
+    }
+
+
+# DARK: no client yet -- see `list_concepts` above, same trigger.
+@router.get(
+    "/concepts/{public_id}", response=ConceptDetailOut, auth=SessionAuthIfLoggedIn()
+)
+def read_concept(request, public_id: uuid.UUID):
+    """Everything about one thing.
+
+    The payoff the concept layer exists for: not a search result but the
+    material itself, gathered without anybody having filed it anywhere.
+
+    **404 where the page redirects.** `views.concept` sends an unknown id back
+    to the index, which is right for a browser and wrong for an API -- a panel
+    needs to know it asked for something that is not there, and `_concept_or_404`
+    is the answer this module already gives everywhere else.
+    """
+    canonical = queries.canonical_concept(_concept_or_404(request, public_id))
+    return {
+        "concept": canonical,
+        "nodes": queries.nodes_mentioning(request.user, canonical),
+        "aliases": canonical.aliases.filter(retired_at__isnull=True),
+        # Every value, not a curated few. The set is small and closed, and
+        # offering four of seven would leave three unreachable in exactly the
+        # way all seven were until somebody noticed.
+        "kinds": [
+            {"value": value, "label": label} for value, label in ConceptType.choices
+        ],
+        "is_a_person": canonical.concept_type == ConceptType.PERSON,
+    }
 
 
 @router.post("/concepts/{public_id}/confirm", response=ConceptOut, auth=SessionAuthIfLoggedIn())

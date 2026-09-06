@@ -58,6 +58,33 @@ re-add it here.
 
 ## Open now
 
+- **The application overhaul is the active work, claimed September 6, 2026.**
+  Vince: *"So actually I want to do an overhaul of the app"* — and asked what
+  that meant, he named **all four** readings at once: the two halves are
+  different applications, there are too many surfaces, how it looks, and it
+  does not work day to day.
+  [`app-overhaul-audit-2026-09-06.md`](app-overhaul-audit-2026-09-06.md) is the
+  diagnosis and owns the eight findings; it is not restated here. The
+  one-sentence version: **one login, one API, one palette, and about thirty
+  places to stand** — Superlists 2.0 proved the remedy at the scale of one core
+  and nothing has been done at the scale of the app.
+
+  **Planned now, built after September 18**, which is Vince's own call: the
+  fortnight of use that Superlists 2.0's acceptance depends on is running, so
+  the Day page is out of scope until it finishes. `app-overhaul-plan.md` does
+  not exist yet and this entry is deliberately ahead of it — claimed on the day
+  the *audit* was written rather than the plan, because the entry below records
+  what a body of work with no roadmap entry cost, and the entry below that
+  records what one that stopped being updated cost.
+
+  **Its central decision is D1 and it is expensive either way**: whether
+  `/mind/` stops being nineteen Django templates and becomes part of the SPA.
+  That core carries no JavaScript at all and loads instantly on a phone, which
+  is a property bought deliberately against a stated constraint — so unifying
+  spends it, and the spend has to be argued. **D2 is Vince's and is not code**:
+  whether the fortnight gets a one-sentence-a-day friction log, without which
+  the plan's usability half is unevidenced and will say so.
+
 - **Superlists 2.0 — all nine increments shipped September 3–4, 2026; the
   acceptance is running and the plan is open.**
   Vince: *"I want to redesign the superlist core as I realize it's not really

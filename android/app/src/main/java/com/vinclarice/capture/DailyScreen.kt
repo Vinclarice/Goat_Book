@@ -218,13 +218,19 @@ private fun DailyContent(state: DailyUiState, day: DayEntry, model: DailyViewMod
             }
         }
 
-        WrittenSection(
-            state = state,
-            onIntentionsChange = model::setDraftIntentions,
-            onGratitudeChange = model::setDraftGratitude,
-            onHappeningsChange = model::setDraftHappenings,
-            onSave = { scope.launch { model.saveDayText() } },
-        )
+        /* ~~WrittenSection~~ -- **removed September 6, 2026**,
+           android-overhaul-plan.md increment 1. Intentions, Grateful for and
+           Happenings, and the "Save the day" button under them, came off the
+           website's Day page on September 4 at Vince's own request; this
+           screen carried them for two days after, with the same three labels
+           and the same helper sentences word for word.
+
+           **The columns are untouched and this is not a decision about them.**
+           `DailyEntry` keeps all three and `PATCH /api/v1/day/{day}` still
+           accepts them. Whether they have a future is
+           superlists-2.0-plan.md's deferred question; the plan's A3 exists so
+           this increment does not answer it by accident. What left is an
+           editor. */
     }
 }
 
@@ -538,58 +544,3 @@ private fun CadenceChoice(label: String, selected: Boolean, onClick: () -> Unit)
     }
 }
 
-@Composable
-private fun WrittenSection(
-    state: DailyUiState,
-    onIntentionsChange: (String) -> Unit,
-    onGratitudeChange: (String) -> Unit,
-    onHappeningsChange: (String) -> Unit,
-    onSave: () -> Unit,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        HorizontalDivider()
-        WrittenField(
-            "Intentions",
-            "Outcomes or ways of showing up. Not always tasks.",
-            state.draftIntentions,
-            onIntentionsChange,
-            state.busy,
-        )
-        WrittenField(
-            "Grateful for",
-            "Short, and for you rather than for the record.",
-            state.draftGratitude,
-            onGratitudeChange,
-            state.busy,
-        )
-        WrittenField(
-            "Happenings",
-            "What actually occurred. This is what a later review reads.",
-            state.draftHappenings,
-            onHappeningsChange,
-            state.busy,
-        )
-        TextButton(enabled = !state.busy, onClick = onSave) { Text("Save the day") }
-    }
-}
-
-@Composable
-private fun WrittenField(
-    label: String,
-    hint: String,
-    value: String,
-    onChange: (String) -> Unit,
-    busy: Boolean,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(label, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
-        OutlinedTextField(
-            value = value,
-            onValueChange = onChange,
-            enabled = !busy,
-            minLines = 2,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        Text(hint, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-}

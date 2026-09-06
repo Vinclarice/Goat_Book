@@ -80,13 +80,6 @@ class DailyViewModelTest {
             return writeResult
         }
 
-        override suspend fun writeDayText(
-            token: String, day: String, intentions: String, gratitude: String, happenings: String,
-        ): DayWriteResult {
-            lastWrite = "writeText" to listOf(day, intentions, gratitude, happenings)
-            return writeResult
-        }
-
         override suspend fun createRoutine(
             token: String, title: String, cadence: String, targetQuantity: Int, unit: String,
         ): DayWriteResult {
@@ -123,9 +116,6 @@ class DailyViewModelTest {
     private val sampleDay = DayEntry(
         date = "2026-08-10",
         today = "2026-08-10",
-        intentions = "Ship it",
-        gratitude = "Coffee",
-        happenings = "",
         compassPurpose = "",
         compassQuestion = "",
         focus = emptyList(),
@@ -190,57 +180,13 @@ class DailyViewModelTest {
         assertEquals(0, api.readCalls)
     }
 
-    @Test
-    fun `loading seeds the draft text from the day`() = runTest {
-        val model = DailyViewModel(FakeDailyApi(DayLoaded(sampleDay)), FakeStore(), FakeTaskApi())
-
-        model.load()
-
-        val state = model.state.value
-        assertEquals("Ship it", state.draftIntentions)
-        assertEquals("Coffee", state.draftGratitude)
-        assertEquals("", state.draftHappenings)
-    }
-
-    @Test
-    fun `a reload for the same date does not stomp on an in-progress edit`() = runTest {
-        val api = FakeDailyApi(DayLoaded(sampleDay))
-        val model = DailyViewModel(api, FakeStore(), FakeTaskApi())
-        model.load()
-
-        model.setDraftIntentions("Still typing...")
-        model.load()
-
-        assertEquals("Still typing...", model.state.value.draftIntentions)
-    }
-
-    @Test
-    fun `a reload for a new date does reseed the draft`() = runTest {
-        val api = FakeDailyApi(DayLoaded(sampleDay))
-        val model = DailyViewModel(api, FakeStore(), FakeTaskApi())
-        model.load()
-        model.setDraftIntentions("Still typing...")
-
-        api.respondToNextReadWith(DayLoaded(sampleDay.copy(date = "2026-08-11", intentions = "Fresh day")))
-        model.load()
-
-        assertEquals("Fresh day", model.state.value.draftIntentions)
-    }
-
-    @Test
-    fun `saving the days text sends the current draft and reloads`() = runTest {
-        val api = FakeDailyApi(DayLoaded(sampleDay))
-        val model = DailyViewModel(api, FakeStore(), FakeTaskApi())
-        model.load()
-        model.setDraftIntentions("Updated")
-        model.setDraftGratitude("Sunshine")
-
-        model.saveDayText()
-
-        assertEquals("writeText" to listOf("2026-08-10", "Updated", "Sunshine", ""), api.lastWrite)
-        assertEquals(2, api.readCalls) // initial load + reload after success
-        assertFalse(model.state.value.busy)
-    }
+    /* ~~Four cases stood here~~ -- seeding the draft from the day, not
+       stomping an in-progress edit on reload, reseeding on a new date, and
+       saving. **All four went with the editor on September 6, 2026**,
+       android-overhaul-plan.md increment 1, and none of them lost coverage of
+       anything still live: the drafts, `saveDayText` and `writeDayText` are
+       gone from the client. `PATCH /api/v1/day/{day}` is untouched on the
+       server and still has its own tests there. */
 
     @Test
     fun `pinning a task sends the days own date and the task id`() = runTest {

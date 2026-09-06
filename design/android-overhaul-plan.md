@@ -30,10 +30,25 @@ application, correctly.
 
 | On the phone | On the website |
 |---|---|
-| `intentions`, `gratitude`, `happenings` in `DayEntry` | **Removed from the Day page September 4, 2026**, at Vince's own request |
-| `areas`, `projects` in the day payload | **Retired from navigation September 4** by increment 8 |
+| `intentions`, `gratitude`, `happenings` in `DayEntry`, with an editor and a *Save the day* button | **Removed from the Day page September 4, 2026**, at Vince's own request |
 | An **Agenda** screen — `AgendaScreen.kt`, `/api/v1/agenda` | **Deleted, 1,795 lines**, September 4; `/agenda` redirects to `/day` |
-| `compassPurpose`, `compassQuestion` | Not on the day page |
+
+**Two rows stood here on September 6 and both were wrong. Corrected the same
+day, before either was acted on.**
+
+- ~~`compassPurpose`, `compassQuestion` — not on the day page~~ — **they are.**
+  `DayRoute.tsx` renders both, three references each. Deleting them from the
+  phone on the strength of this table would have removed a working feature.
+- ~~`areas`, `projects` — retired from navigation September 4~~ — **retired
+  from the *rail*, not from the day.** `DayRoute.tsx` still passes both to
+  `ActionItems` and reads `areas.length` for first-run detection.
+
+**Checked rather than remembered**, which is the only reason they were caught:
+
+```bash
+grep -c "data.compass_purpose" frontend/src/app/routes/DayRoute.tsx   # 3
+grep -n "data.areas\|data.projects" frontend/src/app/routes/DayRoute.tsx
+```
 
 **What the phone does not have at all**, every one of it Superlists 2.0's:
 
@@ -93,13 +108,38 @@ encrypted offline queue, and rule 4 of
 
 ## Increments
 
-1. **Delete what is gone.** The Agenda screen, and the three prose fields,
-   `areas`, `projects` and the compass from `DayEntry`. **First, and on its
-   own**, because everything below is easier against a smaller surface and
-   because a screen showing a retired concept is the actual complaint.
+1. ~~**Delete what is gone.** The Agenda screen, and the three prose fields,
+   `areas`, `projects` and the compass from `DayEntry`.~~ **Shipped September
+   6, 2026 — and it deleted less than it said it would**, because the table
+   above was wrong twice. What went is the Agenda and the journal editor; the
+   compass, `areas` and `projects` are all still live on the website and stay.
 
-   `/api/v1/agenda` stays: `test_api_auth_surface.py` pins it, and a shipped
-   APK is what keeps it pinned until a signed release replaces one.
+   `AgendaApi` could not simply be deleted: `DailyViewModel` borrows
+   `setTaskStatus` and `rescheduleTask` from it on purpose — *one rule, one
+   authoritative definition*. So it was **split** into `TaskApi`, and
+   `AgendaTaskEntry` became `TaskEntry`. `createTask` did not survive: it takes
+   an `areaId`, and its only caller was the deleted screen. How a task is made
+   on a phone is **A1**.
+
+   `tomorrow()` moved to `DailyFormatting` as the only one of
+   `AgendaFormatting`'s five helpers with a caller left — **and its new comment
+   carries a warning for increment 4.** It moves a *due date*, one item,
+   deliberately, which is what the vision document leaves open where it forbids
+   automatic carry-forward; the website's evening has its own *Tomorrow* on a
+   leftover, which rule 7 says is **never a date move**. Two legitimate acts,
+   one word, and they must not silently merge.
+
+   **313 → 268 tests, and every one accounted for**: three test classes deleted
+   whose subjects no longer exist, the agenda-read and `createTask` cases gone
+   with their code, four draft cases and one `writeDayText` case gone with the
+   editor, and `tomorrow`'s case moved rather than dropped. Nothing whose
+   subject is still live lost its test.
+
+   `/api/v1/agenda` and `PATCH /api/v1/day/{day}` both stay:
+   `test_api_auth_surface.py` pins them, and a shipped APK is what keeps them
+   pinned until a signed release replaces one. **A3 is untouched** — an editor
+   left the phone; the columns' fate is still `superlists-2.0-plan.md`'s
+   deferred question.
 
 2. **The day, as it now is.** `list_closed_at` into the model, the bounded list
    above the line, what joined below it, and appointments — all four from the

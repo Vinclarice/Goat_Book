@@ -75,7 +75,11 @@ class DailyApiTest {
         val result = api().getToday("tok_abc") as DayLoaded
 
         assertEquals("2026-08-10", result.day.date)
-        assertEquals("Ship the Daily slice", result.day.intentions)
+        // The fixture above still carries `intentions`, `gratitude` and
+        // `happenings`, deliberately: the server still sends all three, and a
+        // parser that broke on a field it no longer reads would be a worse
+        // client than one that ignores it. What went on September 6, 2026 is
+        // the assertion, not the fixture.
         assertEquals("Build something that lasts", result.day.compassPurpose)
         assertTrue(result.day.isToday)
         assertEquals(1, result.day.focus.size)

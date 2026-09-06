@@ -56,17 +56,6 @@ interface DailyApi {
 
     suspend fun unpinFocus(token: String, day: String, taskId: Int): DayWriteResult
 
-    /** The web's own "Save the day" always sends all three sections
-     *  together, so this does too -- the server's per-field-optional PATCH
-     *  contract exists but nothing here exercises it. */
-    suspend fun writeDayText(
-        token: String,
-        day: String,
-        intentions: String,
-        gratitude: String,
-        happenings: String,
-    ): DayWriteResult
-
     suspend fun createRoutine(
         token: String,
         title: String,
@@ -134,25 +123,6 @@ class OkHttpDailyApi(
                 .build()
             executeWrite(request)
         }
-
-    override suspend fun writeDayText(
-        token: String,
-        day: String,
-        intentions: String,
-        gratitude: String,
-        happenings: String,
-    ): DayWriteResult = withContext(Dispatchers.IO) {
-        val body = JSONObject()
-            .put("intentions", intentions)
-            .put("gratitude", gratitude)
-            .put("happenings", happenings)
-        val request = Request.Builder()
-            .url(baseUrl.trimEnd('/') + "/api/v1/day/$day")
-            .header("Authorization", "Bearer $token")
-            .patch(body.toString().toRequestBody(JSON))
-            .build()
-        executeWrite(request)
-    }
 
     override suspend fun createRoutine(
         token: String,
@@ -229,9 +199,6 @@ class OkHttpDailyApi(
     private fun dayEntryFrom(json: JSONObject) = DayEntry(
         date = json.getString("date"),
         today = json.getString("today"),
-        intentions = json.getString("intentions"),
-        gratitude = json.getString("gratitude"),
-        happenings = json.getString("happenings"),
         compassPurpose = json.getString("compass_purpose"),
         compassQuestion = json.getString("compass_question"),
         focus = json.getJSONArray("focus").map(::focusEntryFrom),

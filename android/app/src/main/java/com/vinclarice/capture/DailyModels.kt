@@ -14,9 +14,6 @@ package com.vinclarice.capture
 data class DayEntry(
     val date: String,
     val today: String,
-    val intentions: String,
-    val gratitude: String,
-    val happenings: String,
     val compassPurpose: String,
     val compassQuestion: String,
     val focus: List<FocusEntry>,

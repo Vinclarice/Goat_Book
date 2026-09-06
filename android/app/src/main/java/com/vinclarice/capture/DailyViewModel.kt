@@ -12,22 +12,15 @@ data class DailyUiState(
     /** True while a write is in flight -- disables the control it belongs
      *  to so a slow network can't turn one tap into two requests. */
     val busy: Boolean = false,
-    /** The day's own text, editable before "Save the day" -- separate from
-     *  `day.intentions` etc. so a background reload (after logging a
-     *  routine, say) can't stomp on text mid-typing. Seeded once per
-     *  calendar date, not once per load() -- see [DailyViewModel]'s own
-     *  seededForDate. */
-    val draftIntentions: String = "",
-    val draftGratitude: String = "",
-    val draftHappenings: String = "",
 )
 
 /**
  * The Daily Page, read and now acted on -- slice 1 read the page
  * (android-full-client-plan.md); this extends it to what DayRoute.tsx
- * itself does: choose today's focus, log/skip/pause/resume/call-it-enough
- * a routine and keep new ones, and save the day's own Intentions/Grateful
- * for/Happenings. The quick-capture box stays off this screen -- Capture
+ * itself does: choose today's focus, and log/skip/pause/resume/call-it-enough
+ * a routine and keep new ones. ~~and save the day's own Intentions/Grateful
+ * for/Happenings~~ -- **that editor was removed on September 6, 2026**; see
+ * the note in [DailyScreen]. The quick-capture box stays off this screen -- Capture
  * is one tab away already, the same reasoning DayRoute.tsx's own comment
  * gives for not duplicating it.
  *
@@ -54,10 +47,6 @@ class DailyViewModel(
     private val _state = MutableStateFlow(DailyUiState())
     val state: StateFlow<DailyUiState> = _state.asStateFlow()
 
-    // Which date the draft fields were last seeded for -- not part of
-    // DailyUiState because it drives no UI itself, only whether the next
-    // load() is allowed to overwrite what's being typed.
-    private var seededForDate: String? = null
 
     suspend fun load() {
         _state.value = _state.value.copy(loading = true, busy = false, message = null, isError = false)
@@ -70,17 +59,11 @@ class DailyViewModel(
 
         _state.value = when (val result = api.getToday(token)) {
             is DayLoaded -> {
-                val day = result.day
-                val reseed = seededForDate != day.date
-                if (reseed) seededForDate = day.date
                 _state.value.copy(
                     loading = false,
-                    day = day,
+                    day = result.day,
                     message = null,
                     isError = false,
-                    draftIntentions = if (reseed) day.intentions else _state.value.draftIntentions,
-                    draftGratitude = if (reseed) day.gratitude else _state.value.draftGratitude,
-                    draftHappenings = if (reseed) day.happenings else _state.value.draftHappenings,
                 )
             }
             DayUnauthorised -> _state.value.copy(
@@ -95,26 +78,6 @@ class DailyViewModel(
                 message = result.reason,
                 isError = true,
             )
-        }
-    }
-
-    fun setDraftIntentions(text: String) {
-        _state.value = _state.value.copy(draftIntentions = text)
-    }
-
-    fun setDraftGratitude(text: String) {
-        _state.value = _state.value.copy(draftGratitude = text)
-    }
-
-    fun setDraftHappenings(text: String) {
-        _state.value = _state.value.copy(draftHappenings = text)
-    }
-
-    suspend fun saveDayText() {
-        val day = _state.value.day ?: return
-        val draft = _state.value
-        write { token ->
-            api.writeDayText(token, day.date, draft.draftIntentions, draft.draftGratitude, draft.draftHappenings)
         }
     }
 

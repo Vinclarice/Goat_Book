@@ -56,22 +56,13 @@ class DailyWriteApiTest {
         assertTrue(sent.target.endsWith("/api/v1/day/2026-08-11/focus/7"))
     }
 
-    @Test
-    fun `writing the days text sends all three sections together`() = runTest {
-        server.server.enqueue(MockResponse(code = 200, body = dayOutBody))
-
-        api().writeDayText("tok_abc", "2026-08-11", "Ship it", "Coffee", "")
-
-        val sent = server.server.takeRequest()
-        assertEquals("PATCH", sent.method)
-        assertTrue(sent.target.endsWith("/api/v1/day/2026-08-11"))
-        // org.json doesn't preserve key insertion order, so this checks
-        // fields rather than the exact serialized string.
-        val body = org.json.JSONObject(sent.body!!.utf8())
-        assertEquals("Ship it", body.getString("intentions"))
-        assertEquals("Coffee", body.getString("gratitude"))
-        assertEquals("", body.getString("happenings"))
-    }
+    /* ~~`writing the days text sends all three sections together`~~ --
+       **removed September 6, 2026** with `writeDayText` itself,
+       android-overhaul-plan.md increment 1. It was this client's only use of
+       `PATCH /api/v1/day/{day}`, which the server keeps and still tests.
+       `dayOutBody` above is left carrying the three fields on purpose: the
+       server still sends them, and a client that broke on a field it stopped
+       reading would be worse than one that ignores it. */
 
     @Test
     fun `logging a routine sends the amount`() = runTest {

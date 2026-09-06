@@ -2,6 +2,8 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router";
 
+import { PanelLink } from "../panel";
+
 import { Button } from "@/components/ui/button";
 
 import { ageLabel, colorForKey, dueLabel } from "../../agenda";
@@ -518,9 +520,9 @@ function ActionItems({
                 {/* A <Link>, not an <a href>: this reloaded the whole
                     shell to reach a route the client router already had --
                     coherence-audit-2026-08-30.md F4. */}
-                <Link to={`/tasks/${item.id}`} className="hover:underline">
+                <PanelLink to={`/tasks/${item.id}`} className="hover:underline">
                   {item.text}
-                </Link>
+                </PanelLink>
                 {/* A pinned task stays in the agenda below -- the focus list is
                     above it, not carved out of it -- so the row says which it
                     is rather than leaving two identical-looking entries. */}

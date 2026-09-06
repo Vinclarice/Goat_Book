@@ -116,4 +116,19 @@ describe("AppRoutes", () => {
       expect(screen.getByTestId("pathname")).toHaveTextContent("/areas/7"),
     );
   });
+
+  it("opens a deep-linked task as a panel rather than as a page", async () => {
+    // app-overhaul-plan.md increment 1. This file asserts on pathnames and
+    // deliberately leaves content to each route -- but *how many routes render
+    // at once* is this table's own question, and it is the whole of the
+    // mechanic. A panel here means the table consulted `backgroundFor`; a page
+    // means it did not.
+    //
+    // fetch is rejected by the beforeEach, which is the case that matters:
+    // the panel is the container, so it stands whether or not the task loads.
+    renderAt("/tasks/1");
+
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByTestId("pathname")).toHaveTextContent("/tasks/1");
+  });
 });

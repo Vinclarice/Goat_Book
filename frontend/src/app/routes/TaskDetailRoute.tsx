@@ -25,6 +25,7 @@ import {
 } from "../../api";
 import { apiV1 } from "../../api/client";
 import { RequestFailed, statusOf } from "../../api/failure";
+import { Panel, usePanelClose } from "../panel";
 import { RouteFailure } from "./RouteFailure";
 import type {
   CadenceMode,
@@ -129,6 +130,18 @@ export function TaskDetailRoute() {
      it has `/money/bills/:id`, and nothing routes here any more. */
   const noun = "Task";
   const lowerNoun = "task";
+
+  /* app-overhaul-plan.md increment 1, September 6, 2026: the task opens rather
+     than navigates. Wrapped at each return rather than around the component,
+     so the panel stands while the task is loading and while it has failed to
+     load -- a container that appears only on success is a container that
+     flashes. `panel.tsx` owns what closing means.
+
+     The title is the task's own text, falling back to the noun before the
+     query settles: somebody with three of these open in a row should be able
+     to tell them apart, and `task` is null in exactly the two branches where
+     there is nothing yet to tell apart. */
+  const closePanel = usePanelClose();
 
   const { data, isPending, isError, error: loadError, refetch } = useQuery({
     queryKey: ["task", id],
@@ -527,8 +540,20 @@ export function TaskDetailRoute() {
     }
   }
 
-  if (isPending) return <p className="p-6">Loading…</p>;
-  if (isError || !data) return <RouteFailure status={statusOf(loadError)} onRetry={() => refetch()} />;
+  const panelTitle = task?.text || noun;
+
+  if (isPending)
+    return (
+      <Panel title={panelTitle} onClose={closePanel}>
+        <p className="p-6">Loading…</p>
+      </Panel>
+    );
+  if (isError || !data)
+    return (
+      <Panel title={panelTitle} onClose={closePanel}>
+        <RouteFailure status={statusOf(loadError)} onRetry={() => refetch()} />
+      </Panel>
+    );
   // One render sits between the data arriving and the effect above seeding
   // from it. That gap is a load, not a failure -- guarding it with
   // RouteFailure, as this line used to, would flash an error page over a
@@ -538,7 +563,12 @@ export function TaskDetailRoute() {
   // nullable since August 14, 2026, so an unfiled task rendered this line for
   // ever: the one class of task the task page could not show. `area` is null
   // in the payload on purpose, and every use of it below is now optional.
-  if (!task) return <p className="p-6">Loading…</p>;
+  if (!task)
+    return (
+      <Panel title={panelTitle} onClose={closePanel}>
+        <p className="p-6">Loading…</p>
+      </Panel>
+    );
 
   const archived = task.status === "archived";
 
@@ -548,12 +578,21 @@ export function TaskDetailRoute() {
   const repeats = task.recurrence !== "none";
 
   return (
+    <Panel title={panelTitle} onClose={closePanel}>
     <div className="max-w-lg mx-auto px-4 py-8 space-y-6">
+      {/* Kept beside the panel's own Close, because it does a different
+          thing: Close puts you back where you were, and this goes to the
+          Area, which may not be where you came from at all.
+
+          ~~`/agenda`, "the agenda"~~ — **the Agenda was deleted on September
+          4, 2026** and this fallback outlived it by two days, pointing an
+          unfiled task at a redirect and naming a page that does not exist.
+          The Area case is untouched. */}
       <Link
-        to={areaRef ? `/areas/${areaRef.id}` : "/agenda"}
+        to={areaRef ? `/areas/${areaRef.id}` : "/day"}
         className="text-sm text-muted-foreground hover:text-foreground"
       >
-        ← Back to {areaRef ? areaRef.title : "the agenda"}
+        ← Back to {areaRef ? areaRef.title : "the day"}
       </Link>
 
       <div>
@@ -941,5 +980,6 @@ export function TaskDetailRoute() {
         </div>
       )}
     </div>
+    </Panel>
   );
 }

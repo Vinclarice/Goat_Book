@@ -1,8 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
-import { Navigate, Route, Routes, useParams } from "react-router";
+import { Navigate, Route, Routes, useLocation, useParams } from "react-router";
 
 import { apiV1 } from "../api/client";
 import { AppLayout } from "./AppLayout";
+import { backgroundFor } from "./panel";
 import { ArchiveRoute } from "./routes/ArchiveRoute";
 import { CalendarRoute } from "./routes/CalendarRoute";
 import { BalancesRoute } from "./money/BalancesRoute";
@@ -71,8 +72,17 @@ function RedirectToMonth() {
 }
 
 export function AppRoutes() {
+  /* app-overhaul-plan.md rule 2: detail opens rather than navigates.
+     `backgroundFor` answers *which page is underneath*, and returns null for
+     everything that is not a panel -- so an ordinary route renders exactly one
+     set of routes, as it always did. See panel.tsx, which owns the reasoning
+     and the list of panel paths. */
+  const location = useLocation();
+  const background = backgroundFor(location);
+
   return (
-    <Routes>
+    <>
+    <Routes location={background ?? location}>
       {/* Everything sits inside AppLayout so the side nav stays mounted
           across navigations instead of re-rendering (and re-fetching) on
           every click. */}
@@ -155,7 +165,11 @@ export function AppRoutes() {
             completed tasks. */}
         <Route path="/projects" element={<ProjectsIndexRoute />} />
         <Route path="/projects/:projectId" element={<ProjectRoute />} />
-        <Route path="/tasks/:taskId" element={<TaskDetailRoute />} />
+        {/* ~~`/tasks/:taskId` stood here~~ — **it opens rather than
+            navigates since app-overhaul-plan.md increment 1**, September 6,
+            2026, and is rendered by the panel outlet below instead. The path
+            is unchanged and every link to it still works; what it lost is
+            being a page you go to. */}
         <Route path="/archive" element={<ArchiveRoute />} />
         <Route path="/preferences" element={<PreferencesRoute />} />
         {/* Inside the layout on purpose: someone who mistyped a URL still
@@ -167,5 +181,18 @@ export function AppRoutes() {
           see lists.views.spa_shell */}
       <Route path="/dev/ui" element={<DevUiGallery />} />
     </Routes>
+    {/* The panel outlet. Rendered *beside* the table above rather than inside
+        it, because both are live at once -- that is what a panel is. It
+        portals to the body, so its position here is about routing and not
+        about layout.
+
+        Guarded on `background` rather than rendered always: without it, every
+        ordinary page would pay a second `<Routes>` match for nothing. */}
+    {background && (
+      <Routes location={location}>
+        <Route path="/tasks/:taskId" element={<TaskDetailRoute />} />
+      </Routes>
+    )}
+    </>
   );
 }

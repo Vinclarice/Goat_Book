@@ -7,6 +7,8 @@ import {
 } from "@tanstack/react-query";
 import { Link } from "react-router";
 
+import { PanelLink } from "../panel";
+
 import { Button } from "@/components/ui/button";
 
 import { ageSentence, dueLabel } from "../../agenda";
@@ -151,12 +153,12 @@ export function PoolRoute() {
                 className="flex min-h-11 items-center gap-3 border-t border-border text-sm"
               >
                 {row.task && (
-                  <Link
+                  <PanelLink
                     to={`/tasks/${row.task.id}`}
                     className="min-w-0 flex-1 truncate hover:text-accent"
                   >
                     {row.task.text}
-                  </Link>
+                  </PanelLink>
                 )}
                 {/* A bill leaves for Money rather than opening a task page.
                     It stopped being an `Item` on September 1, 2026, and it is
@@ -219,12 +221,12 @@ export function PoolRoute() {
                 key={row.task.id}
                 className="flex min-h-11 items-center gap-3 border-t border-border text-sm"
               >
-                <Link
+                <PanelLink
                   to={`/tasks/${row.task.id}`}
                   className="min-w-0 flex-1 truncate hover:text-accent"
                 >
                   {row.task.text}
-                </Link>
+                </PanelLink>
                 {/* Muted, like everything else on the row. A floating line has
                     no due date, so nothing was promised and there is nothing
                     here to be late for — rule 1. */}

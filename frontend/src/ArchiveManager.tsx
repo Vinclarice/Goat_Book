@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router";
 
+import { PanelLink } from "./app/panel";
+
 import { Button } from "@/components/ui/button";
 
 import { deleteTask, updateTaskStatus } from "./api";
@@ -187,9 +189,9 @@ export function ArchiveManager({ initialData }: Props) {
                     offered no way to look at one first. The task page shows
                     an archived task since F3. */}
                 <strong className="block text-sm font-semibold text-foreground">
-                  <Link to={`/tasks/${item.id}`} className="hover:underline">
+                  <PanelLink to={`/tasks/${item.id}`} className="hover:underline">
                     {item.text}
-                  </Link>
+                  </PanelLink>
                 </strong>
                 <small className="mt-1 block text-xs text-muted-foreground">
                   {itemArea && (

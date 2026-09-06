@@ -174,13 +174,22 @@ describe("TaskDetailRoute", () => {
       await screen.findByRole("button", { name: "Delete permanently" }),
     );
 
-    expect(screen.getByRole("dialog")).toHaveTextContent("cannot be undone");
+    // Named rather than bare since app-overhaul-plan.md increment 1: the task
+    // itself is a panel now, so there are two dialogs on screen and a bare
+    // query matches both. The confirmation has carried this `aria-label` all
+    // along -- the test simply was not using it, and the ambiguity is the
+    // useful kind, because a person hearing two dialogs needs them named too.
+    const confirmation = screen.getByRole("dialog", {
+      name: /delete this task permanently/i,
+    });
+
+    expect(confirmation).toHaveTextContent("cannot be undone");
     expect(
       (await sentRequests(fetchMock)).some((sent) => sent.method === "DELETE"),
     ).toBe(false);
 
     await user.click(
-      within(screen.getByRole("dialog")).getByRole("button", {
+      within(confirmation).getByRole("button", {
         name: "Delete permanently",
       }),
     );

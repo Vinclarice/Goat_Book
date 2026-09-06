@@ -123,14 +123,45 @@ waits.
    it lived*. **This is D2 and it is Vince's.** Without it the usability half
    of this plan is unevidenced and every increment below says so.
 
-1. **The panel mechanic, proven on one thing.** Task detail — `/tasks/:id` —
+1. ~~**The panel mechanic, proven on one thing.** Task detail — `/tasks/:id` —
    becomes something that opens rather than somewhere you go: URL kept, back
-   button honoured, focus managed, closable. Nothing else moves.
+   button honoured, focus managed, closable. Nothing else moves.~~
+   **Shipped September 6, 2026.** `panel.tsx` holds the mechanic —
+   `PANEL_ROUTES`, `backgroundFor`, `PanelLink`, `usePanelClose` and `Panel` —
+   and `AppRoutes` renders two sets of routes at once when a panel is open.
+   The five links to `/tasks/:id` became `PanelLink`s; the path is unchanged
+   and every bookmark still works.
 
    **Chosen as the first because it is also a repair.**
    [`coherence-audit-2026-08-30.md`](coherence-audit-2026-08-30.md)'s F3 is
    that what you can do to a task depends on which page you met it on; one
    panel opened from everywhere is that finding's answer, not just a mechanic.
+
+   **What building it taught, and it sharpened this plan's own refusal.** *Not
+   a modal* turned out to be three separate settings rather than a sentiment,
+   and **a test found each one**:
+
+   - Radix's modal mode marks the page behind `aria-hidden` and inert, so it
+     is *visible and dead*. Caught by an existing test that renders a link
+     outside the route on purpose. `modal={false}`.
+   - A scrim over that page is the same mistake in CSS. The overlay was
+     deleted rather than restyled.
+   - A non-modal dialog closes on any outside interaction, which would dismiss
+     the panel the moment you touched the page it is meant to sit beside.
+     Caught by the same test, where a click on a link fired a close and a
+     navigation at once and the close won. Outside interaction is now
+     prevented; a panel closes the way a route does — Escape, its Close
+     button, or the back button.
+
+   **Two things were repaired in passing rather than silently.** The task
+   page's *"← Back to the agenda"* fallback outlived the Agenda by two days and
+   now says the day; and the delete confirmation's test was matching
+   `role="dialog"` bare, which the panel made ambiguous — it has carried an
+   `aria-label` all along and the test now uses it, which is what a person
+   hearing two dialogs needs too.
+
+   **D4 is not yet answered.** Only one kind of panel exists, so nothing has
+   had the chance to stack.
 
 2. **The knowledge core stops being a second application.** Concepts, Read,
    Decisions, Then, Pending, Numbers and Ask become panels, and **`Note` and
@@ -141,6 +172,29 @@ waits.
    also where the cost of D1 is actually paid, so it is worth stating plainly
    what is spent: browsing the graph stops being instant-loading and
    JavaScript-free. Capture does not.
+
+   **Split in two on September 6, 2026, before it was started, because it had
+   a hidden half.** `mind/api_v1.py` is **one GET and seven POSTs** — the GET
+   is search. Every one of those ten surfaces is a Django view reading models
+   directly, so there is no API for a panel to consume and "make them panels"
+   silently contained "build the knowledge core's read API first".
+
+   - **2a. The read API.** GETs on `mind/api_v1.py` for the ten surfaces, plus
+     the schema regeneration and `generate:api` that
+     [`CLAUDE.md`](../CLAUDE.md) requires before the SPA can type against them.
+     **Pure addition: no UI changes and `/mind/` keeps working throughout**, so
+     it is independently shippable and independently wrong-able.
+     **A router in `mind/api_v1.py`, never a second API** — `CLAUDE.md` is
+     explicit, and the knowledge core's own `NinjaAPI` was deleted on August
+     15 having never been called.
+   - **2b. The panels.** The SPA consumes 2a; the ten surfaces retire with
+     redirects, including the PWA's two shortcuts.
+
+   **Recorded rather than discovered mid-increment**, which is the whole
+   argument for having read the code before writing the increment. It also
+   confirms increment 3's estimate rather than undermining it: search is *"a
+   move rather than a build"* precisely because it is the one thing here that
+   already has its GET.
 
 3. **One search box, on the page.** `/mind/search/`'s machinery already reads
    `Item`, `DailyEntry` and `Node`, so this is a move rather than a build. It

@@ -893,6 +893,92 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/sources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Sources
+         * @description What you have read -- S15.
+         *
+         *     **The read half only.** `views.sources` is a `GET` and a `POST` on one
+         *     route, because recording a source is one line of a form above the list it
+         *     joins. Recording stays there until 2b moves the surface whole; an endpoint
+         *     that could show a list but not add to it would be a panel with a missing
+         *     verb.
+         */
+        get: operations["mind_api_v1_list_sources"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sources/{public_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Source
+         * @description One thing you read, and everything that grew out of it -- S15.
+         */
+        get: operations["mind_api_v1_read_source"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/decisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Decisions
+         * @description What you chose, over what, and what would bring it back -- S11.
+         */
+        get: operations["mind_api_v1_list_decisions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/decisions/{public_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Decision
+         * @description One decision, and what it was standing on.
+         */
+        get: operations["mind_api_v1_read_decision"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/concepts/{public_id}/confirm": {
         parameters: {
             query?: never;
@@ -3006,6 +3092,131 @@ export interface components {
             value: string;
             /** Label */
             label: string;
+        };
+        /** SourceOut */
+        SourceOut: {
+            /**
+             * Public Id
+             * Format: uuid
+             */
+            public_id: string;
+            /** Title */
+            title: string;
+            /** Url */
+            url: string;
+            /** Author */
+            author: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** SourcesOut */
+        SourcesOut: {
+            /** Sources */
+            sources: components["schemas"]["SourceOut"][];
+        };
+        /**
+         * GrewOut
+         * @description What came out of a source.
+         *
+         *     Two lists rather than notes carrying their tasks, because that is the shape
+         *     `services.what_grew_from` returns and the shape the page shows. The tasks
+         *     are **reached rather than stored**, along `Node` -> confirmed actionable
+         *     `Facet` -> `Item`, so this cannot disagree with the task core about what
+         *     came of anything.
+         */
+        GrewOut: {
+            /** Notes */
+            notes: components["schemas"]["ConceptNodeOut"][];
+            /** Tasks */
+            tasks: components["schemas"]["GrewTaskOut"][];
+        };
+        /**
+         * GrewTaskOut
+         * @description A task a source's note became.
+         *
+         *     Deliberately thin. This is a *citation* -- proof that something came of
+         *     reading the thing -- and the task's own panel is one click away and owns
+         *     the rest. A fuller copy here would be a second definition of a task, free
+         *     to disagree with the one `lists` serves.
+         */
+        GrewTaskOut: {
+            /** Id */
+            id: number;
+            /** Text */
+            text: string;
+            /** Status */
+            status: string;
+        };
+        /** SourceDetailOut */
+        SourceDetailOut: {
+            source: components["schemas"]["SourceOut"];
+            grew: components["schemas"]["GrewOut"];
+        };
+        /** DecisionOut */
+        DecisionOut: {
+            /**
+             * Public Id
+             * Format: uuid
+             */
+            public_id: string;
+            /** Question */
+            question: string;
+            /** Chose */
+            chose: string;
+            /** Considered */
+            considered: string;
+            /** Revisit When */
+            revisit_when: string;
+            /** Revisit After */
+            revisit_after: string | null;
+            /**
+             * Decided At
+             * Format: date-time
+             */
+            decided_at: string;
+            /** Revisited At */
+            revisited_at: string | null;
+        };
+        /**
+         * DecisionsOut
+         * @description The due ones as their own thing, not a flag on the rows.
+         *
+         *     `views.decisions` is explicit about why: *find decisions past their
+         *     reconsideration trigger without hunting for them* is a third of S11, and a
+         *     list sorted by date buries exactly that.
+         */
+        DecisionsOut: {
+            due: components["schemas"]["DueToRevisitOut"];
+            /** All */
+            all: components["schemas"]["DecisionOut"][];
+        };
+        /**
+         * DueToRevisitOut
+         * @description What has come back, and how much cannot be found this way.
+         *
+         *     **The count is not decoration and must not be flattened away.**
+         *     `services.decisions_to_revisit` returns both halves on purpose: only a
+         *     dated decision can be found by a query, and a condition in words is what
+         *     makes a decision honest while being checkable by nobody but the person.
+         *     Saying how many are waiting on one is, in that function's own words, the
+         *     difference between a read that is incomplete and one that is misleading.
+         *
+         *     Written as a schema over the service's own shape rather than as a bare
+         *     list, which is what this first was -- and a bare list would have passed its
+         *     test while quietly dropping the honest half.
+         */
+        DueToRevisitOut: {
+            /** Past Their Date */
+            past_their_date: components["schemas"]["DecisionOut"][];
+            /** Waiting On A Condition */
+            waiting_on_a_condition: number;
+        };
+        /** DecisionDetailOut */
+        DecisionDetailOut: {
+            decision: components["schemas"]["DecisionOut"];
         };
         /** ConceptOut */
         ConceptOut: {
@@ -5683,6 +5894,90 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ConceptDetailOut"];
+                };
+            };
+        };
+    };
+    mind_api_v1_list_sources: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SourcesOut"];
+                };
+            };
+        };
+    };
+    mind_api_v1_read_source: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                public_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SourceDetailOut"];
+                };
+            };
+        };
+    };
+    mind_api_v1_list_decisions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DecisionsOut"];
+                };
+            };
+        };
+    };
+    mind_api_v1_read_decision: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                public_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DecisionDetailOut"];
                 };
             };
         };

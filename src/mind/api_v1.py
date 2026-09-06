@@ -37,13 +37,22 @@ from ninja.errors import HttpError
 
 from accounts.auth import SessionAuthIfLoggedIn, TokenAuth
 from accounts.models import SCOPE_CAPTURE_WRITE
-from clarice import composer
+from clarice import clocks, composer
 from clarice.search import to_query
 from daily import reads as daily_reads
 from lists import search as lists_search
 
 from . import queries, services
-from .models import ConceptCandidate, ConceptType, Facet, FacetKind, Node, NodeSource
+from .models import (
+    ConceptCandidate,
+    ConceptType,
+    Decision,
+    Facet,
+    FacetKind,
+    Node,
+    NodeSource,
+    Source,
+)
 
 router = Router()
 
@@ -440,6 +449,163 @@ def read_concept(request, public_id: uuid.UUID):
         ],
         "is_a_person": canonical.concept_type == ConceptType.PERSON,
     }
+
+
+class SourceOut(Schema):
+    public_id: uuid.UUID
+    title: str
+    #: Text, never fetched -- `Source.url`'s own comment and D7.
+    url: str
+    author: str
+    created_at: datetime
+
+
+class GrewTaskOut(Schema):
+    """A task a source's note became.
+
+    Deliberately thin. This is a *citation* -- proof that something came of
+    reading the thing -- and the task's own panel is one click away and owns
+    the rest. A fuller copy here would be a second definition of a task, free
+    to disagree with the one `lists` serves.
+    """
+
+    id: int
+    text: str
+    status: str
+
+
+class GrewOut(Schema):
+    """What came out of a source.
+
+    Two lists rather than notes carrying their tasks, because that is the shape
+    `services.what_grew_from` returns and the shape the page shows. The tasks
+    are **reached rather than stored**, along `Node` -> confirmed actionable
+    `Facet` -> `Item`, so this cannot disagree with the task core about what
+    came of anything.
+    """
+
+    notes: list[ConceptNodeOut]
+    tasks: list[GrewTaskOut]
+
+
+class SourcesOut(Schema):
+    sources: list[SourceOut]
+
+
+class SourceDetailOut(Schema):
+    source: SourceOut
+    grew: GrewOut
+
+
+class DecisionOut(Schema):
+    public_id: uuid.UUID
+    question: str
+    chose: str
+    #: The half a note cannot keep: six weeks later the alternatives are the
+    #: part you have forgotten, and it is a third of S11's done-means.
+    considered: str
+    #: The condition in words, honest and uncheckable by anything.
+    revisit_when: str
+    #: A date, which is crude and is the only half a read can act on.
+    revisit_after: date | None
+    decided_at: datetime
+    revisited_at: datetime | None
+
+
+class DueToRevisitOut(Schema):
+    """What has come back, and how much cannot be found this way.
+
+    **The count is not decoration and must not be flattened away.**
+    `services.decisions_to_revisit` returns both halves on purpose: only a
+    dated decision can be found by a query, and a condition in words is what
+    makes a decision honest while being checkable by nobody but the person.
+    Saying how many are waiting on one is, in that function's own words, the
+    difference between a read that is incomplete and one that is misleading.
+
+    Written as a schema over the service's own shape rather than as a bare
+    list, which is what this first was -- and a bare list would have passed its
+    test while quietly dropping the honest half.
+    """
+
+    past_their_date: list[DecisionOut]
+    waiting_on_a_condition: int
+
+
+class DecisionsOut(Schema):
+    """The due ones as their own thing, not a flag on the rows.
+
+    `views.decisions` is explicit about why: *find decisions past their
+    reconsideration trigger without hunting for them* is a third of S11, and a
+    list sorted by date buries exactly that.
+    """
+
+    due: DueToRevisitOut
+    all: list[DecisionOut]
+
+
+class DecisionDetailOut(Schema):
+    decision: DecisionOut
+
+
+# DARK: no client yet -- app-overhaul-plan.md increment 2a, consumed by 2b.
+# `/mind/sources/` still serves the page.
+@router.get("/sources", response=SourcesOut, auth=SessionAuthIfLoggedIn())
+def list_sources(request):
+    """What you have read -- S15.
+
+    **The read half only.** `views.sources` is a `GET` and a `POST` on one
+    route, because recording a source is one line of a form above the list it
+    joins. Recording stays there until 2b moves the surface whole; an endpoint
+    that could show a list but not add to it would be a panel with a missing
+    verb.
+    """
+    return {"sources": Source.objects.filter(owner=request.user)}
+
+
+# DARK: no client yet -- see `list_sources` above, same trigger.
+@router.get(
+    "/sources/{public_id}", response=SourceDetailOut, auth=SessionAuthIfLoggedIn()
+)
+def read_source(request, public_id: uuid.UUID):
+    """One thing you read, and everything that grew out of it -- S15."""
+    found = Source.objects.filter(
+        public_id=public_id, owner=request.user
+    ).first()
+    if found is None:
+        raise HttpError(404, "Source not found.")
+    return {"source": found, "grew": services.what_grew_from(found)}
+
+
+# DARK: no client yet -- see `list_sources` above, same trigger.
+@router.get("/decisions", response=DecisionsOut, auth=SessionAuthIfLoggedIn())
+def list_decisions(request):
+    """What you chose, over what, and what would bring it back -- S11."""
+    return {
+        # The owner's today -- D16. A decision due on the 5th became due some
+        # hours early or late depending on which side of UTC they live on,
+        # which is a small wrongness in the one read whose whole job is *has
+        # this come back yet*.
+        "due": services.decisions_to_revisit(
+            request.user, on=clocks.today_for(request.user)
+        ),
+        "all": Decision.objects.filter(owner=request.user),
+    }
+
+
+# DARK: no client yet -- see `list_sources` above, same trigger.
+@router.get(
+    "/decisions/{public_id}", response=DecisionDetailOut, auth=SessionAuthIfLoggedIn()
+)
+def read_decision(request, public_id: uuid.UUID):
+    """One decision, and what it was standing on."""
+    found = (
+        Decision.objects.filter(public_id=public_id, owner=request.user)
+        .select_related("cited_node", "supersedes")
+        .first()
+    )
+    if found is None:
+        raise HttpError(404, "Decision not found.")
+    return {"decision": found}
 
 
 @router.post("/concepts/{public_id}/confirm", response=ConceptOut, auth=SessionAuthIfLoggedIn())

@@ -1541,6 +1541,128 @@
         ]
       }
     },
+    "/api/v1/sources": {
+      "get": {
+        "operationId": "mind_api_v1_list_sources",
+        "summary": "List Sources",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourcesOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "What you have read -- S15.\n\n**The read half only.** `views.sources` is a `GET` and a `POST` on one\nroute, because recording a source is one line of a form above the list it\njoins. Recording stays there until 2b moves the surface whole; an endpoint\nthat could show a list but not add to it would be a panel with a missing\nverb.",
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      }
+    },
+    "/api/v1/sources/{public_id}": {
+      "get": {
+        "operationId": "mind_api_v1_read_source",
+        "summary": "Read Source",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "public_id",
+            "schema": {
+              "format": "uuid",
+              "title": "Public Id",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceDetailOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "One thing you read, and everything that grew out of it -- S15.",
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      }
+    },
+    "/api/v1/decisions": {
+      "get": {
+        "operationId": "mind_api_v1_list_decisions",
+        "summary": "List Decisions",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionsOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "What you chose, over what, and what would bring it back -- S11.",
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      }
+    },
+    "/api/v1/decisions/{public_id}": {
+      "get": {
+        "operationId": "mind_api_v1_read_decision",
+        "summary": "Read Decision",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "public_id",
+            "schema": {
+              "format": "uuid",
+              "title": "Public Id",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionDetailOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "One decision, and what it was standing on.",
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      }
+    },
     "/api/v1/concepts/{public_id}/confirm": {
       "post": {
         "operationId": "mind_api_v1_confirm_name",
@@ -6127,6 +6249,243 @@
           "label"
         ],
         "title": "ConceptKindOut",
+        "type": "object"
+      },
+      "SourceOut": {
+        "properties": {
+          "public_id": {
+            "format": "uuid",
+            "title": "Public Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          },
+          "author": {
+            "title": "Author",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "public_id",
+          "title",
+          "url",
+          "author",
+          "created_at"
+        ],
+        "title": "SourceOut",
+        "type": "object"
+      },
+      "SourcesOut": {
+        "properties": {
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/SourceOut"
+            },
+            "title": "Sources",
+            "type": "array"
+          }
+        },
+        "required": [
+          "sources"
+        ],
+        "title": "SourcesOut",
+        "type": "object"
+      },
+      "GrewOut": {
+        "description": "What came out of a source.\n\nTwo lists rather than notes carrying their tasks, because that is the shape\n`services.what_grew_from` returns and the shape the page shows. The tasks\nare **reached rather than stored**, along `Node` -> confirmed actionable\n`Facet` -> `Item`, so this cannot disagree with the task core about what\ncame of anything.",
+        "properties": {
+          "notes": {
+            "items": {
+              "$ref": "#/components/schemas/ConceptNodeOut"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "tasks": {
+            "items": {
+              "$ref": "#/components/schemas/GrewTaskOut"
+            },
+            "title": "Tasks",
+            "type": "array"
+          }
+        },
+        "required": [
+          "notes",
+          "tasks"
+        ],
+        "title": "GrewOut",
+        "type": "object"
+      },
+      "GrewTaskOut": {
+        "description": "A task a source's note became.\n\nDeliberately thin. This is a *citation* -- proof that something came of\nreading the thing -- and the task's own panel is one click away and owns\nthe rest. A fuller copy here would be a second definition of a task, free\nto disagree with the one `lists` serves.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "status"
+        ],
+        "title": "GrewTaskOut",
+        "type": "object"
+      },
+      "SourceDetailOut": {
+        "properties": {
+          "source": {
+            "$ref": "#/components/schemas/SourceOut"
+          },
+          "grew": {
+            "$ref": "#/components/schemas/GrewOut"
+          }
+        },
+        "required": [
+          "source",
+          "grew"
+        ],
+        "title": "SourceDetailOut",
+        "type": "object"
+      },
+      "DecisionOut": {
+        "properties": {
+          "public_id": {
+            "format": "uuid",
+            "title": "Public Id",
+            "type": "string"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          },
+          "chose": {
+            "title": "Chose",
+            "type": "string"
+          },
+          "considered": {
+            "title": "Considered",
+            "type": "string"
+          },
+          "revisit_when": {
+            "title": "Revisit When",
+            "type": "string"
+          },
+          "revisit_after": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revisit After"
+          },
+          "decided_at": {
+            "format": "date-time",
+            "title": "Decided At",
+            "type": "string"
+          },
+          "revisited_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revisited At"
+          }
+        },
+        "required": [
+          "public_id",
+          "question",
+          "chose",
+          "considered",
+          "revisit_when",
+          "revisit_after",
+          "decided_at",
+          "revisited_at"
+        ],
+        "title": "DecisionOut",
+        "type": "object"
+      },
+      "DecisionsOut": {
+        "description": "The due ones as their own thing, not a flag on the rows.\n\n`views.decisions` is explicit about why: *find decisions past their\nreconsideration trigger without hunting for them* is a third of S11, and a\nlist sorted by date buries exactly that.",
+        "properties": {
+          "due": {
+            "$ref": "#/components/schemas/DueToRevisitOut"
+          },
+          "all": {
+            "items": {
+              "$ref": "#/components/schemas/DecisionOut"
+            },
+            "title": "All",
+            "type": "array"
+          }
+        },
+        "required": [
+          "due",
+          "all"
+        ],
+        "title": "DecisionsOut",
+        "type": "object"
+      },
+      "DueToRevisitOut": {
+        "description": "What has come back, and how much cannot be found this way.\n\n**The count is not decoration and must not be flattened away.**\n`services.decisions_to_revisit` returns both halves on purpose: only a\ndated decision can be found by a query, and a condition in words is what\nmakes a decision honest while being checkable by nobody but the person.\nSaying how many are waiting on one is, in that function's own words, the\ndifference between a read that is incomplete and one that is misleading.\n\nWritten as a schema over the service's own shape rather than as a bare\nlist, which is what this first was -- and a bare list would have passed its\ntest while quietly dropping the honest half.",
+        "properties": {
+          "past_their_date": {
+            "items": {
+              "$ref": "#/components/schemas/DecisionOut"
+            },
+            "title": "Past Their Date",
+            "type": "array"
+          },
+          "waiting_on_a_condition": {
+            "title": "Waiting On A Condition",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "past_their_date",
+          "waiting_on_a_condition"
+        ],
+        "title": "DueToRevisitOut",
+        "type": "object"
+      },
+      "DecisionDetailOut": {
+        "properties": {
+          "decision": {
+            "$ref": "#/components/schemas/DecisionOut"
+          }
+        },
+        "required": [
+          "decision"
+        ],
+        "title": "DecisionDetailOut",
         "type": "object"
       },
       "ConceptOut": {

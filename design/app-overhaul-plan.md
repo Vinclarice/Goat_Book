@@ -200,10 +200,20 @@ waits.
        deliberate divergence: an unknown id is a **404** where the page
        redirects to the index, because a panel needs to know it asked for
        something that is not there.
+     - ~~**Sources** / *Read* — index and detail~~ **September 6, 2026.**
+       `GET /sources`, `GET /sources/{public_id}`, the latter carrying
+       `what_grew_from` — notes and the tasks they became, **reached along the
+       chain rather than stored**, so a source cannot disagree with the task
+       core about what came of anything.
+     - ~~**Decisions** — index and detail~~ **September 6, 2026.**
+       `GET /decisions`, `GET /decisions/{public_id}`. **`due` is not a list**,
+       and modelling it as one is a mistake this made and a test caught:
+       `decisions_to_revisit` returns the dated ones *and a count of those
+       waiting on a condition in words*, because only the dated ones can be
+       found by a query and saying how many cannot is the difference between a
+       read that is incomplete and one that is misleading.
      - Notes — index (new, G3) and detail
      - People — index (new, G3) and detail
-     - Sources / *Read* — index and detail
-     - Decisions — index and detail
      - Review / *Pending*
      - *Then* — this time before
      - Numbers

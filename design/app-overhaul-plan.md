@@ -115,6 +115,14 @@ Superlists 2.0's acceptance running, and that fortnight ends around **September
 surfaces the fortnight is not measuring, so the evidence survives and nothing
 waits.
 
+**Paused after seven of 2a's surfaces, September 6, 2026.** Vince: *"I think I
+want the lists on the app foremost"* — the Android client, which turned out to
+be showing a task core that was replaced two days earlier.
+[`android-overhaul-plan.md`](android-overhaul-plan.md) is that work and it goes
+first. **Nothing here is left half-built**: every 2a commit is pure addition
+with `/mind/` still serving every page, so this plan sits where it is rather
+than needing to be finished or unwound.
+
 0. **The fortnight, and its friction log.** Running now, no code. Superlists
    2.0's acceptance needs ordinary use to about September 18;
    [`app-overhaul-audit-2026-09-06.md`](app-overhaul-audit-2026-09-06.md)'s
@@ -236,14 +244,12 @@ waits.
      - Note detail — **split off from its index on purpose.**
        `views.note`'s context has twenty keys. The front door was the gap G3
        named and was worth closing alone; this is its own piece.
-     - **Review / *Pending*, and *Then* — these two are not mirrors and need a
-       decision.** `queries.pending_hypotheses` says in its own docstring that
-       it is *not a display path*: showing a proposal and surfacing it are one
-       act, so reading the review through `services.open_review` **stamps the
-       review window**, and `views.this_time_before` calls `mark_reviewed` the
-       same way. A `GET` that mutates is wrong, and dropping the stamp breaks
-       the thing that lets inaction be told apart from never having seen it.
-       Neither half can simply be copied. **This is D8.**
+     - ~~**Review / *Pending*, and *Then* — these two are not mirrors and need
+       a decision.**~~ **Out of scope, September 6, 2026.** Vince: *"Review
+       ritual can probably stay on the website for now."* So the hard problem
+       is answered by not having it — see D8, which is closed rather than
+       decided. The two surfaces keep their templates and `/mind/` keeps a
+       reason to exist beyond capture.
      - Numbers — `lab_summary` returns nested producer, retrieval and
        readiness tables of varying shape; typing them honestly is most of the
        work and it is the least valuable panel of the ten. Last on purpose.
@@ -334,15 +340,22 @@ waits.
   interface and the decision is whether that is permanent.
 - **D6. Does Money's month rail survive inside its panel?** Twelve months is
   what makes Money navigable and a panel is a worse place for a rail.
-- **D8. How does a read that must record having happened work over HTTP?**
-  Raised September 6, 2026 while enumerating 2a. The review's whole design is
-  that showing a proposal *is* surfacing it — `pending_hypotheses` refuses to
-  be a display path and `open_review` marks what it returns — and
-  `this_time_before` stamps `mark_reviewed` for the same reason. So the two
-  surfaces cannot be mirrored into a `GET`. The options are a `POST` that opens
-  a session and returns the pile, or a `GET` that takes an explicit *this
-  counts* flag; the first is honest about the mutation and the second keeps the
-  panel's shape. **Not decided, and it decides two of the ten surfaces.**
+- ~~**D8. How does a read that must record having happened work over HTTP?**~~
+  **Closed the day it was raised, September 6, 2026, and not by being
+  answered.** The review's whole design is that showing a proposal *is*
+  surfacing it — `pending_hypotheses` refuses to be a display path and
+  `open_review` marks what it returns — so neither Review nor *Then* could be
+  mirrored into a `GET`. Vince's answer was to leave both on the website for
+  now, which removes the question rather than settling it. **It comes back
+  the moment either surface is wanted in a panel**, and the two options are
+  recorded here so it is not re-derived: a `POST` that opens a session and
+  returns the pile, honest about the mutation; or a `GET` with an explicit
+  *this counts* flag, which keeps the panel's shape and hides a write behind a
+  query parameter.
+
+  **This also leaves `/mind/` a reason to exist beyond capture**, which rule 4
+  did not anticipate and which is worth noticing rather than treating as a
+  contradiction.
 
 - **D7. Is there a deliberate visual pass?** *How it looks* was one of Vince's
   four complaints and this plan answers it structurally. Whether that is enough

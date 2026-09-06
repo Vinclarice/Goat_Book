@@ -524,12 +524,30 @@ re-add it here.
   not a backend rebuild — was falsified twice, and that iOS is absent entirely.
   ~~Nothing is scheduled.~~ That plan's stub points here for this question.
 
-  **Answered in direction on August 31, 2026, and not in scope**: Vince intends
-  **a complete overhaul of the Android app**, in its own session. That settles
-  *keeps growing* against Part 9's freeze recommendation, and leaves everything
-  else open — no date, no scope, no plan document yet. **Recorded as an
-  intention rather than promoted to work**, which is the distinction this
-  section exists to keep: an intention with no trigger is not a schedule.
+  ~~**Answered in direction on August 31, 2026, and not in scope**: Vince
+  intends **a complete overhaul of the Android app**, in its own session. That
+  settles *keeps growing* against Part 9's freeze recommendation, and leaves
+  everything else open — no date, no scope, no plan document yet. **Recorded as
+  an intention rather than promoted to work**, which is the distinction this
+  section exists to keep: an intention with no trigger is not a schedule.~~
+
+  **Triggered September 6, 2026** — Vince: *"I think I want the lists on the
+  app foremost."* [`android-overhaul-plan.md`](android-overhaul-plan.md) is the
+  document this entry said did not exist, and the intention is now work.
+
+  **What the trigger turned up is worse than *keeps growing*.** The phone is a
+  faithful client of the **pre-Superlists-2.0** task core: it still carries the
+  three prose fields the Day page dropped on September 4, still has an
+  **Agenda** screen for a surface deleted the same day, and has no `list_closed_at`
+  at all — so it cannot show a bounded list, which is the redesign's entire
+  subject. Nothing is broken; it shows the wrong application, correctly.
+
+  **And the backend cost was measured rather than estimated**, because Part 9's
+  case rests on that estimate having been wrong twice: `GET /api/v1/day` already
+  takes a token and already returns the line, the readback, the leftovers and
+  appointments, so the phone is discarding them. What is genuinely owed is
+  **three deliberate entries in `TOKEN_AUTHENTICATED`** — the pool, the
+  leftovers' three moves, and writing an appointment.
 
   **Its one dependency outside itself is the entry below**, and the ordering is
   worth having written down before either starts: the overhaul is when a signed

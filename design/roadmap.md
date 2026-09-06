@@ -58,18 +58,42 @@ re-add it here.
 
 ## Open now
 
-- **Superlists 2.0 is the active task-core work, claimed September 3, 2026.**
+- **Superlists 2.0 — all nine increments shipped September 3–4, 2026; the
+  acceptance is running and the plan is open.**
   Vince: *"I want to redesign the superlist core as I realize it's not really
   something I'm going to use."* [`superlists-2.0-plan.md`](superlists-2.0-plan.md)
-  owns the design, the increments and its open decisions, and is not restated
+  owns the design, every strike and its open decisions, and is not restated
   here. The short form: one page replaces the Day page and the Agenda — the
   bounded list chosen for today, a line drawn by the first act of execution,
   what joined below it, the log, and the whole pool beside it; Areas and priorities go; an
-  `Appointment` record arrives, the model v3 argued for as `Event`. **Its first
-  increment is a week with no code**, and the plan says which sections of the
-  page that week decides the order of. Claimed here on the day the plan was
-  written, because the Money entry below records what a plan without a roadmap
-  entry cost.
+  `Appointment` record arrives, the model v3 argued for as `Event`.
+  ~~Its first increment is a week with no code~~ — that week happened, and the
+  other nine followed it. Deployed twice on September 4:
+  `DEPLOYED-2026-09-04/2005` carried increments 1–9 and four migrations, and
+  `DEPLOYED-2026-09-04/2337` carried three corrections Vince asked for after
+  using it for an evening. The Agenda is deleted, 1,795 lines of it, and
+  `/agenda` redirects to `/day`.
+
+  **It is not closed and must not be closed on the code existing.** Its
+  acceptance is *the page used on ordinary days for two weeks* after increment
+  5, measured by `recall.attendance_between` — so it ends around **September
+  18** and nothing but use can move it. **No bird codename until then**, the
+  same call Money's entry below records, and for the same reason. D8 and D9 —
+  the stale threshold and the composer's default — are deliberately left for
+  the log to answer rather than the argument. **Two live consequences** of
+  taking the prose fields off the day are promoted inside the plan's *What the
+  day no longer asks for*, and both wait on one deferred question: whether
+  `DailyEntry`'s three columns have a future.
+
+  **And this entry went stale for two days, which is the fourth instance.**
+  `design/roadmap.md` was last written by the *plan* commit; nine
+  implementation commits and two deploys did not touch it, so the sole
+  authority on what is active said *a week with no code* about shipped and
+  deployed work. **The claim was learned from Money and the strike was not** —
+  the paragraph directly below explains what a plan without a roadmap entry
+  cost, and the answer turned out to be only half the lesson. `CLAUDE.md`'s
+  opening rule is the whole of it: strike the increment in the commit that
+  ships it, in *every* document that carries it.
 
 - **The Money module shipped, and this file did not know it existed — August 27,
   2026.** Fourteen increments across sixteen commits in one day, from

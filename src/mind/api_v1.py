@@ -608,6 +608,76 @@ def read_decision(request, public_id: uuid.UUID):
     return {"decision": found}
 
 
+#: How many notes an index page returns at once.
+#:
+#: Same number as `SEARCH_LIMIT` and for the same reason -- a front door on six
+#: hundred notes is a scroll, not a door -- but a separate constant, because
+#: the two answer different questions and tying them together would make one
+#: of them move for the other's reasons.
+NOTES_PAGE = 30
+
+
+class NotesOut(Schema):
+    """The front door on capture, which has never had one.
+
+    `app-overhaul-audit-2026-09-06.md`'s **G3**: `/mind/notes/<uuid>/` renders
+    and `/mind/notes/` does not, so the thing capture writes is reachable only
+    by arriving from somewhere else. This is the one part of increment 2a that
+    mirrors no existing view, because there is none to mirror.
+
+    **`total` is counted before slicing**, the way `SearchOut`'s section counts
+    are: a page showing thirty of six hundred and saying nothing about the rest
+    is a surface that lies quietly.
+    """
+
+    notes: list[ConceptNodeOut]
+    total: int
+
+
+class PeopleOut(Schema):
+    people: list[ConceptCandidateOut]
+
+
+# DARK: no client yet -- app-overhaul-plan.md increment 2a, consumed by 2b.
+# Unlike its neighbours there is no page to keep working here; this is new.
+@router.get("/notes", response=NotesOut, auth=SessionAuthIfLoggedIn())
+def list_notes(request, limit: int = NOTES_PAGE):
+    """Everything written, newest first.
+
+    **`live_nodes` and nothing wider.** Deleted and archived stay out, and a
+    new surface is not an exemption from a rule that already holds -- the same
+    sentence `what_grew_from` writes about a source page.
+    """
+    notes = queries.live_nodes(request.user)
+    # Counted before slicing, deliberately. See `NotesOut`.
+    return {"notes": notes[: max(0, limit)], "total": notes.count()}
+
+
+# DARK: no client yet -- see `list_notes` above, same trigger.
+@router.get("/people", response=PeopleOut, auth=SessionAuthIfLoggedIn())
+def list_people(request):
+    """The people in your life, as the graph has them.
+
+    **Confirmed only.** A candidate is the system's guess, and the soft-apply
+    rule is that a guess is never treated as fact by anything downstream -- a
+    directory of the people in somebody's life is about as downstream as it
+    gets, and this is the same reason `confirmed_concept_labels` gives.
+
+    **People only**, because `views.person` redirects a motif rather than
+    rendering one: a page called *people* showing a motif would mean nothing.
+    An index keeps that rule most cheaply by simply not listing them.
+    """
+    return {
+        "people": ConceptCandidate.objects.filter(
+            owner=request.user,
+            concept_type=ConceptType.PERSON,
+            confirmed_at__isnull=False,
+            retired_at__isnull=True,
+            merged_into__isnull=True,
+        ).order_by("label")
+    }
+
+
 @router.post("/concepts/{public_id}/confirm", response=ConceptOut, auth=SessionAuthIfLoggedIn())
 def confirm_name(request, public_id: uuid.UUID):
     """Admit a recurring name to the trusted corpus -- always a person's

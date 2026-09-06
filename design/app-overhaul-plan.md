@@ -212,8 +212,19 @@ waits.
        waiting on a condition in words*, because only the dated ones can be
        found by a query and saying how many cannot is the difference between a
        read that is incomplete and one that is misleading.
-     - Notes — index (new, G3) and detail
-     - People — index (new, G3) and detail
+     - ~~**Notes** — index (new, G3)~~ **September 6, 2026.** `GET /notes`,
+       newest first, `live_nodes` and nothing wider, with `total` counted
+       before slicing. **The one part of 2a that mirrors no view**, because
+       there was none: this is the front door capture has never had.
+     - ~~**People** — index (new, G3)~~ **September 6, 2026.** `GET /people`,
+       confirmed people only — a candidate is the system's guess and the
+       soft-apply rule keeps a guess out of a directory of the people in
+       somebody's life; and people only, because `views.person` redirects a
+       motif rather than rendering one.
+     - Note detail and person detail — **split off from their indexes on
+       purpose.** `views.note`'s context has twenty keys and `views.person`'s
+       carries commitments and a name's shape across time. The front doors were
+       the gap G3 named and are worth closing alone; these are their own piece.
      - Review / *Pending*
      - *Then* — this time before
      - Numbers

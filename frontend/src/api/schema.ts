@@ -979,6 +979,59 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Notes
+         * @description Everything written, newest first.
+         *
+         *     **`live_nodes` and nothing wider.** Deleted and archived stay out, and a
+         *     new surface is not an exemption from a rule that already holds -- the same
+         *     sentence `what_grew_from` writes about a source page.
+         */
+        get: operations["mind_api_v1_list_notes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/people": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List People
+         * @description The people in your life, as the graph has them.
+         *
+         *     **Confirmed only.** A candidate is the system's guess, and the soft-apply
+         *     rule is that a guess is never treated as fact by anything downstream -- a
+         *     directory of the people in somebody's life is about as downstream as it
+         *     gets, and this is the same reason `confirmed_concept_labels` gives.
+         *
+         *     **People only**, because `views.person` redirects a motif rather than
+         *     rendering one: a page called *people* showing a motif would mean nothing.
+         *     An index keeps that rule most cheaply by simply not listing them.
+         */
+        get: operations["mind_api_v1_list_people"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/concepts/{public_id}/confirm": {
         parameters: {
             query?: never;
@@ -3217,6 +3270,30 @@ export interface components {
         /** DecisionDetailOut */
         DecisionDetailOut: {
             decision: components["schemas"]["DecisionOut"];
+        };
+        /**
+         * NotesOut
+         * @description The front door on capture, which has never had one.
+         *
+         *     `app-overhaul-audit-2026-09-06.md`'s **G3**: `/mind/notes/<uuid>/` renders
+         *     and `/mind/notes/` does not, so the thing capture writes is reachable only
+         *     by arriving from somewhere else. This is the one part of increment 2a that
+         *     mirrors no existing view, because there is none to mirror.
+         *
+         *     **`total` is counted before slicing**, the way `SearchOut`'s section counts
+         *     are: a page showing thirty of six hundred and saying nothing about the rest
+         *     is a surface that lies quietly.
+         */
+        NotesOut: {
+            /** Notes */
+            notes: components["schemas"]["ConceptNodeOut"][];
+            /** Total */
+            total: number;
+        };
+        /** PeopleOut */
+        PeopleOut: {
+            /** People */
+            people: components["schemas"]["ConceptCandidateOut"][];
         };
         /** ConceptOut */
         ConceptOut: {
@@ -5978,6 +6055,48 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DecisionDetailOut"];
+                };
+            };
+        };
+    };
+    mind_api_v1_list_notes: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotesOut"];
+                };
+            };
+        };
+    };
+    mind_api_v1_list_people: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PeopleOut"];
                 };
             };
         };

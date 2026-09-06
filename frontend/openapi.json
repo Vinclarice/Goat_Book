@@ -1663,6 +1663,67 @@
         ]
       }
     },
+    "/api/v1/notes": {
+      "get": {
+        "operationId": "mind_api_v1_list_notes",
+        "summary": "List Notes",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 30,
+              "title": "Limit",
+              "type": "integer"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotesOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Everything written, newest first.\n\n**`live_nodes` and nothing wider.** Deleted and archived stay out, and a\nnew surface is not an exemption from a rule that already holds -- the same\nsentence `what_grew_from` writes about a source page.",
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      }
+    },
+    "/api/v1/people": {
+      "get": {
+        "operationId": "mind_api_v1_list_people",
+        "summary": "List People",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PeopleOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "The people in your life, as the graph has them.\n\n**Confirmed only.** A candidate is the system's guess, and the soft-apply\nrule is that a guess is never treated as fact by anything downstream -- a\ndirectory of the people in somebody's life is about as downstream as it\ngets, and this is the same reason `confirmed_concept_labels` gives.\n\n**People only**, because `views.person` redirects a motif rather than\nrendering one: a page called *people* showing a motif would mean nothing.\nAn index keeps that rule most cheaply by simply not listing them.",
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      }
+    },
     "/api/v1/concepts/{public_id}/confirm": {
       "post": {
         "operationId": "mind_api_v1_confirm_name",
@@ -6486,6 +6547,44 @@
           "decision"
         ],
         "title": "DecisionDetailOut",
+        "type": "object"
+      },
+      "NotesOut": {
+        "description": "The front door on capture, which has never had one.\n\n`app-overhaul-audit-2026-09-06.md`'s **G3**: `/mind/notes/<uuid>/` renders\nand `/mind/notes/` does not, so the thing capture writes is reachable only\nby arriving from somewhere else. This is the one part of increment 2a that\nmirrors no existing view, because there is none to mirror.\n\n**`total` is counted before slicing**, the way `SearchOut`'s section counts\nare: a page showing thirty of six hundred and saying nothing about the rest\nis a surface that lies quietly.",
+        "properties": {
+          "notes": {
+            "items": {
+              "$ref": "#/components/schemas/ConceptNodeOut"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "notes",
+          "total"
+        ],
+        "title": "NotesOut",
+        "type": "object"
+      },
+      "PeopleOut": {
+        "properties": {
+          "people": {
+            "items": {
+              "$ref": "#/components/schemas/ConceptCandidateOut"
+            },
+            "title": "People",
+            "type": "array"
+          }
+        },
+        "required": [
+          "people"
+        ],
+        "title": "PeopleOut",
         "type": "object"
       },
       "ConceptOut": {

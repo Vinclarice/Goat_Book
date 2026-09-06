@@ -1,6 +1,8 @@
 package com.vinclarice.capture
 
 import java.time.LocalDate
+import java.time.OffsetDateTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.util.Locale
@@ -79,3 +81,22 @@ fun standingLabel(standing: StandingEntry): String {
  * the two must not silently merge.
  */
 fun tomorrow(today: String): String = LocalDate.parse(today).plusDays(1).toString()
+
+/**
+ * The time of day an instant fell on, in [zone].
+ *
+ * The line's label -- *Work began at 2:30 pm* -- android-overhaul-plan.md
+ * increment 2. `list_closed_at` is an instant and the day it belongs to is the
+ * owner's, so the zone is an argument rather than
+ * `ZoneId.systemDefault()` inside: a phone carried across a timezone would
+ * otherwise print a time from wherever it is standing rather than from the day
+ * it is showing. The screen passes the device's zone, which is the right
+ * default and now a visible choice.
+ *
+ * `OffsetDateTime` rather than `Instant.parse`, because Django renders an
+ * aware datetime with an offset and not always with `Z`.
+ */
+fun timeOfDay(instant: String, zone: ZoneId): String =
+    OffsetDateTime.parse(instant).atZoneSameInstant(zone).format(TIME_OF_DAY)
+
+private val TIME_OF_DAY: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")

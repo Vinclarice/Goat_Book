@@ -141,10 +141,34 @@ encrypted offline queue, and rule 4 of
    left the phone; the columns' fate is still `superlists-2.0-plan.md`'s
    deferred question.
 
-2. **The day, as it now is.** `list_closed_at` into the model, the bounded list
-   above the line, what joined below it, and appointments — all four from the
-   payload the phone already fetches. **No server work at all in this
-   increment**, which is worth proving before asking for any.
+2. ~~**The day, as it now is.** `list_closed_at` into the model, the bounded
+   list above the line, what joined below it, and appointments — all four from
+   the payload the phone already fetches.~~ **Shipped September 6, 2026, and
+   the claim held: not one line of server code changed.** Every field was
+   already being sent to this client and thrown away.
+
+   **The split is read, never computed.** `FocusOut.above_the_line` arrives
+   already decided, and the schema's own reason for sending it — *the
+   comparison is on timestamps in the owner's zone* — is stronger here than on
+   the web, because a phone can be in any zone at all. A client that worked it
+   out locally would quietly file this morning's choices below the line after a
+   flight.
+
+   `timeOfDay` **takes its zone as an argument** rather than reading
+   `ZoneId.systemDefault()` inside, for the same reason one level down: it made
+   the three tests assert a fact rather than whatever machine runs them, and it
+   turned the device's zone from an assumption into a visible choice at the
+   call site.
+
+   **A null line is the ordinary morning**, not an error — rule 11 keeps
+   `list_closed_at` null until something is executed, and the screen says *the
+   list is still open* rather than drawing a line at nothing.
+
+   **What is verified and what is not.** 276 tests, 0 failures, and
+   `assembleDebug` builds — so the model, the parser and the formatter are
+   tested, and the Compose changes are proven to *compile* and nothing more.
+   This suite has no UI tests; how the line and the appointments actually look
+   is unverified until increment 5 puts a build on the phone.
 
 3. **The pool.** `GET /api/v1/pool` gains token auth, deliberately and in
    `TOKEN_AUTHENTICATED`, and the phone gets the surface that replaced the

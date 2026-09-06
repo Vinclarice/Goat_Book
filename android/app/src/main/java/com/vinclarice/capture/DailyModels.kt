@@ -16,7 +16,22 @@ data class DayEntry(
     val today: String,
     val compassPurpose: String,
     val compassQuestion: String,
+    /**
+     * When the day's work began, or null while the list is still open.
+     *
+     * superlists-2.0-plan.md rules 3 and 11: the first act of execution draws
+     * the line, and until something is executed there is no line to draw. Null
+     * is the ordinary morning, not an error -- a client that treated it as one
+     * would draw a line at nothing on every day before the first tick.
+     */
+    val listClosedAt: String?,
     val focus: List<FocusEntry>,
+    /** Everything covering this date, cancelled ones included and struck --
+     *  rule 6. Present on a past day, because an appointment is a dated record
+     *  of something that was going to happen. */
+    val appointments: List<AppointmentEntry>,
+    /** What is ahead within the week, soonest first. Only ever today's. */
+    val appointmentsComing: List<AppointmentEntry>,
     val actionItems: List<ActionItemEntry>,
     val areas: List<AreaSummaryEntry>,
     val projects: List<ProjectSummaryEntry>,
@@ -33,6 +48,17 @@ data class FocusEntry(
     val text: String,
     val status: String?,
     val dueDate: String?,
+    /**
+     * Whether this was in the morning's set or joined after the work began.
+     *
+     * **Read, never computed.** `FocusOut.above_the_line` is derived on the
+     * server from `selected_at` against the day's `list_closed_at`, and the
+     * schema says why it is sent rather than left to a client: the comparison
+     * is on timestamps in the owner's zone. That argument is stronger here
+     * than on the web -- a phone can be in any zone at all, and one in the
+     * wrong one would quietly file this morning's choices below the line.
+     */
+    val aboveTheLine: Boolean,
     // **`url` stood here until August 30, 2026** --
     // coherence-audit-2026-08-30.md F2. It was how the day acted on a task,
     // and `taskId` above says the same thing: both are null for a pin whose
@@ -71,4 +97,29 @@ data class PausedRoutineEntry(
     val cadence: String,
     val target: Int,
     val unit: String,
+)
+
+/**
+ * One appointment -- something that happens whether or not you act.
+ *
+ * The model shipped on the website on September 4, 2026 and reaches this
+ * client inside the day payload it already fetches, which is why
+ * android-overhaul-plan.md increment 2 needs no server work: `appointments`
+ * has no read endpoint of its own and does not need one.
+ *
+ * [cancelled] is a flag rather than an absence, on purpose -- rule 6 keeps a
+ * called-off appointment visible and struck, and filtering it here would make
+ * *it was cancelled* and *it never existed* the same thing on a phone.
+ */
+data class AppointmentEntry(
+    val publicId: String,
+    val text: String,
+    val startsOn: String,
+    val endsOn: String?,
+    /** Null for something with no time of day -- an all-day thing, not midnight. */
+    val startsAt: String?,
+    val endsAt: String?,
+    val location: String,
+    val notes: String,
+    val cancelled: Boolean,
 )

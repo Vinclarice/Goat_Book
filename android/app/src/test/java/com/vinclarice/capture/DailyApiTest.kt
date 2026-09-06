@@ -5,6 +5,7 @@ import mockwebserver3.MockResponse
 import mockwebserver3.junit4.MockWebServerRule
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -30,8 +31,22 @@ class DailyApiTest {
           "happenings": "",
           "compass_purpose": "Build something that lasts",
           "compass_question": "What matters today?",
+          "list_closed_at": "2026-08-10T14:30:00Z",
           "focus": [
-            {"task_id": 7, "text": "Write the plan doc", "status": "active", "due_date": null, "selected_at": "2026-08-10T09:00:00Z"}
+            {"task_id": 7, "text": "Write the plan doc", "status": "active", "due_date": null,
+             "selected_at": "2026-08-10T09:00:00Z", "above_the_line": true},
+            {"task_id": 9, "text": "Joined after the work started", "status": "active", "due_date": null,
+             "selected_at": "2026-08-10T16:00:00Z", "above_the_line": false}
+          ],
+          "appointments": [
+            {"public_id": "3f2a1b4c-0000-4000-8000-000000000001", "text": "Dentist",
+             "starts_on": "2026-08-10", "ends_on": null, "starts_at": "09:30:00", "ends_at": null,
+             "location": "High Street", "notes": "", "cancelled": false}
+          ],
+          "appointments_coming": [
+            {"public_id": "3f2a1b4c-0000-4000-8000-000000000002", "text": "Standup",
+             "starts_on": "2026-08-12", "ends_on": null, "starts_at": null, "ends_at": null,
+             "location": "", "notes": "", "cancelled": true}
           ],
           "action_items": [
             {"id": 7, "text": "Write the plan doc", "status": "active", "created_at": "2026-08-01T00:00:00Z",
@@ -82,7 +97,10 @@ class DailyApiTest {
         // the assertion, not the fixture.
         assertEquals("Build something that lasts", result.day.compassPurpose)
         assertTrue(result.day.isToday)
-        assertEquals(1, result.day.focus.size)
+        // Two focus rows since September 6, 2026, not one: the fixture now
+        // carries one pinned before the line and one after it, which is what
+        // makes `above_the_line` testable at all.
+        assertEquals(2, result.day.focus.size)
         assertEquals(7, result.day.focus[0].taskId)
         assertEquals(1, result.day.actionItems.size)
         assertEquals(9, result.day.actionItems[0].ageInDays)
@@ -153,7 +171,9 @@ class DailyApiTest {
                       "date": "2026-08-03", "today": "2026-08-10",
                       "intentions": "", "gratitude": "", "happenings": "",
                       "compass_purpose": "", "compass_question": "",
+                      "list_closed_at": null,
                       "focus": [], "action_items": [], "areas": [], "projects": [],
+                      "appointments": [], "appointments_coming": [],
                       "shows_action_items": false,
                       "routines": [], "routines_are_loggable": false, "paused_routines": []
                     }
@@ -167,5 +187,76 @@ class DailyApiTest {
         assertFalse(result.day.showsActionItems)
         assertTrue(result.day.focus.isEmpty())
         assertTrue(result.day.actionItems.isEmpty())
+    }
+
+    /* android-overhaul-plan.md increment 2: the day as it now is. Every field
+       below already arrives in the payload this client has been fetching since
+       August -- what was missing was a model that named them. */
+
+    @Test
+    fun `the line arrives as the day's own instant`() = runTest {
+        server.server.enqueue(MockResponse(code = 200, body = fullDayBody))
+
+        val result = api().getToday("tok_abc") as DayLoaded
+
+        assertEquals("2026-08-10T14:30:00Z", result.day.listClosedAt)
+    }
+
+    @Test
+    fun `a day whose list is still open has no line`() = runTest {
+        // superlists-2.0-plan.md rule 11 keeps `list_closed_at` null until
+        // something is executed, so null is the ordinary morning rather than
+        // an error, and a client that treated it as one would show a line at
+        // nothing on every day before the first tick.
+        server.server.enqueue(
+            MockResponse(code = 200, body = fullDayBody.replace(
+                """"list_closed_at": "2026-08-10T14:30:00Z",""",
+                """"list_closed_at": null,""",
+            ))
+        )
+
+        val result = api().getToday("tok_abc") as DayLoaded
+
+        assertNull(result.day.listClosedAt)
+    }
+
+    @Test
+    fun `each pinned task says which side of the line it is on`() = runTest {
+        // **Read, never computed.** `FocusOut.above_the_line` is derived on the
+        // server from selected_at against list_closed_at, and its own comment
+        // says why it is sent rather than left to the client: the comparison is
+        // on timestamps in the owner's zone. That argument is stronger on a
+        // phone, which can be in any zone at all.
+        server.server.enqueue(MockResponse(code = 200, body = fullDayBody))
+
+        val result = api().getToday("tok_abc") as DayLoaded
+
+        assertTrue(result.day.focus[0].aboveTheLine)
+        assertFalse(result.day.focus[1].aboveTheLine)
+    }
+
+    @Test
+    fun `the day carries what is happening and what is coming`() = runTest {
+        server.server.enqueue(MockResponse(code = 200, body = fullDayBody))
+
+        val result = api().getToday("tok_abc") as DayLoaded
+
+        assertEquals("Dentist", result.day.appointments[0].text)
+        assertEquals("09:30:00", result.day.appointments[0].startsAt)
+        assertEquals("High Street", result.day.appointments[0].location)
+        assertEquals("Standup", result.day.appointmentsComing[0].text)
+    }
+
+    @Test
+    fun `a cancelled appointment arrives rather than being filtered away`() = runTest {
+        // Rule 6: a cancelled appointment stays visible and struck. Dropping it
+        // here would make "it was cancelled" and "it never existed" the same
+        // thing on a phone.
+        server.server.enqueue(MockResponse(code = 200, body = fullDayBody))
+
+        val result = api().getToday("tok_abc") as DayLoaded
+
+        assertTrue(result.day.appointmentsComing[0].cancelled)
+        assertFalse(result.day.appointments[0].cancelled)
     }
 }

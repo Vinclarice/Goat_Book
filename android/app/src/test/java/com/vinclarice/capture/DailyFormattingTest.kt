@@ -72,4 +72,37 @@ class DailyFormattingTest {
     fun `tomorrow is one day after today`() {
         assertEquals("2026-08-12", tomorrow("2026-08-11"))
     }
+
+    /* android-overhaul-plan.md increment 2: the line says when the work began.
+
+       The zone is passed rather than taken from the device, so this asserts a
+       fact rather than whatever machine runs it. It matters for more than the
+       test: `list_closed_at` is an instant, the day it belongs to is the
+       owner's, and a phone carried across a timezone would otherwise print a
+       time from wherever it happens to be standing. */
+
+    @Test
+    fun `the line says the local time the work began`() {
+        assertEquals(
+            "14:30",
+            timeOfDay("2026-08-10T14:30:00Z", java.time.ZoneOffset.UTC),
+        )
+    }
+
+    @Test
+    fun `the line reads the instant in the zone it is given`() {
+        assertEquals(
+            "10:30",
+            timeOfDay("2026-08-10T14:30:00Z", java.time.ZoneId.of("America/New_York")),
+        )
+    }
+
+    @Test
+    fun `an offset the server sent rather than a Z still parses`() {
+        // Django renders an aware datetime with an offset, not always with Z.
+        assertEquals(
+            "09:00",
+            timeOfDay("2026-08-10T09:00:00-04:00", java.time.ZoneId.of("America/New_York")),
+        )
+    }
 }

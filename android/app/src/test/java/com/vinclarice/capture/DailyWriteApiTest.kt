@@ -25,7 +25,8 @@ class DailyWriteApiTest {
     private fun api() = OkHttpDailyApi(baseUrl = server.server.url("/").toString())
 
     private val dayOutBody = """{"date": "2026-08-11", "today": "2026-08-11", "intentions": "", "gratitude": "",
-        "happenings": "", "compass_purpose": "", "compass_question": "", "focus": [], "action_items": [],
+        "happenings": "", "compass_purpose": "", "compass_question": "", "list_closed_at": null,
+        "focus": [], "action_items": [], "appointments": [], "appointments_coming": [],
         "areas": [], "projects": [], "shows_action_items": true, "routines": [], "routines_are_loggable": true,
         "paused_routines": []}"""
 

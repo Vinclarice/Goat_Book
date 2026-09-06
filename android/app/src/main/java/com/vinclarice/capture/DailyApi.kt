@@ -201,7 +201,11 @@ class OkHttpDailyApi(
         today = json.getString("today"),
         compassPurpose = json.getString("compass_purpose"),
         compassQuestion = json.getString("compass_question"),
+        listClosedAt = json.optStringOrNull("list_closed_at"),
         focus = json.getJSONArray("focus").map(::focusEntryFrom),
+        appointments = json.getJSONArray("appointments").map(::appointmentEntryFrom),
+        appointmentsComing =
+            json.getJSONArray("appointments_coming").map(::appointmentEntryFrom),
         actionItems = json.getJSONArray("action_items").map(::actionItemEntryFrom),
         areas = json.getJSONArray("areas").map(::areaSummaryFrom),
         projects = json.getJSONArray("projects").map(::projectSummaryFrom),
@@ -216,7 +220,20 @@ class OkHttpDailyApi(
         text = json.getString("text"),
         status = json.optStringOrNull("status"),
         dueDate = json.optStringOrNull("due_date"),
+        aboveTheLine = json.getBoolean("above_the_line"),
         // `url` deliberately unread -- see FocusEntry.
+    )
+
+    private fun appointmentEntryFrom(json: JSONObject) = AppointmentEntry(
+        publicId = json.getString("public_id"),
+        text = json.getString("text"),
+        startsOn = json.getString("starts_on"),
+        endsOn = json.optStringOrNull("ends_on"),
+        startsAt = json.optStringOrNull("starts_at"),
+        endsAt = json.optStringOrNull("ends_at"),
+        location = json.getString("location"),
+        notes = json.getString("notes"),
+        cancelled = json.getBoolean("cancelled"),
     )
 
     private fun actionItemEntryFrom(json: JSONObject) = ActionItemEntry(

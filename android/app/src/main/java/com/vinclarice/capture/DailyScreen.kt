@@ -35,6 +35,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import java.time.ZoneId
 
 /**
  * The Daily Page, read and now acted on. Slice 1 was read-only; this
@@ -131,20 +132,53 @@ private fun DailyContent(state: DailyUiState, day: DayEntry, model: DailyViewMod
 
         val pinnedIds = remember(day.focus) { day.focus.mapNotNull { it.taskId }.toSet() }
 
+        if (day.appointments.isNotEmpty() || day.appointmentsComing.isNotEmpty()) {
+            AppointmentsSection(day)
+        }
+
+        /* **The bounded list, and the line under it** --
+           android-overhaul-plan.md increment 2, mirroring
+           superlists-2.0-plan.md rules 1 to 4.
+
+           The split is read, never computed: `aboveTheLine` arrives on each
+           row already decided, because the comparison is on timestamps in the
+           owner's zone and this device may be in another one. See
+           [FocusEntry.aboveTheLine].
+
+           The section is still called Focus rather than renamed, because
+           renaming it is the day screen's own rebuild and this increment is
+           the model catching up. */
         Section(title = "Focus") {
             if (day.focus.isEmpty()) {
                 EmptyHint("Nothing pinned yet. Choose from your action items below to plan the day.")
             } else {
-                day.focus.forEach { focus ->
-                    FocusRow(
-                        focus = focus,
-                        today = day.today,
-                        busy = state.busy,
-                        onUnpin = { taskId -> scope.launch { model.unpinTask(taskId) } },
-                        onComplete = { id -> scope.launch { model.completeTask(id) } },
-                        onDefer = { id -> scope.launch { model.deferTaskToTomorrow(id) } },
+                val chosen = day.focus.filter { it.aboveTheLine }
+                val joined = day.focus.filterNot { it.aboveTheLine }
+
+                chosen.forEach { focus -> FocusRowFor(focus, day, state, model, scope) }
+
+                /* Absent while the list is still open, because rule 11 keeps
+                   `list_closed_at` null on a day nothing executed on -- and a
+                   line drawn at nothing would be the midnight row that rule
+                   refuses. */
+                val closedAt = day.listClosedAt
+                if (closedAt != null) {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.primary)
+                    Text(
+                        "Work began at ${timeOfDay(closedAt, ZoneId.systemDefault())}. " +
+                            "Nothing more joins above this.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else {
+                    Text(
+                        "The list is still open. The first thing you finish draws the line.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
+
+                joined.forEach { focus -> FocusRowFor(focus, day, state, model, scope) }
             }
         }
 
@@ -234,6 +268,60 @@ private fun DailyContent(state: DailyUiState, day: DayEntry, model: DailyViewMod
     }
 }
 
+/**
+ * What happens whether or not you act -- the `Appointment` model, September 4.
+ *
+ * Above the list on purpose, mirroring the website: an appointment is not a
+ * commitment you chose today and it bounds the day the list has to fit into.
+ *
+ * A cancelled one is struck rather than dropped -- rule 6. Filtering it here
+ * would make *it was cancelled* and *it never existed* the same thing.
+ */
+@Composable
+private fun AppointmentsSection(day: DayEntry) {
+    Section(title = "Appointments") {
+        day.appointments.forEach { AppointmentRow(it) }
+        if (day.appointmentsComing.isNotEmpty()) {
+            Text(
+                "Coming this week",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            day.appointmentsComing.forEach { AppointmentRow(it, withDate = true) }
+        }
+    }
+}
+
+@Composable
+private fun AppointmentRow(appointment: AppointmentEntry, withDate: Boolean = false) {
+    val when_ = buildList {
+        if (withDate) add(longDate(appointment.startsOn))
+        // Null is an all-day thing rather than midnight, so it says nothing
+        // instead of saying "00:00".
+        appointment.startsAt?.let { add(it.take(5)) }
+        if (appointment.location.isNotBlank()) add(appointment.location)
+    }.joinToString(" · ")
+
+    Column(modifier = Modifier.padding(vertical = 4.dp)) {
+        Text(
+            appointment.text,
+            style = MaterialTheme.typography.bodyMedium,
+            textDecoration = if (appointment.cancelled) TextDecoration.LineThrough else null,
+        )
+        if (when_.isNotEmpty() || appointment.cancelled) {
+            Text(
+                if (appointment.cancelled) {
+                    if (when_.isEmpty()) "Cancelled" else "$when_ · Cancelled"
+                } else {
+                    when_
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
 @Composable
 private fun CompassCard(day: DayEntry) {
     Column(
@@ -284,6 +372,30 @@ private fun DailyRow(content: @Composable RowScope.() -> Unit) {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) { content() }
+}
+
+/** One focus row, wired to the model.
+ *
+ * Extracted on September 6, 2026 because the list is now rendered twice --
+ * above the line and below it -- and two copies of the same six arguments is
+ * how the two halves come to differ by accident.
+ */
+@Composable
+private fun FocusRowFor(
+    focus: FocusEntry,
+    day: DayEntry,
+    state: DailyUiState,
+    model: DailyViewModel,
+    scope: kotlinx.coroutines.CoroutineScope,
+) {
+    FocusRow(
+        focus = focus,
+        today = day.today,
+        busy = state.busy,
+        onUnpin = { taskId -> scope.launch { model.unpinTask(taskId) } },
+        onComplete = { id -> scope.launch { model.completeTask(id) } },
+        onDefer = { id -> scope.launch { model.deferTaskToTomorrow(id) } },
+    )
 }
 
 @Composable

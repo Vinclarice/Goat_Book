@@ -221,14 +221,32 @@ waits.
        soft-apply rule keeps a guess out of a directory of the people in
        somebody's life; and people only, because `views.person` redirects a
        motif rather than rendering one.
-     - Note detail and person detail — **split off from their indexes on
-       purpose.** `views.note`'s context has twenty keys and `views.person`'s
-       carries commitments and a name's shape across time. The front doors were
-       the gap G3 named and are worth closing alone; these are their own piece.
-     - Review / *Pending*
-     - *Then* — this time before
-     - Numbers
-     - Start
+     - ~~**Person detail**~~ **September 6, 2026.** `GET /people/{public_id}`,
+       carrying the two joins a concept page cannot make — the commitments
+       that grew out of notes about somebody, and the shape of their name
+       across time, **counted per month rather than smoothed**, because a
+       count is a fact somebody can check and a curve is a number nobody can
+       argue with. A concept that is not a person is a **404** where the page
+       redirects, the same divergence the concept endpoint makes.
+     - ~~**Start**~~ **September 6, 2026.** `GET /start`. `new_here` is
+       computed, never stored — a flag would say *has been shown the tour*
+       where the question is *has anything happened*. Writing a test for it
+       surfaced something worth stating: **the six invented words it explains
+       are the task core's**, so capturing a node earns none of them.
+     - Note detail — **split off from its index on purpose.**
+       `views.note`'s context has twenty keys. The front door was the gap G3
+       named and was worth closing alone; this is its own piece.
+     - **Review / *Pending*, and *Then* — these two are not mirrors and need a
+       decision.** `queries.pending_hypotheses` says in its own docstring that
+       it is *not a display path*: showing a proposal and surfacing it are one
+       act, so reading the review through `services.open_review` **stamps the
+       review window**, and `views.this_time_before` calls `mark_reviewed` the
+       same way. A `GET` that mutates is wrong, and dropping the stamp breaks
+       the thing that lets inaction be told apart from never having seen it.
+       Neither half can simply be copied. **This is D8.**
+     - Numbers — `lab_summary` returns nested producer, retrieval and
+       readiness tables of varying shape; typing them honestly is most of the
+       work and it is the least valuable panel of the ten. Last on purpose.
      - Dump and Ask
 
      **`Dump` is a writing surface and may belong with capture rather than
@@ -316,6 +334,16 @@ waits.
   interface and the decision is whether that is permanent.
 - **D6. Does Money's month rail survive inside its panel?** Twelve months is
   what makes Money navigable and a panel is a worse place for a rail.
+- **D8. How does a read that must record having happened work over HTTP?**
+  Raised September 6, 2026 while enumerating 2a. The review's whole design is
+  that showing a proposal *is* surfacing it — `pending_hypotheses` refuses to
+  be a display path and `open_review` marks what it returns — and
+  `this_time_before` stamps `mark_reviewed` for the same reason. So the two
+  surfaces cannot be mirrored into a `GET`. The options are a `POST` that opens
+  a session and returns the pile, or a `GET` that takes an explicit *this
+  counts* flag; the first is honest about the mutation and the second keeps the
+  panel's shape. **Not decided, and it decides two of the ten surfaces.**
+
 - **D7. Is there a deliberate visual pass?** *How it looks* was one of Vince's
   four complaints and this plan answers it structurally. Whether that is enough
   is a judgement he makes after increment 2, when there is one thing to look at.

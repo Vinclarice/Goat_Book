@@ -37,7 +37,7 @@ from ninja.errors import HttpError
 
 from accounts.auth import SessionAuthIfLoggedIn, TokenAuth
 from accounts.models import SCOPE_CAPTURE_WRITE
-from clarice import clocks, composer
+from clarice import clocks, composer, orientation
 from clarice.search import to_query
 from daily import reads as daily_reads
 from lists import search as lists_search
@@ -675,6 +675,104 @@ def list_people(request):
             retired_at__isnull=True,
             merged_into__isnull=True,
         ).order_by("label")
+    }
+
+
+class CommitmentSummaryOut(Schema):
+    """A commitment that grew out of a note about somebody.
+
+    Thin, like `GrewTaskOut` and for the same reason: the task's own panel owns
+    the rest, and a fuller copy here would be free to disagree with it.
+    """
+
+    id: int
+    text: str
+
+    @staticmethod
+    def resolve_text(obj):
+        # The passage the commitment was read out of, which is what the page
+        # shows -- a facet has no text of its own.
+        return obj.cited_text
+
+
+class MonthSeenOut(Schema):
+    """One month, and how often a name came up in it.
+
+    **Months rather than a smoothed curve or a rate.** A count per month is a
+    fact somebody can check against their own memory; anything smoothed is a
+    number nobody can argue with, which `principles.md` warns about wherever a
+    reading might be mistaken for evidence.
+    """
+
+    month: datetime
+    seen: int
+
+
+class PersonDetailOut(Schema):
+    person: ConceptCandidateOut
+    nodes: list[ConceptNodeOut]
+    #: The first of the two joins Track E increment 20 names, and the one a
+    #: list of mentions cannot give: notes about somebody become tasks, and the
+    #: tasks are the part with consequences.
+    commitments: list[CommitmentSummaryOut]
+    #: The second. A name across time is what a second mind should be good at,
+    #: and a flat list of mentions does not show it.
+    months: list[MonthSeenOut]
+
+
+class ConceptExplainedOut(Schema):
+    name: str
+    means: str
+    #: Their own material that demonstrates it. **The reason this is a read**:
+    #: a concept with no evidence is not explained at all.
+    evidence: str
+
+
+class StartOut(Schema):
+    new_here: bool
+    concepts: list[ConceptExplainedOut]
+
+
+# DARK: no client yet -- app-overhaul-plan.md increment 2a, consumed by 2b.
+@router.get(
+    "/people/{public_id}", response=PersonDetailOut, auth=SessionAuthIfLoggedIn()
+)
+def read_person(request, public_id: uuid.UUID):
+    """One person, across everything you have written -- Track E increment 20.
+
+    **404 for a concept that is not a person**, where `views.person` redirects
+    to the concept page. A redirect is right for a browser, which has somewhere
+    real to land; a panel that asked for a person needs to be told it did not
+    get one, and its caller can open the concept instead.
+    """
+    canonical = queries.canonical_concept(_concept_or_404(request, public_id))
+    if canonical.concept_type != ConceptType.PERSON:
+        raise HttpError(404, "That name is not a person.")
+
+    return {
+        "person": canonical,
+        "nodes": queries.nodes_mentioning(request.user, canonical),
+        "commitments": queries.commitments_involving(request.user, canonical),
+        "months": [
+            {"month": month, "seen": seen}
+            for month, seen in queries.when_they_came_up(request.user, canonical)
+        ],
+    }
+
+
+# DARK: no client yet -- see above, same trigger.
+@router.get("/start", response=StartOut, auth=SessionAuthIfLoggedIn())
+def read_start(request):
+    """Two entrances, and only the words their own material has earned.
+
+    Track D increment 15, and the answer to `commercial-blueprint.md`'s
+    long-open *explain the six invented concepts somewhere in the product,
+    once*. A tour was the obvious answer and the plan refuses it: a concept
+    explained before it exists is a word attached to nothing.
+    """
+    return {
+        "new_here": orientation.is_new_here(request.user),
+        "concepts": orientation.what_their_material_demonstrates(request.user),
     }
 
 

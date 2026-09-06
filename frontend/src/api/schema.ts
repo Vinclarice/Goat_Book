@@ -1032,6 +1032,56 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/people/{public_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Person
+         * @description One person, across everything you have written -- Track E increment 20.
+         *
+         *     **404 for a concept that is not a person**, where `views.person` redirects
+         *     to the concept page. A redirect is right for a browser, which has somewhere
+         *     real to land; a panel that asked for a person needs to be told it did not
+         *     get one, and its caller can open the concept instead.
+         */
+        get: operations["mind_api_v1_read_person"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Start
+         * @description Two entrances, and only the words their own material has earned.
+         *
+         *     Track D increment 15, and the answer to `commercial-blueprint.md`'s
+         *     long-open *explain the six invented concepts somewhere in the product,
+         *     once*. A tour was the obvious answer and the plan refuses it: a concept
+         *     explained before it exists is a word attached to nothing.
+         */
+        get: operations["mind_api_v1_read_start"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/concepts/{public_id}/confirm": {
         parameters: {
             query?: never;
@@ -3294,6 +3344,63 @@ export interface components {
         PeopleOut: {
             /** People */
             people: components["schemas"]["ConceptCandidateOut"][];
+        };
+        /**
+         * CommitmentSummaryOut
+         * @description A commitment that grew out of a note about somebody.
+         *
+         *     Thin, like `GrewTaskOut` and for the same reason: the task's own panel owns
+         *     the rest, and a fuller copy here would be free to disagree with it.
+         */
+        CommitmentSummaryOut: {
+            /** Id */
+            id: number;
+            /** Text */
+            text: string;
+        };
+        /**
+         * MonthSeenOut
+         * @description One month, and how often a name came up in it.
+         *
+         *     **Months rather than a smoothed curve or a rate.** A count per month is a
+         *     fact somebody can check against their own memory; anything smoothed is a
+         *     number nobody can argue with, which `principles.md` warns about wherever a
+         *     reading might be mistaken for evidence.
+         */
+        MonthSeenOut: {
+            /**
+             * Month
+             * Format: date-time
+             */
+            month: string;
+            /** Seen */
+            seen: number;
+        };
+        /** PersonDetailOut */
+        PersonDetailOut: {
+            person: components["schemas"]["ConceptCandidateOut"];
+            /** Nodes */
+            nodes: components["schemas"]["ConceptNodeOut"][];
+            /** Commitments */
+            commitments: components["schemas"]["CommitmentSummaryOut"][];
+            /** Months */
+            months: components["schemas"]["MonthSeenOut"][];
+        };
+        /** ConceptExplainedOut */
+        ConceptExplainedOut: {
+            /** Name */
+            name: string;
+            /** Means */
+            means: string;
+            /** Evidence */
+            evidence: string;
+        };
+        /** StartOut */
+        StartOut: {
+            /** New Here */
+            new_here: boolean;
+            /** Concepts */
+            concepts: components["schemas"]["ConceptExplainedOut"][];
         };
         /** ConceptOut */
         ConceptOut: {
@@ -6097,6 +6204,48 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PeopleOut"];
+                };
+            };
+        };
+    };
+    mind_api_v1_read_person: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                public_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonDetailOut"];
+                };
+            };
+        };
+    };
+    mind_api_v1_read_start: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StartOut"];
                 };
             };
         };

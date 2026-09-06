@@ -1724,6 +1724,67 @@
         ]
       }
     },
+    "/api/v1/people/{public_id}": {
+      "get": {
+        "operationId": "mind_api_v1_read_person",
+        "summary": "Read Person",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "public_id",
+            "schema": {
+              "format": "uuid",
+              "title": "Public Id",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonDetailOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "One person, across everything you have written -- Track E increment 20.\n\n**404 for a concept that is not a person**, where `views.person` redirects\nto the concept page. A redirect is right for a browser, which has somewhere\nreal to land; a panel that asked for a person needs to be told it did not\nget one, and its caller can open the concept instead.",
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      }
+    },
+    "/api/v1/start": {
+      "get": {
+        "operationId": "mind_api_v1_read_start",
+        "summary": "Read Start",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StartOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Two entrances, and only the words their own material has earned.\n\nTrack D increment 15, and the answer to `commercial-blueprint.md`'s\nlong-open *explain the six invented concepts somewhere in the product,\nonce*. A tour was the obvious answer and the plan refuses it: a concept\nexplained before it exists is a word attached to nothing.",
+        "security": [
+          {
+            "SessionAuthIfLoggedIn": []
+          }
+        ]
+      }
+    },
     "/api/v1/concepts/{public_id}/confirm": {
       "post": {
         "operationId": "mind_api_v1_confirm_name",
@@ -6585,6 +6646,125 @@
           "people"
         ],
         "title": "PeopleOut",
+        "type": "object"
+      },
+      "CommitmentSummaryOut": {
+        "description": "A commitment that grew out of a note about somebody.\n\nThin, like `GrewTaskOut` and for the same reason: the task's own panel owns\nthe rest, and a fuller copy here would be free to disagree with it.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "text"
+        ],
+        "title": "CommitmentSummaryOut",
+        "type": "object"
+      },
+      "MonthSeenOut": {
+        "description": "One month, and how often a name came up in it.\n\n**Months rather than a smoothed curve or a rate.** A count per month is a\nfact somebody can check against their own memory; anything smoothed is a\nnumber nobody can argue with, which `principles.md` warns about wherever a\nreading might be mistaken for evidence.",
+        "properties": {
+          "month": {
+            "format": "date-time",
+            "title": "Month",
+            "type": "string"
+          },
+          "seen": {
+            "title": "Seen",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "month",
+          "seen"
+        ],
+        "title": "MonthSeenOut",
+        "type": "object"
+      },
+      "PersonDetailOut": {
+        "properties": {
+          "person": {
+            "$ref": "#/components/schemas/ConceptCandidateOut"
+          },
+          "nodes": {
+            "items": {
+              "$ref": "#/components/schemas/ConceptNodeOut"
+            },
+            "title": "Nodes",
+            "type": "array"
+          },
+          "commitments": {
+            "items": {
+              "$ref": "#/components/schemas/CommitmentSummaryOut"
+            },
+            "title": "Commitments",
+            "type": "array"
+          },
+          "months": {
+            "items": {
+              "$ref": "#/components/schemas/MonthSeenOut"
+            },
+            "title": "Months",
+            "type": "array"
+          }
+        },
+        "required": [
+          "person",
+          "nodes",
+          "commitments",
+          "months"
+        ],
+        "title": "PersonDetailOut",
+        "type": "object"
+      },
+      "ConceptExplainedOut": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "means": {
+            "title": "Means",
+            "type": "string"
+          },
+          "evidence": {
+            "title": "Evidence",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "means",
+          "evidence"
+        ],
+        "title": "ConceptExplainedOut",
+        "type": "object"
+      },
+      "StartOut": {
+        "properties": {
+          "new_here": {
+            "title": "New Here",
+            "type": "boolean"
+          },
+          "concepts": {
+            "items": {
+              "$ref": "#/components/schemas/ConceptExplainedOut"
+            },
+            "title": "Concepts",
+            "type": "array"
+          }
+        },
+        "required": [
+          "new_here",
+          "concepts"
+        ],
+        "title": "StartOut",
         "type": "object"
       },
       "ConceptOut": {

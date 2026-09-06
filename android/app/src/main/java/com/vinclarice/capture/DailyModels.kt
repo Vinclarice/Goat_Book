@@ -48,7 +48,7 @@ data class ActionItemEntry(
     val text: String,
     val dueDate: String?,
     val ageInDays: Int,
-    // Nullable like `projectId` beside it -- see AgendaModels.AgendaTaskEntry.
+    // Nullable like `projectId` beside it -- see TaskApi.TaskEntry.
     val areaId: Int?,
     val projectId: Int?,
 )

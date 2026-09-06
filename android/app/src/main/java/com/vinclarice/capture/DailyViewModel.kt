@@ -44,12 +44,12 @@ class DailyViewModel(
      * The task verbs the day needs, borrowed rather than rebuilt.
      *
      * Completing and rescheduling are `lists.api`'s hand-rolled
-     * `item_detail`, and [AgendaApi] already speaks to it -- so this reaches
+     * `item_detail`, and [TaskApi] already speaks to it -- so this reaches
      * the one authority instead of growing a second copy inside [DailyApi].
      * Exactly the move `DayRoute.tsx` makes on the web for the same reason;
      * `principles.md`'s *one rule, one authoritative definition*.
      */
-    private val tasks: AgendaApi,
+    private val tasks: TaskApi,
 ) {
     private val _state = MutableStateFlow(DailyUiState())
     val state: StateFlow<DailyUiState> = _state.asStateFlow()

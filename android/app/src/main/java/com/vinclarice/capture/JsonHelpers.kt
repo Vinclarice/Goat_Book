@@ -7,7 +7,7 @@ import org.json.JSONObject
 /**
  * Small org.json/OkHttp conveniences shared by every *Api.kt's manual
  * parsing -- split out once DailyApi.kt's own private copies would
- * otherwise have been duplicated verbatim into AgendaApi.kt.
+ * otherwise have been duplicated verbatim into TaskApi.kt.
  */
 
 /** Every *Api.kt's request body content type -- one definition rather than

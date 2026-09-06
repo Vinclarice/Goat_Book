@@ -64,4 +64,12 @@ class DailyFormattingTest {
         assertTrue(label.contains("10"))
         assertTrue(label.contains("August"))
     }
+
+    /** Moved here with the function on September 6, 2026 -- it was
+     *  `AgendaFormattingTest`'s, and it is the only one of that file's cases
+     *  whose subject still has a caller. */
+    @Test
+    fun `tomorrow is one day after today`() {
+        assertEquals("2026-08-12", tomorrow("2026-08-11"))
+    }
 }

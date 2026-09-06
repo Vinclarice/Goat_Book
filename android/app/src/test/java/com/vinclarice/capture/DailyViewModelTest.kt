@@ -23,11 +23,17 @@ class DailyViewModelTest {
         override fun clear() { saved = null }
     }
 
-    /** Records the task verbs the day borrows from the agenda's client. */
+    /** Records the task verbs the day borrows.
+     *
+     * ~~from the agenda's client~~ -- **the agenda's client is now the task
+     * client**, `TaskApi`, split out on September 6, 2026 when the Agenda
+     * screen was deleted. The two verbs are unchanged; only the name of the
+     * thing that carries them is.
+     */
     private class FakeTaskApi(
         private val result: TaskWriteResult =
             TaskWriteSucceeded(
-                AgendaTaskEntry(
+                TaskEntry(
                     id = 42,
                     text = "Pay rent",
                     dueDate = null,
@@ -36,11 +42,8 @@ class DailyViewModelTest {
                     projectId = null,
                 ),
             ),
-    ) : AgendaApi {
+    ) : TaskApi {
         var lastCall: Pair<String, List<Any?>>? = null
-
-        override suspend fun getAgenda(token: String) =
-            throw UnsupportedOperationException("the day never asks for the agenda")
 
         override suspend fun setTaskStatus(token: String, taskId: Int, status: String): TaskWriteResult {
             lastCall = "status" to listOf(taskId.toString(), status)
@@ -51,13 +54,6 @@ class DailyViewModelTest {
             lastCall = "reschedule" to listOf(taskId.toString(), dueDate)
             return result
         }
-
-        override suspend fun createTask(
-            token: String,
-            areaId: Int,
-            text: String,
-            dueDate: String?,
-        ): TaskWriteResult = throw UnsupportedOperationException("the day does not create tasks")
     }
 
     private class FakeDailyApi(

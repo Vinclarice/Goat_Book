@@ -9,18 +9,31 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONException
 import org.json.JSONObject
 
-sealed interface AgendaResult
-
-data class AgendaLoaded(val agenda: AgendaEntry) : AgendaResult
-
-data object AgendaUnauthorised : AgendaResult
-
-data class AgendaUnreachable(val reason: String) : AgendaResult
+/**
+ * The task verbs, and nothing about an agenda.
+ *
+ * **Was `AgendaApi`, split on September 6, 2026** —
+ * `android-overhaul-plan.md` increment 1. That interface did two jobs: it read
+ * `/api/v1/agenda` for a screen, and it carried the two task writes
+ * [DailyViewModel] borrows. The Agenda was deleted from the website on
+ * September 4 and its screen went with it here; the verbs stayed, because the
+ * day still completes and reschedules things.
+ *
+ * Renamed rather than emptied in place. A file called `AgendaApi` with no
+ * agenda in it is exactly the stale name this overhaul exists to find, and
+ * `DailyViewModel` already documents borrowing these rather than growing a
+ * second copy — *one rule, one authoritative definition*.
+ *
+ * **`createTask` did not survive the split.** It took an `areaId`, and Areas
+ * left the navigation on September 4; its only caller was the Agenda screen.
+ * How a task gets made on a phone is **A1** in the plan — the composer posts
+ * to `/api/v1/capture`, which this client already reaches. The server keeps
+ * `POST /api/v1/areas/{area_id}/tasks` regardless: the build in Vince's pocket
+ * still calls it, and a shipped APK is what pins it.
+ */
 
 /**
- * What happened when a task write was attempted -- complete/reopen,
- * reschedule, or quick-add, the three actions android-full-client-plan.md
- * §7 scopes this slice to.
+ * What happened when a task write was attempted.
  *
  * [TaskWriteUnauthorised] covers both a plain 401 (bad/expired/wrong-scope
  * token) and item_detail's own 403 field/method guard
@@ -29,7 +42,7 @@ data class AgendaUnreachable(val reason: String) : AgendaResult
  */
 sealed interface TaskWriteResult
 
-data class TaskWriteSucceeded(val task: AgendaTaskEntry) : TaskWriteResult
+data class TaskWriteSucceeded(val task: TaskEntry) : TaskWriteResult
 
 data object TaskWriteUnauthorised : TaskWriteResult
 
@@ -39,9 +52,28 @@ data class TaskWriteRejected(val message: String) : TaskWriteResult
 
 data class TaskWriteUnreachable(val reason: String) : TaskWriteResult
 
-interface AgendaApi {
-    suspend fun getAgenda(token: String): AgendaResult
+/**
+ * One task, as a write answers with it.
+ *
+ * **Was `AgendaTaskEntry`**, and the only model to survive `AgendaModels.kt`:
+ * `AgendaEntry`, `AgendaAreaEntry` and `AgendaProjectEntry` described a
+ * screen that no longer exists on either client.
+ *
+ * `areaId` and `projectId` are kept although nothing renders them, because
+ * they are what the server sends and dropping a field from a parser is a
+ * different decision from dropping it from a screen — see the plan's A3,
+ * which is about not answering a deferred question by accident.
+ */
+data class TaskEntry(
+    val id: Int,
+    val text: String,
+    val dueDate: String?,
+    val tags: List<String>,
+    val areaId: Int?,
+    val projectId: Int?,
+)
 
+interface TaskApi {
     /** [status] is the server's own vocabulary ("active"/"completed") --
      *  see Item.Status; there is no richer type here for the same reason
      *  DailyModels' own FocusEntry.status stays a plain string. */
@@ -51,13 +83,6 @@ interface AgendaApi {
      *  "don't change it", which is why this takes an explicit nullable
      *  rather than being skipped when absent. */
     suspend fun rescheduleTask(token: String, taskId: Int, dueDate: String?): TaskWriteResult
-
-    suspend fun createTask(
-        token: String,
-        areaId: Int,
-        text: String,
-        dueDate: String?,
-    ): TaskWriteResult
 }
 
 /**
@@ -68,8 +93,7 @@ interface AgendaApi {
  * `lists.api`'s hand-rolled views, on a different auth mechanism from the
  * agenda read beside them. coherence-audit-2026-08-30.md F2 moved every task
  * write onto the typed Ninja router, so this addresses `/api/v1/tasks/{id}`
- * and `/api/v1/areas/{id}/tasks` by id instead, and the two mechanisms became
- * one.
+ * by id instead, and the two mechanisms became one.
  *
  * **The build in Vince's pocket still uses the old urls**, which is why the
  * server keeps serving them and keeps sending both fields. This client is what
@@ -77,30 +101,10 @@ interface AgendaApi {
  * `android-release-signing-plan.md`'s keystore, without which no signed
  * release can carry it.
  */
-class OkHttpAgendaApi(
+class OkHttpTaskApi(
     private val baseUrl: String,
     private val client: OkHttpClient = OkHttpClariceApi.defaultClient(),
-) : AgendaApi {
-
-    override suspend fun getAgenda(token: String): AgendaResult =
-        withContext(Dispatchers.IO) {
-            val request = Request.Builder()
-                .url(baseUrl.trimEnd('/') + "/api/v1/agenda")
-                .header("Authorization", "Bearer $token")
-                .get()
-                .build()
-            try {
-                client.newCall(request).execute().use { response ->
-                    when (response.code) {
-                        200 -> parseAgenda(response.body.string())
-                        401, 403 -> AgendaUnauthorised
-                        else -> AgendaUnreachable("Clarice answered ${response.code}.")
-                    }
-                }
-            } catch (failure: IOException) {
-                AgendaUnreachable("Could not reach Clarice.")
-            }
-        }
+) : TaskApi {
 
     override suspend fun setTaskStatus(
         token: String,
@@ -115,23 +119,6 @@ class OkHttpAgendaApi(
         dueDate: String?,
     ): TaskWriteResult =
         patchTask(token, taskId, JSONObject().put("due_date", dueDate ?: JSONObject.NULL))
-
-    override suspend fun createTask(
-        token: String,
-        areaId: Int,
-        text: String,
-        dueDate: String?,
-    ): TaskWriteResult = withContext(Dispatchers.IO) {
-        val body = JSONObject()
-            .put("text", text)
-            .put("due_date", dueDate ?: JSONObject.NULL)
-        val request = Request.Builder()
-            .url(taskEndpoint("/api/v1/areas/" + areaId + "/tasks"))
-            .header("Authorization", "Bearer $token")
-            .post(body.toString().toRequestBody(JSON))
-            .build()
-        executeWrite(request)
-    }
 
     private suspend fun patchTask(
         token: String,
@@ -163,30 +150,10 @@ class OkHttpAgendaApi(
         TaskWriteUnreachable("Could not reach Clarice.")
     }
 
-    /** Absolute, because okhttp needs one and these paths are ours now.
-     *
-     * Was `absoluteUrl`, which accepted a whole url from the payload and only
-     * prefixed a relative one. Nothing hands this client a url any more, so
-     * the "already absolute" branch had no caller left.
-     */
+    /** Absolute, because okhttp needs one and these paths are ours now. */
     private fun taskEndpoint(path: String) = baseUrl.trimEnd('/') + path
 
-    private fun parseAgenda(body: String): AgendaResult = try {
-        val json = JSONObject(body)
-        AgendaLoaded(
-            AgendaEntry(
-                today = json.getString("today"),
-                items = json.getJSONArray("items").map(::taskEntryFrom),
-                completedToday = json.getJSONArray("completed_today").map(::taskEntryFrom),
-                areas = json.getJSONArray("areas").map(::areaEntryFrom),
-                projects = json.getJSONArray("projects").map(::projectEntryFrom),
-            )
-        )
-    } catch (malformed: JSONException) {
-        AgendaUnreachable("Unexpected response from that address.")
-    }
-
-    /** A created task comes back bare; an updated one comes back under
+    /** The typed router answers with the task itself, or with it under
      *  "task", beside the successor a completion may have produced. The
      *  endpoint this replaces wrapped both in "data". */
     private fun parseTaskWrite(body: String): TaskWriteResult = try {
@@ -199,9 +166,7 @@ class OkHttpAgendaApi(
 
     /** Ninja's `{"detail": "..."}`.
      *
-     * **This comment used to say that shape did not apply here**, because
-     * `lists.api` answered `{"errors": {"<field>": ["<message>"]}}`. It does
-     * now. A 422 carries a list rather than a string, which only happens when
+     * A 422 carries a list rather than a string, which only happens when
      * this client sends something its own contract forbids, so it falls
      * through to the generic line rather than rendering pydantic at a person.
      */
@@ -211,7 +176,7 @@ class OkHttpAgendaApi(
         "Clarice would not accept that."
     }
 
-    private fun taskEntryFrom(json: JSONObject) = AgendaTaskEntry(
+    private fun taskEntryFrom(json: JSONObject) = TaskEntry(
         id = json.getInt("id"),
         text = json.getString("text"),
         dueDate = json.optStringOrNull("due_date"),
@@ -220,21 +185,5 @@ class OkHttpAgendaApi(
         projectId = json.optIntOrNull("project_id"),
         // `url` is still in the payload and deliberately unread -- the server
         // keeps sending it for the build that came before this one.
-    )
-
-    private fun areaEntryFrom(json: JSONObject) = AgendaAreaEntry(
-        id = json.getInt("id"),
-        title = json.getString("title"),
-        colorKey = json.getString("color_key"),
-        openCount = json.getInt("open_count"),
-        overdueCount = json.getInt("overdue_count"),
-        // `create_item_url` likewise: quick-add posts to
-        // /api/v1/areas/{id}/tasks now, and the field survives for the
-        // shipped build.
-    )
-
-    private fun projectEntryFrom(json: JSONObject) = AgendaProjectEntry(
-        id = json.getInt("id"),
-        title = json.getString("title"),
     )
 }

@@ -34,14 +34,16 @@ import com.vinclarice.capture.ui.theme.ClariceTheme
 
 /**
  * The whole app is one activity. Bittern scoped this client to capture and
- * nothing else; android-full-client-plan.md's slices have been cracking that
- * boundary open one surface at a time -- Today (read-only), then Agenda
- * (read and act: complete, reschedule, quick-add). Three destinations is
- * still not enough to justify a real navigation graph -- [RootTabBar] is a
- * hand-rolled tab switcher rather than Jetpack Navigation Compose or a
- * Material `NavigationBar` (which would need an icon library this app has
- * never depended on), trivially replaceable with either once there are
- * enough tabs to need one.
+ * nothing else; android-full-client-plan.md's slices cracked that boundary
+ * open one surface at a time -- Today (read-only), then Agenda (read and act).
+ *
+ * **The Agenda is gone as of September 6, 2026** -- android-overhaul-plan.md
+ * increment 1, following the website, which deleted it on September 4. Two
+ * destinations is further than ever from justifying a real navigation graph,
+ * so [RootTabBar] stays a hand-rolled tab switcher rather than Jetpack
+ * Navigation Compose or a Material `NavigationBar` (which would need an icon
+ * library this app has never depended on), trivially replaceable with either
+ * once the pool and the evening arrive and there are enough tabs to need one.
  *
  * FragmentActivity rather than ComponentActivity (its own superclass) since
  * design/android-unlock-plan.md's BiometricPrompt requires one -- everything
@@ -79,7 +81,7 @@ class MainActivity : FragmentActivity() {
             prefsName = backends.capture.tokenPrefs,
         )
 
-        // Today and Agenda: Clarice, the only one of the two that has tasks.
+        // Today: Clarice, the only one of the two backends that has tasks.
         // On a split install this store already holds the token an existing
         // phone was connected with, so these two keep working across the
         // change without anybody being sent back to Connect.
@@ -89,7 +91,7 @@ class MainActivity : FragmentActivity() {
             prefsName = backends.workspace.tokenPrefs,
         )
         val dailyApi = OkHttpDailyApi(baseUrl = backends.workspace.baseUrl)
-        val agendaApi = OkHttpAgendaApi(baseUrl = backends.workspace.baseUrl)
+        val taskApi = OkHttpTaskApi(baseUrl = backends.workspace.baseUrl)
 
         // The gate connects *capture*, deliberately. It is the act this app
         // exists for, and on a split install it is the only one of the two
@@ -147,7 +149,7 @@ class MainActivity : FragmentActivity() {
                             connector = connector,
                             api = api,
                             dailyApi = dailyApi,
-                            agendaApi = agendaApi,
+                            taskApi = taskApi,
                             store = store,
                             workspaceStore = workspaceStore,
                             workspaceConnector = workspaceConnector,
@@ -171,7 +173,11 @@ class MainActivity : FragmentActivity() {
 private enum class RootTab(val label: String) {
     Capture("Capture"),
     Today("Today"),
-    Agenda("Agenda"),
+    // ~~Agenda~~ -- **deleted September 6, 2026**, android-overhaul-plan.md
+    // increment 1. The website retired the Agenda into the day on September 4
+    // and this screen outlived it by two days. What replaces the question it
+    // answered -- *where is everything?* -- is the pool, which arrives in
+    // increment 3.
 }
 
 @Composable
@@ -179,7 +185,7 @@ private fun Root(
     connector: Connector,
     api: ClariceApi,
     dailyApi: DailyApi,
-    agendaApi: AgendaApi,
+    taskApi: TaskApi,
     store: TokenStore,
     /** Clarice's, which is the same object as [store] on an unsplit install. */
     workspaceStore: TokenStore,
@@ -227,11 +233,7 @@ private fun Root(
     }
     // Same reasoning as captureModel: held above the tab switch so opening
     // Settings and coming back doesn't drop today's already-loaded state.
-    val dailyModel = remember { DailyViewModel(dailyApi, workspaceStore, agendaApi) }
-    // Same again, and doubly so here: the Agenda's own filter selections
-    // (area, tag, scope, search) live in this model too, and losing them
-    // on every trip to Settings would be worse than losing loaded data.
-    val agendaModel = remember { AgendaViewModel(agendaApi, workspaceStore) }
+    val dailyModel = remember { DailyViewModel(dailyApi, workspaceStore, taskApi) }
 
     var connected by remember { mutableStateOf(connectModel.isConnected) }
     var showSettings by remember { mutableStateOf(false) }
@@ -315,10 +317,6 @@ private fun Root(
                 )
                 RootTab.Today -> DailyScreen(
                     model = dailyModel,
-                    onOpenSettings = { showSettings = true },
-                )
-                RootTab.Agenda -> AgendaScreen(
-                    model = agendaModel,
                     onOpenSettings = { showSettings = true },
                 )
             }

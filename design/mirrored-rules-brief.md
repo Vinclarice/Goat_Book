@@ -9,11 +9,37 @@ itself a mirror in a comment and none of them checked by anything.
 
 | Rule | Python | TypeScript | Kotlin |
 |---|---|---|---|
-| `bucket_for` | `lists/reads.py` | `agenda.ts` | `AgendaFormatting.kt` |
-| `WEEK_HORIZON_DAYS` | `lists/agenda.py` | `agenda.ts` | `AgendaFormatting.kt` |
+| `bucket_for` | `lists/reads.py` | `agenda.ts` | ~~`AgendaFormatting.kt`~~ |
+| `WEEK_HORIZON_DAYS` | `lists/agenda.py` | `agenda.ts` | ~~`AgendaFormatting.kt`~~ |
 | `next_weekday`, `snooze_presets` | `lists/agenda.py` | `agenda.ts` | — |
 | `AGE_WORTH_MENTIONING`, `ageLabel` | — | `agenda.ts` | `DailyFormatting.kt` |
-| `dueLabel` | — | `agenda.ts` | `AgendaScreen.kt` |
+| `dueLabel` | — | `agenda.ts` | ~~`AgendaScreen.kt`~~ **`DailyFormatting.kt`** |
+
+**The two `AgendaFormatting.kt` cells went on September 6, 2026**,
+`android-overhaul-plan.md` increment 1, when the Agenda screen was deleted from
+the phone to follow the website. **Not by executing §5** — as a side effect of
+deleting the surface those copies existed to render.
+
+**The `dueLabel` row was wrong when this table was written**, and correcting it
+is not a strike. `AgendaScreen.kt` only ever *called* `dueLabel`; the
+definition has always been in `DailyFormatting.kt`, beside `ageLabel` in the
+row above. A table of where a rule *lives* that names a call site is the same
+class of error as the mirror it was written to expose — and it nearly
+propagated, because deleting the screen made the cell look retired rather than
+mistaken.
+
+So §5's steps 3 and the Kotlin half of 4 are done, for a reason that has
+nothing to do with this brief, and **step 2 is not**: `bucketFor` and
+`WEEK_HORIZON_DAYS` are still in `agenda.ts`, still re-derived in the browser,
+and the field §5 asks for still does not exist.
+
+**How this was found is the part worth keeping.** The contract test in §6 named
+`AgendaFormatting.kt`, so deleting that file made it fail — two commits after
+the fact, because the Android suite stayed green throughout and the stale
+reference was in Python. It is `CLAUDE.md`'s *run the whole app list, not the
+app you are editing* demonstrated rather than asserted, and it is the second
+time this brief's subject has been proved by something breaking rather than by
+somebody noticing.
 | `standingLabel` | — | `DayRoute.tsx` | `DailyFormatting.kt` |
 
 ## 2. The divergence is demonstrated, not theoretical

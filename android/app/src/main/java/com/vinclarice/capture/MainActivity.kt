@@ -92,6 +92,7 @@ class MainActivity : FragmentActivity() {
         )
         val dailyApi = OkHttpDailyApi(baseUrl = backends.workspace.baseUrl)
         val taskApi = OkHttpTaskApi(baseUrl = backends.workspace.baseUrl)
+        val poolApi = OkHttpPoolApi(baseUrl = backends.workspace.baseUrl)
 
         // The gate connects *capture*, deliberately. It is the act this app
         // exists for, and on a split install it is the only one of the two
@@ -150,6 +151,7 @@ class MainActivity : FragmentActivity() {
                             api = api,
                             dailyApi = dailyApi,
                             taskApi = taskApi,
+                            poolApi = poolApi,
                             store = store,
                             workspaceStore = workspaceStore,
                             workspaceConnector = workspaceConnector,
@@ -173,6 +175,10 @@ class MainActivity : FragmentActivity() {
 private enum class RootTab(val label: String) {
     Capture("Capture"),
     Today("Today"),
+    // **The pool, September 6, 2026** -- android-overhaul-plan.md increment
+    // 3, and what actually answers the question the Agenda tab used to:
+    // *where is everything?*
+    Pool("Pool"),
     // ~~Agenda~~ -- **deleted September 6, 2026**, android-overhaul-plan.md
     // increment 1. The website retired the Agenda into the day on September 4
     // and this screen outlived it by two days. What replaces the question it
@@ -186,6 +192,7 @@ private fun Root(
     api: ClariceApi,
     dailyApi: DailyApi,
     taskApi: TaskApi,
+    poolApi: PoolApi,
     store: TokenStore,
     /** Clarice's, which is the same object as [store] on an unsplit install. */
     workspaceStore: TokenStore,
@@ -234,6 +241,9 @@ private fun Root(
     // Same reasoning as captureModel: held above the tab switch so opening
     // Settings and coming back doesn't drop today's already-loaded state.
     val dailyModel = remember { DailyViewModel(dailyApi, workspaceStore, taskApi) }
+    // Held above the tab switch for the same reason as the others: a trip
+    // to Settings should not throw away a loaded pool.
+    val poolModel = remember { PoolViewModel(poolApi, workspaceStore, dailyApi) }
 
     var connected by remember { mutableStateOf(connectModel.isConnected) }
     var showSettings by remember { mutableStateOf(false) }
@@ -317,6 +327,10 @@ private fun Root(
                 )
                 RootTab.Today -> DailyScreen(
                     model = dailyModel,
+                    onOpenSettings = { showSettings = true },
+                )
+                RootTab.Pool -> PoolScreen(
+                    model = poolModel,
                     onOpenSettings = { showSettings = true },
                 )
             }

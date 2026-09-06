@@ -180,7 +180,7 @@ class OkHttpTaskApi(
         id = json.getInt("id"),
         text = json.getString("text"),
         dueDate = json.optStringOrNull("due_date"),
-        tags = json.getJSONArray("tags").let { tags -> (0 until tags.length()).map(tags::getString) },
+        tags = json.getJSONArray("tags").strings(),
         areaId = json.optIntOrNull("area_id"),
         projectId = json.optIntOrNull("project_id"),
         // `url` is still in the payload and deliberately unread -- the server

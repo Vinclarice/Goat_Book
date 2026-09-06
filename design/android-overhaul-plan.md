@@ -170,9 +170,43 @@ encrypted offline queue, and rule 4 of
    This suite has no UI tests; how the line and the appointments actually look
    is unverified until increment 5 puts a build on the phone.
 
-3. **The pool.** `GET /api/v1/pool` gains token auth, deliberately and in
+3. ~~**The pool.** `GET /api/v1/pool` gains token auth, deliberately and in
    `TOKEN_AUTHENTICATED`, and the phone gets the surface that replaced the
-   Agenda.
+   Agenda.~~ **Shipped September 6, 2026 — the first increment here that
+   changed the server, and it changed one line.**
+
+   **The endpoint named its own trigger and this was it.** `lists.api_v1.pool`
+   had said *session only. The phone has no pool surface, and widening a bearer
+   to reach one before there is anything to reach would be the un-switched-on
+   seam this project keeps finding.* That condition ended when the phone got
+   the surface, so the widening arrived **with** its reason rather than ahead
+   of it — which is the difference the whole guard exists to make somebody
+   demonstrate.
+
+   **`agenda:read`, not a new scope.** The pool is what replaced the Agenda,
+   `GET /agenda` already takes exactly that, and a token holding it can already
+   read every open task through the other endpoint — so a second scope over the
+   same material would be a distinction the person granting it could not act
+   on.
+
+   **Read only, and `POST /pool/{task_id}/still-wanted` is deliberately
+   absent** from `TOKEN_AUTHENTICATED`, with a test asserting it stays refused.
+   The screen *shows* rule 8's question, because knowing the pool is asking is
+   worth something on its own; answering it is a different decision from
+   reading the list.
+
+   **Picking needed no widening at all.** `POST /day/{day}/focus` was already
+   token-authenticated, so `PoolViewModel` borrows `DailyApi.pinFocus` rather
+   than growing a pool verb — the same borrowing `DailyViewModel` does for the
+   task verbs, and for the same reason: a second way to pin would be a second
+   definition of what picking means.
+
+   Two things are read and never computed here, both for the reason that keeps
+   recurring on this client: `days_until` and `asks_to_be_kept`. A phone
+   comparing `unpicked_for_days` against a threshold of its own would be D8's
+   mirrored constant arriving by the back door, and one working out a date in
+   its own zone would answer a question about the owner's day from wherever it
+   is standing.
 
 4. **The evening.** The readback, the leftovers, and rule 7's three moves —
    which needs the second widening.

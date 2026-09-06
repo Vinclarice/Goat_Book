@@ -80,6 +80,19 @@ TOKEN_AUTHENTICATED = {
     # refusal expressed where Ninja enforces it.
     ("POST", "/api/v1/areas/{area_id}/tasks"),
     ("PATCH", "/api/v1/tasks/{task_id}"),
+    # The pool, read-only -- **new to this list on September 6, 2026**,
+    # android-overhaul-plan.md increment 3, and a deliberate widening rather
+    # than a correction. The endpoint's own docstring had said "session only,
+    # the phone has no pool surface", naming the condition that ended when the
+    # phone got one.
+    #
+    # `agenda:read`, the same scope `GET /agenda` takes: the pool is what
+    # replaced the Agenda, and a token that can already read every open task
+    # through one of them gains nothing new by reading the other.
+    #
+    # `POST /pool/{task_id}/still-wanted` is deliberately absent. Reading the
+    # list and letting go of something on it are different decisions.
+    ("GET", "/api/v1/pool"),
     # Capture, the original reason a token exists at all.
     ("POST", "/api/v1/capture"),
     # The Day, read *and* write -- pinning a focus and writing the day's own

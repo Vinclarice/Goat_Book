@@ -23,3 +23,9 @@ fun JSONObject.optIntOrNull(name: String): Int? =
 
 fun JSONObject.optStringOrNull(name: String): String? =
     if (isNull(name) || !has(name)) null else getString(name)
+
+/** A JSON array of strings, which every payload here uses for tags and for
+ *  the pool's `picked_for`. Added with PoolApi rather than inlined a third
+ *  time -- the `(0 until length()).map(::getString)` idiom had two copies
+ *  already. */
+fun JSONArray.strings(): List<String> = (0 until length()).map(::getString)

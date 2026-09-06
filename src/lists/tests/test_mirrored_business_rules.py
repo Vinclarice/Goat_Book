@@ -36,7 +36,17 @@ MIRRORED = {
     "WEEK_HORIZON_DAYS": {
         "python": SRC / "lists" / "agenda.py",
         "typescript": FRONTEND / "agenda.ts",
-        "kotlin": ANDROID / "AgendaFormatting.kt",
+        # ~~"kotlin": ANDROID / "AgendaFormatting.kt"~~ -- **the third copy
+        # went with the Agenda screen on September 6, 2026**,
+        # android-overhaul-plan.md increment 1. It existed for `bucketFor`,
+        # the phone's own client-side re-derivation of the agenda's buckets,
+        # and there is no agenda to bucket any more.
+        #
+        # **This guard is what found the deletion incomplete**, two commits
+        # after the fact: the Android suite was green throughout, because the
+        # stale reference was here rather than in Kotlin. It is the argument
+        # for `CLAUDE.md`'s rule about running the whole app list rather than
+        # the app you are editing, stated by a failure rather than by advice.
     },
     "AGE_WORTH_MENTIONING": {
         "typescript": FRONTEND / "agenda.ts",

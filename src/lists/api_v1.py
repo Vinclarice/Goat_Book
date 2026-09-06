@@ -444,13 +444,33 @@ def agenda(request):
     )
 
 
-@router.get("/pool", response=PoolOut)
+@router.get(
+    "/pool",
+    response=PoolOut,
+    # **Widened on September 6, 2026** -- android-overhaul-plan.md increment 3.
+    # The docstring below named its own trigger and this is it: the phone now
+    # has a pool surface, so the bearer reaches it *with* the reason rather
+    # than ahead of it.
+    #
+    # `agenda:read` rather than a new scope. The pool is what replaced the
+    # Agenda, `GET /agenda` above takes exactly this scope, and a token holding
+    # it can already read every open task through that endpoint -- so a second
+    # scope over the same material would be a distinction the person granting
+    # it could not act on.
+    #
+    # **Read only.** Rule 8's *still wanted?* and every other pool write stay
+    # session-only; letting go of a task is a different decision from reading
+    # the list, and a bearer sits in an Android keystore for ninety days.
+    auth=[TokenAuth(SCOPE_AGENDA_READ), SessionAuthIfLoggedIn()],
+)
 def pool(request, q: str = "", head: bool = False):
     """Every open line, in one list -- `superlists-2.0-plan.md` increment 1.
 
-    **Session only.** The phone has no pool surface, and widening a bearer to
+    ~~**Session only.** The phone has no pool surface, and widening a bearer to
     reach one before there is anything to reach would be the un-switched-on seam
-    this project keeps finding. `clarice/tests/test_api_auth_surface.py` is the
+    this project keeps finding.~~ **A bearer with `agenda:read` reaches this
+    since September 6, 2026**, when the phone got the surface -- see the
+    decorator. `clarice/tests/test_api_auth_surface.py` is the
     authority on that and fails if this changes by accident.
 
     `q` is optional and empty means the whole pool; `pool_for` owns what

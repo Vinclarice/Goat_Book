@@ -70,6 +70,9 @@ class PoolViewModelTest {
         override suspend fun getToday(token: String) = no()
         override suspend fun pinFocus(token: String, day: String, taskId: Int) = no()
         override suspend fun unpinFocus(token: String, day: String, taskId: Int) = no()
+        override suspend fun decideAboutLeftover(
+            token: String, day: String, taskId: Int, decision: String,
+        ) = no()
         override suspend fun createRoutine(
             token: String, title: String, cadence: String, targetQuantity: Int, unit: String,
         ) = no()

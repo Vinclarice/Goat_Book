@@ -80,6 +80,13 @@ class DailyViewModelTest {
             return writeResult
         }
 
+        override suspend fun decideAboutLeftover(
+            token: String, day: String, taskId: Int, decision: String,
+        ): DayWriteResult {
+            lastWrite = "leftover" to listOf(day, taskId, decision)
+            return writeResult
+        }
+
         override suspend fun createRoutine(
             token: String, title: String, cadence: String, targetQuantity: Int, unit: String,
         ): DayWriteResult {
@@ -119,6 +126,7 @@ class DailyViewModelTest {
         compassPurpose = "",
         compassQuestion = "",
         listClosedAt = null,
+        closing = null,
         focus = emptyList(),
         appointments = emptyList(),
         appointmentsComing = emptyList(),
@@ -227,18 +235,39 @@ class DailyViewModelTest {
     }
 
     @Test
-    fun `moving a pinned task to tomorrow uses the day's own date`() = runTest {
-        // The date comes from AgendaFormatting.tomorrow, which the Agenda
-        // screen already uses -- a fourth copy of that rule is exactly what
-        // mirrored-rules-brief.md is about. And it is *the day's* date, not
-        // the device's: the server said what today is.
+    fun `choosing a pinned task for tomorrow is never a date move`() = runTest {
+        /* ~~`moving a pinned task to tomorrow uses the day's own date`~~, which
+           asserted `reschedule` against a computed date. **Rewritten September
+           6, 2026** with its subject: rule 7 says *never a date move*, and a
+           due date is a promise to somebody while choosing to work on
+           something tomorrow is not the same act as re-promising it. The
+           website fixed exactly this on September 3, where the word had come
+           to mean two opposite things on one page.
+
+           So the assertion is now that this reaches the *leftovers* endpoint,
+           and `taskApi` is untouched -- which is the whole of the correction. */
         val taskApi = FakeTaskApi()
-        val model = DailyViewModel(FakeDailyApi(DayLoaded(sampleDay)), FakeStore(), taskApi)
+        val api = FakeDailyApi(DayLoaded(sampleDay))
+        val model = DailyViewModel(api, FakeStore(), taskApi)
         model.load()
 
         model.deferTaskToTomorrow(42)
 
-        assertEquals("reschedule" to listOf("42", "2026-08-11"), taskApi.lastCall)
+        assertEquals("leftover" to listOf("2026-08-10", 42, "tomorrow"), api.lastWrite)
+        assertNull(taskApi.lastCall)
+    }
+
+    @Test
+    fun `the other two of rule sevens moves reach the same endpoint by name`() = runTest {
+        val api = FakeDailyApi(DayLoaded(sampleDay))
+        val model = DailyViewModel(api, FakeStore(), FakeTaskApi())
+        model.load()
+
+        model.putTaskBackInThePool(42)
+        assertEquals("leftover" to listOf("2026-08-10", 42, "pool"), api.lastWrite)
+
+        model.letTaskGo(42)
+        assertEquals("leftover" to listOf("2026-08-10", 42, "let_go"), api.lastWrite)
     }
 
     @Test

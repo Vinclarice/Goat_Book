@@ -182,6 +182,16 @@ private fun DailyContent(state: DailyUiState, day: DayEntry, model: DailyViewMod
             }
         }
 
+        day.closing?.let { closing ->
+            TheDayReadBack(
+                closing = closing,
+                busy = state.busy,
+                onTomorrow = { id -> scope.launch { model.deferTaskToTomorrow(id) } },
+                onPool = { id -> scope.launch { model.putTaskBackInThePool(id) } },
+                onLetGo = { id -> scope.launch { model.letTaskGo(id) } },
+            )
+        }
+
         Section(title = "Action items") {
             if (!day.showsActionItems) {
                 EmptyHint("Only today shows action items. What you wrote on this day is below.")
@@ -277,6 +287,101 @@ private fun DailyContent(state: DailyUiState, day: DayEntry, model: DailyViewMod
  * A cancelled one is struck rather than dropped -- rule 6. Filtering it here
  * would make *it was cancelled* and *it never existed* the same thing.
  */
+/**
+ * The day, read back — superlists-2.0-plan.md rule 7.
+ *
+ * **It describes rather than grades.** The numbers are what the day held, not
+ * a score: `joined` is counted apart from `chosen` and never folded into it,
+ * because a day with three chosen and four unplanned done is a good day this
+ * should be able to say so about. `released` is apart from `unfinished` for
+ * the same reason — *I decided this wasn't for today* and *I never got to it*
+ * are different facts.
+ *
+ * **Absent before the evening**, and on any day but today: the server sends no
+ * `closing` then, and inventing an empty one here would say something false at
+ * two in the afternoon.
+ */
+@Composable
+private fun TheDayReadBack(
+    closing: DayClosing,
+    busy: Boolean,
+    onTomorrow: (Int) -> Unit,
+    onPool: (Int) -> Unit,
+    onLetGo: (Int) -> Unit,
+) {
+    Section(title = "The day, read back") {
+        Text(
+            "${closing.finished} of ${closing.chosen} chosen" +
+                if (closing.released > 0) " · ${closing.released} set aside" else "",
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        if (closing.joined > 0) {
+            Text(
+                "${closing.joinedFinished} of ${closing.joined} that joined later",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        if (closing.leftovers.isEmpty()) {
+            EmptyHint("Nothing left open.")
+        } else {
+            closing.leftovers.forEach { leftover ->
+                LeftoverRow(leftover, busy, onTomorrow, onPool, onLetGo)
+            }
+        }
+    }
+}
+
+/**
+ * One thing still open, and rule 7's three decisions.
+ *
+ * **One at a time, and never a sweep.** There is no *move everything* control
+ * here and there is no endpoint for one: the vision document's first rule is
+ * *never automatically reschedule everything left incomplete*, and a button
+ * that did it would be that rule broken in one tap.
+ */
+@Composable
+private fun LeftoverRow(
+    leftover: Leftover,
+    busy: Boolean,
+    onTomorrow: (Int) -> Unit,
+    onPool: (Int) -> Unit,
+    onLetGo: (Int) -> Unit,
+) {
+    Column(modifier = cardModifier(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(leftover.text, style = MaterialTheme.typography.bodyMedium)
+        Text(
+            if (leftover.aboveTheLine) "Chosen this morning" else "Joined after the work began",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        if (leftover.movedToTomorrow) {
+            // Shown rather than hidden, so deciding twice looks like what it
+            // is instead of like a control that did nothing.
+            Text(
+                "Chosen for tomorrow",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        } else {
+            /* Wraps, for the reason the focus row above it does: four verbs
+               do not fit 375px, and this row has three plus its own label. */
+            Row(modifier = Modifier.fillMaxWidth()) {
+                TextButton(enabled = !busy, onClick = { onTomorrow(leftover.taskId) }) {
+                    Text("Tomorrow")
+                }
+                TextButton(enabled = !busy, onClick = { onPool(leftover.taskId) }) {
+                    Text("Pool")
+                }
+                TextButton(enabled = !busy, onClick = { onLetGo(leftover.taskId) }) {
+                    Text("Let go")
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun AppointmentsSection(day: DayEntry) {
     Section(title = "Appointments") {
@@ -395,6 +500,7 @@ private fun FocusRowFor(
         onUnpin = { taskId -> scope.launch { model.unpinTask(taskId) } },
         onComplete = { id -> scope.launch { model.completeTask(id) } },
         onDefer = { id -> scope.launch { model.deferTaskToTomorrow(id) } },
+        onPool = { id -> scope.launch { model.putTaskBackInThePool(id) } },
     )
 }
 
@@ -406,6 +512,7 @@ private fun FocusRow(
     onUnpin: (Int) -> Unit,
     onComplete: (Int) -> Unit,
     onDefer: (Int) -> Unit,
+    onPool: (Int) -> Unit,
 ) {
     DailyRow {
         Text(
@@ -427,6 +534,7 @@ private fun FocusRow(
             if (focus.taskId != null && focus.status != "completed") {
                 TextButton(enabled = !busy, onClick = { onComplete(focus.taskId) }) { Text("Complete") }
                 TextButton(enabled = !busy, onClick = { onDefer(focus.taskId) }) { Text("Tomorrow") }
+                TextButton(enabled = !busy, onClick = { onPool(focus.taskId) }) { Text("Pool") }
             }
             if (focus.taskId != null) {
                 TextButton(enabled = !busy, onClick = { onUnpin(focus.taskId) }) { Text("Unpin") }

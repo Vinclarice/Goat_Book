@@ -208,8 +208,37 @@ encrypted offline queue, and rule 4 of
    its own zone would answer a question about the owner's day from wherever it
    is standing.
 
-4. **The evening.** The readback, the leftovers, and rule 7's three moves —
-   which needs the second widening.
+4. ~~**The evening.** The readback, the leftovers, and rule 7's three moves —
+   which needs the second widening.~~ **Shipped September 6, 2026.**
+
+   **The endpoint asked to be asked, and this was the asking.**
+   `decide_about_a_leftover` had said *session only. The phone has no evening
+   ritual, and letting go archives a task — widening a bearer that sits in a
+   keystore for ninety days to do that should be asked for rather than arrive
+   with a closing prompt.* It has one now.
+
+   **All three moves, `let_go` included, and that was settled by evidence
+   rather than judgement.** `TaskStatus` includes `"archived"` and
+   `PATCH /api/v1/tasks/{task_id}` is already token-authenticated and already
+   accepts `status` — so a bearer can archive a task today, through a door open
+   since August. A carve-out here would have guarded a capability the same
+   token already has, while reading as though it guarded something.
+
+   **And it closed the collision increment 1 flagged, by finding it was a
+   defect rather than an ambiguity.** The phone's row *Tomorrow* called
+   `rescheduleTask` — a due-date move — while the evening's *Tomorrow* chooses
+   a day. **The website had exactly this bug and fixed it on September 3**,
+   where its own comment says the word "did two opposite things on one page".
+   So this is not a rename: `deferTaskToTomorrow` now reaches `leftovers`, and
+   there is one meaning of *Tomorrow* on both clients again.
+
+   `tomorrow()` was deleted **one increment after being moved**, its only
+   caller gone. Its warning was right and resolved by deletion rather than by
+   care.
+
+   The test that asserted the old behaviour was **rewritten with its subject
+   rather than deleted**, because the rule it guards still exists — it just
+   says the opposite thing now.
 
 5. **A signed release, and the deletion it unblocks.** See below; this is the
    increment that has a manual step in it and it is Vince's.

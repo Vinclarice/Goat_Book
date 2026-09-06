@@ -27,13 +27,20 @@ module; `DIGEST_HOUR` is the precedent for naming the threshold rather than
 scattering it.
 """
 
+import json
 from datetime import date, datetime, timedelta
 
 from django.test import TestCase
 from django.utils import timezone
 
-from accounts.models import User
+from accounts.models import (
+    SCOPE_DAY_READ,
+    SCOPE_DAY_WRITE,
+    PersonalAccessToken,
+    User,
+)
 from daily import reads, services
+from daily.models import DailyFocus
 from lists import services as list_services
 from lists.models import Item, List
 
@@ -163,3 +170,124 @@ class ClosingTheDayTest(TestCase):
 
         self.assertIsNotNone(closing)
         self.assertEqual(closing.chosen, 0)
+
+
+class LeftoverDecisionsFromAPhoneTest(TestCase):
+    """Rule 7's three moves, reachable by a bearer -- android-overhaul-plan.md
+    increment 4.
+
+    **The endpoint asked to be asked, and this is the asking.** Its docstring
+    said *session only. The phone has no evening ritual, and letting go
+    archives a task -- widening a bearer that sits in a keystore for ninety
+    days to do that should be asked for rather than arrive with a closing
+    prompt.* The phone has an evening now, and the widening is the increment
+    rather than a side effect of one.
+
+    **All three moves, including `let_go`, and the reason is evidence rather
+    than judgement.** `TaskStatus` includes `"archived"` and
+    `PATCH /api/v1/tasks/{task_id}` is already token-authenticated and already
+    accepts `status` -- so a bearer can archive a task today, through a door
+    that has been open since August. Refusing `let_go` here would guard a
+    capability the same token already has, which is an inconsistency rather
+    than a protection, and the kind that gets discovered later as a seam.
+
+    `day:write`, the scope every other write on this router takes. Pinning a
+    focus and choosing a leftover for tomorrow are the same act reached two
+    ways -- `leftovers.tomorrow` calls `pin_task`.
+    """
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            "alice", "alice@example.com", "correct horse battery staple 47!"
+        )
+        self.today = timezone.localdate()
+
+    def a_pinned_task(self, text="Write the plan doc"):
+        task = Item.objects.create(owner=self.user, text=text)
+        services.pin_task(self.user, self.today, task)
+        return task
+
+    def decide(self, task, decision, token):
+        return self.client.post(
+            f"/api/v1/day/{self.today.isoformat()}/leftovers/{task.id}",
+            data=json.dumps({"decision": decision}),
+            content_type="application/json",
+            HTTP_AUTHORIZATION=f"Bearer {token}",
+        )
+
+    def a_token(self, *scopes):
+        _, raw = PersonalAccessToken.generate(self.user, scopes=list(scopes))
+        return raw
+
+    def test_a_token_can_choose_a_leftover_for_tomorrow(self):
+        task = self.a_pinned_task()
+
+        response = self.decide(task, "tomorrow", self.a_token(SCOPE_DAY_WRITE))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            DailyFocus.objects.filter(
+                owner=self.user,
+                entry__date=self.today + timedelta(days=1),
+                task=task,
+            ).exists()
+        )
+
+    def test_choosing_tomorrow_is_never_a_date_move(self):
+        """Rule 7, and the defect the website fixed on September 3, 2026: a due
+        date is a promise to somebody, and choosing to work on something
+        tomorrow is not the same act as re-promising it."""
+        task = self.a_pinned_task()
+
+        self.decide(task, "tomorrow", self.a_token(SCOPE_DAY_WRITE))
+
+        task.refresh_from_db()
+        self.assertIsNone(task.due_date)
+
+    def test_a_token_can_put_a_leftover_back_in_the_pool(self):
+        task = self.a_pinned_task()
+
+        response = self.decide(task, "pool", self.a_token(SCOPE_DAY_WRITE))
+
+        self.assertEqual(response.status_code, 200)
+        task.refresh_from_db()
+        self.assertEqual(task.status, Item.Status.ACTIVE)
+
+    def test_a_token_can_let_a_leftover_go(self):
+        """Allowed rather than refused, and not because archiving is harmless:
+        because a bearer already reaches it through
+        `PATCH /api/v1/tasks/{task_id}`, which accepts `status: "archived"`.
+        A guard here would stop nothing."""
+        task = self.a_pinned_task()
+
+        response = self.decide(task, "let_go", self.a_token(SCOPE_DAY_WRITE))
+
+        self.assertEqual(response.status_code, 200)
+        task.refresh_from_db()
+        self.assertEqual(task.status, Item.Status.ARCHIVED)
+
+    def test_a_token_without_day_write_is_refused(self):
+        task = self.a_pinned_task()
+
+        response = self.decide(task, "tomorrow", self.a_token(SCOPE_DAY_READ))
+
+        self.assertEqual(response.status_code, 401)
+        self.assertFalse(
+            DailyFocus.objects.filter(
+                owner=self.user, entry__date=self.today + timedelta(days=1)
+            ).exists()
+        )
+
+    def test_a_token_cannot_decide_about_someone_elses_leftover(self):
+        other = User.objects.create_user(
+            "bob", "bob@example.com", "correct horse battery staple 47!"
+        )
+        theirs = Item.objects.create(owner=other, text="Bob's loose end")
+
+        response = self.decide(theirs, "let_go", self.a_token(SCOPE_DAY_WRITE))
+
+        # 404 rather than 403, so the endpoint does not confirm that somebody
+        # else's task id exists.
+        self.assertEqual(response.status_code, 404)
+        theirs.refresh_from_db()
+        self.assertEqual(theirs.status, Item.Status.ACTIVE)

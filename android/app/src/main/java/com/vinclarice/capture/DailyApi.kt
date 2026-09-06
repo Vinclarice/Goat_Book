@@ -56,6 +56,25 @@ interface DailyApi {
 
     suspend fun unpinFocus(token: String, day: String, taskId: Int): DayWriteResult
 
+    /**
+     * One of rule 7's three decisions, on one unfinished pin.
+     *
+     * **One at a time, and never a sweep.** The vision document's first rule
+     * is *never automatically reschedule everything left incomplete*, so there
+     * is no call here that takes a list -- a shape decision rather than an
+     * omission.
+     *
+     * @param decision `"tomorrow"`, `"pool"` or `"let_go"`. A plain string for
+     *   the reason [FocusEntry.status] is one: the server owns the vocabulary,
+     *   and a Kotlin enum here would be a fourth copy of it to keep in step.
+     */
+    suspend fun decideAboutLeftover(
+        token: String,
+        day: String,
+        taskId: Int,
+        decision: String,
+    ): DayWriteResult
+
     suspend fun createRoutine(
         token: String,
         title: String,
@@ -123,6 +142,22 @@ class OkHttpDailyApi(
                 .build()
             executeWrite(request)
         }
+
+    override suspend fun decideAboutLeftover(
+        token: String,
+        day: String,
+        taskId: Int,
+        decision: String,
+    ): DayWriteResult = withContext(Dispatchers.IO) {
+        val request = Request.Builder()
+            .url(baseUrl.trimEnd('/') + "/api/v1/day/$day/leftovers/$taskId")
+            .header("Authorization", "Bearer $token")
+            .post(
+                JSONObject().put("decision", decision).toString().toRequestBody(JSON)
+            )
+            .build()
+        executeWrite(request)
+    }
 
     override suspend fun createRoutine(
         token: String,
@@ -202,6 +237,7 @@ class OkHttpDailyApi(
         compassPurpose = json.getString("compass_purpose"),
         compassQuestion = json.getString("compass_question"),
         listClosedAt = json.optStringOrNull("list_closed_at"),
+        closing = json.optJSONObject("closing")?.let(::closingFrom),
         focus = json.getJSONArray("focus").map(::focusEntryFrom),
         appointments = json.getJSONArray("appointments").map(::appointmentEntryFrom),
         appointmentsComing =
@@ -222,6 +258,23 @@ class OkHttpDailyApi(
         dueDate = json.optStringOrNull("due_date"),
         aboveTheLine = json.getBoolean("above_the_line"),
         // `url` deliberately unread -- see FocusEntry.
+    )
+
+    private fun closingFrom(json: JSONObject) = DayClosing(
+        chosen = json.getInt("chosen"),
+        finished = json.getInt("finished"),
+        unfinished = json.getInt("unfinished"),
+        released = json.getInt("released"),
+        joined = json.getInt("joined"),
+        joinedFinished = json.getInt("joined_finished"),
+        leftovers = json.getJSONArray("leftovers").map(::leftoverFrom),
+    )
+
+    private fun leftoverFrom(json: JSONObject) = Leftover(
+        taskId = json.getInt("task_id"),
+        text = json.getString("text"),
+        aboveTheLine = json.getBoolean("above_the_line"),
+        movedToTomorrow = json.getBoolean("moved_to_tomorrow"),
     )
 
     private fun appointmentEntryFrom(json: JSONObject) = AppointmentEntry(

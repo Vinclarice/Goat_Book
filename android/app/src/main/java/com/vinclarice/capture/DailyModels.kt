@@ -25,6 +25,9 @@ data class DayEntry(
      * would draw a line at nothing on every day before the first tick.
      */
     val listClosedAt: String?,
+    /** The day read back, or null before the evening and on any day but
+     *  today -- see [DayClosing]. */
+    val closing: DayClosing?,
     val focus: List<FocusEntry>,
     /** Everything covering this date, cancelled ones included and struck --
      *  rule 6. Present on a past day, because an appointment is a dated record
@@ -122,4 +125,37 @@ data class AppointmentEntry(
     val location: String,
     val notes: String,
     val cancelled: Boolean,
+)
+
+/**
+ * What the day held, and what is still open — superlists-2.0-plan.md rule 7.
+ *
+ * **Null is not "nothing happened".** The server returns none of this before
+ * the evening, and none of it on a day that is not today, so a client reading
+ * null as an empty summary would say something false at two in the afternoon.
+ *
+ * The counts are deliberately not one number. `joined` is counted apart from
+ * `chosen` and never folded into it — *a day with three chosen and four
+ * unplanned done is a good day this can say so about* — and `released` is
+ * apart from `unfinished`, because "I decided this wasn't for today" and "I
+ * never got to it" are different facts.
+ */
+data class DayClosing(
+    val chosen: Int,
+    val finished: Int,
+    val unfinished: Int,
+    val released: Int,
+    val joined: Int,
+    val joinedFinished: Int,
+    val leftovers: List<Leftover>,
+)
+
+/** One thing still open, awaiting one of rule 7's three decisions. */
+data class Leftover(
+    val taskId: Int,
+    val text: String,
+    val aboveTheLine: Boolean,
+    /** Already chosen for tomorrow. Shown rather than hidden, so deciding
+     *  twice looks like what it is. */
+    val movedToTomorrow: Boolean,
 )

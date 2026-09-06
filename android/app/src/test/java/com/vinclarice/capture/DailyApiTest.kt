@@ -32,6 +32,16 @@ class DailyApiTest {
           "compass_purpose": "Build something that lasts",
           "compass_question": "What matters today?",
           "list_closed_at": "2026-08-10T14:30:00Z",
+          "closing": {
+            "chosen": 3, "finished": 1, "unfinished": 2, "released": 0,
+            "joined": 1, "joined_finished": 1,
+            "leftovers": [
+              {"task_id": 7, "text": "Write the plan doc", "above_the_line": true,
+               "moved_to_tomorrow": false},
+              {"task_id": 9, "text": "Joined after the work started",
+               "above_the_line": false, "moved_to_tomorrow": true}
+            ]
+          },
           "focus": [
             {"task_id": 7, "text": "Write the plan doc", "status": "active", "due_date": null,
              "selected_at": "2026-08-10T09:00:00Z", "above_the_line": true},
@@ -258,5 +268,77 @@ class DailyApiTest {
 
         assertTrue(result.day.appointmentsComing[0].cancelled)
         assertFalse(result.day.appointments[0].cancelled)
+    }
+
+    /* android-overhaul-plan.md increment 4: the evening. */
+
+    @Test
+    fun `the day reads itself back with what it held`() = runTest {
+        server.server.enqueue(MockResponse(code = 200, body = fullDayBody))
+
+        val closing = (api().getToday("tok_abc") as DayLoaded).day.closing
+
+        assertEquals(3, closing?.chosen)
+        assertEquals(1, closing?.finished)
+        // Counted apart from `chosen` and never folded into it -- rule 4: a
+        // day with three chosen and four unplanned done is a good day this can
+        // say so about.
+        assertEquals(1, closing?.joined)
+        assertEquals(1, closing?.joinedFinished)
+    }
+
+    @Test
+    fun `a released pin is reported apart from what is still open`() = runTest {
+        // "I decided this wasn't for today" and "I never got to it" are
+        // different facts, and one number over both would be one nobody should
+        // act on.
+        server.server.enqueue(MockResponse(code = 200, body = fullDayBody))
+
+        val closing = (api().getToday("tok_abc") as DayLoaded).day.closing
+
+        assertEquals(0, closing?.released)
+        assertEquals(2, closing?.unfinished)
+    }
+
+    @Test
+    fun `each leftover says which side of the line it fell and whether it is decided`() =
+        runTest {
+            server.server.enqueue(MockResponse(code = 200, body = fullDayBody))
+
+            val leftovers = (api().getToday("tok_abc") as DayLoaded).day.closing!!.leftovers
+
+            assertEquals(2, leftovers.size)
+            assertTrue(leftovers[0].aboveTheLine)
+            assertFalse(leftovers[0].movedToTomorrow)
+            assertTrue(leftovers[1].movedToTomorrow)
+        }
+
+    @Test
+    fun `a day with nothing to read back yet has no closing at all`() = runTest {
+        // `closing` is null before the evening and on any day but today --
+        // `reads.closing_for` returns None rather than an empty summary, so a
+        // client treating null as "nothing happened" would say something false
+        // at two in the afternoon.
+        server.server.enqueue(
+            MockResponse(
+                code = 200,
+                body = """
+                    {
+                      "date": "2026-08-03", "today": "2026-08-10",
+                      "intentions": "", "gratitude": "", "happenings": "",
+                      "compass_purpose": "", "compass_question": "",
+                      "list_closed_at": null, "closing": null,
+                      "focus": [], "action_items": [], "areas": [], "projects": [],
+                      "appointments": [], "appointments_coming": [],
+                      "shows_action_items": false,
+                      "routines": [], "routines_are_loggable": false, "paused_routines": []
+                    }
+                """.trimIndent(),
+            )
+        )
+
+        val result = api().getToday("tok_abc") as DayLoaded
+
+        assertNull(result.day.closing)
     }
 }

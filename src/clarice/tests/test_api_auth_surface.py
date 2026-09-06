@@ -109,6 +109,17 @@ TOKEN_AUTHENTICATED = {
     # this list exists to make somebody do.
     ("POST", "/api/v1/day/{day}/focus/draft"),
     ("DELETE", "/api/v1/day/{day}/focus/{task_id}"),
+    # Rule 7's three moves on one unfinished pin -- **new on September 6,
+    # 2026**, android-overhaul-plan.md increment 4. The endpoint had said
+    # "session only, the phone has no evening ritual"; it has one now, and the
+    # widening is the increment rather than a side effect of one.
+    #
+    # **`let_go` is not carved out**, although it archives. `PATCH
+    # /api/v1/tasks/{task_id}` above already accepts `status` and `TaskStatus`
+    # already includes "archived", so the same bearer can archive a task
+    # without this endpoint at all. A carve-out here would guard nothing while
+    # reading as though it guarded something.
+    ("POST", "/api/v1/day/{day}/leftovers/{task_id}"),
     # Which account a freshly pasted token belongs to. The one endpoint the
     # Connect screen can call before anything else works.
     ("GET", "/api/v1/me"),

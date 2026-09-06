@@ -63,24 +63,15 @@ fun standingLabel(standing: StandingEntry): String {
     return if (standing.outcome == "partial") "$count — enough" else count
 }
 
-/**
- * The day after [today].
- *
- * **Moved here from `AgendaFormatting.kt` on September 6, 2026**,
- * android-overhaul-plan.md increment 1: that file went with the Agenda screen
- * and this was the only one of its five helpers with a caller left. Its
- * caller is [DailyViewModel.deferTaskToTomorrow], which is S2's second verb.
- *
- * **The word is about to mean two things and increment 4 has to settle it.**
- * This moves a *due date*, one item, deliberately, which is the shape
- * `daily-operating-system-vision.md` leaves open where it forbids automatic
- * carry-forward. The website's evening now has its own *Tomorrow* on a
- * leftover, and superlists-2.0-plan.md rule 7 is explicit that it is **never
- * a date move** -- it pins to tomorrow's list instead. Both are legitimate
- * and they are not the same act, so when the evening arrives on this client
- * the two must not silently merge.
- */
-fun tomorrow(today: String): String = LocalDate.parse(today).plusDays(1).toString()
+/* ~~`tomorrow(today)`~~ -- **deleted September 6, 2026**, one increment after
+   it was moved here. Its only caller was `deferTaskToTomorrow`, which computed
+   a due date; increment 4 made that call rule 7's *choose it for tomorrow*
+   instead, which is a pin and needs no date at all.
+
+   **The warning this carried was the right one and it resolved by deletion.**
+   Two acts were about to share a word on one screen; what happened instead is
+   that one of them turned out to be a defect the website had already fixed, so
+   there is now one meaning of *Tomorrow* on both clients. */
 
 /**
  * The time of day an instant fell on, in [zone].

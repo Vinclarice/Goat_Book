@@ -65,13 +65,10 @@ class DailyFormattingTest {
         assertTrue(label.contains("August"))
     }
 
-    /** Moved here with the function on September 6, 2026 -- it was
-     *  `AgendaFormattingTest`'s, and it is the only one of that file's cases
-     *  whose subject still has a caller. */
-    @Test
-    fun `tomorrow is one day after today`() {
-        assertEquals("2026-08-12", tomorrow("2026-08-11"))
-    }
+    /* ~~`tomorrow is one day after today`~~ -- moved here from
+       `AgendaFormattingTest` in the morning and **deleted the same day**, with
+       the function, when increment 4 made *Tomorrow* a pin rather than a date
+       move. A test whose subject is gone is not coverage. */
 
     /* android-overhaul-plan.md increment 2: the line says when the work began.
 

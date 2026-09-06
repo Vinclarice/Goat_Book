@@ -96,20 +96,42 @@ class DailyViewModel(
     }
 
     /**
-     * "Moves one task to tomorrow" -- S2's second verb.
+     * Choose it for tomorrow -- rule 7's first move.
      *
-     * **Not carry-forward.** `daily-operating-system-vision.md` forbids
-     * rewriting a due date *automatically*; one person moving one item is the
-     * shape that rule deliberately leaves open.
+     * ~~"Moves one task to tomorrow" -- S2's second verb, `rescheduleTask`
+     * against [tomorrow].~~ **Corrected September 6, 2026**,
+     * android-overhaul-plan.md increment 4, and it is the same defect the
+     * website fixed on September 3: this re-promised a due date while the
+     * evening's *Tomorrow* chose a day, so **one word did two opposite things
+     * on one screen**.
      *
-     * Tomorrow is measured from *the day's* date, which the server supplied,
-     * never the device's clock -- and it comes from [tomorrow], the rule the
-     * Agenda screen already snoozes with, rather than a fourth hand-written
-     * copy of it.
+     * A due date is a promise to somebody. Choosing to work on something
+     * tomorrow is not the same act as re-promising it, and rule 7 says *never
+     * a date move* in as many words. So this goes through `leftovers`, which
+     * pins tomorrow and leaves today's record untouched -- you chose it, you
+     * did not do it, and you are choosing it again.
+     *
+     * Against *the day's* date, which the server supplied, never the device's
+     * clock.
      */
-    suspend fun deferTaskToTomorrow(taskId: Int) {
+    suspend fun deferTaskToTomorrow(taskId: Int) = decideAboutLeftover(taskId, "tomorrow")
+
+    /** Unchoose it, and leave it open -- rule 7's second move. The task is
+     *  already in the pool; what ends is the *choice*. */
+    suspend fun putTaskBackInThePool(taskId: Int) = decideAboutLeftover(taskId, "pool")
+
+    /**
+     * Stop carrying it -- rule 7's third move.
+     *
+     * Archived rather than deleted, which is what makes it reversible: the
+     * archive is a place somebody browses and restoring is one click. The
+     * thought stays either way; only the commitment ends.
+     */
+    suspend fun letTaskGo(taskId: Int) = decideAboutLeftover(taskId, "let_go")
+
+    private suspend fun decideAboutLeftover(taskId: Int, decision: String) {
         val day = _state.value.day ?: return
-        writeTask { token -> tasks.rescheduleTask(token, taskId, tomorrow(day.date)) }
+        write { token -> api.decideAboutLeftover(token, day.date, taskId, decision) }
     }
 
     /**

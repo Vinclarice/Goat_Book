@@ -852,7 +852,10 @@ def unpin_from_day(request, day: date, task_id: int):
 @router.post(
     "/day/{day}/leftovers/{task_id}",
     response=DayOut,
-    auth=SessionAuthIfLoggedIn(),
+    # **Widened on September 6, 2026** -- android-overhaul-plan.md increment 4,
+    # which gave the phone an evening. The docstring below asked to be asked
+    # rather than widened quietly, and this is the asking.
+    auth=_TOKEN_OR_SESSION_WRITE,
 )
 def decide_about_a_leftover(request, day: date, task_id: int, payload: DecisionIn):
     """One of rule 7's three decisions, on one unfinished pin.
@@ -863,9 +866,19 @@ def decide_about_a_leftover(request, day: date, task_id: int, payload: DecisionI
     an omission. `clarice.leftovers` owns what each decision does and why none
     of them rewrites today.
 
-    **Session only.** The phone has no evening ritual, and letting go archives
-    a task -- widening a bearer that sits in a keystore for ninety days to do
-    that should be asked for rather than arrive with a closing prompt.
+    ~~**Session only.** The phone has no evening ritual, and letting go
+    archives a task -- widening a bearer that sits in a keystore for ninety
+    days to do that should be asked for rather than arrive with a closing
+    prompt.~~ **A bearer with `day:write` reaches all three decisions since
+    September 6, 2026**, when the phone got the evening this sentence was
+    waiting for.
+
+    **`let_go` is included, on evidence rather than judgement.** `TaskStatus`
+    includes `"archived"` and `PATCH /api/v1/tasks/{task_id}` is already
+    token-authenticated and already accepts `status` -- so a bearer can archive
+    a task today, through a door open since August. Refusing it here would
+    guard a capability the same token already has, which is an inconsistency
+    rather than a protection, and exactly the kind found later as a seam.
 
     Returns the whole day, like every other write here: the leftovers list, the
     counts and the log all move together, and one response keeps them from

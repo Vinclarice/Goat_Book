@@ -1,8 +1,10 @@
 # Whole-application audit — September 6, 2026: both cores
 
 **A record and a diagnosis, not a repair list.** The repairs belong to
-[`app-overhaul-plan.md`](app-overhaul-plan.md), which does not exist yet and
-which this document is written to make writable. Nothing here is a production
+[`app-overhaul-plan.md`](app-overhaul-plan.md), ~~which does not exist yet and
+which this document is written to make writable~~ — **written the same day,
+September 6, 2026**, after Vince read this and answered: *rebuild it to just be
+one page*, the whole app, both cores. Nothing here is a production
 defect: [`commercial-blueprint.md`](commercial-blueprint.md) Part 1 remains the
 sole authority for that list and is still empty.
 
@@ -146,8 +148,12 @@ What still differs is how the two halves *behave*:
 **And the last row is a feature, deliberately bought.** `mind/base.html` says
 the binding constraint is a page comfortable to type into with a thumb, loading
 instantly. An overhaul that unifies by making `/mind/` a React route spends
-that, and the spend has to be argued rather than assumed. **This is the
-overhaul's central decision and it is D1 in the plan.**
+that, and the spend has to be argued rather than assumed. ~~This is the
+overhaul's central decision and it is D1 in the plan.~~ **Answered September 6,
+2026, and the argument turned out to be narrower than the question**: the
+manifest's `scope`, `start_url` and share target all point at *capture*, and
+the phone posts to an API rather than loading a page. So ten surfaces move and
+two stay — see the plan's rule 4.
 
 ### G6. Search appears twice; Review means two things
 

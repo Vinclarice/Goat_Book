@@ -71,19 +71,25 @@ re-add it here.
 
   **Planned now, built after September 18**, which is Vince's own call: the
   fortnight of use that Superlists 2.0's acceptance depends on is running, so
-  the Day page is out of scope until it finishes. `app-overhaul-plan.md` does
-  not exist yet and this entry is deliberately ahead of it — claimed on the day
-  the *audit* was written rather than the plan, because the entry below records
-  what a body of work with no roadmap entry cost, and the entry below that
-  records what one that stopped being updated cost.
+  the Day page is out of scope until it finishes — **and sequencing preserves it
+  at no cost**, because increments 1 through 6 touch only surfaces the fortnight
+  is not measuring. ~~`app-overhaul-plan.md` does not exist yet and this entry is
+  deliberately ahead of it~~ — **[`app-overhaul-plan.md`](app-overhaul-plan.md)
+  was written the same day** and owns the eight increments, the seven decisions
+  and the acceptance.
 
-  **Its central decision is D1 and it is expensive either way**: whether
-  `/mind/` stops being nineteen Django templates and becomes part of the SPA.
-  That core carries no JavaScript at all and loads instantly on a phone, which
-  is a property bought deliberately against a stated constraint — so unifying
-  spends it, and the spend has to be argued. **D2 is Vince's and is not code**:
-  whether the fortnight gets a one-sentence-a-day friction log, without which
-  the plan's usability half is unevidenced and will say so.
+  **Vince answered the scope question the same day: the whole app, both cores,
+  one page.** That settles D1 — `/mind/` leaves server rendering — and the plan
+  narrows it with evidence rather than compromise: the PWA manifest's `scope`,
+  `start_url` and share target all point at *capture*, and the phone posts to
+  `/api/v1/capture` rather than loading a page. **So ten of the knowledge core's
+  twelve surfaces move and capture and share stay**, keeping the one property
+  that was actually bought — a page you can type into with a thumb that loads
+  instantly.
+
+  **D2 is Vince's, is not code, and is time-sensitive**: whether the running
+  fortnight carries a one-sentence-a-day friction log. Without it the plan's
+  usability half is unevidenced and says so in its own acceptance.
 
 - **Superlists 2.0 — all nine increments shipped September 3–4, 2026; the
   acceptance is running and the plan is open.**

@@ -240,7 +240,32 @@ encrypted offline queue, and rule 4 of
    rather than deleted**, because the rule it guards still exists — it just
    says the opposite thing now.
 
-5. **A signed release, and the deletion it unblocks.** See below; this is the
+5. **One page for everything.** Vince, September 6, 2026, on seeing the build
+   run: *"right off the bat, I want like one page for everything."* The tab bar
+   goes — `RootTab`, `RootTabBar` and the three separate screens — and what
+   replaces them is one scrolling surface, the shape
+   [`app-overhaul-plan.md`](app-overhaul-plan.md) gives the web.
+
+   **Capture is on it**, at the top, and that is a deliberate divergence from
+   the web rather than an oversight. Rule 4 there keeps `/mind/` server-rendered
+   because the binding constraint is *a page comfortable to type into with a
+   thumb, loading instantly* — but that argument is about a **page load**, and
+   there is no page load here. A native surface is already resident; a capture
+   box at the top of it costs no round trip. **The offline queue and the share
+   target are untouched either way**, because both are about the act rather
+   than the surface: `CaptureWorker` and `/mind/share/` do not care what is
+   above the box.
+
+   **Almost nothing built in increments 2 to 4 is lost.** `DailyApi`,
+   `PoolApi`, `TaskApi` and the three view models all survive unchanged — what
+   changes is composition. Three models behind one screen is what `DayRoute.tsx`
+   already does on the web.
+
+   The order mirrors the web's day, with capture lifted to the top because a
+   phone's fastest act should not be a scroll: **capture · appointments · the
+   list and the line · the pool · action items · routines · the day read back**.
+
+6. **A signed release, and the deletion it unblocks.** See below; this is the
    increment that has a manual step in it and it is Vince's.
 
 ---

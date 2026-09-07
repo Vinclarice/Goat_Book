@@ -38,12 +38,16 @@ import com.vinclarice.capture.ui.theme.ClariceTheme
  * open one surface at a time -- Today (read-only), then Agenda (read and act).
  *
  * **The Agenda is gone as of September 6, 2026** -- android-overhaul-plan.md
- * increment 1, following the website, which deleted it on September 4. Two
- * destinations is further than ever from justifying a real navigation graph,
- * so [RootTabBar] stays a hand-rolled tab switcher rather than Jetpack
- * Navigation Compose or a Material `NavigationBar` (which would need an icon
- * library this app has never depended on), trivially replaceable with either
- * once the pool and the evening arrive and there are enough tabs to need one.
+ * increment 1, following the website, which deleted it on September 4.
+ *
+ * ~~Two destinations is further than ever from justifying a real navigation
+ * graph, so [RootTabBar] stays a hand-rolled tab switcher...~~ **There are no
+ * destinations, as of increment 5 the same day.** Vince: *"right off the bat,
+ * I want like one page for everything."* The tab bar, the tab enum and the
+ * three separate screens are gone, and [TodayScreen] is the one surface --
+ * which settles the navigation-graph question by removing it rather than by
+ * answering it. Settings is still not a destination: it is a state this
+ * composable swaps to, as it always was.
  *
  * FragmentActivity rather than ComponentActivity (its own superclass) since
  * design/android-unlock-plan.md's BiometricPrompt requires one -- everything
@@ -169,22 +173,10 @@ class MainActivity : FragmentActivity() {
     }
 }
 
-/** The places someone can be once connected. Settings sits outside this
- *  set on purpose -- see the class doc on why it stays a per-tab link
- *  rather than an entry here. */
-private enum class RootTab(val label: String) {
-    Capture("Capture"),
-    Today("Today"),
-    // **The pool, September 6, 2026** -- android-overhaul-plan.md increment
-    // 3, and what actually answers the question the Agenda tab used to:
-    // *where is everything?*
-    Pool("Pool"),
-    // ~~Agenda~~ -- **deleted September 6, 2026**, android-overhaul-plan.md
-    // increment 1. The website retired the Agenda into the day on September 4
-    // and this screen outlived it by two days. What replaces the question it
-    // answered -- *where is everything?* -- is the pool, which arrives in
-    // increment 3.
-}
+/* ~~`RootTab`, the places someone can be once connected~~ -- **deleted
+   September 6, 2026**, android-overhaul-plan.md increment 5. Vince: *"right
+   off the bat, I want like one page for everything."* There is one place, so
+   there is nothing for an enum to enumerate. See [TodayScreen]. */
 
 @Composable
 private fun Root(
@@ -248,7 +240,6 @@ private fun Root(
     var connected by remember { mutableStateOf(connectModel.isConnected) }
     var showSettings by remember { mutableStateOf(false) }
     var connectingWorkspace by remember { mutableStateOf(false) }
-    var selectedTab by remember { mutableStateOf(RootTab.Capture) }
 
     // Seeded, never sent. Another app's content is put in front of a person
     // to edit or abandon; posting it on their behalf would make every share
@@ -315,51 +306,14 @@ private fun Root(
         return
     }
 
-    // Connect exists only to get here once; from here it's a choice between
-    // the two tabs, weighted so whichever screen is active fills the space
-    // above the bar rather than the bar floating mid-screen.
-    Column(modifier = Modifier.fillMaxSize()) {
-        Box(modifier = Modifier.weight(1f)) {
-            when (selectedTab) {
-                RootTab.Capture -> CaptureScreen(
-                    model = captureModel,
-                    onOpenSettings = { showSettings = true },
-                )
-                RootTab.Today -> DailyScreen(
-                    model = dailyModel,
-                    onOpenSettings = { showSettings = true },
-                )
-                RootTab.Pool -> PoolScreen(
-                    model = poolModel,
-                    onOpenSettings = { showSettings = true },
-                )
-            }
-        }
-        RootTabBar(selected = selectedTab, onSelect = { selectedTab = it })
-    }
-}
-
-@Composable
-private fun RootTabBar(selected: RootTab, onSelect: (RootTab) -> Unit) {
-    HorizontalDivider()
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly,
-    ) {
-        RootTab.entries.forEach { tab ->
-            TextButton(onClick = { onSelect(tab) }) {
-                Text(
-                    tab.label,
-                    color = if (tab == selected) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    },
-                    fontWeight = if (tab == selected) FontWeight.SemiBold else FontWeight.Normal,
-                )
-            }
-        }
-    }
+    /* Connect exists only to get here once, and from here there is one page.
+       ~~a choice between the two tabs, weighted so whichever screen is active
+       fills the space above the bar~~ -- the bar went on September 6, 2026 and
+       took the weighting question with it. */
+    TodayScreen(
+        captureModel = captureModel,
+        dayModel = dailyModel,
+        poolModel = poolModel,
+        onOpenSettings = { showSettings = true },
+    )
 }

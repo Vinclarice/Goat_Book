@@ -48,25 +48,20 @@ import java.time.ZoneId
  * here reaches a day other than today.
  */
 @Composable
-fun DailyScreen(
-    model: DailyViewModel,
-    onOpenSettings: () -> Unit = {},
-) {
+fun DaySection(model: DailyViewModel) {
     val state by model.state.collectAsState()
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) { model.load() }
 
+    /* A section, not a screen -- see [CaptureSection]. [TodayScreen] owns the
+       scroll; Settings moved to that page's one header. */
     Column(
         modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
+            .fillMaxWidth()
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            TextButton(onClick = onOpenSettings) { Text("Settings") }
-        }
 
         val day = state.day
         when {

@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -48,10 +49,7 @@ import kotlinx.coroutines.launch
  * difference. All the decisions live in [CaptureViewModel]; this draws them.
  */
 @Composable
-fun CaptureScreen(
-    model: CaptureViewModel,
-    onOpenSettings: () -> Unit = {},
-) {
+fun CaptureSection(model: CaptureViewModel) {
     val state by model.state.collectAsState()
     val scope = rememberCoroutineScope()
     val focus = remember { FocusRequester() }
@@ -88,27 +86,30 @@ fun CaptureScreen(
     val canSend = !state.sending && state.text.isNotBlank()
     val send: () -> Unit = { if (canSend) { scope.launch { model.submit() } } }
 
+    /* **A section rather than a screen since September 6, 2026** --
+       android-overhaul-plan.md increment 5, Vince: *"right off the bat, I want
+       like one page for everything."* No scroll and no `fillMaxSize` of its
+       own: [TodayScreen] owns both, because two scrolling containers inside
+       one page is one of them that never reaches its end.
+
+       **Still first on that page.** Capture is the act this client exists for
+       and it stays at the top, where it costs no scroll -- which is the
+       divergence from the web's rule 4 the plan argues for: that rule is about
+       a page *load*, and there is no load here. */
     Column(
         modifier = Modifier
-            .fillMaxSize()
+            .fillMaxWidth()
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        // A plain text button rather than an app bar: an app bar would take
-        // a band of height off the field on every screen for one action.
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            // Visible rather than silent. A queue nobody can see is
-            // indistinguishable from a capture that went missing.
+        // Visible rather than silent. A queue nobody can see is
+        // indistinguishable from a capture that went missing.
+        if (state.pending > 0) {
             Text(
-                if (state.pending > 0) "${state.pending} waiting to send" else "",
+                "${state.pending} waiting to send",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            TextButton(onClick = onOpenSettings) { Text("Settings") }
         }
 
         OutlinedTextField(
@@ -134,7 +135,21 @@ fun CaptureScreen(
             keyboardActions = KeyboardActions(onSend = { send() }),
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1f)
+                /* ~~`.weight(1f)`~~ -- **it collapsed this field to nothing on
+                   September 6, 2026**, android-overhaul-plan.md increment 5.
+
+                   A weight means *share the leftover height*, and inside
+                   [TodayScreen]'s `verticalScroll` there is no leftover: the
+                   constraint is infinite, so the field measured 0dp and the
+                   page rendered Settings, a gap, then Tags. It compiled, every
+                   test passed, and it was invisible until the build was on a
+                   phone.
+
+                   A fixed minimum instead, because on a scrolling page "fill
+                   what is left" has no meaning. The number is what the box was
+                   worth when it owned the screen: big enough to type a thought
+                   into with a thumb without the box growing under you. */
+                .heightIn(min = 180.dp)
                 .focusRequester(focus)
                 // Ctrl+Enter, for a hardware keyboard. The IME action above
                 // covers the soft keyboard, but a physical Enter inserts a

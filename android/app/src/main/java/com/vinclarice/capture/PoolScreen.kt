@@ -39,37 +39,35 @@ import kotlinx.coroutines.launch
  * Interleaving them here would mean this client deciding what a date means.
  */
 @Composable
-fun PoolScreen(model: PoolViewModel, onOpenSettings: () -> Unit) {
+fun PoolSection(model: PoolViewModel) {
     val state by model.state.collectAsState()
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) { model.load() }
 
-    if (state.loading && state.pool == null) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) { CircularProgressIndicator() }
-        return
-    }
+    /* A section, not a screen -- see [CaptureSection].
 
+       **The full-screen spinner went with the tab.** A section that took over
+       the whole page while it loaded would blank the day above it, which is
+       the rule every view model here already follows for writes: a slow
+       network must not blank something somebody is reading. It says one line
+       instead. */
     Column(
         modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
+            .fillMaxWidth()
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         val pool = state.pool
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text("The pool", style = MaterialTheme.typography.headlineSmall)
-            TextButton(onClick = onOpenSettings) { Text("Settings") }
+        Text("The pool", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+
+        if (state.loading && pool == null) {
+            Text(
+                "Looking…",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
 
         if (pool != null) {
@@ -107,7 +105,7 @@ fun PoolScreen(model: PoolViewModel, onOpenSettings: () -> Unit) {
         }
 
         if (pool.fixed.isNotEmpty()) {
-            PoolSection(title = "Dated") {
+            PoolGroup(title = "Dated") {
                 pool.fixed.forEach { row ->
                     FixedRow(
                         row = row,
@@ -119,7 +117,7 @@ fun PoolScreen(model: PoolViewModel, onOpenSettings: () -> Unit) {
         }
 
         if (pool.floating.isNotEmpty()) {
-            PoolSection(title = "Everything else") {
+            PoolGroup(title = "Everything else") {
                 pool.floating.forEach { row ->
                     FloatingRow(
                         row = row,
@@ -133,7 +131,7 @@ fun PoolScreen(model: PoolViewModel, onOpenSettings: () -> Unit) {
 }
 
 @Composable
-private fun PoolSection(title: String, content: @Composable () -> Unit) {
+private fun PoolGroup(title: String, content: @Composable () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
         content()

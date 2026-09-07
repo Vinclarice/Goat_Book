@@ -240,11 +240,19 @@ encrypted offline queue, and rule 4 of
    rather than deleted**, because the rule it guards still exists — it just
    says the opposite thing now.
 
-5. **One page for everything.** Vince, September 6, 2026, on seeing the build
-   run: *"right off the bat, I want like one page for everything."* The tab bar
-   goes — `RootTab`, `RootTabBar` and the three separate screens — and what
-   replaces them is one scrolling surface, the shape
-   [`app-overhaul-plan.md`](app-overhaul-plan.md) gives the web.
+5. ~~**One page for everything.** The tab bar goes — `RootTab`, `RootTabBar`
+   and the three separate screens — and what replaces them is one scrolling
+   surface, the shape [`app-overhaul-plan.md`](app-overhaul-plan.md) gives the
+   web.~~ **Shipped September 6, 2026 as `ed6cba3`.** Vince, on seeing the
+   tabbed build run: *"right off the bat, I want like one page for
+   everything."*
+
+   **Struck a day late, on September 7, 2026, and that is worth recording
+   rather than quietly fixing.** `ed6cba3` *added* the text below and never
+   struck the line above it, so the plan read as though the work were still to
+   come while it was running on the phone. `CLAUDE.md` says to strike the
+   increment in the commit that ships it, for exactly this reason: the commit
+   is the one place the trigger already exists.
 
    **Capture is on it**, at the top, and that is a deliberate divergence from
    the web rather than an oversight. Rule 4 there keeps `/mind/` server-rendered
@@ -264,6 +272,45 @@ encrypted offline queue, and rule 4 of
    The order mirrors the web's day, with capture lifted to the top because a
    phone's fastest act should not be a scroll: **capture · appointments · the
    list and the line · the pool · action items · routines · the day read back**.
+
+   **The lesson is a layout one, and no test could have caught it.** The
+   capture field carried `Modifier.weight(1f)` — *share the leftover height* —
+   and inside a `verticalScroll` there is no leftover: the constraint is
+   infinite, so the field measured 0dp. The page rendered Settings, a gap, then
+   Tags. It compiled, 302 tests passed, and **the box this client exists for
+   was invisible** — found in the first screenshot off the device and nowhere
+   else. A fixed minimum replaces it, because on a scrolling page *fill what is
+   left* has no meaning.
+
+   **What is still unverified is most of the interesting half.** The day and
+   the pool both answer *Reconnect in Settings* on that phone — a 401 — while
+   Settings reports it connected. So the leftover row's three buttons, the
+   pool's rows and the line have never been rendered with content.
+
+   ~~The 401 is not yet explained.~~ **Diagnosed September 7, 2026: it is a
+   scope, not an auth failure** — and the symptom points the wrong way, which
+   is why it is written down rather than left to be rediscovered.
+   `Backends.isSplit` is `""` by default, so `capture` and `workspace` are the
+   *same object* — one token, not two — and `whoAmI()` is a live call, so a
+   Settings screen reporting a username proves that token valid and unexpired.
+   The only thing separating it from `/day` and `/pool` is scope, and
+   `TokenAuth` returns a **plain 401** for a token that resolves but lacks one,
+   deliberately indistinguishable from an unknown token so a stolen token gets
+   no oracle. That token therefore holds `capture:write` and `identity:read`
+   and none of the other five — either migration `0013`'s
+   `GRANDFATHERED_SCOPES`, which is literally that pair, or an explicit
+   least-privilege tick-box on the web made when this app was capture-only.
+   **Logging in again mints all seven**, so the fix is a reconnect rather than
+   a code change. Not yet confirmed against the real token, and the confirming
+   act is the reconnect itself.
+
+   **And the reconnect is the thing that cannot be done from the phone**, which
+   is why this sits: `/api/v1/login` refuses an account with a second factor
+   outright and sends it to the web to mint a token by hand. So the fix is
+   available — tick all seven scopes at `/accounts/settings/` — but not from
+   the screen showing the error. Whether that endpoint grows a `totp` field is
+   [`roadmap.md`](roadmap.md)'s **M1**, and it is the decision this increment
+   leaves pointing at.
 
 6. **A signed release, and the deletion it unblocks.** See below; this is the
    increment that has a manual step in it and it is Vince's.

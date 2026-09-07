@@ -524,6 +524,19 @@ regenerated, and the build type-checks against it:
 pnpm --dir frontend generate:api
 ```
 
+**Forgetting is now caught, and until September 7, 2026 it was not.**
+`clarice/tests/test_openapi_contract_is_current.py` compares the committed
+contract against what the server would dump. **The build was never this check**
+— it type-checks the *client* against the contract, so a contract that has
+stopped describing the server is exactly what it cannot see.
+
+It had drifted across **three** pieces of work at once, two of them already
+pushed. And the reason nobody noticed is the part worth keeping: the endpoint
+whose shape had changed was `/api/v1/login`, which the SPA holds a generated
+type for and calls from nowhere, because it logs in by session. **A contract
+goes wrong first in the places nothing consumes**, which is why a downstream
+build cannot be the thing that guards it.
+
 ## Deploying
 
 Run from WSL, where ansible, Docker and the ssh key all live:

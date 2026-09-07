@@ -1,10 +1,13 @@
 package com.vinclarice.capture
 
+import java.time.Instant
 import kotlinx.coroutines.test.runTest
 import mockwebserver3.MockResponse
 import mockwebserver3.junit4.MockWebServerRule
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -36,6 +39,99 @@ class ClariceApiTest {
         val result = api().identify("tok_abc")
 
         assertEquals(Identity("alice", "alice@example.com"), (result as Identified).identity)
+    }
+
+    /* What the credential can do, as opposed to who it belongs to --
+       android-login-redesign-plan.md Half A, increment 1. */
+
+    @Test
+    fun `a token reports the scopes it holds`() = runTest {
+        server.server.enqueue(
+            MockResponse(
+                code = 200,
+                body = """{"username":"a","email":"a@b.c",
+                    "scopes":["capture:write","day:read"],"expires_at":null}""",
+            )
+        )
+
+        val result = api().identify("tok_abc") as Identified
+
+        assertEquals(setOf("capture:write", "day:read"), result.capabilities?.scopes)
+    }
+
+    @Test
+    fun `a token reports when it expires`() = runTest {
+        server.server.enqueue(
+            MockResponse(
+                code = 200,
+                body = """{"username":"a","email":"a@b.c","scopes":[],
+                    "expires_at":"2026-12-06T23:00:47.833Z"}""",
+            )
+        )
+
+        val result = api().identify("tok_abc") as Identified
+
+        assertEquals(
+            Instant.parse("2026-12-06T23:00:47.833Z"),
+            result.capabilities?.expiresAt,
+        )
+    }
+
+    @Test
+    fun `a token that never expires reports no expiry rather than a far date`() = runTest {
+        // Null means never on the server, and it has to keep meaning that
+        // here -- a fabricated far-future date would warn about an expiry
+        // that is not coming.
+        server.server.enqueue(
+            MockResponse(
+                code = 200,
+                body = """{"username":"a","email":"a@b.c","scopes":["day:read"],
+                    "expires_at":null}""",
+            )
+        )
+
+        val result = api().identify("tok_abc") as Identified
+
+        assertNull(result.capabilities?.expiresAt)
+        assertNotNull(result.capabilities)
+    }
+
+    @Test
+    fun `an older server that sends neither field still identifies`() = runTest {
+        /* **The compatibility case, and it is not hypothetical.** A phone
+           updates on its own schedule and can meet a server that predates
+           this field -- and, more to the point, the whole app must not stop
+           being able to name its account because a nice-to-have is absent.
+           Capabilities are null, which the screens read as "not known"
+           rather than "holds nothing". */
+        server.server.enqueue(
+            MockResponse(code = 200, body = """{"username":"a","email":"a@b.c"}""")
+        )
+
+        val result = api().identify("tok_abc") as Identified
+
+        assertEquals(Identity("a", "a@b.c"), result.identity)
+        assertNull(result.capabilities)
+    }
+
+    @Test
+    fun `an unreadable expiry does not cost the identity`() = runTest {
+        /* A date this client cannot parse is worth strictly less than the
+           account name beside it, so it is dropped rather than escalated
+           into a failed identify. */
+        server.server.enqueue(
+            MockResponse(
+                code = 200,
+                body = """{"username":"a","email":"a@b.c","scopes":["day:read"],
+                    "expires_at":"whenever"}""",
+            )
+        )
+
+        val result = api().identify("tok_abc") as Identified
+
+        assertEquals(Identity("a", "a@b.c"), result.identity)
+        assertEquals(setOf("day:read"), result.capabilities?.scopes)
+        assertNull(result.capabilities?.expiresAt)
     }
 
     @Test

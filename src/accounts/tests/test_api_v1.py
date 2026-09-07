@@ -19,9 +19,26 @@ class MeEndpointTest(TestCase):
         response = self.client.get("/api/v1/me")
 
         self.assertEqual(response.status_code, 200)
+        # Both new fields are null on the session path, and that is the
+        # assertion worth having here rather than an incidental update --
+        # `android-login-redesign-plan.md` Half A adds `scopes` and
+        # `expires_at` for *tokens*, and a session has neither. Null rather
+        # than the full scope list, because a list would read as "this
+        # credential holds everything" to a client that cannot tell a cookie
+        # from a bearer.
+        #
+        # **This file is the reason the change was run against the whole app
+        # list.** The focused run on `test_me_token_auth` was green while this
+        # was red: one shared contract, two files asserting it, and only one of
+        # them obvious from the diff.
         self.assertEqual(
             response.json(),
-            {"username": "alice", "email": "alice@example.com"},
+            {
+                "username": "alice",
+                "email": "alice@example.com",
+                "scopes": None,
+                "expires_at": None,
+            },
         )
 
     def test_rejects_anonymous_requests(self):

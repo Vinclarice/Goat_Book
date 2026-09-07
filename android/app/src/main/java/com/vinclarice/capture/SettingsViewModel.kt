@@ -27,6 +27,17 @@ data class WorkspaceConnection(
 data class SettingsUiState(
     val loading: Boolean = true,
     val identity: Identity? = null,
+    /**
+     * What the connection can do, or null when the server did not say --
+     * android-login-redesign-plan.md Half A.
+     *
+     * **Settings is the right screen for it**, because it is where somebody
+     * arrives after being told *Reconnect in Settings*. Naming the cure and
+     * saying nothing about the cause is what made a missing `day:read` take a
+     * day to find: this screen reported the account perfectly while the Day
+     * screen answered 401.
+     */
+    val capabilities: TokenCapabilities? = null,
     val message: String? = null,
     val isError: Boolean = false,
     // Whether a token is held, which is not the same as whether it works.
@@ -105,6 +116,7 @@ class SettingsViewModel(
             is Connected -> _state.value = _state.value.copy(
                 loading = false,
                 identity = outcome.identity,
+                capabilities = outcome.capabilities,
                 message = null,
             )
             // The token is kept. Settings is where someone comes to find out

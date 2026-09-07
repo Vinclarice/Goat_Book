@@ -1,6 +1,8 @@
 package com.vinclarice.capture
 
 import java.io.IOException
+import java.time.Instant
+import java.time.format.DateTimeParseException
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -16,6 +18,35 @@ import org.json.JSONObject
 data class Identity(val username: String, val email: String)
 
 /**
+ * What the credential can do, as opposed to who it belongs to --
+ * android-login-redesign-plan.md Half A.
+ *
+ * **A separate type from [Identity] because they answer different questions**,
+ * and because only one of them arrives everywhere. `/api/v1/me` reports both;
+ * `/api/v1/login` reports the identity and no scopes, so folding these fields
+ * into [Identity] would have forced the login path to invent them.
+ *
+ * The phone was blind without this. A token missing `day:read` identified its
+ * account perfectly while the Day screen refused, so a scope problem, an
+ * expiry and a revocation all reached the person as one sentence -- *Reconnect
+ * in Settings* -- which names a cure rather than a cause.
+ */
+data class TokenCapabilities(
+    val scopes: Set<String>,
+    /**
+     * When this token stops working, or null for never -- which is what null
+     * means on the server, and must keep meaning here. A client substituting a
+     * far-future date would warn about an expiry that is not coming.
+     */
+    val expiresAt: Instant? = null,
+) {
+    /** Whether the connection can reach a surface at all, before it is asked
+     *  to. This is the question the Day and Pool screens could not previously
+     *  put to anything. */
+    fun allows(scope: String) = scope in scopes
+}
+
+/**
  * Three outcomes, not two, because the caller has to say different things.
  *
  * Collapsing [Unauthorised] and [Unreachable] into one "failed" would tell
@@ -24,7 +55,19 @@ data class Identity(val username: String, val email: String)
  */
 sealed interface IdentifyResult
 
-data class Identified(val identity: Identity) : IdentifyResult
+data class Identified(
+    val identity: Identity,
+    /**
+     * Null means *this server did not say*, never *this token holds nothing*.
+     * The two must not be confused: a screen that read absence as an empty
+     * scope set would announce that a working connection can do nothing.
+     *
+     * Defaulted so a server that predates these fields still identifies an
+     * account, which is the compatible half of `principles.md`'s rule about
+     * evolving an API without stranding clients.
+     */
+    val capabilities: TokenCapabilities? = null,
+) : IdentifyResult
 
 /** The token is wrong, revoked, or its account is deactivated. */
 data object Unauthorised : IdentifyResult
@@ -308,13 +351,44 @@ class OkHttpClariceApi(
             Identity(
                 username = json.getString("username"),
                 email = json.getString("email"),
-            )
+            ),
+            parseCapabilities(json),
         )
     } catch (malformed: JSONException) {
         // A 200 we cannot read is not a valid token -- it usually means the
         // base URL points at something that is not Clarice, which is a
         // connection problem rather than a credential one.
         Unreachable("Unexpected response from that address.")
+    }
+
+    /**
+     * The scopes and expiry, or null when this server did not send them.
+     *
+     * **Nothing in here may cost the caller its identity.** The account name
+     * is what Connect and Settings exist to show and it has already parsed by
+     * the time this runs; a missing or unreadable capability is strictly less
+     * valuable than that, so every failure here degrades to null rather than
+     * escalating into [Unreachable]. That is why `optJSONArray` and a swallowed
+     * `DateTimeParseException` are right here and would be wrong above.
+     */
+    private fun parseCapabilities(json: JSONObject): TokenCapabilities? {
+        val scopes = json.optJSONArray("scopes") ?: return null
+        return TokenCapabilities(
+            scopes = (0 until scopes.length()).map(scopes::getString).toSet(),
+            // `optString` returns "null" -- the four characters -- for a JSON
+            // null, so the explicit isNull check is load-bearing rather than
+            // defensive: without it every never-expiring token would carry an
+            // unparseable date instead of no date.
+            expiresAt = if (json.isNull("expires_at")) {
+                null
+            } else {
+                try {
+                    Instant.parse(json.getString("expires_at"))
+                } catch (unreadable: DateTimeParseException) {
+                    null
+                }
+            },
+        )
     }
 
     companion object {

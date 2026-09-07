@@ -26,6 +26,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import java.time.Instant
 import kotlinx.coroutines.launch
 
 /**
@@ -80,6 +81,28 @@ fun SettingsScreen(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+
+                /* What is wrong with this connection, if anything --
+                   android-login-redesign-plan.md Half A. Silent on a healthy
+                   one, which is nearly always: a warning that shows when
+                   nothing is wrong is wallpaper inside a week.
+
+                   The judgement is in `connectionWarning`, which is pure and
+                   tested; this only draws it. That split is deliberate, since
+                   this module has no UI tests and anything decided inside a
+                   `@Composable` here is checked by compiling and nothing more.
+
+                   `Instant.now()` at the call site rather than inside the
+                   function, per `principles.md`'s injected clock: the screen
+                   is an edge and reads the clock once, and the function stays
+                   assertable at any instant a test likes. */
+                connectionWarning(state.capabilities, Instant.now())?.let { warning ->
+                    Text(
+                        warning,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
             }
 
             !state.connected -> Text(

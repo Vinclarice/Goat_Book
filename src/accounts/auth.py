@@ -17,10 +17,17 @@ from accounts.models import PersonalAccessToken, hash_token
 
 
 def _resolve_scoped_token(raw_token, scope):
-    """The owner of a token that resolves, is active, unexpired, and
-    carries [scope] -- or None. Shared by [TokenAuth] (Ninja operations)
-    and [token_or_session_required] (the hand-rolled lists.api views), so
-    the two can never drift on what "a valid token for this scope" means.
+    """The token that resolves, is active, unexpired, and carries [scope] --
+    or None. Shared by [TokenAuth] (Ninja operations) and
+    [token_or_session_required] (the hand-rolled lists.api views), so the two
+    can never drift on what "a valid token for this scope" means.
+
+    **Returns the token rather than its owner**, changed September 7, 2026 for
+    `android-login-redesign-plan.md` Half A. Both callers want `pat.owner` and
+    one of them -- `/me` -- also has to describe the credential itself, and a
+    second lookup to find the row this function has already fetched would be
+    two answers to one question. Callers read `.owner`; nothing else about the
+    row is theirs to interpret.
 
     **Two side effects, not none.** It stamps `last_used_at`, and it
     activates the owner's time zone for the rest of the request -- see the
@@ -56,7 +63,7 @@ def _resolve_scoped_token(raw_token, scope):
     # undoes this in its `finally`; see the note there, which is now
     # load-bearing for this call and not only for its own.
     activate_for(pat.owner)
-    return pat.owner
+    return pat
 
 
 class TokenAuth(HttpBearer):
@@ -89,13 +96,20 @@ class TokenAuth(HttpBearer):
         super().__init__()
 
     def authenticate(self, request, token):
-        owner = _resolve_scoped_token(token, self.scope)
-        if owner is None:
+        pat = _resolve_scoped_token(token, self.scope)
+        if pat is None:
             return None
         # Ninja puts the return value on request.auth; setting request.user
         # too means endpoints read the same attribute either way and don't
         # have to care which of the two authenticated the caller.
-        request.user = owner
+        request.user = pat.owner
+        # And the token itself, for the one endpoint whose subject is the
+        # credential rather than the account -- `/me` reports the scopes and
+        # expiry of the token in the caller's hand. Absent on the session
+        # path, which is what lets that endpoint tell a token apart from a
+        # cookie without asking how it was authenticated. Read it with
+        # `getattr(request, "access_token", None)`.
+        request.access_token = pat
         # And the same flag `token_or_session_required` already sets, so the
         # two token paths agree on what it means. Most endpoints do not care;
         # the ones that do are the ones recording *provenance* rather than
@@ -106,7 +120,7 @@ class TokenAuth(HttpBearer):
         # a session request never reaches this method, so the attribute is
         # absent rather than False on that path.
         request.token_authenticated = True
-        return owner
+        return pat.owner
 
 
 class SessionAuthIfLoggedIn(SessionAuth):
@@ -163,10 +177,10 @@ def token_or_session_required(scope):
         def wrapped(request, *args, **kwargs):
             header = request.headers.get("Authorization", "")
             if header.startswith("Bearer "):
-                owner = _resolve_scoped_token(
+                pat = _resolve_scoped_token(
                     header.removeprefix("Bearer ").strip(), scope
                 )
-                if owner is None:
+                if pat is None:
                     # A bearer header was sent but didn't resolve -- refused
                     # outright rather than falling through to the session
                     # path, the same ordering TokenAuth relies on: a failed
@@ -176,7 +190,8 @@ def token_or_session_required(scope):
                         {"errors": {"authentication": ["Login required."]}},
                         status=401,
                     )
-                request.user = owner
+                request.user = pat.owner
+                request.access_token = pat
                 request.token_authenticated = True
                 return view(request, *args, **kwargs)
 

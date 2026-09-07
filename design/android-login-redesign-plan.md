@@ -201,8 +201,51 @@ nothing is added to `TOKEN_AUTHENTICATED`.
 
 ## Increments
 
-1. **`/me` returns scopes and expiry**, and the phone reads them. Failures name
-   their cause; expiry warns ahead. No model, no new endpoint, ships alone.
+1. ~~**`/me` returns scopes and expiry**, and the phone reads them. Failures
+   name their cause; expiry warns ahead. No model, no new endpoint, ships
+   alone.~~ **Shipped September 7, 2026**, and the claim held: no model, no new
+   endpoint.
+
+   **One refactor was needed and it is worth knowing about.**
+   `_resolve_scoped_token` returned the *owner*, so the endpoint that has to
+   describe the credential had no way to see it. It now returns the token and
+   both callers read `.owner`; `TokenAuth` puts it on `request.access_token`,
+   absent on the session path — which is what lets `/me` tell a bearer from a
+   cookie without asking how the caller authenticated.
+
+   **Null, not the full list, for a session.** A session is not scoped and does
+   not expire the way a token does. Returning every scope would read as *this
+   credential holds everything* to a client that cannot tell the two apart.
+
+   **The phone keeps `Identity` and gains `TokenCapabilities`** rather than
+   growing the first. They answer different questions and only one arrives
+   everywhere: `/login` reports an identity and no scopes, so folding the
+   fields together would have forced that path to invent them. Absent
+   capabilities are `null` — *not known*, never *holds nothing*, a distinction
+   a screen reading the second from the first would use to tell somebody their
+   working connection can do nothing.
+
+   **The judgement is in `connectionWarning`, outside Compose on purpose.**
+   This module has no UI tests, so anything decided inside a `@Composable` is
+   checked by compiling and nothing more; the function is pure, takes its
+   clock as an argument, and has ten tests. Settings draws what it returns.
+   Silent on a healthy connection — a warning that shows when nothing is wrong
+   is wallpaper within a week, so a ninety-day token says nothing for
+   eighty-three of them.
+
+   **Two things this increment proved rather than assumed.** The contract guard
+   from `ca41c25` caught the schema change on the very next commit, one day
+   after being written, and its message named the fix. And a focused green run
+   sat beside a red full one: `test_me_token_auth` passed while
+   `test_api_v1.py` asserted the same contract in another file, which is the
+   exact case `principles.md` describes and the reason the whole app list is
+   the gate rather than the touched app.
+
+   **What is not done here**: the Day and Pool screens still say *Reconnect in
+   Settings* rather than naming the missing scope themselves. Settings is where
+   that sentence sends somebody and where the cure is, so it is the surface
+   that earns the diagnosis first; plumbing capabilities into those two view
+   models is worth doing when something else needs them.
 2. **`PairingRequest`** — model, migration, service, and the two API endpoints,
    with their nginx zones and their `UNAUTHENTICATED` entries.
 3. **The approval page** at `/pair/`, session-authenticated and verified.

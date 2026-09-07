@@ -24,7 +24,16 @@ interface TokenStore {
  */
 sealed interface ConnectOutcome
 
-data class Connected(val identity: Identity) : ConnectOutcome
+data class Connected(
+    val identity: Identity,
+    /**
+     * What this connection can actually do, or null when the server did not
+     * say -- android-login-redesign-plan.md Half A. Carried through here
+     * rather than re-fetched, because [whoAmI] has already asked the one
+     * endpoint that answers it.
+     */
+    val capabilities: TokenCapabilities? = null,
+) : ConnectOutcome
 
 /** The server refused the token. A different token is needed. */
 data class Refused(val message: String) : ConnectOutcome
@@ -110,7 +119,7 @@ class Connector(
 
     private suspend fun ask(token: String): ConnectOutcome =
         when (val result = api.identify(token)) {
-            is Identified -> Connected(result.identity)
+            is Identified -> Connected(result.identity, result.capabilities)
             Unauthorised -> Refused(
                 "$serverName did not accept that token. Log in again, or " +
                     "create a new one on the web and paste it."

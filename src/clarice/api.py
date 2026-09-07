@@ -9,6 +9,8 @@ Session auth via django_auth mirrors what the frontend already speaks
 (session cookie + X-CSRFToken header, see frontend/src/api.ts), so no new
 auth mechanism is introduced here.
 """
+from datetime import datetime
+
 from ninja import NinjaAPI, Schema
 from ninja.security import django_auth
 
@@ -80,6 +82,19 @@ api.add_router("", appointments_router)
 class MeOut(Schema):
     username: str
     email: str
+    #: What the *credential* is, as opposed to who it belongs to --
+    #: android-login-redesign-plan.md Half A. Both are null on the session
+    #: path, where neither has a meaning: a session is not scoped and does not
+    #: carry a token's expiry.
+    #:
+    #: **Null rather than the full scope list for a session**, deliberately. A
+    #: list would read as *this credential holds everything*, and a client that
+    #: cannot tell a cookie from a token would act on it.
+    scopes: list[str] | None = None
+    #: Null means *never expires*, exactly as it does on the model. A client
+    #: must not substitute a far-future date and warn about an expiry that is
+    #: not coming.
+    expires_at: datetime | None = None
 
 
 # Token auth as well as session, and in that order for the reason
@@ -95,6 +110,30 @@ class MeOut(Schema):
 # this endpoint uniform rather than special-casing it as always-open, with
 # every Android-minted token carrying the scope by default so nothing
 # observable changes for an existing connection.
+#
+# **It also describes the token itself**, since September 7, 2026 --
+# android-login-redesign-plan.md Half A. That is not the oracle `TokenAuth`
+# refuses to be: its undifferentiated 401 stops *an attacker holding an unknown
+# token* from learning which scope to go steal next, and this answers a caller
+# who has already presented a valid one carrying `identity:read`, about that
+# same token. It has passed the gate, and the answer adds nothing it could not
+# establish by trying each endpoint once.
+#
+# The phone was blind without it: a token missing `day:read` reported the
+# account fine while the Day screen refused, so a scope problem, an expiry and
+# a revocation all arrived as one sentence naming a cure rather than a cause.
 @api.get("/me", response=MeOut, auth=[TokenAuth(SCOPE_IDENTITY_READ), SessionAuthIfLoggedIn()])
 def me(request):
-    return {"username": request.user.username, "email": request.user.email}
+    # Absent on the session path -- `accounts.auth` sets it only where a bearer
+    # resolved, which is what lets this tell a token from a cookie without
+    # asking how the caller authenticated.
+    token = getattr(request, "access_token", None)
+    return {
+        "username": request.user.username,
+        "email": request.user.email,
+        # Sorted, because `scope_set` is a set and its iteration order is not
+        # stable across runs -- unsorted this would churn the OpenAPI contract
+        # and make any assertion on it flaky for reasons unrelated to scopes.
+        "scopes": sorted(token.scope_set) if token else None,
+        "expires_at": token.expires_at if token else None,
+    }

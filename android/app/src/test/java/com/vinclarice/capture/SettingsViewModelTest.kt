@@ -101,6 +101,53 @@ class SettingsViewModelTest {
         workspaceConnector = Connector(FakeApi(workspace), workspaceStore),
     )
 
+    /* What this connection can do -- android-login-redesign-plan.md Half A.
+
+       Settings is where somebody arrives after being told "Reconnect in
+       Settings", so it is the one screen where naming the cause is worth
+       more than naming the cure. */
+
+    @Test
+    fun `settings holds what the connection can do`() = runTest {
+        val model = viewModel(
+            Identified(alice, TokenCapabilities(setOf("day:read", "capture:write")))
+        )
+
+        model.load()
+
+        assertEquals(
+            setOf("day:read", "capture:write"),
+            model.state.value.capabilities?.scopes,
+        )
+    }
+
+    @Test
+    fun `a connection missing day read is described rather than left to fail`() = runTest {
+        /* **This is the defect that started the redesign.** A token holding
+           only capture and identity reported the account perfectly while the
+           Day screen answered 401, so Settings said *connected* and the Day
+           said *reconnect*, and neither said why. */
+        val model = viewModel(
+            Identified(alice, TokenCapabilities(setOf("capture:write", "identity:read")))
+        )
+
+        model.load()
+
+        assertFalse(model.state.value.capabilities!!.allows("day:read"))
+    }
+
+    @Test
+    fun `a server that says nothing about scopes leaves capabilities unknown`() = runTest {
+        // Null is *not known*, never *holds nothing* -- a screen reading the
+        // second from the first would tell somebody their working connection
+        // can do nothing at all.
+        val model = viewModel(Identified(alice))
+
+        model.load()
+
+        assertNull(model.state.value.capabilities)
+    }
+
     @Test
     fun `a split install shows the second connection before it has loaded`() {
         // Without this the whole "Tasks and today" section is *absent* -- not

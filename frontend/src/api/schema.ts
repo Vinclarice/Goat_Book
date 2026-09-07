@@ -2214,6 +2214,10 @@ export interface components {
             username: string;
             /** Email */
             email: string;
+            /** Scopes */
+            scopes?: string[] | null;
+            /** Expires At */
+            expires_at?: string | null;
         };
         /** NavAreaOut */
         NavAreaOut: {

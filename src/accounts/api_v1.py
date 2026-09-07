@@ -10,6 +10,7 @@ from axes.handlers.proxy import AxesProxyHandler
 from axes.helpers import get_credentials, get_failure_limit
 from axes.utils import reset as axes_reset
 from django.contrib.auth import authenticate, logout
+from django_otp import match_token
 from django.http import HttpResponse
 from django.utils import timezone
 from ninja import Router, Schema
@@ -33,6 +34,20 @@ class LoginIn(Schema):
     username: str
     password: str
     label: str = "Android"
+    totp: str = ""
+    """The second factor, when the account has one — a TOTP code or a recovery
+    token.
+
+    **Optional, and that is not a bypass.** An account with nothing armed never
+    reaches the check that reads this, so the field changes nothing for the
+    people who have no factor; an account *with* one is refused unless this
+    verifies. Optional here means *not everybody has a second factor*, not
+    *the second factor is skippable*.
+
+    A plain string rather than an int: recovery tokens from `otp_static` are
+    not digits, and a TOTP code with a leading zero stops being six characters
+    the moment anything treats it as a number.
+    """
 
 
 class LoginOut(Schema):
@@ -41,13 +56,31 @@ class LoginOut(Schema):
     email: str
 
 
-#: Named rather than inlined so the Android client's string and the test's
-#: assertion cannot drift apart, and so the reversal this plan promises -- "the
-#: day a signed release can carry a TOTP field" -- has one place to happen.
+#: Named rather than inlined so this message and the test's assertion cannot
+#: drift apart.
+#:
+#: ~~and so the reversal this plan promises -- "the day a signed release can
+#: carry a TOTP field" -- has one place to happen.~~ **That reversal happened
+#: on September 6, 2026, and without the signed release** -- the trigger was
+#: never the keystore. The argument is at `log_in` below and the decision is
+#: `roadmap.md`'s M1.
+#:
+#: **The Android client keeps no copy of either string**, which is why the
+#: first half of the old note is gone too. It reads `detail` off the response
+#: body (`ClariceApi.parseDetail`), so the sentence somebody reads on the
+#: phone is this one, and there is nothing on that side to keep in sync.
 SECOND_FACTOR_REQUIRED = (
-    "This account has a second factor, so it cannot trade a password for a "
-    "token here. Create a token on the web at /accounts/settings/ and paste it "
-    "into the app."
+    "This account has a second factor. Enter the code from your authenticator "
+    "app, or one of your recovery codes."
+)
+#: Wrong code, right password. Separate from the message above because they
+#: ask for different things: one says *there is a box you have not filled*, and
+#: the other says *what you put in it did not match*. One message for both
+#: would leave somebody re-typing a correct code into a field they had not
+#: realised was already being read.
+SECOND_FACTOR_INCORRECT = (
+    "That code did not match. Codes expire after about thirty seconds, so try "
+    "the current one."
 )
 
 
@@ -93,12 +126,22 @@ def log_in(request, payload: LoginIn):
     # `/admin/` while a password alone still mints a ninety-day token is a
     # second factor on one of two doors.
     #
-    # **Refused rather than extended.** The obvious fix is a `totp` field and a
-    # third box on the Connect screen, and it is not merely more work, it is
+    # ~~**Refused rather than extended.** The obvious fix is a `totp` field and
+    # a third box on the Connect screen, and it is not merely more work, it is
     # unavailable: `assembleRelease` produces nothing usable until the signing
-    # keystore exists, and that is Vince's to generate by hand. Accepting a
-    # field no shipped client can send would leave the bypass open for as long
-    # as the keystore does not exist.
+    # keystore exists... Accepting a field no shipped client can send would
+    # leave the bypass open for as long as the keystore does not exist.~~
+    #
+    # **Extended on September 6, 2026**, and that argument expired by its own
+    # terms. An account with a confirmed device already gets a 403 from every
+    # shipped build, so *requiring* the field breaks nothing that works -- the
+    # bypass it worried about was a field accepted and not enforced, which is
+    # not what this is. Vince: *"I want to be able to enter my username/pw and
+    # it connect automatically."*
+    #
+    # **The property is unchanged.** A password alone still cannot mint a
+    # ninety-day token on an account with a second factor. What changed is
+    # where the factor can be proved: here, as well as on the web.
     #
     # **A specific refusal, not the generic 401 above.** That one is deliberately
     # indistinguishable across wrong-password, no-such-account and deactivated;
@@ -107,7 +150,18 @@ def log_in(request, payload: LoginIn):
     # the account has a second factor, to somebody who has just proved they
     # know its password.
     if _has_a_second_factor(user):
-        raise HttpError(403, SECOND_FACTOR_REQUIRED)
+        # `match_token` walks every confirmed device, so a TOTP code and an
+        # `otp_static` recovery token both land here -- which matters, because
+        # somebody whose phone is the thing they have lost is trying to connect
+        # a *new* phone and has only recovery codes.
+        #
+        # **It consumes what it matches**: a static token is deleted and a TOTP
+        # step will not verify twice. That is the property that makes this
+        # worth doing at all rather than a formality.
+        if not payload.totp:
+            raise HttpError(403, SECOND_FACTOR_REQUIRED)
+        if match_token(user, payload.totp) is None:
+            raise HttpError(403, SECOND_FACTOR_INCORRECT)
     # The Android client's own fixed default -- token-scopes-plan.md: nobody
     # should have to understand scopes to log into the app they're holding,
     # and a bounded expiry means a lost phone isn't a standing, unbounded

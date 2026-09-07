@@ -43,11 +43,16 @@ class ConnectorTest {
             return result
         }
 
-        override suspend fun login(username: String, password: String, label: String): LoginResult {
+        var lastTotp: String? = null
+
+        override suspend fun login(
+            username: String, password: String, label: String, totp: String,
+        ): LoginResult {
             loginCalls++
             lastUsername = username
             lastPassword = password
             lastLabel = label
+            lastTotp = totp
             return loginResult
         }
 

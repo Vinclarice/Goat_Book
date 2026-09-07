@@ -35,10 +35,15 @@ class ConnectViewModelTest {
 
         override suspend fun identify(token: String) = result
 
-        override suspend fun login(username: String, password: String, label: String): LoginResult {
+        var lastLoginTotp: String? = null
+
+        override suspend fun login(
+            username: String, password: String, label: String, totp: String,
+        ): LoginResult {
             lastLoginUsername = username
             lastLoginPassword = password
             lastLoginLabel = label
+            lastLoginTotp = totp
             return loginResult
         }
 

@@ -123,10 +123,13 @@
             }
           }
         },
-        "description": "Every open line, in one list -- `superlists-2.0-plan.md` increment 1.\n\n**Session only.** The phone has no pool surface, and widening a bearer to\nreach one before there is anything to reach would be the un-switched-on seam\nthis project keeps finding. `clarice/tests/test_api_auth_surface.py` is the\nauthority on that and fails if this changes by accident.\n\n`q` is optional and empty means the whole pool; `pool_for` owns what\nmatching means.\n\n`head` is the panel beside the day rather than the page -- the same rows,\nnarrowed to what fits in a column. `open_count` is the whole pool either\nway, which is what lets the panel's link say how many there really are.",
+        "description": "Every open line, in one list -- `superlists-2.0-plan.md` increment 1.\n\n~~**Session only.** The phone has no pool surface, and widening a bearer to\nreach one before there is anything to reach would be the un-switched-on seam\nthis project keeps finding.~~ **A bearer with `agenda:read` reaches this\nsince September 6, 2026**, when the phone got the surface -- see the\ndecorator. `clarice/tests/test_api_auth_surface.py` is the\nauthority on that and fails if this changes by accident.\n\n`q` is optional and empty means the whole pool; `pool_for` owns what\nmatching means.\n\n`head` is the panel beside the day rather than the page -- the same rows,\nnarrowed to what fits in a column. `open_count` is the whole pool either\nway, which is what lets the panel's link say how many there really are.",
         "security": [
           {
-            "SessionAuth": []
+            "TokenAuth": []
+          },
+          {
+            "SessionAuthIfLoggedIn": []
           }
         ]
       }
@@ -2224,7 +2227,7 @@
             }
           }
         },
-        "description": "One of rule 7's three decisions, on one unfinished pin.\n\n**One at a time, and never a sweep.** `daily-operating-system-vision.md`'s\nfirst rule is *never automatically reschedule everything left incomplete*,\nso there is no endpoint that takes a list -- which is a shape decision, not\nan omission. `clarice.leftovers` owns what each decision does and why none\nof them rewrites today.\n\n**Session only.** The phone has no evening ritual, and letting go archives\na task -- widening a bearer that sits in a keystore for ninety days to do\nthat should be asked for rather than arrive with a closing prompt.\n\nReturns the whole day, like every other write here: the leftovers list, the\ncounts and the log all move together, and one response keeps them from\ndisagreeing for a frame.",
+        "description": "One of rule 7's three decisions, on one unfinished pin.\n\n**One at a time, and never a sweep.** `daily-operating-system-vision.md`'s\nfirst rule is *never automatically reschedule everything left incomplete*,\nso there is no endpoint that takes a list -- which is a shape decision, not\nan omission. `clarice.leftovers` owns what each decision does and why none\nof them rewrites today.\n\n~~**Session only.** The phone has no evening ritual, and letting go\narchives a task -- widening a bearer that sits in a keystore for ninety\ndays to do that should be asked for rather than arrive with a closing\nprompt.~~ **A bearer with `day:write` reaches all three decisions since\nSeptember 6, 2026**, when the phone got the evening this sentence was\nwaiting for.\n\n**`let_go` is included, on evidence rather than judgement.** `TaskStatus`\nincludes `\"archived\"` and `PATCH /api/v1/tasks/{task_id}` is already\ntoken-authenticated and already accepts `status` -- so a bearer can archive\na task today, through a door open since August. Refusing it here would\nguard a capability the same token already has, which is an inconsistency\nrather than a protection, and exactly the kind found later as a seam.\n\nReturns the whole day, like every other write here: the leftovers list, the\ncounts and the log all move together, and one response keeps them from\ndisagreeing for a frame.",
         "requestBody": {
           "content": {
             "application/json": {
@@ -2236,6 +2239,9 @@
           "required": true
         },
         "security": [
+          {
+            "TokenAuth": []
+          },
           {
             "SessionAuthIfLoggedIn": []
           }
@@ -5939,6 +5945,11 @@
           "label": {
             "default": "Android",
             "title": "Label",
+            "type": "string"
+          },
+          "totp": {
+            "default": "",
+            "title": "Totp",
             "type": "string"
           }
         },

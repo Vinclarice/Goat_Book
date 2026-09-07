@@ -18,8 +18,13 @@ the templates and the tests. Each states its rule itself and cites this file as
 provenance, which is why the file remains.
 
 **Two decisions left the plan open and are `roadmap.md`'s now**: whether
-`/api/v1/login` grows a `totp` field once the Android keystore exists (M1), and
-where the recovery codes live (M2) — *the decision most likely to be skipped and
-most likely to matter*.
+`/api/v1/login` grows a `totp` field (M1, **answered yes on September 6,
+2026**), and where the recovery codes live (M2) — *the decision most likely to
+be skipped and most likely to matter*.
+
+~~once the Android keystore exists~~ — **this file restated M1's trigger and
+the restatement outlived it**, corrected September 7, 2026. The keystore turned
+out not to be the trigger at all; `roadmap.md` owns why, and a stub that repeats
+an owner's fact is the second copy [`README.md`](README.md) exists to prevent.
 
 Reduced to a stub on August 26, 2026. See [`README.md`](README.md).

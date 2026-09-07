@@ -380,7 +380,12 @@ re-add it here.
   narrative is in [`roadmap-history.md`](roadmap-history.md) under *A second
   factor on the admin*, and this file does not restate it.
 
-  **Three things it left, and two were answered August 26, 2026.**
+  **What it left, and what each turned out to be.** ~~Three things it left, and
+  two were answered August 26, 2026.~~ — **a tally, and it went wrong the moment
+  M1 was answered on September 6.** Corrected September 7, 2026. `README.md`'s
+  rule is that a header may state a decision and never a count, because a count
+  has to be re-counted every time an item moves and the moving is what nobody
+  remembers to follow. The strikes below are the status.
 
   - ~~**One admin account or two.**~~ **Answered: keep both** — and it went
     against this file's own lean, which is why the reasoning is worth keeping.
@@ -405,12 +410,47 @@ re-add it here.
     is only better while it is findable. **What would change the answer** is the
     vault stopping being the strongest thing in the chain — and if a printed set
     is ever made, it belongs somewhere that is not the desk the laptop sits on.
-  - **M1 — does `/api/v1/login` grow a `totp` field?** It refuses today, which
-    was chosen because the Android keystore does not exist and the alternative
-    was therefore unavailable rather than merely more work. **Its trigger is the
-    keystore**, in
-    [`android-release-signing-plan.md`](android-release-signing-plan.md) — worth
-    revisiting the day a signed release can carry the field, and not before.
+  - ~~**M1 — does `/api/v1/login` grow a `totp` field?** It refuses today,
+    which was chosen because the Android keystore does not exist and the
+    alternative was therefore unavailable rather than merely more work. **Its
+    trigger is the keystore**, in
+    [`android-release-signing-plan.md`](android-release-signing-plan.md) —
+    worth revisiting the day a signed release can carry the field, and not
+    before.~~ **Answered September 6, 2026: yes, it grows the field — and the
+    trigger was never the keystore.** Vince: *"I want to be able to enter my
+    username/pw and it connect automatically."*
+
+    **The old argument expired by its own terms, which is the part worth
+    keeping.** It rested on *accepting a field no shipped client can send would
+    leave the bypass open* — but the bypass it feared was a field accepted and
+    **not enforced**, and that is not what was built. An account with a
+    confirmed device already got a 403 from every shipped build, so *requiring*
+    the field breaks nothing that works; and a debug build installs on the
+    device directly, so "no client can send it" was false for the only client
+    in use. **A trigger stated as a dependency turned out to be a dependency of
+    the wrong thing.**
+
+    **The property is unchanged**: a password alone still cannot mint a
+    ninety-day token on an account with a second factor. What changed is where
+    the factor can be proved — here, as well as on the web. Both codes work,
+    TOTP and `otp_static` recovery, because somebody connecting a *new* phone
+    has lost the thing that generates the first kind.
+
+    **Throttling holds on this door too, and it was checked rather than
+    assumed.** `django-axes` counts at `authenticate()` and this step is not
+    that, so `ThrottlingMixin`'s backoff is the whole protection — the same
+    finding `admin-mfa-plan.md` §2.4 made for the web. Probed: one wrong code,
+    then the *correct* one, and the correct one is refused with nothing minted.
+    **Two things it left undone** — no test on this door asserts that (the web
+    door has one, twice), and `SECOND_FACTOR_INCORRECT` says *"try the current
+    one"* while the current one is also refused for the 1–2s the backoff runs.
+
+    **Whether this door survives at all is not M1's to answer, and it has been
+    asked and answered elsewhere.**
+    [`android-login-redesign-plan.md`](android-login-redesign-plan.md)'s **P1**
+    — *it survives*, September 7, 2026 — which is what makes this work worth
+    landing rather than a path about to be deleted. That plan owns the login
+    path's future; this entry owns only the field.
 
   ~~**The restore drill has still never been run**, and is the other one. The
   August 1 pass compared 18 tables at 53 migrations~~ — **wrong since the day

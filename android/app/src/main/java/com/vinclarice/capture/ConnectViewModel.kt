@@ -12,6 +12,9 @@ data class ConnectUiState(
     val token: String = "",
     val username: String = "",
     val password: String = "",
+    /** The authenticator or recovery code, for an account with a second
+     *  factor. Empty for everybody else, and the server ignores it there. */
+    val totp: String = "",
     val checking: Boolean = false,
     val error: String? = null,
     val connectedAs: Identity? = null,
@@ -48,6 +51,10 @@ class ConnectViewModel(
         _state.value = _state.value.copy(password = value, error = null)
     }
 
+    fun setTotp(value: String) {
+        _state.value = _state.value.copy(totp = value, error = null)
+    }
+
     suspend fun connect() {
         _state.value = _state.value.copy(checking = true, error = null)
 
@@ -82,8 +89,9 @@ class ConnectViewModel(
         _state.value = _state.value.copy(checking = true, error = null)
         val username = _state.value.username
         val password = _state.value.password
+        val totp = _state.value.totp.trim()
 
-        when (val outcome = connector.logIn(username, password, deviceLabel)) {
+        when (val outcome = connector.logIn(username, password, deviceLabel, totp)) {
             is Connected -> _state.value = ConnectUiState(
                 checking = false,
                 connectedAs = outcome.identity,
@@ -98,6 +106,10 @@ class ConnectViewModel(
         _state.value = _state.value.copy(
             username = username,
             password = "",
+            // Cleared with the password, and for the same reason: a code is
+            // single-use and a stale one in the box is worse than an empty
+            // one, because it looks like it might still work.
+            totp = "",
             checking = false,
             error = message,
         )

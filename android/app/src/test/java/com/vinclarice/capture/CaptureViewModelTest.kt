@@ -49,8 +49,9 @@ class CaptureViewModelTest {
 
         override suspend fun identify(token: String) = Identified(Identity("a", "a@b.c"))
 
-        override suspend fun login(username: String, password: String, label: String) =
-            InvalidCredentials("unused")
+        override suspend fun login(
+            username: String, password: String, label: String, totp: String,
+        ) = InvalidCredentials("unused")
 
         override suspend fun capture(
             token: String,

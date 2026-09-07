@@ -148,4 +148,65 @@ class LoginApiTest {
 
         assertFalse(result.reason.contains("tok_secret_value"))
     }
+
+    /* The second factor -- android-overhaul-plan.md, Vince's *"I want to be
+       able to enter my username/pw and it connect automatically."* */
+
+    @Test
+    fun `a code travels with the credentials when one is given`() = runTest {
+        server.server.enqueue(accepted())
+
+        api().login("vince", "hunter2", label = "phone", totp = "123456")
+
+        val body = org.json.JSONObject(server.server.takeRequest().body!!.utf8())
+        assertEquals("123456", body.getString("totp"))
+    }
+
+    @Test
+    fun `no code sends an empty one rather than omitting the field`() = runTest {
+        // The server defaults it to "" and treats empty as *not supplied*, so
+        // either shape works -- sending it always is the one that keeps this
+        // client's request identical in shape whether or not the account has a
+        // factor, which is one fewer thing to be wrong about.
+        server.server.enqueue(accepted())
+
+        api().login("vince", "hunter2")
+
+        val body = org.json.JSONObject(server.server.takeRequest().body!!.utf8())
+        assertEquals("", body.getString("totp"))
+    }
+
+    @Test
+    fun `a second factor refusal carries the servers own instruction`() = runTest {
+        /* **This is the bug Vince hit.** A 403 fell through to `else` and
+           became "Clarice answered 403." -- a number, where the server had
+           sent a sentence saying exactly what to do. The endpoint answers 403
+           for two distinct, actionable things (no code given, wrong code
+           given) and both were being thrown away. */
+        server.server.enqueue(
+            MockResponse(
+                code = 403,
+                body = """{"detail": "This account has a second factor. Enter the code from your authenticator app, or one of your recovery codes."}""",
+            )
+        )
+
+        val result = api().login("vince", "hunter2")
+
+        assertTrue(result is InvalidCredentials)
+        assertTrue((result as InvalidCredentials).message.contains("second factor"))
+    }
+
+    @Test
+    fun `a wrong code is refused rather than reported as unreachable`() = runTest {
+        server.server.enqueue(
+            MockResponse(
+                code = 403,
+                body = """{"detail": "That code did not match. Codes expire after about thirty seconds, so try the current one."}""",
+            )
+        )
+
+        val result = api().login("vince", "hunter2", totp = "000000")
+
+        assertTrue((result as InvalidCredentials).message.contains("did not match"))
+    }
 }

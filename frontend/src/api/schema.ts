@@ -74,9 +74,11 @@ export interface paths {
          * Pool
          * @description Every open line, in one list -- `superlists-2.0-plan.md` increment 1.
          *
-         *     **Session only.** The phone has no pool surface, and widening a bearer to
+         *     ~~**Session only.** The phone has no pool surface, and widening a bearer to
          *     reach one before there is anything to reach would be the un-switched-on seam
-         *     this project keeps finding. `clarice/tests/test_api_auth_surface.py` is the
+         *     this project keeps finding.~~ **A bearer with `agenda:read` reaches this
+         *     since September 6, 2026**, when the phone got the surface -- see the
+         *     decorator. `clarice/tests/test_api_auth_surface.py` is the
          *     authority on that and fails if this changes by accident.
          *
          *     `q` is optional and empty means the whole pool; `pool_for` owns what
@@ -1316,9 +1318,19 @@ export interface paths {
          *     an omission. `clarice.leftovers` owns what each decision does and why none
          *     of them rewrites today.
          *
-         *     **Session only.** The phone has no evening ritual, and letting go archives
-         *     a task -- widening a bearer that sits in a keystore for ninety days to do
-         *     that should be asked for rather than arrive with a closing prompt.
+         *     ~~**Session only.** The phone has no evening ritual, and letting go
+         *     archives a task -- widening a bearer that sits in a keystore for ninety
+         *     days to do that should be asked for rather than arrive with a closing
+         *     prompt.~~ **A bearer with `day:write` reaches all three decisions since
+         *     September 6, 2026**, when the phone got the evening this sentence was
+         *     waiting for.
+         *
+         *     **`let_go` is included, on evidence rather than judgement.** `TaskStatus`
+         *     includes `"archived"` and `PATCH /api/v1/tasks/{task_id}` is already
+         *     token-authenticated and already accepts `status` -- so a bearer can archive
+         *     a task today, through a door open since August. Refusing it here would
+         *     guard a capability the same token already has, which is an inconsistency
+         *     rather than a protection, and exactly the kind found later as a seam.
          *
          *     Returns the whole day, like every other write here: the leftovers list, the
          *     counts and the log all move together, and one response keeps them from
@@ -2982,6 +2994,11 @@ export interface components {
              * @default Android
              */
             label: string;
+            /**
+             * Totp
+             * @default
+             */
+            totp: string;
         };
         /** TimeZonesOut */
         TimeZonesOut: {

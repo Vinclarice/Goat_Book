@@ -61,7 +61,20 @@ interface ClariceApi {
 
     /** Trade a password for a token, once. Never called again after the
      *  token is stored -- the app never keeps the password itself. */
-    suspend fun login(username: String, password: String, label: String = "Android"): LoginResult
+    /**
+     * Trade a password for a token.
+     *
+     * @param totp the second factor, when the account has one -- an
+     *   authenticator code or a recovery code. Sent always, empty when there
+     *   is none, so the request has one shape whether or not the account has a
+     *   factor.
+     */
+    suspend fun login(
+        username: String,
+        password: String,
+        label: String = "Android",
+        totp: String = "",
+    ): LoginResult
 
     /**
      * Send one capture.
@@ -138,11 +151,13 @@ class OkHttpClariceApi(
         username: String,
         password: String,
         label: String,
+        totp: String,
     ): LoginResult = withContext(Dispatchers.IO) {
         val body = JSONObject()
             .put("username", username)
             .put("password", password)
             .put("label", label)
+            .put("totp", totp)
             .toString()
         val request = Request.Builder()
             .url(baseUrl.trimEnd('/') + "/api/v1/login")
@@ -169,6 +184,16 @@ class OkHttpClariceApi(
                     429 -> InvalidCredentials(
                         parseCooloffMessage(response.body.string())
                             ?: "Too many attempts. Try again later."
+                    )
+                    // The second factor: no code given, or the wrong one.
+                    // **Refused, not unreachable** -- this fell through to the
+                    // line below until September 6, 2026, so a person who had
+                    // simply not typed their code was told "Clarice answered
+                    // 403." The server sends a sentence saying what to do and
+                    // it was being thrown away for a number.
+                    403 -> InvalidCredentials(
+                        parseDetail(response.body.string())
+                            ?: "That account needs a second factor."
                     )
                     else -> LoginUnreachable("$serverName answered ${response.code}.")
                 }

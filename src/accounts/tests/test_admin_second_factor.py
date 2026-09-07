@@ -29,7 +29,11 @@ from django_otp.oath import TOTP
 from django_otp.plugins.otp_static.models import StaticDevice, StaticToken
 from django_otp.plugins.otp_totp.models import TOTPDevice
 
-from accounts.models import User
+from accounts.models import (
+    ANDROID_DEFAULT_SCOPES,
+    PersonalAccessToken,
+    User,
+)
 
 
 PASSWORD = "a rather secure password"
@@ -273,16 +277,25 @@ class TheOtherDoorTest(TestCase):
         self.assertNotIn("token", response.json())
 
     def test_the_refusal_says_what_to_do_instead(self):
-        """*A specific error telling the holder to create a token on the web,
-        where the second factor already stands.* A generic 401 here would be
+        """*A specific error*, not a generic 401 -- which here would be
         indistinguishable from a wrong password and would send somebody to
-        reset a password that was correct."""
+        reset one that was correct.
+
+        ~~*telling the holder to create a token on the web, where the second
+        factor already stands*~~ -- **rewritten September 6, 2026** with its
+        subject, not deleted. The instruction changed when
+        `TheOtherDoorTakesACodeTest` gave the phone somewhere to prove the
+        factor: sending somebody to the web would now be sending them away
+        from a box on the screen in front of them. What this test guards is
+        unchanged -- that the refusal is specific and actionable -- so it still
+        exists, and says the new thing.
+        """
         a_confirmed_device(self.vince)
 
-        body = str(self.log_in().json())
+        body = str(self.log_in().json()).lower()
 
-        self.assertIn("token", body.lower())
-        self.assertIn("web", body.lower())
+        self.assertIn("second factor", body)
+        self.assertIn("code", body)
 
     def test_an_unconfirmed_device_does_not_close_the_door(self):
         """Somebody halfway through enrolling has not armed anything, and
@@ -301,3 +314,119 @@ class TheOtherDoorTest(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertIn("token", response.json())
+
+
+class TheOtherDoorTakesACodeTest(TestCase):
+    """The phone proves the second factor instead of being turned away.
+
+    **Vince, September 6, 2026**, on being told to paste a token instead:
+    *"No, that is not how I want it to be, I want to be able to enter my
+    username/pw and it connect automatically."*
+
+    **The refusal above was never about the factor being wrong to require.** It
+    was about a `totp` field having no client that could send one --
+    `TheOtherDoorTest`'s docstring: *accepting a `totp` field would leave the
+    bypass open for as long as the keystore does not exist.* **That argument
+    has expired**, and by its own terms: an account with a confirmed device
+    already gets a 403 from every shipped build, so requiring the field breaks
+    nothing that works, and debug builds are installed on the device directly.
+
+    **What does not change is the property.** A password alone still cannot
+    mint a ninety-day token on an account with a second factor. What changes is
+    that the holder can now prove the factor here rather than only on the web.
+    """
+
+    def setUp(self):
+        self.vince = User.objects.create_superuser(
+            "vince-admin", "vince@example.com", PASSWORD
+        )
+
+    def log_in(self, **extra):
+        body = {"username": "vince-admin", "password": PASSWORD, "label": "phone"}
+        body.update(extra)
+        return self.client.post(
+            "/api/v1/login", body, content_type="application/json"
+        )
+
+    def test_a_correct_code_trades_a_password_for_a_token(self):
+        device = a_confirmed_device(self.vince)
+
+        response = self.log_in(totp=code_for(device))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("token", response.json())
+
+    def test_the_token_it_mints_carries_the_android_scopes(self):
+        """The same token the password path has always minted. Proving a
+        second factor is not a reason to hand out a different one."""
+        device = a_confirmed_device(self.vince)
+
+        self.log_in(totp=code_for(device))
+
+        token = PersonalAccessToken.objects.get(owner=self.vince)
+        # `scopes` is a comma-separated TextField; `scope_set` is the accessor.
+        self.assertEqual(token.scope_set, set(ANDROID_DEFAULT_SCOPES))
+
+    def test_a_wrong_code_mints_nothing(self):
+        a_confirmed_device(self.vince)
+
+        response = self.log_in(totp="000000")
+
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(PersonalAccessToken.objects.exists())
+
+    def test_a_missing_code_still_says_what_to_do(self):
+        """Unchanged in shape and changed in wording: the instruction is now
+        *enter the code*, because there is somewhere on the phone to enter it.
+        Telling somebody to go to the web would be sending them away from a box
+        that is on the screen in front of them."""
+        a_confirmed_device(self.vince)
+
+        response = self.log_in()
+
+        self.assertEqual(response.status_code, 403)
+        self.assertIn("code", str(response.json()).lower())
+
+    def test_a_recovery_code_works_too(self):
+        """`otp_static` is enabled and is not optional-in-practice -- somebody
+        whose phone is the thing they have lost needs a way in, and this door
+        is the one they would be trying."""
+        device = StaticDevice.objects.create(
+            user=self.vince, name="recovery", confirmed=True
+        )
+        StaticToken.objects.create(device=device, token="rescue-me")
+
+        response = self.log_in(totp="rescue-me")
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_a_code_is_not_a_password_substitute(self):
+        """A correct code with a wrong password is still a failed login, and
+        gets the same generic 401 every other credential failure gets."""
+        device = a_confirmed_device(self.vince)
+
+        response = self.client.post(
+            "/api/v1/login",
+            {
+                "username": "vince-admin",
+                "password": "not the password",
+                "totp": code_for(device),
+                "label": "phone",
+            },
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 401)
+
+    def test_a_code_is_ignored_when_nothing_is_armed(self):
+        """An account with no confirmed device is unaffected either way: the
+        field is optional, and sending one changes nothing."""
+        priya = User.objects.create_user("priya", "priya@example.com", PASSWORD)
+
+        response = self.client.post(
+            "/api/v1/login",
+            {"username": priya.username, "password": PASSWORD, "totp": "000000"},
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)

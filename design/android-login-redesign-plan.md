@@ -230,13 +230,25 @@ nothing is added to `TOKEN_AUTHENTICATED`.
 
 ## Decisions
 
-- **P1. Does `/api/v1/login` survive?** Pairing makes it unnecessary for the
-  common case, but it is the only path when the laptop is not to hand.
-  **Bearing on the uncommitted second-factor work**: that work is built, green,
-  and makes the credential path usable for a second-factor account. If P1 keeps
-  the path, it should land. If P1 removes it, it should not. **This is the
-  decision that says whether that diff is finished or wasted**, and it should
-  be taken before it is committed.
+- ~~**P1. Does `/api/v1/login` survive?** Pairing makes it unnecessary for the
+  common case, but it is the only path when the laptop is not to hand.~~
+  **Answered September 7, 2026: it survives.** Vince: *"keep the login path."*
+
+  **So pairing is the way in, and credentials are the way in when the laptop
+  is not.** That makes them siblings rather than a path and its replacement,
+  and it has one consequence worth stating now: **the credential path has to
+  stay good, not merely present.** A fallback nobody maintains is the thing
+  that fails on the day it is finally needed — which is precisely the phone
+  whose owner is standing somewhere without the laptop.
+
+  **It also settles the second-factor work**, which was built and green and
+  waiting on this answer: it lands. Without it that fallback is unusable on
+  exactly the accounts that have a second factor, which is the account this is
+  being built for.
+
+  **What it does not license** is treating pairing as optional. Half B is still
+  the primary path, and the refusal below about the second factor still holds
+  on both.
 - **P2. What happens at ninety days?** Warn and re-pair, or extend on use. The
   refusal above leans to the first; the second is a real option if re-pairing
   turns out to be annoying in practice rather than in theory.

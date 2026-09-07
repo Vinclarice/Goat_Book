@@ -25,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
@@ -85,6 +86,38 @@ fun ConnectScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .semantics { contentDescription = "Password" },
+        )
+
+        /* **The second factor, for the accounts that have one.**
+           android-overhaul-plan.md, Vince: *"I want to be able to enter my
+           username/pw and it connect automatically."* Before this the endpoint
+           refused those accounts outright and sent them to the web to mint a
+           token by hand.
+
+           **Always shown rather than revealed after a refusal.** A box that
+           appears only once you have been turned away makes the first attempt
+           a guaranteed failure, and this screen is used about four times a
+           year -- nobody will remember that the first try does not count. The
+           label says it is optional instead.
+
+           Not a password field: it is six digits read off another screen, and
+           masking it would make a typo invisible for no benefit. `KeyboardType
+           .Password` on a plain text field is what asks Android not to
+           autofill or suggest it. */
+        OutlinedTextField(
+            value = state.totp,
+            onValueChange = model::setTotp,
+            label = { Text("Code, if your account has one") },
+            singleLine = true,
+            enabled = !state.checking,
+            keyboardOptions = KeyboardOptions(
+                capitalization = KeyboardCapitalization.None,
+                autoCorrectEnabled = false,
+                keyboardType = KeyboardType.Password,
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .semantics { contentDescription = "Second factor code" },
         )
 
         state.error?.let { message ->

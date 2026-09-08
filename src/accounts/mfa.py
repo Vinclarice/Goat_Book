@@ -69,3 +69,24 @@ def issue_recovery_codes(user):
         StaticToken.objects.create(device=device, token=token)
         codes.append(token)
     return codes
+
+
+def has_a_second_factor(user) -> bool:
+    """Whether this account has anything armed.
+
+    **One definition, read by both doors.** `/api/v1/login` asks it before
+    demanding a code, and `/pair/` asks it before demanding a verified session
+    — and the two must never disagree about what *has a second factor* means,
+    or one of them becomes a way around the other. It lived privately in
+    `accounts/api_v1.py` until September 7, 2026, when the pairing page needed
+    the same answer; moved rather than copied, per `principles.md`'s *one rule,
+    one authoritative definition*.
+
+    **An unconfirmed device does not count.** Somebody halfway through
+    enrolling has not armed anything, and treating a half-finished QR scan as a
+    lock would be a lock they did not set — `is_verified()` ignores exactly the
+    same devices, which is what keeps this consistent with the gate it feeds.
+    """
+    from django_otp import devices_for_user
+
+    return any(devices_for_user(user, confirmed=True))

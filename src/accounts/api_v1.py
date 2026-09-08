@@ -20,6 +20,7 @@ from accounts import export
 from accounts import pairing
 from accounts import services as account_services
 from accounts.forms import AccountSettingsForm
+from accounts.mfa import has_a_second_factor
 from accounts.models import (
     ANDROID_DEFAULT_SCOPES,
     ANDROID_TOKEN_LIFETIME,
@@ -85,13 +86,11 @@ SECOND_FACTOR_INCORRECT = (
 )
 
 
-def _has_a_second_factor(user) -> bool:
-    """Whether anything is armed. An unconfirmed device is somebody halfway
-    through enrolling, and locking them out of their phone would be a lock they
-    did not set."""
-    from django_otp import devices_for_user
-
-    return any(devices_for_user(user, confirmed=True))
+# `has_a_second_factor` ~~was defined here~~ -- **moved to `accounts/mfa.py` on
+# September 7, 2026**, when `/pair/` needed the same answer before demanding a
+# verified session. Two doors disagreeing about what *has a second factor*
+# means is one of them becoming a way around the other, so it is imported at
+# the top of this module rather than copied.
 
 
 @router.post("/login", response={200: LoginOut}, auth=None)
@@ -150,7 +149,7 @@ def log_in(request, payload: LoginIn):
     # somebody resetting a password that was never the problem. It leaks that
     # the account has a second factor, to somebody who has just proved they
     # know its password.
-    if _has_a_second_factor(user):
+    if has_a_second_factor(user):
         # `match_token` walks every confirmed device, so a TOTP code and an
         # `otp_static` recovery token both land here -- which matters, because
         # somebody whose phone is the thing they have lost is trying to connect

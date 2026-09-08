@@ -111,13 +111,9 @@ def start(label: str = "Android") -> StartedPairing:
     raise RuntimeError("could not mint a free pairing code")  # pragma: no cover
 
 
-# DARK: no production caller. Trigger: increment 3 of
-# android-login-redesign-plan.md, the session-authenticated page at `/pair/`
-# where somebody says yes, which is the only thing that will ever call this.
-# Decision registered: built one increment ahead so the model, the two
-# endpoints and this transition could land together with their tests --
-# `start` and `redeem` are both live from the API, and splitting the grant away
-# from them would have meant an approval path with no request to approve.
+# ~~DARK: no production caller.~~ **Live since September 7, 2026**, called by
+# `accounts.views.pair` -- the page at `/pair/`, which was this declaration's
+# named trigger and fired within the session that wrote it.
 def approve(user, typed_code: str) -> PairingRequest | None:
     """Attach a person to a waiting request, or None if there is no live one.
 

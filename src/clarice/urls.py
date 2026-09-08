@@ -17,7 +17,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import include, path
 from django.views.generic import RedirectView
-from accounts.views import contact, home, privacy, terms
+from accounts.views import contact, home, pair, privacy, terms
 from lists import views as list_views
 
 from clarice.api import api as api_v1
@@ -41,6 +41,15 @@ urlpatterns = [
     # Public and unauthenticated, hence the root rather than under
     # accounts/: a stranger with a question does not have an account.
     path("contact/", contact, name="contact"),
+    # Pairing a phone -- android-login-redesign-plan.md Half B increment 3.
+    #
+    # **At the root rather than under `/accounts/`, and the short path is the
+    # feature.** This URL is read off a phone screen and typed into a laptop by
+    # hand, which is the one thing the whole flow asks a person to do;
+    # `/accounts/pair/` is nine more characters to mistype at the moment
+    # somebody is already copying a code. The account-security pages it is
+    # otherwise a sibling of are all arrived at by clicking.
+    path("pair/", pair, name="pair"),
     # Public and at the root for the same reason the contact form is: somebody
     # deciding whether to sign up has to be able to read these first, and the
     # signup form links to both.

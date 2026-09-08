@@ -284,7 +284,49 @@ nothing is added to `TOKEN_AUTHENTICATED`.
    `PairingRequest` also had to be named in the account export — a new
    owner-scoped model is, and `test_export` said so. Both hashes are in
    `SECRETS`, so what leaves is a label and two timestamps.
-3. **The approval page** at `/pair/`, session-authenticated and verified.
+3. ~~**The approval page** at `/pair/`, session-authenticated and verified.~~
+   **Shipped September 7, 2026**, and `approve` came alive the same day its
+   deferral was declared.
+
+   **At the root rather than under `/accounts/`, and the short path is the
+   feature.** This URL is read off a phone screen and typed into a laptop by
+   hand — the one thing the whole flow asks of a person. Its sibling
+   account-security pages are all arrived at by clicking, so none of them pays
+   that cost.
+
+   **The page's job is its wording, not its form.** By the time a code reaches
+   the box, the only attack this flow has — *"type this code into your
+   Clarice"* — has already succeeded or not. So the page names the phone, lists
+   what it will be able to do in `TokenForm.SCOPE_CHOICES`'s own words, says it
+   lasts ninety days, links to where to revoke it, and says outright not to
+   type a code somebody sent you.
+
+   **One vocabulary, not two.** The scope labels are read from the token form
+   rather than restated, which is `principles.md`'s *one rule, one
+   authoritative definition* — and reading the rendered page is what found the
+   consequence: `day:write`'s label still describes *Intentions, Grateful for
+   and Happenings*, which the Day page dropped on September 4. Amplified rather
+   than introduced by this increment, and left alone because the fate of those
+   columns is `superlists-2.0-plan.md`'s deferred A3. **Noted here so the next
+   person to open that question knows a second surface now shows the old
+   words.**
+
+   **`has_a_second_factor` moved from `accounts/api_v1.py` to
+   `accounts/mfa.py`** so both doors read one definition. Two doors disagreeing
+   about what *has a second factor* means is one of them becoming a way around
+   the other.
+
+   **Verified in a real browser as well as in tests**, which was worth doing
+   for exactly one reason: logged in as an account *with* a factor, `/pair/`
+   redirected to *Confirm it's you*. The gate is the property that stops
+   pairing being a way around the door it stands beside, and it was watched
+   working rather than only asserted.
+
+   **The tests were written first but their red was never watched**, so the
+   security-critical one was checked by mutation instead: removing the
+   `is_verified()` gate turns
+   `test_an_account_with_a_second_factor_must_have_proved_it` red. Recorded
+   because "written first" and "seen to fail" are different claims.
 4. **The phone's pairing screen.** Token paste is demoted below it.
 5. **Decide what happens to the credential path** — see P1. Deliberately last,
    and deliberately a decision rather than a step.

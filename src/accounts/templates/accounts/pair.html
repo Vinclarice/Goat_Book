@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% load frontend_tags %}
+
+{% comment %}
+android-login-redesign-plan.md Half B, increment 3.
+
+This page exists to make a decision legible, not to collect a code. The code
+box is the small part; the list of what a paired phone will be able to do is
+the point, because the one weakness every flow shaped like this shares is
+social -- "type this code into your Clarice" -- and by the time somebody is on
+this page the persuading has already happened.
+
+So: name the phone, say what it gets, say how long it lasts, and only then
+offer the button. An approval screen that does not say what it approves is a
+click-through, which is exactly what that attack needs.
+{% endcomment %}
+
+{% block title %}Connect a phone · Clarice{% endblock %}
+
+{% block content %}
+  <section class="mx-auto max-w-md py-10">
+    <div class="rounded-xl border border-border bg-card p-6 sm:p-8 space-y-5">
+
+      {% if approved %}
+        <div class="space-y-1">
+          <p class="text-xs font-bold uppercase tracking-wide text-accent">Connected</p>
+          <h1 class="text-2xl font-bold">{{ approved.label|default:"That phone" }} is approved</h1>
+        </div>
+        <p class="text-sm text-muted-foreground">
+          {% comment %}
+          Says what happens next, because from here the person's own screen
+          goes quiet and the phone is the thing that changes. Without this the
+          only signal that it worked is the phone eventually stopping asking.
+          {% endcomment %}
+          It should finish connecting on its own within a few seconds. Nothing
+          else to do here.
+        </p>
+        <p class="text-sm text-muted-foreground">
+          You can revoke it at any time from
+          <a href="{% url 'tokens' %}" class="font-bold underline">Access tokens</a>.
+        </p>
+
+      {% else %}
+        <div class="space-y-1">
+          <p class="text-xs font-bold uppercase tracking-wide text-accent">Account security</p>
+          <h1 class="text-2xl font-bold">Connect a phone</h1>
+          <p class="text-sm text-muted-foreground">
+            Your phone shows a code when you tap <em>Connect this phone</em>.
+            Type it here.
+          </p>
+        </div>
+
+        {% if error %}
+          <div class="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3" role="alert">
+            <p class="text-sm font-bold">{{ error }}</p>
+          </div>
+        {% endif %}
+
+        <form method="post" class="space-y-4">
+          {% csrf_token %}
+          <div class="space-y-1">
+            <label for="code" class="text-sm font-bold">Code from your phone</label>
+            {% comment %}
+            autocapitalize on and spellcheck off: the code is upper-case
+            letters and digits, and a phone keyboard autocorrecting it is the
+            failure this flow actually has. The server normalises case and
+            spacing anyway -- see pairing.normalise -- so this only saves a
+            retype rather than deciding anything.
+            {% endcomment %}
+            <input
+              id="code"
+              name="code"
+              autocomplete="off"
+              autocapitalize="characters"
+              spellcheck="false"
+              required
+              placeholder="ABCD-EFGH"
+              class="w-full rounded-lg border border-border bg-input px-3 py-2 font-mono tracking-widest"
+            >
+          </div>
+
+          <div class="rounded-lg border border-border bg-input/40 px-4 py-3 space-y-2">
+            <p class="text-sm font-bold">A connected phone will be able to:</p>
+            <ul class="space-y-1 text-sm text-muted-foreground list-disc pl-5">
+              {% for line in granting %}
+                <li>{{ line }}</li>
+              {% endfor %}
+            </ul>
+            <p class="text-sm text-muted-foreground">
+              It expires after {{ lasts_days }} days, and you can revoke it
+              sooner from <a href="{% url 'tokens' %}" class="font-bold underline">Access tokens</a>.
+            </p>
+          </div>
+
+          <p class="text-sm text-muted-foreground">
+            Only type a code you are reading off your own phone, right now. If
+            somebody sent you one, don't.
+          </p>
+
+          <button
+            type="submit"
+            class="w-full rounded-lg bg-accent px-4 py-2 font-bold text-accent-foreground"
+          >
+            Approve this phone
+          </button>
+        </form>
+      {% endif %}
+
+    </div>
+  </section>
+{% endblock %}

@@ -34,9 +34,20 @@ from accounts.forms import (
     TokenForm,
 )
 from accounts.services import redeem_invitation
-from accounts.mfa import enrolment_qr, issue_recovery_codes
+from accounts import pairing
+from accounts.mfa import (
+    enrolment_qr,
+    has_a_second_factor,
+    issue_recovery_codes,
+)
 from django_otp.plugins.otp_totp.models import TOTPDevice
-from accounts.models import Invitation, PersonalAccessToken, User
+from accounts.models import (
+    ANDROID_DEFAULT_SCOPES,
+    ANDROID_TOKEN_LIFETIME,
+    Invitation,
+    PersonalAccessToken,
+    User,
+)
 from accounts.tokens import activation_token
 
 
@@ -675,3 +686,70 @@ def contact(request):
             return redirect("contact")
 
     return render(request, "accounts/contact.html", {"form": form})
+
+
+@login_required
+def pair(request):
+    """Say yes to a phone — `android-login-redesign-plan.md` Half B.
+
+    **The only dangerous verb in the pairing flow.** `pair/start` and
+    `pair/poll` are unauthenticated because neither grants anything; this turns
+    an inert request into a ninety-day credential, and it is the reason the
+    other two can be open.
+
+    **Why the page says so much.** Every flow shaped like this shares one
+    weakness, and it is not cryptographic: *"type this code into your Clarice."*
+    By the time a code reaches this box the persuasion has already happened, so
+    nothing in `pairing.py` can help. What a page can do is make the decision
+    legible — name the phone, name what it will be able to do, in the words the
+    token page already uses, and say how long it lasts. An approval screen that
+    does not say what it approves is a click-through, and a click-through is
+    exactly what that attack needs.
+
+    **A verified session, not a fresh proof.** An account with a confirmed
+    device reaches this only past `/accounts/verify/`, which is what stops
+    pairing being a way around the door it stands beside. Deliberately *not* a
+    second code prompt here: `/admin/` has taken exactly this since
+    `admin-mfa-plan.md` increment 4, and inventing a different rule for the
+    same question is how two gates drift apart.
+
+    **Approving mints nothing.** The token is created when the phone redeems,
+    over its own connection. If this view minted one it would have to be
+    displayed, and displaying it is precisely what the flow exists to stop.
+    """
+    if has_a_second_factor(request.user) and not request.user.is_verified():
+        # `next` back to here rather than the admin index: somebody sent to
+        # prove it is them has a code expiring on a phone in their hand, and
+        # making them find this page again wastes the one thing that is
+        # actually running out.
+        return redirect(f"{reverse('verify')}?next={request.path}")
+
+    approved = None
+    error = ""
+    if request.method == "POST":
+        approved = pairing.approve(request.user, request.POST.get("code", ""))
+        if approved is None:
+            # One message for "no such code" and "expired". A person who
+            # mistyped and a person whose code aged out both need the same
+            # thing -- start again on the phone -- and separating them would
+            # only say which of their guesses was closer.
+            error = "That code didn't match anything waiting. Start again on the phone."
+
+    return render(
+        request,
+        "accounts/pair.html",
+        {
+            "approved": approved,
+            "error": error,
+            # The words the token page uses, read rather than restated --
+            # `principles.md`'s one rule, one authoritative definition. A second
+            # vocabulary for the same seven capabilities is a second thing to
+            # keep true.
+            "granting": [
+                label
+                for scope, label in TokenForm.SCOPE_CHOICES
+                if scope in ANDROID_DEFAULT_SCOPES
+            ],
+            "lasts_days": ANDROID_TOKEN_LIFETIME.days,
+        },
+    )

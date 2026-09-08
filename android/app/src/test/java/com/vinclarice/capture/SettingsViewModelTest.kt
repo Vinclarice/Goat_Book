@@ -35,6 +35,12 @@ class SettingsViewModelTest {
             username: String, password: String, label: String, totp: String,
         ) = InvalidCredentials("unused")
 
+        override suspend fun startPairing(label: String) =
+            PairingStartFailed("unused")
+
+        override suspend fun pollPairing(deviceCode: String) =
+            PairingPollFailed("unused")
+
         override suspend fun capture(
             token: String,
             text: String,

@@ -160,6 +160,8 @@ class MainActivity : FragmentActivity() {
                             workspaceStore = workspaceStore,
                             workspaceConnector = workspaceConnector,
                             captureName = backends.capture.name,
+                            captureBaseUrl = backends.capture.baseUrl,
+                            workspaceBaseUrl = backends.workspace.baseUrl,
                             queue = queue,
                             scheduler = scheduler,
                             preferences = preferences,
@@ -192,6 +194,11 @@ private fun Root(
     workspaceConnector: Connector?,
     /** What to call the server captures go to, wherever that is said on screen. */
     captureName: String,
+    /** Where captures go, so the Connect screen can say where to approve a
+     *  pairing. A name is for prose; an address has to come from the URL. */
+    captureBaseUrl: String,
+    /** Clarice's, which is the same string as [captureBaseUrl] when unsplit. */
+    workspaceBaseUrl: String,
     queue: CaptureQueue,
     scheduler: DeliveryScheduler,
     preferences: CapturePreferences,
@@ -221,6 +228,7 @@ private fun Root(
             connector,
             deviceLabel = "Android (${Build.MODEL})",
             serverName = captureName,
+            baseUrl = captureBaseUrl,
         )
     }
     // Held here rather than inside the Capture branch, so that a trip to
@@ -267,6 +275,7 @@ private fun Root(
                 workspaceConnector,
                 deviceLabel = "Android (${Build.MODEL})",
                 serverName = "Clarice",
+                baseUrl = workspaceBaseUrl,
             )
         }
         BackHandler { connectingWorkspace = false }

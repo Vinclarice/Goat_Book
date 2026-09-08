@@ -57,6 +57,12 @@ class ConnectorTest {
         }
 
         // Connecting never sends a capture; CaptureApiTest covers this.
+        override suspend fun startPairing(label: String) =
+            PairingStartFailed("unused")
+
+        override suspend fun pollPairing(deviceCode: String) =
+            PairingPollFailed("unused")
+
         override suspend fun capture(
             token: String,
             text: String,

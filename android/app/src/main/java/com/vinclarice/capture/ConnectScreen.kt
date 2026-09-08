@@ -57,6 +57,59 @@ fun ConnectScreen(
     ) {
         Text("Connect to ${model.serverName}", style = MaterialTheme.typography.headlineSmall)
 
+        /* **Pairing, first on the screen** -- android-login-redesign-plan.md
+           Half B, increment 4. Vince: *"avoid having this issue where there is
+           a need to send a token to the phone."*
+
+           First rather than merely present, because the order is the
+           recommendation. Everything below this is a way of getting a
+           credential onto the phone by carrying one; this is the way that is
+           not, and a person meeting the screen should reach it before the
+           alternatives rather than after.
+
+           The user code is shown; the device code never is. Displaying the
+           device code would recreate the exact thing this flow removes. */
+        val pairing = state.pairing
+        if (pairing == null) {
+            Button(
+                onClick = { scope.launch { model.beginPairing() } },
+                enabled = !state.checking,
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("Connect this phone") }
+
+            Text(
+                "The quickest way in: this phone asks, and you approve it from " +
+                    "${model.serverName} on any browser where you are already " +
+                    "signed in. Nothing has to be copied onto the phone.",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        } else {
+            Text("Type this code at", style = MaterialTheme.typography.bodyMedium)
+            Text(
+                model.pairAddress,
+                style = MaterialTheme.typography.titleMedium,
+            )
+            // Spaced and large: it is read off this screen and typed on
+            // another, which is the one thing this flow asks of a person.
+            Text(
+                pairing.userCode,
+                style = MaterialTheme.typography.headlineMedium,
+                modifier = Modifier.semantics { contentDescription = "Pairing code" },
+            )
+            Text(
+                "Waiting for you to approve it…",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            TextButton(onClick = { model.cancelPairing() }) { Text("Cancel") }
+        }
+
+        HorizontalDivider()
+
+        Text(
+            "Or sign in with your username and password.",
+            style = MaterialTheme.typography.bodyMedium,
+        )
+
         OutlinedTextField(
             value = state.username,
             onValueChange = model::onUsernameChange,

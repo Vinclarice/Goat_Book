@@ -130,4 +130,28 @@ class Connector(
     fun isConnected(): Boolean = store.read() != null
 
     fun disconnect() = store.clear()
+
+    /**
+     * Ask the server to start a pairing — `android-login-redesign-plan.md`
+     * Half B. Nothing is stored yet; this only mints a request that is inert
+     * until somebody approves it on the web.
+     */
+    suspend fun beginPairing(label: String = "Android"): PairingStartResult =
+        api.startPairing(label)
+
+    /**
+     * Ask once whether it has been approved. **Null means keep waiting**, which
+     * is the ordinary answer for most of this flow.
+     *
+     * On success it goes through [connect], so a paired token is saved and
+     * identified by exactly the code path a pasted one is. A second storage
+     * route would be a second place the token could fail to be written.
+     */
+    suspend fun collectPairing(deviceCode: String): ConnectOutcome? =
+        when (val polled = api.pollPairing(deviceCode)) {
+            is PairingGranted -> connect(polled.token)
+            PairingPending -> null
+            is PairingPollFailed -> Failed(polled.reason)
+        }
+
 }

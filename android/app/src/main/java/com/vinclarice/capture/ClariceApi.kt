@@ -99,8 +99,80 @@ data class InvalidCredentials(val message: String) : LoginResult
 /** Nothing is wrong with the credentials, only with right now. */
 data class LoginUnreachable(val reason: String) : LoginResult
 
+/**
+ * A pairing this phone has started and nobody has approved yet —
+ * `android-login-redesign-plan.md` Half B.
+ *
+ * Two codes with opposite jobs. [userCode] is shown to a person and carried to
+ * a laptop; it grants nothing on its own. [deviceCode] is the credential half,
+ * kept here and never displayed — showing it would recreate exactly the thing
+ * this flow exists to remove.
+ */
+data class PairingStarted(
+    val userCode: String,
+    val deviceCode: String,
+    /** When the request stops being approvable, or null if the server did not
+     *  say. Only drives a countdown, so an unreadable one costs nothing. */
+    val expiresAt: Instant? = null,
+    /**
+     * Seconds between polls, as the *server* chose it.
+     *
+     * Read rather than hard-coded, because the nginx zone in front of the poll
+     * endpoint is sized from this number — a client with its own idea of the
+     * interval would be a second copy of a rate limit, and would rate-limit
+     * itself out of its own pairing.
+     */
+    val intervalSeconds: Int = DEFAULT_POLL_SECONDS,
+) {
+    companion object {
+        /** Only for a server that sent nothing usable. Never zero: a
+         *  zero-delay poll loop is a self-inflicted flood. */
+        const val DEFAULT_POLL_SECONDS = 5
+    }
+}
+
+sealed interface PairingStartResult
+
+data class PairingBegun(val started: PairingStarted) : PairingStartResult
+
+/** Nothing is wrong with pairing, only with right now. */
+data class PairingStartFailed(val reason: String) : PairingStartResult
+
+sealed interface PairingPollResult
+
+data class PairingGranted(val token: String) : PairingPollResult
+
+/**
+ * Nobody has approved it yet — **and this is the ordinary case, not an error.**
+ *
+ * The server answers waiting, expired and never-existed identically, on
+ * purpose, so a client that treated an empty answer as a fault would report a
+ * broken server for the entire normal duration of the flow.
+ */
+data object PairingPending : PairingPollResult
+
+/** The poll itself failed. Distinct from [PairingPending] because one means
+ *  *keep waiting* and the other means *something is wrong*. */
+data class PairingPollFailed(val reason: String) : PairingPollResult
+
 interface ClariceApi {
     suspend fun identify(token: String): IdentifyResult
+
+    /**
+     * Ask to be connected, with no credential of any kind.
+     *
+     * **Deliberately not defaulted on this interface**, so the five test fakes
+     * implementing it had to acknowledge pairing rather than inherit a stub
+     * that silently answers "unreachable". This codebase makes widenings
+     * something somebody types on purpose -- `TOKEN_AUTHENTICATED`,
+     * `EXPORT_KEYS`, `ELSEWHERE` -- and a second real client forgetting a
+     * transition should be a compile error rather than a quiet failure.
+     */
+    suspend fun startPairing(label: String = "Android"): PairingStartResult
+
+    /** Ask once whether somebody has approved yet. The loop belongs to the
+     *  caller, which is what lets it be tested on a virtual clock. */
+    suspend fun pollPairing(deviceCode: String): PairingPollResult
 
     /** Trade a password for a token, once. Never called again after the
      *  token is stored -- the app never keeps the password itself. */
@@ -344,6 +416,102 @@ class OkHttpClariceApi(
             Disposition.RETRY_LATER
         }
     }
+
+    override suspend fun startPairing(label: String): PairingStartResult =
+        withContext(Dispatchers.IO) {
+            val body = JSONObject().put("label", label).toString()
+            val request = Request.Builder()
+                .url(baseUrl.trimEnd('/') + "/api/v1/pair/start")
+                // No Authorization header, and that is the point rather than an
+                // omission: a phone with no token is exactly the phone that
+                // needs to pair.
+                .post(body.toRequestBody(JSON))
+                .build()
+            try {
+                client.newCall(request).execute().use { response ->
+                    if (response.code != 200) {
+                        return@use PairingStartFailed(
+                            "$serverName answered ${response.code}."
+                        )
+                    }
+                    parseStartedPairing(response.body.string())
+                }
+            } catch (failure: IOException) {
+                PairingStartFailed("Could not reach $serverName.")
+            }
+        }
+
+    override suspend fun pollPairing(deviceCode: String): PairingPollResult =
+        withContext(Dispatchers.IO) {
+            // In the body rather than the query string. It is the credential
+            // half of this flow, and a query string is the one place a secret
+            // reliably ends up in a log -- which this project already had to
+            // fix once, for `/mind/search/`.
+            val body = JSONObject().put("device_code", deviceCode).toString()
+            val request = Request.Builder()
+                .url(baseUrl.trimEnd('/') + "/api/v1/pair/poll")
+                .post(body.toRequestBody(JSON))
+                .build()
+            try {
+                client.newCall(request).execute().use { response ->
+                    // A 429 is genuinely reachable here, unlike on most
+                    // endpoints, because this one is polled. It must never be
+                    // read as "no token yet" -- that would poll forever
+                    // against a closed door -- nor as success.
+                    if (response.code != 200) {
+                        return@use PairingPollFailed(
+                            "$serverName answered ${response.code}."
+                        )
+                    }
+                    parsePolledPairing(response.body.string())
+                }
+            } catch (failure: IOException) {
+                PairingPollFailed("Could not reach $serverName.")
+            }
+        }
+
+    private fun parseStartedPairing(body: String): PairingStartResult = try {
+        val json = JSONObject(body)
+        PairingBegun(
+            PairingStarted(
+                userCode = json.getString("user_code"),
+                deviceCode = json.getString("device_code"),
+                expiresAt = parseInstantOrNull(json, "expires_at"),
+                // `optInt` returns 0 for absent, and zero here is a poll loop
+                // with no delay -- a self-inflicted flood against an endpoint
+                // that has a rate limit. Anything unusable falls back.
+                intervalSeconds = json.optInt("interval", 0)
+                    .takeIf { it >= 1 }
+                    ?: PairingStarted.DEFAULT_POLL_SECONDS,
+            )
+        )
+    } catch (malformed: JSONException) {
+        PairingStartFailed("Unexpected response from $serverName.")
+    }
+
+    private fun parsePolledPairing(body: String): PairingPollResult = try {
+        val json = JSONObject(body)
+        // Absent and null both mean "not yet". The server sends one answer for
+        // waiting, expired and never-existed, so this client cannot tell them
+        // apart and does not try.
+        val token = if (json.isNull("token")) null else json.optString("token", "")
+        if (token.isNullOrEmpty()) PairingPending else PairingGranted(token)
+    } catch (malformed: JSONException) {
+        PairingPollFailed("Unexpected response from $serverName.")
+    }
+
+    /** A timestamp that only drives a countdown, so anything unreadable
+     *  degrades to null rather than failing the call around it. */
+    private fun parseInstantOrNull(json: JSONObject, key: String): Instant? =
+        if (json.isNull(key)) {
+            null
+        } else {
+            try {
+                Instant.parse(json.getString(key))
+            } catch (unreadable: DateTimeParseException) {
+                null
+            }
+        }
 
     private fun parseIdentity(body: String): IdentifyResult = try {
         val json = JSONObject(body)

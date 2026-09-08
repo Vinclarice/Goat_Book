@@ -327,7 +327,43 @@ nothing is added to `TOKEN_AUTHENTICATED`.
    `is_verified()` gate turns
    `test_an_account_with_a_second_factor_must_have_proved_it` red. Recorded
    because "written first" and "seen to fail" are different claims.
-4. **The phone's pairing screen.** Token paste is demoted below it.
+4. ~~**The phone's pairing screen.** Token paste is demoted below it.~~
+   **Shipped September 7, 2026, and this is the increment that delivers the
+   requirement.** Nothing secret is carried to the phone any more: it asks,
+   shows a code somebody carries the *other* way, and the token arrives over
+   its own connection.
+
+   **Pairing is first on the Connect screen, not merely present.** Everything
+   below it is a way of getting a credential onto the phone by carrying one;
+   this is the way that is not, and the order is the recommendation.
+
+   **The poll interval is read from the server, never chosen here.** A client
+   with its own idea of it would be a second copy of a rate limit, and would
+   throttle itself out of its own pairing — the same shape as D8's mirrored
+   constant. The loop is bounded by the server's own `expires_at` for the same
+   reason: a lifetime constant on the phone would be a second place deciding
+   how long a pairing lives.
+
+   **A network blip does not abandon a pairing.** The code on screen is still
+   good and somebody may be walking to a laptop with it. What stops it running
+   forever is the budget, not the first failure.
+
+   **`startPairing` and `pollPairing` were added to `ClariceApi` without
+   default implementations**, which forced all five test fakes to acknowledge
+   them. That is this codebase's habit — `TOKEN_AUTHENTICATED`, `EXPORT_KEYS`,
+   `ELSEWHERE` — and it means a second real client forgetting a transition is a
+   compile error rather than a quiet failure.
+
+   **Two things reading the code back caught that the tests did not.** The
+   screen first built its address from the server's display *name*,
+   rendering `clarice.com/pair` — a domain this project does not own, in large
+   type, as an instruction. `pairingAddress` derives it from the base URL the
+   app actually talks to, so a debug build pointed at staging says staging.
+   And two tests observed the pairing state *after* `beginPairing` returned,
+   by which point the code is correctly cleared; they now watch while it waits.
+
+   **Not verified on a device.** This module has no UI tests, so the screen
+   compiles and nothing more. The first real pairing is the acceptance.
 5. **Decide what happens to the credential path** — see P1. Deliberately last,
    and deliberately a decision rather than a step.
 

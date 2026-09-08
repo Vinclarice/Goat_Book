@@ -723,6 +723,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/pair/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Pair Start */
+        post: operations["accounts_api_v1_pair_start"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pair/poll": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Pair Poll */
+        post: operations["accounts_api_v1_pair_poll"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/capture": {
         parameters: {
             query?: never;
@@ -3094,6 +3128,45 @@ export interface components {
         DeletionIn: {
             /** Password */
             password: string;
+        };
+        /**
+         * PairStartOut
+         * @description What a phone shows and what it keeps.
+         *
+         *     `device_code` is the credential half and is never displayed by the client;
+         *     `user_code` is the half a person carries to a laptop and grants nothing on
+         *     its own.
+         */
+        PairStartOut: {
+            /** User Code */
+            user_code: string;
+            /** Device Code */
+            device_code: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Interval */
+            interval: number;
+        };
+        /** PairStartIn */
+        PairStartIn: {
+            /**
+             * Label
+             * @default Android
+             */
+            label: string;
+        };
+        /** PairPollOut */
+        PairPollOut: {
+            /** Token */
+            token?: string | null;
+        };
+        /** PairPollIn */
+        PairPollIn: {
+            /** Device Code */
+            device_code: string;
         };
         /** CaptureOut */
         CaptureOut: {
@@ -5935,6 +6008,54 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    accounts_api_v1_pair_start: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PairStartIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PairStartOut"];
+                };
+            };
+        };
+    };
+    accounts_api_v1_pair_poll: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PairPollIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PairPollOut"];
+                };
             };
         };
     };

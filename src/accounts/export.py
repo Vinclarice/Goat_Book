@@ -23,7 +23,12 @@ from decimal import Decimal
 from io import BytesIO
 from uuid import UUID
 
-from accounts.models import Invitation, PersonalAccessToken, User
+from accounts.models import (
+    Invitation,
+    PairingRequest,
+    PersonalAccessToken,
+    User,
+)
 from appointments.models import Appointment
 from daily.models import DailyEntry, DailyFocus
 from lists.models import (
@@ -74,7 +79,15 @@ from routines.models import Routine, RoutineOccurrence, RoutinePause
 # Never leaves the database. Both are one-way hashes, so exporting them would
 # hand somebody a credential-shaped string that is useless to them and useful to
 # anyone who steals the file.
-SECRETS = frozenset({"password", "token_hash"})
+# `user_code_hash` and `device_code_hash` joined on September 7, 2026 with
+# `PairingRequest`. The second one is a live credential for as long as the row
+# is: a pairing that has been approved and not yet polled will mint a token to
+# whoever presents it. One-way hashes, so they are useless to the person who
+# owns the archive and useful to anybody who steals it -- which is the whole
+# test this set applies.
+SECRETS = frozenset(
+    {"password", "token_hash", "user_code_hash", "device_code_hash"}
+)
 
 
 # Every model that can hold one account's data, and the key it travels under.
@@ -96,6 +109,18 @@ EXPORT_KEYS = {
     # admin page. Withholding it would make *who have I invited* one of the few
     # questions their archive could not answer.
     Invitation: "invitations",
+    # A phone mid-connection -- android-login-redesign-plan.md Half B. Named
+    # here for the reason the dark bill tables were: the export's promise is
+    # every owned model, and a model that is usually empty at export time is
+    # exactly the one that goes missing from a hand-maintained list without
+    # anything failing.
+    #
+    # **In practice this is nearly always an empty list**, since a request
+    # lives ten minutes and is deleted when spent -- and both its hashes are in
+    # SECRETS above, so what leaves is the label and the timestamps. That is
+    # the honest content: a pairing request holds no material of the owner's,
+    # which is also the argument that lets it be ownerless at birth.
+    PairingRequest: "pairing_requests",
     List: "areas",
     Project: "projects",
     Item: "items",
@@ -274,6 +299,11 @@ def _payload(user, *, now):
             # separate kind of record.
             "tokens": _rows(user.tokens.all()),
             "invitations": _rows(user.invitations_sent.all()),
+            # Nearly always empty: a pairing request lives ten minutes and is
+            # deleted when spent, so this is a phone caught mid-connection or
+            # nothing at all. Both hashes are in SECRETS, so what leaves is the
+            # label and the timestamps.
+            "pairing_requests": _rows(user.pairing_requests.all()),
         },
         "tasks": {
             "areas": _rows(List.objects.filter(owner=user)),

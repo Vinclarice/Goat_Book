@@ -1282,6 +1282,64 @@
         ]
       }
     },
+    "/api/v1/pair/start": {
+      "post": {
+        "operationId": "accounts_api_v1_pair_start",
+        "summary": "Pair Start",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PairStartOut"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PairStartIn"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
+    "/api/v1/pair/poll": {
+      "post": {
+        "operationId": "accounts_api_v1_pair_poll",
+        "summary": "Pair Poll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PairPollOut"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PairPollIn"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
     "/api/v1/capture": {
       "post": {
         "operationId": "mind_api_v1_new_capture",
@@ -6171,6 +6229,77 @@
           "password"
         ],
         "title": "DeletionIn",
+        "type": "object"
+      },
+      "PairStartOut": {
+        "description": "What a phone shows and what it keeps.\n\n`device_code` is the credential half and is never displayed by the client;\n`user_code` is the half a person carries to a laptop and grants nothing on\nits own.",
+        "properties": {
+          "user_code": {
+            "title": "User Code",
+            "type": "string"
+          },
+          "device_code": {
+            "title": "Device Code",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "interval": {
+            "title": "Interval",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "user_code",
+          "device_code",
+          "expires_at",
+          "interval"
+        ],
+        "title": "PairStartOut",
+        "type": "object"
+      },
+      "PairStartIn": {
+        "properties": {
+          "label": {
+            "default": "Android",
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "title": "PairStartIn",
+        "type": "object"
+      },
+      "PairPollOut": {
+        "properties": {
+          "token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Token"
+          }
+        },
+        "title": "PairPollOut",
+        "type": "object"
+      },
+      "PairPollIn": {
+        "properties": {
+          "device_code": {
+            "title": "Device Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "device_code"
+        ],
+        "title": "PairPollIn",
         "type": "object"
       },
       "CaptureOut": {

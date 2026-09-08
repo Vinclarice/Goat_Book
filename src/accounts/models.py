@@ -465,3 +465,112 @@ class Invitation(models.Model):
     def __str__(self):
         who = self.note or "someone"
         return f"invitation for {who} ({'live' if self.is_usable else 'spent'})"
+
+
+class PairingRequest(models.Model):
+    """A phone asking to be connected, before anybody has said yes —
+    `android-login-redesign-plan.md` Half B.
+
+    **The inversion this exists for.** A token used to be minted on a laptop
+    and carried to a phone. Here the phone makes the request, a person carries
+    a short code the *other* way — phone to laptop — and the token travels back
+    over the phone's own connection to the device that asked for it, never
+    shown to anybody. Vince: *"avoid having this issue where there is a need to
+    send a token to the phone."*
+
+    **It earns a model against `architecture-trajectory.md` §4** on that
+    section's own test, *a different life cycle, not a different name*. This
+    lives about ten minutes, is single-use, is hard-deleted when spent, and —
+    the decisive part — **exists before it has an owner**. A
+    `PersonalAccessToken` lives ninety days, is reusable, and is owned from its
+    first instant.
+
+    Rule by rule, and **rule 1 is broken on purpose**:
+
+    - **1. Owned at birth — no.** [owner] is null until approval, because the
+      row is created by a caller who has not authenticated and cannot be. §4 is
+      explicit that this is the rule whose absence makes isolation tests weaker
+      than they look, so it is stated here rather than found later. What bounds
+      it: the row holds no material of the owner's, it cannot be read without
+      the device code, and it is deleted when spent — so the ownerless window
+      is minutes long and contains nothing.
+    - **2. Public identifier** — [device_code_hash] is it, and nothing is
+      created offline.
+    - **3. Snapshot** — [scopes] is copied on approval rather than read at
+      redemption, so editing `ANDROID_DEFAULT_SCOPES` cannot retroactively
+      change what an approved request hands out.
+    - **4. Read and service modules** — `accounts/pairing.py` owns all three
+      transitions; every one of them bears an invariant.
+    - **5. Reference, never copy** — the credential is a
+      `PersonalAccessToken`; nothing here duplicates it.
+    - **6. Deletion, decided now: hard, on redemption, and swept on expiry.**
+      No tombstone, because §4's second half is about a client that was offline
+      when a record vanished, and nothing offline references a pairing request
+      — the phone holds a device code and asks; a deleted row is answered
+      exactly like an unapproved one.
+    - **7. Index the query the feature runs** — both lookups are by hash and
+      both are indexed; the sweep reads [expires_at].
+    - **8. Repeating things** — not repeating.
+    """
+
+    #: Ten minutes, and it is not a round number chosen for looks: it has to
+    #: outlast somebody walking to a laptop and cover a mistyped code, while
+    #: staying short enough that an abandoned request is gone before anyone
+    #: could find it.
+    LIFETIME = timedelta(minutes=10)
+
+    #: Null until approved -- the §4 rule 1 deviation argued above. `CASCADE`
+    #: rather than `SET_NULL` once it is set: an approved request belongs to
+    #: the account that approved it and is meaningless without it.
+    owner = models.ForeignKey(
+        "accounts.User",
+        related_name="pairing_requests",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+    )
+    #: What the phone called itself, carried onto the token's label so a person
+    #: reading the web token page can tell two phones apart.
+    label = models.CharField(max_length=100, blank=True, default="")
+    #: The short code a person reads off the phone and types into the web. Only
+    #: the hash, for the reason `PersonalAccessToken` stores only a hash.
+    #:
+    #: Indexed rather than unique: a collision between two live codes is
+    #: possible in principle, and a `unique` here would answer it with a 500 at
+    #: the moment somebody was trying to connect a phone. `pairing.start`
+    #: handles it by retrying instead.
+    user_code_hash = models.CharField(max_length=64, db_index=True)
+    #: The long secret the phone keeps and never displays. This is the actual
+    #: credential of the flow.
+    device_code_hash = models.CharField(max_length=64, unique=True, editable=False)
+    #: Snapshotted at approval -- rule 3. Empty until then, which is also what
+    #: makes "approved" checkable without a second boolean.
+    scopes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    approved_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ("-created_at", "-id")
+        indexes = [models.Index(fields=["expires_at"])]
+
+    def save(self, *args, **kwargs):
+        if not self.expires_at:
+            self.expires_at = timezone.now() + self.LIFETIME
+        return super().save(*args, **kwargs)
+
+    @property
+    def scope_set(self):
+        return set(filter(None, self.scopes.split(",")))
+
+    @property
+    def is_expired(self) -> bool:
+        return self.expires_at <= timezone.now()
+
+    @property
+    def is_approved(self) -> bool:
+        return self.approved_at is not None and self.owner_id is not None
+
+    def __str__(self):
+        who = self.owner.username if self.owner_id else "nobody yet"
+        return f"pairing for {who} ({'expired' if self.is_expired else 'live'})"

@@ -246,8 +246,44 @@ nothing is added to `TOKEN_AUTHENTICATED`.
    that sentence sends somebody and where the cure is, so it is the surface
    that earns the diagnosis first; plumbing capabilities into those two view
    models is worth doing when something else needs them.
-2. **`PairingRequest`** — model, migration, service, and the two API endpoints,
-   with their nginx zones and their `UNAUTHENTICATED` entries.
+2. ~~**`PairingRequest`** — model, migration, service, and the two API
+   endpoints, with their nginx zones and their `UNAUTHENTICATED` entries.~~
+   **Shipped September 7, 2026.**
+
+   **Three guards fired on this increment and each one was right**, which is
+   the part worth recording. `test_api_auth_surface` refused two new `auth=None`
+   operations until they were listed on purpose; `test_unauthenticated_endpoints_are_throttled`
+   refused them until the nginx template had real limits;
+   `test_dark_services_declare_their_deferral` found `approve` and `sweep` had
+   no callers within minutes of their being written. None of that was caught by
+   remembering.
+
+   **The poll rate is derived, and copying the login zone would have been the
+   bug the plan predicted.** `clarice_pair_poll` is 30r/m against a phone that
+   asks 12r/m for ten minutes; `clarice_api_login`'s 5r/m would have throttled
+   every pairing into failure partway through, and presented as a broken
+   server rather than as a limit.
+
+   **Two corrections to this plan, made on contact:**
+
+   - ~~a failed-attempt limit that destroys the request~~ — **written and then
+     refused.** It defends nothing: the only caller who can attempt an approval
+     has already authenticated as the owner, so an attempt limit rations a
+     person against their own typing. The threat model that survives is in
+     `test_pairing.py`'s docstring — a mistype landing on somebody else's live
+     request, which is what the code space is sized against.
+   - **A sweeper was written and deleted the same hour**, by the dark-services
+     guard. Expired rows are already inert because every query filters on
+     `expires_at`, so a cron would be more machinery than the rows it removes.
+     Refused in `pairing.py` with what would change the answer.
+
+   **`approve` is deliberately dark** and declared as such with increment 3 as
+   its named trigger. Splitting the grant away from the model and the endpoints
+   would have meant an approval path with no request to approve.
+
+   `PairingRequest` also had to be named in the account export — a new
+   owner-scoped model is, and `test_export` said so. Both hashes are in
+   `SECRETS`, so what leaves is a label and two timestamps.
 3. **The approval page** at `/pair/`, session-authenticated and verified.
 4. **The phone's pairing screen.** Token paste is demoted below it.
 5. **Decide what happens to the credential path** — see P1. Deliberately last,

@@ -101,6 +101,20 @@ ELSEWHERE = {
     # this registry wants: a module with nothing dark in it does not appear.
     "routines/reads.py": ("occurrence_for",),
     "accounts/export.py": ("owned_models", "export_key"),
+    # `approve` joined on September 7, 2026, and its trigger is named and
+    # close: increment 3 of `android-login-redesign-plan.md`, the
+    # session-authenticated page at `/pair/` where somebody says yes. Half B's
+    # increments were deliberately split so the model and the two endpoints
+    # could land with their tests before the page exists -- `start` and
+    # `redeem` are both live from the API, and this is the one transition with
+    # no door yet.
+    #
+    # **A `sweep` was written beside it and deleted rather than declared**,
+    # the same hour and by this test. It had no caller and no planned one, and
+    # `principles.md` says a trigger that cannot fire is a refusal; the
+    # argument for having no sweeper is at the bottom of `accounts/pairing.py`
+    # rather than in a declaration here that would never come alive.
+    "accounts/pairing.py": ("approve",),
 }
 
 #: Where a function's caller is not a Python reference to its name, so absence

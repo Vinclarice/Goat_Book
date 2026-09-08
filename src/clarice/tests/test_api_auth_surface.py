@@ -139,6 +139,23 @@ TOKEN_AUTHENTICATED = {
 # an nginx rate limit.
 UNAUTHENTICATED = {
     ("POST", "/api/v1/login"),
+    # Pairing -- **new on September 7, 2026**,
+    # `android-login-redesign-plan.md` Half B. A phone starting a pairing has
+    # no credential yet, which is the entire point of the flow: it exists so a
+    # token never has to be carried to the phone by hand.
+    #
+    # **Neither of these grants anything.** `start` mints a request that is
+    # inert until somebody approves it, and approval is a session-authenticated
+    # web page behind the second factor -- not on this API at all, which is why
+    # nothing was added to `TOKEN_AUTHENTICATED` above. `poll` hands back a
+    # token only for a request a person has already approved.
+    #
+    # **`poll` is the reason the rate limits are not copied from `/login`.**
+    # It is polled every few seconds for up to ten minutes, so the zone is
+    # sized from `pairing.POLL_INTERVAL_SECONDS`; `clarice_api_login`'s 5r/m
+    # would rate-limit the flow into failure and look like a server fault.
+    ("POST", "/api/v1/pair/start"),
+    ("POST", "/api/v1/pair/poll"),
 }
 
 

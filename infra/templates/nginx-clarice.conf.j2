@@ -59,6 +59,34 @@ limit_req_zone $binary_remote_addr zone=clarice_contact:10m rate=10r/m;
 # GET returns 405, so throttling every method costs nothing real.
 limit_req_zone $binary_remote_addr zone=clarice_api_login:10m rate=5r/m;
 
+# Pairing a phone -- android-login-redesign-plan.md Half B. Two zones, because
+# the two endpoints are used at completely different rates and one number for
+# both would be wrong for one of them.
+#
+# POST /api/v1/pair/start: once per pairing, by a person who has just decided
+# to connect a phone. Five a minute would do; ten leaves room for somebody
+# starting over after walking to the wrong laptop.
+limit_req_zone $binary_remote_addr zone=clarice_pair_start:10m rate=10r/m;
+
+# POST /api/v1/pair/poll -- and this rate is derived, not chosen. The phone
+# polls every pairing.POLL_INTERVAL_SECONDS (5s) for up to the request's ten
+# minute lifetime, which is 12r/m sustained and about 120 requests in all.
+#
+# **Copying clarice_api_login's 5r/m here would have been the bug**: the flow
+# would throttle itself into failure partway through every pairing, and it
+# would present as the server being broken rather than as a limit. 30r/m is
+# two and a half times what a well-behaved phone asks for, so a runaway still
+# meets a ceiling while a real pairing never does.
+#
+# The burst covers a phone that wakes from a network blip and fires its
+# backlog: ten is two retries plus the poll that was already due.
+#
+# Sized against the client rather than against a round number, the same
+# argument clarice_capture makes -- and this endpoint gives nothing away when
+# it is not throttled, since every poll for an unapproved, expired or
+# non-existent code returns the same empty answer.
+limit_req_zone $binary_remote_addr zone=clarice_pair_poll:10m rate=30r/m;
+
 # POST /api/v1/capture -- security-and-resilience-plan.md 2.3. Authenticated,
 # so this is not a stranger's endpoint and the realistic failure is not an
 # attacker: the bearer lives ninety days in an Android Keystore and the offline
@@ -228,6 +256,32 @@ server {
     # makes this safe to leave alone.
     location = /api/v1/login {
         limit_req zone=clarice_api_login burst=3 nodelay;
+        limit_req_status 429;
+
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Exact match, and the literal paths the phone posts to. See the
+    # clarice_pair_start and clarice_pair_poll zones above for why these are
+    # two limits rather than one, and why the poll rate is derived from
+    # pairing.POLL_INTERVAL_SECONDS rather than copied from the login zone.
+    location = /api/v1/pair/start {
+        limit_req zone=clarice_pair_start burst=3 nodelay;
+        limit_req_status 429;
+
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location = /api/v1/pair/poll {
+        limit_req zone=clarice_pair_poll burst=10 nodelay;
         limit_req_status 429;
 
         proxy_pass http://127.0.0.1:8000;

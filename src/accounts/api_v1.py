@@ -17,6 +17,7 @@ from ninja import Router, Schema
 from ninja.errors import HttpError
 
 from accounts import export
+from accounts import pairing
 from accounts import services as account_services
 from accounts.forms import AccountSettingsForm
 from accounts.models import (
@@ -388,3 +389,70 @@ def update_preferences(request, payload: PreferencesIn):
     user.landing_surface = payload.landing_surface
     user.save(update_fields=["theme", "landing_surface"])
     return _preferences_out(user)
+
+
+class PairStartOut(Schema):
+    """What a phone shows and what it keeps.
+
+    `device_code` is the credential half and is never displayed by the client;
+    `user_code` is the half a person carries to a laptop and grants nothing on
+    its own.
+    """
+
+    user_code: str
+    device_code: str
+    expires_at: datetime
+    #: Seconds between polls. Sent rather than hard-coded in the client so the
+    #: server can slow a phone down without shipping an APK -- and because the
+    #: nginx zone for the poll endpoint is sized from this number, which makes
+    #: two copies of it a way to rate-limit the app into failure.
+    interval: int
+
+
+class PairStartIn(Schema):
+    #: What to call this phone on the web token page. Cosmetic, and defaulted,
+    #: so a client that sends nothing still gets a usable label.
+    label: str = "Android"
+
+
+class PairPollIn(Schema):
+    device_code: str
+
+
+class PairPollOut(Schema):
+    #: The token, once, when somebody has approved. Null while waiting --
+    #: which is also the answer for a code that expired or never existed.
+    token: str | None = None
+
+
+# **Unauthenticated on purpose, and listed in `test_api_auth_surface.py`'s
+# `UNAUTHENTICATED` set beside `/login`.** A phone starting a pairing has no
+# credential yet; that is the entire point of the flow. Both of these carry an
+# nginx rate limit, which that test file requires and
+# `test_unauthenticated_endpoints_are_throttled` enforces against the real
+# template.
+#
+# **Nothing here grants anything.** This mints a request that is inert until
+# somebody who is logged in, and past their second factor, approves it. The
+# dangerous verb in this flow is on the web, not here.
+@router.post("/pair/start", response={200: PairStartOut}, auth=None)
+def pair_start(request, payload: PairStartIn):
+    started = pairing.start(label=payload.label)
+    return {
+        "user_code": started.user_code,
+        "device_code": started.device_code,
+        "expires_at": started.expires_at,
+        "interval": started.interval,
+    }
+
+
+# **One answer for three states, deliberately** -- waiting, expired, and never
+# existed all return a null token with a 200. A poll that distinguished them
+# would let anyone enumerate live codes, and the phone has nothing different to
+# do in any of the three: it keeps asking until its own window closes.
+#
+# 200 rather than 202 or 404 for the same reason. A status code is as much of
+# an oracle as a body.
+@router.post("/pair/poll", response={200: PairPollOut}, auth=None)
+def pair_poll(request, payload: PairPollIn):
+    return {"token": pairing.redeem(payload.device_code)}

@@ -392,6 +392,33 @@ nothing is added to `TOKEN_AUTHENTICATED`.
    leak there. Verified in a browser as an account that has a factor: the page
    now reads *"not the code showing on your phone. You'll be asked for that one
    next."*
+
+   **And that fix was wrong too, which the second attempt found.** It fired for
+   *every* failure on the pairing path — so a **correct** code refused by the
+   device's backoff was told it was the wrong kind of code. A message that
+   names what somebody typed has to be right about it, and this one could not
+   be: an `otp_static` recovery code is `b32encode(urandom(5))`, eight
+   characters of letters and digits, the same shape as a pairing code.
+
+   **The real cause was the throttle, and nothing said so.**
+   `admin-mfa-plan.md` §2.4 established the device's own backoff as the whole
+   protection at this step, because `django-axes` cannot see it — which also
+   makes this page the only thing that can explain a refusal. It now reports
+   the wait in seconds, ahead of both other messages, because it is the case
+   both earlier wordings got wrong.
+
+   **Three corrections inside one repair, all from reading the library rather
+   than assuming it**: the throttle must be read *before* `verify_token`, which
+   increments it, or the first wrong code claims *too many attempts*; attempts
+   made *during* a backoff cost nothing, because `verify_token` returns before
+   incrementing, so *"trying again sooner makes it longer"* was false and was
+   struck the hour it was written; and a recovery code cannot be told from a
+   pairing code by shape.
+
+   **What this cost, and the lesson worth keeping.** Two deploys and two
+   messages to fix one page's wording, with every test green throughout —
+   because the defect was never in what the code did, only in what it said, at
+   a moment only a person holding two codes ever reaches.
 5. **Decide what happens to the credential path** — see P1. Deliberately last,
    and deliberately a decision rather than a step.
 

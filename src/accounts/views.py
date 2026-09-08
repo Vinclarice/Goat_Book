@@ -381,13 +381,78 @@ def tokens(request):
     )
 
 
-#: What `verify` says when the wrong *kind* of code is typed on the way to
-#: pairing. Named rather than inlined so the test asserts the same string the
-#: page renders.
+#: What `verify` says for a wrong code on the way to pairing.
+#:
+#: ~~"That is not the code this page wants."~~ **Softened September 7, 2026,
+#: after the second real attempt.** That wording asserted which code somebody
+#: had typed, and this page cannot know: an `otp_static` recovery code is
+#: `b32encode(urandom(5))` — eight characters of letters and digits, the same
+#: shape as a pairing code. Telling somebody using a recovery code that they
+#: had typed the wrong kind would simply be false. It names both codes now and
+#: claims nothing about which arrived.
 PAIRING_WRONG_CODE = (
-    "That is not the code this page wants. Enter the code from your "
-    "authenticator app — not the code showing on your phone."
+    "That code didn't work. If you're connecting a phone, this box wants the "
+    "code from your authenticator app — the code on the phone comes next."
 )
+
+#: What it says while the device's own backoff is running.
+#:
+#: **The failure the first two attempts actually hit**, and neither message
+#: mentioned it. `ThrottlingMixin` increments on every failure and
+#: `verify_token` refuses *before checking* while the backoff runs — 1, 2, 4,
+#: 8, 16, 32 seconds — so a few tries with the wrong kind of code lock out the
+#: right one. A TOTP code lives about thirty seconds, which means somebody in a
+#: 32-second backoff is chasing codes that expire before the door reopens, and
+#: every attempt lengthens the lock.
+#:
+#: *Try the next one your app shows* is therefore the worst available advice
+#: during a backoff, and it was what this page said.
+#:
+#: `admin-mfa-plan.md` §2.4 established that the device's own backoff is the
+#: whole protection at this step, since `django-axes` cannot see it. This is
+#: that finding read from the other side: it is also the only thing that can
+#: explain the refusal, so it has to.
+THROTTLED_CODE = (
+    "Too many attempts just now. Wait about {wait}, then try one fresh code."
+)
+#: ~~"trying again sooner only makes the wait longer"~~ -- **struck the same
+#: hour it was written, because it is false.** `verify_token` calls
+#: `verify_is_allowed` and returns *before* `throttle_increment`, so an attempt
+#: made during the backoff costs nothing and does not move
+#: `throttling_failure_timestamp`. What doubles the wait is a wrong code
+#: *after* it expires. Saying otherwise would have told somebody their
+#: frustration was making things worse when it was not -- and this message
+#: exists precisely to be read by somebody already frustrated.
+
+
+def _plural_seconds(seconds: int) -> str:
+    """`1 second`, not `1 seconds`. The message is read at the moment somebody
+    is already frustrated, and that is the wrong moment to look sloppy."""
+    return f"{seconds} second" if seconds == 1 else f"{seconds} seconds"
+
+
+def _throttle_wait(devices) -> int | None:
+    """Seconds until the soonest device will accept a code again, or None.
+
+    Read from `verify_is_allowed`, which is the same call `verify_token` makes
+    before it checks anything -- so this reports the actual reason a correct
+    code was refused rather than a guess at one.
+    """
+    from django.utils import timezone as dj_timezone
+
+    waits = []
+    for device in devices:
+        allowed, data = device.verify_is_allowed()
+        if allowed or not data:
+            continue
+        locked_until = data.get("locked_until")
+        if locked_until is None:
+            continue
+        waits.append((locked_until - dj_timezone.now()).total_seconds())
+    if not waits:
+        return None
+    # The soonest, because any one device accepting is enough to get in.
+    return max(1, int(min(waits)) + 1)
 
 
 def _heading_for_pairing(request) -> bool:
@@ -431,6 +496,13 @@ def verify(request):
 
     if request.method == "POST":
         code = request.POST.get("code", "").strip()
+        # **Read before verifying, not after.** `verify_token` increments the
+        # throttle on every failure, so asking afterwards reports *every* wrong
+        # code as "too many attempts" -- including the first, which is simply a
+        # wrong code. The question this answers is whether the door was already
+        # shut *before* this attempt, which is exactly the case where a correct
+        # code gets refused without being looked at.
+        shut_before = _throttle_wait(devices)
         for device in devices:
             if device.verify_token(code):
                 otp_login(request, device)
@@ -448,10 +520,17 @@ def verify(request):
         # carried the pairing code to the web, and this page answered "try the
         # next one your app shows" -- correct for its own subject and useless
         # for his, because he had never reached `/pair/` at all.
-        error = (
-            PAIRING_WRONG_CODE if _heading_for_pairing(request)
-            else "That code didn't work. Try the next one your app shows."
-        )
+        # **Throttling first, because it outranks both other messages.** A
+        # correct code refused by the backoff is the case that most needs
+        # explaining and the one both earlier wordings got wrong -- one told
+        # somebody to fetch another code, the other told them they had typed
+        # the wrong kind.
+        if shut_before is not None:
+            error = THROTTLED_CODE.format(wait=_plural_seconds(shut_before))
+        elif _heading_for_pairing(request):
+            error = PAIRING_WRONG_CODE
+        else:
+            error = "That code didn't work. Try the next one your app shows."
 
     return render(
         request,

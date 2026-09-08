@@ -265,3 +265,91 @@ class TheTwoCodesAreNotConfusedTest(TestCase):
 
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response["Location"], "/pair/")
+
+
+class TheSecondFactorSaysWhyItRefusedTest(TestCase):
+    """**The compounding failure, found by the second real attempt.**
+
+    Vince typed the pairing code here, was told which code the page wanted,
+    typed his authenticator code — and was refused again with the same message.
+
+    **`ThrottlingMixin` is why, and nothing said so.** Every failed
+    verification increments a per-device counter and `verify_token` refuses
+    *before checking* while the backoff runs — 1, 2, 4, 8, 16, 32 seconds. So a
+    handful of attempts with the wrong kind of code locks out the right one,
+    and a TOTP code lives about thirty seconds, which means somebody in a
+    32-second backoff is chasing codes that expire before the door reopens.
+    Each attempt makes it worse.
+
+    **This is `admin-mfa-plan.md` §2.4 read from the other side.** That section
+    established the device's own backoff as the *whole* protection here,
+    because `django-axes` cannot see this step. Correct — and it means this page
+    is the only place that can explain it.
+
+    **And the message I added made it worse before it made it better.** It
+    asserted *"that is not the code this page wants"* for every failure on the
+    pairing path, including a correct code refused by the backoff. A message
+    that names what somebody typed has to be right about it.
+    """
+
+    def setUp(self):
+        from django_otp.plugins.otp_totp.models import TOTPDevice
+
+        self.vince = User.objects.create_user("vince", "v@example.com", PASSWORD)
+        self.device = TOTPDevice.objects.create(
+            user=self.vince, name="phone", confirmed=True
+        )
+        self.client.force_login(self.vince)
+
+    def verify(self, code, pairing_path=True):
+        url = f"{reverse('verify')}?next=/pair/" if pairing_path else reverse("verify")
+        return self.client.post(url, {"code": code})
+
+    def test_a_throttled_attempt_says_to_wait_rather_than_to_try_again(self):
+        """*Try the next one your app shows* is the worst possible advice
+        during a backoff: the next one is refused too, and asking for it
+        lengthens the lock."""
+        self.verify("000000")
+
+        page = self.verify("000001").content.decode().lower()
+
+        self.assertIn("too many", page)
+        self.assertNotIn("try the next one", page)
+
+    def test_it_says_roughly_how_long_to_wait(self):
+        """A wait with no number is indistinguishable from a refusal."""
+        self.verify("000000")
+
+        self.assertIn("second", self.verify("000001").content.decode().lower())
+
+    def test_the_wait_is_explained_off_the_pairing_path_too(self):
+        """The backoff is a property of the device, not of where somebody was
+        going. Explaining it only on one route would leave the admin path with
+        the advice that makes things worse."""
+        self.verify("000000", pairing_path=False)
+
+        page = self.verify("000001", pairing_path=False).content.decode().lower()
+
+        self.assertIn("too many", page)
+
+    def test_an_untrottled_wrong_code_on_the_pairing_path_mentions_both_codes(self):
+        """**Without asserting which one was typed.** A recovery code is also
+        eight characters of letters and digits, so this page cannot tell one
+        from a pairing code by looking — and telling somebody using a recovery
+        code that they typed the wrong kind would be wrong."""
+        page = self.verify("000000").content.decode().lower()
+
+        self.assertIn("authenticator", page)
+        self.assertIn("phone", page)
+        # The claim that was too strong to keep.
+        self.assertNotIn("that is not the code this page wants", page)
+
+    def test_an_untrottled_wrong_code_elsewhere_is_unchanged(self):
+        page = self.verify("000000", pairing_path=False).content.decode().lower()
+
+        # "try the next one" rather than "didn't work": Django escapes the
+        # apostrophe to `&#x27;`, so asserting the human spelling matches
+        # nothing. Written the other way first and it failed on exactly that,
+        # with the page rendering correctly the whole time.
+        self.assertIn("try the next one", page)
+        self.assertNotIn("phone", page)

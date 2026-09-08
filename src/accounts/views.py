@@ -381,6 +381,26 @@ def tokens(request):
     )
 
 
+#: What `verify` says when the wrong *kind* of code is typed on the way to
+#: pairing. Named rather than inlined so the test asserts the same string the
+#: page renders.
+PAIRING_WRONG_CODE = (
+    "That is not the code this page wants. Enter the code from your "
+    "authenticator app — not the code showing on your phone."
+)
+
+
+def _heading_for_pairing(request) -> bool:
+    """Whether this verification is standing between somebody and `/pair/`.
+
+    Read from `next`, which `pair` already sets and this view already honours,
+    so nothing new has to be threaded through. Anything else -- the admin, a
+    bare visit -- is left exactly as it was: that path has no second code in
+    play and gains nothing from a sentence about phones.
+    """
+    return request.GET.get("next", "").startswith("/pair/")
+
+
 @login_required
 def verify(request):
     """Prove it is you, on a page this application owns — increment 4.
@@ -422,12 +442,32 @@ def verify(request):
         # One message for a wrong code, an expired one and a spent recovery
         # code. They are three things to us and one thing to somebody holding a
         # phone, and naming which would say whether the string was ever valid.
-        error = "That code didn't work. Try the next one your app shows."
+        #
+        # **Except on the way to pairing, where it says which code it wants.**
+        # Vince hit this on September 7, 2026: he tapped *Connect this phone*,
+        # carried the pairing code to the web, and this page answered "try the
+        # next one your app shows" -- correct for its own subject and useless
+        # for his, because he had never reached `/pair/` at all.
+        error = (
+            PAIRING_WRONG_CODE if _heading_for_pairing(request)
+            else "That code didn't work. Try the next one your app shows."
+        )
 
     return render(
         request,
         "accounts/verify.html",
-        {"error": error, "has_a_device": bool(devices)},
+        {
+            "error": error,
+            "has_a_device": bool(devices),
+            # **Two codes, one box, and only this page knows both exist.**
+            # `/pair/` sends an account with a second factor here, so the
+            # person arrives holding a pairing code and meets a field asking
+            # for "a code". Typing it is the obvious reading of the screen
+            # rather than a mistake, and the gate itself is unchanged -- what
+            # changes is that the page now says which code it means when it
+            # knows where you were going.
+            "for_pairing": _heading_for_pairing(request),
+        },
     )
 
 

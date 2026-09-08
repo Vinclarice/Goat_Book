@@ -364,6 +364,34 @@ nothing is added to `TOKEN_AUTHENTICATED`.
 
    **Not verified on a device.** This module has no UI tests, so the screen
    compiles and nothing more. The first real pairing is the acceptance.
+
+   **And the first real attempt failed, on September 7, 2026, for a reason no
+   test could have caught.** Vince tapped *Connect this phone*, carried the
+   code to the web, and got back *"That code didn't work. Try the next one your
+   app shows."* — which is `verify`'s message, not `pair`'s. **He had never
+   reached the pairing page.**
+
+   **The flow put two different codes in front of one box.** An account with a
+   second factor is redirected from `/pair/` to *Confirm it's you*, which asks
+   for "the code from your authenticator app" at the exact moment the person is
+   holding a pairing code on the phone in their other hand. Typing it there is
+   not a mistake; it is the obvious reading of the screen — and the error then
+   sent him to fetch *another* code of the wrong kind.
+
+   **Every test passed and every endpoint was correct.** `pair/start` and
+   `pair/poll` were verified working against production while diagnosing this,
+   the lifetime was exactly ten minutes, and the login gate answered 302. The
+   defect was entirely in what one page said, at one moment, to somebody
+   holding two codes — which is the class of thing that only a person using it
+   finds, and the reason this plan's acceptance was *scored by using it* rather
+   than by a suite.
+
+   **Fixed by making `verify` say which code it wants when it knows where you
+   were going**, from `next`. The gate is unchanged and the admin path keeps
+   its original wording, with a test asserting the pairing sentence does not
+   leak there. Verified in a browser as an account that has a factor: the page
+   now reads *"not the code showing on your phone. You'll be asked for that one
+   next."*
 5. **Decide what happens to the credential path** — see P1. Deliberately last,
    and deliberately a decision rather than a step.
 

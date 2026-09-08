@@ -22,9 +22,23 @@ question they should not have to answer while locked out.
       </div>
 
       {% if has_a_device %}
-        <p class="text-sm text-muted-foreground">
-          Enter the code from your authenticator app, or one of your recovery codes.
-        </p>
+        {% comment %}
+        Two codes, one box. Arriving here from /pair/ means the person is
+        holding a pairing code on a phone -- so this page has to rule it out by
+        name, not merely name the one it wants. Naming only the wanted code is
+        what the page already did, and it was read straight past.
+        {% endcomment %}
+        {% if for_pairing %}
+          <p class="text-sm text-muted-foreground">
+            First, confirm it's you. Enter the code from your authenticator app,
+            or one of your recovery codes — <strong>not the code showing on your
+            phone</strong>. You'll be asked for that one next.
+          </p>
+        {% else %}
+          <p class="text-sm text-muted-foreground">
+            Enter the code from your authenticator app, or one of your recovery codes.
+          </p>
+        {% endif %}
 
         <form method="post" class="space-y-4">
           {% csrf_token %}

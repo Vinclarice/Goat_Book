@@ -199,3 +199,69 @@ class ApprovingTest(TestCase):
         self.approve(started.user_code)
 
         self.assertEqual(PairingRequest.objects.get().owner, priya)
+
+
+class TheTwoCodesAreNotConfusedTest(TestCase):
+    """**The defect a real attempt found, September 7, 2026.**
+
+    Vince tapped *Connect this phone*, took the pairing code to the web, and
+    got back *"That code didn't work. Try the next one your app shows."* —
+    which is `verify`'s message, not `pair`'s. He had never reached the pairing
+    page at all.
+
+    **The flow put two different codes in front of one box.** `/pair/` redirects
+    an account with a second factor to *Confirm it's you*, which asks for "the
+    code from your authenticator app" — at the exact moment the person is
+    holding a pairing code on the phone in their other hand. Typing it there is
+    not a mistake; it is the obvious reading of the screen.
+
+    **Nothing about the gate is wrong and it is not being weakened.** What was
+    wrong is that the page said the same thing whether you arrived from
+    `/admin/` or mid-pairing. It now says which code it wants when it knows.
+    """
+
+    def setUp(self):
+        self.vince = User.objects.create_user("vince", "v@example.com", PASSWORD)
+        from django_otp.plugins.otp_totp.models import TOTPDevice
+
+        TOTPDevice.objects.create(user=self.vince, name="phone", confirmed=True)
+        self.client.force_login(self.vince)
+
+    def test_verifying_on_the_way_to_pairing_says_which_code_it_wants(self):
+        page = self.client.get(f"{reverse('verify')}?next=/pair/").content.decode()
+
+        self.assertIn("authenticator", page.lower())
+        # The distinguishing sentence: it has to name the *other* code to rule
+        # it out, because naming only the one it wants is what the page already
+        # did and is what somebody read straight past.
+        self.assertIn("not the code", page.lower())
+
+    def test_verifying_on_the_way_anywhere_else_is_unchanged(self):
+        """The admin path is the one this page was built for and it gains
+        nothing from a sentence about phones."""
+        page = self.client.get(reverse("verify")).content.decode()
+
+        self.assertNotIn("not the code", page.lower())
+
+    def test_the_wrong_code_message_says_which_code_when_pairing(self):
+        """The message Vince actually saw. On the way to pairing it now names
+        the confusion outright rather than sending somebody to fetch another
+        code of the wrong kind."""
+        response = self.client.post(f"{reverse('verify')}?next=/pair/", {"code": "000000"})
+
+        self.assertIn("authenticator", response.content.decode().lower())
+
+    def test_it_still_lets_a_real_code_through_to_pairing(self):
+        """The gate is unchanged: a correct second factor still arrives at the
+        page it was going to."""
+        from django_otp.oath import TOTP
+        from django_otp.plugins.otp_totp.models import TOTPDevice
+
+        device = TOTPDevice.objects.get(user=self.vince)
+        totp = TOTP(device.bin_key, device.step, device.t0, device.digits)
+        code = str(totp.token()).zfill(device.digits)
+
+        response = self.client.post(f"{reverse('verify')}?next=/pair/", {"code": code})
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], "/pair/")

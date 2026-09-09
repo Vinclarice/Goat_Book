@@ -104,6 +104,11 @@ interface TaskApi {
 class OkHttpTaskApi(
     private val baseUrl: String,
     private val client: OkHttpClient = OkHttpClariceApi.defaultClient(),
+    /** What to call this server when telling somebody it refused or could
+     *  not answer. Defaulted rather than threaded from `Backends` at every
+     *  call site, because a split install renames the *capture* backend and
+     *  these three only ever talk to the workspace one. */
+    private val serverName: String = "Clarice",
 ) : TaskApi {
 
     override suspend fun setTaskStatus(
@@ -143,11 +148,11 @@ class OkHttpTaskApi(
                 // schema rejection now rather than a hand-written 400.
                 400, 404, 409, 422 ->
                     TaskWriteRejected(errorMessageFrom(response.body.string()))
-                else -> TaskWriteUnreachable("Clarice answered ${response.code}.")
+                else -> TaskWriteUnreachable(whatWentWrong(serverName, response.code))
             }
         }
     } catch (failure: IOException) {
-        TaskWriteUnreachable("Could not reach Clarice.")
+        TaskWriteUnreachable(couldNotReach(serverName))
     }
 
     /** Absolute, because okhttp needs one and these paths are ours now. */
@@ -161,7 +166,7 @@ class OkHttpTaskApi(
         val task = if (json.has("task")) json.getJSONObject("task") else json
         TaskWriteSucceeded(taskEntryFrom(task))
     } catch (malformed: JSONException) {
-        TaskWriteUnreachable("Unexpected response from that address.")
+        TaskWriteUnreachable(couldNotUnderstand(serverName))
     }
 
     /** Ninja's `{"detail": "..."}`.

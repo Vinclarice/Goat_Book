@@ -96,7 +96,17 @@ class LoginApiTest {
     fun `a lockout with no readable body still reads as invalid credentials`() = runTest {
         server.server.enqueue(MockResponse(code = 429))
 
-        assertEquals(InvalidCredentials("Too many attempts. Try again later."), api().login("alice", "correct horse"))
+        /* ~~"Too many attempts. Try again later."~~ — reworded September 9,
+           2026 with the rest of the failure text, and **deliberately without a
+           duration**. The first attempt at this said *wait a minute*, which is
+           true of nginx's zones (all `r/m`) and false of the lockout this
+           branch is actually for: axes' cooloff can be an hour. The branch
+           below parses the real wait when the body is readable; this one fires
+           when it is not, so it must not invent one. */
+        assertEquals(
+            InvalidCredentials("Too many attempts. Wait a while before trying again."),
+            api().login("alice", "correct horse"),
+        )
     }
 
     @Test

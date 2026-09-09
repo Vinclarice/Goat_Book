@@ -250,7 +250,7 @@ class OkHttpClariceApi(
                     when (response.code) {
                         200 -> parseIdentity(response.body.string())
                         401, 403 -> Unauthorised
-                        else -> Unreachable("$serverName answered ${response.code}.")
+                        else -> Unreachable(whatWentWrong(serverName, response.code))
                     }
                 }
             } catch (failure: IOException) {
@@ -258,7 +258,7 @@ class OkHttpClariceApi(
                 // whatever the stack felt like saying, and this string is
                 // shown on screen and written to logs. Nothing that has ever
                 // touched the token goes in here.
-                Unreachable("Could not reach $serverName.")
+                Unreachable(couldNotReach(serverName))
             }
         }
 
@@ -298,7 +298,7 @@ class OkHttpClariceApi(
                     // response shape, so parsed separately.
                     429 -> InvalidCredentials(
                         parseCooloffMessage(response.body.string())
-                            ?: "Too many attempts. Try again later."
+                            ?: "Too many attempts. Wait a while before trying again."
                     )
                     // The second factor: no code given, or the wrong one.
                     // **Refused, not unreachable** -- this fell through to the
@@ -310,11 +310,11 @@ class OkHttpClariceApi(
                         parseDetail(response.body.string())
                             ?: "That account needs a second factor."
                     )
-                    else -> LoginUnreachable("$serverName answered ${response.code}.")
+                    else -> LoginUnreachable(whatWentWrong(serverName, response.code))
                 }
             }
         } catch (failure: IOException) {
-            LoginUnreachable("Could not reach $serverName.")
+            LoginUnreachable(couldNotReach(serverName))
         }
     }
 
@@ -328,7 +328,7 @@ class OkHttpClariceApi(
             ),
         )
     } catch (malformed: JSONException) {
-        LoginUnreachable("Unexpected response from that address.")
+        LoginUnreachable(couldNotUnderstand(serverName))
     }
 
     /** Ninja's HttpError body shape: `{"detail": "..."}`. */
@@ -431,13 +431,13 @@ class OkHttpClariceApi(
                 client.newCall(request).execute().use { response ->
                     if (response.code != 200) {
                         return@use PairingStartFailed(
-                            "$serverName answered ${response.code}."
+                            whatWentWrong(serverName, response.code)
                         )
                     }
                     parseStartedPairing(response.body.string())
                 }
             } catch (failure: IOException) {
-                PairingStartFailed("Could not reach $serverName.")
+                PairingStartFailed(couldNotReach(serverName))
             }
         }
 
@@ -460,13 +460,13 @@ class OkHttpClariceApi(
                     // against a closed door -- nor as success.
                     if (response.code != 200) {
                         return@use PairingPollFailed(
-                            "$serverName answered ${response.code}."
+                            whatWentWrong(serverName, response.code)
                         )
                     }
                     parsePolledPairing(response.body.string())
                 }
             } catch (failure: IOException) {
-                PairingPollFailed("Could not reach $serverName.")
+                PairingPollFailed(couldNotReach(serverName))
             }
         }
 
@@ -486,7 +486,7 @@ class OkHttpClariceApi(
             )
         )
     } catch (malformed: JSONException) {
-        PairingStartFailed("Unexpected response from $serverName.")
+        PairingStartFailed(couldNotUnderstand(serverName))
     }
 
     private fun parsePolledPairing(body: String): PairingPollResult = try {
@@ -497,7 +497,7 @@ class OkHttpClariceApi(
         val token = if (json.isNull("token")) null else json.optString("token", "")
         if (token.isNullOrEmpty()) PairingPending else PairingGranted(token)
     } catch (malformed: JSONException) {
-        PairingPollFailed("Unexpected response from $serverName.")
+        PairingPollFailed(couldNotUnderstand(serverName))
     }
 
     /** A timestamp that only drives a countdown, so anything unreadable
@@ -526,7 +526,7 @@ class OkHttpClariceApi(
         // A 200 we cannot read is not a valid token -- it usually means the
         // base URL points at something that is not Clarice, which is a
         // connection problem rather than a credential one.
-        Unreachable("Unexpected response from that address.")
+        Unreachable(couldNotUnderstand(serverName))
     }
 
     /**

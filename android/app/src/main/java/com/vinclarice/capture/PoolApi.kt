@@ -99,6 +99,11 @@ interface PoolApi {
 class OkHttpPoolApi(
     private val baseUrl: String,
     private val client: OkHttpClient = OkHttpClariceApi.defaultClient(),
+    /** What to call this server when telling somebody it refused or could
+     *  not answer. Defaulted rather than threaded from `Backends` at every
+     *  call site, because a split install renames the *capture* backend and
+     *  these three only ever talk to the workspace one. */
+    private val serverName: String = "Clarice",
 ) : PoolApi {
 
     override suspend fun getPool(token: String, head: Boolean): PoolResult =
@@ -118,11 +123,11 @@ class OkHttpPoolApi(
                         // nothing more useful to say about that than about an
                         // expired one.
                         401, 403 -> PoolUnauthorised
-                        else -> PoolUnreachable("Clarice answered ${response.code}.")
+                        else -> PoolUnreachable(whatWentWrong(serverName, response.code))
                     }
                 }
             } catch (failure: IOException) {
-                PoolUnreachable("Could not reach Clarice.")
+                PoolUnreachable(couldNotReach(serverName))
             }
         }
 
@@ -137,7 +142,7 @@ class OkHttpPoolApi(
             )
         )
     } catch (malformed: JSONException) {
-        PoolUnreachable("Unexpected response from that address.")
+        PoolUnreachable(couldNotUnderstand(serverName))
     }
 
     private fun fixedRowFrom(json: JSONObject) = PoolFixedRow(

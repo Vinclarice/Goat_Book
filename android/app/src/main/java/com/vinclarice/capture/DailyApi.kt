@@ -108,6 +108,11 @@ interface DailyApi {
 class OkHttpDailyApi(
     private val baseUrl: String,
     private val client: OkHttpClient = OkHttpClariceApi.defaultClient(),
+    /** What to call this server when telling somebody it refused or could
+     *  not answer. Defaulted rather than threaded from `Backends` at every
+     *  call site, because a split install renames the *capture* backend and
+     *  these three only ever talk to the workspace one. */
+    private val serverName: String = "Clarice",
 ) : DailyApi {
 
     override suspend fun getToday(token: String): DayResult =
@@ -122,11 +127,11 @@ class OkHttpDailyApi(
                     when (response.code) {
                         200 -> parseDay(response.body.string())
                         401, 403 -> DayUnauthorised
-                        else -> DayUnreachable("Clarice answered ${response.code}.")
+                        else -> DayUnreachable(whatWentWrong(serverName, response.code))
                     }
                 }
             } catch (failure: IOException) {
-                DayUnreachable("Could not reach Clarice.")
+                DayUnreachable(couldNotReach(serverName))
             }
         }
 
@@ -209,11 +214,11 @@ class OkHttpDailyApi(
                 200, 201 -> DayWriteSucceeded
                 401, 403 -> DayWriteUnauthorised
                 400, 404, 409 -> DayWriteRejected(detailFrom(response.body.string()))
-                else -> DayWriteUnreachable("Clarice answered ${response.code}.")
+                else -> DayWriteUnreachable(whatWentWrong(serverName, response.code))
             }
         }
     } catch (failure: IOException) {
-        DayWriteUnreachable("Could not reach Clarice.")
+        DayWriteUnreachable(couldNotReach(serverName))
     }
 
     /** Ninja's HttpError shape: `{"detail": "..."}`. */
@@ -228,7 +233,7 @@ class OkHttpDailyApi(
     } catch (malformed: JSONException) {
         // A 200 that doesn't parse means the base URL points at something
         // that isn't Clarice, same reasoning as OkHttpClariceApi.identify.
-        DayUnreachable("Unexpected response from that address.")
+        DayUnreachable(couldNotUnderstand(serverName))
     }
 
     private fun dayEntryFrom(json: JSONObject) = DayEntry(

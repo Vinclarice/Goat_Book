@@ -480,6 +480,20 @@ walkthrough.
   secret typed into the phone. That is the requirement, stated as a test.
 - **A failure says which failure it is.** Scope, expiry and revocation are
   three sentences, not one.
+
+  **Extended beyond auth on September 9, 2026**, on Vince asking for *more
+  elegant error messages* after meeting one: twelve call sites across four API
+  clients built their text as `"$serverName answered ${code}."`, so a status
+  code was the whole message and there was nothing in it to act on. One helper
+  now — `Failures.kt` — with a sentence and a next action per case, and the
+  number demoted to brackets rather than deleted, because it is the only
+  diagnostic left when something genuinely unexpected happens.
+
+  **This is P1's consequence arriving early.** *The credential path has to stay
+  good, not merely present* — and a fallback that answers a three-digit number
+  is not good. The website already did this properly; `RouteFailure` maps each
+  status to a sentence and its catch-all promises nothing typed was lost. The
+  phone was the only half still showing numbers.
 - **Reconnecting is something done from the phone**, at the moment the phone
   is the thing complaining.
 

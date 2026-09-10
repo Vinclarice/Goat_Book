@@ -34,6 +34,12 @@ class PoolApiTest {
           "today": "2026-09-06",
           "open_count": 12,
           "fixed": [
+            {"kind": "bill", "due_date": "2026-09-10", "days_until": 1,
+             "task": null, "appointment": null,
+             "bill": {"id": 12, "payee": "T-Mobile", "due_date": "2026-09-10",
+               "amount": "84.00", "currency": "USD", "direction": "out",
+               "repeats": true},
+             "picked_for": []},
             {"kind": "appointment", "due_date": "2026-09-06", "days_until": 0,
              "task": null, "bill": null,
              "appointment": {"public_id": "3f2a1b4c-0000-4000-8000-000000000001",
@@ -63,7 +69,9 @@ class PoolApiTest {
         // `open_count` is the whole pool before any search narrowed the two
         // arrays, which is what lets a header say how many there really are.
         assertEquals(12, result.pool.openCount)
-        assertEquals(1, result.pool.fixed.size)
+        // Two since September 9, 2026: a bill joined the fixture when it
+        // turned out the bill branch had never been exercised.
+        assertEquals(2, result.pool.fixed.size)
         assertEquals(1, result.pool.floating.size)
     }
 
@@ -87,7 +95,8 @@ class PoolApiTest {
     fun `a fixed row says what kind of thing it is`() = runTest {
         server.server.enqueue(MockResponse(code = 200, body = poolBody))
 
-        val row = (api().getPool("tok_abc") as PoolLoaded).pool.fixed[0]
+        val row = (api().getPool("tok_abc") as PoolLoaded).pool.fixed
+            .first { it.kind == "appointment" }
 
         assertEquals("appointment", row.kind)
         assertEquals(0, row.daysUntil)
@@ -172,5 +181,47 @@ class PoolApiTest {
         assertEquals(0, result.pool.openCount)
         assertTrue(result.pool.floating.isEmpty())
         assertFalse(result.pool.today.isEmpty())
+    }
+
+    @Test
+    fun `a bill row parses, which it did not until September 9 2026`() = runTest {
+        /* **The bug this test exists for, and how it hid.**
+           `PoolBillRef` read `text` off a bill. `AgendaBillOut` has no such
+           field — a bill is a `payee`, an `amount` and a direction — so
+           `getString("text")` threw, the whole payload failed to parse, and
+           the pool section said it could not read the answer.
+
+           It survived three days because the fixture above carried
+           `"bill": null` in its only fixed row. The bill branch was written
+           and never exercised, so the test proved the parser against a shape
+           this server does not send. **A fixture invented rather than copied
+           is a test of the imagination**, and the fix is the row now sitting
+           at the top of `poolBody`, taken field for field from
+           `money/api_v1.py`.
+
+           Found on a real phone against real data, by the failure message
+           shipped an hour earlier — which is the argument for that message
+           making itself. */
+        server.server.enqueue(MockResponse(code = 200, body = poolBody))
+
+        val result = api().getPool("tok_abc") as PoolLoaded
+
+        val bill = result.pool.fixed.first { it.kind == "bill" }
+        assertEquals("T-Mobile", bill.bill?.payee)
+        assertEquals("84.00", bill.bill?.amount)
+        assertEquals("out", bill.bill?.direction)
+    }
+
+    @Test
+    fun `every row the server can send parses in one payload`() = runTest {
+        // The regression guard for the shape of the bug rather than the bug:
+        // `fixed` is a tagged row and one unparseable kind takes the whole
+        // pool down with it, so all three belong in one fixture.
+        server.server.enqueue(MockResponse(code = 200, body = poolBody))
+
+        val pool = (api().getPool("tok_abc") as PoolLoaded).pool
+
+        assertEquals(setOf("bill", "appointment"), pool.fixed.map { it.kind }.toSet())
+        assertEquals(1, pool.floating.size)
     }
 }

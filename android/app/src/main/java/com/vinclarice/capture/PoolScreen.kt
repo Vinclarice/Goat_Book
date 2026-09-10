@@ -142,7 +142,7 @@ private fun PoolGroup(title: String, content: @Composable () -> Unit) {
 private fun FixedRow(row: PoolFixedRow, busy: Boolean, onPick: (Int) -> Unit) {
     Column(modifier = poolCardModifier(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
-            row.task?.text ?: row.bill?.text ?: row.appointment?.text.orEmpty(),
+            row.task?.text ?: row.bill?.let(::billLabel) ?: row.appointment?.text.orEmpty(),
             style = MaterialTheme.typography.bodyMedium,
             // A cancelled appointment stays visible and struck -- rule 6.
             textDecoration =
@@ -206,6 +206,20 @@ private fun PickControl(
     } else {
         TextButton(enabled = !busy, onClick = { onPick(taskId) }) { Text("Pick for today") }
     }
+}
+
+/**
+ * What a bill row says it is.
+ *
+ * The payee leads, because *"T-Mobile"* is how somebody thinks of a bill and
+ * the number is the detail. An amount can be absent — a bill whose cost is not
+ * known yet is still a bill with a date — so it is appended rather than
+ * assumed.
+ */
+private fun billLabel(bill: PoolBillRef): String {
+    val amount = bill.amount ?: return bill.payee
+    val way = if (bill.direction == "in") "in" else "out"
+    return "${bill.payee} · ${bill.currency} $amount $way"
 }
 
 /** `days_until` is computed by the server, because the account's zone decides

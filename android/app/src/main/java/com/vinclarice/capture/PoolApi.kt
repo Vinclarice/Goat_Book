@@ -62,9 +62,27 @@ data class PoolFixedRow(
     val pickedFor: List<String>,
 )
 
-/** Only what a row needs to say which bill it is. The Money module is not on
- *  this client and nothing here opens one. */
-data class PoolBillRef(val id: Int, val text: String)
+/**
+ * Only what a row needs to say which bill it is. The Money module is not on
+ * this client and nothing here opens one.
+ *
+ * ~~`val text: String`~~ — **a bill has never had a `text`**, and reading one
+ * threw on September 9, 2026 the first time a real pool carried a bill,
+ * taking the whole payload down with it. `AgendaBillOut` calls it a `payee`,
+ * beside an amount and a direction, because *"T-Mobile"* is what a bill is
+ * called and *"$84.00 out"* is what it says.
+ *
+ * `amount` is a string on the wire and stays one here: it is a decimal, and
+ * putting money through a `Double` to render it is how a penny goes missing.
+ */
+data class PoolBillRef(
+    val id: Int,
+    val payee: String,
+    val amount: String?,
+    val currency: String,
+    /** `"out"` or `"in"` — a bill owed, or one owed to you. */
+    val direction: String,
+)
 
 data class PoolFloatingRow(
     val task: TaskEntry,
@@ -151,7 +169,13 @@ class OkHttpPoolApi(
         daysUntil = json.getInt("days_until"),
         task = json.optJSONObject("task")?.let(::taskFrom),
         bill = json.optJSONObject("bill")?.let {
-            PoolBillRef(id = it.getInt("id"), text = it.getString("text"))
+            PoolBillRef(
+                id = it.getInt("id"),
+                payee = it.getString("payee"),
+                amount = it.optStringOrNull("amount"),
+                currency = it.getString("currency"),
+                direction = it.getString("direction"),
+            )
         },
         appointment = json.optJSONObject("appointment")?.let(::appointmentFrom),
         pickedFor = json.getJSONArray("picked_for").strings(),

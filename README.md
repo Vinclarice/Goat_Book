@@ -23,28 +23,28 @@ writes a `Node`.
 Second Mind's design authority is its own `docs/`, which still live at
 `C:\dev\Clarice_secondmind`; its code does not.
 
-## The agenda
+## The day and the pool
 
-The agenda is every open task across every area, grouped by how soon it's due
-(overdue, today, this week, later, no due date). Areas and tags become filters
-in the sidebar; the archive has its own page.
+Since September 4, 2026 the task core's home is the Day page, `/app/day`: the
+list chosen for today, the line under it, the log, and the pool of every open
+task beside it; `/app/pool` is the whole pool. What each of those means is
+[`design/superlists-2.0-plan.md`](design/superlists-2.0-plan.md)'s to say, not
+this file's.
 
-Both live in the SPA, at `/app/agenda` and `/app/archive`. `/dashboard/` and
-`/archive/` are redirects into it: `/dashboard/` is `LOGIN_REDIRECT_URL`, and
-which surface it lands on is the account's `landing_surface` preference -- the
-Daily Page or the agenda -- so the login form, a bookmark and the Django
-shell's own "Today" link all agree without any of them knowing the rule.
+**The Agenda is gone.** `/app/agenda` redirects to `/app/day`, and so does
+`/dashboard/` -- it is `LOGIN_REDIRECT_URL`, so the login form, a bookmark and
+the Django shell's own "Today" link all land on the day. `User.landing_surface`
+is kept and no longer read; `lists.views.dashboard` says why. The archive keeps
+its own page at `/app/archive`, with `/archive/` redirecting to it.
+`GET /api/v1/agenda` still exists because a shipped Android build calls it.
 
-The bucketing rules live in one place, `src/lists/agenda.py`, and are mirrored by
-`frontend/src/agenda.ts` so the API, the React agenda and the daily digest email
-all agree on what "overdue" means. If you change the window in one, change it in
-the other -- `WEEK_HORIZON_DAYS` exists in both.
-
-**There is no longer a no-JavaScript agenda.** This section described one until
-August 28, 2026 -- server-rendered in full, with completing, snoozing, quick-add
-and filtering as plain form posts. `dashboard()` and `archive()` are now bare
-redirects and the templates are gone; `AgendaWorkspace` is mounted by
-`AgendaRoute` and fed by the API, not laid over server-rendered markup.
+The due-date buckets outlived the page -- overdue, today, this week, later, no
+due date. They are defined once, in `src/lists/agenda.py`'s `bucket_for`, and
+decide what the daily digest mentions and which tasks the day shows as late or
+due. `frontend/src/agenda.ts` mirrors them for the due labels the SPA draws, so
+if you change the window in one, change it in the other -- `WEEK_HORIZON_DAYS`
+exists in both, and `lists/tests/test_mirrored_business_rules.py` fails when
+they disagree.
 
 ## Local Windows development
 

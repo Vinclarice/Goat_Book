@@ -5,8 +5,9 @@ one deployment.
 
 **The task core** — *Superlists* — is commitments: tasks, areas, projects,
 recurring commitments, checklist steps, routines, the daily page and a weekly
-review. Mostly a React SPA under `/app/`, with the Django forms still usable if
-JavaScript is unavailable.
+review. A React SPA under `/app/`, and only that: every Django path into it is
+a redirect, so without JavaScript the task core cannot be used. What still works
+without it is the account pages and the knowledge core.
 
 **The knowledge core** — *Second Mind* — is `src/mind/`, at `/mind/`. A thought
 is captured as a `Node` and nothing is asked of it at the moment of writing: no

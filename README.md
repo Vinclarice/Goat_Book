@@ -98,11 +98,18 @@ that had never run.
 
 ## Account approval
 
-Signups are not self-activating: `/accounts/signup/` creates the account
-with `is_active=False` and shows a "pending approval" message instead of
-logging them in. Approve (or reject) accounts at `/admin/`, where you can
-also manage lists directly. The signup and each account lockout (see
-below) sends a notification email to `ADMINS` in settings.py.
+Signups are not self-activating. `/accounts/signup/` creates the account with
+`is_active=False` and emails a confirmation link; opening it confirms the
+address and nothing more -- it neither signs the person in nor activates them.
+Confirming is what notifies `ADMINS` in settings.py, and you approve (or
+reject) the account at `/admin/`. `accounts.views.activate` explains the order.
+
+An invitation skips the queue, because minting it was the approval. Create one
+at `/admin/` and send its `/accounts/join/<id>/` link: redeeming it makes an
+active account and signs the person in, and the confirmation email still goes.
+`accounts.views.join` owns the reasoning.
+
+Each account lockout (see below) also emails `ADMINS`.
 
 Making yourself a superuser so you can reach `/admin/` in the first place, and
 the local recovery path for a forgotten password:
@@ -117,7 +124,7 @@ the local recovery path for a forgotten password:
 `send_due_digest` emails each opted-in user a summary of what's overdue or due
 today. Users with nothing due are skipped, so quiet days stay quiet, and the
 preference lives on the account (`User.daily_digest`, toggled at
-`/accounts/settings/`).
+`/app/preferences`).
 
 Each user gets it at 07:00 in *their* time zone (`User.time_zone`), which is
 also what decides their overdue/due-today boundaries -- see "Time zones" below.
